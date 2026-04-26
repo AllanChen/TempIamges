@@ -1,0 +1,17 @@
+Mouse location: (1132.0, 460.0)
+Screen height: 956.0
+AX Y (flipped): 496.0
+CopyElementAtPosition result: 0
+Got element
+  AXValue: e5d7b8f3-5271-4441-9098-7e0781b19cf1.webp
+  AXDescription: failed (-25205)
+  AXTitle: failed (-25205)
+  AXRoleDescription: text field
+  AXRole: AXTextField
+  AXSubrole: failed (-25205)
+  AXHelp: failed (-25212)
+  AXURL: unknown type
+
+LATENCY TEST:
+Extraction latency: 95.230ms
+

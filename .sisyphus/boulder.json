@@ -1,0 +1,50 @@
+{
+  "active_plan": "/Users/allan/Desktop/TempImages/.sisyphus/plans/mac-image-hover-preview.md",
+  "started_at": "2026-04-25T14:43:17.585Z",
+  "session_ids": [
+    "ses_23af4924effep7fDrk730I7g8s"
+  ],
+  "session_origins": {
+    "ses_23af4924effep7fDrk730I7g8s": "direct"
+  },
+  "plan_name": "mac-image-hover-preview",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:0": {
+      "task_key": "todo:0",
+      "task_label": "0",
+      "task_title": "**Prototype: Validate Accessibility API Text Extraction**",
+      "session_id": "ses_23ad7c665ffeV5vfpCLF0WUYLe",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-25T15:30:27.503Z"
+    },
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "**Xcode Project Scaffolding & Signing Configuration**",
+      "session_id": "ses_23aba770affePaKcw0O5alfru9",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-25T16:02:42.715Z"
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "**Menu Bar App Setup**",
+      "session_id": "ses_238ae7657ffeciRb0J8jMmaN0g",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-26T01:07:30.832Z"
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "**Mouse Tracking & Position Polling**",
+      "session_id": "ses_238ab7f53ffeFVDU7esRtRF5VB",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-26T01:16:19.832Z"
+    }
+  }
+}

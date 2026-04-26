@@ -1,0 +1,17 @@
+Mouse location: (-110.0, 1983.0)
+Screen height: 956.0
+AX Y (flipped): -1027.0
+CopyElementAtPosition result: 0
+Got element
+  AXValue: This is example text for accessibility testing.
+  AXDescription: 
+  AXTitle: 
+  AXRoleDescription: text
+  AXRole: AXStaticText
+  AXSubrole: failed (-25212)
+  AXHelp: 
+  AXURL: failed (-25212)
+
+LATENCY TEST:
+Extraction latency: 108.883ms
+

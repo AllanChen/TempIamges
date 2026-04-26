@@ -1,0 +1,38 @@
+name: ImageHoverPreview
+options:
+  bundleIdPrefix: com.imagehoverpreview
+  deploymentTarget:
+    macOS: "12.0"
+  xcodeVersion: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "12.0"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_IDENTITY: "-"
+
+targets:
+  ImageHoverPreview:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+    resources:
+      - Resources
+      - PreviewContent
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.imagehoverpreview.app
+        INFOPLIST_FILE: Info.plist
+        PRODUCT_NAME: ImageHoverPreview
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path/../Frameworks"
+        SWIFT_EMIT_LOC_STRINGS: YES
+    entitlements:
+      path: ImageHoverPreview.entitlements
+      properties:
+        com.apple.security.get-task-allow: true

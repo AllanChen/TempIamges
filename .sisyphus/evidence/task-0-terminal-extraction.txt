@@ -1,0 +1,41 @@
+Mouse location: (496.0, 707.0)
+Screen height: 956.0
+AX Y (flipped): 249.0
+CopyElementAtPosition result: 0
+Got element
+  AXValue: Last login: Sat Apr 25 22:25:10 on ttys037
+You have new mail.
+➜  ~ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  AXDescription: shell
+  AXTitle: failed (-25205)
+  AXRoleDescription: text entry area
+  AXRole: AXTextArea
+  AXSubrole: failed (-25205)
+  AXHelp: failed (-25212)
+  AXURL: failed (-25205)
+
+LATENCY TEST:
+Extraction latency: 119.636ms
+
