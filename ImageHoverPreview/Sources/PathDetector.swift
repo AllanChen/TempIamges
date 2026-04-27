@@ -67,8 +67,28 @@ class PathDetector {
 
         print("PathDetector: scanning text='\(trimmed)'")
 
+        if case let result = detectInString(trimmed), result.isImage {
+            return result
+        }
+
+        // Editors with soft-wrap and multi-line OCR output frequently break a long
+        // URL/path in the middle. The regexes reject any whitespace (\n included),
+        // so retry with line breaks and surrounding spaces removed.
+        let unwrapped = unwrapLines(trimmed)
+        if unwrapped != trimmed {
+            print("PathDetector: retrying with unwrapped='\(unwrapped)'")
+            if case let result = detectInString(unwrapped), result.isImage {
+                return result
+            }
+        }
+
+        print("PathDetector: no image path found in text")
+        return .invalid
+    }
+
+    private func detectInString(_ text: String) -> DetectedPath {
         // 1) Remote http/https image URL anywhere in text.
-        if let match = firstMatch(in: trimmed, regex: httpRegex) {
+        if let match = firstMatch(in: text, regex: httpRegex) {
             print("PathDetector: matched http URL='\(match)'")
             if let url = URL(string: match) {
                 return .remoteImage(url)
@@ -76,7 +96,7 @@ class PathDetector {
         }
 
         // 2) file:// URL.
-        if let match = firstMatch(in: trimmed, regex: fileURLRegex) {
+        if let match = firstMatch(in: text, regex: fileURLRegex) {
             print("PathDetector: matched file URL='\(match)'")
             if let url = URL(string: match) {
                 let path = url.path
@@ -87,7 +107,7 @@ class PathDetector {
         }
 
         // 3) Tilde-prefixed home path (check before absolute since it doesn't start with /).
-        if let match = firstMatch(in: trimmed, regex: homePathRegex) {
+        if let match = firstMatch(in: text, regex: homePathRegex) {
             let expanded = (match as NSString).expandingTildeInPath
             print("PathDetector: matched ~/ path='\(match)' -> '\(expanded)'")
             if isValidLocalImage(path: expanded) {
@@ -96,15 +116,24 @@ class PathDetector {
         }
 
         // 4) Absolute POSIX path.
-        if let match = firstMatch(in: trimmed, regex: absolutePathRegex) {
+        if let match = firstMatch(in: text, regex: absolutePathRegex) {
             print("PathDetector: matched absolute path='\(match)'")
             if isValidLocalImage(path: match) {
                 return .localImage(URL(fileURLWithPath: match))
             }
         }
 
-        print("PathDetector: no image path found in text")
         return .invalid
+    }
+
+    private func unwrapLines(_ text: String) -> String {
+        // Trim each line and concatenate. URLs and paths never legitimately
+        // contain whitespace, so dropping the break stitches a soft-wrapped
+        // URL back together without affecting valid surrounding tokens.
+        return text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .joined()
     }
 
     private func firstMatch(in text: String, regex: NSRegularExpression) -> String? {

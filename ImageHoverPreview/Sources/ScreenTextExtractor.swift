@@ -36,7 +36,19 @@ class ScreenTextExtractor {
             return nil
         }
 
-        let lines = results.compactMap { observation in
+        // Vision returns observations roughly in reading order, but for
+        // robustness sort top-to-bottom (boundingBox origin is bottom-left
+        // in normalized coords, so a larger y is visually higher) and
+        // then left-to-right. That way PathDetector's unwrap pass stitches
+        // the lines back in the order a human would read them.
+        let sorted = results.sorted { a, b in
+            if abs(a.boundingBox.origin.y - b.boundingBox.origin.y) > 0.02 {
+                return a.boundingBox.origin.y > b.boundingBox.origin.y
+            }
+            return a.boundingBox.origin.x < b.boundingBox.origin.x
+        }
+
+        let lines = sorted.compactMap { observation in
             observation.topCandidates(1).first?.string
         }
 
@@ -47,8 +59,11 @@ class ScreenTextExtractor {
     }
 
     private func captureRegion(around point: CGPoint) -> NSImage? {
-        let regionWidth: CGFloat = 600
-        let regionHeight: CGFloat = 120
+        // Wider region than the cursor cell so that long URLs/paths typed
+        // out in code editors are captured even when the cursor is near
+        // the start or end of the token.
+        let regionWidth: CGFloat = 1000
+        let regionHeight: CGFloat = 180
 
         let rect = CGRect(
             x: point.x - regionWidth / 2,

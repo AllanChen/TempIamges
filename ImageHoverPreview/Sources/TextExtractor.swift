@@ -17,14 +17,50 @@ class TextExtractor {
 
         let startTime = CFAbsoluteTimeGetCurrent()
 
+        let axText = extractFromAX(at: point)
+
+        // If AX already produced something that looks like a URL/path, trust it.
+        if let t = axText, looksLikePathOrURL(t) {
+            let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+            print("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=AX text='\(t)' position=(\(point.x), \(point.y))")
+            lastExtractedText = t
+            lastExtractionTime = Date()
+            return t
+        }
+
+        // Otherwise, fall back to OCR. This covers two cases:
+        //  - No AXUIElement at the point (Electron-based editors, custom canvases).
+        //  - AX returned text but it's not a URL/path (e.g. Trae and some
+        //    proprietary editors expose only generic role text via AX, but
+        //    the URL is rendered glyph-by-glyph in their canvas).
+        if let ocrText = screenTextExtractor.extractText(at: point), looksLikePathOrURL(ocrText) {
+            let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+            print("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=OCR text='\(ocrText)' position=(\(point.x), \(point.y))")
+            lastExtractedText = ocrText
+            lastExtractionTime = Date()
+            return ocrText
+        }
+
+        let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+        print("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=AX-fallback text='\(axText ?? "nil")' position=(\(point.x), \(point.y))")
+
+        if axText != nil {
+            lastExtractedText = axText
+            lastExtractionTime = Date()
+        }
+
+        return axText
+    }
+
+    private func extractFromAX(at point: CGPoint) -> String? {
         let systemWide = AXUIElementCreateSystemWide()
         var element: AXUIElement?
 
         let result = AXUIElementCopyElementAtPosition(systemWide, Float(point.x), Float(point.y), &element)
 
         guard result == .success, let el = element else {
-            print("TextExtractor: No element at position (\(point.x), \(point.y)), trying OCR fallback")
-            return screenTextExtractor.extractText(at: point)
+            print("TextExtractor: No AX element at position (\(point.x), \(point.y))")
+            return nil
         }
 
         // Walk up to 5 ancestors looking for the most useful text/URL.
@@ -64,17 +100,7 @@ class TextExtractor {
             depth += 1
         }
 
-        let text = collected.first(where: looksLikePathOrURL) ?? collected.first
-
-        let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-        print("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms text='\(text ?? "nil")' position=(\(point.x), \(point.y))")
-
-        if text != nil {
-            lastExtractedText = text
-            lastExtractionTime = Date()
-        }
-
-        return text
+        return collected.first(where: looksLikePathOrURL) ?? collected.first
     }
 
     func reset() {
