@@ -5,6 +5,7 @@ class TextExtractor {
     private var lastExtractedText: String?
     private var lastExtractionTime: Date?
     private let debounceInterval: TimeInterval = 0.1
+    private let screenTextExtractor = ScreenTextExtractor()
 
     func extractText(at point: CGPoint, debounce: Bool = true) -> String? {
         if debounce {
@@ -22,8 +23,8 @@ class TextExtractor {
         let result = AXUIElementCopyElementAtPosition(systemWide, Float(point.x), Float(point.y), &element)
 
         guard result == .success, let el = element else {
-            print("TextExtractor: No element at position (\(point.x), \(point.y))")
-            return nil
+            print("TextExtractor: No element at position (\(point.x), \(point.y)), trying OCR fallback")
+            return screenTextExtractor.extractText(at: point)
         }
 
         // Walk up to 5 ancestors looking for the most useful text/URL.

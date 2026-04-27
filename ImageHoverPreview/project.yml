@@ -2,14 +2,14 @@ name: ImageHoverPreview
 options:
   bundleIdPrefix: com.imagehoverpreview
   deploymentTarget:
-    macOS: "12.0"
+    macOS: "12.3"
   xcodeVersion: "14.0"
   createIntermediateGroups: true
 
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MACOSX_DEPLOYMENT_TARGET: "12.0"
+    MACOSX_DEPLOYMENT_TARGET: "12.3"
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_IDENTITY: "-"
@@ -23,6 +23,8 @@ targets:
     resources:
       - Resources
       - PreviewContent
+    dependencies:
+      - sdk: Vision.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.imagehoverpreview.app
