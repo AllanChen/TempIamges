@@ -29,104 +29,107 @@ class PathDetector {
         "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"
     ]
 
+    private let extensionPattern: String
+    private let httpRegex: NSRegularExpression
+    private let fileURLRegex: NSRegularExpression
+    private let absolutePathRegex: NSRegularExpression
+    private let homePathRegex: NSRegularExpression
+
+    init() {
+        let exts = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"]
+        let extAlt = exts.joined(separator: "|")
+        self.extensionPattern = extAlt
+
+        // URLs may include query strings; allow optional ?... before end-anchor of the extension match.
+        self.httpRegex = try! NSRegularExpression(
+            pattern: "https?://[^\\s\"'<>()]+?\\.(?i:\(extAlt))(?:\\?[^\\s\"'<>]*)?",
+            options: []
+        )
+        self.fileURLRegex = try! NSRegularExpression(
+            pattern: "file://[^\\s\"'<>()]+?\\.(?i:\(extAlt))",
+            options: []
+        )
+        // POSIX absolute path: starts with / and contains a supported image extension.
+        self.absolutePathRegex = try! NSRegularExpression(
+            pattern: "/[^\\s\"'<>()]+?\\.(?i:\(extAlt))",
+            options: []
+        )
+        // Tilde-prefixed home path.
+        self.homePathRegex = try! NSRegularExpression(
+            pattern: "~/[^\\s\"'<>()]+?\\.(?i:\(extAlt))",
+            options: []
+        )
+    }
+
     func detect(_ text: String) -> DetectedPath {
-        var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        print("PathDetector: Original text='\(trimmed)'")
-        
-        if trimmed.hasSuffix("'") || trimmed.hasSuffix("\"") {
-            print("PathDetector: Removing trailing quote")
-            trimmed.removeLast()
-        }
-        if trimmed.hasPrefix("'") || trimmed.hasPrefix("\"") {
-            print("PathDetector: Removing leading quote")
-            trimmed.removeFirst()
-        }
-        
-        print("PathDetector: Checking text='\(trimmed)'")
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .invalid }
 
-        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") {
-            return detectImageURL(trimmed)
+        print("PathDetector: scanning text='\(trimmed)'")
+
+        // 1) Remote http/https image URL anywhere in text.
+        if let match = firstMatch(in: trimmed, regex: httpRegex) {
+            print("PathDetector: matched http URL='\(match)'")
+            if let url = URL(string: match) {
+                return .remoteImage(url)
+            }
         }
 
-        if trimmed.hasPrefix("file://") {
-            return detectFileURL(trimmed)
+        // 2) file:// URL.
+        if let match = firstMatch(in: trimmed, regex: fileURLRegex) {
+            print("PathDetector: matched file URL='\(match)'")
+            if let url = URL(string: match) {
+                let path = url.path
+                if isValidLocalImage(path: path) {
+                    return .localImage(URL(fileURLWithPath: path))
+                }
+            }
         }
 
-        if trimmed.hasPrefix("/") {
-            return detectLocalPath(trimmed)
+        // 3) Tilde-prefixed home path (check before absolute since it doesn't start with /).
+        if let match = firstMatch(in: trimmed, regex: homePathRegex) {
+            let expanded = (match as NSString).expandingTildeInPath
+            print("PathDetector: matched ~/ path='\(match)' -> '\(expanded)'")
+            if isValidLocalImage(path: expanded) {
+                return .localImage(URL(fileURLWithPath: expanded))
+            }
         }
 
-        if trimmed.hasPrefix("~/") {
-            let expanded = expandHomeDirectory(trimmed)
-            return detectLocalPath(expanded)
+        // 4) Absolute POSIX path.
+        if let match = firstMatch(in: trimmed, regex: absolutePathRegex) {
+            print("PathDetector: matched absolute path='\(match)'")
+            if isValidLocalImage(path: match) {
+                return .localImage(URL(fileURLWithPath: match))
+            }
         }
 
-        print("PathDetector: No valid prefix found")
+        print("PathDetector: no image path found in text")
         return .invalid
     }
 
-    private func detectImageURL(_ urlString: String) -> DetectedPath {
-        guard let url = URL(string: urlString) else {
-            print("PathDetector: Failed to create URL from '\(urlString)'")
-            return .invalid
+    private func firstMatch(in text: String, regex: NSRegularExpression) -> String? {
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, options: [], range: range),
+              let r = Range(match.range, in: text) else {
+            return nil
         }
-
-        let path = url.path.isEmpty ? urlString : url.path
-        let ext = (path as NSString).pathExtension.lowercased()
-        
-        print("PathDetector: URL path='\(path)', extension='\(ext)'")
-
-        if supportedExtensions.contains(ext) {
-            print("PathDetector: Found image URL '\(urlString)'")
-            return .remoteImage(url)
-        }
-
-        print("PathDetector: Unsupported extension '\(ext)'")
-        return .invalid
+        return String(text[r])
     }
 
-    private func detectFileURL(_ urlString: String) -> DetectedPath {
-        guard let url = URL(string: urlString) else {
-            return .invalid
-        }
-
-        let path = url.path
-
-        guard let homeDir = FileManager.default.homeDirectoryForCurrentUser.path as String?,
-              path.hasPrefix(homeDir) else {
-            return .invalid
-        }
-
-        return detectLocalPath(path)
-    }
-
-    private func detectLocalPath(_ path: String) -> DetectedPath {
+    private func isValidLocalImage(path: String) -> Bool {
         if path.contains("..") {
-            return .invalid
+            return false
         }
-
         let fileManager = FileManager.default
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: path, isDirectory: &isDirectory) else {
-            return .invalid
+            print("PathDetector: file does not exist at '\(path)'")
+            return false
         }
-
         guard !isDirectory.boolValue else {
-            return .invalid
+            return false
         }
-
         let ext = (path as NSString).pathExtension.lowercased()
-        guard supportedExtensions.contains(ext) else {
-            return .invalid
-        }
-
-        let url = URL(fileURLWithPath: path)
-        return .localImage(url)
-    }
-
-    private func expandHomeDirectory(_ path: String) -> String {
-        let expanded = (path as NSString).expandingTildeInPath
-        return expanded
+        return supportedExtensions.contains(ext)
     }
 }
