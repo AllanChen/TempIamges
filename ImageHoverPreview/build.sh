@@ -9,7 +9,13 @@ if command -v xcodegen > /dev/null 2>&1; then
     xcodegen generate
 fi
 
-xcodebuild -project ImageHoverPreview.xcodeproj -scheme ImageHoverPreview -configuration Release -derivedDataPath ./DerivedData build
+xcodebuild \
+    -project ImageHoverPreview.xcodeproj \
+    -scheme ImageHoverPreview \
+    -configuration Release \
+    -derivedDataPath ./DerivedData \
+    -resolvePackageDependencies \
+    build
 
 BUILT_APP=$(find ./DerivedData -name "ImageHoverPreview.app" -type d | head -n 1)
 

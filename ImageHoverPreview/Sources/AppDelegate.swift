@@ -16,7 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var isLoadingImage: Bool = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print("AppDelegate: Application did finish launching")
+        writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
         setupComponents()
         setupNotifications()
         checkPermissions()
@@ -39,7 +39,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         previewPanel = PreviewPanel()
         errorTooltip = ErrorTooltip()
         
-        print("AppDelegate: All components initialized")
+        Logger.info("AppDelegate: All components initialized")
     }
 
     private func setupNotifications() {
@@ -71,7 +71,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             object: nil
         )
         
-        print("AppDelegate: Notifications setup complete")
+        Logger.info("AppDelegate: Notifications setup complete")
     }
 
     private func checkPermissions() {
@@ -87,7 +87,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         if permissionManager.isInputMonitoringGranted {
             startKeyboardMonitoring()
         } else {
-            print("AppDelegate: Input Monitoring permission not granted - keyboard monitoring disabled")
+            Logger.info("AppDelegate: Input Monitoring permission not granted - keyboard monitoring disabled")
         }
     }
 
@@ -100,36 +100,36 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         guard let monitor = keyboardMonitor else { return }
 
         if monitor.startMonitoring() {
-            print("AppDelegate: Keyboard monitoring started")
+            Logger.info("AppDelegate: Keyboard monitoring started")
         } else {
-            print("AppDelegate: Failed to start keyboard monitoring")
+            Logger.info("AppDelegate: Failed to start keyboard monitoring")
         }
     }
 
     @objc private func previewModeActivated() {
-        print("AppDelegate: Preview mode activated")
+        Logger.info("AppDelegate: Preview mode activated")
         guard Preferences.shared.enabled else {
-            print("AppDelegate: Preview disabled in preferences")
+            Logger.info("AppDelegate: Preview disabled in preferences")
             return
         }
         
         let permissionManager = PermissionManager.shared
         guard permissionManager.isInputMonitoringGranted else {
-            print("AppDelegate: Cannot activate preview - Input Monitoring permission not granted")
+            Logger.info("AppDelegate: Cannot activate preview - Input Monitoring permission not granted")
             return
         }
         guard permissionManager.isAccessibilityGranted else {
-            print("AppDelegate: Cannot activate preview - Accessibility permission not granted")
+            Logger.info("AppDelegate: Cannot activate preview - Accessibility permission not granted")
             return
         }
 
         mouseTracker?.startTracking()
         textExtractor?.reset()
-        print("AppDelegate: Mouse tracking started")
+        Logger.info("AppDelegate: Mouse tracking started")
     }
 
     @objc private func previewModeDeactivated() {
-        print("AppDelegate: Preview mode deactivated")
+        Logger.info("AppDelegate: Preview mode deactivated")
         mouseTracker?.stopTracking()
         previewPanel?.hidePanel()
         errorTooltip?.hide()
@@ -148,28 +148,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     private func processMousePosition(_ position: CGPoint) {
-        print("AppDelegate: Processing mouse position (\(position.x), \(position.y))")
+        Logger.info("AppDelegate: Processing mouse position (\(position.x), \(position.y))")
         
         guard let extractedText = textExtractor?.extractText(at: position, debounce: true) else {
-            print("AppDelegate: No text extracted")
+            Logger.info("AppDelegate: No text extracted")
             hideAllPanels()
             return
         }
 
-        print("AppDelegate: Extracted text='\(extractedText)'")
+        Logger.info("AppDelegate: Extracted text='\(extractedText)'")
         
         let detectedPath = pathDetector?.detect(extractedText)
 
         switch detectedPath {
         case .localImage(let url), .remoteImage(let url):
             let pathString = url.absoluteString
-            print("AppDelegate: Detected image path='\(pathString)'")
+            Logger.info("AppDelegate: Detected image path='\(pathString)'")
             if pathString != currentPath {
                 currentPath = pathString
                 loadAndShowImage(url: url, at: position)
             }
         case .invalid, .none:
-            print("AppDelegate: No valid image path detected")
+            Logger.info("AppDelegate: No valid image path detected")
             if extractedText != currentPath {
                 currentPath = extractedText
                 showErrorTooltip(message: "No image found", at: position)
@@ -183,7 +183,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
         errorTooltip?.hide()
         
-        print("AppDelegate: Loading image from '\(url.absoluteString)'")
+        Logger.info("AppDelegate: Loading image from '\(url.absoluteString)'")
 
         imageLoader?.loadImage(from: url) { [weak self] image in
             self?.isLoadingImage = false
@@ -191,10 +191,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             guard let self = self else { return }
 
             if let image = image {
-                print("AppDelegate: Image loaded successfully, showing preview")
+                Logger.info("AppDelegate: Image loaded successfully, showing preview")
                 self.previewPanel?.showImage(image, at: position)
             } else {
-                print("AppDelegate: Failed to load image")
+                Logger.info("AppDelegate: Failed to load image")
                 self.showErrorTooltip(message: "Failed to load image", at: position)
             }
         }
@@ -230,6 +230,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
         if !permissionManager.isInputMonitoringGranted || !permissionManager.isAccessibilityGranted {
             showOnboardingWindow()
+        }
+    }
+}
+
+// MARK: - Debug Extension
+extension AppDelegate {
+    func writeDebugMarker(_ message: String) {
+        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("ImageHoverPreview/debug_marker.txt")
+        let text = "\(Date()): \(message)\n"
+        if let data = text.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: url.path) {
+                if let handle = try? FileHandle(forWritingTo: url) {
+                    handle.seekToEndOfFile()
+                    handle.write(data)
+                    handle.closeFile()
+                }
+            } else {
+                try? text.write(to: url, atomically: true, encoding: .utf8)
+            }
         }
     }
 }

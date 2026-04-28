@@ -7,7 +7,7 @@ class TextExtractor {
     private let debounceInterval: TimeInterval = 0.1
     private let screenTextExtractor = ScreenTextExtractor()
 
-    func extractText(at point: CGPoint, debounce: Bool = true) -> String? {
+    func extractText(at point: CGPoint, debounce: Bool = true, forceOCR: Bool = false) -> String? {
         if debounce {
             if let lastTime = lastExtractionTime,
                Date().timeIntervalSince(lastTime) < debounceInterval {
@@ -22,7 +22,7 @@ class TextExtractor {
         // If AX already produced something that looks like a URL/path, trust it.
         if let t = axText, looksLikePathOrURL(t) {
             let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-            print("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=AX text='\(t)' position=(\(point.x), \(point.y))")
+            Logger.info("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=AX text='\(t)' position=(\(point.x), \(point.y))")
             lastExtractedText = t
             lastExtractionTime = Date()
             return t
@@ -33,16 +33,22 @@ class TextExtractor {
         //  - AX returned text but it's not a URL/path (e.g. Trae and some
         //    proprietary editors expose only generic role text via AX, but
         //    the URL is rendered glyph-by-glyph in their canvas).
-        if let ocrText = screenTextExtractor.extractText(at: point), looksLikePathOrURL(ocrText) {
-            let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-            print("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=OCR text='\(ocrText)' position=(\(point.x), \(point.y))")
-            lastExtractedText = ocrText
-            lastExtractionTime = Date()
-            return ocrText
+        Logger.info("TextExtractor: Falling back to OCR...")
+        if let ocrText = screenTextExtractor.extractText(at: point) {
+            Logger.info("TextExtractor: OCR raw result='\(ocrText)' looksLikePathOrURL=\(looksLikePathOrURL(ocrText))")
+            if looksLikePathOrURL(ocrText) {
+                let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+                Logger.info("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=OCR text='\(ocrText)' position=(\(point.x), \(point.y))")
+                lastExtractedText = ocrText
+                lastExtractionTime = Date()
+                return ocrText
+            }
+        } else {
+            Logger.info("TextExtractor: OCR returned nil")
         }
 
         let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-        print("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=AX-fallback text='\(axText ?? "nil")' position=(\(point.x), \(point.y))")
+        Logger.info("TextExtractor: latency=\(String(format: "%.2f", elapsed))ms source=AX-fallback text='\(axText ?? "nil")' position=(\(point.x), \(point.y))")
 
         if axText != nil {
             lastExtractedText = axText
@@ -59,7 +65,7 @@ class TextExtractor {
         let result = AXUIElementCopyElementAtPosition(systemWide, Float(point.x), Float(point.y), &element)
 
         guard result == .success, let el = element else {
-            print("TextExtractor: No AX element at position (\(point.x), \(point.y))")
+            Logger.info("TextExtractor: No AX element at position (\(point.x), \(point.y))")
             return nil
         }
 

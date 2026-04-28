@@ -65,7 +65,7 @@ class PathDetector {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .invalid }
 
-        print("PathDetector: scanning text='\(trimmed)'")
+        Logger.info("PathDetector: scanning text='\(trimmed)'")
 
         if case let result = detectInString(trimmed), result.isImage {
             return result
@@ -76,20 +76,20 @@ class PathDetector {
         // so retry with line breaks and surrounding spaces removed.
         let unwrapped = unwrapLines(trimmed)
         if unwrapped != trimmed {
-            print("PathDetector: retrying with unwrapped='\(unwrapped)'")
+            Logger.info("PathDetector: retrying with unwrapped='\(unwrapped)'")
             if case let result = detectInString(unwrapped), result.isImage {
                 return result
             }
         }
 
-        print("PathDetector: no image path found in text")
+        Logger.info("PathDetector: no image path found in text")
         return .invalid
     }
 
     private func detectInString(_ text: String) -> DetectedPath {
         // 1) Remote http/https image URL anywhere in text.
         if let match = firstMatch(in: text, regex: httpRegex) {
-            print("PathDetector: matched http URL='\(match)'")
+            Logger.info("PathDetector: matched http URL='\(match)'")
             if let url = URL(string: match) {
                 return .remoteImage(url)
             }
@@ -97,7 +97,7 @@ class PathDetector {
 
         // 2) file:// URL.
         if let match = firstMatch(in: text, regex: fileURLRegex) {
-            print("PathDetector: matched file URL='\(match)'")
+            Logger.info("PathDetector: matched file URL='\(match)'")
             if let url = URL(string: match) {
                 let path = url.path
                 if isValidLocalImage(path: path) {
@@ -109,7 +109,7 @@ class PathDetector {
         // 3) Tilde-prefixed home path (check before absolute since it doesn't start with /).
         if let match = firstMatch(in: text, regex: homePathRegex) {
             let expanded = (match as NSString).expandingTildeInPath
-            print("PathDetector: matched ~/ path='\(match)' -> '\(expanded)'")
+            Logger.info("PathDetector: matched ~/ path='\(match)' -> '\(expanded)'")
             if isValidLocalImage(path: expanded) {
                 return .localImage(URL(fileURLWithPath: expanded))
             }
@@ -117,7 +117,7 @@ class PathDetector {
 
         // 4) Absolute POSIX path.
         if let match = firstMatch(in: text, regex: absolutePathRegex) {
-            print("PathDetector: matched absolute path='\(match)'")
+            Logger.info("PathDetector: matched absolute path='\(match)'")
             if isValidLocalImage(path: match) {
                 return .localImage(URL(fileURLWithPath: match))
             }
@@ -152,7 +152,7 @@ class PathDetector {
         let fileManager = FileManager.default
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: path, isDirectory: &isDirectory) else {
-            print("PathDetector: file does not exist at '\(path)'")
+            Logger.info("PathDetector: file does not exist at '\(path)'")
             return false
         }
         guard !isDirectory.boolValue else {

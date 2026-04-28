@@ -35,21 +35,21 @@ class KeyboardMonitor: NSObject {
         )
 
         guard let eventTap = eventTap else {
-            print("KeyboardMonitor: Failed to create event tap")
+            Logger.info("KeyboardMonitor: Failed to create event tap")
             return false
         }
 
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
 
         guard let runLoopSource = runLoopSource else {
-            print("KeyboardMonitor: Failed to create run loop source")
+            Logger.info("KeyboardMonitor: Failed to create run loop source")
             return false
         }
 
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
         
-        print("KeyboardMonitor: Event tap created and enabled successfully")
+        Logger.info("KeyboardMonitor: Event tap created and enabled successfully")
 
         return true
     }
@@ -77,7 +77,7 @@ class KeyboardMonitor: NSObject {
             shiftHeld = flags.contains(.maskShift)
 
             if cmdHeld != prevCmdHeld || shiftHeld != prevShiftHeld {
-                print("KeyboardMonitor: Cmd=\(cmdHeld), Shift=\(shiftHeld)")
+                Logger.info("KeyboardMonitor: Cmd=\(cmdHeld), Shift=\(shiftHeld)")
                 checkPreviewModeStateChanged()
             }
         }
@@ -90,10 +90,10 @@ class KeyboardMonitor: NSObject {
             wasPreviewModeActive = isActive
 
             if isActive {
-                print("KeyboardMonitor: Preview mode ACTIVATED")
+                Logger.info("KeyboardMonitor: Preview mode ACTIVATED")
                 NotificationCenter.default.post(name: KeyboardMonitor.previewModeDidActivate, object: self)
             } else {
-                print("KeyboardMonitor: Preview mode DEACTIVATED")
+                Logger.info("KeyboardMonitor: Preview mode DEACTIVATED")
                 NotificationCenter.default.post(name: KeyboardMonitor.previewModeDidDeactivate, object: self)
             }
         }

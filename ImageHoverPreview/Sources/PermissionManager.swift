@@ -16,6 +16,12 @@ class PermissionManager: NSObject {
         CGRequestListenEventAccess()
     }
     
+    func checkPermissionStatusChanged() -> (inputMonitoring: Bool, accessibility: Bool) {
+        let currentInputMonitoring = CGPreflightListenEventAccess()
+        let currentAccessibility = AXIsProcessTrusted()
+        return (currentInputMonitoring, currentAccessibility)
+    }
+    
     func requestAccessibility() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         AXIsProcessTrustedWithOptions(options)

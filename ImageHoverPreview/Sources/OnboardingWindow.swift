@@ -125,14 +125,35 @@ class OnboardingWindow: NSWindow {
 
     @objc private func openInputMonitoringSettings() {
         PermissionManager.shared.openInputMonitoringSettings()
+        startPermissionPolling()
     }
 
     @objc private func openAccessibilitySettings() {
         PermissionManager.shared.openAccessibilitySettings()
+        startPermissionPolling()
+    }
+
+    private var permissionCheckTimer: Timer?
+
+    private func startPermissionPolling() {
+        permissionCheckTimer?.invalidate()
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.updatePermissionStatus()
+        }
+    }
+
+    private func stopPermissionPolling() {
+        permissionCheckTimer?.invalidate()
+        permissionCheckTimer = nil
+    }
+
+    deinit {
+        stopPermissionPolling()
     }
 
     @objc private func continuePressed() {
         UserDefaults.standard.set(true, forKey: "dontShowOnboardingAgain")
+        stopPermissionPolling()
         self.close()
     }
 
