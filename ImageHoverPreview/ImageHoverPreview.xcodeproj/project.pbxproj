@@ -21,6 +21,7 @@
 		8AB8A81A4D0BF82BEB981281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED63B00077CA5F013641FFE /* main.swift */; };
 		8D3F84BC22C288B4335BB02A /* ErrorTooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A67D3FF61FF45515D8AE39F8 /* ErrorTooltip.swift */; };
 		951087A1BA6271AD90C75B63 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB986107C96EBB53044C6EB /* PermissionManager.swift */; };
+		9BEFDC61EE1C1C62C329F4A8 /* SelectedTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D677FE0C8FB2D05D1350142 /* SelectedTextExtractor.swift */; };
 		B86097281292E7E285AF0B30 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3452816A88922AF037307048 /* AppDelegate.swift */; };
 		BE31027DAA31F02D1686FD31 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C10FCE3D4BB90D4EA30DEFC /* ImageLoader.swift */; };
 		C815C23A6EB7BC6669F00B97 /* KeyboardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 647F408AF1FFEA48490810AC /* KeyboardMonitor.swift */; };
@@ -37,6 +38,7 @@
 		647F408AF1FFEA48490810AC /* KeyboardMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMonitor.swift; sourceTree = "<group>"; };
 		72E9E0A1195B904DED465C53 /* ScreenTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenTextExtractor.swift; sourceTree = "<group>"; };
 		7B382D939EBAB1E3A487EE32 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
+		7D677FE0C8FB2D05D1350142 /* SelectedTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedTextExtractor.swift; sourceTree = "<group>"; };
 		821AB9B7DFB3C990D60C6578 /* ScreenManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenManager.swift; sourceTree = "<group>"; };
 		829156F9C70781AF0B1E1E2F /* PathDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathDetector.swift; sourceTree = "<group>"; };
 		88D06EC556D7969E8523D760 /* ImageHoverPreview.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ImageHoverPreview.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -104,6 +106,7 @@
 				AFD0A476BB231034C4D4AE43 /* PreviewPanel.swift */,
 				821AB9B7DFB3C990D60C6578 /* ScreenManager.swift */,
 				72E9E0A1195B904DED465C53 /* ScreenTextExtractor.swift */,
+				7D677FE0C8FB2D05D1350142 /* SelectedTextExtractor.swift */,
 				7B382D939EBAB1E3A487EE32 /* StatusBarController.swift */,
 				47B985FD761B81319B690C23 /* TextExtractor.swift */,
 			);
@@ -183,6 +186,7 @@
 				3DD65403B15CACFC595FC0D0 /* PreviewPanel.swift in Sources */,
 				00D04ACB2743F6A880710ABA /* ScreenManager.swift in Sources */,
 				69011B51431FB4F4841C2003 /* ScreenTextExtractor.swift in Sources */,
+				9BEFDC61EE1C1C62C329F4A8 /* SelectedTextExtractor.swift in Sources */,
 				755D0CC1D9A9E1F84DC1F4A0 /* StatusBarController.swift in Sources */,
 				5692E0A2CDDF16787C3253C1 /* TextExtractor.swift in Sources */,
 				8AB8A81A4D0BF82BEB981281 /* main.swift in Sources */,

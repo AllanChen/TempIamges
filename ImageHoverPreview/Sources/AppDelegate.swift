@@ -5,6 +5,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var keyboardMonitor: KeyboardMonitor?
     private var mouseTracker: MouseTracker?
     private var textExtractor: TextExtractor?
+    private var selectedTextExtractor: SelectedTextExtractor?
     private var pathDetector: PathDetector?
     private var imageLoader: ImageLoader?
     private var previewPanel: PreviewPanel?
@@ -34,6 +35,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         keyboardMonitor = KeyboardMonitor()
         mouseTracker = MouseTracker()
         textExtractor = TextExtractor()
+        selectedTextExtractor = SelectedTextExtractor()
         pathDetector = PathDetector()
         imageLoader = ImageLoader()
         previewPanel = PreviewPanel()
@@ -112,7 +114,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             Logger.info("AppDelegate: Preview disabled in preferences")
             return
         }
-        
+
         let permissionManager = PermissionManager.shared
         guard permissionManager.isInputMonitoringGranted else {
             Logger.info("AppDelegate: Cannot activate preview - Input Monitoring permission not granted")
@@ -123,9 +125,33 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             return
         }
 
-        mouseTracker?.startTracking()
-        textExtractor?.reset()
-        Logger.info("AppDelegate: Mouse tracking started")
+        guard let selected = selectedTextExtractor?.extractSelectedText() else {
+            Logger.info("AppDelegate: No selected text to preview")
+            return
+        }
+
+        let position = currentCursorAXPoint()
+
+        switch pathDetector?.detect(selected) {
+        case .localImage(let url), .remoteImage(let url):
+            Logger.info("AppDelegate: Detected image='\(url.absoluteString)' from selection")
+            currentPath = url.absoluteString
+            loadAndShowImage(url: url, at: position)
+        case .invalid, .none:
+            Logger.info("AppDelegate: No image path in selected text")
+            currentPath = selected
+            showErrorTooltip(message: "No image found in selection", at: position)
+        }
+    }
+
+    private func currentCursorAXPoint() -> CGPoint {
+        let location = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(location, $0.frame, false) }) ?? NSScreen.main else {
+            return location
+        }
+        let axX = location.x
+        let axY = screen.frame.height - (location.y - screen.frame.minY)
+        return CGPoint(x: axX, y: axY)
     }
 
     @objc private func previewModeDeactivated() {
