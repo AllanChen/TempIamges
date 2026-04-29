@@ -29,54 +29,53 @@ class PathDetector {
         "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"
     ]
 
-    private let extensionPattern: String
     private let httpRegex: NSRegularExpression
     private let fileURLRegex: NSRegularExpression
     private let absolutePathRegex: NSRegularExpression
     private let homePathRegex: NSRegularExpression
+    private let allRegexes: [NSRegularExpression]
 
     init() {
         let exts = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"]
         let extAlt = exts.joined(separator: "|")
-        self.extensionPattern = extAlt
 
-        // URLs may include query strings; allow optional ?... before end-anchor of the extension match.
         self.httpRegex = try! NSRegularExpression(
-            pattern: "https?://[^\\s\"'<>()]+?\\.(?i:\(extAlt))(?:\\?[^\\s\"'<>]*)?",
+            pattern: "https?://[^\\s\"'<>()\\[\\]{}]+?\\.(?i:\(extAlt))(?:\\?[^\\s\"'<>]*)?",
             options: []
         )
         self.fileURLRegex = try! NSRegularExpression(
-            pattern: "file://[^\\s\"'<>()]+?\\.(?i:\(extAlt))",
+            pattern: "file://[^\\s\"'<>()\\[\\]{}]+?\\.(?i:\(extAlt))",
             options: []
         )
-        // POSIX absolute path: starts with / and contains a supported image extension.
         self.absolutePathRegex = try! NSRegularExpression(
-            pattern: "/[^\\s\"'<>()]+?\\.(?i:\(extAlt))",
+            pattern: "/[^\\s\"'<>()\\[\\]{}]+?\\.(?i:\(extAlt))",
             options: []
         )
-        // Tilde-prefixed home path.
         self.homePathRegex = try! NSRegularExpression(
-            pattern: "~/[^\\s\"'<>()]+?\\.(?i:\(extAlt))",
+            pattern: "~/[^\\s\"'<>()\\[\\]{}]+?\\.(?i:\(extAlt))",
             options: []
         )
+
+        self.allRegexes = [httpRegex, fileURLRegex, homePathRegex, absolutePathRegex]
     }
 
     func detect(_ text: String) -> DetectedPath {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .invalid }
 
-        Logger.info("PathDetector: scanning text='\(trimmed)'")
+        Logger.info("PathDetector: scanning text='\(truncate(trimmed))'")
 
         if case let result = detectInString(trimmed), result.isImage {
             return result
         }
 
-        // Editors with soft-wrap and multi-line OCR output frequently break a long
-        // URL/path in the middle. The regexes reject any whitespace (\n included),
-        // so retry with line breaks and surrounding spaces removed.
+        // Editors with soft-wrap and multi-line OCR output frequently break a
+        // long URL/path in the middle. The regexes reject any whitespace
+        // (\n included), so retry with line breaks and surrounding spaces
+        // removed.
         let unwrapped = unwrapLines(trimmed)
         if unwrapped != trimmed {
-            Logger.info("PathDetector: retrying with unwrapped='\(unwrapped)'")
+            Logger.info("PathDetector: retrying with unwrapped='\(truncate(unwrapped))'")
             if case let result = detectInString(unwrapped), result.isImage {
                 return result
             }
@@ -84,6 +83,29 @@ class PathDetector {
 
         Logger.info("PathDetector: no image path found in text")
         return .invalid
+    }
+
+    // Number of distinct image-path/URL candidates in `text`. Used by
+    // TextExtractor to decide whether AX text is unambiguous (count == 1) or
+    // whether it should fall back to OCR-with-position to disambiguate.
+    func countImageCandidates(in text: String) -> Int {
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        var total = 0
+        for regex in allRegexes {
+            total += regex.numberOfMatches(in: text, options: [], range: range)
+        }
+        return total
+    }
+
+    // First image-path/URL substring in `text` (no filesystem check). Used by
+    // ScreenTextExtractor when scoring per-line OCR candidates.
+    func firstImageCandidate(in text: String) -> String? {
+        for regex in allRegexes {
+            if let match = firstMatch(in: text, regex: regex) {
+                return match
+            }
+        }
+        return nil
     }
 
     private func detectInString(_ text: String) -> DetectedPath {
@@ -106,7 +128,7 @@ class PathDetector {
             }
         }
 
-        // 3) Tilde-prefixed home path (check before absolute since it doesn't start with /).
+        // 3) Tilde-prefixed home path (check before absolute).
         if let match = firstMatch(in: text, regex: homePathRegex) {
             let expanded = (match as NSString).expandingTildeInPath
             Logger.info("PathDetector: matched ~/ path='\(match)' -> '\(expanded)'")
@@ -127,9 +149,6 @@ class PathDetector {
     }
 
     private func unwrapLines(_ text: String) -> String {
-        // Trim each line and concatenate. URLs and paths never legitimately
-        // contain whitespace, so dropping the break stitches a soft-wrapped
-        // URL back together without affecting valid surrounding tokens.
         return text
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -160,5 +179,11 @@ class PathDetector {
         }
         let ext = (path as NSString).pathExtension.lowercased()
         return supportedExtensions.contains(ext)
+    }
+
+    private func truncate(_ s: String, max: Int = 200) -> String {
+        if s.count <= max { return s }
+        let prefix = s.prefix(max)
+        return "\(prefix)…(\(s.count - max) more chars)"
     }
 }

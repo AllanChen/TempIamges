@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -17,6 +17,7 @@
 		69011B51431FB4F4841C2003 /* ScreenTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E9E0A1195B904DED465C53 /* ScreenTextExtractor.swift */; };
 		755D0CC1D9A9E1F84DC1F4A0 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B382D939EBAB1E3A487EE32 /* StatusBarController.swift */; };
 		808EE1E1B2BC3E3B6BEEE760 /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3C93D4F8F3A63B7523692F1 /* OnboardingWindow.swift */; };
+		8163531778C53B0DEA799661 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */; };
 		8AB8A81A4D0BF82BEB981281 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED63B00077CA5F013641FFE /* main.swift */; };
 		8D3F84BC22C288B4335BB02A /* ErrorTooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A67D3FF61FF45515D8AE39F8 /* ErrorTooltip.swift */; };
 		951087A1BA6271AD90C75B63 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB986107C96EBB53044C6EB /* PermissionManager.swift */; };
@@ -44,6 +45,7 @@
 		AFD0A476BB231034C4D4AE43 /* PreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanel.swift; sourceTree = "<group>"; };
 		BDA6B5489AC97B4FC32ED17C /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
 		C3C93D4F8F3A63B7523692F1 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
+		CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		E145776A1496F0FD35763C92 /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -91,6 +93,7 @@
 				A67D3FF61FF45515D8AE39F8 /* ErrorTooltip.swift */,
 				9C10FCE3D4BB90D4EA30DEFC /* ImageLoader.swift */,
 				647F408AF1FFEA48490810AC /* KeyboardMonitor.swift */,
+				CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */,
 				1ED63B00077CA5F013641FFE /* main.swift */,
 				58CFFD527FEE6B9EF9B3FB73 /* MouseTracker.swift */,
 				C3C93D4F8F3A63B7523692F1 /* OnboardingWindow.swift */,
@@ -143,7 +146,6 @@
 				};
 			};
 			buildConfigurationList = FC0C5501DF49A4FD766F9618 /* Build configuration list for PBXProject "ImageHoverPreview" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -152,7 +154,8 @@
 			);
 			mainGroup = 32756E9F04AA443AC91A3456;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 54;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 84A80923E075FF3B364820CA /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -170,6 +173,7 @@
 				8D3F84BC22C288B4335BB02A /* ErrorTooltip.swift in Sources */,
 				BE31027DAA31F02D1686FD31 /* ImageLoader.swift in Sources */,
 				C815C23A6EB7BC6669F00B97 /* KeyboardMonitor.swift in Sources */,
+				8163531778C53B0DEA799661 /* Logger.swift in Sources */,
 				10062980CBBD7511429DB6F0 /* MouseTracker.swift in Sources */,
 				808EE1E1B2BC3E3B6BEEE760 /* OnboardingWindow.swift in Sources */,
 				FC5AD58724D5D21BD6C81B55 /* PathDetector.swift in Sources */,
