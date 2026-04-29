@@ -1,0 +1,105 @@
+{
+  "" : {
+    "const-values" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageHoverPreview-master.swiftconstvalues",
+    "dependencies" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageHoverPreview-master.d",
+    "diagnostics" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageHoverPreview-master.dia",
+    "emit-module-dependencies" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageHoverPreview-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageHoverPreview-master-emit-module.dia",
+    "swift-dependencies" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageHoverPreview-master.swiftdeps"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/AppDelegate.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/AppDelegate.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/AppDelegate.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/AppDelegate.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ErrorTooltip.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ErrorTooltip.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ErrorTooltip.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ErrorTooltip.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ImageLoader.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageLoader.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageLoader.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ImageLoader.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/KeyboardMonitor.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/KeyboardMonitor.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/KeyboardMonitor.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/KeyboardMonitor.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/Logger.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/Logger.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/Logger.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/Logger.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/MouseTracker.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/MouseTracker.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/MouseTracker.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/MouseTracker.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/OnboardingWindow.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/OnboardingWindow.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/OnboardingWindow.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/OnboardingWindow.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/PathDetector.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PathDetector.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PathDetector.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PathDetector.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/PermissionManager.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PermissionManager.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PermissionManager.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PermissionManager.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/Preferences.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/Preferences.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/Preferences.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/Preferences.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/PreferencesWindow.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PreferencesWindow.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PreferencesWindow.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PreferencesWindow.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/PreviewPanel.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PreviewPanel.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PreviewPanel.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/PreviewPanel.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ScreenManager.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ScreenManager.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ScreenManager.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ScreenManager.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ScreenTextExtractor.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ScreenTextExtractor.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ScreenTextExtractor.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ScreenTextExtractor.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/SelectedTextExtractor.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/SelectedTextExtractor.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/SelectedTextExtractor.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/SelectedTextExtractor.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ShortcutMonitor.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ShortcutMonitor.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ShortcutMonitor.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/ShortcutMonitor.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/StatusBarController.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/StatusBarController.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/StatusBarController.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/StatusBarController.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/TextExtractor.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/TextExtractor.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/TextExtractor.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/TextExtractor.o"
+  },
+  "/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/main.swift" : {
+    "index-unit-output-path" : "/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/main.o",
+    "llvm-bc" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/main.bc",
+    "object" : "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Release/ImageHoverPreview.build/Objects-normal/arm64/main.o"
+  }
+}

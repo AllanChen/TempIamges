@@ -1,0 +1,18 @@
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/OnboardingWindow.swift":
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/OnboardingWindow.swiftconstvalues"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/OnboardingWindow.d"
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/OnboardingWindow.swiftdeps"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/OnboardingWindow.dia"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/OnboardingWindow.o"
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/PathDetector.swift":
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PathDetector.d"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PathDetector.swiftconstvalues"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PathDetector.dia"
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PathDetector.swiftdeps"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PathDetector.o"
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/PermissionManager.swift":
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PermissionManager.swiftdeps"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PermissionManager.d"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PermissionManager.swiftconstvalues"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PermissionManager.dia"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/PermissionManager.o"

@@ -1,0 +1,18 @@
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/KeyboardMonitor.swift":
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/KeyboardMonitor.swiftdeps"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/KeyboardMonitor.swiftconstvalues"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/KeyboardMonitor.dia"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/KeyboardMonitor.o"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/KeyboardMonitor.d"
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/MouseTracker.swift":
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/MouseTracker.swiftdeps"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/MouseTracker.swiftconstvalues"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/MouseTracker.o"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/MouseTracker.dia"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/MouseTracker.d"
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/Logger.swift":
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/Logger.d"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/Logger.o"
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/Logger.swiftdeps"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/Logger.swiftconstvalues"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/Logger.dia"

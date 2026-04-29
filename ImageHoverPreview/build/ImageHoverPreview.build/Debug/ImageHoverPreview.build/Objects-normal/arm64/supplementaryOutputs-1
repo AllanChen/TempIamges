@@ -1,0 +1,18 @@
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ImageLoader.swift":
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ImageLoader.swiftconstvalues"
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ImageLoader.swiftdeps"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ImageLoader.dia"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ImageLoader.d"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ImageLoader.o"
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/AppDelegate.swift":
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/AppDelegate.swiftdeps"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/AppDelegate.o"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/AppDelegate.swiftconstvalues"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/AppDelegate.dia"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/AppDelegate.d"
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ErrorTooltip.swift":
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ErrorTooltip.o"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ErrorTooltip.swiftconstvalues"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ErrorTooltip.dia"
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ErrorTooltip.swiftdeps"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/arm64/ErrorTooltip.d"

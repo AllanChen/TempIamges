@@ -1,0 +1,18 @@
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ErrorTooltip.swift":
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ErrorTooltip.o"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ErrorTooltip.swiftconstvalues"
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ErrorTooltip.swiftdeps"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ErrorTooltip.dia"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ErrorTooltip.d"
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/ImageLoader.swift":
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ImageLoader.o"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ImageLoader.dia"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ImageLoader.d"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ImageLoader.swiftconstvalues"
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/ImageLoader.swiftdeps"
+"/Users/allan/Desktop/TempImages/ImageHoverPreview/Sources/AppDelegate.swift":
+  swift-dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/AppDelegate.swiftdeps"
+  dependencies: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/AppDelegate.d"
+  object: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/AppDelegate.o"
+  diagnostics: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/AppDelegate.dia"
+  const-values: "/Users/allan/Desktop/TempImages/ImageHoverPreview/build/ImageHoverPreview.build/Debug/ImageHoverPreview.build/Objects-normal/x86_64/AppDelegate.swiftconstvalues"
