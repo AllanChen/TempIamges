@@ -3,8 +3,6 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate {
     private var statusBarController: StatusBarController?
     private var keyboardMonitor: KeyboardMonitor?
-    private var mouseTracker: MouseTracker?
-    private var textExtractor: TextExtractor?
     private var selectedTextExtractor: SelectedTextExtractor?
     private var pathDetector: PathDetector?
     private var imageLoader: ImageLoader?
@@ -25,7 +23,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     func applicationWillTerminate(_ notification: Notification) {
         keyboardMonitor?.stopMonitoring()
-        mouseTracker?.stopTracking()
     }
 
     private func setupComponents() {
@@ -33,14 +30,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         statusBarController?.delegate = self
 
         keyboardMonitor = KeyboardMonitor()
-        mouseTracker = MouseTracker()
-        textExtractor = TextExtractor()
         selectedTextExtractor = SelectedTextExtractor()
         pathDetector = PathDetector()
         imageLoader = ImageLoader()
         previewPanel = PreviewPanel()
         errorTooltip = ErrorTooltip()
-        
+
         Logger.info("AppDelegate: All components initialized")
     }
 
@@ -61,18 +56,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(mousePositionChanged),
-            name: MouseTracker.mousePositionDidChange,
-            object: nil
-        )
-
-        NotificationCenter.default.addObserver(
-            self,
             selector: #selector(preferencesChanged),
             name: .preferencesDidChange,
             object: nil
         )
-        
+
         Logger.info("AppDelegate: Notifications setup complete")
     }
 
@@ -156,51 +144,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     @objc private func previewModeDeactivated() {
         Logger.info("AppDelegate: Preview mode deactivated")
-        mouseTracker?.stopTracking()
         previewPanel?.hidePanel()
         errorTooltip?.hide()
-        textExtractor?.reset()
         currentPath = nil
         isLoadingImage = false
-    }
-
-    @objc private func mousePositionChanged(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let position = userInfo["position"] as? CGPoint else {
-            return
-        }
-
-        processMousePosition(position)
-    }
-
-    private func processMousePosition(_ position: CGPoint) {
-        Logger.info("AppDelegate: Processing mouse position (\(position.x), \(position.y))")
-        
-        guard let extractedText = textExtractor?.extractText(at: position, debounce: true) else {
-            Logger.info("AppDelegate: No text extracted")
-            hideAllPanels()
-            return
-        }
-
-        Logger.info("AppDelegate: Extracted text='\(extractedText)'")
-        
-        let detectedPath = pathDetector?.detect(extractedText)
-
-        switch detectedPath {
-        case .localImage(let url), .remoteImage(let url):
-            let pathString = url.absoluteString
-            Logger.info("AppDelegate: Detected image path='\(pathString)'")
-            if pathString != currentPath {
-                currentPath = pathString
-                loadAndShowImage(url: url, at: position)
-            }
-        case .invalid, .none:
-            Logger.info("AppDelegate: No valid image path detected")
-            if extractedText != currentPath {
-                currentPath = extractedText
-                showErrorTooltip(message: "No image found", at: position)
-            }
-        }
     }
 
     private func loadAndShowImage(url: URL, at position: CGPoint) {
@@ -208,7 +155,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         isLoadingImage = true
 
         errorTooltip?.hide()
-        
+
         Logger.info("AppDelegate: Loading image from '\(url.absoluteString)'")
 
         imageLoader?.loadImage(from: url) { [weak self] image in
@@ -229,12 +176,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private func showErrorTooltip(message: String, at position: CGPoint) {
         previewPanel?.hidePanel()
         errorTooltip?.show(message: message, at: position)
-    }
-
-    private func hideAllPanels() {
-        previewPanel?.hidePanel()
-        errorTooltip?.hide()
-        currentPath = nil
     }
 
     @objc private func preferencesChanged() {

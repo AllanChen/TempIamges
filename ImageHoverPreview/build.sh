@@ -14,7 +14,6 @@ xcodebuild \
     -scheme ImageHoverPreview \
     -configuration Release \
     -derivedDataPath ./DerivedData \
-    -resolvePackageDependencies \
     build
 
 BUILT_APP=$(find ./DerivedData -name "ImageHoverPreview.app" -type d | head -n 1)

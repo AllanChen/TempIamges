@@ -85,29 +85,6 @@ class PathDetector {
         return .invalid
     }
 
-    // Number of distinct image-path/URL candidates in `text`. Used by
-    // TextExtractor to decide whether AX text is unambiguous (count == 1) or
-    // whether it should fall back to OCR-with-position to disambiguate.
-    func countImageCandidates(in text: String) -> Int {
-        let range = NSRange(text.startIndex..<text.endIndex, in: text)
-        var total = 0
-        for regex in allRegexes {
-            total += regex.numberOfMatches(in: text, options: [], range: range)
-        }
-        return total
-    }
-
-    // First image-path/URL substring in `text` (no filesystem check). Used by
-    // ScreenTextExtractor when scoring per-line OCR candidates.
-    func firstImageCandidate(in text: String) -> String? {
-        for regex in allRegexes {
-            if let match = firstMatch(in: text, regex: regex) {
-                return match
-            }
-        }
-        return nil
-    }
-
     private func detectInString(_ text: String) -> DetectedPath {
         // 1) Remote http/https image URL anywhere in text.
         if let match = firstMatch(in: text, regex: httpRegex) {

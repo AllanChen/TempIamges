@@ -8,13 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		00D04ACB2743F6A880710ABA /* ScreenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821AB9B7DFB3C990D60C6578 /* ScreenManager.swift */; };
-		10062980CBBD7511429DB6F0 /* MouseTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58CFFD527FEE6B9EF9B3FB73 /* MouseTracker.swift */; };
-		38F9BCFF5E53BE5343AB6F61 /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BDA6B5489AC97B4FC32ED17C /* Vision.framework */; };
 		3DD65403B15CACFC595FC0D0 /* PreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFD0A476BB231034C4D4AE43 /* PreviewPanel.swift */; };
 		3FA2C95838E591B3DCE4C041 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63992A219982ACAA52EA68FC /* Preferences.swift */; };
 		423EFEBE257D34C6810846B8 /* PreferencesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E145776A1496F0FD35763C92 /* PreferencesWindow.swift */; };
-		5692E0A2CDDF16787C3253C1 /* TextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B985FD761B81319B690C23 /* TextExtractor.swift */; };
-		69011B51431FB4F4841C2003 /* ScreenTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E9E0A1195B904DED465C53 /* ScreenTextExtractor.swift */; };
 		755D0CC1D9A9E1F84DC1F4A0 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B382D939EBAB1E3A487EE32 /* StatusBarController.swift */; };
 		808EE1E1B2BC3E3B6BEEE760 /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3C93D4F8F3A63B7523692F1 /* OnboardingWindow.swift */; };
 		8163531778C53B0DEA799661 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */; };
@@ -32,11 +28,8 @@
 		0CB986107C96EBB53044C6EB /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		1ED63B00077CA5F013641FFE /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		3452816A88922AF037307048 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		47B985FD761B81319B690C23 /* TextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextExtractor.swift; sourceTree = "<group>"; };
-		58CFFD527FEE6B9EF9B3FB73 /* MouseTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseTracker.swift; sourceTree = "<group>"; };
 		63992A219982ACAA52EA68FC /* Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preferences.swift; sourceTree = "<group>"; };
 		647F408AF1FFEA48490810AC /* KeyboardMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMonitor.swift; sourceTree = "<group>"; };
-		72E9E0A1195B904DED465C53 /* ScreenTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenTextExtractor.swift; sourceTree = "<group>"; };
 		7B382D939EBAB1E3A487EE32 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		7D677FE0C8FB2D05D1350142 /* SelectedTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedTextExtractor.swift; sourceTree = "<group>"; };
 		821AB9B7DFB3C990D60C6578 /* ScreenManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenManager.swift; sourceTree = "<group>"; };
@@ -45,29 +38,16 @@
 		9C10FCE3D4BB90D4EA30DEFC /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
 		A67D3FF61FF45515D8AE39F8 /* ErrorTooltip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorTooltip.swift; sourceTree = "<group>"; };
 		AFD0A476BB231034C4D4AE43 /* PreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanel.swift; sourceTree = "<group>"; };
-		BDA6B5489AC97B4FC32ED17C /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = System/Library/Frameworks/Vision.framework; sourceTree = SDKROOT; };
 		C3C93D4F8F3A63B7523692F1 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
 		CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		E145776A1496F0FD35763C92 /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		9F0BFFED0C191F658DC8D94B /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				38F9BCFF5E53BE5343AB6F61 /* Vision.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		32756E9F04AA443AC91A3456 = {
 			isa = PBXGroup;
 			children = (
 				DAB64D40D13A6948E9FA3CEC /* Sources */,
-				C466B74A17C04568E9B1ADAB /* Frameworks */,
 				84A80923E075FF3B364820CA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -80,14 +60,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		C466B74A17C04568E9B1ADAB /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				BDA6B5489AC97B4FC32ED17C /* Vision.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		DAB64D40D13A6948E9FA3CEC /* Sources */ = {
 			isa = PBXGroup;
 			children = (
@@ -97,7 +69,6 @@
 				647F408AF1FFEA48490810AC /* KeyboardMonitor.swift */,
 				CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */,
 				1ED63B00077CA5F013641FFE /* main.swift */,
-				58CFFD527FEE6B9EF9B3FB73 /* MouseTracker.swift */,
 				C3C93D4F8F3A63B7523692F1 /* OnboardingWindow.swift */,
 				829156F9C70781AF0B1E1E2F /* PathDetector.swift */,
 				0CB986107C96EBB53044C6EB /* PermissionManager.swift */,
@@ -105,10 +76,8 @@
 				E145776A1496F0FD35763C92 /* PreferencesWindow.swift */,
 				AFD0A476BB231034C4D4AE43 /* PreviewPanel.swift */,
 				821AB9B7DFB3C990D60C6578 /* ScreenManager.swift */,
-				72E9E0A1195B904DED465C53 /* ScreenTextExtractor.swift */,
 				7D677FE0C8FB2D05D1350142 /* SelectedTextExtractor.swift */,
 				7B382D939EBAB1E3A487EE32 /* StatusBarController.swift */,
-				47B985FD761B81319B690C23 /* TextExtractor.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -121,7 +90,6 @@
 			buildConfigurationList = 66B7641F27FCD6D7007CDA6E /* Build configuration list for PBXNativeTarget "ImageHoverPreview" */;
 			buildPhases = (
 				185FF215CF0632F0552BDFD7 /* Sources */,
-				9F0BFFED0C191F658DC8D94B /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -177,7 +145,6 @@
 				BE31027DAA31F02D1686FD31 /* ImageLoader.swift in Sources */,
 				C815C23A6EB7BC6669F00B97 /* KeyboardMonitor.swift in Sources */,
 				8163531778C53B0DEA799661 /* Logger.swift in Sources */,
-				10062980CBBD7511429DB6F0 /* MouseTracker.swift in Sources */,
 				808EE1E1B2BC3E3B6BEEE760 /* OnboardingWindow.swift in Sources */,
 				FC5AD58724D5D21BD6C81B55 /* PathDetector.swift in Sources */,
 				951087A1BA6271AD90C75B63 /* PermissionManager.swift in Sources */,
@@ -185,10 +152,8 @@
 				423EFEBE257D34C6810846B8 /* PreferencesWindow.swift in Sources */,
 				3DD65403B15CACFC595FC0D0 /* PreviewPanel.swift in Sources */,
 				00D04ACB2743F6A880710ABA /* ScreenManager.swift in Sources */,
-				69011B51431FB4F4841C2003 /* ScreenTextExtractor.swift in Sources */,
 				9BEFDC61EE1C1C62C329F4A8 /* SelectedTextExtractor.swift in Sources */,
 				755D0CC1D9A9E1F84DC1F4A0 /* StatusBarController.swift in Sources */,
-				5692E0A2CDDF16787C3253C1 /* TextExtractor.swift in Sources */,
 				8AB8A81A4D0BF82BEB981281 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -36,10 +36,7 @@ targets:
     resources:
       - Resources
       - PreviewContent
-    dependencies:
-      - sdk: Vision.framework
-      # SPM 依赖引用示例（需在 packages 中定义）：
-      # - package: Alamofire
+    dependencies: []
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.imagehoverpreview.app
