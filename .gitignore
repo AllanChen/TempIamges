@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Xcode user-local
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+
+# Build outputs
+build/
+DerivedData/
+.build/
+.swiftpm/
+Package.resolved
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Built app bundle (build.sh writes this at repo root)
+/ImageHoverPreview.app/
+
+# prototype: keep sources, drop compiled binaries
+prototype/*
+!prototype/*.swift
+!prototype/*.sh
+!prototype/*.html
+!prototype/.gitignore
