@@ -11,8 +11,31 @@ class KeyboardMonitor: NSObject {
     private var shiftHeld: Bool = false
     private var wasPreviewModeActive: Bool = false
 
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(preferencesChanged),
+            name: .preferencesDidChange,
+            object: nil
+        )
+    }
+
+    @objc private func preferencesChanged() {
+        checkPreviewModeStateChanged()
+    }
+
     var previewModeActive: Bool {
-        return cmdHeld && shiftHeld
+        let prefs = Preferences.shared
+        let needsCmd = prefs.hotkeyRequiresCommand
+        let needsShift = prefs.hotkeyRequiresShift
+        // No modifier configured — never activate, otherwise the app would
+        // fire on every keystroke.
+        guard needsCmd || needsShift else { return false }
+        // Exact match: required modifiers must be held AND non-required ones
+        // must NOT be held. Prevents Cmd+Shift from triggering a Cmd-only
+        // hotkey, etc.
+        return needsCmd == cmdHeld && needsShift == shiftHeld
     }
 
     func startMonitoring() -> Bool {
@@ -100,6 +123,7 @@ class KeyboardMonitor: NSObject {
     }
 
     deinit {
+        NotificationCenter.default.removeObserver(self)
         stopMonitoring()
     }
 }

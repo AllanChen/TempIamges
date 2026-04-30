@@ -2,18 +2,28 @@ import AppKit
 import ApplicationServices
 import CoreGraphics
 
+struct SelectionResult {
+    let text: String
+    let bounds: CGRect?  // AX screen coords (top-left origin, y-down). nil when unavailable.
+}
+
 class SelectedTextExtractor {
-    func extractSelectedText() -> String? {
-        if let text = readViaAX() {
-            return text
+    func extractSelection() -> SelectionResult? {
+        if let result = readViaAX() {
+            return result
         }
         Logger.info("SelectedTextExtractor: AX yielded nothing, trying clipboard")
         return readViaClipboard()
     }
 
+    // Convenience kept for callers that only need the string.
+    func extractSelectedText() -> String? {
+        return extractSelection()?.text
+    }
+
     // MARK: - AX path (native Cocoa apps)
 
-    private func readViaAX() -> String? {
+    private func readViaAX() -> SelectionResult? {
         let systemWide = AXUIElementCreateSystemWide()
 
         var focusedElement: CFTypeRef?
@@ -49,18 +59,62 @@ class SelectedTextExtractor {
             Logger.info("SelectedTextExtractor: AX selected text empty")
             return nil
         }
-        Logger.info("SelectedTextExtractor: AX selected='\(trimmed)'")
-        return trimmed
+
+        let bounds = readSelectionBounds(element: element)
+        Logger.info("SelectedTextExtractor: AX selected='\(trimmed)' bounds=\(bounds.map { "\($0)" } ?? "nil")")
+        return SelectionResult(text: trimmed, bounds: bounds)
+    }
+
+    private func readSelectionBounds(element: AXUIElement) -> CGRect? {
+        var rangeRef: CFTypeRef?
+        let rangeResult = AXUIElementCopyAttributeValue(
+            element,
+            kAXSelectedTextRangeAttribute as CFString,
+            &rangeRef
+        )
+        guard rangeResult == .success,
+              let rangeVal = rangeRef,
+              CFGetTypeID(rangeVal) == AXValueGetTypeID() else {
+            return nil
+        }
+        var range = CFRange()
+        guard AXValueGetValue(rangeVal as! AXValue, .cfRange, &range), range.length > 0 else {
+            return nil
+        }
+
+        var rangeForParam = range
+        guard let rangeAxValue = AXValueCreate(.cfRange, &rangeForParam) else {
+            return nil
+        }
+        var boundsRef: CFTypeRef?
+        let boundsResult = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            kAXBoundsForRangeParameterizedAttribute as CFString,
+            rangeAxValue,
+            &boundsRef
+        )
+        guard boundsResult == .success,
+              let boundsVal = boundsRef,
+              CFGetTypeID(boundsVal) == AXValueGetTypeID() else {
+            return nil
+        }
+        var rect = CGRect.zero
+        guard AXValueGetValue(boundsVal as! AXValue, .cgRect, &rect),
+              rect.width > 0, rect.height > 0 else {
+            return nil
+        }
+        return rect
     }
 
     // MARK: - Clipboard fallback (universal, works in VSCode/Cursor/Sublime/web)
 
-    private func readViaClipboard() -> String? {
+    private func readViaClipboard() -> SelectionResult? {
         let pb = NSPasteboard.general
         let oldChangeCount = pb.changeCount
         let savedItems = snapshotPasteboard(pb)
+        Logger.info("SelectedTextExtractor: clipboard pre-changeCount=\(oldChangeCount)")
 
-        // The user is holding Cmd+Shift. We synthesize a Cmd+C key event with
+        // The user is holding the hotkey. We synthesize a Cmd+C key event with
         // its own flags (.maskCommand only), which overrides the physical
         // modifier state for that one event — so the target app sees a clean
         // Cmd+C, not Cmd+Shift+C.
@@ -81,10 +135,11 @@ class SelectedTextExtractor {
             Thread.sleep(forTimeInterval: 0.01)
         }
 
+        let postChangeCount = pb.changeCount
         restorePasteboard(pb, items: savedItems)
 
         guard let text = copied else {
-            Logger.info("SelectedTextExtractor: Clipboard unchanged after Cmd+C (no selection?)")
+            Logger.info("SelectedTextExtractor: Clipboard unchanged after Cmd+C (pre=\(oldChangeCount), post=\(postChangeCount)). Likely no selection or app didn't honour Cmd+C.")
             return nil
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -92,8 +147,8 @@ class SelectedTextExtractor {
             Logger.info("SelectedTextExtractor: Clipboard text empty")
             return nil
         }
-        Logger.info("SelectedTextExtractor: Clipboard selected='\(trimmed)'")
-        return trimmed
+        Logger.info("SelectedTextExtractor: Clipboard selected='\(trimmed)' (no bounds)")
+        return SelectionResult(text: trimmed, bounds: nil)
     }
 
     private func sendCmdC() -> Bool {

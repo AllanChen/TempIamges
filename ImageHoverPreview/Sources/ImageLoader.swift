@@ -9,6 +9,28 @@ class ImageLoader {
         imageCache.totalCostLimit = maxCacheSize
     }
 
+    func loadImages(from urls: [URL], completion: @escaping ([NSImage?]) -> Void) {
+        guard !urls.isEmpty else {
+            completion([])
+            return
+        }
+        var results: [NSImage?] = Array(repeating: nil, count: urls.count)
+        let lock = NSLock()
+        let group = DispatchGroup()
+        for (i, url) in urls.enumerated() {
+            group.enter()
+            loadImage(from: url) { image in
+                lock.lock()
+                results[i] = image
+                lock.unlock()
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) {
+            completion(results)
+        }
+    }
+
     func loadImage(from url: URL, completion: @escaping (NSImage?) -> Void) {
         let cacheKey = url.absoluteString as NSString
 

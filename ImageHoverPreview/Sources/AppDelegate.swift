@@ -82,8 +82,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     private func showOnboardingWindow() {
-        onboardingWindow = OnboardingWindow()
+        if onboardingWindow == nil {
+            onboardingWindow = OnboardingWindow()
+        }
+        NSApp.activate(ignoringOtherApps: true)
         onboardingWindow?.makeKeyAndOrderFront(nil)
+        onboardingWindow?.orderFrontRegardless()
     }
 
     private func startKeyboardMonitoring() {
@@ -113,23 +117,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             return
         }
 
-        guard let selected = selectedTextExtractor?.extractSelectedText() else {
+        let mousePos = currentCursorAXPoint()
+        guard let result = selectedTextExtractor?.extractSelection() else {
             Logger.info("AppDelegate: No selected text to preview")
+            showErrorTooltip(message: "No text selected", at: mousePos)
+            return
+        }
+        let selected = result.text
+
+        // Anchor preview just below the selection's bottom-left when AX gives
+        // us bounds; otherwise fall back to the mouse position (clipboard
+        // fallback path for non-AX apps).
+        let anchor: CGPoint
+        if let bounds = result.bounds {
+            anchor = CGPoint(x: bounds.minX, y: bounds.maxY)
+        } else {
+            anchor = mousePos
+        }
+
+        let urls = (pathDetector?.detectAll(selected) ?? []).compactMap { $0.url }
+        guard !urls.isEmpty else {
+            Logger.info("AppDelegate: No image path in selected text")
+            currentPath = selected
+            showErrorTooltip(message: "No image found in selection", at: anchor)
             return
         }
 
-        let position = currentCursorAXPoint()
-
-        switch pathDetector?.detect(selected) {
-        case .localImage(let url), .remoteImage(let url):
-            Logger.info("AppDelegate: Detected image='\(url.absoluteString)' from selection")
-            currentPath = url.absoluteString
-            loadAndShowImage(url: url, at: position)
-        case .invalid, .none:
-            Logger.info("AppDelegate: No image path in selected text")
-            currentPath = selected
-            showErrorTooltip(message: "No image found in selection", at: position)
-        }
+        Logger.info("AppDelegate: Loading \(urls.count) image(s) from selection")
+        currentPath = urls.map { $0.absoluteString }.joined(separator: "|")
+        loadAndShowImages(urls: urls, at: anchor)
     }
 
     private func currentCursorAXPoint() -> CGPoint {
@@ -150,26 +166,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         isLoadingImage = false
     }
 
-    private func loadAndShowImage(url: URL, at position: CGPoint) {
+    private func loadAndShowImages(urls: [URL], at position: CGPoint) {
         guard !isLoadingImage else { return }
         isLoadingImage = true
 
         errorTooltip?.hide()
 
-        Logger.info("AppDelegate: Loading image from '\(url.absoluteString)'")
-
-        imageLoader?.loadImage(from: url) { [weak self] image in
+        imageLoader?.loadImages(from: urls) { [weak self] images in
             self?.isLoadingImage = false
-
             guard let self = self else { return }
 
-            if let image = image {
-                Logger.info("AppDelegate: Image loaded successfully, showing preview")
-                self.previewPanel?.showImage(image, at: position)
-            } else {
-                Logger.info("AppDelegate: Failed to load image")
+            let valid = images.compactMap { $0 }
+            if valid.isEmpty {
+                Logger.info("AppDelegate: All \(urls.count) images failed to load")
                 self.showErrorTooltip(message: "Failed to load image", at: position)
+                return
             }
+            Logger.info("AppDelegate: Loaded \(valid.count)/\(urls.count) image(s), showing preview")
+            self.previewPanel?.showImages(valid, at: position)
         }
     }
 

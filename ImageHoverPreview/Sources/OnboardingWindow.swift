@@ -18,6 +18,9 @@ class OnboardingWindow: NSWindow {
         self.title = "ImageHoverPreview Needs Permissions"
         self.center()
         self.isReleasedWhenClosed = false
+        self.level = .floating
+        self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        self.hidesOnDeactivate = false
 
         setupUI()
         updatePermissionStatus()
