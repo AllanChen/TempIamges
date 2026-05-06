@@ -135,17 +135,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             anchor = mousePos
         }
 
-        let urls = (pathDetector?.detectAll(selected) ?? []).compactMap { $0.url }
-        guard !urls.isEmpty else {
-            Logger.info("AppDelegate: No image path in selected text")
+        let paths = (pathDetector?.detectAll(selected) ?? []).filter { $0.url != nil }
+        guard !paths.isEmpty else {
+            Logger.info("AppDelegate: No media path in selected text")
             currentPath = selected
-            showErrorTooltip(message: "No image found in selection", at: anchor)
+            showErrorTooltip(message: "No image or video found in selection", at: anchor)
             return
         }
 
-        Logger.info("AppDelegate: Loading \(urls.count) image(s) from selection")
-        currentPath = urls.map { $0.absoluteString }.joined(separator: "|")
-        loadAndShowImages(urls: urls, at: anchor)
+        Logger.info("AppDelegate: Loading \(paths.count) media item(s) from selection")
+        currentPath = paths.compactMap { $0.url?.absoluteString }.joined(separator: "|")
+        loadAndShowMedia(paths: paths, at: anchor)
     }
 
     private func currentCursorAXPoint() -> CGPoint {
@@ -166,25 +166,38 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         isLoadingImage = false
     }
 
-    private func loadAndShowImages(urls: [URL], at position: CGPoint) {
+    private func loadAndShowMedia(paths: [DetectedPath], at position: CGPoint) {
         guard !isLoadingImage else { return }
         isLoadingImage = true
 
         errorTooltip?.hide()
 
-        imageLoader?.loadImages(from: urls) { [weak self] images in
-            self?.isLoadingImage = false
-            guard let self = self else { return }
-
-            let valid = images.compactMap { $0 }
-            if valid.isEmpty {
-                Logger.info("AppDelegate: All \(urls.count) images failed to load")
-                self.showErrorTooltip(message: "Failed to load image", at: position)
-                return
-            }
-            Logger.info("AppDelegate: Loaded \(valid.count)/\(urls.count) image(s), showing preview")
-            self.previewPanel?.showImages(valid, at: position)
+        let infos = paths.compactMap { MediaInfo.from($0) }
+        guard !infos.isEmpty else {
+            isLoadingImage = false
+            showErrorTooltip(message: "No media to preview", at: position)
+            return
         }
+
+        // Show panel immediately with loading skeletons; populate per-item as
+        // the loader streams results back.
+        previewPanel?.showLoading(infos: infos, at: position)
+
+        var loadedCount = 0
+        imageLoader?.loadMedia(from: paths,
+            onProgress: { [weak self] index, media in
+                self?.previewPanel?.updateTile(at: index, with: media)
+                if media != nil { loadedCount += 1 }
+            },
+            onComplete: { [weak self] in
+                self?.isLoadingImage = false
+                Logger.info("AppDelegate: Loaded \(loadedCount)/\(paths.count) media")
+                if loadedCount == 0 {
+                    self?.previewPanel?.hidePanel()
+                    self?.showErrorTooltip(message: "Failed to load media", at: position)
+                }
+            }
+        )
     }
 
     private func showErrorTooltip(message: String, at position: CGPoint) {

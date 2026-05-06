@@ -3,31 +3,43 @@ import Foundation
 enum DetectedPath {
     case localImage(URL)
     case remoteImage(URL)
+    case localVideo(URL)
+    case remoteVideo(URL)
     case invalid
 
     var url: URL? {
         switch self {
-        case .localImage(let url), .remoteImage(let url):
+        case .localImage(let url), .remoteImage(let url),
+             .localVideo(let url), .remoteVideo(let url):
             return url
         case .invalid:
             return nil
         }
     }
 
-    var isImage: Bool {
+    var isVideo: Bool {
         switch self {
-        case .localImage, .remoteImage:
-            return true
-        case .invalid:
-            return false
+        case .localVideo, .remoteVideo: return true
+        default: return false
+        }
+    }
+
+    var isMedia: Bool {
+        switch self {
+        case .localImage, .remoteImage, .localVideo, .remoteVideo: return true
+        case .invalid: return false
         }
     }
 }
 
 class PathDetector {
-    private let supportedExtensions: Set<String> = [
+    private let imageExtensions: Set<String> = [
         "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"
     ]
+    private let videoExtensions: Set<String> = [
+        "mp4", "mov", "m4v", "webm"
+    ]
+    private var supportedExtensions: Set<String> { imageExtensions.union(videoExtensions) }
 
     private let httpRegex: NSRegularExpression
     private let fileURLRegex: NSRegularExpression
@@ -36,7 +48,8 @@ class PathDetector {
     private let allRegexes: [NSRegularExpression]
 
     init() {
-        let exts = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"]
+        let exts = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif",
+                    "mp4", "mov", "m4v", "webm"]
         let extAlt = exts.joined(separator: "|")
 
         self.httpRegex = try! NSRegularExpression(
@@ -135,29 +148,43 @@ class PathDetector {
 
     private func resolveCandidate(_ candidate: String) -> DetectedPath? {
         let lower = candidate.lowercased()
+        let ext = mediaExtension(of: candidate)
+        let isVideo = videoExtensions.contains(ext)
+
         if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
-            return URL(string: candidate).map { .remoteImage($0) }
+            guard let url = URL(string: candidate) else { return nil }
+            return isVideo ? .remoteVideo(url) : .remoteImage(url)
         }
         if lower.hasPrefix("file://") {
-            if let url = URL(string: candidate), isValidLocalImage(path: url.path) {
-                return .localImage(URL(fileURLWithPath: url.path))
+            if let url = URL(string: candidate), isValidLocalMedia(path: url.path) {
+                let local = URL(fileURLWithPath: url.path)
+                return isVideo ? .localVideo(local) : .localImage(local)
             }
             return nil
         }
         if candidate.hasPrefix("~/") {
             let expanded = (candidate as NSString).expandingTildeInPath
-            if isValidLocalImage(path: expanded) {
-                return .localImage(URL(fileURLWithPath: expanded))
+            if isValidLocalMedia(path: expanded) {
+                let local = URL(fileURLWithPath: expanded)
+                return isVideo ? .localVideo(local) : .localImage(local)
             }
             return nil
         }
         if candidate.hasPrefix("/") {
-            if isValidLocalImage(path: candidate) {
-                return .localImage(URL(fileURLWithPath: candidate))
+            if isValidLocalMedia(path: candidate) {
+                let local = URL(fileURLWithPath: candidate)
+                return isVideo ? .localVideo(local) : .localImage(local)
             }
             return nil
         }
         return nil
+    }
+
+    private func mediaExtension(of candidate: String) -> String {
+        // Strip query string before pathExtension lookup, since the http
+        // regex captures `?...` for remote URLs.
+        let withoutQuery = candidate.split(separator: "?", maxSplits: 1).first.map(String.init) ?? candidate
+        return (withoutQuery as NSString).pathExtension.lowercased()
     }
 
     private func unwrapLines(_ text: String) -> String {
@@ -167,7 +194,7 @@ class PathDetector {
             .joined()
     }
 
-    private func isValidLocalImage(path: String) -> Bool {
+    private func isValidLocalMedia(path: String) -> Bool {
         if path.contains("..") {
             return false
         }

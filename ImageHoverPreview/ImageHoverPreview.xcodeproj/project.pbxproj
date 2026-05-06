@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -117,7 +117,6 @@
 				};
 			};
 			buildConfigurationList = FC0C5501DF49A4FD766F9618 /* Build configuration list for PBXProject "ImageHoverPreview" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -126,7 +125,8 @@
 			);
 			mainGroup = 32756E9F04AA443AC91A3456;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 54;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 84A80923E075FF3B364820CA /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
