@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -22,6 +22,7 @@
 		BE31027DAA31F02D1686FD31 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C10FCE3D4BB90D4EA30DEFC /* ImageLoader.swift */; };
 		C815C23A6EB7BC6669F00B97 /* KeyboardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 647F408AF1FFEA48490810AC /* KeyboardMonitor.swift */; };
 		FC5AD58724D5D21BD6C81B55 /* PathDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 829156F9C70781AF0B1E1E2F /* PathDetector.swift */; };
+		C1E2673E9A5048869C5CD7FFB16A103A /* PreviewPanelPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EBC2903F89A4EAC8349F7A688C9149B /* PreviewPanelPreview.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 		C3C93D4F8F3A63B7523692F1 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
 		CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		E145776A1496F0FD35763C92 /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
+		0EBC2903F89A4EAC8349F7A688C9149B /* PreviewPanelPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanelPreview.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -75,6 +77,7 @@
 				63992A219982ACAA52EA68FC /* Preferences.swift */,
 				E145776A1496F0FD35763C92 /* PreferencesWindow.swift */,
 				AFD0A476BB231034C4D4AE43 /* PreviewPanel.swift */,
+				0EBC2903F89A4EAC8349F7A688C9149B /* PreviewPanelPreview.swift */,
 				821AB9B7DFB3C990D60C6578 /* ScreenManager.swift */,
 				7D677FE0C8FB2D05D1350142 /* SelectedTextExtractor.swift */,
 				7B382D939EBAB1E3A487EE32 /* StatusBarController.swift */,
@@ -117,6 +120,7 @@
 				};
 			};
 			buildConfigurationList = FC0C5501DF49A4FD766F9618 /* Build configuration list for PBXProject "ImageHoverPreview" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -125,8 +129,7 @@
 			);
 			mainGroup = 32756E9F04AA443AC91A3456;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = 84A80923E075FF3B364820CA /* Products */;
+			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -151,6 +154,7 @@
 				3FA2C95838E591B3DCE4C041 /* Preferences.swift in Sources */,
 				423EFEBE257D34C6810846B8 /* PreferencesWindow.swift in Sources */,
 				3DD65403B15CACFC595FC0D0 /* PreviewPanel.swift in Sources */,
+				C1E2673E9A5048869C5CD7FFB16A103A /* PreviewPanelPreview.swift in Sources */,
 				00D04ACB2743F6A880710ABA /* ScreenManager.swift in Sources */,
 				9BEFDC61EE1C1C62C329F4A8 /* SelectedTextExtractor.swift in Sources */,
 				755D0CC1D9A9E1F84DC1F4A0 /* StatusBarController.swift in Sources */,

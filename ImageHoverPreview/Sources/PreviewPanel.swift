@@ -9,11 +9,12 @@ class PreviewPanel: NSPanel {
     private let captionHeight: CGFloat = 56
     private let gridSpacing: CGFloat = 8
     private let gridColumns: Int = 2
-    private let gridTileSize = NSSize(width: 220, height: 160)
+    private let gridTileSize = NSSize(width: 190, height: 230)
 
     private var tiles: [MediaTileView] = []
     private var anchorPoint: CGPoint = .zero
     private var currentMode: Mode = .grid
+    private var currentInfos: [MediaInfo] = []
 
     private enum Mode { case singleCard, grid }
 
@@ -49,6 +50,7 @@ class PreviewPanel: NSPanel {
         teardownTiles()
         anchorPoint = mouseLocation
         currentMode = infos.count == 1 ? .singleCard : .grid
+        currentInfos = infos
 
         let container = buildContainer(infos: infos)
         contentView = container
@@ -68,13 +70,19 @@ class PreviewPanel: NSPanel {
         let tile = tiles[index]
         if let m = media {
             tile.setLoaded(m)
+            if index < currentInfos.count {
+                var updatedInfo = currentInfos[index]
+                updatedInfo.dimensions = m.naturalSize
+                currentInfos[index] = updatedInfo
+                tile.updateInfo(updatedInfo)
+            }
         } else {
             tile.setFailed()
         }
-        // In single-card mode the card resizes to match the loaded image's
-        // aspect, so re-layout the panel.
         if currentMode == .singleCard, tiles.count == 1, let m = media {
             relayoutSingleCard(with: m)
+        } else if currentMode == .grid {
+            relayoutMasonry()
         }
     }
 
@@ -129,6 +137,15 @@ class PreviewPanel: NSPanel {
         }
     }
 
+    /// Build the preview container without window-management side-effects.
+    /// Used by Xcode Canvas preview so the panel doesn't pop up as a real window.
+    func buildPreviewContainer(infos: [MediaInfo]) -> NSView {
+        teardownTiles()
+        currentMode = infos.count == 1 ? .singleCard : .grid
+        currentInfos = infos
+        return buildContainer(infos: infos)
+    }
+
     private func buildSingleCard(info: MediaInfo) -> NSView {
         // Initial placeholder size — will be resized once the image dimensions
         // are known (see relayoutSingleCard).
@@ -145,6 +162,11 @@ class PreviewPanel: NSPanel {
                                width: imgArea.width,
                                height: imgArea.height + captionHeight)
         let tile = MediaTileView(info: info, style: .singleCard, frame: tileFrame, captionHeight: captionHeight)
+        tile.onClose = { [weak self] in self?.hidePanel() }
+        let infoURL = info.url
+        tile.onAction = {
+            NSWorkspace.shared.open(infoURL)
+        }
         container.addSubview(tile)
         tiles = [tile]
         return container
@@ -152,9 +174,36 @@ class PreviewPanel: NSPanel {
 
     private func buildGrid(infos: [MediaInfo]) -> NSView {
         let cols = gridColumns
-        let rows = Int(ceil(Double(infos.count) / Double(cols)))
-        let containerWidth = CGFloat(cols) * gridTileSize.width + CGFloat(cols - 1) * gridSpacing + cardPadding * 2
-        let containerHeight = CGFloat(rows) * gridTileSize.height + CGFloat(rows - 1) * gridSpacing + cardPadding * 2
+        let tileWidth: CGFloat = 190
+        let captionH: CGFloat = 56
+        let spacing = gridSpacing
+        let padding = cardPadding
+
+        var colHeights = Array(repeating: padding, count: cols)
+        var layouts: [(x: CGFloat, visualY: CGFloat, width: CGFloat, height: CGFloat)] = []
+
+        for info in infos {
+            let shortestCol = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
+            let x = padding + CGFloat(shortestCol) * (tileWidth + spacing)
+            let visualY = colHeights[shortestCol]
+
+            let defaultImageHeight: CGFloat = 140
+            let imageHeight: CGFloat
+            if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
+                imageHeight = tileWidth * (dim.height / dim.width)
+            } else {
+                imageHeight = defaultImageHeight
+            }
+            let clampedImageHeight = min(max(imageHeight, 80), 280)
+            let tileHeight = clampedImageHeight + captionH
+
+            layouts.append((x: x, visualY: visualY, width: tileWidth, height: tileHeight))
+            colHeights[shortestCol] = visualY + tileHeight + spacing
+        }
+
+        let maxVisualBottom = colHeights.map { $0 - spacing }.max() ?? padding
+        let containerHeight = maxVisualBottom + padding
+        let containerWidth = padding * 2 + CGFloat(cols) * tileWidth + CGFloat(cols - 1) * spacing
 
         let container = NSView(frame: NSRect(x: 0, y: 0, width: containerWidth, height: containerHeight))
         container.wantsLayer = true
@@ -164,18 +213,65 @@ class PreviewPanel: NSPanel {
 
         var newTiles: [MediaTileView] = []
         for (i, info) in infos.enumerated() {
-            let row = i / cols
-            let col = i % cols
-            let x = cardPadding + CGFloat(col) * (gridTileSize.width + gridSpacing)
-            // Place row 0 at the top — flip y for AppKit coords.
-            let y = containerHeight - cardPadding - CGFloat(row + 1) * gridTileSize.height - CGFloat(row) * gridSpacing
-            let frame = NSRect(x: x, y: y, width: gridTileSize.width, height: gridTileSize.height)
-            let tile = MediaTileView(info: info, style: .gridTile, frame: frame, captionHeight: 40)
+            guard i < layouts.count else { break }
+            let layout = layouts[i]
+            let appKitY = containerHeight - layout.visualY - layout.height
+            let frame = NSRect(x: layout.x, y: appKitY, width: layout.width, height: layout.height)
+            let tile = MediaTileView(info: info, style: .gridTile, frame: frame, captionHeight: captionH)
             container.addSubview(tile)
             newTiles.append(tile)
         }
         tiles = newTiles
         return container
+    }
+
+    private func relayoutMasonry() {
+        guard currentMode == .grid, !tiles.isEmpty else { return }
+
+        let cols = gridColumns
+        let tileWidth: CGFloat = 190
+        let captionH: CGFloat = 56
+        let spacing = gridSpacing
+        let padding = cardPadding
+
+        var colHeights = Array(repeating: padding, count: cols)
+        var visualFrames: [NSRect] = []
+
+        for (i, info) in currentInfos.enumerated() {
+            guard i < tiles.count else { break }
+            let shortestCol = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
+            let x = padding + CGFloat(shortestCol) * (tileWidth + spacing)
+            let visualY = colHeights[shortestCol]
+
+            let defaultImageHeight: CGFloat = 140
+            let imageHeight: CGFloat
+            if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
+                imageHeight = tileWidth * (dim.height / dim.width)
+            } else {
+                imageHeight = defaultImageHeight
+            }
+            let clampedImageHeight = min(max(imageHeight, 80), 280)
+            let tileHeight = clampedImageHeight + captionH
+
+            visualFrames.append(NSRect(x: x, y: visualY, width: tileWidth, height: tileHeight))
+            colHeights[shortestCol] = visualY + tileHeight + spacing
+        }
+
+        let maxVisualBottom = colHeights.map { $0 - spacing }.max() ?? padding
+        let containerHeight = maxVisualBottom + padding
+        let containerWidth = padding * 2 + CGFloat(cols) * tileWidth + CGFloat(cols - 1) * spacing
+
+        contentView?.frame = NSRect(x: 0, y: 0, width: containerWidth, height: containerHeight)
+
+        for (i, vFrame) in visualFrames.enumerated() {
+            guard i < tiles.count else { break }
+            let appKitY = containerHeight - vFrame.origin.y - vFrame.height
+            let newFrame = NSRect(x: vFrame.origin.x, y: appKitY, width: vFrame.width, height: vFrame.height)
+            tiles[i].frame = newFrame
+            tiles[i].relayoutChildren()
+        }
+
+        relayoutPanel(contentSize: NSSize(width: containerWidth, height: containerHeight))
     }
 
     private func relayoutSingleCard(with media: LoadedMedia) {
@@ -213,6 +309,7 @@ class PreviewPanel: NSPanel {
     private func teardownTiles() {
         for tile in tiles { tile.teardown() }
         tiles.removeAll()
+        currentInfos.removeAll()
     }
 }
 
@@ -221,7 +318,7 @@ class PreviewPanel: NSPanel {
 private final class MediaTileView: NSView {
     enum Style { case singleCard, gridTile }
 
-    let info: MediaInfo
+    var info: MediaInfo
     let style: Style
     let captionHeight: CGFloat
 
@@ -237,6 +334,16 @@ private final class MediaTileView: NSView {
     private var player: AVPlayer?
     private var endObserver: NSObjectProtocol?
 
+    // Single-card header overlay
+    private let headerOverlay = NSView()
+    private let headerGradient = CAGradientLayer()
+    private var closeButton: NSButton?
+    private var actionButton: NSButton?
+    private var headerTitleLabel: NSTextField?
+
+    var onClose: (() -> Void)?
+    var onAction: (() -> Void)?
+
     init(info: MediaInfo, style: Style, frame: NSRect, captionHeight: CGFloat) {
         self.info = info
         self.style = style
@@ -245,6 +352,7 @@ private final class MediaTileView: NSView {
         wantsLayer = true
         layer?.cornerRadius = 10
         layer?.masksToBounds = true
+        layer?.backgroundColor = NSColor(white: 0.10, alpha: 1).cgColor
 
         // Media area background (dark), holds image/video layer.
         mediaContainer.wantsLayer = true
@@ -267,13 +375,10 @@ private final class MediaTileView: NSView {
         // image with a dark gradient; single-card mode places it below.
         captionContainer.wantsLayer = true
         if style == .gridTile {
-            captionGradient.colors = [
-                NSColor.clear.cgColor,
-                NSColor(white: 0, alpha: 0.75).cgColor
-            ]
-            captionGradient.startPoint = CGPoint(x: 0.5, y: 1)
-            captionGradient.endPoint = CGPoint(x: 0.5, y: 0)
-            captionContainer.layer?.addSublayer(captionGradient)
+            captionContainer.layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
+            metaLabel.usesSingleLineMode = false
+            metaLabel.lineBreakMode = .byWordWrapping
+            metaLabel.maximumNumberOfLines = 2
         }
         addSubview(captionContainer)
 
@@ -290,6 +395,50 @@ private final class MediaTileView: NSView {
         metaLabel.maximumNumberOfLines = 1
         metaLabel.isHidden = true
         captionContainer.addSubview(metaLabel)
+
+        // Single-card header overlay (close button + title + action button)
+        if style == .singleCard {
+            headerOverlay.wantsLayer = true
+            headerGradient.colors = [
+                NSColor(white: 0, alpha: 0.6).cgColor,
+                NSColor.clear.cgColor
+            ]
+            headerGradient.startPoint = CGPoint(x: 0.5, y: 1)
+            headerGradient.endPoint = CGPoint(x: 0.5, y: 0)
+            headerOverlay.layer?.addSublayer(headerGradient)
+            addSubview(headerOverlay)
+
+            let closeBtn = NSButton(frame: .zero)
+            closeBtn.bezelStyle = .recessed
+            closeBtn.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Close")
+            closeBtn.imagePosition = .imageOnly
+            closeBtn.isBordered = false
+            closeBtn.target = self
+            closeBtn.action = #selector(closeTapped)
+            closeBtn.contentTintColor = .white
+            addSubview(closeBtn)
+            closeButton = closeBtn
+
+            let titleLabel = NSTextField(labelWithString: info.filename)
+            titleLabel.textColor = .white
+            titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+            titleLabel.alignment = .center
+            titleLabel.lineBreakMode = .byTruncatingMiddle
+            titleLabel.maximumNumberOfLines = 1
+            addSubview(titleLabel)
+            headerTitleLabel = titleLabel
+
+            let actionBtn = NSButton(frame: .zero)
+            actionBtn.bezelStyle = .recessed
+            actionBtn.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: "Download")
+            actionBtn.imagePosition = .imageOnly
+            actionBtn.isBordered = false
+            actionBtn.target = self
+            actionBtn.action = #selector(actionTapped)
+            actionBtn.contentTintColor = .white
+            addSubview(actionBtn)
+            actionButton = actionBtn
+        }
 
         relayoutChildren()
     }
@@ -311,17 +460,28 @@ private final class MediaTileView: NSView {
             filenameLabel.frame = NSRect(x: 12, y: captionHeight - 26, width: bounds.width - 24, height: 18)
             metaLabel.alignment = .center
             metaLabel.frame = NSRect(x: 12, y: captionHeight - 46, width: bounds.width - 24, height: 14)
+
+            let headerH: CGFloat = 44
+            headerOverlay.frame = NSRect(x: 0, y: captionHeight + mediaH - headerH,
+                                         width: bounds.width, height: headerH)
+            headerGradient.frame = headerOverlay.bounds
+            closeButton?.frame = NSRect(x: 8, y: captionHeight + mediaH - 36, width: 28, height: 28)
+            headerTitleLabel?.frame = NSRect(x: 44, y: captionHeight + mediaH - 32,
+                                             width: bounds.width - 88, height: 20)
+            actionButton?.frame = NSRect(x: bounds.width - 36, y: captionHeight + mediaH - 36,
+                                         width: 28, height: 28)
         case .gridTile:
-            mediaContainer.frame = bounds
-            imageLayer.frame = bounds
-            playerView?.frame = bounds
+            let mediaH = bounds.height - captionHeight
+            mediaContainer.frame = NSRect(x: 0, y: captionHeight, width: bounds.width, height: mediaH)
+            imageLayer.frame = mediaContainer.bounds
+            playerView?.frame = mediaContainer.bounds
             captionContainer.frame = NSRect(x: 0, y: 0, width: bounds.width, height: captionHeight)
             captionGradient.frame = captionContainer.bounds
-            spinner.frame = NSRect(x: bounds.midX - 8, y: bounds.midY - 8, width: 16, height: 16)
+            spinner.frame = NSRect(x: bounds.midX - 8, y: captionHeight + mediaH / 2 - 8, width: 16, height: 16)
             filenameLabel.alignment = .left
-            filenameLabel.frame = NSRect(x: 8, y: captionHeight - 22, width: bounds.width - 16, height: 16)
+            filenameLabel.frame = NSRect(x: 10, y: captionHeight - 22, width: bounds.width - 20, height: 16)
             metaLabel.alignment = .left
-            metaLabel.frame = NSRect(x: 8, y: 6, width: bounds.width - 16, height: 12)
+            metaLabel.frame = NSRect(x: 10, y: 6, width: bounds.width - 20, height: captionHeight - 28)
         }
     }
 
@@ -344,6 +504,19 @@ private final class MediaTileView: NSView {
         spinner.isHidden = true
         metaLabel.stringValue = "Failed to load"
         metaLabel.isHidden = false
+    }
+
+    func updateInfo(_ newInfo: MediaInfo) {
+        self.info = newInfo
+        updateCaption(with: newInfo)
+    }
+
+    @objc private func closeTapped() {
+        onClose?()
+    }
+
+    @objc private func actionTapped() {
+        onAction?()
     }
 
     func teardown() {
@@ -404,7 +577,11 @@ private final class MediaTileView: NSView {
         if parts.isEmpty {
             metaLabel.isHidden = true
         } else {
-            metaLabel.stringValue = parts.joined(separator: " • ")
+            if style == .gridTile {
+                metaLabel.stringValue = parts.joined(separator: "\n")
+            } else {
+                metaLabel.stringValue = parts.joined(separator: " • ")
+            }
             metaLabel.isHidden = false
         }
     }
