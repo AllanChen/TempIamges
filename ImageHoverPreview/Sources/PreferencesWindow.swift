@@ -7,6 +7,9 @@ class PreferencesWindow: NSWindow {
     private var launchAtLoginCheckbox: NSButton!
     private var cmdCheckbox: NSButton!
     private var shiftCheckbox: NSButton!
+    private var optionCheckbox: NSButton!
+    private var controlCheckbox: NSButton!
+    private var currentHotkeyLabel: NSTextField!
 
     init() {
         let windowRect = NSRect(x: 0, y: 0, width: 460, height: 380)
@@ -88,6 +91,20 @@ class PreferencesWindow: NSWindow {
         shiftCheckbox.frame = NSRect(x: 170, y: 65, width: 140, height: 20)
         containerView.addSubview(shiftCheckbox)
 
+        optionCheckbox = NSButton(checkboxWithTitle: "Option (⌥)", target: self, action: #selector(hotkeyChanged))
+        optionCheckbox.frame = NSRect(x: 320, y: 65, width: 140, height: 20)
+        containerView.addSubview(optionCheckbox)
+
+        controlCheckbox = NSButton(checkboxWithTitle: "Control (⌃)", target: self, action: #selector(hotkeyChanged))
+        controlCheckbox.frame = NSRect(x: 20, y: 42, width: 140, height: 20)
+        containerView.addSubview(controlCheckbox)
+
+        currentHotkeyLabel = NSTextField(labelWithString: "")
+        currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
+        currentHotkeyLabel.textColor = .secondaryLabelColor
+        currentHotkeyLabel.frame = NSRect(x: 170, y: 42, width: 270, height: 20)
+        containerView.addSubview(currentHotkeyLabel)
+
         // Reset button
         let resetButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetToDefaults))
         resetButton.bezelStyle = .rounded
@@ -103,6 +120,20 @@ class PreferencesWindow: NSWindow {
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
         cmdCheckbox.state = prefs.hotkeyRequiresCommand ? .on : .off
         shiftCheckbox.state = prefs.hotkeyRequiresShift ? .on : .off
+        optionCheckbox.state = prefs.hotkeyRequiresOption ? .on : .off
+        controlCheckbox.state = prefs.hotkeyRequiresControl ? .on : .off
+        updateCurrentHotkeyLabel()
+    }
+
+    private func updateCurrentHotkeyLabel() {
+        var parts: [String] = []
+        if controlCheckbox.state == .on { parts.append("⌃") }
+        if optionCheckbox.state == .on { parts.append("⌥") }
+        if shiftCheckbox.state == .on { parts.append("⇧") }
+        if cmdCheckbox.state == .on { parts.append("⌘") }
+        currentHotkeyLabel.stringValue = parts.isEmpty
+            ? "(no hotkey — preview disabled)"
+            : "Current: " + parts.joined(separator: " + ")
     }
 
     @objc private func maxSizeChanged(_ sender: NSSlider) {
@@ -125,6 +156,9 @@ class PreferencesWindow: NSWindow {
     @objc private func hotkeyChanged(_ sender: NSButton) {
         Preferences.shared.hotkeyRequiresCommand = cmdCheckbox.state == .on
         Preferences.shared.hotkeyRequiresShift = shiftCheckbox.state == .on
+        Preferences.shared.hotkeyRequiresOption = optionCheckbox.state == .on
+        Preferences.shared.hotkeyRequiresControl = controlCheckbox.state == .on
+        updateCurrentHotkeyLabel()
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 

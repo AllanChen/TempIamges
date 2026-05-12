@@ -19,6 +19,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         setupComponents()
         setupNotifications()
         checkPermissions()
+
+        #if DEBUG
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.runDebugPreview()
+        }
+        #endif
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -125,15 +131,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
         let selected = result.text
 
-        // Anchor preview just below the selection's bottom-left when AX gives
-        // us bounds; otherwise fall back to the mouse position (clipboard
-        // fallback path for non-AX apps).
-        let anchor: CGPoint
-        if let bounds = result.bounds {
-            anchor = CGPoint(x: bounds.minX, y: bounds.maxY)
-        } else {
-            anchor = mousePos
-        }
+        // Always anchor the preview at the mouse cursor — feels more natural
+        // for a hover-style preview than snapping to the selection bounds.
+        let anchor = mousePos
 
         let paths = (pathDetector?.detectAll(selected) ?? []).filter { $0.url != nil }
         guard !paths.isEmpty else {
@@ -234,13 +234,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     #if DEBUG
     private func runDebugPreview() {
-        // Edit this list to test different scenarios:
-        //   • one URL → single-card view
-        //   • multiple URLs → masonry view
-        let urls = [
-            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg"
+        // Edit this list to test different scenarios. Items can be remote
+        // URLs (http/https) or local file paths (starting with "/").
+        let entries: [String] = [
+            "https://resouces.pppron.com/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg",
+            "https://cdn.v2ex.com/avatar/8b6e/2852/785555_xlarge.png",
+            "/Users/lily/Desktop/work/HoopCut/data/debug/frame_00375.jpg",
+            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/572ac945-2e08-4629-b179-f62a388b2f70.jpg",
+            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/f3e5e1d6-d223-4219-bd4f-67ad0231a578.webp",
+            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/6461e4f5-8451-4485-b109-44742398f610.jpg",
+            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/73b7ff2d-ffa0-42d7-8ba5-994bbdbde4e0.png",
+            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/6461e4f5-8451-4485-b109-44742398f610.jpg",
+            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/76516dd2-0460-4f4d-bceb-9860fa054b58.png"
         ]
-        let paths = urls.compactMap { URL(string: $0) }.map { DetectedPath.remoteImage($0) }
+        let paths: [DetectedPath] = entries.compactMap { entry in
+            if entry.hasPrefix("/") {
+                return .localImage(URL(fileURLWithPath: entry))
+            }
+            guard let url = URL(string: entry) else { return nil }
+            return .remoteImage(url)
+        }
         guard let screen = NSScreen.main else { return }
         let center = CGPoint(x: screen.frame.midX, y: screen.frame.midY)
         loadAndShowMedia(paths: paths, at: center)

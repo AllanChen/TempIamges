@@ -39,6 +39,16 @@ class Preferences {
         set { defaults.set(newValue, forKey: "\(suiteName).hotkeyRequiresCommand") }
     }
 
+    var hotkeyRequiresOption: Bool {
+        get { defaults.bool(forKey: "\(suiteName).hotkeyRequiresOption") }
+        set { defaults.set(newValue, forKey: "\(suiteName).hotkeyRequiresOption") }
+    }
+
+    var hotkeyRequiresControl: Bool {
+        get { defaults.bool(forKey: "\(suiteName).hotkeyRequiresControl") }
+        set { defaults.set(newValue, forKey: "\(suiteName).hotkeyRequiresControl") }
+    }
+
     private init() {
         registerDefaults()
     }
@@ -50,7 +60,9 @@ class Preferences {
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).hotkeyModifiers": Int(NSEvent.ModifierFlags([.command, .shift]).rawValue),
             "\(suiteName).hotkeyRequiresShift": true,
-            "\(suiteName).hotkeyRequiresCommand": true
+            "\(suiteName).hotkeyRequiresCommand": true,
+            "\(suiteName).hotkeyRequiresOption": false,
+            "\(suiteName).hotkeyRequiresControl": false
         ]
         defaults.register(defaults: defaultValues)
     }
@@ -62,5 +74,7 @@ class Preferences {
         hotkeyModifiers = [.command, .shift]
         hotkeyRequiresShift = true
         hotkeyRequiresCommand = true
+        hotkeyRequiresOption = false
+        hotkeyRequiresControl = false
     }
 }

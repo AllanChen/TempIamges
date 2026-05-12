@@ -9,6 +9,8 @@ class KeyboardMonitor: NSObject {
     private var runLoopSource: CFRunLoopSource?
     private var cmdHeld: Bool = false
     private var shiftHeld: Bool = false
+    private var optionHeld: Bool = false
+    private var controlHeld: Bool = false
     private var wasPreviewModeActive: Bool = false
 
     override init() {
@@ -29,13 +31,18 @@ class KeyboardMonitor: NSObject {
         let prefs = Preferences.shared
         let needsCmd = prefs.hotkeyRequiresCommand
         let needsShift = prefs.hotkeyRequiresShift
+        let needsOpt = prefs.hotkeyRequiresOption
+        let needsCtrl = prefs.hotkeyRequiresControl
         // No modifier configured — never activate, otherwise the app would
         // fire on every keystroke.
-        guard needsCmd || needsShift else { return false }
-        // Exact match: required modifiers must be held AND non-required ones
-        // must NOT be held. Prevents Cmd+Shift from triggering a Cmd-only
-        // hotkey, etc.
-        return needsCmd == cmdHeld && needsShift == shiftHeld
+        guard needsCmd || needsShift || needsOpt || needsCtrl else { return false }
+        // Subset match: every required modifier must be held. Pressing extra
+        // modifiers (e.g. Shift while a Control-only hotkey is engaged) does
+        // not deactivate the preview, so other keystrokes don't interfere.
+        return (!needsCmd   || cmdHeld)
+            && (!needsShift || shiftHeld)
+            && (!needsOpt   || optionHeld)
+            && (!needsCtrl  || controlHeld)
     }
 
     func startMonitoring() -> Bool {
@@ -93,14 +100,19 @@ class KeyboardMonitor: NSObject {
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) {
         if type == .flagsChanged {
             let flags = event.flags
-            let prevCmdHeld = cmdHeld
-            let prevShiftHeld = shiftHeld
+            let prevCmd = cmdHeld
+            let prevShift = shiftHeld
+            let prevOpt = optionHeld
+            let prevCtrl = controlHeld
 
-            cmdHeld = flags.contains(.maskCommand)
-            shiftHeld = flags.contains(.maskShift)
+            cmdHeld     = flags.contains(.maskCommand)
+            shiftHeld   = flags.contains(.maskShift)
+            optionHeld  = flags.contains(.maskAlternate)
+            controlHeld = flags.contains(.maskControl)
 
-            if cmdHeld != prevCmdHeld || shiftHeld != prevShiftHeld {
-                Logger.info("KeyboardMonitor: Cmd=\(cmdHeld), Shift=\(shiftHeld)")
+            if cmdHeld != prevCmd || shiftHeld != prevShift
+                || optionHeld != prevOpt || controlHeld != prevCtrl {
+                Logger.info("KeyboardMonitor: Cmd=\(cmdHeld) Shift=\(shiftHeld) Opt=\(optionHeld) Ctrl=\(controlHeld)")
                 checkPreviewModeStateChanged()
             }
         }
