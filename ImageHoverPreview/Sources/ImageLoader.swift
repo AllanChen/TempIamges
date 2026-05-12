@@ -217,5 +217,6 @@ class ImageLoader {
 
     func clearCache() {
         imageCache.removeAllObjects()
+        URLCache.shared.removeAllCachedResponses()
     }
 }

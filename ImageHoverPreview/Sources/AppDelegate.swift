@@ -19,12 +19,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         setupComponents()
         setupNotifications()
         checkPermissions()
-
-        #if DEBUG
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.runDebugPreview()
-        }
-        #endif
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -233,12 +227,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
     }
 
+    func clearImageCache() {
+        imageLoader?.clearCache()
+        Logger.info("AppDelegate: image cache cleared")
+    }
+
     #if DEBUG
     private func runDebugPreview() {
+        // Edit this list to test different scenarios:
+        //   • one URL → single-card view
+        //   • multiple URLs → masonry view
         let urls = [
-            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg",
-//            "https://resouces.pppron.com/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg",
-            "https://cdn.v2ex.com/avatar/8b6e/2852/785555_xlarge.png",
             "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg"
         ]
         let paths = urls.compactMap { URL(string: $0) }.map { DetectedPath.remoteImage($0) }

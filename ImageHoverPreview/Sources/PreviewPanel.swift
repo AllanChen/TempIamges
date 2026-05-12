@@ -3,18 +3,69 @@ import AVKit
 import AVFoundation
 
 class PreviewPanel: NSPanel {
+    // MARK: - Layout constants
     private let anchorOffset = CGPoint(x: 0, y: 8)
-    private let cardCornerRadius: CGFloat = 12
-    private let cardPadding: CGFloat = 12
-    private let captionHeight: CGFloat = 56
-    private let gridSpacing: CGFloat = 8
-    private let gridColumns: Int = 2
-    private let gridTileSize = NSSize(width: 190, height: 230)
+    private let panelCornerRadius: CGFloat = 16
+    private let headerHeight: CGFloat = 48
+    private let bottomBarHeight: CGFloat = 72
+
+    // Single-card middle area (around the dark inset)
+    private let middlePadding: CGFloat = 18
+    private let insetCornerRadius: CGFloat = 18
+    private let insetTopArea: CGFloat = 48        // space above the image for anchor + filename pill
+    private let metaPillArea: CGFloat = 56        // filename/meta pill below image
+    private let filmstripHeight: CGFloat = 56
+    private let dotsHeight: CGFloat = 18
+    private let insetHorizontalPad: CGFloat = 16  // space between image and dark inset sides
+    private let insetBottomPad: CGFloat = 10
+
+    // Multi-image masonry
+    private let masonryHorizontalPad: CGFloat = 8
+    private let masonryTopPad: CGFloat = 6      // small gap below header
+    private let masonryBottomPad: CGFloat = 8
+    private let masonryColumnSpacing: CGFloat = 8
+    private let masonryRowSpacing: CGFloat = 8
+    private let masonryColumnWidth: CGFloat = 174
+    private let masonryColumns: Int = 2
+    private let masonryMinCardHeight: CGFloat = 110
+    private let masonryMaxCardHeight: CGFloat = 280
+
+    // Colors
+    fileprivate static let panelBackground   = NSColor.white
+    fileprivate static let middleBackground  = NSColor(white: 0.96, alpha: 1)
+    fileprivate static let darkInset         = NSColor(white: 0.07, alpha: 1)
+    fileprivate static let bottomBar         = NSColor(white: 0.32, alpha: 1)
+    fileprivate static let separator         = NSColor(white: 0.88, alpha: 1)
+    fileprivate static let pillBackground    = NSColor(white: 1, alpha: 0.10)
+    fileprivate static let pillBackgroundLight = NSColor(white: 1, alpha: 0.16)
+    fileprivate static let textDark          = NSColor(white: 0.15, alpha: 1)
+    fileprivate static let textSecondary     = NSColor(white: 0.45, alpha: 1)
+    fileprivate static let textOnDark        = NSColor.white
+    fileprivate static let textOnDarkSecondary = NSColor(white: 1, alpha: 0.70)
+    fileprivate static let thumbPlaceholder  = NSColor(white: 0.85, alpha: 1)
+    fileprivate static let filmstripBorder   = NSColor.systemBlue
+    fileprivate static let accentBlue        = NSColor.systemBlue
 
     private var tiles: [MediaTileView] = []
     private var anchorPoint: CGPoint = .zero
     private var currentMode: Mode = .grid
     private var currentInfos: [MediaInfo] = []
+    private var selectedIndex: Int = 0
+
+    // Single-card view references (used to update labels once load completes).
+    private weak var singleHeaderTitle: NSTextField?
+    private weak var bottomFilenameLabel: NSTextField?
+    private weak var bottomDimsLabel: NSTextField?
+    private weak var bottomSizeLabel: NSTextField?
+    private weak var topPillLabel: NSTextField?
+    private weak var metaPillFilename: NSTextField?
+    private weak var metaPillMeta: NSTextField?
+    private weak var singleCloseBtn: NSButton?
+    private weak var singlePinBtn: NSButton?
+
+    /// When pinned, hidePanel() is ignored and the close (X) button shows.
+    /// New previews via showLoading() reset this to false.
+    private var isPinned: Bool = false
 
     private enum Mode { case singleCard, grid }
 
@@ -40,21 +91,21 @@ class PreviewPanel: NSPanel {
 
     // MARK: - Public API
 
-    /// Show the panel with skeleton tiles for each MediaInfo. Tiles get
-    /// populated later via updateTile(at:with:).
     func showLoading(infos: [MediaInfo], at mouseLocation: NSPoint) {
         guard !infos.isEmpty else {
-            hidePanel()
+            forceHidePanel()
             return
         }
         teardownTiles()
+        // A new preview replaces whatever was pinned.
+        isPinned = false
         anchorPoint = mouseLocation
         currentMode = infos.count == 1 ? .singleCard : .grid
         currentInfos = infos
+        selectedIndex = 0
 
         let container = buildContainer(infos: infos)
         contentView = container
-
         relayoutPanel(contentSize: container.frame.size)
 
         alphaValue = 0
@@ -75,6 +126,9 @@ class PreviewPanel: NSPanel {
                 updatedInfo.dimensions = m.naturalSize
                 currentInfos[index] = updatedInfo
                 tile.updateInfo(updatedInfo)
+                if currentMode == .singleCard, index == 0 {
+                    singleHeaderTitle?.stringValue = updatedInfo.filename
+                }
             }
         } else {
             tile.setFailed()
@@ -86,7 +140,6 @@ class PreviewPanel: NSPanel {
         }
     }
 
-    // Backwards-compat helpers (used elsewhere in the codebase).
     func showImage(_ image: NSImage, at point: NSPoint) {
         let info = MediaInfo(url: URL(fileURLWithPath: "/dev/null"), isLocal: false, kind: .image,
                              dimensions: image.size, fileSize: nil, duration: nil)
@@ -113,11 +166,19 @@ class PreviewPanel: NSPanel {
         }
     }
 
+    /// Auto-hide path. Suppressed when the user has pinned the panel.
     func hidePanel() {
+        guard !isPinned else { return }
+        forceHidePanel()
+    }
+
+    /// Always hide, regardless of pinned state (used by the X button).
+    private func forceHidePanel() {
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             self.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
+            self?.isPinned = false
             self?.orderOut(nil)
             self?.teardownTiles()
         })
@@ -128,96 +189,123 @@ class PreviewPanel: NSPanel {
         contentView = NSView(frame: contentView?.frame ?? .zero)
     }
 
-    // MARK: - Layout
+    // MARK: - Container building
 
     private func buildContainer(infos: [MediaInfo]) -> NSView {
         switch currentMode {
         case .singleCard: return buildSingleCard(info: infos[0])
-        case .grid:       return buildGrid(infos: infos)
+        case .grid:       return buildList(infos: infos)
         }
     }
 
-    /// Build the preview container without window-management side-effects.
-    /// Used by Xcode Canvas preview so the panel doesn't pop up as a real window.
     func buildPreviewContainer(infos: [MediaInfo]) -> NSView {
         teardownTiles()
         currentMode = infos.count == 1 ? .singleCard : .grid
         currentInfos = infos
+        selectedIndex = 0
         return buildContainer(infos: infos)
     }
 
-    private func buildSingleCard(info: MediaInfo) -> NSView {
-        // Initial placeholder size — will be resized once the image dimensions
-        // are known (see relayoutSingleCard).
-        let imgArea = NSSize(width: 320, height: 240)
-        let cardSize = NSSize(width: imgArea.width + cardPadding * 2,
-                              height: imgArea.height + captionHeight + cardPadding * 2)
-        let container = NSView(frame: NSRect(origin: .zero, size: cardSize))
-        container.wantsLayer = true
-        container.layer?.cornerRadius = cardCornerRadius
-        container.layer?.masksToBounds = true
-        container.layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
+    // MARK: - Single-card layout
 
-        let tileFrame = NSRect(x: cardPadding, y: cardPadding,
-                               width: imgArea.width,
-                               height: imgArea.height + captionHeight)
-        let tile = MediaTileView(info: info, style: .singleCard, frame: tileFrame, captionHeight: captionHeight)
+    private func buildSingleCard(info: MediaInfo) -> NSView {
+        // Placeholder image dimensions — refined in relayoutSingleCard().
+        let imgSize = NSSize(width: 360, height: 270)
+        let totalWidth = imgSize.width
+        let totalHeight = headerHeight + imgSize.height
+
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: totalWidth, height: totalHeight))
+        container.wantsLayer = true
+        container.layer?.cornerRadius = panelCornerRadius
+        container.layer?.masksToBounds = true
+        container.layer?.backgroundColor = Self.darkInset.cgColor
+
+        // Header (white)
+        let header = makeHeaderBar(
+            width: totalWidth,
+            title: info.filename,
+            leftSymbol: "xmark",
+            leftAction: #selector(closeButtonTapped),
+            rightSymbol: "pin.fill",
+            rightAction: #selector(actionButtonTapped),
+            captureTitleForSingle: true
+        )
+        header.frame.origin = CGPoint(x: 0, y: totalHeight - headerHeight)
+        container.addSubview(header)
+
+        // Image fills the rest of the panel; metadata overlay sits on top of the image.
+        let tileFrame = NSRect(x: 0, y: 0, width: totalWidth, height: imgSize.height)
+        let tile = MediaTileView(info: info, style: .singleCard, frame: tileFrame)
         tile.onClose = { [weak self] in self?.hidePanel() }
         let infoURL = info.url
-        tile.onAction = {
-            NSWorkspace.shared.open(infoURL)
-        }
+        tile.onAction = { NSWorkspace.shared.open(infoURL) }
         container.addSubview(tile)
+
         tiles = [tile]
         return container
     }
 
-    private func buildGrid(infos: [MediaInfo]) -> NSView {
-        let cols = gridColumns
-        let tileWidth: CGFloat = 190
-        let captionH: CGFloat = 56
-        let spacing = gridSpacing
-        let padding = cardPadding
+    // MARK: - Multi-image masonry layout
 
-        var colHeights = Array(repeating: padding, count: cols)
-        var layouts: [(x: CGFloat, visualY: CGFloat, width: CGFloat, height: CGFloat)] = []
+    private func buildList(infos: [MediaInfo]) -> NSView {
+        let cols = masonryColumns
+        let colW = masonryColumnWidth
+        let spacing = masonryColumnSpacing
+        let rowSpacing = masonryRowSpacing
+
+        // Two-column shortest-column packing.
+        var colHeights = Array(repeating: masonryTopPad, count: cols)
+        var visualLayouts: [(x: CGFloat, visualY: CGFloat, w: CGFloat, h: CGFloat)] = []
 
         for info in infos {
-            let shortestCol = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
-            let x = padding + CGFloat(shortestCol) * (tileWidth + spacing)
-            let visualY = colHeights[shortestCol]
+            let shortest = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
+            let x = masonryHorizontalPad + CGFloat(shortest) * (colW + spacing)
+            let visualY = colHeights[shortest]
 
-            let defaultImageHeight: CGFloat = 140
-            let imageHeight: CGFloat
+            let aspect: CGFloat
             if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
-                imageHeight = tileWidth * (dim.height / dim.width)
+                aspect = dim.height / dim.width
             } else {
-                imageHeight = defaultImageHeight
+                aspect = 0.75
             }
-            let clampedImageHeight = min(max(imageHeight, 80), 280)
-            let tileHeight = clampedImageHeight + captionH
+            let rawHeight = colW * aspect
+            let cardHeight = min(max(rawHeight, masonryMinCardHeight), masonryMaxCardHeight)
 
-            layouts.append((x: x, visualY: visualY, width: tileWidth, height: tileHeight))
-            colHeights[shortestCol] = visualY + tileHeight + spacing
+            visualLayouts.append((x: x, visualY: visualY, w: colW, h: cardHeight))
+            colHeights[shortest] = visualY + cardHeight + rowSpacing
         }
 
-        let maxVisualBottom = colHeights.map { $0 - spacing }.max() ?? padding
-        let containerHeight = maxVisualBottom + padding
-        let containerWidth = padding * 2 + CGFloat(cols) * tileWidth + CGFloat(cols - 1) * spacing
+        let cardsBottomVisualY = (colHeights.map { $0 - rowSpacing }.max() ?? masonryTopPad)
+        let cardsTotalHeight = cardsBottomVisualY + masonryBottomPad
+        let contentWidth = CGFloat(cols) * colW + CGFloat(cols - 1) * spacing + masonryHorizontalPad * 2
+        let totalHeight = headerHeight + cardsTotalHeight
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: containerWidth, height: containerHeight))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: totalHeight))
         container.wantsLayer = true
-        container.layer?.cornerRadius = cardCornerRadius
+        container.layer?.cornerRadius = panelCornerRadius
         container.layer?.masksToBounds = true
-        container.layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
+        container.layer?.backgroundColor = Self.panelBackground.cgColor
+
+        let title = "preview_gallery_(\(infos.count))"
+        let header = makeHeaderBar(
+            width: contentWidth,
+            title: title,
+            leftSymbol: "chevron.left",
+            leftAction: #selector(closeButtonTapped),
+            rightSymbol: "arrow.down.to.line",
+            rightAction: #selector(actionButtonTapped),
+            captureTitleForSingle: false
+        )
+        header.frame.origin = CGPoint(x: 0, y: totalHeight - headerHeight)
+        container.addSubview(header)
 
         var newTiles: [MediaTileView] = []
         for (i, info) in infos.enumerated() {
-            guard i < layouts.count else { break }
-            let layout = layouts[i]
-            let appKitY = containerHeight - layout.visualY - layout.height
-            let frame = NSRect(x: layout.x, y: appKitY, width: layout.width, height: layout.height)
-            let tile = MediaTileView(info: info, style: .gridTile, frame: frame, captionHeight: captionH)
+            let layout = visualLayouts[i]
+            // Convert visual Y (top-of-card-area, increasing downward) → AppKit Y.
+            let appKitY = (totalHeight - headerHeight) - layout.visualY - layout.h
+            let frame = NSRect(x: layout.x, y: appKitY, width: layout.w, height: layout.h)
+            let tile = MediaTileView(info: info, style: .masonry, frame: frame)
             container.addSubview(tile)
             newTiles.append(tile)
         }
@@ -227,61 +315,375 @@ class PreviewPanel: NSPanel {
 
     private func relayoutMasonry() {
         guard currentMode == .grid, !tiles.isEmpty else { return }
+        let cols = masonryColumns
+        let colW = masonryColumnWidth
+        let spacing = masonryColumnSpacing
+        let rowSpacing = masonryRowSpacing
 
-        let cols = gridColumns
-        let tileWidth: CGFloat = 190
-        let captionH: CGFloat = 56
-        let spacing = gridSpacing
-        let padding = cardPadding
+        var colHeights = Array(repeating: masonryTopPad, count: cols)
+        var visualLayouts: [(x: CGFloat, visualY: CGFloat, w: CGFloat, h: CGFloat)] = []
 
-        var colHeights = Array(repeating: padding, count: cols)
-        var visualFrames: [NSRect] = []
-
-        for (i, info) in currentInfos.enumerated() {
-            guard i < tiles.count else { break }
-            let shortestCol = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
-            let x = padding + CGFloat(shortestCol) * (tileWidth + spacing)
-            let visualY = colHeights[shortestCol]
-
-            let defaultImageHeight: CGFloat = 140
-            let imageHeight: CGFloat
+        for info in currentInfos {
+            let shortest = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
+            let x = masonryHorizontalPad + CGFloat(shortest) * (colW + spacing)
+            let visualY = colHeights[shortest]
+            let aspect: CGFloat
             if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
-                imageHeight = tileWidth * (dim.height / dim.width)
+                aspect = dim.height / dim.width
             } else {
-                imageHeight = defaultImageHeight
+                aspect = 0.75
             }
-            let clampedImageHeight = min(max(imageHeight, 80), 280)
-            let tileHeight = clampedImageHeight + captionH
-
-            visualFrames.append(NSRect(x: x, y: visualY, width: tileWidth, height: tileHeight))
-            colHeights[shortestCol] = visualY + tileHeight + spacing
+            let rawHeight = colW * aspect
+            let cardHeight = min(max(rawHeight, masonryMinCardHeight), masonryMaxCardHeight)
+            visualLayouts.append((x: x, visualY: visualY, w: colW, h: cardHeight))
+            colHeights[shortest] = visualY + cardHeight + rowSpacing
         }
 
-        let maxVisualBottom = colHeights.map { $0 - spacing }.max() ?? padding
-        let containerHeight = maxVisualBottom + padding
-        let containerWidth = padding * 2 + CGFloat(cols) * tileWidth + CGFloat(cols - 1) * spacing
+        let cardsBottomVisualY = (colHeights.map { $0 - rowSpacing }.max() ?? masonryTopPad)
+        let cardsTotalHeight = cardsBottomVisualY + masonryBottomPad
+        let contentWidth = CGFloat(cols) * colW + CGFloat(cols - 1) * spacing + masonryHorizontalPad * 2
+        let totalHeight = headerHeight + cardsTotalHeight
 
-        contentView?.frame = NSRect(x: 0, y: 0, width: containerWidth, height: containerHeight)
+        guard let container = contentView else { return }
+        container.frame = NSRect(x: 0, y: 0, width: contentWidth, height: totalHeight)
 
-        for (i, vFrame) in visualFrames.enumerated() {
-            guard i < tiles.count else { break }
-            let appKitY = containerHeight - vFrame.origin.y - vFrame.height
-            let newFrame = NSRect(x: vFrame.origin.x, y: appKitY, width: vFrame.width, height: vFrame.height)
-            tiles[i].frame = newFrame
+        // Reposition header (always the last-found view with title tag 3) and tiles.
+        for sv in container.subviews where sv !== container {
+            if sv.subviews.contains(where: { $0.tag == 3 }) {
+                sv.frame = NSRect(x: 0, y: totalHeight - headerHeight,
+                                  width: contentWidth, height: headerHeight)
+            }
+        }
+
+        for (i, layout) in visualLayouts.enumerated() where i < tiles.count {
+            let appKitY = (totalHeight - headerHeight) - layout.visualY - layout.h
+            tiles[i].frame = NSRect(x: layout.x, y: appKitY, width: layout.w, height: layout.h)
             tiles[i].relayoutChildren()
         }
-
-        relayoutPanel(contentSize: NSSize(width: containerWidth, height: containerHeight))
+        relayoutPanel(contentSize: NSSize(width: contentWidth, height: totalHeight))
     }
 
+    // MARK: - Header builder
+
+    private func makeHeaderBar(width: CGFloat, title: String,
+                               leftSymbol: String, leftAction: Selector,
+                               rightSymbol: String, rightAction: Selector,
+                               captureTitleForSingle: Bool) -> NSView {
+        let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
+        bar.wantsLayer = true
+        bar.layer?.backgroundColor = Self.panelBackground.cgColor
+
+        let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
+        sep.wantsLayer = true
+        sep.layer?.backgroundColor = Self.separator.cgColor
+        sep.autoresizingMask = [.width]
+        bar.addSubview(sep)
+
+        let leftBtn = makeIconButton(symbol: leftSymbol, action: leftAction, tint: Self.textDark)
+        leftBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
+        leftBtn.tag = 1
+        bar.addSubview(leftBtn)
+
+        let rightBtn = makeIconButton(symbol: rightSymbol, action: rightAction, tint: Self.textDark)
+        rightBtn.frame = NSRect(x: width - 36, y: (headerHeight - 24) / 2, width: 24, height: 24)
+        rightBtn.tag = 2
+        bar.addSubview(rightBtn)
+
+        if captureTitleForSingle {
+            singleCloseBtn = leftBtn
+            singlePinBtn = rightBtn
+            // X is only visible after the user pins.
+            leftBtn.isHidden = !isPinned
+            rightBtn.contentTintColor = isPinned ? .systemRed : Self.textDark
+        }
+
+        let titleLbl = NSTextField(labelWithString: title)
+        titleLbl.textColor = Self.textDark
+        titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLbl.alignment = .center
+        titleLbl.lineBreakMode = .byTruncatingMiddle
+        titleLbl.maximumNumberOfLines = 1
+        titleLbl.frame = NSRect(x: 48, y: (headerHeight - 18) / 2, width: width - 96, height: 18)
+        titleLbl.tag = 3
+        bar.addSubview(titleLbl)
+        if captureTitleForSingle {
+            singleHeaderTitle = titleLbl
+        }
+
+        return bar
+    }
+
+    private func makeIconButton(symbol: String, action: Selector, tint: NSColor) -> NSButton {
+        let btn = NSButton(frame: .zero)
+        btn.bezelStyle = .recessed
+        btn.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        btn.imagePosition = .imageOnly
+        btn.isBordered = false
+        btn.target = self
+        btn.action = action
+        btn.contentTintColor = tint
+        return btn
+    }
+
+    // MARK: - Pills (inside dark inset)
+
+    /// Small rounded badge with white text on a translucent dark fill.
+    private func makePill(text: String, light: Bool) -> NSView {
+        let lbl = NSTextField(labelWithString: text)
+        lbl.textColor = .white
+        lbl.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        lbl.lineBreakMode = .byTruncatingMiddle
+        lbl.maximumNumberOfLines = 1
+        lbl.tag = 99
+
+        let textSize = lbl.intrinsicContentSize
+        let padding: CGFloat = 10
+        let pill = NSView(frame: NSRect(x: 0, y: 0,
+                                        width: min(textSize.width + padding * 2, 200),
+                                        height: 22))
+        pill.wantsLayer = true
+        pill.layer?.cornerRadius = 11
+        pill.layer?.masksToBounds = true
+        pill.layer?.backgroundColor = (light ? Self.pillBackgroundLight : Self.pillBackground).cgColor
+
+        lbl.frame = NSRect(x: padding, y: 3, width: pill.bounds.width - padding * 2, height: 16)
+        pill.addSubview(lbl)
+        return pill
+    }
+
+    /// Multi-line metadata pill shown below the image inside the dark inset.
+    private func makeMetaPill(info: MediaInfo) -> NSView {
+        let pill = NSView(frame: .zero)
+        pill.wantsLayer = true
+        pill.layer?.cornerRadius = 10
+        pill.layer?.masksToBounds = true
+        pill.layer?.backgroundColor = Self.pillBackground.cgColor
+
+        let name = NSTextField(labelWithString: info.filename)
+        name.textColor = .white
+        name.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        name.alignment = .center
+        name.lineBreakMode = .byTruncatingMiddle
+        name.maximumNumberOfLines = 1
+        pill.addSubview(name)
+        metaPillFilename = name
+
+        let meta = NSTextField(labelWithString: metaLineString(for: info))
+        meta.textColor = Self.textOnDarkSecondary
+        meta.font = NSFont.systemFont(ofSize: 10)
+        meta.alignment = .center
+        meta.lineBreakMode = .byTruncatingTail
+        meta.maximumNumberOfLines = 2
+        meta.usesSingleLineMode = false
+        pill.addSubview(meta)
+        metaPillMeta = meta
+
+        // Frame children once the pill has its frame set:
+        DispatchQueue.main.async { [weak pill, weak name, weak meta] in
+            guard let pill = pill else { return }
+            let w = pill.bounds.width
+            let h = pill.bounds.height
+            name?.frame = NSRect(x: 8, y: h - 18, width: w - 16, height: 14)
+            meta?.frame = NSRect(x: 8, y: 4, width: w - 16, height: h - 22)
+        }
+        return pill
+    }
+
+    // MARK: - Filmstrip & dots
+
+    private func makeFilmstrip(width: CGFloat, count: Int, selected: Int) -> NSView {
+        let strip = NSView(frame: NSRect(x: 0, y: 0, width: width, height: filmstripHeight))
+
+        let visibleCount = min(5, max(count, 1))
+        let thumbH: CGFloat = 44
+        let thumbW: CGFloat = 44
+        let gap: CGFloat = 6
+        let totalW = CGFloat(visibleCount) * thumbW + CGFloat(visibleCount - 1) * gap
+        var x = (width - totalW) / 2
+        let y = (filmstripHeight - thumbH) / 2
+
+        for i in 0..<visibleCount {
+            let thumb = NSView(frame: NSRect(x: x, y: y, width: thumbW, height: thumbH))
+            thumb.wantsLayer = true
+            thumb.layer?.cornerRadius = 6
+            thumb.layer?.masksToBounds = true
+            thumb.layer?.backgroundColor = Self.thumbPlaceholder.cgColor
+            if i == selected {
+                thumb.layer?.borderColor = Self.filmstripBorder.cgColor
+                thumb.layer?.borderWidth = 2
+            }
+            strip.addSubview(thumb)
+            x += thumbW + gap
+        }
+        return strip
+    }
+
+    private func makeDots(width: CGFloat, count: Int, selected: Int) -> NSView {
+        let dotsView = NSView(frame: NSRect(x: 0, y: 0, width: width, height: dotsHeight))
+        let visibleCount = min(5, max(count, 1))
+        let dotSize: CGFloat = 5
+        let gap: CGFloat = 5
+        let totalW = CGFloat(visibleCount) * dotSize + CGFloat(visibleCount - 1) * gap
+        var x = (width - totalW) / 2
+        let y = (dotsHeight - dotSize) / 2
+
+        for i in 0..<visibleCount {
+            let dot = NSView(frame: NSRect(x: x, y: y, width: dotSize, height: dotSize))
+            dot.wantsLayer = true
+            dot.layer?.cornerRadius = dotSize / 2
+            dot.layer?.backgroundColor = (i == selected
+                ? NSColor.white
+                : NSColor(white: 1, alpha: 0.35)).cgColor
+            dotsView.addSubview(dot)
+            x += dotSize + gap
+        }
+        return dotsView
+    }
+
+    // MARK: - Bottom info bar
+
+    private func makeBottomInfoBar(width: CGFloat, info: MediaInfo) -> NSView {
+        let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: bottomBarHeight))
+        bar.wantsLayer = true
+        bar.layer?.backgroundColor = Self.bottomBar.cgColor
+
+        let nameLbl = NSTextField(labelWithString: info.filename)
+        nameLbl.textColor = Self.textOnDark
+        nameLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        nameLbl.lineBreakMode = .byTruncatingMiddle
+        nameLbl.maximumNumberOfLines = 1
+        nameLbl.frame = NSRect(x: 16, y: bottomBarHeight - 26, width: width - 32, height: 16)
+        nameLbl.autoresizingMask = [.width]
+        bar.addSubview(nameLbl)
+        bottomFilenameLabel = nameLbl
+
+        let dimsLbl = NSTextField(labelWithString: dimsString(for: info))
+        dimsLbl.textColor = Self.textOnDarkSecondary
+        dimsLbl.font = NSFont.systemFont(ofSize: 11)
+        dimsLbl.lineBreakMode = .byTruncatingTail
+        dimsLbl.maximumNumberOfLines = 1
+        dimsLbl.frame = NSRect(x: 16, y: bottomBarHeight - 44, width: width - 32, height: 14)
+        dimsLbl.autoresizingMask = [.width]
+        bar.addSubview(dimsLbl)
+        bottomDimsLabel = dimsLbl
+
+        let sizeLbl = NSTextField(labelWithString: sizeFormatString(for: info))
+        sizeLbl.textColor = Self.textOnDarkSecondary
+        sizeLbl.font = NSFont.systemFont(ofSize: 11)
+        sizeLbl.lineBreakMode = .byTruncatingTail
+        sizeLbl.maximumNumberOfLines = 1
+        sizeLbl.frame = NSRect(x: 16, y: 10, width: width - 32, height: 14)
+        sizeLbl.autoresizingMask = [.width]
+        bar.addSubview(sizeLbl)
+        bottomSizeLabel = sizeLbl
+
+        return bar
+    }
+
+    private func updateSingleCardLabels(info: MediaInfo) {
+        singleHeaderTitle?.stringValue = info.filename
+        topPillLabel?.stringValue = info.filename
+        metaPillFilename?.stringValue = info.filename
+        metaPillMeta?.stringValue = metaLineString(for: info)
+        bottomFilenameLabel?.stringValue = info.filename
+        bottomDimsLabel?.stringValue = dimsString(for: info)
+        bottomSizeLabel?.stringValue = sizeFormatString(for: info)
+    }
+
+    // MARK: - Strings
+
+    private func dimsString(for info: MediaInfo) -> String {
+        if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
+            return "\(Int(dim.width)) × \(Int(dim.height))"
+        }
+        return info.isLocal ? "—" : ""
+    }
+
+    private func sizeFormatString(for info: MediaInfo) -> String {
+        var parts: [String] = []
+        if let bytes = info.fileSize {
+            let f = ByteCountFormatter()
+            f.countStyle = .file
+            parts.append(f.string(fromByteCount: bytes))
+        }
+        if !info.formatName.isEmpty {
+            parts.append(info.formatName)
+        }
+        if info.isVideo, let dur = info.duration {
+            let total = Int(dur.rounded())
+            parts.append(String(format: "%d:%02d", total / 60, total % 60))
+        }
+        return parts.joined(separator: " • ")
+    }
+
+    private func metaLineString(for info: MediaInfo) -> String {
+        var parts: [String] = []
+        if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
+            parts.append("\(Int(dim.width)) × \(Int(dim.height))")
+        }
+        if let bytes = info.fileSize {
+            let f = ByteCountFormatter()
+            f.countStyle = .file
+            parts.append(f.string(fromByteCount: bytes))
+        }
+        if !info.formatName.isEmpty {
+            parts.append(info.formatName)
+        }
+        return parts.joined(separator: " • ")
+    }
+
+    @objc private func closeButtonTapped() {
+        forceHidePanel()
+    }
+
+    @objc private func actionButtonTapped() {
+        if currentMode == .singleCard {
+            togglePin()
+            return
+        }
+        guard let first = currentInfos.first else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([first.url])
+    }
+
+    private func togglePin() {
+        isPinned.toggle()
+        animatePinTransition()
+        singleCloseBtn?.isHidden = !isPinned
+    }
+
+    private func animatePinTransition() {
+        guard let btn = singlePinBtn, let lyr = btn.layer else { return }
+
+        // Rotate around the button's center.
+        if lyr.anchorPoint != CGPoint(x: 0.5, y: 0.5) {
+            lyr.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            lyr.position = CGPoint(x: btn.frame.midX, y: btn.frame.midY)
+        }
+
+        let angle: CGFloat = isPinned ? (.pi / 4) : 0   // +45° = counter-clockwise (left)
+        let rot = CABasicAnimation(keyPath: "transform.rotation.z")
+        rot.fromValue = lyr.value(forKeyPath: "transform.rotation.z")
+        rot.toValue = angle
+        rot.duration = 0.22
+        rot.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        rot.fillMode = .forwards
+        rot.isRemovedOnCompletion = false
+        lyr.add(rot, forKey: "rotate")
+        lyr.setValue(angle, forKeyPath: "transform.rotation.z")
+
+        btn.contentTintColor = isPinned ? .systemRed : Self.textDark
+    }
+
+    // MARK: - Relayout
+
     private func relayoutSingleCard(with media: LoadedMedia) {
-        guard let tile = tiles.first else { return }
+        guard let tile = tiles.first, let container = contentView else { return }
         let raw = media.naturalSize
         let maxSize = Preferences.shared.maxPreviewSize
         var dw: CGFloat
         var dh: CGFloat
         if raw.width <= 0 || raw.height <= 0 {
-            dw = 320; dh = 240
+            dw = 360; dh = 270
         } else if raw.width >= raw.height {
             dw = min(raw.width, maxSize)
             dh = dw * (raw.height / raw.width)
@@ -289,16 +691,39 @@ class PreviewPanel: NSPanel {
             dh = min(raw.height, maxSize)
             dw = dh * (raw.width / raw.height)
         }
-        dw = max(160, dw)
-        dh = max(120, dh)
+        dw = max(280, dw)
+        dh = max(180, dh)
 
-        let cardSize = NSSize(width: dw + cardPadding * 2,
-                              height: dh + captionHeight + cardPadding * 2)
-        contentView?.frame = NSRect(origin: .zero, size: cardSize)
-        contentView?.layer?.cornerRadius = cardCornerRadius
-        tile.frame = NSRect(x: cardPadding, y: cardPadding, width: dw, height: dh + captionHeight)
+        let totalWidth = dw
+        let totalHeight = headerHeight + dh
+
+        container.frame = NSRect(x: 0, y: 0, width: totalWidth, height: totalHeight)
+
+        // Resize header (top) and image tile (full-bleed below header).
+        for sv in container.subviews {
+            if sv === tile {
+                sv.frame = NSRect(x: 0, y: 0, width: totalWidth, height: dh)
+            } else {
+                // Header bar.
+                sv.frame = NSRect(x: 0, y: totalHeight - headerHeight,
+                                  width: totalWidth, height: headerHeight)
+                relayoutHeaderBar(sv, width: totalWidth)
+            }
+        }
         tile.relayoutChildren()
-        relayoutPanel(contentSize: cardSize)
+        relayoutPanel(contentSize: NSSize(width: totalWidth, height: totalHeight))
+    }
+
+    private func relayoutHeaderBar(_ bar: NSView, width: CGFloat) {
+        for sv in bar.subviews {
+            switch sv.tag {
+            case 1: sv.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
+            case 2: sv.frame = NSRect(x: width - 36, y: (headerHeight - 24) / 2, width: 24, height: 24)
+            case 3: sv.frame = NSRect(x: 48, y: (headerHeight - 18) / 2,
+                                       width: width - 96, height: 18)
+            default: sv.frame = NSRect(x: 0, y: 0, width: width, height: 1)
+            }
+        }
     }
 
     private func relayoutPanel(contentSize: NSSize) {
@@ -310,213 +735,278 @@ class PreviewPanel: NSPanel {
         for tile in tiles { tile.teardown() }
         tiles.removeAll()
         currentInfos.removeAll()
+        singleHeaderTitle = nil
+        singleCloseBtn = nil
+        singlePinBtn = nil
+        bottomFilenameLabel = nil
+        bottomDimsLabel = nil
+        bottomSizeLabel = nil
+        topPillLabel = nil
+        metaPillFilename = nil
+        metaPillMeta = nil
     }
 }
 
 // MARK: - Tile view
 
 private final class MediaTileView: NSView {
-    enum Style { case singleCard, gridTile }
+    enum Style { case singleCard, masonry }
 
     var info: MediaInfo
     let style: Style
-    let captionHeight: CGFloat
 
     private let mediaContainer = NSView()
     private let imageLayer = CALayer()
-    private let captionContainer = NSView()
-    private let captionGradient = CAGradientLayer()
-    private let filenameLabel = NSTextField(labelWithString: "")
-    private let metaLabel = NSTextField(labelWithString: "")
     private let spinner = NSProgressIndicator()
+    private let loadingLabel = NSTextField(labelWithString: "Loading…")
+    private let shimmerLayer = CAGradientLayer()
+
+    // Masonry overlay
+    private let overlayGradient = CAGradientLayer()
+    private var filenameLabel: NSTextField?
+    private var dimsLabel: NSTextField?
+    private var sizeLabel: NSTextField?
 
     private var playerView: AVPlayerView?
     private var player: AVPlayer?
     private var endObserver: NSObjectProtocol?
 
-    // Single-card header overlay
-    private let headerOverlay = NSView()
-    private let headerGradient = CAGradientLayer()
-    private var closeButton: NSButton?
-    private var actionButton: NSButton?
-    private var headerTitleLabel: NSTextField?
-
     var onClose: (() -> Void)?
     var onAction: (() -> Void)?
 
-    init(info: MediaInfo, style: Style, frame: NSRect, captionHeight: CGFloat) {
+    init(info: MediaInfo, style: Style, frame: NSRect) {
         self.info = info
         self.style = style
-        self.captionHeight = captionHeight
         super.init(frame: frame)
         wantsLayer = true
-        layer?.cornerRadius = 10
-        layer?.masksToBounds = true
-        layer?.backgroundColor = NSColor(white: 0.10, alpha: 1).cgColor
 
-        // Media area background (dark), holds image/video layer.
-        mediaContainer.wantsLayer = true
-        mediaContainer.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
-        addSubview(mediaContainer)
+        switch style {
+        case .singleCard:
+            layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
 
-        imageLayer.contentsGravity = (style == .singleCard) ? .resizeAspect : .resizeAspectFill
-        imageLayer.masksToBounds = true
-        mediaContainer.layer?.addSublayer(imageLayer)
+            mediaContainer.wantsLayer = true
+            mediaContainer.layer?.masksToBounds = true
+            mediaContainer.layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
+            addSubview(mediaContainer)
 
-        // Spinner sits on top of media area until loaded.
+            imageLayer.contentsGravity = .resizeAspect
+            imageLayer.masksToBounds = true
+            mediaContainer.layer?.addSublayer(imageLayer)
+
+            // Bottom dark gradient + filename/dims/size labels overlaid on the image.
+            overlayGradient.colors = [
+                NSColor(white: 0, alpha: 0.85).cgColor,
+                NSColor(white: 0, alpha: 0.45).cgColor,
+                NSColor(white: 0, alpha: 0.0).cgColor
+            ]
+            overlayGradient.locations = [0.0, 0.55, 1.0]
+            overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
+            overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
+            mediaContainer.layer?.addSublayer(overlayGradient)
+
+            let nameLbl = NSTextField(labelWithString: info.filename)
+            nameLbl.textColor = .white
+            nameLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+            nameLbl.lineBreakMode = .byTruncatingMiddle
+            nameLbl.maximumNumberOfLines = 1
+            addSubview(nameLbl)
+            filenameLabel = nameLbl
+
+            let dimsLbl = NSTextField(labelWithString: "")
+            dimsLbl.textColor = NSColor(white: 1, alpha: 0.85)
+            dimsLbl.font = NSFont.systemFont(ofSize: 11)
+            dimsLbl.lineBreakMode = .byTruncatingTail
+            dimsLbl.maximumNumberOfLines = 1
+            addSubview(dimsLbl)
+            dimsLabel = dimsLbl
+
+            let sizeLbl = NSTextField(labelWithString: "")
+            sizeLbl.textColor = NSColor(white: 1, alpha: 0.85)
+            sizeLbl.font = NSFont.systemFont(ofSize: 11)
+            sizeLbl.lineBreakMode = .byTruncatingTail
+            sizeLbl.maximumNumberOfLines = 1
+            addSubview(sizeLbl)
+            sizeLabel = sizeLbl
+
+        case .masonry:
+            // Image fills the entire card; text overlay sits in the top-left.
+            layer?.cornerRadius = 8
+            layer?.masksToBounds = true
+            layer?.backgroundColor = NSColor(white: 0.18, alpha: 1).cgColor
+
+            mediaContainer.wantsLayer = true
+            mediaContainer.layer?.masksToBounds = true
+            mediaContainer.layer?.backgroundColor = NSColor(white: 0.18, alpha: 1).cgColor
+            addSubview(mediaContainer)
+
+            // Animated shimmer band — moves left→right while the image is loading.
+            shimmerLayer.colors = [
+                NSColor(white: 1, alpha: 0).cgColor,
+                NSColor(white: 1, alpha: 0.10).cgColor,
+                NSColor(white: 1, alpha: 0).cgColor
+            ]
+            shimmerLayer.locations = [0.0, 0.5, 1.0]
+            shimmerLayer.startPoint = CGPoint(x: 0, y: 0.5)
+            shimmerLayer.endPoint = CGPoint(x: 1, y: 0.5)
+            mediaContainer.layer?.addSublayer(shimmerLayer)
+            startShimmer()
+
+            imageLayer.contentsGravity = .resizeAspectFill
+            imageLayer.masksToBounds = true
+            mediaContainer.layer?.addSublayer(imageLayer)
+
+            // Dark gradient on the bottom edge so the white text overlay is readable.
+            // Must live above the image layer (same container) and below the text NSTextFields.
+            overlayGradient.colors = [
+                NSColor(white: 0, alpha: 0.88).cgColor,
+                NSColor(white: 0, alpha: 0.55).cgColor,
+                NSColor(white: 0, alpha: 0.0).cgColor
+            ]
+            overlayGradient.locations = [0.0, 0.55, 1.0]
+            overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
+            overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
+            mediaContainer.layer?.addSublayer(overlayGradient)
+
+            let nameLbl = NSTextField(labelWithString: info.filename)
+            nameLbl.textColor = .white
+            nameLbl.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+            nameLbl.lineBreakMode = .byTruncatingMiddle
+            nameLbl.maximumNumberOfLines = 1
+            addSubview(nameLbl)
+            filenameLabel = nameLbl
+
+            let dimsLbl = NSTextField(labelWithString: "")
+            dimsLbl.textColor = NSColor(white: 1, alpha: 0.95)
+            dimsLbl.font = NSFont.systemFont(ofSize: 10)
+            dimsLbl.lineBreakMode = .byTruncatingTail
+            dimsLbl.maximumNumberOfLines = 1
+            addSubview(dimsLbl)
+            dimsLabel = dimsLbl
+
+            let sizeLbl = NSTextField(labelWithString: "")
+            sizeLbl.textColor = NSColor(white: 1, alpha: 0.95)
+            sizeLbl.font = NSFont.systemFont(ofSize: 10)
+            sizeLbl.lineBreakMode = .byTruncatingTail
+            sizeLbl.maximumNumberOfLines = 1
+            addSubview(sizeLbl)
+            sizeLabel = sizeLbl
+        }
+
         spinner.style = .spinning
-        spinner.controlSize = .small
+        spinner.controlSize = .regular
         spinner.isIndeterminate = true
         spinner.usesThreadedAnimation = true
+        spinner.appearance = NSAppearance(named: .vibrantDark)
         spinner.startAnimation(nil)
         addSubview(spinner)
 
-        // Caption: filename + optional meta line. Grid mode overlays it on the
-        // image with a dark gradient; single-card mode places it below.
-        captionContainer.wantsLayer = true
-        if style == .gridTile {
-            captionContainer.layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
-            metaLabel.usesSingleLineMode = false
-            metaLabel.lineBreakMode = .byWordWrapping
-            metaLabel.maximumNumberOfLines = 2
-        }
-        addSubview(captionContainer)
-
-        filenameLabel.textColor = .white
-        filenameLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        filenameLabel.lineBreakMode = .byTruncatingMiddle
-        filenameLabel.maximumNumberOfLines = 1
-        filenameLabel.stringValue = info.filename
-        captionContainer.addSubview(filenameLabel)
-
-        metaLabel.textColor = NSColor(white: 1, alpha: 0.7)
-        metaLabel.font = NSFont.systemFont(ofSize: 10)
-        metaLabel.lineBreakMode = .byTruncatingTail
-        metaLabel.maximumNumberOfLines = 1
-        metaLabel.isHidden = true
-        captionContainer.addSubview(metaLabel)
-
-        // Single-card header overlay (close button + title + action button)
-        if style == .singleCard {
-            headerOverlay.wantsLayer = true
-            headerGradient.colors = [
-                NSColor(white: 0, alpha: 0.6).cgColor,
-                NSColor.clear.cgColor
-            ]
-            headerGradient.startPoint = CGPoint(x: 0.5, y: 1)
-            headerGradient.endPoint = CGPoint(x: 0.5, y: 0)
-            headerOverlay.layer?.addSublayer(headerGradient)
-            addSubview(headerOverlay)
-
-            let closeBtn = NSButton(frame: .zero)
-            closeBtn.bezelStyle = .recessed
-            closeBtn.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Close")
-            closeBtn.imagePosition = .imageOnly
-            closeBtn.isBordered = false
-            closeBtn.target = self
-            closeBtn.action = #selector(closeTapped)
-            closeBtn.contentTintColor = .white
-            addSubview(closeBtn)
-            closeButton = closeBtn
-
-            let titleLabel = NSTextField(labelWithString: info.filename)
-            titleLabel.textColor = .white
-            titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-            titleLabel.alignment = .center
-            titleLabel.lineBreakMode = .byTruncatingMiddle
-            titleLabel.maximumNumberOfLines = 1
-            addSubview(titleLabel)
-            headerTitleLabel = titleLabel
-
-            let actionBtn = NSButton(frame: .zero)
-            actionBtn.bezelStyle = .recessed
-            actionBtn.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: "Download")
-            actionBtn.imagePosition = .imageOnly
-            actionBtn.isBordered = false
-            actionBtn.target = self
-            actionBtn.action = #selector(actionTapped)
-            actionBtn.contentTintColor = .white
-            addSubview(actionBtn)
-            actionButton = actionBtn
-        }
+        loadingLabel.textColor = NSColor(white: 1, alpha: 0.85)
+        loadingLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        loadingLabel.alignment = .center
+        loadingLabel.maximumNumberOfLines = 1
+        addSubview(loadingLabel)
 
         relayoutChildren()
+    }
+
+    private func startShimmer() {
+        let anim = CABasicAnimation(keyPath: "locations")
+        anim.fromValue = [-0.5, 0.0, 0.5]
+        anim.toValue   = [0.5, 1.0, 1.5]
+        anim.duration = 1.2
+        anim.repeatCount = .infinity
+        shimmerLayer.add(anim, forKey: "shimmer")
+    }
+
+    private func stopShimmer() {
+        shimmerLayer.removeAnimation(forKey: "shimmer")
+        shimmerLayer.isHidden = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func relayoutChildren() {
+        let spinnerSize: CGFloat = 20
         switch style {
         case .singleCard:
-            let mediaH = bounds.height - captionHeight
-            mediaContainer.frame = NSRect(x: 0, y: captionHeight, width: bounds.width, height: mediaH)
+            mediaContainer.frame = bounds
             imageLayer.frame = mediaContainer.bounds
             playerView?.frame = mediaContainer.bounds
-            captionContainer.frame = NSRect(x: 0, y: 0, width: bounds.width, height: captionHeight)
-            spinner.frame = NSRect(x: bounds.midX - 8,
-                                   y: captionHeight + mediaH / 2 - 8,
-                                   width: 16, height: 16)
-            filenameLabel.alignment = .center
-            filenameLabel.frame = NSRect(x: 12, y: captionHeight - 26, width: bounds.width - 24, height: 18)
-            metaLabel.alignment = .center
-            metaLabel.frame = NSRect(x: 12, y: captionHeight - 46, width: bounds.width - 24, height: 14)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            let gradH: CGFloat = 76
+            overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradH)
+            CATransaction.commit()
+            spinner.frame = NSRect(
+                x: bounds.midX - spinnerSize / 2,
+                y: bounds.midY - spinnerSize / 2 + 8,
+                width: spinnerSize, height: spinnerSize
+            )
+            loadingLabel.frame = NSRect(x: 0, y: bounds.midY - 18,
+                                         width: bounds.width, height: 14)
+            let textX: CGFloat = 14
+            let textW = bounds.width - textX - 14
+            filenameLabel?.frame = NSRect(x: textX, y: 50, width: textW, height: 16)
+            dimsLabel?.frame     = NSRect(x: textX, y: 30, width: textW, height: 14)
+            sizeLabel?.frame     = NSRect(x: textX, y: 10, width: textW, height: 14)
 
-            let headerH: CGFloat = 44
-            headerOverlay.frame = NSRect(x: 0, y: captionHeight + mediaH - headerH,
-                                         width: bounds.width, height: headerH)
-            headerGradient.frame = headerOverlay.bounds
-            closeButton?.frame = NSRect(x: 8, y: captionHeight + mediaH - 36, width: 28, height: 28)
-            headerTitleLabel?.frame = NSRect(x: 44, y: captionHeight + mediaH - 32,
-                                             width: bounds.width - 88, height: 20)
-            actionButton?.frame = NSRect(x: bounds.width - 36, y: captionHeight + mediaH - 36,
-                                         width: 28, height: 28)
-        case .gridTile:
-            let mediaH = bounds.height - captionHeight
-            mediaContainer.frame = NSRect(x: 0, y: captionHeight, width: bounds.width, height: mediaH)
+        case .masonry:
+            mediaContainer.frame = bounds
             imageLayer.frame = mediaContainer.bounds
             playerView?.frame = mediaContainer.bounds
-            captionContainer.frame = NSRect(x: 0, y: 0, width: bounds.width, height: captionHeight)
-            captionGradient.frame = captionContainer.bounds
-            spinner.frame = NSRect(x: bounds.midX - 8, y: captionHeight + mediaH / 2 - 8, width: 16, height: 16)
-            filenameLabel.alignment = .left
-            filenameLabel.frame = NSRect(x: 10, y: captionHeight - 22, width: bounds.width - 20, height: 16)
-            metaLabel.alignment = .left
-            metaLabel.frame = NSRect(x: 10, y: 6, width: bounds.width - 20, height: captionHeight - 28)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            let gradientH: CGFloat = 60
+            overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradientH)
+            shimmerLayer.frame = mediaContainer.bounds
+            CATransaction.commit()
+            spinner.frame = NSRect(
+                x: bounds.midX - spinnerSize / 2,
+                y: bounds.midY - spinnerSize / 2 + 6,
+                width: spinnerSize, height: spinnerSize
+            )
+            loadingLabel.frame = NSRect(x: 0, y: bounds.midY - 18,
+                                         width: bounds.width, height: 14)
+
+            let textX: CGFloat = 8
+            let textW = bounds.width - textX - 8
+            filenameLabel?.frame = NSRect(x: textX, y: 40, width: textW, height: 14)
+            dimsLabel?.frame     = NSRect(x: textX, y: 24, width: textW, height: 12)
+            sizeLabel?.frame     = NSRect(x: textX, y: 8,  width: textW, height: 12)
         }
     }
 
     func setLoaded(_ media: LoadedMedia) {
         spinner.stopAnimation(nil)
         spinner.isHidden = true
+        loadingLabel.isHidden = true
+        stopShimmer()
 
         switch media {
         case .image(let img, let info):
             imageLayer.contents = img
-            updateCaption(with: info)
+            updateText(with: info)
         case .video(let url, _, let info):
             attachPlayer(url: url)
-            updateCaption(with: info)
+            updateText(with: info)
         }
     }
 
     func setFailed() {
         spinner.stopAnimation(nil)
         spinner.isHidden = true
-        metaLabel.stringValue = "Failed to load"
-        metaLabel.isHidden = false
+        loadingLabel.stringValue = "Failed"
+        loadingLabel.textColor = .systemRed
+        stopShimmer()
+        if style == .masonry {
+            dimsLabel?.stringValue = "Failed to load"
+            dimsLabel?.textColor = .systemRed
+        }
     }
 
     func updateInfo(_ newInfo: MediaInfo) {
         self.info = newInfo
-        updateCaption(with: newInfo)
-    }
-
-    @objc private func closeTapped() {
-        onClose?()
-    }
-
-    @objc private func actionTapped() {
-        onAction?()
+        updateText(with: newInfo)
     }
 
     func teardown() {
@@ -550,52 +1040,23 @@ private final class MediaTileView: NSView {
         p.play()
     }
 
-    private func updateCaption(with info: MediaInfo) {
-        filenameLabel.stringValue = info.filename
+    private func updateText(with info: MediaInfo) {
+        filenameLabel?.stringValue = info.filename
 
-        // Remote items only show the filename per spec. Local items include
-        // dimensions / file size / format / duration when available.
-        guard info.isLocal else {
-            metaLabel.isHidden = true
-            return
-        }
-
-        var parts: [String] = []
         if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
-            parts.append("\(Int(dim.width)) × \(Int(dim.height))")
-        }
-        if let bytes = info.fileSize {
-            parts.append(formatBytes(bytes))
-        }
-        if !info.formatName.isEmpty {
-            parts.append(info.formatName)
-        }
-        if info.isVideo, let dur = info.duration {
-            parts.insert(formatDuration(dur), at: 0)
-        }
-
-        if parts.isEmpty {
-            metaLabel.isHidden = true
+            dimsLabel?.stringValue = "\(Int(dim.width)) × \(Int(dim.height))"
         } else {
-            if style == .gridTile {
-                metaLabel.stringValue = parts.joined(separator: "\n")
-            } else {
-                metaLabel.stringValue = parts.joined(separator: " • ")
-            }
-            metaLabel.isHidden = false
+            dimsLabel?.stringValue = info.isLocal ? "—" : ""
         }
-    }
 
-    private func formatBytes(_ bytes: Int64) -> String {
-        let f = ByteCountFormatter()
-        f.countStyle = .file
-        return f.string(fromByteCount: bytes)
-    }
-
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds.rounded())
-        let m = total / 60
-        let s = total % 60
-        return String(format: "%d:%02d", m, s)
+        if let bytes = info.fileSize {
+            let f = ByteCountFormatter()
+            f.countStyle = .file
+            var parts = [f.string(fromByteCount: bytes)]
+            if !info.formatName.isEmpty { parts.append(info.formatName) }
+            sizeLabel?.stringValue = parts.joined(separator: " • ")
+        } else {
+            sizeLabel?.stringValue = info.formatName
+        }
     }
 }

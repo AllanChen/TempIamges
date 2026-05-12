@@ -3,6 +3,7 @@ import AppKit
 protocol StatusBarControllerDelegate: AnyObject {
     func openPreferences()
     func checkAndRequestPermissions()
+    func clearImageCache()
 }
 
 class StatusBarController: NSObject, NSMenuDelegate {
@@ -60,6 +61,12 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
+        let clearCacheItem = NSMenuItem(title: "Clear Cache", action: #selector(clearCache), keyEquivalent: "")
+        clearCacheItem.target = self
+        menu.addItem(clearCacheItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let aboutItem = NSMenuItem(title: "About ImageHoverPreview", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
@@ -84,6 +91,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func openPermissions() {
         delegate?.checkAndRequestPermissions()
+    }
+
+    @objc private func clearCache() {
+        delegate?.clearImageCache()
     }
 
     @objc private func showAbout() {
