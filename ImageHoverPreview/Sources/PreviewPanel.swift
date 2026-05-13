@@ -94,6 +94,8 @@ class PreviewPanel: NSPanel {
     private weak var singlePinBtn: NSButton?
     private weak var masonryScrollView: NSScrollView?
     private weak var masonryDocView: NSView?
+    /// Strong refs to keep markdown/webpage viewer windows alive while open.
+    private var viewerWindows: [ContentViewerWindow] = []
 
     /// When pinned, hidePanel() is ignored and the close (X) button shows.
     /// New previews via showLoading() reset this to false.
@@ -169,6 +171,16 @@ class PreviewPanel: NSPanel {
         } else if currentMode == .grid {
             relayoutMasonry()
         }
+    }
+
+    /// Push a disambiguation hint (e.g. "~/Desktop") onto the tile at `index`.
+    /// Safe to call before or after the tile's media has loaded.
+    func applyHint(at index: Int, hint: String?) {
+        guard tiles.indices.contains(index), index < currentInfos.count else { return }
+        var info = currentInfos[index]
+        info.disambiguationHint = hint
+        currentInfos[index] = info
+        tiles[index].updateInfo(info)
     }
 
     func showImage(_ image: NSImage, at point: NSPoint) {
@@ -274,6 +286,8 @@ class PreviewPanel: NSPanel {
             guard let tile = tile else { return }
             self?.downloadRemote(url: infoURL, tile: tile)
         }
+        let tileInfo = info
+        tile.onTileTap = { [weak self] in self?.openInViewer(info: tileInfo) }
         container.addSubview(tile)
 
         tiles = [tile]
@@ -364,6 +378,8 @@ class PreviewPanel: NSPanel {
                 guard let tile = tile else { return }
                 self?.downloadRemote(url: url, tile: tile)
             }
+            let capturedInfo = info
+            tile.onTileTap = { [weak self] in self?.openInViewer(info: capturedInfo) }
             docView.addSubview(tile)
             newTiles.append(tile)
         }
@@ -766,6 +782,28 @@ class PreviewPanel: NSPanel {
         case failed
     }
 
+    /// Open a markdown/webpage tile in a separate WKWebView window.
+    private func openInViewer(info: MediaInfo) {
+        let window = ContentViewerWindow()
+        switch info.kind {
+        case .markdown: window.loadMarkdown(info.url)
+        case .webPage:  window.loadWebPage(info.url)
+        default:        return
+        }
+        viewerWindows.append(window)
+        // Drop the strong ref once the window is closed so it can deallocate.
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self, weak window] _ in
+            guard let self = self, let window = window else { return }
+            self.viewerWindows.removeAll { $0 === window }
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
     private func uniqueDestination(in dir: URL, filename: String) -> URL {
         let base = (filename as NSString).deletingPathExtension
         let ext = (filename as NSString).pathExtension
@@ -926,6 +964,11 @@ private final class MediaTileView: NSView {
     var onClose: (() -> Void)?
     var onAction: (() -> Void)?
     var onDownload: (() -> Void)?
+    /// Called when the user clicks anywhere on the tile body (used to open
+    /// markdown/webpage tiles in the viewer window).
+    var onTileTap: (() -> Void)?
+
+    private var openableIconView: NSImageView?
 
     init(info: MediaInfo, style: Style, frame: NSRect) {
         self.info = info
@@ -1079,7 +1122,12 @@ private final class MediaTileView: NSView {
         downloadSpinner.isHidden = true
         addSubview(downloadSpinner)
 
-        if info.isLocal {
+        if info.opensInViewer {
+            // No download / open-from-button affordance for markdown/webpage —
+            // the whole tile is the action target.
+            downloadBtn?.isHidden = true
+            downloadSpinner.isHidden = true
+        } else if info.isLocal {
             setDownloadState(.downloaded, fileURL: info.url)
         } else {
             setDownloadState(.idle)
@@ -1238,6 +1286,10 @@ private final class MediaTileView: NSView {
         case .video(let url, _, let info):
             attachPlayer(url: url)
             updateText(with: info)
+        case .openable(let info):
+            // Markdown / webpage tile — show a glyph centred in the media area.
+            showOpenablePlaceholder(for: info)
+            updateText(with: info)
         }
     }
 
@@ -1266,6 +1318,39 @@ private final class MediaTileView: NSView {
         }
         player = nil
         playerView?.player = nil
+    }
+
+    private func showOpenablePlaceholder(for info: MediaInfo) {
+        // Replace the (empty) imageLayer contents with a centred glyph that
+        // hints at the kind. Use NSImageView so SF Symbol tinting works.
+        let symbolName: String
+        switch info.kind {
+        case .markdown: symbolName = "doc.richtext"
+        case .webPage:  symbolName = "globe"
+        default:        symbolName = "doc"
+        }
+        let icon = openableIconView ?? NSImageView()
+        icon.image = NSImage(systemSymbolName: symbolName,
+                              accessibilityDescription: nil)
+        icon.contentTintColor = NSColor(white: 1, alpha: 0.85)
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        if icon.superview == nil {
+            mediaContainer.addSubview(icon)
+            openableIconView = icon
+        }
+        // Centre the icon, taking up roughly 60% of the shorter dimension.
+        let side = min(bounds.width, bounds.height) * 0.55
+        icon.frame = NSRect(x: (bounds.width  - side) / 2,
+                             y: (bounds.height - side) / 2 + 6,
+                             width: side, height: side)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if info.opensInViewer {
+            onTileTap?()
+            return
+        }
+        super.mouseDown(with: event)
     }
 
     private func attachPlayer(url: URL) {
@@ -1298,14 +1383,26 @@ private final class MediaTileView: NSView {
             dimsLabel?.stringValue = info.isLocal ? "—" : ""
         }
 
+        var sizePieces: [String] = []
         if let bytes = info.fileSize {
             let f = ByteCountFormatter()
             f.countStyle = .file
-            var parts = [f.string(fromByteCount: bytes)]
-            if !info.formatName.isEmpty { parts.append(info.formatName) }
-            sizeLabel?.stringValue = parts.joined(separator: " • ")
+            sizePieces.append(f.string(fromByteCount: bytes))
+        }
+        if !info.formatName.isEmpty { sizePieces.append(info.formatName) }
+        if let hint = info.disambiguationHint, !hint.isEmpty {
+            // Compact masonry tiles can't fit three pieces — replace size info
+            // with just the hint. Single-card has room for everything.
+            if style == .masonry {
+                sizeLabel?.stringValue = "in \(hint)"
+            } else {
+                sizePieces.append("in \(hint)")
+                sizeLabel?.stringValue = sizePieces.joined(separator: " • ")
+            }
         } else {
-            sizeLabel?.stringValue = info.formatName
+            sizeLabel?.stringValue = sizePieces.isEmpty
+                ? info.formatName
+                : sizePieces.joined(separator: " • ")
         }
     }
 }

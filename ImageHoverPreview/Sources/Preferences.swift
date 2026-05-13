@@ -29,16 +29,6 @@ class Preferences {
         set { defaults.set(Int(newValue.rawValue), forKey: "\(suiteName).hotkeyModifiers") }
     }
 
-    var hotkeyRequiresShift: Bool {
-        get { defaults.bool(forKey: "\(suiteName).hotkeyRequiresShift") }
-        set { defaults.set(newValue, forKey: "\(suiteName).hotkeyRequiresShift") }
-    }
-
-    var hotkeyRequiresCommand: Bool {
-        get { defaults.bool(forKey: "\(suiteName).hotkeyRequiresCommand") }
-        set { defaults.set(newValue, forKey: "\(suiteName).hotkeyRequiresCommand") }
-    }
-
     var hotkeyRequiresOption: Bool {
         get { defaults.bool(forKey: "\(suiteName).hotkeyRequiresOption") }
         set { defaults.set(newValue, forKey: "\(suiteName).hotkeyRequiresOption") }
@@ -58,11 +48,9 @@ class Preferences {
             "\(suiteName).maxSize": 400.0,
             "\(suiteName).enabled": true,
             "\(suiteName).launchAtLogin": false,
-            "\(suiteName).hotkeyModifiers": Int(NSEvent.ModifierFlags([.command, .shift]).rawValue),
-            "\(suiteName).hotkeyRequiresShift": true,
-            "\(suiteName).hotkeyRequiresCommand": true,
+            "\(suiteName).hotkeyModifiers": Int(NSEvent.ModifierFlags([.control]).rawValue),
             "\(suiteName).hotkeyRequiresOption": false,
-            "\(suiteName).hotkeyRequiresControl": false
+            "\(suiteName).hotkeyRequiresControl": true
         ]
         defaults.register(defaults: defaultValues)
     }
@@ -71,10 +59,8 @@ class Preferences {
         maxPreviewSize = 400
         enabled = true
         launchAtLogin = false
-        hotkeyModifiers = [.command, .shift]
-        hotkeyRequiresShift = true
-        hotkeyRequiresCommand = true
+        hotkeyModifiers = [.control]
         hotkeyRequiresOption = false
-        hotkeyRequiresControl = false
+        hotkeyRequiresControl = true
     }
 }

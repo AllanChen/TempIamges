@@ -5,8 +5,6 @@ class PreferencesWindow: NSWindow {
     private var maxSizeLabel: NSTextField!
     private var enabledCheckbox: NSButton!
     private var launchAtLoginCheckbox: NSButton!
-    private var cmdCheckbox: NSButton!
-    private var shiftCheckbox: NSButton!
     private var optionCheckbox: NSButton!
     private var controlCheckbox: NSButton!
     private var currentHotkeyLabel: NSTextField!
@@ -83,26 +81,18 @@ class PreferencesWindow: NSWindow {
         hotkeyDesc.frame = NSRect(x: 20, y: 95, width: 400, height: 20)
         containerView.addSubview(hotkeyDesc)
 
-        cmdCheckbox = NSButton(checkboxWithTitle: "Command (⌘)", target: self, action: #selector(hotkeyChanged))
-        cmdCheckbox.frame = NSRect(x: 20, y: 65, width: 140, height: 20)
-        containerView.addSubview(cmdCheckbox)
-
-        shiftCheckbox = NSButton(checkboxWithTitle: "Shift (⇧)", target: self, action: #selector(hotkeyChanged))
-        shiftCheckbox.frame = NSRect(x: 170, y: 65, width: 140, height: 20)
-        containerView.addSubview(shiftCheckbox)
+        controlCheckbox = NSButton(checkboxWithTitle: "Control (⌃)", target: self, action: #selector(hotkeyChanged))
+        controlCheckbox.frame = NSRect(x: 20, y: 65, width: 140, height: 20)
+        containerView.addSubview(controlCheckbox)
 
         optionCheckbox = NSButton(checkboxWithTitle: "Option (⌥)", target: self, action: #selector(hotkeyChanged))
-        optionCheckbox.frame = NSRect(x: 320, y: 65, width: 140, height: 20)
+        optionCheckbox.frame = NSRect(x: 170, y: 65, width: 140, height: 20)
         containerView.addSubview(optionCheckbox)
-
-        controlCheckbox = NSButton(checkboxWithTitle: "Control (⌃)", target: self, action: #selector(hotkeyChanged))
-        controlCheckbox.frame = NSRect(x: 20, y: 42, width: 140, height: 20)
-        containerView.addSubview(controlCheckbox)
 
         currentHotkeyLabel = NSTextField(labelWithString: "")
         currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
         currentHotkeyLabel.textColor = .secondaryLabelColor
-        currentHotkeyLabel.frame = NSRect(x: 170, y: 42, width: 270, height: 20)
+        currentHotkeyLabel.frame = NSRect(x: 20, y: 42, width: 420, height: 20)
         containerView.addSubview(currentHotkeyLabel)
 
         // Reset button
@@ -118,8 +108,6 @@ class PreferencesWindow: NSWindow {
         maxSizeLabel.stringValue = "\(Int(prefs.maxPreviewSize)) px"
         enabledCheckbox.state = prefs.enabled ? .on : .off
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
-        cmdCheckbox.state = prefs.hotkeyRequiresCommand ? .on : .off
-        shiftCheckbox.state = prefs.hotkeyRequiresShift ? .on : .off
         optionCheckbox.state = prefs.hotkeyRequiresOption ? .on : .off
         controlCheckbox.state = prefs.hotkeyRequiresControl ? .on : .off
         updateCurrentHotkeyLabel()
@@ -128,9 +116,7 @@ class PreferencesWindow: NSWindow {
     private func updateCurrentHotkeyLabel() {
         var parts: [String] = []
         if controlCheckbox.state == .on { parts.append("⌃") }
-        if optionCheckbox.state == .on { parts.append("⌥") }
-        if shiftCheckbox.state == .on { parts.append("⇧") }
-        if cmdCheckbox.state == .on { parts.append("⌘") }
+        if optionCheckbox.state == .on  { parts.append("⌥") }
         currentHotkeyLabel.stringValue = parts.isEmpty
             ? "(no hotkey — preview disabled)"
             : "Current: " + parts.joined(separator: " + ")
@@ -154,8 +140,6 @@ class PreferencesWindow: NSWindow {
     }
 
     @objc private func hotkeyChanged(_ sender: NSButton) {
-        Preferences.shared.hotkeyRequiresCommand = cmdCheckbox.state == .on
-        Preferences.shared.hotkeyRequiresShift = shiftCheckbox.state == .on
         Preferences.shared.hotkeyRequiresOption = optionCheckbox.state == .on
         Preferences.shared.hotkeyRequiresControl = controlCheckbox.state == .on
         updateCurrentHotkeyLabel()

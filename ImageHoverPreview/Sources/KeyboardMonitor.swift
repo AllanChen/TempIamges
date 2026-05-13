@@ -29,20 +29,14 @@ class KeyboardMonitor: NSObject {
 
     var previewModeActive: Bool {
         let prefs = Preferences.shared
-        let needsCmd = prefs.hotkeyRequiresCommand
-        let needsShift = prefs.hotkeyRequiresShift
         let needsOpt = prefs.hotkeyRequiresOption
         let needsCtrl = prefs.hotkeyRequiresControl
-        // No modifier configured — never activate, otherwise the app would
-        // fire on every keystroke.
-        guard needsCmd || needsShift || needsOpt || needsCtrl else { return false }
-        // Subset match: every required modifier must be held. Pressing extra
-        // modifiers (e.g. Shift while a Control-only hotkey is engaged) does
-        // not deactivate the preview, so other keystrokes don't interfere.
-        return (!needsCmd   || cmdHeld)
-            && (!needsShift || shiftHeld)
-            && (!needsOpt   || optionHeld)
-            && (!needsCtrl  || controlHeld)
+        // No modifier configured — never activate.
+        guard needsOpt || needsCtrl else { return false }
+        // Subset match: every required modifier must be held. Cmd and Shift
+        // are never required so holding them never blocks activation.
+        return (!needsOpt  || optionHeld)
+            && (!needsCtrl || controlHeld)
     }
 
     func startMonitoring() -> Bool {

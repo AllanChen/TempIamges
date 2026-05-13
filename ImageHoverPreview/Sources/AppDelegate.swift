@@ -10,6 +10,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var errorTooltip: ErrorTooltip?
     private var onboardingWindow: OnboardingWindow?
     private var preferencesWindow: PreferencesWindow?
+    private var fileNameResolver: FileNameResolver?
 
     private var currentPath: String?
     private var isLoadingImage: Bool = false
@@ -19,12 +20,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         setupComponents()
         setupNotifications()
         checkPermissions()
-
-        #if DEBUG
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.runDebugPreview()
-        }
-        #endif
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -41,6 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         imageLoader = ImageLoader()
         previewPanel = PreviewPanel()
         errorTooltip = ErrorTooltip()
+        fileNameResolver = FileNameResolver()
 
         Logger.info("AppDelegate: All components initialized")
     }
@@ -135,17 +131,124 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         // for a hover-style preview than snapping to the selection bounds.
         let anchor = mousePos
 
-        let paths = (pathDetector?.detectAll(selected) ?? []).filter { $0.url != nil }
-        guard !paths.isEmpty else {
+        let allHits = pathDetector?.detectAll(selected) ?? []
+        let resolved = allHits.filter { $0.url != nil }
+        let unresolvedTokens = allHits.compactMap { $0.unresolvedToken }
+
+        if !resolved.isEmpty {
+            // Fast path: concrete URLs / absolute paths — preview immediately,
+            // no Spotlight roundtrip.
+            Logger.info("AppDelegate: Loading \(resolved.count) media item(s) from selection")
+            currentPath = resolved.compactMap { $0.url?.absoluteString }.joined(separator: "|")
+            loadAndShowMedia(paths: resolved, at: anchor)
+            return
+        }
+
+        if unresolvedTokens.isEmpty {
             Logger.info("AppDelegate: No media path in selected text")
             currentPath = selected
             showErrorTooltip(message: "No image or video found in selection", at: anchor)
             return
         }
 
-        Logger.info("AppDelegate: Loading \(paths.count) media item(s) from selection")
-        currentPath = paths.compactMap { $0.url?.absoluteString }.joined(separator: "|")
-        loadAndShowMedia(paths: paths, at: anchor)
+        Logger.info("AppDelegate: Resolving \(unresolvedTokens.count) unresolved token(s) via Spotlight")
+        currentPath = unresolvedTokens.joined(separator: "|")
+        resolveAndShow(tokens: unresolvedTokens, at: anchor)
+    }
+
+    /// Show a placeholder preview tile, run Spotlight, then re-show the panel
+    /// with the resolved tiles. If nothing matches, hide the panel and show
+    /// the standard error tooltip.
+    private func resolveAndShow(tokens: [String], at anchor: CGPoint) {
+        // 1. Immediate placeholder — masonry-mode panel with two skeletons so
+        //    the user sees activity within the first frame.
+        let placeholder = MediaInfo(
+            url: URL(fileURLWithPath: "/"),
+            isLocal: true, kind: .image,
+            dimensions: CGSize(width: 200, height: 200),
+            fileSize: nil, duration: nil
+        )
+        previewPanel?.showLoading(infos: [placeholder, placeholder], at: anchor)
+
+        let uniqueTokens = NSOrderedSet(array: tokens).array as? [String] ?? tokens
+
+        let group = DispatchGroup()
+        var resultsByToken: [String: [FileNameResolver.Match]] = [:]
+        for token in uniqueTokens {
+            group.enter()
+            fileNameResolver?.resolve(token: token) { matches in
+                resultsByToken[token] = matches
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            // Round-robin: pick the top match from each token first, then the
+            // 2nd-best from each, etc. Ensures every distinct filename in the
+            // selection gets at least one tile before we double-up on any.
+            // Cap is generous so a single filename with many matches surfaces
+            // all of them (user can scroll the masonry).
+            let maxTiles = 24
+            var limited: [FileNameResolver.Match] = []
+            var cursors = Array(repeating: 0, count: uniqueTokens.count)
+            outer: while limited.count < maxTiles {
+                var advanced = false
+                for (i, token) in uniqueTokens.enumerated() {
+                    let list = resultsByToken[token] ?? []
+                    if cursors[i] < list.count {
+                        limited.append(list[cursors[i]])
+                        cursors[i] += 1
+                        advanced = true
+                        if limited.count >= maxTiles { break outer }
+                    }
+                }
+                if !advanced { break }
+            }
+            guard !limited.isEmpty else {
+                self.previewPanel?.hidePanel()
+                let label = uniqueTokens.first ?? ""
+                self.showErrorTooltip(
+                    message: "No file found matching '\(label)'",
+                    at: anchor
+                )
+                return
+            }
+
+            let paths: [DetectedPath] = limited.compactMap { match in
+                let ext = match.url.pathExtension.lowercased()
+                if ["mp4", "mov", "m4v", "webm"].contains(ext) { return .localVideo(match.url) }
+                if ["md", "markdown"].contains(ext)            { return .localMarkdown(match.url) }
+                return .localImage(match.url)
+            }
+            self.loadAndShowMedia(paths: paths, at: anchor)
+            // Apply per-tile hints (parent dir) once the panel has rebuilt.
+            for (i, match) in limited.enumerated() {
+                let hint = Self.disambiguationHint(for: match.url)
+                self.previewPanel?.applyHint(at: i, hint: hint)
+            }
+        }
+    }
+
+    /// Renders a short hint for the tile metadata, e.g.
+    /// `/Users/lily/Desktop/work/HoopCut/img.png` → `~/Desktop/work/HoopCut`.
+    /// Truncates to the last 2 components if the tildified path is long.
+    private static func disambiguationHint(for url: URL) -> String {
+        let parent = url.deletingLastPathComponent().path
+        let home = NSHomeDirectory()
+        var tildified = parent
+        if parent == home {
+            tildified = "~"
+        } else if parent.hasPrefix(home + "/") {
+            tildified = "~" + parent.dropFirst(home.count)
+        }
+        if tildified.count > 24 {
+            let comps = (tildified as NSString).pathComponents
+            // Last 2 components, prefixed with "…/" so it's clearly truncated.
+            if comps.count >= 3 {
+                return "…/" + comps.suffix(2).joined(separator: "/")
+            }
+        }
+        return tildified
     }
 
     private func currentCursorAXPoint() -> CGPoint {
@@ -162,6 +265,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         Logger.info("AppDelegate: Preview mode deactivated")
         previewPanel?.hidePanel()
         errorTooltip?.hide()
+        fileNameResolver?.cancelAll()
         currentPath = nil
         isLoadingImage = false
     }

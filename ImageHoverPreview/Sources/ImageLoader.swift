@@ -8,20 +8,32 @@ struct MediaInfo {
     var dimensions: CGSize?
     var fileSize: Int64?       // bytes, only set for local
     var duration: TimeInterval? // seconds, only set for video
+    /// Short human-readable hint about WHERE the file lives — used to
+    /// disambiguate when multiple Spotlight matches share a filename.
+    /// e.g. "~/Desktop/work". Rendered in the tile's metadata overlay.
+    var disambiguationHint: String? = nil
 
-    enum Kind { case image, video }
+    enum Kind { case image, video, markdown, webPage }
 
     var filename: String { url.lastPathComponent }
     var formatName: String { (filename as NSString).pathExtension.uppercased() }
-    var isVideo: Bool { kind == .video }
+    var isVideo: Bool    { kind == .video }
+    var isMarkdown: Bool { kind == .markdown }
+    var isWebPage: Bool  { kind == .webPage }
+    /// True for kinds that have no inline preview — clicking the tile opens
+    /// them in a separate viewer window instead.
+    var opensInViewer: Bool { kind == .markdown || kind == .webPage }
 
     static func from(_ path: DetectedPath) -> MediaInfo? {
         switch path {
-        case .localImage(let url):  return MediaInfo(url: url, isLocal: true,  kind: .image)
-        case .remoteImage(let url): return MediaInfo(url: url, isLocal: false, kind: .image)
-        case .localVideo(let url):  return MediaInfo(url: url, isLocal: true,  kind: .video)
-        case .remoteVideo(let url): return MediaInfo(url: url, isLocal: false, kind: .video)
-        case .invalid: return nil
+        case .localImage(let url):     return MediaInfo(url: url, isLocal: true,  kind: .image)
+        case .remoteImage(let url):    return MediaInfo(url: url, isLocal: false, kind: .image)
+        case .localVideo(let url):     return MediaInfo(url: url, isLocal: true,  kind: .video)
+        case .remoteVideo(let url):    return MediaInfo(url: url, isLocal: false, kind: .video)
+        case .localMarkdown(let url):  return MediaInfo(url: url, isLocal: true,  kind: .markdown)
+        case .remoteMarkdown(let url): return MediaInfo(url: url, isLocal: false, kind: .markdown)
+        case .webPage(let url):        return MediaInfo(url: url, isLocal: false, kind: .webPage)
+        case .unresolvedFilename, .unresolvedRelativePath, .invalid: return nil
         }
     }
 }
@@ -29,11 +41,15 @@ struct MediaInfo {
 enum LoadedMedia {
     case image(NSImage, MediaInfo)
     case video(URL, naturalSize: CGSize, MediaInfo)
+    /// Markdown/webpage tiles don't load inline content; the placeholder is
+    /// rendered in the tile, and clicking opens the viewer window.
+    case openable(MediaInfo)
 
     var info: MediaInfo {
         switch self {
         case .image(_, let i): return i
         case .video(_, _, let i): return i
+        case .openable(let i): return i
         }
     }
 
@@ -41,6 +57,7 @@ enum LoadedMedia {
         switch self {
         case .image(let img, _): return img.size
         case .video(_, let size, _): return size
+        case .openable: return CGSize(width: 320, height: 200)
         }
     }
 }
@@ -104,7 +121,16 @@ class ImageLoader {
                         onProgress(i, .video(url, naturalSize: s, i2)); group.leave()
                     }
                 }
-            case .invalid:
+            case .localMarkdown, .remoteMarkdown, .webPage:
+                // No async work — the tile shows a placeholder icon and the
+                // content is fetched only when the user clicks to open it.
+                DispatchQueue.main.async {
+                    onProgress(i, .openable(info)); group.leave()
+                }
+            case .unresolvedFilename, .unresolvedRelativePath, .invalid:
+                // These should be filtered out by AppDelegate before reaching
+                // the loader (unresolved cases go through FileNameResolver
+                // first, and .invalid never has a usable URL).
                 group.leave()
             }
         }
