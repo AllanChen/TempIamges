@@ -6,6 +6,33 @@ class Preferences {
     private let defaults = UserDefaults.standard
     private let suiteName = "com.imagehoverpreview"
 
+    enum Theme: String, CaseIterable {
+        case system, light, dark
+        /// nil = follow the OS. Otherwise pin to aqua / darkAqua.
+        var appearance: NSAppearance? {
+            switch self {
+            case .system: return nil
+            case .light:  return NSAppearance(named: .aqua)
+            case .dark:   return NSAppearance(named: .darkAqua)
+            }
+        }
+        var displayName: String {
+            switch self {
+            case .system: return "System"
+            case .light:  return "Light"
+            case .dark:   return "Dark"
+            }
+        }
+    }
+
+    var theme: Theme {
+        get {
+            let raw = defaults.string(forKey: "\(suiteName).theme") ?? ""
+            return Theme(rawValue: raw) ?? .system
+        }
+        set { defaults.set(newValue.rawValue, forKey: "\(suiteName).theme") }
+    }
+
     var maxPreviewSize: CGFloat {
         get { CGFloat(defaults.double(forKey: "\(suiteName).maxSize")) }
         set { defaults.set(Double(newValue), forKey: "\(suiteName).maxSize") }

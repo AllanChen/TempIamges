@@ -13,18 +13,25 @@ struct MediaInfo {
     /// e.g. "~/Desktop/work". Rendered in the tile's metadata overlay.
     var disambiguationHint: String? = nil
 
-    enum Kind { case image, video, markdown, text, webPage }
+    enum Kind { case image, video, markdown, text, pdf, webPage, other }
 
     var filename: String { url.lastPathComponent }
     var formatName: String { (filename as NSString).pathExtension.uppercased() }
     var isVideo: Bool    { kind == .video }
     var isMarkdown: Bool { kind == .markdown }
     var isText: Bool     { kind == .text }
+    var isPDF: Bool      { kind == .pdf }
     var isWebPage: Bool  { kind == .webPage }
+    var isOther: Bool    { kind == .other }
     /// True for kinds that have no inline preview — clicking the tile opens
     /// them in a separate viewer window instead.
     var opensInViewer: Bool {
-        kind == .markdown || kind == .text || kind == .webPage
+        kind == .markdown || kind == .text || kind == .webPage || kind == .pdf
+    }
+    /// True for kinds whose tile renders a static icon as the final content
+    /// (no thumbnail / no async load): openable kinds + .other.
+    var hasIconContent: Bool {
+        opensInViewer || kind == .other
     }
 
     static func from(_ path: DetectedPath) -> MediaInfo? {
@@ -37,7 +44,11 @@ struct MediaInfo {
         case .remoteMarkdown(let url): return MediaInfo(url: url, isLocal: false, kind: .markdown)
         case .localText(let url):      return MediaInfo(url: url, isLocal: true,  kind: .text)
         case .remoteText(let url):     return MediaInfo(url: url, isLocal: false, kind: .text)
+        case .localPDF(let url):       return MediaInfo(url: url, isLocal: true,  kind: .pdf)
+        case .remotePDF(let url):      return MediaInfo(url: url, isLocal: false, kind: .pdf)
         case .webPage(let url):        return MediaInfo(url: url, isLocal: false, kind: .webPage)
+        case .localOther(let url):     return MediaInfo(url: url, isLocal: true,  kind: .other)
+        case .remoteOther(let url):    return MediaInfo(url: url, isLocal: false, kind: .other)
         case .unresolvedFilename, .unresolvedRelativePath, .invalid: return nil
         }
     }
@@ -128,9 +139,12 @@ class ImageLoader {
                 }
             case .localMarkdown, .remoteMarkdown,
                  .localText, .remoteText,
+                 .localPDF, .remotePDF,
+                 .localOther, .remoteOther,
                  .webPage:
                 // No async work — the tile shows a placeholder icon and the
-                // content is fetched only when the user clicks to open it.
+                // content is fetched only when the user clicks to open it
+                // (or, for .other, when they reveal it in Finder).
                 DispatchQueue.main.async {
                     onProgress(i, .openable(info)); group.leave()
                 }

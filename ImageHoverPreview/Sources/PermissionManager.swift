@@ -38,4 +38,10 @@ class PermissionManager: NSObject {
             NSWorkspace.shared.open(url)
         }
     }
+
+    func openFullDiskAccessSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+            NSWorkspace.shared.open(url)
+        }
+    }
 }

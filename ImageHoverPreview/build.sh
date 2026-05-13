@@ -1,7 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "Building ImageHoverPreview..."
+# Optional first arg picks the build configuration. Defaults to Release;
+# pass "Debug" to enable #if DEBUG paths (debug input window, etc).
+CONFIG="${1:-Release}"
+
+echo "Building ImageHoverPreview ($CONFIG)..."
 
 cd "$(dirname "$0")"
 
@@ -12,11 +16,11 @@ fi
 xcodebuild \
     -project ImageHoverPreview.xcodeproj \
     -scheme ImageHoverPreview \
-    -configuration Release \
+    -configuration "$CONFIG" \
     -derivedDataPath ./DerivedData \
     build
 
-BUILT_APP=$(find ./DerivedData -name "ImageHoverPreview.app" -type d | head -n 1)
+BUILT_APP=$(find "./DerivedData/Build/Products/$CONFIG" -name "ImageHoverPreview.app" -type d | head -n 1)
 
 if [ -z "$BUILT_APP" ]; then
     echo "Error: Could not find built ImageHoverPreview.app"

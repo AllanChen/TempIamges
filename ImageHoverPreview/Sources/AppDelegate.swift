@@ -12,6 +12,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var preferencesWindow: PreferencesWindow?
     private var historyWindow: HistoryWindow?
     private var fileNameResolver: FileNameResolver?
+    /// Strong refs to viewer windows opened from a single-hit shortcut so
+    /// they outlive the activation that created them.
+    private var viewerWindows: [ContentViewerWindow] = []
     #if DEBUG
     private var debugInputWindow: DebugInputWindow?
     #endif
@@ -27,6 +30,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
+        applyTheme()
         setupComponents()
         setupNotifications()
         checkPermissions()
@@ -183,10 +187,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let unresolvedTokens = allHits.compactMap { $0.unresolvedToken }
         Logger.info("AppDelegate: detected \(resolved.count) resolved + \(unresolvedTokens.count) unresolved")
 
-        if !allHits.isEmpty {
-            HistoryManager.shared.record(selectedText: selected, detectedPaths: allHits)
-        }
-
         if resolved.isEmpty && unresolvedTokens.isEmpty {
             Logger.info("AppDelegate: No media path in selected text")
             currentPath = selected
@@ -197,6 +197,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         if unresolvedTokens.isEmpty {
             // Fast path: only concrete URLs/paths — preview immediately.
             currentPath = resolved.compactMap { $0.url?.absoluteString }.joined(separator: "|")
+            HistoryManager.shared.record(selectedText: selected, detectedPaths: resolved)
+            if resolved.count == 1 {
+                // Single hit — skip the preview panel and dispatch straight
+                // to whatever the click action would have been.
+                previewPanel?.hidePanel()
+                directOpen(resolved[0])
+                return
+            }
             loadAndShowMedia(paths: resolved, at: anchor)
             return
         }
@@ -204,13 +212,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         // Mixed (or unresolved-only): show placeholder, Spotlight-resolve
         // unresolved tokens, then preview the combined list.
         currentPath = (resolved.compactMap { $0.url?.absoluteString } + unresolvedTokens).joined(separator: "|")
-        resolveAndShow(resolved: resolved, tokens: unresolvedTokens, at: anchor)
+        resolveAndShow(selectedText: selected, resolved: resolved, tokens: unresolvedTokens, at: anchor)
     }
 
     /// Show a placeholder preview tile, run Spotlight for the unresolved
     /// tokens, then preview the union of the already-resolved paths plus the
     /// Spotlight matches.
-    private func resolveAndShow(resolved: [DetectedPath],
+    private func resolveAndShow(selectedText: String,
+                                 resolved: [DetectedPath],
                                  tokens: [String],
                                  at anchor: CGPoint) {
         // Immediate placeholder — masonry skeletons so the user sees activity.
@@ -273,6 +282,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 return
             }
 
+            HistoryManager.shared.record(selectedText: selectedText, detectedPaths: combined)
+            if combined.count == 1 {
+                // Same single-hit shortcut as the fast path — drop the
+                // placeholder masonry skeletons and open directly.
+                self.previewPanel?.hidePanel()
+                self.directOpen(combined[0])
+                return
+            }
             self.loadAndShowMedia(paths: combined, at: anchor)
             // Apply per-tile hints for Spotlight matches — they sit AFTER the
             // pre-resolved ones in the combined list.
@@ -359,6 +376,52 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         )
     }
 
+    /// One-hit shortcut: when path detection settles on exactly one file,
+    /// bypass the preview panel and perform the same action that clicking
+    /// the tile would have triggered.
+    private func directOpen(_ path: DetectedPath) {
+        guard let info = MediaInfo.from(path) else { return }
+        Logger.info("AppDelegate: single-hit shortcut → opening \(info.url.absoluteString)")
+        switch info.kind {
+        case .image, .video:
+            // Local → default app (Preview / QuickTime). Remote → browser.
+            NSWorkspace.shared.open(info.url)
+        case .markdown, .text, .pdf, .webPage:
+            openInViewerWindow(info: info)
+        case .other:
+            if info.isLocal {
+                NSWorkspace.shared.activateFileViewerSelecting([info.url])
+            } else {
+                NSWorkspace.shared.open(info.url)
+            }
+        }
+    }
+
+    /// Spawn a ContentViewerWindow and own it until the user closes it.
+    /// Mirrors PreviewPanel.openInViewer but lives on AppDelegate so it can
+    /// be invoked without the preview panel ever appearing.
+    private func openInViewerWindow(info: MediaInfo) {
+        let window = ContentViewerWindow()
+        switch info.kind {
+        case .markdown: window.loadMarkdown(info.url)
+        case .text:     window.loadText(info.url)
+        case .pdf:      window.loadPDF(info.url)
+        case .webPage:  window.loadWebPage(info.url)
+        default:        return
+        }
+        viewerWindows.append(window)
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self, weak window] _ in
+            guard let self = self, let window = window else { return }
+            self.viewerWindows.removeAll { $0 === window }
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
     private func showErrorTooltip(message: String, at position: CGPoint) {
         previewPanel?.hidePanel()
         errorTooltip?.show(message: message, at: position)
@@ -368,6 +431,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         if !Preferences.shared.enabled {
             previewModeDeactivated()
         }
+        applyTheme()
+    }
+
+    /// Pin the app to the user's chosen appearance (or release it back to
+    /// the system default). NSApp.appearance propagates to every window,
+    /// which is what the preview panel and history view read when picking
+    /// dynamic / semantic colours.
+    private func applyTheme() {
+        NSApp.appearance = Preferences.shared.theme.appearance
     }
 
     func openPreferences() {

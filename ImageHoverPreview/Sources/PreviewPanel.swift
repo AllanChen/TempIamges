@@ -36,21 +36,40 @@ class PreviewPanel: NSPanel {
     /// Max visible cards-area height before the masonry view starts scrolling.
     private let masonryMaxScrollHeight: CGFloat = 480
 
-    // Colors
-    fileprivate static let panelBackground   = NSColor.white
-    fileprivate static let middleBackground  = NSColor(white: 0.96, alpha: 1)
+    // Colors. The semantic ones (windowBackgroundColor, labelColor, etc.)
+    // are dynamic NSColors that resolve against NSApp.effectiveAppearance,
+    // so flipping the Theme menu updates the panel on next rebuild.
+    fileprivate static let panelBackground   = NSColor.windowBackgroundColor
+    fileprivate static let middleBackground  = NSColor.underPageBackgroundColor
+    /// Always-dark image canvas — stays dark in light mode too because the
+    /// image needs a neutral dark frame to read against.
     fileprivate static let darkInset         = NSColor(white: 0.07, alpha: 1)
     fileprivate static let bottomBar         = NSColor(white: 0.32, alpha: 1)
-    fileprivate static let separator         = NSColor(white: 0.88, alpha: 1)
+    fileprivate static let separator         = NSColor.separatorColor
     fileprivate static let pillBackground    = NSColor(white: 1, alpha: 0.10)
     fileprivate static let pillBackgroundLight = NSColor(white: 1, alpha: 0.16)
-    fileprivate static let textDark          = NSColor(white: 0.15, alpha: 1)
-    fileprivate static let textSecondary     = NSColor(white: 0.45, alpha: 1)
+    fileprivate static let textDark          = NSColor.labelColor
+    fileprivate static let textSecondary     = NSColor.secondaryLabelColor
     fileprivate static let textOnDark        = NSColor.white
     fileprivate static let textOnDarkSecondary = NSColor(white: 1, alpha: 0.70)
-    fileprivate static let thumbPlaceholder  = NSColor(white: 0.85, alpha: 1)
+    fileprivate static let thumbPlaceholder  = NSColor.tertiaryLabelColor
     fileprivate static let filmstripBorder   = NSColor.systemBlue
     fileprivate static let accentBlue        = NSColor.systemBlue
+
+    /// Resolve a (possibly dynamic) NSColor to a CGColor against the app's
+    /// current effective appearance. We need this because `layer.background`
+    /// stores a snapshot CGColor — without forcing the right appearance on
+    /// resolution, a semantic NSColor (`.windowBackgroundColor` etc.) reads
+    /// `NSAppearance.currentDrawing` at the call site, which is usually the
+    /// default Aqua appearance during view construction, completely ignoring
+    /// our `NSApp.appearance` theme override.
+    fileprivate static func resolvedCG(_ color: NSColor) -> CGColor {
+        var resolved: CGColor!
+        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
+            resolved = color.cgColor
+        }
+        return resolved
+    }
 
     /// 📌 emoji rendered into a fixed-size NSImage — looks identical across
     /// macOS versions because Apple Color Emoji ships with every Mac.
@@ -335,7 +354,7 @@ class PreviewPanel: NSPanel {
         container.wantsLayer = true
         container.layer?.cornerRadius = panelCornerRadius
         container.layer?.masksToBounds = true
-        container.layer?.backgroundColor = Self.panelBackground.cgColor
+        container.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
 
         let header = makeHeaderBar(
             width: contentWidth,
@@ -459,11 +478,11 @@ class PreviewPanel: NSPanel {
                                captureTitleForSingle: Bool) -> NSView {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
         bar.wantsLayer = true
-        bar.layer?.backgroundColor = Self.panelBackground.cgColor
+        bar.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
 
         let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
         sep.wantsLayer = true
-        sep.layer?.backgroundColor = Self.separator.cgColor
+        sep.layer?.backgroundColor = Self.resolvedCG(Self.separator)
         sep.autoresizingMask = [.width]
         bar.addSubview(sep)
 
@@ -607,7 +626,7 @@ class PreviewPanel: NSPanel {
             thumb.wantsLayer = true
             thumb.layer?.cornerRadius = 6
             thumb.layer?.masksToBounds = true
-            thumb.layer?.backgroundColor = Self.thumbPlaceholder.cgColor
+            thumb.layer?.backgroundColor = Self.resolvedCG(Self.thumbPlaceholder)
             if i == selected {
                 thumb.layer?.borderColor = Self.filmstripBorder.cgColor
                 thumb.layer?.borderWidth = 2
@@ -792,6 +811,7 @@ class PreviewPanel: NSPanel {
         switch info.kind {
         case .markdown: window.loadMarkdown(info.url)
         case .text:     window.loadText(info.url)
+        case .pdf:      window.loadPDF(info.url)
         case .webPage:  window.loadWebPage(info.url)
         default:        return
         }
@@ -931,13 +951,13 @@ class PreviewPanel: NSPanel {
 
 /// Flipped document view so masonry tiles can be laid out with visualY
 /// (increasing downward) — matches how `relayoutMasonry` computes positions.
-private final class FlippedDocView: NSView {
+final class FlippedDocView: NSView {
     override var isFlipped: Bool { true }
 }
 
 // MARK: - Tile view
 
-private final class MediaTileView: NSView {
+final class MediaTileView: NSView {
     enum Style { case singleCard, masonry }
 
     var info: MediaInfo
@@ -973,6 +993,13 @@ private final class MediaTileView: NSView {
     var onTileTap: (() -> Void)?
 
     private var openableIconView: NSImageView?
+    /// Type-specific SF Symbol shown behind the spinner while the tile is
+    /// still loading. Hidden once `setLoaded` runs.
+    private var placeholderIconView: NSImageView?
+    /// "Reveal in Finder" overlay shown on local markdown / text tiles —
+    /// gives the user a one-click jump to the file's folder without
+    /// triggering the tile's openable-viewer click.
+    private var locateBtn: NSButton?
 
     init(info: MediaInfo, style: Style, frame: NSRect) {
         self.info = info
@@ -1006,7 +1033,7 @@ private final class MediaTileView: NSView {
 
             let nameLbl = NSTextField(labelWithString: info.filename)
             nameLbl.textColor = .white
-            nameLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+            nameLbl.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
             addSubview(nameLbl)
@@ -1014,17 +1041,17 @@ private final class MediaTileView: NSView {
 
             let dimsLbl = NSTextField(labelWithString: "")
             dimsLbl.textColor = NSColor(white: 1, alpha: 0.85)
-            dimsLbl.font = NSFont.systemFont(ofSize: 11)
+            dimsLbl.font = NSFont.systemFont(ofSize: 12)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 1
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
 
+            // Retained for API compatibility; the meta line collapses
+            // dimensions + size + format into `dimsLabel`, so this stays
+            // hidden and off-frame.
             let sizeLbl = NSTextField(labelWithString: "")
-            sizeLbl.textColor = NSColor(white: 1, alpha: 0.85)
-            sizeLbl.font = NSFont.systemFont(ofSize: 11)
-            sizeLbl.lineBreakMode = .byTruncatingTail
-            sizeLbl.maximumNumberOfLines = 1
+            sizeLbl.isHidden = true
             addSubview(sizeLbl)
             sizeLabel = sizeLbl
 
@@ -1059,7 +1086,7 @@ private final class MediaTileView: NSView {
             // Must live above the image layer (same container) and below the text NSTextFields.
             overlayGradient.colors = [
                 NSColor(white: 0, alpha: 0.88).cgColor,
-                NSColor(white: 0, alpha: 0.55).cgColor,
+                NSColor(white: 0, alpha: 0.75).cgColor,
                 NSColor(white: 0, alpha: 0.0).cgColor
             ]
             overlayGradient.locations = [0.0, 0.55, 1.0]
@@ -1069,7 +1096,7 @@ private final class MediaTileView: NSView {
 
             let nameLbl = NSTextField(labelWithString: info.filename)
             nameLbl.textColor = .white
-            nameLbl.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+            nameLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
             addSubview(nameLbl)
@@ -1077,17 +1104,15 @@ private final class MediaTileView: NSView {
 
             let dimsLbl = NSTextField(labelWithString: "")
             dimsLbl.textColor = NSColor(white: 1, alpha: 0.95)
-            dimsLbl.font = NSFont.systemFont(ofSize: 10)
+            dimsLbl.font = NSFont.systemFont(ofSize: 11)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 1
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
 
+            // Retained for API compatibility; meta info collapses into dimsLabel.
             let sizeLbl = NSTextField(labelWithString: "")
-            sizeLbl.textColor = NSColor(white: 1, alpha: 0.95)
-            sizeLbl.font = NSFont.systemFont(ofSize: 10)
-            sizeLbl.lineBreakMode = .byTruncatingTail
-            sizeLbl.maximumNumberOfLines = 1
+            sizeLbl.isHidden = true
             addSubview(sizeLbl)
             sizeLabel = sizeLbl
         }
@@ -1126,9 +1151,10 @@ private final class MediaTileView: NSView {
         downloadSpinner.isHidden = true
         addSubview(downloadSpinner)
 
-        if info.opensInViewer {
-            // No download / open-from-button affordance for markdown/webpage —
-            // the whole tile is the action target.
+        if info.hasIconContent {
+            // Tile body is the action target — no download/open button.
+            // Covers markdown/text/webpage (open in viewer) and .other
+            // (reveal in Finder).
             downloadBtn?.isHidden = true
             downloadSpinner.isHidden = true
         } else if info.isLocal {
@@ -1137,7 +1163,51 @@ private final class MediaTileView: NSView {
             setDownloadState(.idle)
         }
 
+        installPlaceholderIcon(for: info)
+        installLocateButtonIfNeeded(for: info)
+
         relayoutChildren()
+    }
+
+    /// For local markdown / text files (the tile-clicks-into-viewer kinds),
+    /// drop a small folder badge in the bottom-right corner. Clicking it
+    /// jumps to Finder with the file pre-selected, instead of opening the
+    /// in-app viewer.
+    private func installLocateButtonIfNeeded(for info: MediaInfo) {
+        guard info.isLocal,
+              info.kind == .markdown || info.kind == .text else { return }
+
+        let btn = NSButton(frame: .zero)
+        btn.bezelStyle = .recessed
+        btn.imagePosition = .imageOnly
+        btn.isBordered = false
+        btn.target = self
+        btn.action = #selector(locateTapped)
+        btn.image = NSImage(systemSymbolName: "folder.fill",
+                             accessibilityDescription: "Reveal in Finder")
+        btn.contentTintColor = .white
+        btn.toolTip = "Reveal in Finder"
+        addSubview(btn)
+        locateBtn = btn
+    }
+
+    @objc private func locateTapped() {
+        NSWorkspace.shared.activateFileViewerSelecting([info.url])
+    }
+
+    /// Install a kind-specific colored icon behind the spinner so each tile
+    /// is recognisable before its content loads. For image / video tiles the
+    /// thumbnail or video frame replaces the icon on success; for openable
+    /// kinds (markdown / text / webpage) the icon stays as the tile's content.
+    private func installPlaceholderIcon(for info: MediaInfo) {
+        let canvas = CGSize(width: 220, height: 220)
+        let icon = NSImageView()
+        icon.image = FileTypeIcon.makeImage(for: info, size: canvas)
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        // Dim slightly while loading — the real content takes over on success.
+        icon.alphaValue = info.opensInViewer ? 1.0 : 0.85
+        mediaContainer.addSubview(icon)
+        placeholderIconView = icon
     }
 
     @objc private func downloadTapped() {
@@ -1147,8 +1217,11 @@ private final class MediaTileView: NSView {
         case .downloading:
             break  // already in flight
         case .downloaded:
+            // Now that the file is on disk (either it was local, or the
+            // remote download finished), this button reveals it in Finder
+            // rather than opening it. Tile body click is the "open" path.
             if let url = downloadedFileURL {
-                NSWorkspace.shared.open(url)
+                NSWorkspace.shared.activateFileViewerSelecting([url])
             }
         }
     }
@@ -1169,10 +1242,11 @@ private final class MediaTileView: NSView {
             downloadSpinner.isHidden = false
             downloadSpinner.startAnimation(nil)
         case .downloaded:
-            // Locate / "open this file" indicator — a circle-with-dot glyph.
-            downloadBtn?.image = NSImage(systemSymbolName: "dot.circle.fill",
-                                          accessibilityDescription: "Open file")
+            // Folder badge — clicking reveals the file in Finder.
+            downloadBtn?.image = NSImage(systemSymbolName: "folder.fill",
+                                          accessibilityDescription: "Reveal in Finder")
             downloadBtn?.contentTintColor = .white
+            downloadBtn?.toolTip = "Reveal in Finder"
             downloadBtn?.isHidden = false
             downloadSpinner.stopAnimation(nil)
             downloadSpinner.isHidden = true
@@ -1204,6 +1278,22 @@ private final class MediaTileView: NSView {
 
     func relayoutChildren() {
         let spinnerSize: CGFloat = 20
+        if let placeholder = placeholderIconView {
+            let side = min(bounds.width, bounds.height) * 0.42
+            placeholder.frame = NSRect(
+                x: (bounds.width  - side) / 2,
+                y: (bounds.height - side) / 2,
+                width: side, height: side
+            )
+        }
+        if let openable = openableIconView {
+            let side = min(bounds.width, bounds.height) * 0.68
+            openable.frame = NSRect(
+                x: (bounds.width  - side) / 2,
+                y: (bounds.height - side) / 2,
+                width: side, height: side
+            )
+        }
         switch style {
         case .singleCard:
             mediaContainer.frame = bounds
@@ -1211,7 +1301,7 @@ private final class MediaTileView: NSView {
             playerView?.frame = mediaContainer.bounds
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            let gradH: CGFloat = 76
+            let gradH: CGFloat = 96
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradH)
             CATransaction.commit()
             spinner.frame = NSRect(
@@ -1225,9 +1315,10 @@ private final class MediaTileView: NSView {
             let dlBtnSize: CGFloat = 34
             let dlReserved = (downloadBtn != nil) ? (dlBtnSize + 12) : 14
             let textW = bounds.width - textX - dlReserved
-            filenameLabel?.frame = NSRect(x: textX, y: 50, width: textW, height: 16)
-            dimsLabel?.frame     = NSRect(x: textX, y: 30, width: textW, height: 14)
-            sizeLabel?.frame     = NSRect(x: textX, y: 10, width: textW, height: 14)
+            // Two-row overlay: big filename above, single meta line below.
+            filenameLabel?.frame = NSRect(x: textX, y: 36, width: textW, height: 22)
+            dimsLabel?.frame     = NSRect(x: textX, y: 14, width: textW, height: 18)
+            sizeLabel?.frame     = .zero
             downloadBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSize - 10,
                 y: 22,
@@ -1238,6 +1329,11 @@ private final class MediaTileView: NSView {
                 y: 22 + (dlBtnSize - 20) / 2,
                 width: 20, height: 20
             )
+            locateBtn?.frame = NSRect(
+                x: bounds.width - dlBtnSize - 10,
+                y: 22,
+                width: dlBtnSize, height: dlBtnSize
+            )
 
         case .masonry:
             mediaContainer.frame = bounds
@@ -1245,7 +1341,7 @@ private final class MediaTileView: NSView {
             playerView?.frame = mediaContainer.bounds
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            let gradientH: CGFloat = 60
+            let gradientH: CGFloat = 76
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradientH)
             shimmerLayer.frame = mediaContainer.bounds
             CATransaction.commit()
@@ -1261,9 +1357,10 @@ private final class MediaTileView: NSView {
             let dlBtnSizeM: CGFloat = 28
             let dlReservedM = (downloadBtn != nil) ? (dlBtnSizeM + 10) : 8
             let textW = bounds.width - textX - dlReservedM
-            filenameLabel?.frame = NSRect(x: textX, y: 40, width: textW, height: 14)
-            dimsLabel?.frame     = NSRect(x: textX, y: 24, width: textW, height: 12)
-            sizeLabel?.frame     = NSRect(x: textX, y: 8,  width: textW, height: 12)
+            // Two-row overlay: filename + one merged meta line.
+            filenameLabel?.frame = NSRect(x: textX, y: 28, width: textW, height: 18)
+            dimsLabel?.frame     = NSRect(x: textX, y: 10, width: textW, height: 14)
+            sizeLabel?.frame     = .zero
             downloadBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSizeM - 6,
                 y: 14,
@@ -1273,6 +1370,11 @@ private final class MediaTileView: NSView {
                 x: bounds.width - dlBtnSizeM - 6 + (dlBtnSizeM - 18) / 2,
                 y: 14 + (dlBtnSizeM - 18) / 2,
                 width: 18, height: 18
+            )
+            locateBtn?.frame = NSRect(
+                x: bounds.width - dlBtnSizeM - 6,
+                y: 14,
+                width: dlBtnSizeM, height: dlBtnSizeM
             )
         }
     }
@@ -1286,12 +1388,17 @@ private final class MediaTileView: NSView {
         switch media {
         case .image(let img, let info):
             imageLayer.contents = img
+            placeholderIconView?.removeFromSuperview()
+            placeholderIconView = nil
             updateText(with: info)
         case .video(let url, _, let info):
             attachPlayer(url: url)
+            placeholderIconView?.removeFromSuperview()
+            placeholderIconView = nil
             updateText(with: info)
         case .openable(let info):
-            // Markdown / webpage tile — show a glyph centred in the media area.
+            // Markdown / text / webpage tile — promote the loading placeholder
+            // icon to the final content glyph (larger, fully opaque).
             showOpenablePlaceholder(for: info)
             updateText(with: info)
         }
@@ -1303,6 +1410,8 @@ private final class MediaTileView: NSView {
         loadingLabel.stringValue = "Failed"
         loadingLabel.textColor = .systemRed
         stopShimmer()
+        // Dim the kind placeholder so the "Failed" label reads clearly.
+        placeholderIconView?.alphaValue = 0.35
         if style == .masonry {
             dimsLabel?.stringValue = "Failed to load"
             dimsLabel?.textColor = .systemRed
@@ -1325,28 +1434,24 @@ private final class MediaTileView: NSView {
     }
 
     private func showOpenablePlaceholder(for info: MediaInfo) {
-        // Replace the (empty) imageLayer contents with a centred glyph that
-        // hints at the kind. Use NSImageView so SF Symbol tinting works.
-        let symbolName: String
-        switch info.kind {
-        case .markdown: symbolName = "doc.richtext"
-        case .text:     symbolName = "doc.text"
-        case .webPage:  symbolName = "globe"
-        default:        symbolName = "doc"
-        }
+        // Drop the loading-state placeholder before installing the final glyph
+        // so they don't stack.
+        placeholderIconView?.removeFromSuperview()
+        placeholderIconView = nil
+
+        let canvas = CGSize(width: 220, height: 220)
         let icon = openableIconView ?? NSImageView()
-        icon.image = NSImage(systemSymbolName: symbolName,
-                              accessibilityDescription: nil)
-        icon.contentTintColor = NSColor(white: 1, alpha: 0.85)
+        icon.image = FileTypeIcon.makeImage(for: info, size: canvas)
         icon.imageScaling = .scaleProportionallyUpOrDown
         if icon.superview == nil {
             mediaContainer.addSubview(icon)
             openableIconView = icon
         }
-        // Centre the icon, taking up roughly 60% of the shorter dimension.
-        let side = min(bounds.width, bounds.height) * 0.55
+        // Larger than the loading-state placeholder — this is the final
+        // content for openable tiles, so let it dominate the card.
+        let side = min(bounds.width, bounds.height) * 0.68
         icon.frame = NSRect(x: (bounds.width  - side) / 2,
-                             y: (bounds.height - side) / 2 + 6,
+                             y: (bounds.height - side) / 2,
                              width: side, height: side)
     }
 
@@ -1355,7 +1460,18 @@ private final class MediaTileView: NSView {
             onTileTap?()
             return
         }
-        super.mouseDown(with: event)
+        if info.kind == .other, info.isLocal {
+            // Non-previewable local files (pdf/doc/psd/zip/…) jump straight
+            // to Finder with the file selected — opening with the default
+            // app would launch heavy professional software we don't want
+            // to invoke from a hover preview.
+        NSWorkspace.shared.activateFileViewerSelecting([info.url])
+            return
+        }
+        // Image / video / remote-other: open the URL. NSWorkspace handles
+        // http(s) URLs (→ default browser) and file URLs (→ default app
+        // for the file type, e.g. Preview).
+        NSWorkspace.shared.open(info.url)
     }
 
     private func attachPlayer(url: URL) {
@@ -1383,20 +1499,40 @@ private final class MediaTileView: NSView {
         switch info.kind {
         case .image, .video:
             applyMediaText(info: info)
-        case .markdown, .text:
-            // Plain-text-ish file: skip size, just show format / hint.
+        case .markdown, .text, .pdf:
+            // Plain-text-ish file: format + optional location hint, joined.
             filenameLabel?.stringValue = info.filename
-            if let hint = info.disambiguationHint, !hint.isEmpty {
-                dimsLabel?.stringValue = "in \(hint)"
-                sizeLabel?.stringValue = info.formatName
-            } else {
-                dimsLabel?.stringValue = info.formatName
-                sizeLabel?.stringValue = ""
+            var pieces: [String] = []
+            if !info.formatName.isEmpty { pieces.append(info.formatName) }
+            if let bytes = info.fileSize {
+                let f = ByteCountFormatter()
+                f.countStyle = .file
+                pieces.append(f.string(fromByteCount: bytes))
             }
+            if let hint = info.disambiguationHint, !hint.isEmpty {
+                pieces.append("in \(hint)")
+            }
+            dimsLabel?.stringValue = pieces.joined(separator: " · ")
+            sizeLabel?.stringValue = ""
         case .webPage:
-            // Show host on the filename line, full URL underneath.
+            // Show host on the filename line, full URL on the meta line.
             filenameLabel?.stringValue = info.url.host ?? info.filename
             dimsLabel?.stringValue = info.url.absoluteString
+            sizeLabel?.stringValue = ""
+        case .other:
+            // Non-previewable file — show extension/size/hint as the meta line.
+            filenameLabel?.stringValue = info.filename
+            var pieces: [String] = []
+            if !info.formatName.isEmpty { pieces.append(info.formatName) }
+            if let bytes = info.fileSize {
+                let f = ByteCountFormatter()
+                f.countStyle = .file
+                pieces.append(f.string(fromByteCount: bytes))
+            }
+            if let hint = info.disambiguationHint, !hint.isEmpty {
+                pieces.append("in \(hint)")
+            }
+            dimsLabel?.stringValue = pieces.joined(separator: " · ")
             sizeLabel?.stringValue = ""
         }
     }
@@ -1404,32 +1540,23 @@ private final class MediaTileView: NSView {
     private func applyMediaText(info: MediaInfo) {
         filenameLabel?.stringValue = info.filename
 
+        // One-line meta: dimensions · size · format · location-hint.
+        // The line truncates with an ellipsis if too long; trailing labels
+        // (hint, format) are dropped first by virtue of order.
+        var pieces: [String] = []
         if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
-            dimsLabel?.stringValue = "\(Int(dim.width)) × \(Int(dim.height))"
-        } else {
-            dimsLabel?.stringValue = info.isLocal ? "—" : ""
+            pieces.append("\(Int(dim.width)) × \(Int(dim.height))")
         }
-
-        var sizePieces: [String] = []
         if let bytes = info.fileSize {
             let f = ByteCountFormatter()
             f.countStyle = .file
-            sizePieces.append(f.string(fromByteCount: bytes))
+            pieces.append(f.string(fromByteCount: bytes))
         }
-        if !info.formatName.isEmpty { sizePieces.append(info.formatName) }
+        if !info.formatName.isEmpty { pieces.append(info.formatName) }
         if let hint = info.disambiguationHint, !hint.isEmpty {
-            // Compact masonry tiles can't fit three pieces — replace size info
-            // with just the hint. Single-card has room for everything.
-            if style == .masonry {
-                sizeLabel?.stringValue = "in \(hint)"
-            } else {
-                sizePieces.append("in \(hint)")
-                sizeLabel?.stringValue = sizePieces.joined(separator: " • ")
-            }
-        } else {
-            sizeLabel?.stringValue = sizePieces.isEmpty
-                ? info.formatName
-                : sizePieces.joined(separator: " • ")
+            pieces.append("in \(hint)")
         }
+        dimsLabel?.stringValue = pieces.joined(separator: " · ")
+        sizeLabel?.stringValue = ""
     }
 }

@@ -3,11 +3,12 @@ import AppKit
 class OnboardingWindow: NSWindow {
     private var inputMonitoringStatusLabel: NSTextField!
     private var accessibilityStatusLabel: NSTextField!
+    private var fullDiskAccessStatusLabel: NSTextField!
     private var continueButton: NSButton!
     private var dontShowAgainCheckbox: NSButton!
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 480, height: 360)
+        let windowRect = NSRect(x: 0, y: 0, width: 520, height: 460)
         super.init(
             contentRect: windowRect,
             styleMask: [.titled, .closable],
@@ -35,21 +36,22 @@ class OnboardingWindow: NSWindow {
 
         let titleLabel = NSTextField(labelWithString: "ImageHoverPreview Needs Permissions")
         titleLabel.font = NSFont.boldSystemFont(ofSize: 18)
-        titleLabel.frame = NSRect(x: 20, y: 310, width: 440, height: 30)
+        titleLabel.frame = NSRect(x: 20, y: 410, width: 480, height: 30)
         containerView.addSubview(titleLabel)
 
         let subtitleLabel = NSTextField(labelWithString: "To enable image previews on hover, please grant the following permissions:")
         subtitleLabel.font = NSFont.systemFont(ofSize: 13)
         subtitleLabel.textColor = NSColor.secondaryLabelColor
-        subtitleLabel.frame = NSRect(x: 20, y: 280, width: 440, height: 20)
+        subtitleLabel.frame = NSRect(x: 20, y: 380, width: 480, height: 20)
         containerView.addSubview(subtitleLabel)
 
-        createInputMonitoringSection(containerView: containerView, y: 200)
-        createAccessibilitySection(containerView: containerView, y: 110)
+        createInputMonitoringSection(containerView: containerView, y: 290)
+        createAccessibilitySection(containerView: containerView, y: 200)
+        createFullDiskAccessSection(containerView: containerView, y: 110)
 
         continueButton = NSButton(title: "Continue", target: self, action: #selector(continuePressed))
         continueButton.bezelStyle = .rounded
-        continueButton.frame = NSRect(x: 280, y: 30, width: 100, height: 32)
+        continueButton.frame = NSRect(x: 320, y: 30, width: 100, height: 32)
         continueButton.isEnabled = false
         containerView.addSubview(continueButton)
 
@@ -61,50 +63,75 @@ class OnboardingWindow: NSWindow {
     private func createInputMonitoringSection(containerView: NSView, y: CGFloat) {
         let titleLabel = NSTextField(labelWithString: "Input Monitoring")
         titleLabel.font = NSFont.boldSystemFont(ofSize: 14)
-        titleLabel.frame = NSRect(x: 20, y: y + 50, width: 200, height: 20)
+        titleLabel.frame = NSRect(x: 20, y: y + 50, width: 240, height: 20)
         containerView.addSubview(titleLabel)
 
-        let descLabel = NSTextField(labelWithString: "Required to detect when you hold Cmd+Shift to activate preview mode.")
+        let descLabel = NSTextField(labelWithString: "Required — detect when you hold the hotkey to activate preview mode.")
         descLabel.font = NSFont.systemFont(ofSize: 12)
         descLabel.textColor = NSColor.secondaryLabelColor
-        descLabel.frame = NSRect(x: 20, y: y + 25, width: 350, height: 30)
+        descLabel.frame = NSRect(x: 20, y: y + 25, width: 380, height: 30)
         descLabel.lineBreakMode = .byWordWrapping
         descLabel.maximumNumberOfLines = 2
         containerView.addSubview(descLabel)
 
         inputMonitoringStatusLabel = NSTextField(labelWithString: "❌ Not Granted")
         inputMonitoringStatusLabel.font = NSFont.systemFont(ofSize: 12)
-        inputMonitoringStatusLabel.frame = NSRect(x: 380, y: y + 50, width: 80, height: 20)
+        inputMonitoringStatusLabel.frame = NSRect(x: 410, y: y + 50, width: 90, height: 20)
         containerView.addSubview(inputMonitoringStatusLabel)
 
         let openButton = NSButton(title: "Open Settings", target: self, action: #selector(openInputMonitoringSettings))
         openButton.bezelStyle = .rounded
-        openButton.frame = NSRect(x: 380, y: y + 20, width: 80, height: 24)
+        openButton.frame = NSRect(x: 410, y: y + 20, width: 100, height: 24)
         containerView.addSubview(openButton)
     }
 
     private func createAccessibilitySection(containerView: NSView, y: CGFloat) {
         let titleLabel = NSTextField(labelWithString: "Accessibility")
         titleLabel.font = NSFont.boldSystemFont(ofSize: 14)
-        titleLabel.frame = NSRect(x: 20, y: y + 50, width: 200, height: 20)
+        titleLabel.frame = NSRect(x: 20, y: y + 50, width: 240, height: 20)
         containerView.addSubview(titleLabel)
 
-        let descLabel = NSTextField(labelWithString: "Required to control other applications for image preview functionality.")
+        let descLabel = NSTextField(labelWithString: "Required — read the selected text in the active app so we know what to preview.")
         descLabel.font = NSFont.systemFont(ofSize: 12)
         descLabel.textColor = NSColor.secondaryLabelColor
-        descLabel.frame = NSRect(x: 20, y: y + 25, width: 350, height: 30)
+        descLabel.frame = NSRect(x: 20, y: y + 25, width: 380, height: 30)
         descLabel.lineBreakMode = .byWordWrapping
         descLabel.maximumNumberOfLines = 2
         containerView.addSubview(descLabel)
 
         accessibilityStatusLabel = NSTextField(labelWithString: "❌ Not Granted")
         accessibilityStatusLabel.font = NSFont.systemFont(ofSize: 12)
-        accessibilityStatusLabel.frame = NSRect(x: 380, y: y + 50, width: 80, height: 20)
+        accessibilityStatusLabel.frame = NSRect(x: 410, y: y + 50, width: 90, height: 20)
         containerView.addSubview(accessibilityStatusLabel)
 
         let openButton = NSButton(title: "Open Settings", target: self, action: #selector(openAccessibilitySettings))
         openButton.bezelStyle = .rounded
-        openButton.frame = NSRect(x: 380, y: y + 20, width: 80, height: 24)
+        openButton.frame = NSRect(x: 410, y: y + 20, width: 100, height: 24)
+        containerView.addSubview(openButton)
+    }
+
+    private func createFullDiskAccessSection(containerView: NSView, y: CGFloat) {
+        let titleLabel = NSTextField(labelWithString: "Full Disk Access (Recommended)")
+        titleLabel.font = NSFont.boldSystemFont(ofSize: 14)
+        titleLabel.frame = NSRect(x: 20, y: y + 50, width: 300, height: 20)
+        containerView.addSubview(titleLabel)
+
+        let descLabel = NSTextField(labelWithString: "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts.")
+        descLabel.font = NSFont.systemFont(ofSize: 12)
+        descLabel.textColor = NSColor.secondaryLabelColor
+        descLabel.frame = NSRect(x: 20, y: y + 25, width: 380, height: 30)
+        descLabel.lineBreakMode = .byWordWrapping
+        descLabel.maximumNumberOfLines = 2
+        containerView.addSubview(descLabel)
+
+        fullDiskAccessStatusLabel = NSTextField(labelWithString: "ℹ️ Optional")
+        fullDiskAccessStatusLabel.font = NSFont.systemFont(ofSize: 12)
+        fullDiskAccessStatusLabel.frame = NSRect(x: 410, y: y + 50, width: 90, height: 20)
+        containerView.addSubview(fullDiskAccessStatusLabel)
+
+        let openButton = NSButton(title: "Open Settings", target: self, action: #selector(openFullDiskAccessSettings))
+        openButton.bezelStyle = .rounded
+        openButton.frame = NSRect(x: 410, y: y + 20, width: 100, height: 24)
         containerView.addSubview(openButton)
     }
 
@@ -123,6 +150,9 @@ class OnboardingWindow: NSWindow {
             accessibilityStatusLabel.stringValue = "❌ Not Granted"
         }
 
+        // FDA can't be checked at runtime without trying to read a protected
+        // path. Keep it informational — the button still drops the user into
+        // the right Settings pane.
         continueButton.isEnabled = permissionManager.isInputMonitoringGranted && permissionManager.isAccessibilityGranted
     }
 
@@ -134,6 +164,10 @@ class OnboardingWindow: NSWindow {
     @objc private func openAccessibilitySettings() {
         PermissionManager.shared.openAccessibilitySettings()
         startPermissionPolling()
+    }
+
+    @objc private func openFullDiskAccessSettings() {
+        PermissionManager.shared.openFullDiskAccessSettings()
     }
 
     private var permissionCheckTimer: Timer?

@@ -83,11 +83,17 @@ final class DebugInputWindow: NSWindow {
         runBtn.autoresizingMask = [.minXMargin]
         root.addSubview(runBtn)
 
+        let cleanBtn = NSButton(title: "Clean", target: self, action: #selector(cleanTapped))
+        cleanBtn.bezelStyle = .rounded
+        cleanBtn.frame = NSRect(x: w - 184, y: 16, width: 80, height: 28)
+        cleanBtn.autoresizingMask = [.minXMargin]
+        root.addSubview(cleanBtn)
+
         let hint = NSTextField(labelWithString:
             "Paste any text — click Run (or press ⏎) to test detection.")
         hint.font = NSFont.systemFont(ofSize: 11)
         hint.textColor = .secondaryLabelColor
-        hint.frame = NSRect(x: 16, y: 22, width: w - 120, height: 16)
+        hint.frame = NSRect(x: 16, y: 22, width: w - 208, height: 16)
         hint.autoresizingMask = [.width]
         root.addSubview(hint)
 
@@ -102,6 +108,38 @@ final class DebugInputWindow: NSWindow {
 
     @objc private func runTapped() {
         onRun?(textView.string)
+    }
+
+    @objc private func cleanTapped() {
+        textView.string = ""
+    }
+
+    /// LSUIElement apps have no main menu, so the standard Edit-menu
+    /// keyboard shortcuts (⌘C / ⌘V / ⌘X / ⌘A / ⌘Z / ⌘⇧Z) never reach the
+    /// text view through the usual menu-broadcast path. Intercept them
+    /// here and route to the responder chain manually.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.modifierFlags.contains(.command) else {
+            return super.performKeyEquivalent(with: event)
+        }
+        let isShift = event.modifierFlags.contains(.shift)
+        let key = event.charactersIgnoringModifiers ?? ""
+        let action: Selector?
+        switch key {
+        case "c": action = #selector(NSText.copy(_:))
+        case "v": action = #selector(NSText.paste(_:))
+        case "x": action = #selector(NSText.cut(_:))
+        case "a": action = #selector(NSText.selectAll(_:))
+        case "z":
+            if isShift { undoManager?.redo() } else { undoManager?.undo() }
+            return true
+        default:  action = nil
+        }
+        if let action = action,
+           NSApp.sendAction(action, to: nil, from: self) {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }
 #endif

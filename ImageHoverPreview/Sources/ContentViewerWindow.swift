@@ -18,6 +18,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private let toolbarBar = NSView()
     private let saveButton = NSButton()
     private let toggleButton = NSButton()  // Edit ↔ View for markdown
+    private let locateButton = NSButton()  // Reveal in Finder, local-only
 
     // WebView find UI
     private let webFindBar = NSView()
@@ -26,10 +27,22 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private var webFindMatchCount = 0
     private var webFindCurrentIndex = -1
 
-    private enum Kind { case webpage, markdown, text }
+    private enum Kind { case webpage, markdown, text, pdf }
     private var kind: Kind = .webpage
     private var currentURL: URL?
     private var isEditing: Bool = false
+
+    /// Resolve a (possibly dynamic) NSColor against the app's current
+    /// effective appearance. Without this wrapper, semantic NSColors lose
+    /// their theme binding when assigned to `layer.backgroundColor` outside
+    /// a drawing context (see PreviewPanel.resolvedCG for the long story).
+    private static func resolvedCG(_ color: NSColor) -> CGColor {
+        var resolved: CGColor!
+        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
+            resolved = color.cgColor
+        }
+        return resolved
+    }
 
     init() {
         // Standard desktop browser dimensions — fits most modern websites
@@ -92,6 +105,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         webView.load(URLRequest(url: url))
         saveButton.isHidden = true
         toggleButton.isHidden = true
+        locateButton.isHidden = !url.isFileURL
         showWebView()
     }
 
@@ -105,6 +119,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toggleButton.isHidden = false
         toggleButton.title = "Edit"
         saveButton.isHidden = true
+        locateButton.isHidden = !url.isFileURL
         renderMarkdownView(url: url)
     }
 
@@ -117,7 +132,28 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         isEditing = true
         toggleButton.isHidden = true
         saveButton.isHidden = !url.isFileURL  // only local files are savable
+        locateButton.isHidden = !url.isFileURL
         loadEditableText(url: url, prettyPrint: true)
+    }
+
+    /// Loads a PDF file in the WKWebView. macOS WebKit ships a native PDF
+    /// renderer, so no extra dependencies needed. Read-only.
+    func loadPDF(_ url: URL) {
+        currentURL = url
+        kind = .pdf
+        title = url.lastPathComponent
+        saveButton.isHidden = true
+        toggleButton.isHidden = true
+        locateButton.isHidden = !url.isFileURL
+        if url.isFileURL {
+            // Sandbox-friendly: explicit grant for the parent directory so
+            // WebKit can read the file and any sibling assets.
+            webView.loadFileURL(url,
+                                 allowingReadAccessTo: url.deletingLastPathComponent())
+        } else {
+            webView.load(URLRequest(url: url))
+        }
+        showWebView()
     }
 
     // MARK: - Layout
@@ -132,34 +168,52 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
                                 width: bounds.width, height: toolbarH)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
         toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = NSColor(white: 0.96, alpha: 1).cgColor
+        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
         let sep = NSView(frame: NSRect(x: 0, y: 0, width: bounds.width, height: 1))
         sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor(white: 0.85, alpha: 1).cgColor
+        sep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
         sep.autoresizingMask = [.width]
         toolbarBar.addSubview(sep)
 
-        // Toggle (Edit ↔ View) — only shown for markdown.
-        toggleButton.bezelStyle = .rounded
-        toggleButton.title = "Edit"
-        toggleButton.target = self
-        toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.frame = NSRect(x: bounds.width - 170, y: 6, width: 70, height: 24)
-        toggleButton.autoresizingMask = [.minXMargin]
-        toggleButton.isHidden = true
-        toolbarBar.addSubview(toggleButton)
+        // Right-anchored toolbar: [ Toggle ] [ Save ] [ 📁 ]
+        // Locate (folder) — rightmost; reveals the file in Finder.
+        let locateW: CGFloat = 32
+        locateButton.bezelStyle = .rounded
+        locateButton.image = NSImage(systemSymbolName: "folder.fill",
+                                       accessibilityDescription: "Reveal in Finder")
+        locateButton.imagePosition = .imageOnly
+        locateButton.target = self
+        locateButton.action = #selector(locateTapped)
+        locateButton.toolTip = "Reveal in Finder"
+        locateButton.frame = NSRect(x: bounds.width - 12 - locateW, y: 6,
+                                     width: locateW, height: 24)
+        locateButton.autoresizingMask = [.minXMargin]
+        locateButton.isHidden = true
+        toolbarBar.addSubview(locateButton)
 
-        // Save — only when editing a local file.
+        // Save — only when editing a local file. Sits to the left of locate.
         saveButton.bezelStyle = .rounded
         saveButton.title = "Save"
         saveButton.keyEquivalent = "s"
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.frame = NSRect(x: bounds.width - 90, y: 6, width: 70, height: 24)
+        saveButton.frame = NSRect(x: bounds.width - 20 - locateW - 70, y: 6,
+                                   width: 70, height: 24)
         saveButton.autoresizingMask = [.minXMargin]
         saveButton.isHidden = true
         toolbarBar.addSubview(saveButton)
+
+        // Toggle (Edit ↔ View) — only shown for markdown. Left of Save.
+        toggleButton.bezelStyle = .rounded
+        toggleButton.title = "Edit"
+        toggleButton.target = self
+        toggleButton.action = #selector(toggleEditTapped)
+        toggleButton.frame = NSRect(x: bounds.width - 30 - locateW - 70 - 70, y: 6,
+                                     width: 70, height: 24)
+        toggleButton.autoresizingMask = [.minXMargin]
+        toggleButton.isHidden = true
+        toolbarBar.addSubview(toggleButton)
 
         content.addSubview(toolbarBar)
 
@@ -188,12 +242,12 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         )
         webFindBar.autoresizingMask = [.width, .minYMargin]
         webFindBar.wantsLayer = true
-        webFindBar.layer?.backgroundColor = NSColor(white: 0.97, alpha: 0.98).cgColor
+        webFindBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
         webFindBar.isHidden = true
 
         let findSep = NSView(frame: NSRect(x: 0, y: 0, width: bodyFrame.width, height: 1))
         findSep.wantsLayer = true
-        findSep.layer?.backgroundColor = NSColor(white: 0.85, alpha: 1).cgColor
+        findSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
         findSep.autoresizingMask = [.width]
         webFindBar.addSubview(findSep)
 
@@ -289,6 +343,11 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         }
     }
 
+    @objc private func locateTapped() {
+        guard let url = currentURL, url.isFileURL else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
     @objc private func saveTapped() {
         guard let url = currentURL, url.isFileURL else { return }
         let body = textView.string
@@ -348,24 +407,47 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         return String(data: xmlData, encoding: .utf8)
     }
 
-    // MARK: - Web find
+    // MARK: - Find shortcuts
 
-    /// Intercept ⌘F / ⌘G / ⌘⇧G when the web view is showing. The text-view
-    /// path already gets ⌘F through `usesFindBar = true`.
+    /// Intercept ⌘F / ⌘G / ⌘⇧G ourselves. This app runs as `LSUIElement`
+    /// with no main menu, so the standard Edit > Find menu shortcuts that
+    /// would normally trigger NSTextView's find bar never reach the text
+    /// view. We route them manually based on which body view is showing.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.contains(.command) {
             let key = event.charactersIgnoringModifiers ?? ""
-            if key == "f", !webView.isHidden {
-                showWebFindBar()
-                return true
+            if key == "f" {
+                if !webView.isHidden {
+                    showWebFindBar()
+                    return true
+                }
+                if !textScroll.isHidden {
+                    invokeTextFinder(.showFindInterface)
+                    return true
+                }
             }
-            if key == "g", !webFindBar.isHidden {
-                if event.modifierFlags.contains(.shift) { webFindPrev(nil) }
-                else                                    { webFindNext(nil) }
-                return true
+            if key == "g" {
+                let isShift = event.modifierFlags.contains(.shift)
+                if !webFindBar.isHidden {
+                    if isShift { webFindPrev(nil) } else { webFindNext(nil) }
+                    return true
+                }
+                if !textScroll.isHidden {
+                    invokeTextFinder(isShift ? .previousMatch : .nextMatch)
+                    return true
+                }
             }
         }
         return super.performKeyEquivalent(with: event)
+    }
+
+    /// Drive NSTextView's built-in find bar by faking the sender NSMenuItem
+    /// whose `tag` `performTextFinderAction(_:)` reads to dispatch the
+    /// requested action.
+    private func invokeTextFinder(_ action: NSTextFinder.Action) {
+        let item = NSMenuItem()
+        item.tag = action.rawValue
+        textView.performTextFinderAction(item)
     }
 
     private func showWebFindBar() {

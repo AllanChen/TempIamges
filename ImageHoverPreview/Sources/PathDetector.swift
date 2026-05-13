@@ -9,7 +9,14 @@ enum DetectedPath {
     case remoteMarkdown(URL)
     case localText(URL)
     case remoteText(URL)
+    case localPDF(URL)
+    case remotePDF(URL)
     case webPage(URL)
+    /// "Other" file types — known files we can't preview inline (doc, psd,
+    /// zip, mp3, …). They show as a generic icon tile and click reveals
+    /// them in Finder (local) or opens the URL in the browser (remote).
+    case localOther(URL)
+    case remoteOther(URL)
     /// Bare filename in the selection (no slashes), e.g. "screenshot.png".
     /// FileNameResolver will Spotlight-search for this before previewing.
     case unresolvedFilename(String)
@@ -24,6 +31,8 @@ enum DetectedPath {
              .localVideo(let url), .remoteVideo(let url),
              .localMarkdown(let url), .remoteMarkdown(let url),
              .localText(let url), .remoteText(let url),
+             .localPDF(let url), .remotePDF(let url),
+             .localOther(let url), .remoteOther(let url),
              .webPage(let url):
             return url
         case .unresolvedFilename, .unresolvedRelativePath, .invalid:
@@ -44,6 +53,8 @@ enum DetectedPath {
              .localVideo, .remoteVideo,
              .localMarkdown, .remoteMarkdown,
              .localText, .remoteText,
+             .localPDF, .remotePDF,
+             .localOther, .remoteOther,
              .webPage:
             return true
         case .unresolvedFilename, .unresolvedRelativePath, .invalid:
@@ -73,17 +84,60 @@ class PathDetector {
         "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"
     ]
     private let videoExtensions: Set<String> = [
-        "mp4", "mov", "m4v", "webm"
+        "mp4", "mov", "m4v", "webm", "mkv", "avi"
     ]
     private let markdownExtensions: Set<String> = ["md", "markdown"]
-    /// Plain-text-ish formats that the viewer renders as text. JSON and XML
-    /// are pretty-printed by ContentViewerWindow before display.
-    private let textExtensions: Set<String> = ["txt", "json", "xml"]
+    /// Plain-text-ish formats the viewer can render as text. Includes the
+    /// original data trio (txt/json/xml), markup/style/config formats, and a
+    /// broad set of source-code extensions. JSON and XML get pretty-printed
+    /// in ContentViewerWindow; everything else is shown verbatim.
+    private let textExtensions: Set<String> = [
+        // Data / config
+        "txt", "json", "xml", "yaml", "yml", "toml", "ini", "conf", "env",
+        "properties", "cfg", "csv", "tsv", "sql", "log",
+        // Markup / web
+        "html", "htm", "css", "scss", "sass", "less", "styl", "svg",
+        "tex", "rst", "adoc", "asciidoc", "org",
+        // Programming languages
+        "py", "js", "mjs", "cjs", "ts", "tsx", "jsx",
+        "swift", "java", "kt", "m", "mm",
+        "c", "cpp", "cc", "cxx", "h", "hpp",
+        "rb", "go", "rs", "php", "cs", "vb", "scala", "lua", "pl", "r",
+        "dart", "ex", "exs", "erl", "hs", "ml", "fs", "jl",
+        "sh", "bash", "zsh", "fish", "ps1", "bat", "cmd",
+        "graphql", "gql", "proto", "vue", "svelte", "astro",
+    ]
+    /// PDF — previewable in WKWebView (macOS renders PDFs natively).
+    private let pdfExtensions: Set<String> = ["pdf"]
+
+    /// Known file types we can't preview inline. Detection makes them
+    /// surface as a generic icon tile; the click action reveals them in
+    /// Finder (or opens the URL in the browser for remote ones).
+    private let otherExtensions: Set<String> = [
+        // Documents (PDFs handled separately so they preview inline)
+        "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+        "pages", "numbers", "key", "odt", "ods", "odp", "rtf",
+        "epub", "mobi",
+        // Design
+        "psd", "ai", "sketch", "fig", "xd", "eps", "indd", "afdesign",
+        // Audio
+        "mp3", "m4a", "wav", "flac", "aac", "ogg", "opus", "aiff",
+        // Archives / disk images
+        "zip", "tar", "gz", "tgz", "bz2", "7z", "rar", "dmg", "iso",
+        // Binaries / installers
+        "exe", "app", "deb", "rpm", "pkg", "msi", "appimage",
+        // Camera raw
+        "raw", "dng", "cr2", "nef", "arw",
+        // Fonts
+        "ttf", "otf", "woff", "woff2",
+    ]
     private var localSupportedExtensions: Set<String> {
         imageExtensions
             .union(videoExtensions)
             .union(markdownExtensions)
             .union(textExtensions)
+            .union(pdfExtensions)
+            .union(otherExtensions)
     }
 
     private let httpRegex: NSRegularExpression
@@ -96,13 +150,20 @@ class PathDetector {
     private let allRegexes: [NSRegularExpression]
 
     init() {
-        // Local file regex matches only paths with supported extensions so we
-        // don't surface arbitrary file paths as previewable.
-        let localExts = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif",
-                         "bmp", "tiff", "tif",
-                         "mp4", "mov", "m4v", "webm",
-                         "md", "markdown",
-                         "txt", "json", "xml"]
+        // Local file regex matches only paths with known extensions so we
+        // don't surface arbitrary "/anything.x" tokens as files. The union
+        // covers media + text/code + "other" (pdf/doc/psd/zip/…) so the same
+        // regex flags every supported kind.
+        // Sort descending by length so longer extensions match before any
+        // shorter prefixes (e.g. "markdown" before "md").
+        let localExts = Array(
+            imageExtensions
+                .union(videoExtensions)
+                .union(markdownExtensions)
+                .union(textExtensions)
+                .union(pdfExtensions)
+                .union(otherExtensions)
+        ).sorted { $0.count > $1.count }
         let extAlt = localExts.joined(separator: "|")
 
         // Remote http(s) URLs are detected extension-agnostically; the kind is
@@ -122,22 +183,32 @@ class PathDetector {
         )
         // Comma is excluded so comma-separated lists of paths (e.g.
         // "/a/x.png,/b/y.png") are split cleanly into separate matches.
+        // Whitespace inside the character class is intentionally allowed
+        // (no `\s` exclusion) so paths like "/Users/lily/Desktop/Project
+        // Access Guide.pdf" still match. The lazy `+?` minimises greediness
+        // and `isValidLocalMedia` filters any over-extended candidate via
+        // file-existence check. Newlines and tabs remain excluded so
+        // matches can't span lines.
         self.fileURLRegex = try! NSRegularExpression(
-            pattern: "file://[^\\s\"'<>()\\[\\]{},]+?\\.(?i:\(extAlt))",
+            pattern: "file://[^\"'<>()\\[\\]{},\\n\\r\\t]+?\\.(?i:\(extAlt))",
             options: []
         )
         self.absolutePathRegex = try! NSRegularExpression(
-            pattern: "/[^\\s\"'<>()\\[\\]{},]+?\\.(?i:\(extAlt))",
+            pattern: "/[^\"'<>()\\[\\]{},\\n\\r\\t]+?\\.(?i:\(extAlt))",
             options: []
         )
         self.homePathRegex = try! NSRegularExpression(
-            pattern: "~/[^\\s\"'<>()\\[\\]{},]+?\\.(?i:\(extAlt))",
+            pattern: "~/[^\"'<>()\\[\\]{},\\n\\r\\t]+?\\.(?i:\(extAlt))",
             options: []
         )
         // Relative path: at least one interior '/', optional ./ or ../ prefix.
         // Lookbehind avoids overlap with absolute/home/file:// regexes.
+        // The second segment (after the first slash) allows spaces and tabs
+        // so paths like "Desktop/work/Project Access Guide.pdf" match. The
+        // first segment stays strict — letting it eat spaces would devour
+        // narrative text leading up to the slash.
         self.relativePathRegex = try! NSRegularExpression(
-            pattern: "(?<![A-Za-z0-9_/~])(?:\\./|\\.\\./)*[A-Za-z0-9_.\\-]+/[A-Za-z0-9_./\\-]+?\\.(?i:\(extAlt))(?![A-Za-z0-9])",
+            pattern: "(?<![A-Za-z0-9_/~])(?:\\./|\\.\\./)*[A-Za-z0-9_.\\-]+/[A-Za-z0-9_./\\- \\t]+?\\.(?i:\(extAlt))(?![A-Za-z0-9])",
             options: []
         )
         // Bare filename: stem ≥3 chars, alphanumeric/_/-/., must be standalone
@@ -220,8 +291,11 @@ class PathDetector {
         var lastEnd = 0
         for hit in hits {
             if hit.range.location < lastEnd { continue }
-            lastEnd = hit.range.location + hit.range.length
+            // Only "consume" range when the candidate actually validates —
+            // an over-extended absolute-path match that doesn't exist on
+            // disk shouldn't block shorter strict matches that follow.
             guard let path = resolveCandidate(hit.str) else { continue }
+            lastEnd = hit.range.location + hit.range.length
             // Dedup: concrete cases use URL string; unresolved cases use token.
             let key = path.url?.absoluteString ?? path.unresolvedToken ?? ""
             if key.isEmpty { continue }
@@ -268,6 +342,8 @@ class PathDetector {
         let isVideo = videoExtensions.contains(ext)
         let isMarkdown = markdownExtensions.contains(ext)
         let isText = textExtensions.contains(ext)
+        let isPDF = pdfExtensions.contains(ext)
+        let isOther = otherExtensions.contains(ext)
 
         // Repair common URL typos and surface scheme-less domains.
         let normalizedHTTP: String? = {
@@ -299,6 +375,8 @@ class PathDetector {
             if isVideo    { return .remoteVideo(url) }
             if isMarkdown { return .remoteMarkdown(url) }
             if isText     { return .remoteText(url) }
+            if isPDF      { return .remotePDF(url) }
+            if isOther    { return .remoteOther(url) }
             // Anything else with http(s) scheme is treated as a webpage URL.
             return .webPage(url)
         }
@@ -325,6 +403,15 @@ class PathDetector {
         // the relativePathRegex) is treated as an unresolved relative path —
         // the resolver will Spotlight it.
         if candidate.contains("/") {
+            // Heuristic: many users abbreviate home-rooted paths by dropping
+            // the leading `~/`, e.g. "Desktop/work/Foo.pdf". Try expanding
+            // against $HOME first; if that's a real file, surface it as a
+            // concrete local hit so the user skips the Spotlight round-trip.
+            let homeExpanded = (NSHomeDirectory() as NSString)
+                .appendingPathComponent(candidate)
+            if isValidLocalMedia(path: homeExpanded) {
+                return localKind(for: homeExpanded)
+            }
             return .unresolvedRelativePath(candidate)
         }
         return nil
@@ -370,7 +457,12 @@ class PathDetector {
         if videoExtensions.contains(ext)    { return .localVideo(url) }
         if markdownExtensions.contains(ext) { return .localMarkdown(url) }
         if textExtensions.contains(ext)     { return .localText(url) }
-        return .localImage(url)
+        if pdfExtensions.contains(ext)      { return .localPDF(url) }
+        if otherExtensions.contains(ext)    { return .localOther(url) }
+        if imageExtensions.contains(ext)    { return .localImage(url) }
+        // Fallback — extension matched the regex but isn't in any bucket
+        // (shouldn't happen since the regex is built from these same sets).
+        return .localOther(url)
     }
 
     private func mediaExtension(of candidate: String) -> String {

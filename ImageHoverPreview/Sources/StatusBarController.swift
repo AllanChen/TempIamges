@@ -70,6 +70,21 @@ class StatusBarController: NSObject, NSMenuDelegate {
         clearCacheItem.target = self
         menu.addItem(clearCacheItem)
 
+        // Theme submenu — system / light / dark. Selection is reflected as
+        // a checkmark in `menuWillOpen`.
+        let themeItem = NSMenuItem(title: "Theme", action: nil, keyEquivalent: "")
+        let themeSubmenu = NSMenu(title: "Theme")
+        for theme in Preferences.Theme.allCases {
+            let item = NSMenuItem(title: theme.displayName,
+                                   action: #selector(selectTheme(_:)),
+                                   keyEquivalent: "")
+            item.target = self
+            item.representedObject = theme.rawValue
+            themeSubmenu.addItem(item)
+        }
+        themeItem.submenu = themeSubmenu
+        menu.addItem(themeItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let aboutItem = NSMenuItem(title: "About ImageHoverPreview", action: #selector(showAbout), keyEquivalent: "")
@@ -106,6 +121,13 @@ class StatusBarController: NSObject, NSMenuDelegate {
         delegate?.clearImageCache()
     }
 
+    @objc private func selectTheme(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let theme = Preferences.Theme(rawValue: raw) else { return }
+        Preferences.shared.theme = theme
+        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+    }
+
     @objc private func showAbout() {
         let alert = NSAlert()
         alert.messageText = "ImageHoverPreview"
@@ -131,6 +153,15 @@ class StatusBarController: NSObject, NSMenuDelegate {
             if !inputMonitoringGranted { missing.append("Input Monitoring") }
             if !accessibilityGranted { missing.append("Accessibility") }
             permissionMenuItem.title = "Permissions ⚠️"
+        }
+
+        // Reflect the active theme in the submenu.
+        let active = Preferences.shared.theme.rawValue
+        for item in self.menu.items {
+            guard let submenu = item.submenu, submenu.title == "Theme" else { continue }
+            for sub in submenu.items {
+                sub.state = ((sub.representedObject as? String) == active) ? .on : .off
+            }
         }
     }
 }
