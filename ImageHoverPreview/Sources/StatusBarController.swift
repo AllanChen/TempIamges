@@ -4,6 +4,7 @@ protocol StatusBarControllerDelegate: AnyObject {
     func openPreferences()
     func checkAndRequestPermissions()
     func clearImageCache()
+    func openHistory()
 }
 
 class StatusBarController: NSObject, NSMenuDelegate {
@@ -61,6 +62,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
+        let historyItem = NSMenuItem(title: "History", action: #selector(openHistory), keyEquivalent: "")
+        historyItem.target = self
+        menu.addItem(historyItem)
+
         let clearCacheItem = NSMenuItem(title: "Clear Cache", action: #selector(clearCache), keyEquivalent: "")
         clearCacheItem.target = self
         menu.addItem(clearCacheItem)
@@ -91,6 +96,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func openPermissions() {
         delegate?.checkAndRequestPermissions()
+    }
+
+    @objc private func openHistory() {
+        delegate?.openHistory()
     }
 
     @objc private func clearCache() {

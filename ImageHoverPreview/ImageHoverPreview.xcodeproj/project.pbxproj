@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -25,13 +25,16 @@
 		BE31027DAA31F02D1686FD31 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C10FCE3D4BB90D4EA30DEFC /* ImageLoader.swift */; };
 		BF32934AAFA4C619773A25F1 /* PreviewPanelPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC41FBD7DF9F8E64F1E025E /* PreviewPanelPreview.swift */; };
 		C815C23A6EB7BC6669F00B97 /* KeyboardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 647F408AF1FFEA48490810AC /* KeyboardMonitor.swift */; };
+		E8936F349B37348D0B9BA724 /* HistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44107823C00C25503C78D76B /* HistoryManager.swift */; };
 		FC5AD58724D5D21BD6C81B55 /* PathDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 829156F9C70781AF0B1E1E2F /* PathDetector.swift */; };
+		FE8CEA01F4D20961DF3CB212 /* HistoryWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67CB8E2C69C1ED125DD3F65 /* HistoryWindow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0CB986107C96EBB53044C6EB /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		1ED63B00077CA5F013641FFE /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		3452816A88922AF037307048 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		44107823C00C25503C78D76B /* HistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryManager.swift; sourceTree = "<group>"; };
 		4CC41FBD7DF9F8E64F1E025E /* PreviewPanelPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanelPreview.swift; sourceTree = "<group>"; };
 		525BFB52246EE02908C896BF /* ContentViewerWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewerWindow.swift; sourceTree = "<group>"; };
 		5D380AF8348834CCCF9908DB /* FileNameResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNameResolver.swift; sourceTree = "<group>"; };
@@ -49,6 +52,7 @@
 		C3C93D4F8F3A63B7523692F1 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
 		CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		E145776A1496F0FD35763C92 /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
+		E67CB8E2C69C1ED125DD3F65 /* HistoryWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -76,6 +80,8 @@
 				9361774E515DD2529F0FA1A0 /* DebugInputWindow.swift */,
 				A67D3FF61FF45515D8AE39F8 /* ErrorTooltip.swift */,
 				5D380AF8348834CCCF9908DB /* FileNameResolver.swift */,
+				44107823C00C25503C78D76B /* HistoryManager.swift */,
+				E67CB8E2C69C1ED125DD3F65 /* HistoryWindow.swift */,
 				9C10FCE3D4BB90D4EA30DEFC /* ImageLoader.swift */,
 				647F408AF1FFEA48490810AC /* KeyboardMonitor.swift */,
 				CA0E09CF9B8588A4A7F9AD11 /* Logger.swift */,
@@ -129,6 +135,7 @@
 				};
 			};
 			buildConfigurationList = FC0C5501DF49A4FD766F9618 /* Build configuration list for PBXProject "ImageHoverPreview" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -137,8 +144,7 @@
 			);
 			mainGroup = 32756E9F04AA443AC91A3456;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = 84A80923E075FF3B364820CA /* Products */;
+			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -157,6 +163,8 @@
 				310EC9C6B8E3B0C1F63166F9 /* DebugInputWindow.swift in Sources */,
 				8D3F84BC22C288B4335BB02A /* ErrorTooltip.swift in Sources */,
 				7F91FAE167D7461F7FB181AD /* FileNameResolver.swift in Sources */,
+				E8936F349B37348D0B9BA724 /* HistoryManager.swift in Sources */,
+				FE8CEA01F4D20961DF3CB212 /* HistoryWindow.swift in Sources */,
 				BE31027DAA31F02D1686FD31 /* ImageLoader.swift in Sources */,
 				C815C23A6EB7BC6669F00B97 /* KeyboardMonitor.swift in Sources */,
 				8163531778C53B0DEA799661 /* Logger.swift in Sources */,

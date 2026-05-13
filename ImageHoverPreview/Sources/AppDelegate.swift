@@ -10,6 +10,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var errorTooltip: ErrorTooltip?
     private var onboardingWindow: OnboardingWindow?
     private var preferencesWindow: PreferencesWindow?
+    private var historyWindow: HistoryWindow?
     private var fileNameResolver: FileNameResolver?
     #if DEBUG
     private var debugInputWindow: DebugInputWindow?
@@ -181,6 +182,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let resolved = allHits.filter { $0.url != nil }
         let unresolvedTokens = allHits.compactMap { $0.unresolvedToken }
         Logger.info("AppDelegate: detected \(resolved.count) resolved + \(unresolvedTokens.count) unresolved")
+
+        if !allHits.isEmpty {
+            HistoryManager.shared.record(selectedText: selected, detectedPaths: allHits)
+        }
 
         if resolved.isEmpty && unresolvedTokens.isEmpty {
             Logger.info("AppDelegate: No media path in selected text")
@@ -384,6 +389,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     func clearImageCache() {
         imageLoader?.clearCache()
         Logger.info("AppDelegate: image cache cleared")
+    }
+
+    func openHistory() {
+        if historyWindow == nil {
+            historyWindow = HistoryWindow()
+        }
+        historyWindow?.refresh()
+        historyWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     #if DEBUG
