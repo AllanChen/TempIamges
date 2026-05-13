@@ -1,6 +1,7 @@
 import AppKit
 import AVKit
 import AVFoundation
+import WebKit
 
 class PreviewPanel: NSPanel {
     // MARK: - Layout constants
@@ -782,16 +783,19 @@ class PreviewPanel: NSPanel {
         case failed
     }
 
-    /// Open a markdown/webpage tile in a separate WKWebView window.
+    /// Open a markdown or webpage tile in a standalone ContentViewerWindow
+    /// (1100×720). The preview panel stays as-is — pin is *not* engaged
+    /// automatically, so the panel still auto-hides on hotkey release unless
+    /// the user has explicitly pinned it.
     private func openInViewer(info: MediaInfo) {
         let window = ContentViewerWindow()
         switch info.kind {
         case .markdown: window.loadMarkdown(info.url)
+        case .text:     window.loadText(info.url)
         case .webPage:  window.loadWebPage(info.url)
         default:        return
         }
         viewerWindows.append(window)
-        // Drop the strong ref once the window is closed so it can deallocate.
         NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: window,
@@ -1326,6 +1330,7 @@ private final class MediaTileView: NSView {
         let symbolName: String
         switch info.kind {
         case .markdown: symbolName = "doc.richtext"
+        case .text:     symbolName = "doc.text"
         case .webPage:  symbolName = "globe"
         default:        symbolName = "doc"
         }
@@ -1375,6 +1380,28 @@ private final class MediaTileView: NSView {
     }
 
     private func updateText(with info: MediaInfo) {
+        switch info.kind {
+        case .image, .video:
+            applyMediaText(info: info)
+        case .markdown, .text:
+            // Plain-text-ish file: skip size, just show format / hint.
+            filenameLabel?.stringValue = info.filename
+            if let hint = info.disambiguationHint, !hint.isEmpty {
+                dimsLabel?.stringValue = "in \(hint)"
+                sizeLabel?.stringValue = info.formatName
+            } else {
+                dimsLabel?.stringValue = info.formatName
+                sizeLabel?.stringValue = ""
+            }
+        case .webPage:
+            // Show host on the filename line, full URL underneath.
+            filenameLabel?.stringValue = info.url.host ?? info.filename
+            dimsLabel?.stringValue = info.url.absoluteString
+            sizeLabel?.stringValue = ""
+        }
+    }
+
+    private func applyMediaText(info: MediaInfo) {
         filenameLabel?.stringValue = info.filename
 
         if let dim = info.dimensions, dim.width > 0, dim.height > 0 {

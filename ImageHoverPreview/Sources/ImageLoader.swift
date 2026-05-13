@@ -13,16 +13,19 @@ struct MediaInfo {
     /// e.g. "~/Desktop/work". Rendered in the tile's metadata overlay.
     var disambiguationHint: String? = nil
 
-    enum Kind { case image, video, markdown, webPage }
+    enum Kind { case image, video, markdown, text, webPage }
 
     var filename: String { url.lastPathComponent }
     var formatName: String { (filename as NSString).pathExtension.uppercased() }
     var isVideo: Bool    { kind == .video }
     var isMarkdown: Bool { kind == .markdown }
+    var isText: Bool     { kind == .text }
     var isWebPage: Bool  { kind == .webPage }
     /// True for kinds that have no inline preview — clicking the tile opens
     /// them in a separate viewer window instead.
-    var opensInViewer: Bool { kind == .markdown || kind == .webPage }
+    var opensInViewer: Bool {
+        kind == .markdown || kind == .text || kind == .webPage
+    }
 
     static func from(_ path: DetectedPath) -> MediaInfo? {
         switch path {
@@ -32,6 +35,8 @@ struct MediaInfo {
         case .remoteVideo(let url):    return MediaInfo(url: url, isLocal: false, kind: .video)
         case .localMarkdown(let url):  return MediaInfo(url: url, isLocal: true,  kind: .markdown)
         case .remoteMarkdown(let url): return MediaInfo(url: url, isLocal: false, kind: .markdown)
+        case .localText(let url):      return MediaInfo(url: url, isLocal: true,  kind: .text)
+        case .remoteText(let url):     return MediaInfo(url: url, isLocal: false, kind: .text)
         case .webPage(let url):        return MediaInfo(url: url, isLocal: false, kind: .webPage)
         case .unresolvedFilename, .unresolvedRelativePath, .invalid: return nil
         }
@@ -121,7 +126,9 @@ class ImageLoader {
                         onProgress(i, .video(url, naturalSize: s, i2)); group.leave()
                     }
                 }
-            case .localMarkdown, .remoteMarkdown, .webPage:
+            case .localMarkdown, .remoteMarkdown,
+                 .localText, .remoteText,
+                 .webPage:
                 // No async work — the tile shows a placeholder icon and the
                 // content is fetched only when the user clicks to open it.
                 DispatchQueue.main.async {

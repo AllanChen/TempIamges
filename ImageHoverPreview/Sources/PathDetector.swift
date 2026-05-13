@@ -7,6 +7,8 @@ enum DetectedPath {
     case remoteVideo(URL)
     case localMarkdown(URL)
     case remoteMarkdown(URL)
+    case localText(URL)
+    case remoteText(URL)
     case webPage(URL)
     /// Bare filename in the selection (no slashes), e.g. "screenshot.png".
     /// FileNameResolver will Spotlight-search for this before previewing.
@@ -21,6 +23,7 @@ enum DetectedPath {
         case .localImage(let url), .remoteImage(let url),
              .localVideo(let url), .remoteVideo(let url),
              .localMarkdown(let url), .remoteMarkdown(let url),
+             .localText(let url), .remoteText(let url),
              .webPage(let url):
             return url
         case .unresolvedFilename, .unresolvedRelativePath, .invalid:
@@ -40,6 +43,7 @@ enum DetectedPath {
         case .localImage, .remoteImage,
              .localVideo, .remoteVideo,
              .localMarkdown, .remoteMarkdown,
+             .localText, .remoteText,
              .webPage:
             return true
         case .unresolvedFilename, .unresolvedRelativePath, .invalid:
@@ -72,11 +76,18 @@ class PathDetector {
         "mp4", "mov", "m4v", "webm"
     ]
     private let markdownExtensions: Set<String> = ["md", "markdown"]
+    /// Plain-text-ish formats that the viewer renders as text. JSON and XML
+    /// are pretty-printed by ContentViewerWindow before display.
+    private let textExtensions: Set<String> = ["txt", "json", "xml"]
     private var localSupportedExtensions: Set<String> {
-        imageExtensions.union(videoExtensions).union(markdownExtensions)
+        imageExtensions
+            .union(videoExtensions)
+            .union(markdownExtensions)
+            .union(textExtensions)
     }
 
     private let httpRegex: NSRegularExpression
+    private let bareDomainRegex: NSRegularExpression
     private let fileURLRegex: NSRegularExpression
     private let absolutePathRegex: NSRegularExpression
     private let homePathRegex: NSRegularExpression
@@ -90,26 +101,37 @@ class PathDetector {
         let localExts = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif",
                          "bmp", "tiff", "tif",
                          "mp4", "mov", "m4v", "webm",
-                         "md", "markdown"]
+                         "md", "markdown",
+                         "txt", "json", "xml"]
         let extAlt = localExts.joined(separator: "|")
 
         // Remote http(s) URLs are detected extension-agnostically; the kind is
         // decided in resolveCandidate() based on the URL's extension. Anything
         // without a recognised media extension falls into .webPage.
+        // The `:?` makes the colon optional so typos like `https//foo.com` still match.
         self.httpRegex = try! NSRegularExpression(
-            pattern: "https?://[^\\s\"'<>()\\[\\]{}]+",
+            pattern: "https?:?//[^\\s\"'<>()\\[\\]{},]+",
             options: []
         )
+        // Bare domain without scheme — `www.foo.com[/...]` or `something.com[/...]`.
+        // Restricted to a www. prefix or a known multi-letter TLD to bound
+        // false-positive risk against ordinary prose with periods.
+        self.bareDomainRegex = try! NSRegularExpression(
+            pattern: "(?<![A-Za-z0-9._/@-])(?:www\\.[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+|[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.(?:com|net|org|io|ai|app|dev|co|me|info|xyz|page|site|store|tech|gov|edu))(?:/[^\\s\"'<>()\\[\\]{},]*)?(?![A-Za-z0-9])",
+            options: []
+        )
+        // Comma is excluded so comma-separated lists of paths (e.g.
+        // "/a/x.png,/b/y.png") are split cleanly into separate matches.
         self.fileURLRegex = try! NSRegularExpression(
-            pattern: "file://[^\\s\"'<>()\\[\\]{}]+?\\.(?i:\(extAlt))",
+            pattern: "file://[^\\s\"'<>()\\[\\]{},]+?\\.(?i:\(extAlt))",
             options: []
         )
         self.absolutePathRegex = try! NSRegularExpression(
-            pattern: "/[^\\s\"'<>()\\[\\]{}]+?\\.(?i:\(extAlt))",
+            pattern: "/[^\\s\"'<>()\\[\\]{},]+?\\.(?i:\(extAlt))",
             options: []
         )
         self.homePathRegex = try! NSRegularExpression(
-            pattern: "~/[^\\s\"'<>()\\[\\]{}]+?\\.(?i:\(extAlt))",
+            pattern: "~/[^\\s\"'<>()\\[\\]{},]+?\\.(?i:\(extAlt))",
             options: []
         )
         // Relative path: at least one interior '/', optional ./ or ../ prefix.
@@ -160,11 +182,14 @@ class PathDetector {
         let full = NSRange(location: 0, length: ns.length)
 
         // ─── Phase A: existing absolute-path / URL detectors. ─────────────
+        // bareDomainRegex has the lowest priority so scheme-prefixed URLs
+        // (httpRegex) win when both match the same range.
         let prioritized: [(NSRegularExpression, Int)] = [
             (httpRegex, 0),
             (fileURLRegex, 1),
             (homePathRegex, 2),
             (absolutePathRegex, 3),
+            (bareDomainRegex, 5),
         ]
         var hits: [Hit] = []
         for (regex, prio) in prioritized {
@@ -207,14 +232,11 @@ class PathDetector {
         }
 
         // ─── Phase C: bare-filename regex. ─────────────────────────────────
-        // Runs whenever Phase A+B produced no concrete URLs. The regex is
-        // already strict (stem ≥3 chars + alphanumeric/_/-, must end in a
-        // supported media extension), so prose false positives are rare. To
-        // bound Spotlight load on huge selections, cap to N candidates per
-        // call.
+        // Always runs (alongside Phase A+B). The regex itself is strict
+        // (stem ≥3 chars, supported extension, word boundaries), and we cap
+        // at 16 candidates as a backstop against pathological inputs.
         let maxBareCandidates = 16
-        let phaseAOrBHadConcreteURL = results.contains { $0.url != nil }
-        if !phaseAOrBHadConcreteURL && text.count <= 5000 {
+        do {
             var bareCount = 0
             bareFilenameRegex.enumerateMatches(in: text, options: [], range: full) { m, _, stop in
                 guard let m = m else { return }
@@ -232,18 +254,51 @@ class PathDetector {
         return results
     }
 
-    private func resolveCandidate(_ candidate: String) -> DetectedPath? {
+    private func resolveCandidate(_ rawCandidate: String) -> DetectedPath? {
+        // Strip sentence-ending punctuation that regexes commonly capture by
+        // accident (e.g. "Check https://foo.com." → "https://foo.com").
+        var candidate = rawCandidate
+        while let last = candidate.last, ",.;!?\"')]".contains(last) {
+            candidate.removeLast()
+        }
+        guard !candidate.isEmpty else { return nil }
         let lower = candidate.lowercased()
         let ext = mediaExtension(of: candidate)
         let isImage = imageExtensions.contains(ext)
         let isVideo = videoExtensions.contains(ext)
         let isMarkdown = markdownExtensions.contains(ext)
+        let isText = textExtensions.contains(ext)
 
-        if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
-            guard let url = parseLenientURL(candidate) else { return nil }
+        // Repair common URL typos and surface scheme-less domains.
+        let normalizedHTTP: String? = {
+            if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
+                return candidate
+            }
+            if lower.hasPrefix("https//") { return "https://" + candidate.dropFirst("https//".count) }
+            if lower.hasPrefix("http//")  { return "http://"  + candidate.dropFirst("http//".count) }
+            // Bare-domain hits — must look like a host (contain a `.` in the
+            // portion before the first `/`) and must not be a path-style
+            // candidate. This prevents `xporn/README.md` from being treated
+            // as a host with path.
+            if !lower.hasPrefix("/"),
+               !lower.hasPrefix("~"),
+               !lower.hasPrefix("file://"),
+               !lower.contains("://") {
+                let firstSlash = lower.firstIndex(of: "/") ?? lower.endIndex
+                let host = lower[..<firstSlash]
+                if host.contains(".") {
+                    return "https://" + candidate
+                }
+            }
+            return nil
+        }()
+
+        if let scheme = normalizedHTTP {
+            guard let url = parseLenientURL(scheme) else { return nil }
             if isImage    { return .remoteImage(url) }
             if isVideo    { return .remoteVideo(url) }
             if isMarkdown { return .remoteMarkdown(url) }
+            if isText     { return .remoteText(url) }
             // Anything else with http(s) scheme is treated as a webpage URL.
             return .webPage(url)
         }
@@ -314,6 +369,7 @@ class PathDetector {
         let url = URL(fileURLWithPath: path)
         if videoExtensions.contains(ext)    { return .localVideo(url) }
         if markdownExtensions.contains(ext) { return .localMarkdown(url) }
+        if textExtensions.contains(ext)     { return .localText(url) }
         return .localImage(url)
     }
 

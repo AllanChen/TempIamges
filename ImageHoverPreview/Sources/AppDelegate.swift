@@ -11,15 +11,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var onboardingWindow: OnboardingWindow?
     private var preferencesWindow: PreferencesWindow?
     private var fileNameResolver: FileNameResolver?
+    #if DEBUG
+    private var debugInputWindow: DebugInputWindow?
+    #endif
 
     private var currentPath: String?
     private var isLoadingImage: Bool = false
+    /// Last selection text we successfully read via AX. Used as a fallback
+    /// when AX returns nothing on a subsequent hotkey press — e.g. after the
+    /// user clicked through to a markdown / webpage viewer (which briefly
+    /// stole focus) and pressed Control again on the original selection,
+    /// some apps clear the selection on focus loss.
+    private var lastSelectedText: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
         setupComponents()
         setupNotifications()
         checkPermissions()
+
+        #if DEBUG
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.showDebugInputWindow()
+        }
+        #endif
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -103,65 +118,97 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     @objc private func previewModeActivated() {
-        Logger.info("AppDelegate: Preview mode activated")
+        activatePreview(injectedText: nil)
+    }
+
+    /// Core preview pipeline. When `injectedText` is non-nil, skips AX
+    /// selection extraction and uses the provided text — useful for debug
+    /// flows that want to exercise PathDetector with a known input.
+    private func activatePreview(injectedText: String?) {
+        Logger.info("AppDelegate: Preview mode activated\(injectedText != nil ? " (debug)" : "")")
         guard Preferences.shared.enabled else {
             Logger.info("AppDelegate: Preview disabled in preferences")
             return
         }
 
-        let permissionManager = PermissionManager.shared
-        guard permissionManager.isInputMonitoringGranted else {
-            Logger.info("AppDelegate: Cannot activate preview - Input Monitoring permission not granted")
-            return
-        }
-        guard permissionManager.isAccessibilityGranted else {
-            Logger.info("AppDelegate: Cannot activate preview - Accessibility permission not granted")
-            return
-        }
-
         let mousePos = currentCursorAXPoint()
-        guard let result = selectedTextExtractor?.extractSelection() else {
-            Logger.info("AppDelegate: No selected text to preview")
-            showErrorTooltip(message: "No text selected", at: mousePos)
-            return
-        }
-        let selected = result.text
+        // Debug mode pipes in pre-baked text. Anchor at screen centre.
+        let selected: String
+        let anchor: CGPoint
+        if let text = injectedText {
+            selected = text
+            if let screen = NSScreen.main {
+                // Park the preview on the right half of the screen so the
+                // debug input window (top-left) stays visible.
+                let f = screen.frame
+                anchor = CGPoint(x: f.midX + f.width * 0.2, y: f.midY)
+            } else {
+                anchor = mousePos
+            }
+        } else {
+            let permissionManager = PermissionManager.shared
+            guard permissionManager.isInputMonitoringGranted else {
+                Logger.info("AppDelegate: Cannot activate preview - Input Monitoring permission not granted")
+                return
+            }
+            guard permissionManager.isAccessibilityGranted else {
+                Logger.info("AppDelegate: Cannot activate preview - Accessibility permission not granted")
+                return
+            }
 
-        // Always anchor the preview at the mouse cursor — feels more natural
-        // for a hover-style preview than snapping to the selection bounds.
-        let anchor = mousePos
+            // Try the live AX selection first; cache it on success.
+            let axResult = selectedTextExtractor?.extractSelection()
+            if let result = axResult, !result.text.isEmpty {
+                selected = result.text
+                lastSelectedText = result.text
+                anchor = mousePos
+            } else if let cached = lastSelectedText, !cached.isEmpty {
+                // AX returned nothing — fall back to the previous selection
+                // we remembered. This handles the "viewed a viewer window,
+                // returned, pressed Control" case where some apps drop the
+                // selection on focus change.
+                Logger.info("AppDelegate: AX empty — falling back to cached selection")
+                selected = cached
+                anchor = mousePos
+            } else {
+                Logger.info("AppDelegate: No selected text to preview")
+                showErrorTooltip(message: "No text selected", at: mousePos)
+                return
+            }
+        }
 
         let allHits = pathDetector?.detectAll(selected) ?? []
         let resolved = allHits.filter { $0.url != nil }
         let unresolvedTokens = allHits.compactMap { $0.unresolvedToken }
+        Logger.info("AppDelegate: detected \(resolved.count) resolved + \(unresolvedTokens.count) unresolved")
 
-        if !resolved.isEmpty {
-            // Fast path: concrete URLs / absolute paths — preview immediately,
-            // no Spotlight roundtrip.
-            Logger.info("AppDelegate: Loading \(resolved.count) media item(s) from selection")
-            currentPath = resolved.compactMap { $0.url?.absoluteString }.joined(separator: "|")
-            loadAndShowMedia(paths: resolved, at: anchor)
-            return
-        }
-
-        if unresolvedTokens.isEmpty {
+        if resolved.isEmpty && unresolvedTokens.isEmpty {
             Logger.info("AppDelegate: No media path in selected text")
             currentPath = selected
             showErrorTooltip(message: "No image or video found in selection", at: anchor)
             return
         }
 
-        Logger.info("AppDelegate: Resolving \(unresolvedTokens.count) unresolved token(s) via Spotlight")
-        currentPath = unresolvedTokens.joined(separator: "|")
-        resolveAndShow(tokens: unresolvedTokens, at: anchor)
+        if unresolvedTokens.isEmpty {
+            // Fast path: only concrete URLs/paths — preview immediately.
+            currentPath = resolved.compactMap { $0.url?.absoluteString }.joined(separator: "|")
+            loadAndShowMedia(paths: resolved, at: anchor)
+            return
+        }
+
+        // Mixed (or unresolved-only): show placeholder, Spotlight-resolve
+        // unresolved tokens, then preview the combined list.
+        currentPath = (resolved.compactMap { $0.url?.absoluteString } + unresolvedTokens).joined(separator: "|")
+        resolveAndShow(resolved: resolved, tokens: unresolvedTokens, at: anchor)
     }
 
-    /// Show a placeholder preview tile, run Spotlight, then re-show the panel
-    /// with the resolved tiles. If nothing matches, hide the panel and show
-    /// the standard error tooltip.
-    private func resolveAndShow(tokens: [String], at anchor: CGPoint) {
-        // 1. Immediate placeholder — masonry-mode panel with two skeletons so
-        //    the user sees activity within the first frame.
+    /// Show a placeholder preview tile, run Spotlight for the unresolved
+    /// tokens, then preview the union of the already-resolved paths plus the
+    /// Spotlight matches.
+    private func resolveAndShow(resolved: [DetectedPath],
+                                 tokens: [String],
+                                 at anchor: CGPoint) {
+        // Immediate placeholder — masonry skeletons so the user sees activity.
         let placeholder = MediaInfo(
             url: URL(fileURLWithPath: "/"),
             isLocal: true, kind: .image,
@@ -183,28 +230,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
         group.notify(queue: .main) { [weak self] in
             guard let self = self else { return }
-            // Round-robin: pick the top match from each token first, then the
-            // 2nd-best from each, etc. Ensures every distinct filename in the
-            // selection gets at least one tile before we double-up on any.
-            // Cap is generous so a single filename with many matches surfaces
-            // all of them (user can scroll the masonry).
-            let maxTiles = 24
-            var limited: [FileNameResolver.Match] = []
+            // Round-robin pick from each token's match list.
+            let maxFromSpotlight = max(0, 24 - resolved.count)
+            var spotlight: [FileNameResolver.Match] = []
             var cursors = Array(repeating: 0, count: uniqueTokens.count)
-            outer: while limited.count < maxTiles {
+            outer: while spotlight.count < maxFromSpotlight {
                 var advanced = false
                 for (i, token) in uniqueTokens.enumerated() {
                     let list = resultsByToken[token] ?? []
                     if cursors[i] < list.count {
-                        limited.append(list[cursors[i]])
+                        spotlight.append(list[cursors[i]])
                         cursors[i] += 1
                         advanced = true
-                        if limited.count >= maxTiles { break outer }
+                        if spotlight.count >= maxFromSpotlight { break outer }
                     }
                 }
                 if !advanced { break }
             }
-            guard !limited.isEmpty else {
+
+            // Spotlight matches → DetectedPath, then append to the already-resolved list.
+            let spotlightPaths: [DetectedPath] = spotlight.compactMap { match in
+                let ext = match.url.pathExtension.lowercased()
+                if ["mp4", "mov", "m4v", "webm"].contains(ext) { return .localVideo(match.url) }
+                if ["md", "markdown"].contains(ext)            { return .localMarkdown(match.url) }
+                if ["txt", "json", "xml"].contains(ext)        { return .localText(match.url) }
+                return .localImage(match.url)
+            }
+            let combined = resolved + spotlightPaths
+
+            guard !combined.isEmpty else {
                 self.previewPanel?.hidePanel()
                 let label = uniqueTokens.first ?? ""
                 self.showErrorTooltip(
@@ -214,17 +268,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 return
             }
 
-            let paths: [DetectedPath] = limited.compactMap { match in
-                let ext = match.url.pathExtension.lowercased()
-                if ["mp4", "mov", "m4v", "webm"].contains(ext) { return .localVideo(match.url) }
-                if ["md", "markdown"].contains(ext)            { return .localMarkdown(match.url) }
-                return .localImage(match.url)
-            }
-            self.loadAndShowMedia(paths: paths, at: anchor)
-            // Apply per-tile hints (parent dir) once the panel has rebuilt.
-            for (i, match) in limited.enumerated() {
+            self.loadAndShowMedia(paths: combined, at: anchor)
+            // Apply per-tile hints for Spotlight matches — they sit AFTER the
+            // pre-resolved ones in the combined list.
+            for (offset, match) in spotlight.enumerated() {
+                let tileIndex = resolved.count + offset
                 let hint = Self.disambiguationHint(for: match.url)
-                self.previewPanel?.applyHint(at: i, hint: hint)
+                self.previewPanel?.applyHint(at: tileIndex, hint: hint)
             }
         }
     }
@@ -337,30 +387,82 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     #if DEBUG
-    private func runDebugPreview() {
-        // Edit this list to test different scenarios. Items can be remote
-        // URLs (http/https) or local file paths (starting with "/").
-        let entries: [String] = [
-            "https://resouces.pppron.com/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg",
-            "https://cdn.v2ex.com/avatar/8b6e/2852/785555_xlarge.png",
-            "/Users/lily/Desktop/work/HoopCut/data/debug/frame_00375.jpg",
-            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/572ac945-2e08-4629-b179-f62a388b2f70.jpg",
-            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/f3e5e1d6-d223-4219-bd4f-67ad0231a578.webp",
-            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/6461e4f5-8451-4485-b109-44742398f610.jpg",
-            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/73b7ff2d-ffa0-42d7-8ba5-994bbdbde4e0.png",
-            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/6461e4f5-8451-4485-b109-44742398f610.jpg",
-            "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/76516dd2-0460-4f4d-bceb-9860fa054b58.png"
-        ]
-        let paths: [DetectedPath] = entries.compactMap { entry in
-            if entry.hasPrefix("/") {
-                return .localImage(URL(fileURLWithPath: entry))
-            }
-            guard let url = URL(string: entry) else { return nil }
-            return .remoteImage(url)
+    /// Pops up the debug input window. Each Run click pipes the text view
+    /// contents through PathDetector → preview, no hotkey needed.
+    private func showDebugInputWindow() {
+        let win = debugInputWindow ?? DebugInputWindow()
+        win.onRun = { [weak self] text in
+            self?.activatePreview(injectedText: text)
         }
-        guard let screen = NSScreen.main else { return }
-        let center = CGPoint(x: screen.frame.midX, y: screen.frame.midY)
-        loadAndShowMedia(paths: paths, at: center)
+        win.setText(debugSamplePrefill)
+        NSApp.activate(ignoringOtherApps: true)
+        win.makeKeyAndOrderFront(nil)
+        debugInputWindow = win
+    }
+
+    private var debugSamplePrefill: String {
+        return """
+        https://resouces.pppron.com/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg
+
+
+        https://cdn.v2ex.com/avatar/8b6e/2852/785555_xlarge.png
+
+        orn-frontend % '/Users/lily/Desktop/work/HoopCut/data/debug/frame_00375.jpg'
+
+        org_img = "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/572ac945-2e08-4629-b179-f62a388b2f70.jpg"
+            target_img = "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/f3e5e1d6-d223-4219-bd4f-67ad0231a578.webp"
+
+
+
+            org_img = "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/6461e4f5-8451-4485-b109-44742398f610.jpg"
+            target_img = "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/73b7ff2d-ffa0-42d7-8ba5-994bbdbde4e0.png"
+
+
+            org_img = "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/6461e4f5-8451-4485-b109-44742398f610.jpg"
+            target_img = "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/76516dd2-0460-4f4d-bceb-9860fa054b58.png"
+
+
+            xporn/README.md
+
+            https//www.himarts.com
+
+            xporn/base_image.json
+
+            /Users/lily/Desktop/work/xporn/base_video.json
+
+        ❯ 那我现在每天的工作计划是看哪一个markdown ？
+
+        ⏺ 主入口: websiteseo/week_5_13_action_card.md
+
+
+          websiteseo/
+          ├── plan_v6.md ← 唯一日常入口
+          │   ├── 战略 / 12 周路线图
+          │   ├── 5/13 重构 (双轨)
+          │   ├── 📅 本周日程 5/13-5/19 ← 每天看这一节
+          │   └── 引用资料库表 ← 指向以下文件
+          │
+          ├── trafficjunky_creatives.md     ← 资产库
+          ├── adult_directories_submission.md ← 资产库
+          ├── tg_content_4weeks.md          ← 资产库
+          ├── trafficjunky_tracking_setup.md ← 代码规范
+          └── content/blog/best-gay-ai-video-generator-2026.md ← 博客
+          这是你每天打开的唯一一个文件。其他都是参考资料库，按需查阅。
+
+          文档结构
+
+          📌 每天打开 → week_5_13_action_card.md
+                          │
+                          │ 引用以下"按需查阅"资料：
+                          │
+                          ├── 写博客时    → content/blog/best-gay-ai-video-generator-2026.md
+                          ├── 做 Banner 时 → trafficjunky_creatives.md
+                          ├── 提交目录时   → adult_directories_submission.md
+                          ├── 发 TG 帖时   → tg_content_4weeks.md
+                          ├── 部署代码时   → trafficjunky_tracking_setup.md
+                          ├── 看大方向时   → plan_v6.md (5/13 重构小节)
+                          └── 看整体战略   → ~/.claude/plans/plan-v6-lazy-rossum.md
+        """
     }
     #endif
 }
