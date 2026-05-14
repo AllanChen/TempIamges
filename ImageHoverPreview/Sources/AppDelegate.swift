@@ -175,12 +175,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 lastSelectedText = result.text
                 anchor = mousePos
             } else if let cached = lastSelectedText, !cached.isEmpty {
-                // AX returned nothing — fall back to the previous selection
-                // we remembered. This handles the "viewed a viewer window,
-                // returned, pressed Control" case where some apps drop the
-                // selection on focus change.
                 Logger.info("AppDelegate: AX empty — falling back to cached selection")
                 selected = cached
+                anchor = mousePos
+            } else if Preferences.shared.readClipboard,
+                      let clipboardResult = selectedTextExtractor?.readClipboardDirectly() {
+                Logger.info("AppDelegate: AX empty — falling back to clipboard content")
+                selected = clipboardResult.text
+                lastSelectedText = clipboardResult.text
                 anchor = mousePos
             } else {
                 Logger.info("AppDelegate: No selected text to preview")

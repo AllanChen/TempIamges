@@ -5,12 +5,13 @@ class PreferencesWindow: NSWindow {
     private var maxSizeLabel: NSTextField!
     private var enabledCheckbox: NSButton!
     private var launchAtLoginCheckbox: NSButton!
+    private var readClipboardCheckbox: NSButton!
     private var optionCheckbox: NSButton!
     private var controlCheckbox: NSButton!
     private var currentHotkeyLabel: NSTextField!
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 460, height: 380)
+        let windowRect = NSRect(x: 0, y: 0, width: 460, height: 410)
         super.init(
             contentRect: windowRect,
             styleMask: [.titled, .closable],
@@ -35,17 +36,21 @@ class PreferencesWindow: NSWindow {
 
         let titleLabel = NSTextField(labelWithString: "ImageHoverPreview Preferences")
         titleLabel.font = NSFont.boldSystemFont(ofSize: 16)
-        titleLabel.frame = NSRect(x: 20, y: 330, width: 420, height: 24)
+        titleLabel.frame = NSRect(x: 20, y: 360, width: 420, height: 24)
         containerView.addSubview(titleLabel)
 
         let generalLabel = NSTextField(labelWithString: "General")
         generalLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        generalLabel.frame = NSRect(x: 20, y: 290, width: 420, height: 20)
+        generalLabel.frame = NSRect(x: 20, y: 320, width: 420, height: 20)
         containerView.addSubview(generalLabel)
 
         enabledCheckbox = NSButton(checkboxWithTitle: "Enable Image Hover Preview", target: self, action: #selector(enabledToggled))
-        enabledCheckbox.frame = NSRect(x: 20, y: 260, width: 300, height: 20)
+        enabledCheckbox.frame = NSRect(x: 20, y: 290, width: 300, height: 20)
         containerView.addSubview(enabledCheckbox)
+
+        readClipboardCheckbox = NSButton(checkboxWithTitle: "Read clipboard when no text is selected", target: self, action: #selector(readClipboardToggled))
+        readClipboardCheckbox.frame = NSRect(x: 20, y: 260, width: 380, height: 20)
+        containerView.addSubview(readClipboardCheckbox)
 
         launchAtLoginCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(launchAtLoginToggled))
         launchAtLoginCheckbox.frame = NSRect(x: 20, y: 230, width: 300, height: 20)
@@ -107,6 +112,7 @@ class PreferencesWindow: NSWindow {
         maxSizeSlider.doubleValue = Double(prefs.maxPreviewSize)
         maxSizeLabel.stringValue = "\(Int(prefs.maxPreviewSize)) px"
         enabledCheckbox.state = prefs.enabled ? .on : .off
+        readClipboardCheckbox.state = prefs.readClipboard ? .on : .off
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
         optionCheckbox.state = prefs.hotkeyRequiresOption ? .on : .off
         controlCheckbox.state = prefs.hotkeyRequiresControl ? .on : .off
@@ -131,6 +137,11 @@ class PreferencesWindow: NSWindow {
 
     @objc private func enabledToggled(_ sender: NSButton) {
         Preferences.shared.enabled = sender.state == .on
+        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+    }
+
+    @objc private func readClipboardToggled(_ sender: NSButton) {
+        Preferences.shared.readClipboard = sender.state == .on
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 

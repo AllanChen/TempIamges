@@ -48,6 +48,11 @@ class Preferences {
         set { defaults.set(newValue, forKey: "\(suiteName).launchAtLogin") }
     }
 
+    var readClipboard: Bool {
+        get { defaults.bool(forKey: "\(suiteName).readClipboard") }
+        set { defaults.set(newValue, forKey: "\(suiteName).readClipboard") }
+    }
+
     var hotkeyModifiers: NSEvent.ModifierFlags {
         get {
             let rawValue = UInt(defaults.integer(forKey: "\(suiteName).hotkeyModifiers"))
@@ -75,6 +80,7 @@ class Preferences {
             "\(suiteName).maxSize": 400.0,
             "\(suiteName).enabled": true,
             "\(suiteName).launchAtLogin": false,
+            "\(suiteName).readClipboard": true,
             "\(suiteName).hotkeyModifiers": Int(NSEvent.ModifierFlags([.control]).rawValue),
             "\(suiteName).hotkeyRequiresOption": false,
             "\(suiteName).hotkeyRequiresControl": true
@@ -86,6 +92,7 @@ class Preferences {
         maxPreviewSize = 400
         enabled = true
         launchAtLogin = false
+        readClipboard = true
         hotkeyModifiers = [.control]
         hotkeyRequiresOption = false
         hotkeyRequiresControl = true

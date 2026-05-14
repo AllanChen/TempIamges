@@ -106,6 +106,21 @@ class SelectedTextExtractor {
         return rect
     }
 
+    func readClipboardDirectly() -> SelectionResult? {
+        let pb = NSPasteboard.general
+        guard let text = pb.string(forType: .string) else {
+            Logger.info("SelectedTextExtractor: Clipboard contains no text")
+            return nil
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            Logger.info("SelectedTextExtractor: Clipboard text is empty")
+            return nil
+        }
+        Logger.info("SelectedTextExtractor: Direct clipboard read='\(trimmed)' (no bounds)")
+        return SelectionResult(text: trimmed, bounds: nil)
+    }
+
     // MARK: - Clipboard fallback (universal, works in VSCode/Cursor/Sublime/web)
 
     private func readViaClipboard() -> SelectionResult? {
