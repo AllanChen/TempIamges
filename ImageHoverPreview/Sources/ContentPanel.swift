@@ -12,6 +12,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private let toggleButton = NSButton()
     private let locateButton = NSButton()
     private let modifiedLabel = NSTextField(labelWithString: "")
+    private let addressBar = NSTextField()
 
     private let webFindBar = NSView()
     private let webFindField = NSTextField()
@@ -153,6 +154,18 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
                                       y: 9, width: 160, height: 18)
         modifiedLabel.autoresizingMask = [.minXMargin]
         toolbarBar.addSubview(modifiedLabel)
+
+        addressBar.font = NSFont.systemFont(ofSize: 12)
+        addressBar.alignment = .center
+        addressBar.isEditable = false
+        addressBar.isSelectable = true
+        addressBar.isBordered = true
+        addressBar.backgroundColor = NSColor(white: 0.18, alpha: 1)
+        addressBar.textColor = .secondaryLabelColor
+        addressBar.frame = NSRect(x: 80, y: 6, width: bodyFrame.width - 160, height: 24)
+        addressBar.autoresizingMask = [.width]
+        addressBar.isHidden = true
+        toolbarBar.addSubview(addressBar)
 
         root.addSubview(toolbarBar)
 
@@ -297,6 +310,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             currentURL = info.url
             kind = .markdown
             isEditing = false
+            showToolbar()
             toggleButton.isHidden = false
             toggleButton.title = "Edit"
             saveButton.isHidden = true
@@ -307,6 +321,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             currentURL = info.url
             kind = .text
             isEditing = false
+            showToolbar()
             toggleButton.isHidden = false
             toggleButton.title = "Edit"
             saveButton.isHidden = true
@@ -316,6 +331,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         case .pdf:
             currentURL = info.url
             kind = .pdf
+            showToolbar()
             toggleButton.isHidden = true
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
@@ -326,18 +342,10 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
                 webView.load(URLRequest(url: info.url))
             }
             showWebView()
-        case .webPage:
-            currentURL = info.url
-            kind = .webpage
-            toggleButton.isHidden = true
-            saveButton.isHidden = true
-            locateButton.isHidden = !info.url.isFileURL
-            updateModifiedDate(for: info.url)
-            webView.load(URLRequest(url: info.url))
-            showWebView()
         case .image:
             currentURL = info.url
             kind = .image
+            showToolbar()
             toggleButton.isHidden = true
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
@@ -354,8 +362,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         default:
             currentURL = info.url
             kind = .webpage
-            toggleButton.isHidden = true
-            saveButton.isHidden = true
+            showToolbar()
             locateButton.isHidden = !info.url.isFileURL
             webView.load(URLRequest(url: info.url))
             showWebView()
@@ -425,6 +432,20 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private func showTextView() {
         webView.isHidden = true
         textScroll.isHidden = false
+    }
+
+    private func showAddressBar(for url: URL) {
+        toggleButton.isHidden = true
+        saveButton.isHidden = true
+        locateButton.isHidden = !url.isFileURL
+        modifiedLabel.isHidden = true
+        addressBar.isHidden = false
+        addressBar.stringValue = url.absoluteString
+    }
+
+    private func showToolbar() {
+        addressBar.isHidden = true
+        modifiedLabel.isHidden = false
     }
 
     @objc private func toggleEditTapped() {
