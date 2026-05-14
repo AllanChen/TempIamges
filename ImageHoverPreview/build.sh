@@ -20,7 +20,11 @@ xcodebuild \
     -derivedDataPath ./DerivedData \
     build
 
-BUILT_APP=$(find "./DerivedData/Build/Products/$CONFIG" -name "ImageHoverPreview.app" -type d | head -n 1)
+BUILT_APP=$(find "./debug/$CONFIG" -name "ImageHoverPreview.app" -type d | head -n 1)
+
+if [ -z "$BUILT_APP" ]; then
+    BUILT_APP=$(find "./DerivedData/Build/Products/$CONFIG" -name "ImageHoverPreview.app" -type d | head -n 1)
+fi
 
 if [ -z "$BUILT_APP" ]; then
     echo "Error: Could not find built ImageHoverPreview.app"
