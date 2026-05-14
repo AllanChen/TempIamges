@@ -25,6 +25,12 @@ Package.resolved
 # Built app bundle (build.sh writes this at repo root)
 /ImageHoverPreview.app/
 
+# Debug build output
+ImageHoverPreview/debug/
+
+# Claude session data
+.claude/
+
 # prototype: keep sources, drop compiled binaries
 prototype/*
 !prototype/*.swift
