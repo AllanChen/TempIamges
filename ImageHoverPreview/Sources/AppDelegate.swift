@@ -123,6 +123,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     @objc private func previewModeActivated() {
+        // Toggle: if a preview is already visible, dismiss it. Otherwise
+        // start a fresh preview cycle.
+        if let panel = previewPanel, panel.isVisible {
+            panel.closePanel()
+            previewModeDeactivated()
+            return
+        }
         activatePreview(injectedText: nil)
     }
 
@@ -198,9 +205,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             // Fast path: only concrete URLs/paths — preview immediately.
             currentPath = resolved.compactMap { $0.url?.absoluteString }.joined(separator: "|")
             HistoryManager.shared.record(selectedText: selected, detectedPaths: resolved)
-            if resolved.count == 1 {
-                // Single hit — skip the preview panel and dispatch straight
-                // to whatever the click action would have been.
+            if resolved.count == 1, shouldDirectOpen(resolved[0]) {
+                // Single hit (non-webpage) — skip the preview panel and
+                // dispatch straight to the click action.
                 previewPanel?.hidePanel()
                 directOpen(resolved[0])
                 return
@@ -215,21 +222,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         resolveAndShow(selectedText: selected, resolved: resolved, tokens: unresolvedTokens, at: anchor)
     }
 
-    /// Show a placeholder preview tile, run Spotlight for the unresolved
-    /// tokens, then preview the union of the already-resolved paths plus the
-    /// Spotlight matches.
     private func resolveAndShow(selectedText: String,
                                  resolved: [DetectedPath],
                                  tokens: [String],
                                  at anchor: CGPoint) {
-        // Immediate placeholder — masonry skeletons so the user sees activity.
-        let placeholder = MediaInfo(
-            url: URL(fileURLWithPath: "/"),
-            isLocal: true, kind: .image,
-            dimensions: CGSize(width: 200, height: 200),
-            fileSize: nil, duration: nil
-        )
-        previewPanel?.showLoading(infos: [placeholder, placeholder], at: anchor)
+        let totalCount = resolved.count + tokens.count
+        let placeholders = (0..<totalCount).map { _ in
+            MediaInfo(url: URL(fileURLWithPath: "/"), isLocal: true, kind: .image,
+                      dimensions: CGSize(width: 300, height: 533), fileSize: nil, duration: nil)
+        }
+        previewPanel?.showLoading(infos: placeholders, at: anchor)
 
         let uniqueTokens = NSOrderedSet(array: tokens).array as? [String] ?? tokens
 
@@ -263,12 +265,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             }
 
             // Spotlight matches → DetectedPath, then append to the already-resolved list.
-            let spotlightPaths: [DetectedPath] = spotlight.compactMap { match in
-                let ext = match.url.pathExtension.lowercased()
-                if ["mp4", "mov", "m4v", "webm"].contains(ext) { return .localVideo(match.url) }
-                if ["md", "markdown"].contains(ext)            { return .localMarkdown(match.url) }
-                if ["txt", "json", "xml"].contains(ext)        { return .localText(match.url) }
-                return .localImage(match.url)
+            let spotlightPaths: [DetectedPath] = spotlight.map { match in
+                self.pathDetector?.localKind(for: match.url.path) ?? .localImage(match.url)
             }
             let combined = resolved + spotlightPaths
 
@@ -283,7 +281,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             }
 
             HistoryManager.shared.record(selectedText: selectedText, detectedPaths: combined)
-            if combined.count == 1 {
+            if combined.count == 1, self.shouldDirectOpen(combined[0]) {
                 // Same single-hit shortcut as the fast path — drop the
                 // placeholder masonry skeletons and open directly.
                 self.previewPanel?.hidePanel()
@@ -335,11 +333,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     @objc private func previewModeDeactivated() {
         Logger.info("AppDelegate: Preview mode deactivated")
-        previewPanel?.hidePanel()
+        // With the pin button removed the panel stays visible after the
+        // hotkey is released.  It is only dismissed by clicking the X
+        // button or by re-pressing the hotkey (toggle).
         errorTooltip?.hide()
         fileNameResolver?.cancelAll()
         currentPath = nil
         isLoadingImage = false
+        lastSelectedText = nil
     }
 
     private func loadAndShowMedia(paths: [DetectedPath], at position: CGPoint) {
@@ -376,6 +377,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         )
     }
 
+    /// Returns true only for markdown / text / PDF — these open straight into
+    /// the viewer window.  Every other kind (image, video, webpage, app, etc.)
+    /// renders in the preview panel first; the user must click the tile to
+    /// trigger the open action.
+    private func shouldDirectOpen(_ path: DetectedPath) -> Bool {
+        switch path {
+        case .localMarkdown, .remoteMarkdown,
+             .localText,     .remoteText,
+             .localPDF,      .remotePDF:
+            return true
+        default:
+            return false
+        }
+    }
+
     /// One-hit shortcut: when path detection settles on exactly one file,
     /// bypass the preview panel and perform the same action that clicking
     /// the tile would have triggered.
@@ -386,8 +402,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         case .image, .video:
             // Local → default app (Preview / QuickTime). Remote → browser.
             NSWorkspace.shared.open(info.url)
-        case .markdown, .text, .pdf, .webPage:
+        case .markdown, .text, .pdf:
             openInViewerWindow(info: info)
+        case .webPage:
+            // Webpages never open directly — they always go through the
+            // preview panel so the user sees the URL before deciding to open.
+            break
         case .other:
             if info.isLocal {
                 NSWorkspace.shared.activateFileViewerSelecting([info.url])

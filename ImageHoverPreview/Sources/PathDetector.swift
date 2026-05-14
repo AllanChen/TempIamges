@@ -294,8 +294,42 @@ class PathDetector {
             // Only "consume" range when the candidate actually validates —
             // an over-extended absolute-path match that doesn't exist on
             // disk shouldn't block shorter strict matches that follow.
-            guard let path = resolveCandidate(hit.str) else { continue }
-            lastEnd = hit.range.location + hit.range.length
+            var resolvedPath = resolveCandidate(hit.str)
+            var consumeEnd = hit.range.location + hit.range.length
+
+            // Lazy regex can under-match absolute / home / file:// paths that
+            // contain a dot before the real extension, e.g.
+            // "/.claude/settings.json" → "/Users/.../.c".  When the short
+            // candidate fails validation, try extending to the next word
+            // boundary in the original text.
+            if resolvedPath == nil,
+               hit.str.hasPrefix("/") || hit.str.hasPrefix("~/") || hit.str.hasPrefix("file://") {
+                let ns = text as NSString
+                let tailStart = hit.range.location + hit.range.length
+                let tailLen = ns.length - tailStart
+                if tailLen > 0 {
+                    let tail = ns.substring(with: NSRange(location: tailStart, length: tailLen))
+                    let boundary = CharacterSet.whitespacesAndNewlines
+                        .union(CharacterSet(charactersIn: "\"'<>()[]{},;!?"))
+                    let extra: String
+                    if let idx = tail.unicodeScalars.firstIndex(where: { boundary.contains($0) }) {
+                        let pos = tail.distance(from: tail.startIndex, to: idx)
+                        extra = String(tail.prefix(pos))
+                    } else {
+                        extra = tail
+                    }
+                    if !extra.isEmpty {
+                        let extended = hit.str + extra
+                        if let p = resolveCandidate(extended) {
+                            resolvedPath = p
+                            consumeEnd = tailStart + extra.utf16.count
+                        }
+                    }
+                }
+            }
+
+            guard let path = resolvedPath else { continue }
+            lastEnd = consumeEnd
             // Dedup: concrete cases use URL string; unresolved cases use token.
             let key = path.url?.absoluteString ?? path.unresolvedToken ?? ""
             if key.isEmpty { continue }
@@ -451,7 +485,10 @@ class PathDetector {
         return nil
     }
 
-    private func localKind(for path: String) -> DetectedPath {
+    /// Classify a local file path into the correct DetectedPath kind based
+    /// on its extension.  Public so AppDelegate can reuse it when rehydrating
+    /// Spotlight results.
+    func localKind(for path: String) -> DetectedPath {
         let ext = (path as NSString).pathExtension.lowercased()
         let url = URL(fileURLWithPath: path)
         if videoExtensions.contains(ext)    { return .localVideo(url) }
@@ -489,8 +526,12 @@ class PathDetector {
             Logger.info("PathDetector: file does not exist at '\(path)'")
             return false
         }
-        guard !isDirectory.boolValue else {
-            return false
+        if isDirectory.boolValue {
+            // macOS bundles (.app, .framework, .plugin, etc.) are directories
+            // but should be treated as files for preview purposes.
+            let url = URL(fileURLWithPath: path)
+            let isPackage = (try? url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
+            guard isPackage else { return false }
         }
         let ext = (path as NSString).pathExtension.lowercased()
         return localSupportedExtensions.contains(ext)

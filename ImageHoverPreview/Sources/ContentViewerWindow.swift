@@ -19,6 +19,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private let saveButton = NSButton()
     private let toggleButton = NSButton()  // Edit ↔ View for markdown
     private let locateButton = NSButton()  // Reveal in Finder, local-only
+    private let modifiedLabel = NSTextField(labelWithString: "")
 
     // WebView find UI
     private let webFindBar = NSView()
@@ -77,6 +78,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
         let scroll = NSScrollView(frame: .zero)
         scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = false
         scroll.borderType = .noBorder
         scroll.documentView = tv
         textScroll = scroll
@@ -106,6 +108,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         saveButton.isHidden = true
         toggleButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
+        updateModifiedDate(for: url)
         showWebView()
     }
 
@@ -120,20 +123,23 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toggleButton.title = "Edit"
         saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
+        updateModifiedDate(for: url)
         renderMarkdownView(url: url)
     }
 
-    /// Loads a plain-text file (.txt / .json / .xml). Opens straight into
-    /// editable mode with JSON/XML pretty-printed.
+    /// Loads a plain-text or code file. Defaults to a syntax-highlighted
+    /// read-only view; an "Edit" toggle swaps to the raw source in NSTextView.
     func loadText(_ url: URL) {
         currentURL = url
         kind = .text
         title = url.lastPathComponent
-        isEditing = true
-        toggleButton.isHidden = true
-        saveButton.isHidden = !url.isFileURL  // only local files are savable
+        isEditing = false
+        toggleButton.isHidden = false
+        toggleButton.title = "Edit"
+        saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
-        loadEditableText(url: url, prettyPrint: true)
+        updateModifiedDate(for: url)
+        renderHighlightedCode(url: url)
     }
 
     /// Loads a PDF file in the WKWebView. macOS WebKit ships a native PDF
@@ -145,6 +151,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         saveButton.isHidden = true
         toggleButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
+        updateModifiedDate(for: url)
         if url.isFileURL {
             // Sandbox-friendly: explicit grant for the parent directory so
             // WebKit can read the file and any sibling assets.
@@ -215,6 +222,17 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toggleButton.isHidden = true
         toolbarBar.addSubview(toggleButton)
 
+        // Modified date — sits to the left of the button group.
+        modifiedLabel.font = NSFont.systemFont(ofSize: 11)
+        modifiedLabel.textColor = .secondaryLabelColor
+        modifiedLabel.alignment = .right
+        modifiedLabel.lineBreakMode = .byTruncatingTail
+        modifiedLabel.maximumNumberOfLines = 1
+        modifiedLabel.frame = NSRect(x: bounds.width - 30 - locateW - 70 - 70 - 160 - 12,
+                                      y: 9, width: 160, height: 18)
+        modifiedLabel.autoresizingMask = [.minXMargin]
+        toolbarBar.addSubview(modifiedLabel)
+
         content.addSubview(toolbarBar)
 
         // Body — webView + textScroll occupy the area below the toolbar.
@@ -282,6 +300,48 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         content.addSubview(webFindBar)
     }
 
+    private func updateModifiedDate(for url: URL?) {
+        guard let url = url, url.isFileURL else {
+            modifiedLabel.stringValue = ""
+            return
+        }
+        let fm = FileManager.default
+        guard let attrs = try? fm.attributesOfItem(atPath: url.path),
+              let date = attrs[.modificationDate] as? Date else {
+            modifiedLabel.stringValue = ""
+            return
+        }
+        modifiedLabel.stringValue = "Modified \(Self.friendlyDate(date))"
+    }
+
+    /// Human-readable date string: relative when recent, absolute otherwise.
+    private static func friendlyDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        if calendar.isDateInToday(date) {
+            let fmt = DateFormatter()
+            fmt.dateStyle = .none
+            fmt.timeStyle = .short
+            return "today at \(fmt.string(from: date))"
+        }
+        if calendar.isDateInYesterday(date) {
+            let fmt = DateFormatter()
+            fmt.dateStyle = .none
+            fmt.timeStyle = .short
+            return "yesterday at \(fmt.string(from: date))"
+        }
+        let days = calendar.dateComponents([.day], from: date, to: now).day ?? 0
+        if days < 7 {
+            let fmt = DateFormatter()
+            fmt.dateFormat = "EEEE 'at' h:mm a"
+            return fmt.string(from: date).lowercased()
+        }
+        let fmt = DateFormatter()
+        fmt.dateStyle = .medium
+        fmt.timeStyle = .short
+        return fmt.string(from: date)
+    }
+
     private func showWebView() {
         webView.isHidden = false
         textScroll.isHidden = true
@@ -296,8 +356,20 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
     private func renderMarkdownView(url: URL) {
         Task.detached { [weak self] in
-            let raw = await Self.fetchMarkdownText(from: url)
+            let raw = await Self.fetchTextContent(from: url)
             let html = Self.wrapMarkdownInHTML(raw)
+            await MainActor.run {
+                self?.webView.loadHTMLString(html, baseURL: url)
+                self?.showWebView()
+            }
+        }
+    }
+
+    private func renderHighlightedCode(url: URL) {
+        Task.detached { [weak self] in
+            let raw = await Self.fetchTextContent(from: url)
+            let lang = Self.languageIdentifier(for: url)
+            let html = Self.wrapCodeInHTML(raw, language: lang)
             await MainActor.run {
                 self?.webView.loadHTMLString(html, baseURL: url)
                 self?.showWebView()
@@ -307,7 +379,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
     private func loadEditableText(url: URL, prettyPrint: Bool) {
         Task.detached { [weak self] in
-            let raw = await Self.fetchMarkdownText(from: url)
+            let raw = await Self.fetchTextContent(from: url)
             let body: String
             if prettyPrint {
                 let ext = url.pathExtension.lowercased()
@@ -329,17 +401,27 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     // MARK: - Actions
 
     @objc private func toggleEditTapped() {
-        guard kind == .markdown, let url = currentURL else { return }
+        guard let url = currentURL else { return }
+        guard kind == .markdown || kind == .text else { return }
         isEditing.toggle()
         if isEditing {
             toggleButton.title = "View"
             saveButton.isHidden = !url.isFileURL
-            // Show raw markdown source in the editor (no pretty-printing).
-            loadEditableText(url: url, prettyPrint: false)
+            if kind == .markdown {
+                // Show raw markdown source in the editor (no pretty-printing).
+                loadEditableText(url: url, prettyPrint: false)
+            } else {
+                // Show raw code source in the editor.
+                loadEditableText(url: url, prettyPrint: false)
+            }
         } else {
             toggleButton.title = "Edit"
             saveButton.isHidden = true
-            renderMarkdownView(url: url)
+            if kind == .markdown {
+                renderMarkdownView(url: url)
+            } else {
+                renderHighlightedCode(url: url)
+            }
         }
     }
 
@@ -367,9 +449,9 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
     // MARK: - Static content helpers (reused by PreviewPanel)
 
-    /// Reads the raw markdown source from a local file or remote URL.
+    /// Reads the raw text content from a local file or remote URL.
     /// Exposed so other views (e.g. an in-panel markdown push) can reuse it.
-    static func fetchMarkdownText(from url: URL) async -> String {
+    static func fetchTextContent(from url: URL) async -> String {
         if url.isFileURL {
             if let data = try? Data(contentsOf: url),
                let text = String(data: data, encoding: .utf8) {
@@ -630,6 +712,131 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     })();
     """
 
+    /// Map a file extension to a Prism.js language identifier.
+    static func languageIdentifier(for url: URL) -> String? {
+        switch url.pathExtension.lowercased() {
+        case "swift": return "swift"
+        case "py": return "python"
+        case "js", "mjs", "cjs": return "javascript"
+        case "ts": return "typescript"
+        case "tsx": return "tsx"
+        case "jsx": return "jsx"
+        case "java": return "java"
+        case "kt": return "kotlin"
+        case "c", "h": return "c"
+        case "cpp", "cc", "cxx", "hpp": return "cpp"
+        case "rb": return "ruby"
+        case "go": return "go"
+        case "rs": return "rust"
+        case "php": return "php"
+        case "cs": return "csharp"
+        case "lua": return "lua"
+        case "sh", "bash": return "bash"
+        case "zsh": return "zsh"
+        case "fish": return "fish"
+        case "ps1": return "powershell"
+        case "bat", "cmd": return "batch"
+        case "json": return "json"
+        case "xml": return "xml"
+        case "yaml", "yml": return "yaml"
+        case "ini", "conf", "cfg": return "ini"
+        case "toml": return "toml"
+        case "html", "htm": return "html"
+        case "css": return "css"
+        case "scss", "sass": return "scss"
+        case "less": return "less"
+        case "sql": return "sql"
+        case "graphql", "gql": return "graphql"
+        case "proto": return "protobuf"
+        case "dart": return "dart"
+        case "scala": return "scala"
+        case "r": return "r"
+        case "pl": return "perl"
+        case "erl": return "erlang"
+        case "hs": return "haskell"
+        case "ml": return "ocaml"
+        case "fs": return "fsharp"
+        case "jl": return "julia"
+        case "tex": return "latex"
+        case "vue", "svelte": return "markup"
+        case "astro": return "astro"
+        default: return nil
+        }
+    }
+
+    /// Wrap source code in an HTML host page with Prism.js syntax highlighting.
+    /// Falls back to a plain `<pre>` block when offline or for unrecognised languages.
+    static func wrapCodeInHTML(_ code: String, language: String?) -> String {
+        let escaped = code
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+
+        let langClass = language.map { " class=\"language-\($0)\"" } ?? ""
+        let langTitle = language?.uppercased() ?? "TEXT"
+
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+          <style>
+            body {
+              font-family: ui-monospace, "SF Mono", Menlo, monospace;
+              font-size: 13px;
+              line-height: 1.5;
+              margin: 0;
+              padding: 16px 20px;
+              background: #1e1e1e;
+              color: #d4d4d4;
+            }
+            .file-header {
+              font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+              font-size: 11px;
+              font-weight: 500;
+              color: #888;
+              margin-bottom: 12px;
+              padding-bottom: 8px;
+              border-bottom: 1px solid #333;
+              display: flex;
+              justify-content: space-between;
+            }
+            pre {
+              margin: 0;
+              background: transparent !important;
+            }
+            code {
+              font-family: ui-monospace, "SF Mono", Menlo, monospace;
+              font-size: 13px;
+              line-height: 1.55;
+            }
+            pre[class*="language-"] {
+              background: transparent !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              white-space: pre-wrap;
+              word-wrap: break-word;
+              overflow: hidden;
+              text-shadow: none !important;
+            }
+            :not(pre) > code[class*="language-"] {
+              background: #2a2a2a !important;
+              padding: 2px 5px !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="file-header"><span>\(langTitle)</span><span>\(code.count) chars</span></div>
+          <pre><code\(langClass)>\(escaped)</code></pre>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+        </body>
+        </html>
+        """
+    }
+
     /// Wrap markdown source in an HTML host page that renders via marked.js
     /// from a CDN (falls back to plain-text display when offline).
     static func wrapMarkdownInHTML(_ markdown: String) -> String {
@@ -656,7 +863,8 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
                    background: #f3f3f3; padding: 2px 6px; border-radius: 4px;
                    font-size: 0.92em; }
             pre { background: #f6f8fa; padding: 14px 16px; border-radius: 6px;
-                  overflow-x: auto; line-height: 1.5; }
+                  white-space: pre-wrap; word-wrap: break-word;
+                  overflow-x: hidden; line-height: 1.5; }
             pre code { background: transparent; padding: 0; font-size: 0.88em; }
             img { max-width: 100%; height: auto; border-radius: 4px; }
             a { color: #0a66c2; text-decoration: none; }

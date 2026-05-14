@@ -68,6 +68,17 @@ final class FileNameResolver {
                  timeout: TimeInterval = 1.2,
                  limit: Int = 24,
                  completion: @escaping ([Match]) -> Void) {
+        // Bare filenames (no path separator) are cached after the first
+        // successful resolution so repeated lookups bypass Spotlight.
+        if !token.contains("/"), let cachedURL = FilenameCache.shared.lookup(token: token) {
+            Logger.info("FileNameResolver: cache hit for '\(token)' → \(cachedURL.path)")
+            let match = Match(url: cachedURL,
+                              lastModified: nil,
+                              isInUserHome: cachedURL.path.hasPrefix(NSHomeDirectory()))
+            completion([match])
+            return
+        }
+
         let basename = (token as NSString).lastPathComponent
         let pathSuffix: String? = token.contains("/") ? "/" + token : nil
 
@@ -246,6 +257,12 @@ final class FileNameResolver {
                                                    object: job.query)
         jobs.removeAll { $0 === job }
         Logger.info("FileNameResolver: '\(job.token)' → \(matches.count) match(es) [\(reason)]")
+
+        // Cache the best match for bare filenames so the next lookup is instant.
+        if let best = matches.first, !job.token.contains("/") {
+            FilenameCache.shared.store(token: job.token, url: best.url)
+        }
+
         DispatchQueue.main.async { job.completion(matches) }
     }
 

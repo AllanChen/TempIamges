@@ -8,9 +8,9 @@ class PreviewPanel: NSPanel {
     private let anchorOffset = CGPoint(x: 0, y: 8)
     private let panelCornerRadius: CGFloat = 16
     private let headerHeight: CGFloat = 48
-    /// Locked image area height for single-image view. Width still tracks the
-    /// image's aspect ratio (clamped to a min/max).
-    private let fixedSingleImageHeight: CGFloat = 280
+    /// Fixed width for single-card view; height follows a 9:16 portrait ratio.
+    private let singleCardWidth: CGFloat = 300
+    private var singleCardImageHeight: CGFloat { singleCardWidth * 16 / 9 }
     private let bottomBarHeight: CGFloat = 72
 
     // Single-card middle area (around the dark inset)
@@ -29,12 +29,11 @@ class PreviewPanel: NSPanel {
     private let masonryBottomPad: CGFloat = 8
     private let masonryColumnSpacing: CGFloat = 8
     private let masonryRowSpacing: CGFloat = 8
-    private let masonryColumnWidth: CGFloat = 174
+    private let masonryColumnWidth: CGFloat = 150
     private let masonryColumns: Int = 2
-    private let masonryMinCardHeight: CGFloat = 110
-    private let masonryMaxCardHeight: CGFloat = 280
     /// Max visible cards-area height before the masonry view starts scrolling.
-    private let masonryMaxScrollHeight: CGFloat = 480
+    /// Fits exactly 2 rows (4 cards).
+    private let masonryMaxScrollHeight: CGFloat = 560
 
     // Colors. The semantic ones (windowBackgroundColor, labelColor, etc.)
     // are dynamic NSColors that resolve against NSApp.effectiveAppearance,
@@ -63,6 +62,14 @@ class PreviewPanel: NSPanel {
     /// `NSAppearance.currentDrawing` at the call site, which is usually the
     /// default Aqua appearance during view construction, completely ignoring
     /// our `NSApp.appearance` theme override.
+    fileprivate static var isDarkAppearance: Bool {
+        var result = false
+        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
+            result = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        }
+        return result
+    }
+
     fileprivate static func resolvedCG(_ color: NSColor) -> CGColor {
         var resolved: CGColor!
         NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
@@ -151,8 +158,8 @@ class PreviewPanel: NSPanel {
             return
         }
         teardownTiles()
-        // A new preview replaces whatever was pinned.
-        isPinned = false
+        // Keep the panel sticky across previews — no pin button, so we never
+        // reset the pinned state here.
         anchorPoint = mouseLocation
         currentMode = infos.count == 1 ? .singleCard : .grid
         currentInfos = infos
@@ -229,9 +236,17 @@ class PreviewPanel: NSPanel {
         }
     }
 
-    /// Auto-hide path. Suppressed when the user has pinned the panel.
+    /// Auto-hide path. With the pin button removed the panel is always
+    /// sticky, so this becomes a no-op.  Only explicit close (X button or
+    /// re-pressing the hotkey) actually dismisses the panel.
     func hidePanel() {
-        guard !isPinned else { return }
+        // Panel stays visible until the user presses the hotkey again or
+        // clicks the close button.
+    }
+
+    /// Public close entry-point used by AppDelegate when the user re-presses
+    /// the hotkey while a preview is already visible (toggle behaviour).
+    func closePanel() {
         forceHidePanel()
     }
 
@@ -251,6 +266,8 @@ class PreviewPanel: NSPanel {
         teardownTiles()
         contentView = NSView(frame: contentView?.frame ?? .zero)
     }
+
+
 
     // MARK: - Container building
 
@@ -272,10 +289,11 @@ class PreviewPanel: NSPanel {
     // MARK: - Single-card layout
 
     private func buildSingleCard(info: MediaInfo) -> NSView {
-        // Image area height is locked; width is set by image aspect ratio.
-        let imgSize = NSSize(width: 360, height: fixedSingleImageHeight)
-        let totalWidth = imgSize.width
-        let totalHeight = headerHeight + imgSize.height
+        // Single-card uses a fixed 300 pt width with a 9:16 portrait image area.
+        let imgW = singleCardWidth
+        let imgH = singleCardImageHeight
+        let totalWidth = imgW
+        let totalHeight = headerHeight + imgH
 
         let container = NSView(frame: NSRect(x: 0, y: 0, width: totalWidth, height: totalHeight))
         container.wantsLayer = true
@@ -297,7 +315,7 @@ class PreviewPanel: NSPanel {
         container.addSubview(header)
 
         // Image fills the rest of the panel; metadata overlay sits on top of the image.
-        let tileFrame = NSRect(x: 0, y: 0, width: totalWidth, height: imgSize.height)
+        let tileFrame = NSRect(x: 0, y: 0, width: totalWidth, height: imgH)
         let tile = MediaTileView(info: info, style: .singleCard, frame: tileFrame)
         tile.onClose = { [weak self] in self?.hidePanel() }
         let infoURL = info.url
@@ -330,15 +348,7 @@ class PreviewPanel: NSPanel {
             let shortest = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
             let x = masonryHorizontalPad + CGFloat(shortest) * (colW + spacing)
             let visualY = colHeights[shortest]
-
-            let aspect: CGFloat
-            if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
-                aspect = dim.height / dim.width
-            } else {
-                aspect = 0.75
-            }
-            let rawHeight = colW * aspect
-            let cardHeight = min(max(rawHeight, masonryMinCardHeight), masonryMaxCardHeight)
+            let cardHeight = colW * 16 / 9
 
             visualLayouts.append((x: x, visualY: visualY, w: colW, h: cardHeight))
             colHeights[shortest] = visualY + cardHeight + rowSpacing
@@ -354,7 +364,8 @@ class PreviewPanel: NSPanel {
         container.wantsLayer = true
         container.layer?.cornerRadius = panelCornerRadius
         container.layer?.masksToBounds = true
-        container.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
+        let isDark = Self.isDarkAppearance
+        container.layer?.backgroundColor = isDark ? NSColor.black.cgColor : Self.resolvedCG(Self.panelBackground)
 
         let header = makeHeaderBar(
             width: contentWidth,
@@ -425,14 +436,7 @@ class PreviewPanel: NSPanel {
             let shortest = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
             let x = masonryHorizontalPad + CGFloat(shortest) * (colW + spacing)
             let visualY = colHeights[shortest]
-            let aspect: CGFloat
-            if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
-                aspect = dim.height / dim.width
-            } else {
-                aspect = 0.75
-            }
-            let rawHeight = colW * aspect
-            let cardHeight = min(max(rawHeight, masonryMinCardHeight), masonryMaxCardHeight)
+            let cardHeight = colW * 16 / 9
             visualLayouts.append((x: x, visualY: visualY, w: colW, h: cardHeight))
             colHeights[shortest] = visualY + cardHeight + rowSpacing
         }
@@ -497,23 +501,12 @@ class PreviewPanel: NSPanel {
         bar.addSubview(rightBtn)
 
         if captureTitleForSingle {
-            // Use the real 📌 emoji rendered into an NSImage so the glyph is
-            // identical on every macOS version (SF Symbols can render slightly
-            // differently across releases).
-            rightBtn.image = Self.pinEmojiImage
-            rightBtn.contentTintColor = nil
-            rightBtn.alphaValue = isPinned ? 1.0 : 0.45
-            // Shrink the pin button so the emoji doesn't dominate the header.
-            let pinSize: CGFloat = 18
-            rightBtn.frame = NSRect(
-                x: width - pinSize - 10,
-                y: (headerHeight - pinSize) / 2,
-                width: pinSize, height: pinSize
-            )
+            // Pin button is hidden — the panel is always sticky once shown.
+            rightBtn.isHidden = true
+            singlePinBtn = nil
 
             singleCloseBtn = leftBtn
-            singlePinBtn = rightBtn
-            leftBtn.isHidden = !isPinned
+            leftBtn.isHidden = false
         }
 
         let titleLbl = NSTextField(labelWithString: title)
@@ -807,6 +800,12 @@ class PreviewPanel: NSPanel {
     /// automatically, so the panel still auto-hides on hotkey release unless
     /// the user has explicitly pinned it.
     private func openInViewer(info: MediaInfo) {
+        // For code/text files, prefer opening in VS Code if it's installed.
+        if info.kind == .text {
+            if openWithVSCodeIfAvailable(url: info.url) {
+                return
+            }
+        }
         let window = ContentViewerWindow()
         switch info.kind {
         case .markdown: window.loadMarkdown(info.url)
@@ -826,6 +825,20 @@ class PreviewPanel: NSPanel {
         }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// Attempt to open a local file with VS Code (or VS Code Insiders).
+    /// Returns `true` if a VS Code variant was found and the open was initiated.
+    private func openWithVSCodeIfAvailable(url: URL) -> Bool {
+        let bundleIDs = ["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders"]
+        for bundleID in bundleIDs {
+            if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+                let config = NSWorkspace.OpenConfiguration()
+                NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: config) { _, _ in }
+                return true
+            }
+        }
+        return false
     }
 
     private func uniqueDestination(in dir: URL, filename: String) -> URL {
@@ -876,38 +889,9 @@ class PreviewPanel: NSPanel {
     // MARK: - Relayout
 
     private func relayoutSingleCard(with media: LoadedMedia) {
-        guard let tile = tiles.first, let container = contentView else { return }
-        let raw = media.naturalSize
-        let maxSize = Preferences.shared.maxPreviewSize
-        // Height is locked; width is derived from aspect, clamped so the panel
-        // doesn't become absurdly narrow or wide.
-        let dh = fixedSingleImageHeight
-        var dw: CGFloat
-        if raw.width > 0, raw.height > 0 {
-            dw = dh * (raw.width / raw.height)
-        } else {
-            dw = 360
-        }
-        dw = max(280, min(dw, maxSize))
-
-        let totalWidth = dw
-        let totalHeight = headerHeight + dh
-
-        container.frame = NSRect(x: 0, y: 0, width: totalWidth, height: totalHeight)
-
-        // Resize header (top) and image tile (full-bleed below header).
-        for sv in container.subviews {
-            if sv === tile {
-                sv.frame = NSRect(x: 0, y: 0, width: totalWidth, height: dh)
-            } else {
-                // Header bar.
-                sv.frame = NSRect(x: 0, y: totalHeight - headerHeight,
-                                  width: totalWidth, height: headerHeight)
-                relayoutHeaderBar(sv, width: totalWidth)
-            }
-        }
+        guard let tile = tiles.first else { return }
+        // Keep the fixed 9:16 portrait frame; only refresh the tile's internal layers.
         tile.relayoutChildren()
-        relayoutPanel(contentSize: NSSize(width: totalWidth, height: totalHeight))
     }
 
     private func relayoutHeaderBar(_ bar: NSView, width: CGFloat) {
@@ -1016,6 +1000,18 @@ final class MediaTileView: NSView {
             mediaContainer.layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
             addSubview(mediaContainer)
 
+            // Subtle shimmer while the image loads.
+            shimmerLayer.colors = [
+                NSColor(white: 1, alpha: 0).cgColor,
+                NSColor(white: 1, alpha: 0.06).cgColor,
+                NSColor(white: 1, alpha: 0).cgColor
+            ]
+            shimmerLayer.locations = [0.0, 0.5, 1.0]
+            shimmerLayer.startPoint = CGPoint(x: 0, y: 0.5)
+            shimmerLayer.endPoint = CGPoint(x: 1, y: 0.5)
+            mediaContainer.layer?.addSublayer(shimmerLayer)
+            startShimmer()
+
             imageLayer.contentsGravity = .resizeAspect
             imageLayer.masksToBounds = true
             mediaContainer.layer?.addSublayer(imageLayer)
@@ -1029,6 +1025,7 @@ final class MediaTileView: NSView {
             overlayGradient.locations = [0.0, 0.55, 1.0]
             overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
             overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
+            overlayGradient.isHidden = true
             mediaContainer.layer?.addSublayer(overlayGradient)
 
             let nameLbl = NSTextField(labelWithString: info.filename)
@@ -1036,6 +1033,7 @@ final class MediaTileView: NSView {
             nameLbl.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
+            nameLbl.isHidden = true
             addSubview(nameLbl)
             filenameLabel = nameLbl
 
@@ -1044,6 +1042,7 @@ final class MediaTileView: NSView {
             dimsLbl.font = NSFont.systemFont(ofSize: 12)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 1
+            dimsLbl.isHidden = true
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
 
@@ -1057,13 +1056,15 @@ final class MediaTileView: NSView {
 
         case .masonry:
             // Image fills the entire card; text overlay sits in the top-left.
+            let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let tileBg = isDark ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.18, alpha: 1)
             layer?.cornerRadius = 8
             layer?.masksToBounds = true
-            layer?.backgroundColor = NSColor(white: 0.18, alpha: 1).cgColor
+            layer?.backgroundColor = tileBg.cgColor
 
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
-            mediaContainer.layer?.backgroundColor = NSColor(white: 0.18, alpha: 1).cgColor
+            mediaContainer.layer?.backgroundColor = tileBg.cgColor
             addSubview(mediaContainer)
 
             // Animated shimmer band — moves left→right while the image is loading.
@@ -1092,6 +1093,7 @@ final class MediaTileView: NSView {
             overlayGradient.locations = [0.0, 0.55, 1.0]
             overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
             overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
+            overlayGradient.isHidden = true
             mediaContainer.layer?.addSublayer(overlayGradient)
 
             let nameLbl = NSTextField(labelWithString: info.filename)
@@ -1099,6 +1101,7 @@ final class MediaTileView: NSView {
             nameLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
+            nameLbl.isHidden = true
             addSubview(nameLbl)
             filenameLabel = nameLbl
 
@@ -1107,6 +1110,7 @@ final class MediaTileView: NSView {
             dimsLbl.font = NSFont.systemFont(ofSize: 11)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 1
+            dimsLbl.isHidden = true
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
 
@@ -1163,7 +1167,6 @@ final class MediaTileView: NSView {
             setDownloadState(.idle)
         }
 
-        installPlaceholderIcon(for: info)
         installLocateButtonIfNeeded(for: info)
 
         relayoutChildren()
@@ -1303,6 +1306,7 @@ final class MediaTileView: NSView {
             CATransaction.setDisableActions(true)
             let gradH: CGFloat = 96
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradH)
+            shimmerLayer.frame = mediaContainer.bounds
             CATransaction.commit()
             spinner.frame = NSRect(
                 x: bounds.midX - spinnerSize / 2,
@@ -1384,6 +1388,9 @@ final class MediaTileView: NSView {
         spinner.isHidden = true
         loadingLabel.isHidden = true
         stopShimmer()
+        overlayGradient.isHidden = false
+        filenameLabel?.isHidden = false
+        dimsLabel?.isHidden = false
 
         switch media {
         case .image(let img, let info):
@@ -1410,6 +1417,9 @@ final class MediaTileView: NSView {
         loadingLabel.stringValue = "Failed"
         loadingLabel.textColor = .systemRed
         stopShimmer()
+        filenameLabel?.isHidden = false
+        dimsLabel?.isHidden = false
+        overlayGradient.isHidden = false
         // Dim the kind placeholder so the "Failed" label reads clearly.
         placeholderIconView?.alphaValue = 0.35
         if style == .masonry {
@@ -1461,11 +1471,15 @@ final class MediaTileView: NSView {
             return
         }
         if info.kind == .other, info.isLocal {
-            // Non-previewable local files (pdf/doc/psd/zip/…) jump straight
-            // to Finder with the file selected — opening with the default
-            // app would launch heavy professional software we don't want
-            // to invoke from a hover preview.
-        NSWorkspace.shared.activateFileViewerSelecting([info.url])
+            if info.url.pathExtension.lowercased() == "app" {
+                // macOS app bundles are launched directly rather than
+                // revealed in Finder.
+                NSWorkspace.shared.open(info.url)
+            } else {
+                // Non-previewable local files (doc/psd/zip/…) jump straight
+                // to Finder with the file selected.
+                NSWorkspace.shared.activateFileViewerSelecting([info.url])
+            }
             return
         }
         // Image / video / remote-other: open the URL. NSWorkspace handles

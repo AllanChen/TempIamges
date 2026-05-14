@@ -46,6 +46,8 @@ targets:
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/../Frameworks"
         SWIFT_EMIT_LOC_STRINGS: YES
+        CONFIGURATION_BUILD_DIR: "$(SRCROOT)/debug/$(CONFIGURATION)"
+        BUILD_ROOT: "$(SRCROOT)/debug"
     entitlements:
       path: ImageHoverPreview.entitlements
       properties:

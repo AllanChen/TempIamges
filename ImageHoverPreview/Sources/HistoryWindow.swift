@@ -154,13 +154,32 @@ final class HistoryWindow: NSWindow {
 
         emptyLabel.isHidden = !deduped.isEmpty
 
+        // Group deduped records by day (newest day first).
+        let calendar = Calendar.current
+        var dayGroups: [(date: Date, items: [HistoryRecord.Item])] = []
+        for record in deduped {
+            let dayStart = calendar.startOfDay(for: record.timestamp)
+            if let idx = dayGroups.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: dayStart) }) {
+                dayGroups[idx].items.append(contentsOf: record.items)
+            } else {
+                dayGroups.append((date: dayStart, items: record.items))
+            }
+        }
+        // Deduplicate items within each day as well.
+        dayGroups = dayGroups.map { group in
+            var seen = Set<String>()
+            let unique = group.items.filter { seen.insert($0.value).inserted }
+            return (date: group.date, items: unique)
+        }.filter { !$0.items.isEmpty }
+
         let contentWidth = docView.bounds.width
         let usableWidth = contentWidth - Self.contentInset * 2
         var cursorY: CGFloat = Self.contentInset
 
-        for record in deduped {
+        for group in dayGroups {
             let section = HistorySectionView(
-                record: record,
+                date: group.date,
+                items: group.items,
                 width: usableWidth,
                 imageLoader: imageLoader,
                 onTileTap: { [weak self] info in
@@ -261,17 +280,23 @@ final class HistoryWindow: NSWindow {
 /// One history record rendered as a header strip plus a fixed-column tile
 /// grid. Owns its MediaTileView instances and proxies thumbnail loading
 /// through the shared ImageLoader.
+/// One day's worth of history items rendered as a date header plus a
+/// fixed-column tile grid.  Owns its MediaTileView instances and proxies
+/// thumbnail loading through the shared ImageLoader.
 private final class HistorySectionView: NSView {
-    private let record: HistoryRecord
+    private let date: Date
+    private let items: [HistoryRecord.Item]
     private let imageLoader: ImageLoader
     private let onTileTap: (MediaInfo) -> Void
     private var tiles: [MediaTileView] = []
 
-    init(record: HistoryRecord,
+    init(date: Date,
+         items: [HistoryRecord.Item],
          width: CGFloat,
          imageLoader: ImageLoader,
          onTileTap: @escaping (MediaInfo) -> Void) {
-        self.record = record
+        self.date = date
+        self.items = items
         self.imageLoader = imageLoader
         self.onTileTap = onTileTap
         super.init(frame: .zero)
@@ -296,13 +321,13 @@ private final class HistorySectionView: NSView {
         let tileH = HistoryWindow.tileSize.height
         let spacing = HistoryWindow.tileSpacing
 
-        // Header: timestamp + selected-text snippet
+        // Header: date only
         let header = makeHeader(width: width, height: headerH)
         header.frame.origin = NSPoint(x: 0, y: 0)
         addSubview(header)
 
         // Tile grid
-        let infos: [(info: MediaInfo, item: HistoryRecord.Item)] = record.items.compactMap { item in
+        let infos: [(info: MediaInfo, item: HistoryRecord.Item)] = items.compactMap { item in
             guard let path = item.detectedPath, let info = MediaInfo.from(path) else { return nil }
             return (info, item)
         }
@@ -342,33 +367,15 @@ private final class HistorySectionView: NSView {
         let header = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
 
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        let dateLabel = NSTextField(labelWithString: formatter.string(from: record.timestamp))
-        dateLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        dateLabel.textColor = .secondaryLabelColor
-        dateLabel.frame = NSRect(x: 0, y: height - 22, width: width, height: 16)
+        formatter.dateFormat = "yyyy-MM-dd  EEEE"
+        let dateLabel = NSTextField(labelWithString: formatter.string(from: date))
+        dateLabel.font = NSFont.systemFont(ofSize: 14, weight: .bold)
+        dateLabel.textColor = .labelColor
+        dateLabel.frame = NSRect(x: 0, y: (height - 20) / 2, width: width, height: 20)
         dateLabel.lineBreakMode = .byTruncatingTail
         header.addSubview(dateLabel)
 
-        let snippet = NSTextField(labelWithString: snippetText(for: record.selectedText))
-        snippet.font = NSFont.systemFont(ofSize: 13)
-        snippet.textColor = .labelColor
-        snippet.frame = NSRect(x: 0, y: 4, width: width, height: 18)
-        snippet.lineBreakMode = .byTruncatingTail
-        snippet.maximumNumberOfLines = 1
-        header.addSubview(snippet)
-
         return header
-    }
-
-    private func snippetText(for raw: String) -> String {
-        let collapsed = raw
-            .replacingOccurrences(of: "\n", with: " ")
-            .replacingOccurrences(of: "\r", with: " ")
-            .trimmingCharacters(in: .whitespaces)
-        if collapsed.count <= 180 { return collapsed }
-        return String(collapsed.prefix(180)) + "…"
     }
 
     /// Drive the same async pipeline the live preview uses, so the tile shows
