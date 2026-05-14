@@ -322,13 +322,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     private func currentCursorAXPoint() -> CGPoint {
-        let location = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(location, $0.frame, false) }) ?? NSScreen.main else {
-            return location
-        }
-        let axX = location.x
-        let axY = screen.frame.height - (location.y - screen.frame.minY)
-        return CGPoint(x: axX, y: axY)
+        return NSEvent.mouseLocation
     }
 
     @objc private func previewModeDeactivated() {

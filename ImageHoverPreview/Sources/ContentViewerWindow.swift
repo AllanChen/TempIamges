@@ -315,27 +315,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     }
 
     /// Human-readable date string: relative when recent, absolute otherwise.
-    private static func friendlyDate(_ date: Date) -> String {
-        let calendar = Calendar.current
-        let now = Date()
-        if calendar.isDateInToday(date) {
-            let fmt = DateFormatter()
-            fmt.dateStyle = .none
-            fmt.timeStyle = .short
-            return "today at \(fmt.string(from: date))"
-        }
-        if calendar.isDateInYesterday(date) {
-            let fmt = DateFormatter()
-            fmt.dateStyle = .none
-            fmt.timeStyle = .short
-            return "yesterday at \(fmt.string(from: date))"
-        }
-        let days = calendar.dateComponents([.day], from: date, to: now).day ?? 0
-        if days < 7 {
-            let fmt = DateFormatter()
-            fmt.dateFormat = "EEEE 'at' h:mm a"
-            return fmt.string(from: date).lowercased()
-        }
+    static func friendlyDate(_ date: Date) -> String {
         let fmt = DateFormatter()
         fmt.dateStyle = .medium
         fmt.timeStyle = .short
@@ -610,7 +590,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     /// Encode an arbitrary string as a JS string literal (handles quotes,
     /// backslashes, newlines, control chars). Used when interpolating user
     /// input into evaluateJavaScript calls.
-    private static func jsStringLiteral(_ s: String) -> String {
+    static func jsStringLiteral(_ s: String) -> String {
         let escaped = s
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
@@ -623,7 +603,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     /// JS injected at document-end on every page load. Exposes
     /// `window.__tdfind` with `highlight(query)`, `next()`, `prev()`,
     /// `clear()`.
-    private static let findHelperJS: String = """
+    static let findHelperJS: String = """
     (function(){
       if (window.__tdfind) return;
       const SCROLL_OPTS = { block: 'center', behavior: 'smooth' };

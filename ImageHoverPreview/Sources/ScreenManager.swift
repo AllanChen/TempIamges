@@ -13,12 +13,9 @@ class ScreenManager {
         }
 
         let screenFrame = screen.visibleFrame
-        let screenHeight = screen.frame.height
-
-        let appKitY = screenHeight - mouseLocation.y
 
         var originX = mouseLocation.x + offset.x
-        var originY = appKitY - offset.y - panelSize.height
+        var originY = mouseLocation.y - panelSize.height / 2
 
         if originX + panelSize.width > screenFrame.maxX {
             originX = mouseLocation.x - offset.x - panelSize.width
@@ -29,7 +26,7 @@ class ScreenManager {
         }
 
         if originY < screenFrame.minY {
-            originY = appKitY + offset.y
+            originY = screenFrame.minY
         }
 
         if originY + panelSize.height > screenFrame.maxY {

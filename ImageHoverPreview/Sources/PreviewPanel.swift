@@ -5,7 +5,7 @@ import WebKit
 
 class PreviewPanel: NSPanel {
     // MARK: - Layout constants
-    private let anchorOffset = CGPoint(x: 0, y: 8)
+    private let anchorOffset = CGPoint(x: 20, y: 0)
     private let panelCornerRadius: CGFloat = 16
     private let headerHeight: CGFloat = 48
     /// Fixed width for single-card view; height follows a 9:16 portrait ratio.
@@ -119,14 +119,17 @@ class PreviewPanel: NSPanel {
     private weak var metaPillMeta: NSTextField?
     private weak var singleCloseBtn: NSButton?
     private weak var singlePinBtn: NSButton?
+    private weak var navBarView: NSView?
     private weak var masonryScrollView: NSScrollView?
     private weak var masonryDocView: NSView?
-    /// Strong refs to keep markdown/webpage viewer windows alive while open.
-    private var viewerWindows: [ContentViewerWindow] = []
 
     /// When pinned, hidePanel() is ignored and the close (X) button shows.
     /// New previews via showLoading() reset this to false.
     private var isPinned: Bool = false
+    /// Frame saved after the user manually drags the panel.  Used so the
+    /// next preview opens in the same spot rather than re-snapping to the
+    /// mouse cursor.
+    private var savedPosition: NSRect?
 
     private enum Mode { case singleCard, grid }
 
@@ -140,11 +143,19 @@ class PreviewPanel: NSPanel {
         isFloatingPanel = true
         level = .floating
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        isMovableByWindowBackground = true   // draggable anywhere (pinned or not)
+        isMovableByWindowBackground = true
         backgroundColor = .clear
         hasShadow = true
         isOpaque = false
         contentView = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 400))
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didMoveNotification,
+            object: self,
+            queue: .main
+        ) { [weak self] _ in
+            self?.savedPosition = self?.frame
+        }
     }
 
     override var canBecomeKey: Bool { false }
@@ -158,16 +169,16 @@ class PreviewPanel: NSPanel {
             return
         }
         teardownTiles()
-        // Keep the panel sticky across previews — no pin button, so we never
-        // reset the pinned state here.
         anchorPoint = mouseLocation
         currentMode = infos.count == 1 ? .singleCard : .grid
         currentInfos = infos
         selectedIndex = 0
 
-        let container = buildContainer(infos: infos)
-        contentView = container
-        relayoutPanel(contentSize: container.frame.size)
+        let mainContent = buildContainer(infos: infos)
+        let root = buildRootView(mainContent: mainContent)
+
+        relayoutPanel(contentSize: root.frame.size)
+        contentView = root
 
         alphaValue = 0
         orderFrontRegardless()
@@ -175,6 +186,32 @@ class PreviewPanel: NSPanel {
             ctx.duration = 0.15
             self.animator().alphaValue = 1
         }
+    }
+
+    private func buildRootView(mainContent: NSView) -> NSView {
+        let navBar = buildNavigationBar(width: mainContent.frame.width)
+        let rootWidth = mainContent.frame.width
+        let rootHeight = headerHeight + mainContent.frame.height
+
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: rootWidth, height: rootHeight))
+        root.wantsLayer = true
+        root.layer?.cornerRadius = panelCornerRadius
+        root.layer?.masksToBounds = true
+        root.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
+
+        navBar.frame = NSRect(x: 0, y: rootHeight - headerHeight,
+                              width: rootWidth, height: headerHeight)
+        mainContent.frame = NSRect(x: 0, y: 0,
+                                   width: rootWidth, height: rootHeight - headerHeight)
+
+        navBar.autoresizingMask = [.width, .minYMargin]
+        mainContent.autoresizingMask = [.width, .height]
+
+        root.addSubview(mainContent)
+        root.addSubview(navBar)
+        navBarView = navBar
+
+        return root
     }
 
     func updateTile(at index: Int, with media: LoadedMedia?) {
@@ -289,34 +326,14 @@ class PreviewPanel: NSPanel {
     // MARK: - Single-card layout
 
     private func buildSingleCard(info: MediaInfo) -> NSView {
-        // Single-card uses a fixed 300 pt width with a 9:16 portrait image area.
-        let imgW = singleCardWidth
-        let imgH = singleCardImageHeight
-        let totalWidth = imgW
-        let totalHeight = headerHeight + imgH
+        let view = NSView(frame: NSRect(x: 0, y: 0,
+                                        width: singleCardWidth,
+                                        height: singleCardImageHeight))
+        view.wantsLayer = true
+        view.layer?.backgroundColor = Self.darkInset.cgColor
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: totalWidth, height: totalHeight))
-        container.wantsLayer = true
-        container.layer?.cornerRadius = panelCornerRadius
-        container.layer?.masksToBounds = true
-        container.layer?.backgroundColor = Self.darkInset.cgColor
-
-        // Header (white)
-        let header = makeHeaderBar(
-            width: totalWidth,
-            title: "TempDisplay",
-            leftSymbol: "xmark",
-            leftAction: #selector(closeButtonTapped),
-            rightSymbol: "pin.fill",
-            rightAction: #selector(actionButtonTapped),
-            captureTitleForSingle: true
-        )
-        header.frame.origin = CGPoint(x: 0, y: totalHeight - headerHeight)
-        container.addSubview(header)
-
-        // Image fills the rest of the panel; metadata overlay sits on top of the image.
-        let tileFrame = NSRect(x: 0, y: 0, width: totalWidth, height: imgH)
-        let tile = MediaTileView(info: info, style: .singleCard, frame: tileFrame)
+        let tile = MediaTileView(info: info, style: .singleCard, frame: view.bounds)
+        tile.autoresizingMask = [.width, .height]
         tile.onClose = { [weak self] in self?.hidePanel() }
         let infoURL = info.url
         tile.onAction = { NSWorkspace.shared.open(infoURL) }
@@ -326,10 +343,10 @@ class PreviewPanel: NSPanel {
         }
         let tileInfo = info
         tile.onTileTap = { [weak self] in self?.openInViewer(info: tileInfo) }
-        container.addSubview(tile)
+        view.addSubview(tile)
 
         tiles = [tile]
-        return container
+        return view
     }
 
     // MARK: - Multi-image masonry layout
@@ -358,36 +375,16 @@ class PreviewPanel: NSPanel {
         let cardsTotalHeight = cardsBottomVisualY + masonryBottomPad
         let contentWidth = CGFloat(cols) * colW + CGFloat(cols - 1) * spacing + masonryHorizontalPad * 2
         let visibleCardsHeight = min(cardsTotalHeight, masonryMaxScrollHeight)
-        let totalHeight = headerHeight + visibleCardsHeight
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: totalHeight))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: visibleCardsHeight))
         container.wantsLayer = true
-        container.layer?.cornerRadius = panelCornerRadius
-        container.layer?.masksToBounds = true
         let isDark = Self.isDarkAppearance
         container.layer?.backgroundColor = isDark ? NSColor.black.cgColor : Self.resolvedCG(Self.panelBackground)
 
-        let header = makeHeaderBar(
-            width: contentWidth,
-            title: "TempDisplay",
-            leftSymbol: "xmark",
-            leftAction: #selector(closeButtonTapped),
-            rightSymbol: "pin.fill",
-            rightAction: #selector(actionButtonTapped),
-            captureTitleForSingle: true
-        )
-        header.frame.origin = CGPoint(x: 0, y: totalHeight - headerHeight)
-        container.addSubview(header)
-
-        // Scroll view occupies the area below the header. Tiles live in a
-        // flipped document view so visualY (top-down) maps directly.
-        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0,
-                                                     width: contentWidth,
-                                                     height: visibleCardsHeight))
-        scrollView.hasVerticalScroller = true
+        let scrollView = NSScrollView(frame: container.bounds)
+        scrollView.autoresizingMask = [.width, .height]
+        scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.scrollerStyle = .overlay
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         container.addSubview(scrollView)
@@ -447,16 +444,12 @@ class PreviewPanel: NSPanel {
         let visibleCardsHeight = min(cardsTotalHeight, masonryMaxScrollHeight)
         let totalHeight = headerHeight + visibleCardsHeight
 
-        guard let container = contentView else { return }
-        container.frame = NSRect(x: 0, y: 0, width: contentWidth, height: totalHeight)
+        guard let root = contentView else { return }
+        root.frame = NSRect(x: 0, y: 0, width: contentWidth, height: totalHeight)
 
-        // Reposition the header (the subview that holds the title label).
-        for sv in container.subviews where sv !== container {
-            if sv.subviews.contains(where: { $0.tag == 3 }) {
-                sv.frame = NSRect(x: 0, y: totalHeight - headerHeight,
-                                  width: contentWidth, height: headerHeight)
-            }
-        }
+        // Reposition the navigation bar at the top of the root view.
+        navBarView?.frame = NSRect(x: 0, y: totalHeight - headerHeight,
+                                   width: contentWidth, height: headerHeight)
 
         masonryScrollView?.frame = NSRect(x: 0, y: 0,
                                            width: contentWidth,
@@ -474,7 +467,41 @@ class PreviewPanel: NSPanel {
         relayoutPanel(contentSize: NSSize(width: contentWidth, height: totalHeight))
     }
 
-    // MARK: - Header builder
+    // MARK: - Navigation bar (fixed at top)
+
+    private func buildNavigationBar(width: CGFloat) -> NSView {
+        let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
+        bar.wantsLayer = true
+        bar.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
+
+        let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
+        sep.wantsLayer = true
+        sep.layer?.backgroundColor = Self.resolvedCG(Self.separator)
+        sep.autoresizingMask = [.width]
+        bar.addSubview(sep)
+
+        let closeBtn = makeIconButton(symbol: "xmark", action: #selector(closeButtonTapped), tint: Self.textDark)
+        closeBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
+        closeBtn.tag = 1
+        bar.addSubview(closeBtn)
+        singleCloseBtn = closeBtn
+
+        let titleLbl = NSTextField(labelWithString: "TempDisplay")
+        titleLbl.textColor = Self.textDark
+        titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLbl.alignment = .center
+        titleLbl.lineBreakMode = .byTruncatingMiddle
+        titleLbl.maximumNumberOfLines = 1
+        titleLbl.frame = NSRect(x: 48, y: (headerHeight - 18) / 2, width: width - 96, height: 18)
+        titleLbl.autoresizingMask = [.width]
+        titleLbl.tag = 3
+        bar.addSubview(titleLbl)
+        singleHeaderTitle = titleLbl
+
+        return bar
+    }
+
+    // MARK: - Header builder (legacy, used by buildSingleCard / buildList)
 
     private func makeHeaderBar(width: CGFloat, title: String,
                                leftSymbol: String, leftAction: Selector,
@@ -501,10 +528,8 @@ class PreviewPanel: NSPanel {
         bar.addSubview(rightBtn)
 
         if captureTitleForSingle {
-            // Pin button is hidden — the panel is always sticky once shown.
             rightBtn.isHidden = true
             singlePinBtn = nil
-
             singleCloseBtn = leftBtn
             leftBtn.isHidden = false
         }
@@ -795,50 +820,17 @@ class PreviewPanel: NSPanel {
         case failed
     }
 
-    /// Open a markdown or webpage tile in a standalone ContentViewerWindow
-    /// (1100×720). The preview panel stays as-is — pin is *not* engaged
-    /// automatically, so the panel still auto-hides on hotkey release unless
-    /// the user has explicitly pinned it.
     private func openInViewer(info: MediaInfo) {
-        // For code/text files, prefer opening in VS Code if it's installed.
-        if info.kind == .text {
-            if openWithVSCodeIfAvailable(url: info.url) {
-                return
-            }
-        }
-        let window = ContentViewerWindow()
-        switch info.kind {
-        case .markdown: window.loadMarkdown(info.url)
-        case .text:     window.loadText(info.url)
-        case .pdf:      window.loadPDF(info.url)
-        case .webPage:  window.loadWebPage(info.url)
-        default:        return
-        }
-        viewerWindows.append(window)
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification,
-            object: window,
-            queue: .main
-        ) { [weak self, weak window] _ in
-            guard let self = self, let window = window else { return }
-            self.viewerWindows.removeAll { $0 === window }
-        }
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-    }
+        let panel = ContentPanel.shared
+        panel.load(info: info)
 
-    /// Attempt to open a local file with VS Code (or VS Code Insiders).
-    /// Returns `true` if a VS Code variant was found and the open was initiated.
-    private func openWithVSCodeIfAvailable(url: URL) -> Bool {
-        let bundleIDs = ["com.microsoft.VSCode", "com.microsoft.VSCodeInsiders"]
-        for bundleID in bundleIDs {
-            if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-                let config = NSWorkspace.OpenConfiguration()
-                NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: config) { _, _ in }
-                return true
-            }
-        }
-        return false
+        let mainFrame = self.frame
+        let contentSize = NSSize(width: 700, height: 600)
+        let originX = mainFrame.maxX
+        let originY = mainFrame.maxY - contentSize.height
+        let frame = NSRect(origin: CGPoint(x: originX, y: originY), size: contentSize)
+        panel.setFrame(frame, display: true)
+        panel.orderFrontRegardless()
     }
 
     private func uniqueDestination(in dir: URL, filename: String) -> URL {
@@ -911,8 +903,14 @@ class PreviewPanel: NSPanel {
     }
 
     private func relayoutPanel(contentSize: NSSize) {
-        let frame = ScreenManager.shared.adjustedFrame(for: contentSize, at: anchorPoint, offset: anchorOffset)
-        setFrame(frame, display: true)
+        if let saved = savedPosition {
+            var frame = saved
+            frame.size = contentSize
+            setFrame(frame, display: true)
+        } else {
+            let frame = ScreenManager.shared.adjustedFrame(for: contentSize, at: anchorPoint, offset: anchorOffset)
+            setFrame(frame, display: true)
+        }
     }
 
     private func teardownTiles() {
@@ -1466,26 +1464,22 @@ final class MediaTileView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        if info.opensInViewer {
+        switch info.kind {
+        case .image, .webPage, .markdown, .text, .pdf:
             onTileTap?()
-            return
-        }
-        if info.kind == .other, info.isLocal {
-            if info.url.pathExtension.lowercased() == "app" {
-                // macOS app bundles are launched directly rather than
-                // revealed in Finder.
-                NSWorkspace.shared.open(info.url)
+        case .other:
+            if info.isLocal {
+                if info.url.pathExtension.lowercased() == "app" {
+                    NSWorkspace.shared.open(info.url)
+                } else {
+                    NSWorkspace.shared.activateFileViewerSelecting([info.url])
+                }
             } else {
-                // Non-previewable local files (doc/psd/zip/…) jump straight
-                // to Finder with the file selected.
-                NSWorkspace.shared.activateFileViewerSelecting([info.url])
+                NSWorkspace.shared.open(info.url)
             }
-            return
+        default:
+            NSWorkspace.shared.open(info.url)
         }
-        // Image / video / remote-other: open the URL. NSWorkspace handles
-        // http(s) URLs (→ default browser) and file URLs (→ default app
-        // for the file type, e.g. Preview).
-        NSWorkspace.shared.open(info.url)
     }
 
     private func attachPlayer(url: URL) {
