@@ -37,6 +37,13 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private let imageInfoNameLabel = NSTextField(labelWithString: "")
     private let imageInfoMetaLabel = NSTextField(labelWithString: "")
 
+    /// Set to true when the user drags the panel by hand; once true the
+    /// panel will no longer follow PreviewPanel automatically.
+    private(set) var hasBeenManuallyMoved: Bool = false
+    /// Guard used inside didMoveNotification to distinguish user-driven
+    /// moves from programmatic sync moves coming from PreviewPanel.
+    private var isBeingSynced: Bool = false
+
     private init() {
         let config = WKWebViewConfiguration()
         let findScript = WKUserScript(
@@ -88,6 +95,38 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
         buildLayout()
         showWebView()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(panelDidMove),
+            name: NSWindow.didMoveNotification,
+            object: self
+        )
+    }
+
+    @objc private func panelDidMove() {
+        guard !isBeingSynced else { return }
+        hasBeenManuallyMoved = true
+    }
+
+    /// Move the panel so it sits immediately to the right of the given
+    /// preview frame.  Called by PreviewPanel when it moves — unless the
+    /// user has already dragged this panel independently.
+    func syncPosition(to previewFrame: NSRect) {
+        guard !hasBeenManuallyMoved else { return }
+        let contentSize = frame.size
+        let originX = previewFrame.maxX
+        let originY = previewFrame.maxY - contentSize.height
+        let newFrame = NSRect(origin: CGPoint(x: originX, y: originY), size: contentSize)
+        isBeingSynced = true
+        setFrame(newFrame, display: true)
+        isBeingSynced = false
+    }
+
+    /// Call when a fresh preview cycle starts so the panel will resume
+    /// following PreviewPanel even if it was manually dragged before.
+    func resetFollowState() {
+        hasBeenManuallyMoved = false
     }
 
     private func buildLayout() {

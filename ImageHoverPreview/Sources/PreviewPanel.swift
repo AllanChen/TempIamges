@@ -154,7 +154,9 @@ class PreviewPanel: NSPanel {
             object: self,
             queue: .main
         ) { [weak self] _ in
-            self?.savedPosition = self?.frame
+            guard let self = self else { return }
+            self.savedPosition = self.frame
+            ContentPanel.shared.syncPosition(to: self.frame)
         }
     }
 
@@ -168,6 +170,9 @@ class PreviewPanel: NSPanel {
             forceHidePanel()
             return
         }
+        // Reset the content panel follow state for every new preview cycle
+        // so it snaps back to the right of the main panel.
+        ContentPanel.shared.resetFollowState()
         teardownTiles()
         anchorPoint = mouseLocation
         currentMode = infos.count == 1 ? .singleCard : .grid
