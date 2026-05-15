@@ -1482,6 +1482,17 @@ final class MediaTileView: NSView {
         }
     }
 
+    override func scrollWheel(with event: NSEvent) {
+        // Swallow wheel events on video tiles so AVPlayerView cannot hijack
+        // them to change playback rate.  In grid mode the event bubbles to the
+        // enclosing NSScrollView for vertical scrolling; in single-card mode
+        // there is no scroll view, so the wheel simply does nothing.
+        if info.isVideo {
+            return
+        }
+        super.scrollWheel(with: event)
+    }
+
     private func attachPlayer(url: URL) {
         let pv = AVPlayerView(frame: mediaContainer.bounds)
         pv.controlsStyle = .none
