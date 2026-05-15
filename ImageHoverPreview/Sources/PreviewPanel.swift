@@ -131,6 +131,11 @@ class PreviewPanel: NSPanel {
     /// mouse cursor.
     private var savedPosition: NSRect?
 
+    private var frameTrackingDisplayLink: CVDisplayLink?
+    private var lastSyncedFrame: NSRect = .zero
+    private var previousFrame: NSRect = .zero
+    private let frameSyncThreshold: CGFloat = 1.0
+
     private enum Mode { case singleCard, grid }
 
     init() {
@@ -169,6 +174,48 @@ class PreviewPanel: NSPanel {
         }
     }
 
+    private func checkFrameChange() {
+        guard let link = frameTrackingDisplayLink, CVDisplayLinkIsRunning(link) else { return }
+        let currentFrame = self.frame
+        if currentFrame.origin != previousFrame.origin {
+            let distance = hypot(currentFrame.origin.x - lastSyncedFrame.origin.x,
+                                  currentFrame.origin.y - lastSyncedFrame.origin.y)
+            if distance >= frameSyncThreshold {
+                let content = ContentPanel.shared
+                if content.isVisible {
+                    content.syncPosition(to: currentFrame)
+                }
+                lastSyncedFrame = currentFrame
+            }
+            previousFrame = currentFrame
+        }
+    }
+
+    func startFollowingContentPanel() {
+        guard frameTrackingDisplayLink == nil else { return }
+        var link: CVDisplayLink?
+        CVDisplayLinkCreateWithActiveCGDisplays(&link)
+        guard let displayLink = link else { return }
+        let userInfo = Unmanaged.passUnretained(self).toOpaque()
+        CVDisplayLinkSetOutputCallback(displayLink, { _, _, _, _, _, userInfo -> CVReturn in
+            let panel = Unmanaged<PreviewPanel>.fromOpaque(userInfo!).takeUnretainedValue()
+            DispatchQueue.main.async {
+                panel.checkFrameChange()
+            }
+            return kCVReturnSuccess
+        }, userInfo)
+        CVDisplayLinkStart(displayLink)
+        frameTrackingDisplayLink = displayLink
+        lastSyncedFrame = self.frame
+        previousFrame = self.frame
+    }
+
+    func stopFollowingContentPanel() {
+        guard let link = frameTrackingDisplayLink else { return }
+        CVDisplayLinkStop(link)
+        frameTrackingDisplayLink = nil
+    }
+
     // MARK: - Public API
 
     func showLoading(infos: [MediaInfo], at mouseLocation: NSPoint) {
@@ -176,9 +223,8 @@ class PreviewPanel: NSPanel {
             forceHidePanel()
             return
         }
-        // Reset the content panel follow state for every new preview cycle
-        // so it snaps back to the right of the main panel.
         ContentPanel.shared.resetFollowState()
+        startFollowingContentPanel()
         teardownTiles()
         anchorPoint = mouseLocation
         currentMode = infos.count == 1 ? .singleCard : .grid
@@ -300,6 +346,7 @@ class PreviewPanel: NSPanel {
 
     /// Always hide, regardless of pinned state (used by the X button).
     private func forceHidePanel() {
+        stopFollowingContentPanel()
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             self.animator().alphaValue = 0
@@ -307,8 +354,6 @@ class PreviewPanel: NSPanel {
             self?.isPinned = false
             self?.orderOut(nil)
             self?.teardownTiles()
-            // Dismiss the companion content viewer so nothing is left dangling
-            // when the main preview panel goes away.
             ContentPanel.shared.dismiss()
         })
     }
@@ -1594,19 +1639,8 @@ final class MediaTileView: NSView {
     }
 }
 
-/// AVPlayerView subclass that forwards scroll-wheel events up to the
-/// nearest NSScrollView ancestor instead of consuming them for playback
-/// rate control.  This lets masonry grids scroll normally when the mouse
-/// is over a video tile, and single-card video tiles simply ignore the wheel.
 final class PassthroughPlayerView: AVPlayerView {
-    override func scrollWheel(with event: NSEvent) {
-        var view: NSView? = self.superview
-        while let v = view {
-            if let scrollView = v as? NSScrollView {
-                scrollView.scrollWheel(with: event)
-                return
-            }
-            view = v.superview
-        }
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        return nil
     }
 }

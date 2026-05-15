@@ -37,12 +37,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private let imageInfoNameLabel = NSTextField(labelWithString: "")
     private let imageInfoMetaLabel = NSTextField(labelWithString: "")
 
-    /// Set to true when the user drags the panel by hand; once true the
-    /// panel will no longer follow PreviewPanel automatically.
     private(set) var hasBeenManuallyMoved: Bool = false
-    /// Guard used inside didMoveNotification to distinguish user-driven
-    /// moves from programmatic sync moves coming from PreviewPanel.
-    private var isBeingSynced: Bool = false
 
     private init() {
         let config = WKWebViewConfiguration()
@@ -95,18 +90,6 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
         buildLayout()
         showWebView()
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(panelDidMove),
-            name: NSWindow.didMoveNotification,
-            object: self
-        )
-    }
-
-    @objc private func panelDidMove() {
-        guard !isBeingSynced else { return }
-        hasBeenManuallyMoved = true
     }
 
     /// Move the panel so it sits immediately to the right of the given
@@ -118,15 +101,21 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         let originX = previewFrame.maxX
         let originY = previewFrame.maxY - contentSize.height
         let newFrame = NSRect(origin: CGPoint(x: originX, y: originY), size: contentSize)
-        isBeingSynced = true
         setFrame(newFrame, display: true)
-        isBeingSynced = false
     }
 
     /// Call when a fresh preview cycle starts so the panel will resume
     /// following PreviewPanel even if it was manually dragged before.
     func resetFollowState() {
         hasBeenManuallyMoved = false
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let loc = event.locationInWindow
+        if loc.y > frame.height - headerHeight {
+            hasBeenManuallyMoved = true
+        }
+        super.mouseDown(with: event)
     }
 
     private func buildLayout() {
