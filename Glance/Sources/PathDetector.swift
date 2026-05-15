@@ -363,10 +363,8 @@ class PathDetector {
     }
 
     private func resolveCandidate(_ rawCandidate: String) -> DetectedPath? {
-        // Strip sentence-ending punctuation that regexes commonly capture by
-        // accident (e.g. "Check https://foo.com." → "https://foo.com").
-        var candidate = rawCandidate
-        while let last = candidate.last, ",.;!?\"')]".contains(last) {
+        var candidate = rawCandidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        while let last = candidate.last, ",.;!?\"')]}".contains(last) {
             candidate.removeLast()
         }
         guard !candidate.isEmpty else { return nil }
