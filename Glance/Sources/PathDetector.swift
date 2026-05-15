@@ -208,13 +208,13 @@ class PathDetector {
         // first segment stays strict — letting it eat spaces would devour
         // narrative text leading up to the slash.
         self.relativePathRegex = try! NSRegularExpression(
-            pattern: "(?<![A-Za-z0-9_/~])(?:\\./|\\.\\./)*[A-Za-z0-9_.\\-]+/[A-Za-z0-9_./\\- \\t]+?\\.(?i:\(extAlt))(?![A-Za-z0-9])",
+            pattern: "(?<![\\p{L}\\p{N}_/~])(?:\\./|\\.\\./)*[\\p{L}\\p{N}_.\\-]+/[\\p{L}\\p{N}_./\\- \\t]+?\\.(?i:\(extAlt))(?![\\p{L}\\p{N}])",
             options: []
         )
         // Bare filename: stem ≥3 chars, alphanumeric/_/-/., must be standalone
         // (not preceded by slashes, tildes, dots, dashes, or alphanumerics).
         self.bareFilenameRegex = try! NSRegularExpression(
-            pattern: "(?<![A-Za-z0-9_./~\\-])[A-Za-z0-9_][A-Za-z0-9_.\\-]{2,}\\.(?i:\(extAlt))(?![A-Za-z0-9])",
+            pattern: "(?<![\\p{L}\\p{N}_./~\\-])[\\p{L}\\p{N}_][\\p{L}\\p{N}_.\\-]{2,}\\.(?i:\(extAlt))(?![\\p{L}\\p{N}])",
             options: []
         )
 
