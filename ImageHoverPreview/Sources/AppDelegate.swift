@@ -394,7 +394,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         switch path {
         case .localMarkdown, .remoteMarkdown,
              .localText,     .remoteText,
-             .localPDF,      .remotePDF:
+             .localPDF,      .remotePDF,
+             .webPage:
             return true
         default:
             return false
@@ -409,14 +410,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         Logger.info("AppDelegate: single-hit shortcut → opening \(info.url.absoluteString)")
         switch info.kind {
         case .image, .video:
-            // Local → default app (Preview / QuickTime). Remote → browser.
             NSWorkspace.shared.open(info.url)
         case .markdown, .text, .pdf:
-            openInViewerWindow(info: info)
+            openInContentPanel(info: info)
         case .webPage:
-            // Webpages never open directly — they always go through the
-            // preview panel so the user sees the URL before deciding to open.
-            break
+            openInContentPanel(info: info)
         case .other:
             if info.isLocal {
                 NSWorkspace.shared.activateFileViewerSelecting([info.url])
@@ -424,6 +422,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 NSWorkspace.shared.open(info.url)
             }
         }
+    }
+
+    private func openInContentPanel(info: MediaInfo) {
+        let panel = ContentPanel.shared
+        panel.load(info: info)
+        let mousePos = NSEvent.mouseLocation
+        let contentSize = NSSize(width: 700, height: 600)
+        let frame = ScreenManager.shared.adjustedFrame(for: contentSize, at: mousePos, offset: CGPoint(x: 20, y: 0))
+        panel.setFrame(frame, display: true)
+        panel.orderFrontRegardless()
     }
 
     /// Spawn a ContentViewerWindow and own it until the user closes it.
