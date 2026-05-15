@@ -77,7 +77,7 @@ final class HistoryManager {
 
     private(set) var records: [HistoryRecord] = []
     private let maxRecords = 200
-    private let ioQueue = DispatchQueue(label: "ImageHoverPreview.HistoryManager.io")
+    private let ioQueue = DispatchQueue(label: "Glance.HistoryManager.io")
 
     private init() {
         load()
@@ -113,7 +113,7 @@ final class HistoryManager {
     private var storeURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory,
                                              in: .userDomainMask).first!
-            .appendingPathComponent("ImageHoverPreview", isDirectory: true)
+            .appendingPathComponent("Glance", isDirectory: true)
         try? FileManager.default.createDirectory(at: base,
                                                   withIntermediateDirectories: true)
         return base.appendingPathComponent("history.json")

@@ -91,7 +91,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         )
         self.isReleasedWhenClosed = false
         self.center()
-        self.title = "TempDisplay"
+        self.title = "Glance"
 
         buildLayout()
         showWebView()  // default

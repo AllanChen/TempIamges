@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_NAME="ImageHoverPreview"
+APP_NAME="Glance"
 APP_PATH="$(cd "$(dirname "$0")" && pwd)/$APP_NAME.app"
 LOG_FILE="$HOME/Library/Application Support/$APP_NAME/app.log"
 
@@ -9,7 +9,7 @@ echo "Killing any running $APP_NAME instances..."
 pkill -x "$APP_NAME" 2>/dev/null && sleep 0.3 || true
 
 if [ ! -d "$APP_PATH" ]; then
-    echo "Error: $APP_PATH not found. Run ./ImageHoverPreview/build.sh first."
+    echo "Error: $APP_PATH not found. Run ./Glance/build.sh first."
     exit 1
 fi
 

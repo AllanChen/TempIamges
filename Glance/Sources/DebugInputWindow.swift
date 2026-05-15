@@ -43,7 +43,7 @@ final class DebugInputWindow: NSWindow {
             backing: .buffered,
             defer: false
         )
-        title = "TempDisplay Debug"
+        title = "Glance Debug"
         isReleasedWhenClosed = false
 
         // Stay visible across spaces, on top of normal app windows, and

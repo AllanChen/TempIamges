@@ -24,10 +24,10 @@ final class Logger {
     private let logFileURL: URL
     private let dateFormatter: DateFormatter
     private let osLog: OSLog
-    private let queue = DispatchQueue(label: "com.imagehoverpreview.logger")
+    private let queue = DispatchQueue(label: "com.glance.logger")
 
     private init() {
-        self.osLog = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "com.imagehoverpreview", category: "App")
+        self.osLog = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "com.glance", category: "App")
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
@@ -35,7 +35,7 @@ final class Logger {
 
         let fileManager = FileManager.default
         let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("ImageHoverPreview", isDirectory: true)
+            .appendingPathComponent("Glance", isDirectory: true)
 
         if let supportURL = appSupportURL {
             do {
@@ -47,11 +47,11 @@ final class Logger {
                     fileManager.createFile(atPath: logURL.path, contents: nil, attributes: nil)
                 }
             } catch {
-                self.logFileURL = URL(fileURLWithPath: "/tmp/imagehoverpreview.log")
+                self.logFileURL = URL(fileURLWithPath: "/tmp/glance.log")
                 os_log("Logger init failed, using fallback: %{public}@", log: osLog, type: .error, error.localizedDescription)
             }
         } else {
-            self.logFileURL = URL(fileURLWithPath: "/tmp/imagehoverpreview.log")
+            self.logFileURL = URL(fileURLWithPath: "/tmp/glance.log")
             os_log("Could not get app support URL, using fallback", log: osLog, type: .error)
         }
 

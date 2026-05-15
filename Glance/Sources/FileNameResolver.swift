@@ -318,7 +318,7 @@ final class FileNameResolver {
 
     // MARK: - Full Disk Access gate
 
-    private static let fdaPromptShownKey = "com.imagehoverpreview.fdaPromptShown"
+    private static let fdaPromptShownKey = "com.glance.fdaPromptShown"
 
     /// Returns true when FDA is currently granted. Otherwise shows a single
     /// consolidated NSAlert (only the first time per install) directing the
@@ -348,15 +348,15 @@ final class FileNameResolver {
 
     private static func presentFDAAlert() {
         let alert = NSAlert()
-        alert.messageText = "Allow TempDisplay to access your files"
+        alert.messageText = "Allow Glance to access your files"
         alert.informativeText = """
-        To find files Spotlight hasn't indexed yet, TempDisplay needs Full \
+        To find files Spotlight hasn't indexed yet, Glance needs Full \
         Disk Access. Granting it here means we won't ask again for each \
         folder (Documents, Desktop, Downloads).
 
         Click "Open Settings" to enable it in System Settings → Privacy & \
-        Security → Full Disk Access, then toggle TempDisplay (or \
-        ImageHoverPreview) on. You may need to restart the app for it to \
+        Security → Full Disk Access, then toggle Glance (or \
+        Glance) on. You may need to restart the app for it to \
         take effect.
         """
         alert.alertStyle = .informational

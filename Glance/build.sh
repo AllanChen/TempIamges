@@ -5,7 +5,7 @@ set -e
 # pass "Debug" to enable #if DEBUG paths (debug input window, etc).
 CONFIG="${1:-Release}"
 
-echo "Building ImageHoverPreview ($CONFIG)..."
+echo "Building Glance ($CONFIG)..."
 
 cd "$(dirname "$0")"
 
@@ -14,24 +14,24 @@ if command -v xcodegen > /dev/null 2>&1; then
 fi
 
 xcodebuild \
-    -project ImageHoverPreview.xcodeproj \
-    -scheme ImageHoverPreview \
+    -project Glance.xcodeproj \
+    -scheme Glance \
     -configuration "$CONFIG" \
     -derivedDataPath ./DerivedData \
     build
 
-BUILT_APP=$(find "./debug/$CONFIG" -name "ImageHoverPreview.app" -type d | head -n 1)
+BUILT_APP=$(find "./debug/$CONFIG" -name "Glance.app" -type d | head -n 1)
 
 if [ -z "$BUILT_APP" ]; then
-    BUILT_APP=$(find "./DerivedData/Build/Products/$CONFIG" -name "ImageHoverPreview.app" -type d | head -n 1)
+    BUILT_APP=$(find "./DerivedData/Build/Products/$CONFIG" -name "Glance.app" -type d | head -n 1)
 fi
 
 if [ -z "$BUILT_APP" ]; then
-    echo "Error: Could not find built ImageHoverPreview.app"
+    echo "Error: Could not find built Glance.app"
     exit 1
 fi
 
-DEST_APP="$(cd .. && pwd)/ImageHoverPreview.app"
+DEST_APP="$(cd .. && pwd)/Glance.app"
 
 [ -d "$DEST_APP" ] && rm -rf "$DEST_APP"
 

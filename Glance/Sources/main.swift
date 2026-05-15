@@ -1,7 +1,7 @@
 import AppKit
 import os.log
 
-let osLog = OSLog(subsystem: "com.imagehoverpreview", category: "Startup")
+let osLog = OSLog(subsystem: "com.glance", category: "Startup")
 os_log("Application starting up", log: osLog, type: .info)
 
 let app = NSApplication.shared

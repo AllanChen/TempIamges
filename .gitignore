@@ -23,10 +23,10 @@ Package.resolved
 *.dSYM.zip
 
 # Built app bundle (build.sh writes this at repo root)
-/ImageHoverPreview.app/
+/Glance.app/
 
 # Debug build output
-ImageHoverPreview/debug/
+Glance/debug/
 
 # Claude session data
 .claude/

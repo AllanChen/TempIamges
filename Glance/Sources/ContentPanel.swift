@@ -351,7 +351,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         closeBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
         bar.addSubview(closeBtn)
 
-        let titleLbl = NSTextField(labelWithString: "TempDisplay")
+        let titleLbl = NSTextField(labelWithString: "Glance")
         titleLbl.textColor = .labelColor
         titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titleLbl.alignment = .center

@@ -1,4 +1,4 @@
-# ImageHoverPreview
+# Glance
 
 A native macOS menubar utility that shows image previews when holding Cmd+Shift and hovering over URLs or local file paths in any application.
 
@@ -35,13 +35,13 @@ Or manually:
 
 ```bash
 xcodegen generate
-xcodebuild -project ImageHoverPreview.xcodeproj -scheme ImageHoverPreview build
+xcodebuild -project Glance.xcodeproj -scheme Glance build
 ```
 
 ## Installation
 
 1. Build the project
-2. Copy `build/Release/ImageHoverPreview.app` to `/Applications`
+2. Copy `build/Release/Glance.app` to `/Applications`
 3. Launch the app
 4. Grant required permissions when prompted
 
@@ -75,21 +75,21 @@ If you need to re-test the permission flow:
 
 ```bash
 # Reset Input Monitoring permission
-tccutil reset ListenEvent com.imagehoverpreview.app
+tccutil reset ListenEvent com.glance.app
 
 # Reset Accessibility permission
-tccutil reset Accessibility com.imagehoverpreview.app
+tccutil reset Accessibility com.glance.app
 
 # Reset all permissions for the app
-tccutil reset All com.imagehoverpreview.app
+tccutil reset All com.glance.app
 ```
 
 #### 4. Viewing Logs
 
 Logs are available in multiple ways:
 - **Xcode Console**: Real-time logs during debugging (with `IDELogRedirectionPolicy`)
-- **Console.app**: Open Applications > Utilities > Console, search for "ImageHoverPreview"
-- **Log File**: `~/Library/Application Support/ImageHoverPreview/app.log`
+- **Console.app**: Open Applications > Utilities > Console, search for "Glance"
+- **Log File**: `~/Library/Application Support/Glance/app.log`
 
 #### 5. Testing Permission Changes Without Restart
 

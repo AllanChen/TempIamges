@@ -1,6 +1,6 @@
-name: ImageHoverPreview
+name: Glance
 options:
-  bundleIdPrefix: com.imagehoverpreview
+  bundleIdPrefix: com.glance
   deploymentTarget:
     macOS: "12.3"
   xcodeVersion: "14.0"
@@ -28,7 +28,7 @@ settings:
 #   #   path: ../Packages/MyLocalPackage
 
 targets:
-  ImageHoverPreview:
+  Glance:
     type: application
     platform: macOS
     sources:
@@ -39,9 +39,9 @@ targets:
     dependencies: []
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.imagehoverpreview.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.glance.app
         INFOPLIST_FILE: Info.plist
-        PRODUCT_NAME: ImageHoverPreview
+        PRODUCT_NAME: Glance
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/../Frameworks"
@@ -49,6 +49,6 @@ targets:
         CONFIGURATION_BUILD_DIR: "$(SRCROOT)/debug/$(CONFIGURATION)"
         BUILD_ROOT: "$(SRCROOT)/debug"
     entitlements:
-      path: ImageHoverPreview.entitlements
+      path: Glance.entitlements
       properties:
         com.apple.security.get-task-allow: true

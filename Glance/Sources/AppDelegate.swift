@@ -594,7 +594,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 extension AppDelegate {
     func writeDebugMarker(_ message: String) {
         let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("ImageHoverPreview/debug_marker.txt")
+            .appendingPathComponent("Glance/debug_marker.txt")
         let text = "\(Date()): \(message)\n"
         if let data = text.data(using: .utf8) {
             if FileManager.default.fileExists(atPath: url.path) {

@@ -16,7 +16,7 @@ class OnboardingWindow: NSWindow {
             defer: false
         )
 
-        self.title = "ImageHoverPreview Needs Permissions"
+        self.title = "Glance Needs Permissions"
         self.center()
         self.isReleasedWhenClosed = false
         self.level = .floating
@@ -34,7 +34,7 @@ class OnboardingWindow: NSWindow {
         containerView.autoresizingMask = [.width, .height]
         contentView.addSubview(containerView)
 
-        let titleLabel = NSTextField(labelWithString: "ImageHoverPreview Needs Permissions")
+        let titleLabel = NSTextField(labelWithString: "Glance Needs Permissions")
         titleLabel.font = NSFont.boldSystemFont(ofSize: 18)
         titleLabel.frame = NSRect(x: 20, y: 410, width: 480, height: 30)
         containerView.addSubview(titleLabel)

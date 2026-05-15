@@ -32,7 +32,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
         if #available(macOS 11.0, *) {
             let symbolName = Preferences.shared.enabled ? "eye" : "eye.slash"
-            button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "ImageHoverPreview")
+            button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Glance")
         } else {
             button.title = Preferences.shared.enabled ? "👁" : "🚫"
         }
@@ -87,11 +87,11 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let aboutItem = NSMenuItem(title: "About ImageHoverPreview", action: #selector(showAbout), keyEquivalent: "")
+        let aboutItem = NSMenuItem(title: "About Glance", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
 
-        let quitItem = NSMenuItem(title: "Quit ImageHoverPreview", action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit Glance", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -130,7 +130,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func showAbout() {
         let alert = NSAlert()
-        alert.messageText = "ImageHoverPreview"
+        alert.messageText = "Glance"
         alert.informativeText = "Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")

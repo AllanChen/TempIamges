@@ -265,7 +265,7 @@ class PreviewPanel: NSPanel {
                 updatedInfo.dimensions = m.naturalSize
                 currentInfos[index] = updatedInfo
                 tile.updateInfo(updatedInfo)
-                // Header title is intentionally static ("TempDisplay") — do
+                // Header title is intentionally static ("Glance") — do
                 // not overwrite it with the filename when media finishes loading.
             }
         } else {
@@ -533,7 +533,7 @@ class PreviewPanel: NSPanel {
         bar.addSubview(closeBtn)
         singleCloseBtn = closeBtn
 
-        let titleLbl = NSTextField(labelWithString: "TempDisplay")
+        let titleLbl = NSTextField(labelWithString: "Glance")
         titleLbl.textColor = Self.textDark
         titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titleLbl.alignment = .center

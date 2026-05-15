@@ -27,8 +27,8 @@
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>ImageHoverPreview needs to send Apple events to capture image previews.</string>
+    <string>Glance needs to send Apple events to capture image previews.</string>
     <key>NSAccessibilityUsageDescription</key>
-    <string>ImageHoverPreview needs accessibility access to read text under the mouse cursor for image preview.</string>
+    <string>Glance needs accessibility access to read text under the mouse cursor for image preview.</string>
 </dict>
 </plist>

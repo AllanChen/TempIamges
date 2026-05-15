@@ -4,7 +4,7 @@ class Preferences {
     static let shared = Preferences()
 
     private let defaults = UserDefaults.standard
-    private let suiteName = "com.imagehoverpreview"
+    private let suiteName = "com.glance"
 
     enum Theme: String, CaseIterable {
         case system, light, dark

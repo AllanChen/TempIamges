@@ -34,7 +34,7 @@ class PreferencesWindow: NSWindow {
         containerView.autoresizingMask = [.width, .height]
         contentView.addSubview(containerView)
 
-        let titleLabel = NSTextField(labelWithString: "ImageHoverPreview Preferences")
+        let titleLabel = NSTextField(labelWithString: "Glance Preferences")
         titleLabel.font = NSFont.boldSystemFont(ofSize: 16)
         titleLabel.frame = NSRect(x: 20, y: 360, width: 420, height: 24)
         containerView.addSubview(titleLabel)

@@ -19,12 +19,12 @@ final class FilenameCache {
 
     private var entries: [String: CacheEntry] = [:]
     private let maxEntries = 500
-    private let ioQueue = DispatchQueue(label: "ImageHoverPreview.FilenameCache.io")
+    private let ioQueue = DispatchQueue(label: "Glance.FilenameCache.io")
 
     private var storeURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory,
                                              in: .userDomainMask).first!
-            .appendingPathComponent("ImageHoverPreview", isDirectory: true)
+            .appendingPathComponent("Glance", isDirectory: true)
         try? FileManager.default.createDirectory(at: base,
                                                   withIntermediateDirectories: true)
         return base.appendingPathComponent("filename-cache.json")
