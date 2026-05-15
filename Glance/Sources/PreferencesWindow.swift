@@ -9,9 +9,10 @@ class PreferencesWindow: NSWindow {
     private var optionCheckbox: NSButton!
     private var controlCheckbox: NSButton!
     private var currentHotkeyLabel: NSTextField!
+    private var loginURLField: NSTextField!
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 460, height: 410)
+        let windowRect = NSRect(x: 0, y: 0, width: 460, height: 465)
         super.init(
             contentRect: windowRect,
             styleMask: [.titled, .closable],
@@ -36,27 +37,38 @@ class PreferencesWindow: NSWindow {
 
         let titleLabel = NSTextField(labelWithString: "Glance Preferences")
         titleLabel.font = NSFont.boldSystemFont(ofSize: 16)
-        titleLabel.frame = NSRect(x: 20, y: 360, width: 420, height: 24)
+        titleLabel.frame = NSRect(x: 20, y: 415, width: 420, height: 24)
         containerView.addSubview(titleLabel)
 
         let generalLabel = NSTextField(labelWithString: "General")
         generalLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        generalLabel.frame = NSRect(x: 20, y: 320, width: 420, height: 20)
+        generalLabel.frame = NSRect(x: 20, y: 375, width: 420, height: 20)
         containerView.addSubview(generalLabel)
 
         enabledCheckbox = NSButton(checkboxWithTitle: "Enable Image Hover Preview", target: self, action: #selector(enabledToggled))
-        enabledCheckbox.frame = NSRect(x: 20, y: 290, width: 300, height: 20)
+        enabledCheckbox.frame = NSRect(x: 20, y: 345, width: 300, height: 20)
         containerView.addSubview(enabledCheckbox)
 
         readClipboardCheckbox = NSButton(checkboxWithTitle: "Read clipboard when no text is selected", target: self, action: #selector(readClipboardToggled))
-        readClipboardCheckbox.frame = NSRect(x: 20, y: 260, width: 380, height: 20)
+        readClipboardCheckbox.frame = NSRect(x: 20, y: 315, width: 380, height: 20)
         containerView.addSubview(readClipboardCheckbox)
 
         launchAtLoginCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(launchAtLoginToggled))
-        launchAtLoginCheckbox.frame = NSRect(x: 20, y: 230, width: 300, height: 20)
+        launchAtLoginCheckbox.frame = NSRect(x: 20, y: 285, width: 300, height: 20)
         containerView.addSubview(launchAtLoginCheckbox)
 
-        // Max preview size section
+        let loginURLLabel = NSTextField(labelWithString: "Login URL")
+        loginURLLabel.font = NSFont.boldSystemFont(ofSize: 13)
+        loginURLLabel.frame = NSRect(x: 20, y: 250, width: 200, height: 20)
+        containerView.addSubview(loginURLLabel)
+
+        loginURLField = NSTextField(frame: NSRect(x: 20, y: 225, width: 420, height: 22))
+        loginURLField.placeholderString = "https://your-app.com/login"
+        loginURLField.font = NSFont.systemFont(ofSize: 12)
+        loginURLField.target = self
+        loginURLField.action = #selector(loginURLChanged(_:))
+        containerView.addSubview(loginURLField)
+
         let sizeLabel = NSTextField(labelWithString: "Maximum Preview Size")
         sizeLabel.font = NSFont.boldSystemFont(ofSize: 13)
         sizeLabel.frame = NSRect(x: 20, y: 190, width: 200, height: 20)
@@ -74,7 +86,6 @@ class PreferencesWindow: NSWindow {
         maxSizeLabel.frame = NSRect(x: 330, y: 160, width: 80, height: 20)
         containerView.addSubview(maxSizeLabel)
 
-        // Hotkey section
         let hotkeyLabel = NSTextField(labelWithString: "Activation Hotkey")
         hotkeyLabel.font = NSFont.boldSystemFont(ofSize: 13)
         hotkeyLabel.frame = NSRect(x: 20, y: 120, width: 200, height: 20)
@@ -100,7 +111,6 @@ class PreferencesWindow: NSWindow {
         currentHotkeyLabel.frame = NSRect(x: 20, y: 42, width: 420, height: 20)
         containerView.addSubview(currentHotkeyLabel)
 
-        // Reset button
         let resetButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetToDefaults))
         resetButton.bezelStyle = .rounded
         resetButton.frame = NSRect(x: 20, y: 20, width: 140, height: 28)
@@ -116,6 +126,7 @@ class PreferencesWindow: NSWindow {
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
         optionCheckbox.state = prefs.hotkeyRequiresOption ? .on : .off
         controlCheckbox.state = prefs.hotkeyRequiresControl ? .on : .off
+        loginURLField.stringValue = prefs.loginURL ?? ""
         updateCurrentHotkeyLabel()
     }
 
@@ -147,6 +158,12 @@ class PreferencesWindow: NSWindow {
 
     @objc private func launchAtLoginToggled(_ sender: NSButton) {
         Preferences.shared.launchAtLogin = sender.state == .on
+        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+    }
+
+    @objc private func loginURLChanged(_ sender: NSTextField) {
+        let value = sender.stringValue.trimmingCharacters(in: .whitespaces)
+        Preferences.shared.loginURL = value.isEmpty ? nil : value
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 

@@ -545,6 +545,11 @@ class PreviewPanel: NSPanel {
         bar.addSubview(titleLbl)
         singleHeaderTitle = titleLbl
 
+        let loginBtn = makeIconButton(symbol: "person.circle", action: #selector(loginButtonTapped), tint: Self.textDark)
+        loginBtn.frame = NSRect(x: width - 36, y: (headerHeight - 24) / 2, width: 24, height: 24)
+        loginBtn.autoresizingMask = [.minXMargin]
+        bar.addSubview(loginBtn)
+
         return bar
     }
 
@@ -822,6 +827,13 @@ class PreviewPanel: NSPanel {
 
     @objc private func actionButtonTapped() {
         togglePin()
+    }
+
+    @objc private func loginButtonTapped() {
+        let panel = LoginPanel.shared
+        let btnFrame = self.frame
+        let point = CGPoint(x: btnFrame.maxX - 200, y: btnFrame.maxY - 10)
+        panel.show(at: point)
     }
 
     /// Downloads a remote URL to ~/Downloads. Drives the tile's progress UI;

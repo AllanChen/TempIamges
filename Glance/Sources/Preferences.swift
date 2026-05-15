@@ -53,6 +53,11 @@ class Preferences {
         set { defaults.set(newValue, forKey: "\(suiteName).readClipboard") }
     }
 
+    var loginURL: String? {
+        get { defaults.string(forKey: "\(suiteName).loginURL") }
+        set { defaults.set(newValue, forKey: "\(suiteName).loginURL") }
+    }
+
     var hotkeyModifiers: NSEvent.ModifierFlags {
         get {
             let rawValue = UInt(defaults.integer(forKey: "\(suiteName).hotkeyModifiers"))
@@ -93,6 +98,7 @@ class Preferences {
         enabled = true
         launchAtLogin = false
         readClipboard = true
+        loginURL = nil
         hotkeyModifiers = [.control]
         hotkeyRequiresOption = false
         hotkeyRequiresControl = true
