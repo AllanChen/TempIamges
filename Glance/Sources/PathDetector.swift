@@ -214,7 +214,7 @@ class PathDetector {
         // Bare filename: stem ≥3 chars, alphanumeric/_/-/., must be standalone
         // (not preceded by slashes, tildes, dots, dashes, or alphanumerics).
         self.bareFilenameRegex = try! NSRegularExpression(
-            pattern: "(?<![\\p{L}\\p{N}_./~\\-])[\\p{L}\\p{N}_][\\p{L}\\p{N}_.\\-]{2,}\\.(?i:\(extAlt))(?![\\p{L}\\p{N}])",
+            pattern: "(?<![\\p{L}\\p{N}_./~\\-])[\\p{L}\\p{N}_][\\p{L}\\p{N}_.\\- ]{2,}\\.(?i:\(extAlt))(?![\\p{L}\\p{N}])",
             options: []
         )
 
