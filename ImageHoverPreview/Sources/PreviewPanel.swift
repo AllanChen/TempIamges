@@ -161,10 +161,21 @@ class PreviewPanel: NSPanel {
         ) { [weak self] _ in
             self?.savedPosition = self?.frame
         }
+        NotificationCenter.default.addObserver(
+            forName: .init("ContentPanelDidClose"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.forceHidePanel()
+        }
     }
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+
+    override func cancelOperation(_ sender: Any?) {
+        forceHidePanel()
+    }
 
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         super.setFrame(frameRect, display: flag)

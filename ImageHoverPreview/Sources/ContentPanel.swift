@@ -370,6 +370,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         orderOut(nil)
     }
 
+    override func cancelOperation(_ sender: Any?) {
+        orderOut(nil)
+        NotificationCenter.default.post(name: .init("ContentPanelDidClose"), object: self)
+    }
+
     func load(info: MediaInfo) {
         currentMediaInfo = info
         showLoading()
