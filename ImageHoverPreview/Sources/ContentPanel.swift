@@ -23,13 +23,19 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private enum Kind { case webpage, markdown, text, pdf, image }
     private var kind: Kind = .webpage
     private var currentURL: URL?
+    private var currentMediaInfo: MediaInfo?
     private var isEditing: Bool = false
 
     private let headerHeight: CGFloat = 48
     private let toolbarH: CGFloat = 36
+    private let imageInfoBarH: CGFloat = 48
 
     private weak var loadingOverlay: NSView?
     private weak var loadingSpinner: NSProgressIndicator?
+
+    private let imageInfoBar = NSView()
+    private let imageInfoNameLabel = NSTextField(labelWithString: "")
+    private let imageInfoMetaLabel = NSTextField(labelWithString: "")
 
     private init() {
         let config = WKWebViewConfiguration()
@@ -263,6 +269,34 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         loadingOverlay = overlay
         loadingSpinner = spinner
 
+        // Image info bar — floats above the content area when viewing images.
+        imageInfoBar.frame = NSRect(x: 0, y: 0,
+                                     width: bodyFrame.width, height: imageInfoBarH)
+        imageInfoBar.autoresizingMask = [.width, .maxYMargin]
+        imageInfoBar.wantsLayer = true
+        imageInfoBar.layer?.backgroundColor = NSColor(white: 0, alpha: 0.78).cgColor
+        imageInfoBar.isHidden = true
+
+        imageInfoNameLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        imageInfoNameLabel.textColor = .white
+        imageInfoNameLabel.lineBreakMode = .byTruncatingMiddle
+        imageInfoNameLabel.maximumNumberOfLines = 1
+        imageInfoNameLabel.frame = NSRect(x: 16, y: 24,
+                                           width: bodyFrame.width - 32, height: 18)
+        imageInfoNameLabel.autoresizingMask = [.width]
+        imageInfoBar.addSubview(imageInfoNameLabel)
+
+        imageInfoMetaLabel.font = NSFont.systemFont(ofSize: 11)
+        imageInfoMetaLabel.textColor = NSColor(white: 1, alpha: 0.75)
+        imageInfoMetaLabel.lineBreakMode = .byTruncatingTail
+        imageInfoMetaLabel.maximumNumberOfLines = 1
+        imageInfoMetaLabel.frame = NSRect(x: 16, y: 6,
+                                           width: bodyFrame.width - 32, height: 14)
+        imageInfoMetaLabel.autoresizingMask = [.width]
+        imageInfoBar.addSubview(imageInfoMetaLabel)
+
+        root.addSubview(imageInfoBar)
+
         contentView = root
     }
 
@@ -303,7 +337,12 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         orderOut(nil)
     }
 
+    func dismiss() {
+        orderOut(nil)
+    }
+
     func load(info: MediaInfo) {
+        currentMediaInfo = info
         showLoading()
         switch info.kind {
         case .markdown:
@@ -311,6 +350,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             kind = .markdown
             isEditing = false
             showToolbar()
+            imageInfoBar.isHidden = true
             toggleButton.isHidden = false
             toggleButton.title = "Edit"
             saveButton.isHidden = true
@@ -322,6 +362,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             kind = .text
             isEditing = false
             showToolbar()
+            imageInfoBar.isHidden = true
             toggleButton.isHidden = false
             toggleButton.title = "Edit"
             saveButton.isHidden = true
@@ -332,6 +373,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             currentURL = info.url
             kind = .pdf
             showToolbar()
+            imageInfoBar.isHidden = true
             toggleButton.isHidden = true
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
@@ -349,11 +391,13 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             toggleButton.isHidden = true
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
+            updateImageInfoBar(with: info)
+            imageInfoBar.isHidden = false
             let html = """
             <html><head><style>
             body { margin: 0; display: flex; align-items: center; justify-content: center;
                    background: #0a0a0a; height: 100vh; }
-            img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+            img { max-width: 100%; max-height: 100%; object-fit: contain; }
             </style></head><body><img src="\(info.url.absoluteString)"></body></html>
             """
             webView.loadHTMLString(html, baseURL: nil)
@@ -363,6 +407,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             currentURL = info.url
             kind = .webpage
             showToolbar()
+            imageInfoBar.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
             webView.load(URLRequest(url: info.url))
             showWebView()
@@ -500,6 +545,24 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             return
         }
         modifiedLabel.stringValue = "Modified \(ContentViewerWindow.friendlyDate(date))"
+    }
+
+    private func updateImageInfoBar(with info: MediaInfo) {
+        imageInfoNameLabel.stringValue = info.filename
+
+        var parts: [String] = []
+        if !info.formatName.isEmpty {
+            parts.append(info.formatName)
+        }
+        if let bytes = info.fileSize {
+            let f = ByteCountFormatter()
+            f.countStyle = .file
+            parts.append(f.string(fromByteCount: bytes))
+        }
+        if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
+            parts.append("\(Int(dim.width)) × \(Int(dim.height))")
+        }
+        imageInfoMetaLabel.stringValue = parts.joined(separator: " · ")
     }
 
     // MARK: - Find

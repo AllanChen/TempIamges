@@ -296,6 +296,9 @@ class PreviewPanel: NSPanel {
             self?.isPinned = false
             self?.orderOut(nil)
             self?.teardownTiles()
+            // Dismiss the companion content viewer so nothing is left dangling
+            // when the main preview panel goes away.
+            ContentPanel.shared.dismiss()
         })
     }
 
