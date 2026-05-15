@@ -182,11 +182,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         modifiedLabel.font = NSFont.systemFont(ofSize: 11)
         modifiedLabel.textColor = .secondaryLabelColor
         modifiedLabel.alignment = .right
-        modifiedLabel.lineBreakMode = .byTruncatingTail
+        modifiedLabel.lineBreakMode = .byClipping
         modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.frame = NSRect(x: bodyFrame.width - 30 - locateW - 70 - 70 - 160 - 12,
-                                      y: 9, width: 160, height: 18)
-        modifiedLabel.autoresizingMask = [.minXMargin]
+        modifiedLabel.frame = NSRect(x: 12, y: 9,
+                                      width: bodyFrame.width - 30 - locateW - 70 - 70 - 12, height: 18)
+        modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
 
         addressBar.font = NSFont.systemFont(ofSize: 12)

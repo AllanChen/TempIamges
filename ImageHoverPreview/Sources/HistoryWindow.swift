@@ -365,13 +365,17 @@ private final class HistorySectionView: NSView {
 
     private func makeHeader(width: CGFloat, height: CGFloat) -> NSView {
         let header = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        header.wantsLayer = true
+        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        header.layer?.backgroundColor = (isDark ? NSColor(white: 0.18, alpha: 1) : NSColor(white: 0.94, alpha: 1)).cgColor
+        header.layer?.cornerRadius = 6
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd  EEEE"
         let dateLabel = NSTextField(labelWithString: formatter.string(from: date))
         dateLabel.font = NSFont.systemFont(ofSize: 14, weight: .bold)
         dateLabel.textColor = .labelColor
-        dateLabel.frame = NSRect(x: 0, y: (height - 20) / 2, width: width, height: 20)
+        dateLabel.frame = NSRect(x: 12, y: (height - 20) / 2, width: width - 24, height: 20)
         dateLabel.lineBreakMode = .byTruncatingTail
         header.addSubview(dateLabel)
 

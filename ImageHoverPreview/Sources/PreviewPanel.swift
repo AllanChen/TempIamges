@@ -400,8 +400,10 @@ class PreviewPanel: NSPanel {
             guard let tile = tile else { return }
             self?.downloadRemote(url: infoURL, tile: tile)
         }
-        let tileInfo = info
-        tile.onTileTap = { [weak self] in self?.openInViewer(info: tileInfo) }
+        tile.onTileTap = { [weak self] in
+            guard let self = self, !self.currentInfos.isEmpty else { return }
+            self.openInViewer(info: self.currentInfos[0])
+        }
         view.addSubview(tile)
 
         tiles = [tile]
@@ -465,8 +467,10 @@ class PreviewPanel: NSPanel {
                 guard let tile = tile else { return }
                 self?.downloadRemote(url: url, tile: tile)
             }
-            let capturedInfo = info
-            tile.onTileTap = { [weak self] in self?.openInViewer(info: capturedInfo) }
+            tile.onTileTap = { [weak self] in
+                guard let self = self, self.currentInfos.indices.contains(i) else { return }
+                self.openInViewer(info: self.currentInfos[i])
+            }
             docView.addSubview(tile)
             newTiles.append(tile)
         }
@@ -890,6 +894,10 @@ class PreviewPanel: NSPanel {
         let frame = NSRect(origin: CGPoint(x: originX, y: originY), size: contentSize)
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
+
+        if currentMode == .singleCard {
+            forceHidePanel()
+        }
     }
 
     private func uniqueDestination(in dir: URL, filename: String) -> URL {
