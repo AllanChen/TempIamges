@@ -131,10 +131,8 @@ class PreviewPanel: NSPanel {
     /// mouse cursor.
     private var savedPosition: NSRect?
 
-    private var frameTrackingDisplayLink: CVDisplayLink?
+    private var followTimer: Timer?
     private var lastSyncedFrame: NSRect = .zero
-    private var previousFrame: NSRect = .zero
-    private let frameSyncThreshold: CGFloat = 1.0
 
     private enum Mode { case singleCard, grid }
 
@@ -185,46 +183,21 @@ class PreviewPanel: NSPanel {
         }
     }
 
-    private func checkFrameChange() {
-        guard let link = frameTrackingDisplayLink, CVDisplayLinkIsRunning(link) else { return }
-        let currentFrame = self.frame
-        if currentFrame.origin != previousFrame.origin {
-            let distance = hypot(currentFrame.origin.x - lastSyncedFrame.origin.x,
-                                  currentFrame.origin.y - lastSyncedFrame.origin.y)
-            if distance >= frameSyncThreshold {
-                let content = ContentPanel.shared
-                if content.isVisible {
-                    content.syncPosition(to: currentFrame)
-                }
-                lastSyncedFrame = currentFrame
-            }
-            previousFrame = currentFrame
+    func startFollowingContentPanel() {
+        guard followTimer == nil else { return }
+        lastSyncedFrame = self.frame
+        followTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            let currentFrame = self.frame
+            guard !NSEqualRects(currentFrame, self.lastSyncedFrame) else { return }
+            self.lastSyncedFrame = currentFrame
+            ContentPanel.shared.syncPosition(to: currentFrame)
         }
     }
 
-    func startFollowingContentPanel() {
-        guard frameTrackingDisplayLink == nil else { return }
-        var link: CVDisplayLink?
-        CVDisplayLinkCreateWithActiveCGDisplays(&link)
-        guard let displayLink = link else { return }
-        let userInfo = Unmanaged.passUnretained(self).toOpaque()
-        CVDisplayLinkSetOutputCallback(displayLink, { _, _, _, _, _, userInfo -> CVReturn in
-            let panel = Unmanaged<PreviewPanel>.fromOpaque(userInfo!).takeUnretainedValue()
-            DispatchQueue.main.async {
-                panel.checkFrameChange()
-            }
-            return kCVReturnSuccess
-        }, userInfo)
-        CVDisplayLinkStart(displayLink)
-        frameTrackingDisplayLink = displayLink
-        lastSyncedFrame = self.frame
-        previousFrame = self.frame
-    }
-
     func stopFollowingContentPanel() {
-        guard let link = frameTrackingDisplayLink else { return }
-        CVDisplayLinkStop(link)
-        frameTrackingDisplayLink = nil
+        followTimer?.invalidate()
+        followTimer = nil
     }
 
     // MARK: - Public API
