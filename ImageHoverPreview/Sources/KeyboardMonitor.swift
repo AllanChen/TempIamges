@@ -21,10 +21,29 @@ class KeyboardMonitor: NSObject {
             name: .preferencesDidChange,
             object: nil
         )
+        // Reset modifier state on wake to prevent stale events after sleep.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(systemDidWake),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
     }
 
     @objc private func preferencesChanged() {
         checkPreviewModeStateChanged()
+    }
+
+    @objc private func systemDidWake() {
+        cmdHeld     = false
+        shiftHeld   = false
+        optionHeld  = false
+        controlHeld = false
+        if wasPreviewModeActive {
+            wasPreviewModeActive = false
+            Logger.info("KeyboardMonitor: System woke — forcing preview mode DEACTIVATED")
+            NotificationCenter.default.post(name: KeyboardMonitor.previewModeDidDeactivate, object: self)
+        }
     }
 
     var previewModeActive: Bool {

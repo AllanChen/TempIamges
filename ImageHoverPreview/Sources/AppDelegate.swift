@@ -34,6 +34,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         setupComponents()
         setupNotifications()
         checkPermissions()
+        // Close any stale preview when the system wakes from sleep.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(systemDidWake),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
 
         #if DEBUG
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
@@ -337,6 +344,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         currentPath = nil
         isLoadingImage = false
         lastSelectedText = nil
+    }
+
+    @objc private func systemDidWake() {
+        Logger.info("AppDelegate: System woke from sleep")
+        previewPanel?.closePanel()
+        previewModeDeactivated()
     }
 
     private func loadAndShowMedia(paths: [DetectedPath], at position: CGPoint) {
