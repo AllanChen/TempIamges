@@ -154,14 +154,20 @@ class PreviewPanel: NSPanel {
             object: self,
             queue: .main
         ) { [weak self] _ in
-            guard let self = self else { return }
-            self.savedPosition = self.frame
-            ContentPanel.shared.syncPosition(to: self.frame)
+            self?.savedPosition = self?.frame
         }
     }
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        super.setFrame(frameRect, display: flag)
+        let content = ContentPanel.shared
+        if content.isVisible {
+            content.syncPosition(to: frameRect)
+        }
+    }
 
     // MARK: - Public API
 
@@ -1502,7 +1508,7 @@ final class MediaTileView: NSView {
     }
 
     private func attachPlayer(url: URL) {
-        let pv = AVPlayerView(frame: mediaContainer.bounds)
+        let pv = PassthroughPlayerView(frame: mediaContainer.bounds)
         pv.controlsStyle = .none
         pv.videoGravity = (style == .singleCard) ? .resizeAspect : .resizeAspectFill
         let p = AVPlayer(url: url)
@@ -1585,5 +1591,22 @@ final class MediaTileView: NSView {
         }
         dimsLabel?.stringValue = pieces.joined(separator: " · ")
         sizeLabel?.stringValue = ""
+    }
+}
+
+/// AVPlayerView subclass that forwards scroll-wheel events up to the
+/// nearest NSScrollView ancestor instead of consuming them for playback
+/// rate control.  This lets masonry grids scroll normally when the mouse
+/// is over a video tile, and single-card video tiles simply ignore the wheel.
+final class PassthroughPlayerView: AVPlayerView {
+    override func scrollWheel(with event: NSEvent) {
+        var view: NSView? = self.superview
+        while let v = view {
+            if let scrollView = v as? NSScrollView {
+                scrollView.scrollWheel(with: event)
+                return
+            }
+            view = v.superview
+        }
     }
 }
