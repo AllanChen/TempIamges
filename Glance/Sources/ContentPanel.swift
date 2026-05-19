@@ -10,6 +10,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private let toolbarBar = NSView()
     private let saveButton = NSButton()
     private let toggleButton = NSButton()
+    private let gitDiffButton = NSButton()
     private let locateButton = NSButton()
     private let modifiedLabel = NSTextField(labelWithString: "")
     private let addressBar = NSTextField()
@@ -24,6 +25,9 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private var kind: Kind = .webpage
     private var currentURL: URL?
     private var currentMediaInfo: MediaInfo?
+    private var currentGitContext: GitDiffService.Context?
+    private var gitDiffLookupID = UUID()
+    private var gitDiffWindows: [GitDiffWindow] = []
     private var isEditing: Bool = false
 
     private let headerHeight: CGFloat = 48
@@ -179,13 +183,24 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         toggleButton.isHidden = true
         toolbarBar.addSubview(toggleButton)
 
+        gitDiffButton.bezelStyle = .rounded
+        gitDiffButton.title = "Diff"
+        gitDiffButton.target = self
+        gitDiffButton.action = #selector(gitDiffTapped)
+        gitDiffButton.toolTip = "Compare with Git"
+        gitDiffButton.frame = NSRect(x: bodyFrame.width - 40 - locateW - 70 - 70 - 58,
+                                      y: 6, width: 58, height: 24)
+        gitDiffButton.autoresizingMask = [.minXMargin]
+        gitDiffButton.isHidden = true
+        toolbarBar.addSubview(gitDiffButton)
+
         modifiedLabel.font = NSFont.systemFont(ofSize: 11)
         modifiedLabel.textColor = .secondaryLabelColor
-        modifiedLabel.alignment = .right
-        modifiedLabel.lineBreakMode = .byClipping
+        modifiedLabel.alignment = .left
+        modifiedLabel.lineBreakMode = .byTruncatingMiddle
         modifiedLabel.maximumNumberOfLines = 1
         modifiedLabel.frame = NSRect(x: 12, y: 6,
-                                      width: bodyFrame.width - 30 - locateW - 70 - 70 - 12,
+                                      width: bodyFrame.width - 40 - locateW - 70 - 70 - 58 - 20,
                                       height: 24)
         modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
@@ -377,6 +392,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
     func load(info: MediaInfo) {
         currentMediaInfo = info
+        resetGitDiffAvailability()
         showLoading()
         switch info.kind {
         case .markdown:
@@ -389,7 +405,8 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             toggleButton.title = "Edit"
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
-            updateModifiedDate(for: info.url)
+            updateToolbarPath(for: info.url)
+            refreshGitDiffAvailability(for: info.url)
             renderMarkdownView(url: info.url)
         case .text:
             currentURL = info.url
@@ -401,7 +418,8 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             toggleButton.title = "Edit"
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
-            updateModifiedDate(for: info.url)
+            updateToolbarPath(for: info.url)
+            refreshGitDiffAvailability(for: info.url)
             renderHighlightedCode(url: info.url)
         case .pdf:
             currentURL = info.url
@@ -411,7 +429,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             toggleButton.isHidden = true
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
-            updateModifiedDate(for: info.url)
+            updateToolbarPath(for: info.url)
             if info.url.isFileURL {
                 webView.loadFileURL(info.url, allowingReadAccessTo: info.url.deletingLastPathComponent())
             } else {
@@ -425,6 +443,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             toggleButton.isHidden = true
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
+            updateToolbarPath(for: info.url)
             updateImageInfoBar(with: info)
             imageInfoBar.isHidden = false
             let html = """
@@ -443,6 +462,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             showToolbar()
             imageInfoBar.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
+            updateToolbarPath(for: info.url)
             webView.load(URLRequest(url: info.url))
             showWebView()
         }
@@ -516,6 +536,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private func showAddressBar(for url: URL) {
         toggleButton.isHidden = true
         saveButton.isHidden = true
+        gitDiffButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
         modifiedLabel.isHidden = true
         addressBar.isHidden = false
@@ -546,6 +567,42 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         }
     }
 
+    @objc private func gitDiffTapped() {
+        guard let context = currentGitContext else { return }
+        gitDiffButton.isEnabled = false
+        gitDiffButton.title = "..."
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let snapshot = GitDiffService.makeSnapshot(for: context)
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.gitDiffButton.isEnabled = true
+                self.gitDiffButton.title = "Diff"
+
+                guard let snapshot = snapshot else {
+                    let alert = NSAlert()
+                    alert.messageText = "Couldn't load Git diff"
+                    alert.informativeText = context.fileURL.path
+                    alert.beginSheetModal(for: self, completionHandler: nil)
+                    return
+                }
+
+                let window = GitDiffWindow(snapshot: snapshot)
+                self.gitDiffWindows.append(window)
+                NotificationCenter.default.addObserver(
+                    forName: NSWindow.willCloseNotification,
+                    object: window,
+                    queue: .main
+                ) { [weak self, weak window] _ in
+                    guard let self = self, let window = window else { return }
+                    self.gitDiffWindows.removeAll { $0 === window }
+                }
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+
     @objc private func locateTapped() {
         guard let url = currentURL, url.isFileURL else { return }
         NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -567,18 +624,37 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         }
     }
 
-    private func updateModifiedDate(for url: URL?) {
-        guard let url = url, url.isFileURL else {
+    private func updateToolbarPath(for url: URL?) {
+        guard let url = url else {
             modifiedLabel.stringValue = ""
+            modifiedLabel.toolTip = nil
             return
         }
-        let fm = FileManager.default
-        guard let attrs = try? fm.attributesOfItem(atPath: url.path),
-              let date = attrs[.modificationDate] as? Date else {
-            modifiedLabel.stringValue = ""
-            return
+        let label = url.isFileURL ? url.path : url.absoluteString
+        modifiedLabel.stringValue = label
+        modifiedLabel.toolTip = label
+    }
+
+    private func resetGitDiffAvailability() {
+        gitDiffLookupID = UUID()
+        currentGitContext = nil
+        gitDiffButton.isHidden = true
+        gitDiffButton.isEnabled = true
+        gitDiffButton.title = "Diff"
+    }
+
+    private func refreshGitDiffAvailability(for url: URL) {
+        guard url.isFileURL else { return }
+        let lookupID = UUID()
+        gitDiffLookupID = lookupID
+        DispatchQueue.global(qos: .userInitiated).async {
+            let context = GitDiffService.context(for: url)
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.gitDiffLookupID == lookupID else { return }
+                self.currentGitContext = context
+                self.gitDiffButton.isHidden = context == nil
+            }
         }
-        modifiedLabel.stringValue = "Modified \(ContentViewerWindow.friendlyDate(date))"
     }
 
     private func updateImageInfoBar(with info: MediaInfo) {
@@ -717,5 +793,599 @@ extension ContentPanel {
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         hideLoading()
+    }
+}
+
+private enum GitDiffService {
+    struct Context {
+        let rootURL: URL
+        let fileURL: URL
+        let relativePath: String
+        let statusLine: String
+        let history: [String]
+        let isTracked: Bool
+    }
+
+    struct Snapshot {
+        let fileURL: URL
+        let rootURL: URL
+        let relativePath: String
+        let beforeTitle: String
+        let afterTitle: String
+        let beforeText: String
+        let afterText: String
+        let summary: String
+    }
+
+    private struct CommandResult {
+        let status: Int32
+        let output: String
+        let error: String
+    }
+
+    static func context(for fileURL: URL) -> Context? {
+        guard fileURL.isFileURL else { return nil }
+        let fileURL = fileURL.standardizedFileURL.resolvingSymlinksInPath()
+        let directoryURL = fileURL.deletingLastPathComponent()
+
+        guard let rootResult = runGit(["rev-parse", "--show-toplevel"], cwd: directoryURL),
+              rootResult.status == 0 else { return nil }
+        let rootPath = rootResult.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rootPath.isEmpty else { return nil }
+
+        let rootURL = URL(fileURLWithPath: rootPath, isDirectory: true)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+        guard let relativePath = relativePath(from: rootURL, to: fileURL) else { return nil }
+
+        let status = runGit(["status", "--porcelain", "--", relativePath], cwd: rootURL)?
+            .output
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let history = runGit(["log", "--follow", "--format=%H", "-n", "2", "--", relativePath], cwd: rootURL)?
+            .output
+            .components(separatedBy: .newlines)
+            .filter { !$0.isEmpty } ?? []
+        let tracked = runGit(["ls-files", "--error-unmatch", "--", relativePath], cwd: rootURL)?
+            .status == 0
+
+        guard tracked || !status.isEmpty || !history.isEmpty else { return nil }
+        return Context(rootURL: rootURL,
+                       fileURL: fileURL,
+                       relativePath: relativePath,
+                       statusLine: status,
+                       history: history,
+                       isTracked: tracked)
+    }
+
+    static func makeSnapshot(for context: Context) -> Snapshot? {
+        let currentText = readTextFile(context.fileURL) ?? ""
+        let hasWorkingChange = !context.statusLine.isEmpty
+
+        if hasWorkingChange {
+            let beforeText: String
+            let beforeTitle: String
+            if context.isTracked || !context.history.isEmpty {
+                beforeText = showFile("HEAD", relativePath: context.relativePath, rootURL: context.rootURL) ?? ""
+                beforeTitle = "Before - HEAD"
+            } else {
+                beforeText = ""
+                beforeTitle = "Before - New file"
+            }
+            return Snapshot(fileURL: context.fileURL,
+                            rootURL: context.rootURL,
+                            relativePath: context.relativePath,
+                            beforeTitle: beforeTitle,
+                            afterTitle: "After - Working Tree",
+                            beforeText: beforeText,
+                            afterText: currentText,
+                            summary: context.statusLine)
+        }
+
+        if context.history.count >= 2 {
+            let afterRev = context.history[0]
+            let beforeRev = context.history[1]
+            let beforeText = showFile(beforeRev, relativePath: context.relativePath, rootURL: context.rootURL) ?? ""
+            let afterText = showFile(afterRev, relativePath: context.relativePath, rootURL: context.rootURL) ?? currentText
+            return Snapshot(fileURL: context.fileURL,
+                            rootURL: context.rootURL,
+                            relativePath: context.relativePath,
+                            beforeTitle: "Before - \(shortHash(beforeRev))",
+                            afterTitle: "After - \(shortHash(afterRev))",
+                            beforeText: beforeText,
+                            afterText: afterText,
+                            summary: "Last committed change")
+        }
+
+        let beforeText = showFile("HEAD", relativePath: context.relativePath, rootURL: context.rootURL) ?? currentText
+        return Snapshot(fileURL: context.fileURL,
+                        rootURL: context.rootURL,
+                        relativePath: context.relativePath,
+                        beforeTitle: "Before - HEAD",
+                        afterTitle: "After - Working Tree",
+                        beforeText: beforeText,
+                        afterText: currentText,
+                        summary: "No working-tree changes")
+    }
+
+    private static func showFile(_ revision: String, relativePath: String, rootURL: URL) -> String? {
+        let spec = "\(revision):\(relativePath)"
+        guard let result = runGit(["show", "--textconv", spec], cwd: rootURL),
+              result.status == 0 else { return nil }
+        return result.output
+    }
+
+    private static func readTextFile(_ url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        if let text = String(data: data, encoding: .utf8) { return text }
+        if let text = String(data: data, encoding: .utf16) { return text }
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    private static func relativePath(from rootURL: URL, to fileURL: URL) -> String? {
+        let rootPath = rootURL.standardizedFileURL.path
+        let filePath = fileURL.standardizedFileURL.path
+        if filePath == rootPath { return "" }
+        guard filePath.hasPrefix(rootPath + "/") else { return nil }
+        return String(filePath.dropFirst(rootPath.count + 1))
+    }
+
+    private static func shortHash(_ hash: String) -> String {
+        String(hash.prefix(7))
+    }
+
+    private static func runGit(_ arguments: [String], cwd: URL) -> CommandResult? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = arguments
+        process.currentDirectoryURL = cwd
+
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        var environment = ProcessInfo.processInfo.environment
+        environment["LC_ALL"] = "C"
+        process.environment = environment
+
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
+        return CommandResult(
+            status: process.terminationStatus,
+            output: String(decoding: outputData, as: UTF8.self),
+            error: String(decoding: errorData, as: UTF8.self)
+        )
+    }
+}
+
+private final class GitDiffWindow: NSWindow {
+    private let leftScroll: NSScrollView
+    private let rightScroll: NSScrollView
+    private var isSyncingScroll = false
+
+    init(snapshot: GitDiffService.Snapshot) {
+        let diff = Self.makeSideBySideDiff(before: snapshot.beforeText, after: snapshot.afterText)
+        leftScroll = Self.makeCodeScroll(attributedText: diff.left)
+        rightScroll = Self.makeCodeScroll(attributedText: diff.right)
+
+        super.init(
+            contentRect: NSRect(x: 0, y: 0, width: 1200, height: 760),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        isReleasedWhenClosed = false
+        title = "Git Diff - \(snapshot.fileURL.lastPathComponent)"
+        buildLayout(snapshot: snapshot)
+        center()
+        installScrollSync()
+    }
+
+    private func buildLayout(snapshot: GitDiffService.Snapshot) {
+        let root = NSView()
+        root.wantsLayer = true
+        root.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        contentView = root
+
+        let header = NSView()
+        header.translatesAutoresizingMaskIntoConstraints = false
+        header.wantsLayer = true
+        header.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        root.addSubview(header)
+
+        let pathLabel = NSTextField(labelWithString: snapshot.fileURL.path)
+        pathLabel.translatesAutoresizingMaskIntoConstraints = false
+        pathLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        pathLabel.lineBreakMode = .byTruncatingMiddle
+        pathLabel.maximumNumberOfLines = 1
+        pathLabel.isSelectable = true
+        header.addSubview(pathLabel)
+
+        let summaryLabel = NSTextField(labelWithString: "\(snapshot.summary)  •  \(snapshot.relativePath)")
+        summaryLabel.translatesAutoresizingMaskIntoConstraints = false
+        summaryLabel.font = NSFont.systemFont(ofSize: 11)
+        summaryLabel.textColor = .secondaryLabelColor
+        summaryLabel.lineBreakMode = .byTruncatingMiddle
+        summaryLabel.maximumNumberOfLines = 1
+        header.addSubview(summaryLabel)
+
+        let stack = NSStackView()
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.orientation = .horizontal
+        stack.distribution = .fillEqually
+        stack.spacing = 1
+        root.addSubview(stack)
+
+        stack.addArrangedSubview(makeColumn(title: snapshot.beforeTitle, scrollView: leftScroll))
+        stack.addArrangedSubview(makeColumn(title: snapshot.afterTitle, scrollView: rightScroll))
+
+        NSLayoutConstraint.activate([
+            header.topAnchor.constraint(equalTo: root.topAnchor),
+            header.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            header.heightAnchor.constraint(equalToConstant: 56),
+
+            pathLabel.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 14),
+            pathLabel.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -14),
+            pathLabel.topAnchor.constraint(equalTo: header.topAnchor, constant: 9),
+            pathLabel.heightAnchor.constraint(equalToConstant: 18),
+
+            summaryLabel.leadingAnchor.constraint(equalTo: pathLabel.leadingAnchor),
+            summaryLabel.trailingAnchor.constraint(equalTo: pathLabel.trailingAnchor),
+            summaryLabel.topAnchor.constraint(equalTo: pathLabel.bottomAnchor, constant: 2),
+            summaryLabel.heightAnchor.constraint(equalToConstant: 16),
+
+            stack.topAnchor.constraint(equalTo: header.bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: root.bottomAnchor)
+        ])
+    }
+
+    private func makeColumn(title: String, scrollView: NSScrollView) -> NSView {
+        let column = NSView()
+        column.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        titleLabel.alignment = .center
+        titleLabel.wantsLayer = true
+        titleLabel.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        column.addSubview(titleLabel)
+
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        column.addSubview(scrollView)
+
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: column.topAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: column.leadingAnchor),
+            titleLabel.trailingAnchor.constraint(equalTo: column.trailingAnchor),
+            titleLabel.heightAnchor.constraint(equalToConstant: 32),
+
+            scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: column.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: column.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: column.bottomAnchor)
+        ])
+
+        return column
+    }
+
+    private static func makeCodeScroll(attributedText: NSAttributedString) -> NSScrollView {
+        let textView = NSTextView(frame: .zero)
+        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isRichText = true
+        textView.drawsBackground = true
+        textView.backgroundColor = NSColor.textBackgroundColor
+        textView.textColor = NSColor.textColor
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.widthTracksTextView = false
+        textView.textStorage?.setAttributedString(attributedText)
+
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
+        scrollView.borderType = .noBorder
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    private enum DiffKind {
+        case unchanged
+        case deleted
+        case inserted
+        case placeholder
+    }
+
+    private enum DiffOperation {
+        case equal(String)
+        case delete(String)
+        case insert(String)
+    }
+
+    private struct DiffCell {
+        let number: Int?
+        let text: String
+        let kind: DiffKind
+    }
+
+    private struct DiffRow {
+        let left: DiffCell
+        let right: DiffCell
+    }
+
+    private struct RenderedDiff {
+        let left: NSAttributedString
+        let right: NSAttributedString
+    }
+
+    private static func makeSideBySideDiff(before: String, after: String) -> RenderedDiff {
+        let beforeLines = splitLines(before)
+        let afterLines = splitLines(after)
+        let rows = diffRows(before: beforeLines, after: afterLines)
+        return RenderedDiff(
+            left: attributedText(for: rows.map(\.left)),
+            right: attributedText(for: rows.map(\.right))
+        )
+    }
+
+    private static func splitLines(_ text: String) -> [String] {
+        guard !text.isEmpty else { return [] }
+        let normalized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        var lines = normalized.components(separatedBy: "\n")
+        if lines.last == "" {
+            lines.removeLast()
+        }
+        return lines
+    }
+
+    private static func diffRows(before: [String], after: [String]) -> [DiffRow] {
+        let maxCells = 4_000_000
+        if !before.isEmpty, after.count > maxCells / before.count {
+            return fallbackDiffRows(before: before, after: after)
+        }
+
+        let operations = diffOperations(before: before, after: after)
+        var rows: [DiffRow] = []
+        var i = 0
+        var leftLine = 1
+        var rightLine = 1
+
+        while i < operations.count {
+            switch operations[i] {
+            case .equal(let line):
+                rows.append(DiffRow(
+                    left: DiffCell(number: leftLine, text: line, kind: .unchanged),
+                    right: DiffCell(number: rightLine, text: line, kind: .unchanged)
+                ))
+                leftLine += 1
+                rightLine += 1
+                i += 1
+
+            case .delete, .insert:
+                var deleted: [String] = []
+                var inserted: [String] = []
+                while i < operations.count {
+                    if case .equal = operations[i] { break }
+                    switch operations[i] {
+                    case .delete(let line):
+                        deleted.append(line)
+                        i += 1
+                    case .insert(let line):
+                        inserted.append(line)
+                        i += 1
+                    case .equal:
+                        break
+                    }
+                }
+
+                let count = max(deleted.count, inserted.count)
+                for index in 0..<count {
+                    let left: DiffCell
+                    if index < deleted.count {
+                        left = DiffCell(number: leftLine, text: deleted[index], kind: .deleted)
+                        leftLine += 1
+                    } else {
+                        left = DiffCell(number: nil, text: "", kind: .placeholder)
+                    }
+
+                    let right: DiffCell
+                    if index < inserted.count {
+                        right = DiffCell(number: rightLine, text: inserted[index], kind: .inserted)
+                        rightLine += 1
+                    } else {
+                        right = DiffCell(number: nil, text: "", kind: .placeholder)
+                    }
+
+                    rows.append(DiffRow(left: left, right: right))
+                }
+            }
+        }
+
+        if rows.isEmpty {
+            rows.append(DiffRow(
+                left: DiffCell(number: nil, text: "", kind: .placeholder),
+                right: DiffCell(number: nil, text: "", kind: .placeholder)
+            ))
+        }
+        return rows
+    }
+
+    private static func diffOperations(before: [String], after: [String]) -> [DiffOperation] {
+        let columns = after.count + 1
+        var table = Array(repeating: 0, count: (before.count + 1) * columns)
+
+        func index(_ i: Int, _ j: Int) -> Int {
+            i * columns + j
+        }
+
+        if !before.isEmpty, !after.isEmpty {
+            for i in stride(from: before.count - 1, through: 0, by: -1) {
+                for j in stride(from: after.count - 1, through: 0, by: -1) {
+                    if before[i] == after[j] {
+                        table[index(i, j)] = table[index(i + 1, j + 1)] + 1
+                    } else {
+                        table[index(i, j)] = max(table[index(i + 1, j)], table[index(i, j + 1)])
+                    }
+                }
+            }
+        }
+
+        var operations: [DiffOperation] = []
+        var i = 0
+        var j = 0
+        while i < before.count || j < after.count {
+            if i < before.count, j < after.count, before[i] == after[j] {
+                operations.append(.equal(before[i]))
+                i += 1
+                j += 1
+            } else if j < after.count,
+                      (i == before.count || table[index(i, j + 1)] >= table[index(i + 1, j)]) {
+                operations.append(.insert(after[j]))
+                j += 1
+            } else if i < before.count {
+                operations.append(.delete(before[i]))
+                i += 1
+            }
+        }
+        return operations
+    }
+
+    private static func fallbackDiffRows(before: [String], after: [String]) -> [DiffRow] {
+        var rows: [DiffRow] = []
+        let count = max(before.count, after.count)
+        for index in 0..<count {
+            if index < before.count, index < after.count, before[index] == after[index] {
+                rows.append(DiffRow(
+                    left: DiffCell(number: index + 1, text: before[index], kind: .unchanged),
+                    right: DiffCell(number: index + 1, text: after[index], kind: .unchanged)
+                ))
+            } else {
+                rows.append(DiffRow(
+                    left: index < before.count
+                        ? DiffCell(number: index + 1, text: before[index], kind: .deleted)
+                        : DiffCell(number: nil, text: "", kind: .placeholder),
+                    right: index < after.count
+                        ? DiffCell(number: index + 1, text: after[index], kind: .inserted)
+                        : DiffCell(number: nil, text: "", kind: .placeholder)
+                ))
+            }
+        }
+        return rows
+    }
+
+    private static func attributedText(for cells: [DiffCell]) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byClipping
+        paragraph.lineSpacing = 1
+
+        for cell in cells {
+            let number = cell.number.map { String(format: "%5d", $0) } ?? "     "
+            let marker: String
+            switch cell.kind {
+            case .deleted: marker = "-"
+            case .inserted: marker = "+"
+            default: marker = " "
+            }
+
+            let line = "\(number) \(marker) \(cell.text)\n"
+            var attributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: NSColor.textColor,
+                .paragraphStyle: paragraph
+            ]
+
+            switch cell.kind {
+            case .deleted:
+                attributes[.backgroundColor] = NSColor.systemRed.withAlphaComponent(0.18)
+            case .inserted:
+                attributes[.backgroundColor] = NSColor.systemGreen.withAlphaComponent(0.20)
+            case .placeholder:
+                attributes[.foregroundColor] = NSColor.clear
+            case .unchanged:
+                break
+            }
+
+            let attributed = NSMutableAttributedString(string: line, attributes: attributes)
+            if cell.kind != .placeholder {
+                attributed.addAttributes(
+                    [.foregroundColor: NSColor.secondaryLabelColor],
+                    range: NSRange(location: 0, length: min(5, attributed.length))
+                )
+                if cell.kind == .deleted {
+                    attributed.addAttributes(
+                        [.foregroundColor: NSColor.systemRed],
+                        range: NSRange(location: 6, length: 1)
+                    )
+                } else if cell.kind == .inserted {
+                    attributed.addAttributes(
+                        [.foregroundColor: NSColor.systemGreen],
+                        range: NSRange(location: 6, length: 1)
+                    )
+                }
+            }
+            result.append(attributed)
+        }
+        return result
+    }
+
+    private func installScrollSync() {
+        leftScroll.contentView.postsBoundsChangedNotifications = true
+        rightScroll.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(leftDidScroll),
+            name: NSView.boundsDidChangeNotification,
+            object: leftScroll.contentView
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(rightDidScroll),
+            name: NSView.boundsDidChangeNotification,
+            object: rightScroll.contentView
+        )
+    }
+
+    @objc private func leftDidScroll() {
+        syncScroll(from: leftScroll, to: rightScroll)
+    }
+
+    @objc private func rightDidScroll() {
+        syncScroll(from: rightScroll, to: leftScroll)
+    }
+
+    private func syncScroll(from source: NSScrollView, to target: NSScrollView) {
+        guard !isSyncingScroll else { return }
+        isSyncingScroll = true
+        var origin = target.contentView.bounds.origin
+        origin.y = source.contentView.bounds.origin.y
+        target.contentView.scroll(to: origin)
+        target.reflectScrolledClipView(target.contentView)
+        isSyncingScroll = false
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

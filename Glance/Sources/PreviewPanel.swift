@@ -134,6 +134,8 @@ class PreviewPanel: NSPanel {
 
     private var followTimer: Timer?
     private var lastSyncedFrame: NSRect = .zero
+    private var escapeLocalMonitor: Any?
+    private var escapeGlobalMonitor: Any?
 
     private enum Mode { case singleCard, grid }
 
@@ -174,6 +176,7 @@ class PreviewPanel: NSPanel {
         ) { [weak self] _ in
             self?.updateLoginButtonState()
         }
+        installEscapeKeyMonitors()
     }
 
     override var canBecomeKey: Bool { true }
@@ -181,6 +184,37 @@ class PreviewPanel: NSPanel {
 
     override func cancelOperation(_ sender: Any?) {
         forceHidePanel()
+    }
+
+    private func installEscapeKeyMonitors() {
+        escapeLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self, self.shouldCloseForEscape(event) else { return event }
+            self.forceHidePanel()
+            return nil
+        }
+
+        escapeGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self, self.shouldCloseForEscape(event) else { return }
+            DispatchQueue.main.async {
+                self.forceHidePanel()
+            }
+        }
+    }
+
+    private func shouldCloseForEscape(_ event: NSEvent) -> Bool {
+        guard isVisible, event.keyCode == 53 else { return false }
+        let keyWindow = NSApp.keyWindow
+        return keyWindow == nil || keyWindow?.isVisible == false || keyWindow === self || keyWindow === ContentPanel.shared
+    }
+
+    deinit {
+        if let escapeLocalMonitor {
+            NSEvent.removeMonitor(escapeLocalMonitor)
+        }
+        if let escapeGlobalMonitor {
+            NSEvent.removeMonitor(escapeGlobalMonitor)
+        }
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
@@ -1565,11 +1599,8 @@ final class MediaTileView: NSView {
     }
 
     override func scrollWheel(with event: NSEvent) {
-        // Swallow wheel events on video tiles so AVPlayerView cannot hijack
-        // them to change playback rate.  In grid mode the event bubbles to the
-        // enclosing NSScrollView for vertical scrolling; in single-card mode
-        // there is no scroll view, so the wheel simply does nothing.
         if info.isVideo {
+            enclosingScrollView?.scrollWheel(with: event)
             return
         }
         super.scrollWheel(with: event)

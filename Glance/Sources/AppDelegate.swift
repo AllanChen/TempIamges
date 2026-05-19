@@ -252,8 +252,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             currentPath = resolved.compactMap { $0.url?.absoluteString }.joined(separator: "|")
             HistoryManager.shared.record(selectedText: selected, detectedPaths: resolved)
             if resolved.count == 1, shouldDirectOpen(resolved[0]) {
-                // Single hit (non-webpage) — skip the preview panel and
-                // dispatch straight to the click action.
+                // Single ContentPanel-supported hit — skip PreviewPanel.
                 previewPanel?.hidePanel()
                 directOpen(resolved[0])
                 return
@@ -262,8 +261,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             return
         }
 
-        // Mixed (or unresolved-only): show placeholder, Spotlight-resolve
-        // unresolved tokens, then preview the combined list.
+        // Mixed (or unresolved-only): resolve filename/path tokens first, then
+        // decide whether to open ContentPanel directly or show PreviewPanel.
         currentPath = (resolved.compactMap { $0.url?.absoluteString } + unresolvedTokens).joined(separator: "|")
         resolveAndShow(selectedText: selected, resolved: resolved, tokens: unresolvedTokens, at: anchor)
     }
@@ -272,13 +271,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                                  resolved: [DetectedPath],
                                  tokens: [String],
                                  at anchor: CGPoint) {
-        let totalCount = resolved.count + tokens.count
-        let placeholders = (0..<totalCount).map { _ in
-            MediaInfo(url: URL(fileURLWithPath: "/"), isLocal: true, kind: .image,
-                      dimensions: CGSize(width: 300, height: 533), fileSize: nil, duration: nil)
-        }
-        previewPanel?.showLoading(infos: placeholders, at: anchor)
-
         let uniqueTokens = NSOrderedSet(array: tokens).array as? [String] ?? tokens
 
         let group = DispatchGroup()
@@ -328,8 +320,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
             HistoryManager.shared.record(selectedText: selectedText, detectedPaths: combined)
             if combined.count == 1, self.shouldDirectOpen(combined[0]) {
-                // Same single-hit shortcut as the fast path — drop the
-                // placeholder masonry skeletons and open directly.
+                // Same single-hit shortcut as the fast path.
                 self.previewPanel?.hidePanel()
                 self.directOpen(combined[0])
                 return
@@ -423,13 +414,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         )
     }
 
-    /// Returns true only for markdown / text / PDF — these open straight into
-    /// the viewer window.  Every other kind (image, video, webpage, app, etc.)
-    /// renders in the preview panel first; the user must click the tile to
-    /// trigger the open action.
+    /// Returns true for single results that ContentPanel can render directly.
+    /// Unsupported files still go through PreviewPanel so the user can reveal
+    /// or open them from a tile.
     private func shouldDirectOpen(_ path: DetectedPath) -> Bool {
         switch path {
-        case .localMarkdown, .remoteMarkdown,
+        case .localImage,    .remoteImage,
+             .localMarkdown, .remoteMarkdown,
              .localText,     .remoteText,
              .localPDF,      .remotePDF,
              .webPage:
@@ -446,12 +437,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         guard let info = MediaInfo.from(path) else { return }
         Logger.info("AppDelegate: single-hit shortcut → opening \(info.url.absoluteString)")
         switch info.kind {
-        case .image, .video:
+        case .image, .markdown, .text, .pdf, .webPage:
+            openInContentPanel(info: info)
+        case .video:
             NSWorkspace.shared.open(info.url)
-        case .markdown, .text, .pdf:
-            openInContentPanel(info: info)
-        case .webPage:
-            openInContentPanel(info: info)
         case .other:
             if info.isLocal {
                 NSWorkspace.shared.activateFileViewerSelecting([info.url])
@@ -544,6 +533,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         historyWindow?.refresh()
         historyWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func openLogin(at point: NSPoint) {
+        LoginPanel.shared.show(at: point)
     }
 
     #if DEBUG

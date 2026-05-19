@@ -27,6 +27,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private let webFindCountLabel = NSTextField(labelWithString: "")
     private var webFindMatchCount = 0
     private var webFindCurrentIndex = -1
+    private var escapeKeyMonitor: Any?
 
     private enum Kind { case webpage, markdown, text, pdf }
     private var kind: Kind = .webpage
@@ -92,6 +93,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         self.isReleasedWhenClosed = false
         self.center()
         self.title = "Glance"
+        installEscapeKeyMonitor()
 
         buildLayout()
         showWebView()  // default
@@ -469,6 +471,37 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         return String(data: xmlData, encoding: .utf8)
     }
 
+    override func cancelOperation(_ sender: Any?) {
+        close()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 {
+            close()
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    private func installEscapeKeyMonitor() {
+        escapeKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self,
+                  self.isVisible,
+                  event.window === self,
+                  event.keyCode == 53 else {
+                return event
+            }
+            self.close()
+            return nil
+        }
+    }
+
+    deinit {
+        if let escapeKeyMonitor {
+            NSEvent.removeMonitor(escapeKeyMonitor)
+        }
+    }
+
     // MARK: - Find shortcuts
 
     /// Intercept ⌘F / ⌘G / ⌘⇧G ourselves. This app runs as `LSUIElement`
@@ -476,6 +509,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     /// would normally trigger NSTextView's find bar never reach the text
     /// view. We route them manually based on which body view is showing.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.keyCode == 53 {
+            close()
+            return true
+        }
         if event.modifierFlags.contains(.command) {
             let key = event.charactersIgnoringModifiers ?? ""
             if key == "f" {

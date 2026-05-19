@@ -5,9 +5,9 @@ struct CacheEntry: Codable {
     let timestamp: Date
 }
 
-/// Lightweight LRU cache for bare-filename → absolute-path lookups.
+/// Lightweight LRU cache for token → absolute-path lookups.
 ///
-/// FileNameResolver hits this before launching a Spotlight query.  On a
+/// FileNameResolver hits this before launching a Spotlight query. On a
 /// cache hit the result is returned instantly; on a miss the normal
 /// Spotlight / filesystem-fallback pipeline runs and the best match is
 /// written back for next time.
@@ -36,13 +36,21 @@ final class FilenameCache {
 
     // MARK: - Public API
 
-    /// Look up a bare filename.  On hit the entry's timestamp is refreshed
+    /// Look up a token. On hit the entry's timestamp is refreshed
     /// so it ranks as most-recently-used.
     func lookup(token: String) -> URL? {
         guard var entry = entries[token] else { return nil }
+        let url = URL(fileURLWithPath: entry.url)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
+              !isDirectory.boolValue else {
+            entries.removeValue(forKey: token)
+            save()
+            return nil
+        }
         entry = CacheEntry(url: entry.url, timestamp: Date())
         entries[token] = entry
-        return URL(fileURLWithPath: entry.url)
+        return url
     }
 
     /// Store a successful resolution.  Triggers an async disk write and
