@@ -176,7 +176,7 @@ class PreviewPanel: NSPanel {
         }
     }
 
-    override var canBecomeKey: Bool { false }
+    override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
     override func cancelOperation(_ sender: Any?) {
