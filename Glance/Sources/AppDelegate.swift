@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 
 class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate {
     private var statusBarController: StatusBarController?
@@ -33,6 +34,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         applyTheme()
         setupComponents()
         setupNotifications()
+        setupDeepLinkHandler()
         checkPermissions()
         // Close any stale preview when the system wakes from sleep.
         NotificationCenter.default.addObserver(
@@ -51,6 +53,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     func applicationWillTerminate(_ notification: Notification) {
         keyboardMonitor?.stopMonitoring()
+        NSAppleEventManager.shared().removeEventHandler(
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
     }
 
     private func setupComponents() {
@@ -91,6 +97,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         )
 
         Logger.info("AppDelegate: Notifications setup complete")
+    }
+
+    private func setupDeepLinkHandler() {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+        Logger.info("AppDelegate: Deep link handler setup complete")
+    }
+
+    @objc private func handleGetURLEvent(_ event: NSAppleEventDescriptor,
+                                         withReplyEvent replyEvent: NSAppleEventDescriptor) {
+        guard let rawURL = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+              let url = URL(string: rawURL) else {
+            Logger.info("AppDelegate: Received invalid auth callback URL")
+            return
+        }
+
+        Logger.info("AppDelegate: Received deep link \(url.scheme ?? "")://\(url.host ?? "")\(url.path)")
+        AuthManager.shared.handleCallbackURL(url) { result in
+            switch result {
+            case .success(let session):
+                Logger.info("AppDelegate: Auth callback exchanged for session")
+                LoginPanel.shared.completeSignIn(session: session)
+            case .failure(let error):
+                Logger.info("AppDelegate: Auth callback failed: \(error.localizedDescription)")
+                LoginPanel.shared.showAuthError(error.localizedDescription)
+            }
+        }
     }
 
     private func checkPermissions() {

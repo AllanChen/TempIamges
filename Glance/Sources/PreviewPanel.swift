@@ -119,6 +119,7 @@ class PreviewPanel: NSPanel {
     private weak var metaPillMeta: NSTextField?
     private weak var singleCloseBtn: NSButton?
     private weak var singlePinBtn: NSButton?
+    private weak var loginButton: NSButton?
     private weak var navBarView: NSView?
     private weak var masonryScrollView: NSScrollView?
     private weak var masonryDocView: NSView?
@@ -165,6 +166,13 @@ class PreviewPanel: NSPanel {
             queue: .main
         ) { [weak self] _ in
             self?.forceHidePanel()
+        }
+        NotificationCenter.default.addObserver(
+            forName: .authDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateLoginButtonState()
         }
     }
 
@@ -549,6 +557,8 @@ class PreviewPanel: NSPanel {
         loginBtn.frame = NSRect(x: width - 36, y: (headerHeight - 24) / 2, width: 24, height: 24)
         loginBtn.autoresizingMask = [.minXMargin]
         bar.addSubview(loginBtn)
+        loginButton = loginBtn
+        updateLoginButtonState()
 
         return bar
     }
@@ -834,6 +844,15 @@ class PreviewPanel: NSPanel {
         let btnFrame = self.frame
         let point = CGPoint(x: btnFrame.maxX - 200, y: btnFrame.maxY - 10)
         panel.show(at: point)
+    }
+
+    private func updateLoginButtonState() {
+        guard let button = loginButton else { return }
+        let signedIn = AuthManager.shared.isSignedIn
+        let symbol = signedIn ? "person.crop.circle.fill" : "person.circle"
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: signedIn ? "Account" : "Sign In")
+        button.contentTintColor = signedIn ? NSColor.systemBlue : Self.textDark
+        button.toolTip = signedIn ? "Account" : "Sign In"
     }
 
     /// Downloads a remote URL to ~/Downloads. Drives the tile's progress UI;

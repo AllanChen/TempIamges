@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -27,6 +27,7 @@
 		AA5BDE8FB2A97259B0116087 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE03B0D47694EA64670432E /* StatusBarController.swift */; };
 		AAE02EAD160CC4F1385DF930 /* ScreenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658FDB8BCED20C2ECE359B84 /* ScreenManager.swift */; };
 		B0D706856EF690BF636AC184 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC10A80E0682249D4C76FAD /* Preferences.swift */; };
+		BC7B4C576CE9D7E62A343E9D /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E389BCB266C4E57B04B570 /* AuthManager.swift */; };
 		DDC3B6DB4CA276E80EF371A9 /* SelectedTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E3752BB582E3A80CC0F50EB /* SelectedTextExtractor.swift */; };
 		E2E05277AA71ABA7538D1E89 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59D8600C79EDF16169AAED1B /* main.swift */; };
 		E3E2AD8D7041D3D756D6A7CD /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD95F30FC69AA12EDEE59F28 /* PermissionManager.swift */; };
@@ -58,6 +59,7 @@
 		C94DBC9997333D10A429AA36 /* PathDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathDetector.swift; sourceTree = "<group>"; };
 		CCE03B0D47694EA64670432E /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		CE094D8C91B76410621B788E /* ContentViewerWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewerWindow.swift; sourceTree = "<group>"; };
+		D7E389BCB266C4E57B04B570 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		E2E2F8F90A0A7276E70FA93C /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
 		E6681C13BACBBD0D74A80EB4 /* Glance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glance.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE55BDC72E73C79AA2510706 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
@@ -68,6 +70,7 @@
 			isa = PBXGroup;
 			children = (
 				39E9F1A079DAD3F9EB65919E /* AppDelegate.swift */,
+				D7E389BCB266C4E57B04B570 /* AuthManager.swift */,
 				5A17C936FB9F57D95925D960 /* ContentPanel.swift */,
 				CE094D8C91B76410621B788E /* ContentViewerWindow.swift */,
 				62349DD01962E616B4255F48 /* DebugInputWindow.swift */,
@@ -147,7 +150,6 @@
 				};
 			};
 			buildConfigurationList = 13F7C570AC1AD3FDBC42720D /* Build configuration list for PBXProject "Glance" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -156,7 +158,8 @@
 			);
 			mainGroup = 1A7345DEDC89903C9907667A;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 54;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 897E7B5C0E3778F8AD681930 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -171,6 +174,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A3D9A994F16BE9F0E7CE7072 /* AppDelegate.swift in Sources */,
+				BC7B4C576CE9D7E62A343E9D /* AuthManager.swift in Sources */,
 				3BA1B5BEDBB22E3357179E1B /* ContentPanel.swift in Sources */,
 				2C6ED2B68D4E7C2BDC9E9788 /* ContentViewerWindow.swift in Sources */,
 				8F0795EEE53400A0B2997584 /* DebugInputWindow.swift in Sources */,
