@@ -16,7 +16,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
 
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 500),
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
@@ -98,12 +98,12 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
         let size = NSSize(width: 400, height: 500)
         let frame = NSRect(origin: CGPoint(x: point.x - size.width / 2, y: point.y - size.height), size: size)
         setFrame(frame, display: true)
-        orderFrontRegardless()
+        showAsKeyPanel()
     }
 
     func showSignedIn(session: AuthSession) {
         loadAccountPage(session: session)
-        orderFrontRegardless()
+        showAsKeyPanel()
     }
 
     func completeSignIn(session: AuthSession) {
@@ -115,8 +115,14 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
         evaluate("window.GlanceAuth && window.GlanceAuth.setStatus(\(jsString(message)), 'error')")
         if !isVisible {
             loadAuthPage(status: message)
-            orderFrontRegardless()
+            showAsKeyPanel()
         }
+    }
+
+    private func showAsKeyPanel() {
+        NSApp.activate(ignoringOtherApps: true)
+        makeKeyAndOrderFront(nil)
+        orderFrontRegardless()
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -510,4 +516,8 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
     override func cancelOperation(_ sender: Any?) {
         orderOut(nil)
     }
+
+    override var canBecomeKey: Bool { true }
+
+    override var canBecomeMain: Bool { true }
 }

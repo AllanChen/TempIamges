@@ -5,6 +5,7 @@ protocol StatusBarControllerDelegate: AnyObject {
     func checkAndRequestPermissions()
     func clearImageCache()
     func openHistory()
+    func openLogin(at point: NSPoint)
 }
 
 class StatusBarController: NSObject, NSMenuDelegate {
@@ -14,6 +15,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
     private var menu: NSMenu!
     private var enableMenuItem: NSMenuItem!
     private var permissionMenuItem: NSMenuItem!
+    private var loginMenuItem: NSMenuItem!
 
     override init() {
         super.init()
@@ -85,6 +87,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
         themeItem.submenu = themeSubmenu
         menu.addItem(themeItem)
 
+        loginMenuItem = NSMenuItem(title: "Login", action: #selector(openLogin), keyEquivalent: "")
+        loginMenuItem.target = self
+        menu.addItem(loginMenuItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let aboutItem = NSMenuItem(title: "About Glance", action: #selector(showAbout), keyEquivalent: "")
@@ -121,6 +127,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
         delegate?.clearImageCache()
     }
 
+    @objc private func openLogin() {
+        delegate?.openLogin(at: loginPanelAnchorPoint())
+    }
+
     @objc private func selectTheme(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String,
               let theme = Preferences.Theme(rawValue: raw) else { return }
@@ -155,6 +165,8 @@ class StatusBarController: NSObject, NSMenuDelegate {
             permissionMenuItem.title = "Permissions ⚠️"
         }
 
+        loginMenuItem.title = AuthManager.shared.isSignedIn ? "Account" : "Login"
+
         // Reflect the active theme in the submenu.
         let active = Preferences.shared.theme.rawValue
         for item in self.menu.items {
@@ -163,5 +175,15 @@ class StatusBarController: NSObject, NSMenuDelegate {
                 sub.state = ((sub.representedObject as? String) == active) ? .on : .off
             }
         }
+    }
+
+    private func loginPanelAnchorPoint() -> NSPoint {
+        if let button = statusItem.button,
+           let window = button.window {
+            let windowFrame = button.convert(button.bounds, to: nil)
+            let screenFrame = window.convertToScreen(windowFrame)
+            return NSPoint(x: screenFrame.midX, y: screenFrame.minY)
+        }
+        return NSEvent.mouseLocation
     }
 }

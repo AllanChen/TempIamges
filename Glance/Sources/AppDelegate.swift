@@ -546,6 +546,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    func openLogin(at point: NSPoint) {
+        LoginPanel.shared.show(at: point)
+    }
+
     #if DEBUG
     /// Pops up the debug input window. Each Run click pipes the text view
     /// contents through PathDetector → preview, no hotkey needed.
