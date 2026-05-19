@@ -42,6 +42,21 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private let imageInfoMetaLabel = NSTextField(labelWithString: "")
 
     private(set) var hasBeenManuallyMoved: Bool = false
+    private var escapeLocalMonitor: Any?
+    private var escapeGlobalMonitor: Any?
+
+    private let resizeEdgeSize: CGFloat = 8
+    private var isResizing = false
+    private var resizeStartPoint: NSPoint = .zero
+    private var resizeStartFrame: NSRect = .zero
+    private var currentResizeEdge: ResizeEdge = .none
+    private var globalMouseMonitor: Any?
+
+    private enum ResizeEdge {
+        case none
+        case top, bottom, left, right
+        case topLeft, topRight, bottomLeft, bottomRight
+    }
 
     private init() {
         let config = WKWebViewConfiguration()
@@ -77,7 +92,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless, .nonactivatingPanel, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -94,6 +109,8 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
         buildLayout()
         showWebView()
+        installEscapeKeyMonitors()
+        installGlobalMouseMonitor()
     }
 
     /// Move the panel so it sits immediately to the right of the given
@@ -119,8 +136,111 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         if loc.y > frame.height - headerHeight {
             hasBeenManuallyMoved = true
         }
-        super.mouseDown(with: event)
+        let edge = resizeEdge(at: loc)
+        if edge != .none {
+            isResizing = true
+            currentResizeEdge = edge
+            resizeStartPoint = NSEvent.mouseLocation
+            resizeStartFrame = frame
+        } else {
+            super.mouseDown(with: event)
+        }
     }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isResizing else {
+            super.mouseDragged(with: event)
+            return
+        }
+        let currentScreenPoint = NSEvent.mouseLocation
+        let deltaX = currentScreenPoint.x - resizeStartPoint.x
+        let deltaY = currentScreenPoint.y - resizeStartPoint.y
+        var newFrame = resizeStartFrame
+
+        switch currentResizeEdge {
+        case .right:
+            newFrame.size.width = max(400, resizeStartFrame.width + deltaX)
+        case .left:
+            let newWidth = max(400, resizeStartFrame.width - deltaX)
+            newFrame.origin.x = resizeStartFrame.maxX - newWidth
+            newFrame.size.width = newWidth
+        case .bottom:
+            let newHeight = max(300, resizeStartFrame.height - deltaY)
+            newFrame.origin.y = resizeStartFrame.maxY - newHeight
+            newFrame.size.height = newHeight
+        case .top:
+            newFrame.size.height = max(300, resizeStartFrame.height + deltaY)
+        case .topRight:
+            newFrame.size.width = max(400, resizeStartFrame.width + deltaX)
+            newFrame.size.height = max(300, resizeStartFrame.height + deltaY)
+        case .topLeft:
+            let newWidth = max(400, resizeStartFrame.width - deltaX)
+            newFrame.origin.x = resizeStartFrame.maxX - newWidth
+            newFrame.size.width = newWidth
+            newFrame.size.height = max(300, resizeStartFrame.height + deltaY)
+        case .bottomRight:
+            newFrame.size.width = max(400, resizeStartFrame.width + deltaX)
+            let newHeight = max(300, resizeStartFrame.height - deltaY)
+            newFrame.origin.y = resizeStartFrame.maxY - newHeight
+            newFrame.size.height = newHeight
+        case .bottomLeft:
+            let newWidth = max(400, resizeStartFrame.width - deltaX)
+            newFrame.origin.x = resizeStartFrame.maxX - newWidth
+            newFrame.size.width = newWidth
+            let newHeight = max(300, resizeStartFrame.height - deltaY)
+            newFrame.origin.y = resizeStartFrame.maxY - newHeight
+            newFrame.size.height = newHeight
+        case .none:
+            break
+        }
+        setFrame(newFrame, display: true)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        isResizing = false
+        currentResizeEdge = .none
+        super.mouseUp(with: event)
+    }
+
+    private func installGlobalMouseMonitor() {
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] _ in
+            guard let self = self, self.isVisible else { return }
+            let mouseScreen = NSEvent.mouseLocation
+            guard self.frame.contains(mouseScreen) else { return }
+            let loc = self.convertPoint(fromScreen: mouseScreen)
+            let edge = self.resizeEdge(at: loc)
+            switch edge {
+            case .top, .bottom: NSCursor.resizeUpDown.set()
+            case .left, .right: NSCursor.resizeLeftRight.set()
+            case .topLeft, .bottomRight: NSCursor.crosshair.set()
+            case .topRight, .bottomLeft: NSCursor.crosshair.set()
+            case .none: NSCursor.arrow.set()
+            }
+        }
+    }
+
+    private func resizeEdge(at loc: NSPoint) -> ResizeEdge {
+        let w = frame.width
+        let h = frame.height
+        let onLeft = loc.x <= resizeEdgeSize
+        let onRight = loc.x >= w - resizeEdgeSize
+        let onBottom = loc.y <= resizeEdgeSize
+        let onTop = loc.y >= h - resizeEdgeSize
+
+        switch (onTop, onBottom, onLeft, onRight) {
+        case (true, _, true, _): return .topLeft
+        case (true, _, _, true): return .topRight
+        case (_, true, true, _): return .bottomLeft
+        case (_, true, _, true): return .bottomRight
+        case (true, _, _, _): return .top
+        case (_, true, _, _): return .bottom
+        case (_, _, true, _): return .left
+        case (_, _, _, true): return .right
+        default: return .none
+        }
+    }
+
+
 
     private func buildLayout() {
         let root = NSView(frame: NSRect(x: 0, y: 0, width: 700, height: 600))
@@ -147,7 +267,17 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         sep.autoresizingMask = [.width]
         toolbarBar.addSubview(sep)
 
+        let gap: CGFloat = 8
         let locateW: CGFloat = 32
+        let btnH: CGFloat = 24
+        let btnY: CGFloat = 6
+        let rightMargin: CGFloat = 12
+        let saveW: CGFloat = 70
+        let editW: CGFloat = 70
+        let diffW: CGFloat = 58
+
+        var currentRight = bodyFrame.width - rightMargin
+
         locateButton.bezelStyle = .rounded
         locateButton.image = NSImage(systemSymbolName: "folder.fill",
                                        accessibilityDescription: "Reveal in Finder")
@@ -155,11 +285,12 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         locateButton.target = self
         locateButton.action = #selector(locateTapped)
         locateButton.toolTip = "Reveal in Finder"
-        locateButton.frame = NSRect(x: bodyFrame.width - 12 - locateW, y: 6,
-                                     width: locateW, height: 24)
+        locateButton.frame = NSRect(x: currentRight - locateW, y: btnY,
+                                     width: locateW, height: btnH)
         locateButton.autoresizingMask = [.minXMargin]
         locateButton.isHidden = true
         toolbarBar.addSubview(locateButton)
+        currentRight -= locateW + gap
 
         saveButton.bezelStyle = .rounded
         saveButton.title = "Save"
@@ -167,41 +298,44 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.frame = NSRect(x: bodyFrame.width - 20 - locateW - 70, y: 6,
-                                   width: 70, height: 24)
+        saveButton.frame = NSRect(x: currentRight - saveW, y: btnY,
+                                   width: saveW, height: btnH)
         saveButton.autoresizingMask = [.minXMargin]
         saveButton.isHidden = true
         toolbarBar.addSubview(saveButton)
+        currentRight -= saveW + gap
 
         toggleButton.bezelStyle = .rounded
         toggleButton.title = "Edit"
         toggleButton.target = self
         toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.frame = NSRect(x: bodyFrame.width - 30 - locateW - 70 - 70, y: 6,
-                                     width: 70, height: 24)
+        toggleButton.frame = NSRect(x: currentRight - editW, y: btnY,
+                                     width: editW, height: btnH)
         toggleButton.autoresizingMask = [.minXMargin]
         toggleButton.isHidden = true
         toolbarBar.addSubview(toggleButton)
+        currentRight -= editW + gap
 
         gitDiffButton.bezelStyle = .rounded
         gitDiffButton.title = "Diff"
         gitDiffButton.target = self
         gitDiffButton.action = #selector(gitDiffTapped)
         gitDiffButton.toolTip = "Compare with Git"
-        gitDiffButton.frame = NSRect(x: bodyFrame.width - 40 - locateW - 70 - 70 - 58,
-                                      y: 6, width: 58, height: 24)
+        gitDiffButton.frame = NSRect(x: currentRight - diffW, y: btnY,
+                                      width: diffW, height: btnH)
         gitDiffButton.autoresizingMask = [.minXMargin]
         gitDiffButton.isHidden = true
         toolbarBar.addSubview(gitDiffButton)
+        currentRight -= diffW + gap
 
         modifiedLabel.font = NSFont.systemFont(ofSize: 11)
         modifiedLabel.textColor = .secondaryLabelColor
         modifiedLabel.alignment = .left
         modifiedLabel.lineBreakMode = .byTruncatingMiddle
         modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.frame = NSRect(x: 12, y: 6,
-                                      width: bodyFrame.width - 40 - locateW - 70 - 70 - 58 - 20,
-                                      height: 24)
+        modifiedLabel.frame = NSRect(x: 12, y: btnY,
+                                      width: max(100, currentRight - 12 - gap),
+                                      height: btnH)
         modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
 
@@ -388,6 +522,25 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     override func cancelOperation(_ sender: Any?) {
         orderOut(nil)
         NotificationCenter.default.post(name: .init("ContentPanelDidClose"), object: self)
+    }
+
+    private func installEscapeKeyMonitors() {
+        escapeLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self, self.shouldCloseForEscape(event) else { return event }
+            self.cancelOperation(nil)
+            return nil
+        }
+
+        escapeGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self, self.shouldCloseForEscape(event) else { return }
+            DispatchQueue.main.async {
+                self.cancelOperation(nil)
+            }
+        }
+    }
+
+    private func shouldCloseForEscape(_ event: NSEvent) -> Bool {
+        isVisible && event.keyCode == 53
     }
 
     func load(info: MediaInfo) {
@@ -783,6 +936,12 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             return true
         }
         return false
+    }
+
+    deinit {
+        if let globalMouseMonitor {
+            NSEvent.removeMonitor(globalMouseMonitor)
+        }
     }
 }
 

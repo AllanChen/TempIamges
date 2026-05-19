@@ -9,10 +9,9 @@ class PreferencesWindow: NSWindow {
     private var optionCheckbox: NSButton!
     private var controlCheckbox: NSButton!
     private var currentHotkeyLabel: NSTextField!
-    private var loginURLField: NSTextField!
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 460, height: 465)
+        let windowRect = NSRect(x: 0, y: 0, width: 460, height: 395)
         super.init(
             contentRect: windowRect,
             styleMask: [.titled, .closable],
@@ -57,25 +56,13 @@ class PreferencesWindow: NSWindow {
         launchAtLoginCheckbox.frame = NSRect(x: 20, y: 285, width: 300, height: 20)
         containerView.addSubview(launchAtLoginCheckbox)
 
-        let loginURLLabel = NSTextField(labelWithString: "Login URL")
-        loginURLLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        loginURLLabel.frame = NSRect(x: 20, y: 250, width: 200, height: 20)
-        containerView.addSubview(loginURLLabel)
-
-        loginURLField = NSTextField(frame: NSRect(x: 20, y: 225, width: 420, height: 22))
-        loginURLField.placeholderString = "https://your-app.com/login"
-        loginURLField.font = NSFont.systemFont(ofSize: 12)
-        loginURLField.target = self
-        loginURLField.action = #selector(loginURLChanged(_:))
-        containerView.addSubview(loginURLField)
-
         let sizeLabel = NSTextField(labelWithString: "Maximum Preview Size")
         sizeLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        sizeLabel.frame = NSRect(x: 20, y: 190, width: 200, height: 20)
+        sizeLabel.frame = NSRect(x: 20, y: 245, width: 200, height: 20)
         containerView.addSubview(sizeLabel)
 
         maxSizeSlider = NSSlider(value: 400, minValue: 200, maxValue: 800, target: self, action: #selector(maxSizeChanged))
-        maxSizeSlider.frame = NSRect(x: 20, y: 160, width: 300, height: 20)
+        maxSizeSlider.frame = NSRect(x: 20, y: 215, width: 300, height: 20)
         maxSizeSlider.numberOfTickMarks = 7
         maxSizeSlider.allowsTickMarkValuesOnly = false
         containerView.addSubview(maxSizeSlider)
@@ -83,32 +70,32 @@ class PreferencesWindow: NSWindow {
         maxSizeLabel = NSTextField(labelWithString: "400 px")
         maxSizeLabel.font = NSFont.systemFont(ofSize: 12)
         maxSizeLabel.textColor = .secondaryLabelColor
-        maxSizeLabel.frame = NSRect(x: 330, y: 160, width: 80, height: 20)
+        maxSizeLabel.frame = NSRect(x: 330, y: 215, width: 80, height: 20)
         containerView.addSubview(maxSizeLabel)
 
         let hotkeyLabel = NSTextField(labelWithString: "Activation Hotkey")
         hotkeyLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        hotkeyLabel.frame = NSRect(x: 20, y: 120, width: 200, height: 20)
+        hotkeyLabel.frame = NSRect(x: 20, y: 175, width: 200, height: 20)
         containerView.addSubview(hotkeyLabel)
 
         let hotkeyDesc = NSTextField(labelWithString: "Hold these keys while hovering to show previews:")
         hotkeyDesc.font = NSFont.systemFont(ofSize: 12)
         hotkeyDesc.textColor = .secondaryLabelColor
-        hotkeyDesc.frame = NSRect(x: 20, y: 95, width: 400, height: 20)
+        hotkeyDesc.frame = NSRect(x: 20, y: 150, width: 400, height: 20)
         containerView.addSubview(hotkeyDesc)
 
         controlCheckbox = NSButton(checkboxWithTitle: "Control (⌃)", target: self, action: #selector(hotkeyChanged))
-        controlCheckbox.frame = NSRect(x: 20, y: 65, width: 140, height: 20)
+        controlCheckbox.frame = NSRect(x: 20, y: 120, width: 140, height: 20)
         containerView.addSubview(controlCheckbox)
 
         optionCheckbox = NSButton(checkboxWithTitle: "Option (⌥)", target: self, action: #selector(hotkeyChanged))
-        optionCheckbox.frame = NSRect(x: 170, y: 65, width: 140, height: 20)
+        optionCheckbox.frame = NSRect(x: 170, y: 120, width: 140, height: 20)
         containerView.addSubview(optionCheckbox)
 
         currentHotkeyLabel = NSTextField(labelWithString: "")
         currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
         currentHotkeyLabel.textColor = .secondaryLabelColor
-        currentHotkeyLabel.frame = NSRect(x: 20, y: 42, width: 420, height: 20)
+        currentHotkeyLabel.frame = NSRect(x: 20, y: 95, width: 420, height: 20)
         containerView.addSubview(currentHotkeyLabel)
 
         let resetButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetToDefaults))
@@ -126,7 +113,6 @@ class PreferencesWindow: NSWindow {
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
         optionCheckbox.state = prefs.hotkeyRequiresOption ? .on : .off
         controlCheckbox.state = prefs.hotkeyRequiresControl ? .on : .off
-        loginURLField.stringValue = prefs.loginURL ?? ""
         updateCurrentHotkeyLabel()
     }
 
@@ -158,12 +144,6 @@ class PreferencesWindow: NSWindow {
 
     @objc private func launchAtLoginToggled(_ sender: NSButton) {
         Preferences.shared.launchAtLogin = sender.state == .on
-        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
-    }
-
-    @objc private func loginURLChanged(_ sender: NSTextField) {
-        let value = sender.stringValue.trimmingCharacters(in: .whitespaces)
-        Preferences.shared.loginURL = value.isEmpty ? nil : value
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 

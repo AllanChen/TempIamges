@@ -1,14 +1,12 @@
 import AppKit
 import Foundation
-import Security
 
 final class AuthManager {
     static let shared = AuthManager()
 
     private let apiBase = URL(string: "https://api.mcreator.ai")!
     private let nativeCallback = "glance://auth/callback"
-    private let keychainService = "com.glance.auth"
-    private let keychainAccount = "mcreator-session"
+    private let sessionKey = "glance.auth.session"
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
@@ -17,7 +15,7 @@ final class AuthManager {
     private init() {
         decoder.keyDecodingStrategy = .useDefaultKeys
         encoder.keyEncodingStrategy = .useDefaultKeys
-        cachedSession = loadSessionFromKeychain()
+        cachedSession = loadSessionFromStorage()
     }
 
     var session: AuthSession? {
@@ -84,7 +82,7 @@ final class AuthManager {
 
     func signOut() {
         cachedSession = nil
-        deleteSessionFromKeychain()
+        deleteSessionFromStorage()
         NotificationCenter.default.post(name: .authDidChange, object: nil)
     }
 
@@ -102,7 +100,7 @@ final class AuthManager {
 
     private func save(session: AuthSession) {
         cachedSession = session
-        saveSessionToKeychain(session)
+        saveSessionToStorage(session)
         NotificationCenter.default.post(name: .authDidChange, object: nil)
     }
 
@@ -152,40 +150,18 @@ final class AuthManager {
         }.resume()
     }
 
-    private func saveSessionToKeychain(_ session: AuthSession) {
+    private func saveSessionToStorage(_ session: AuthSession) {
         guard let data = try? encoder.encode(session) else { return }
-        let query = keychainQuery()
-        let attributes: [String: Any] = [kSecValueData as String: data]
-
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var addQuery = query
-            addQuery[kSecValueData as String] = data
-            SecItemAdd(addQuery as CFDictionary, nil)
-        }
+        UserDefaults.standard.set(data, forKey: sessionKey)
     }
 
-    private func loadSessionFromKeychain() -> AuthSession? {
-        var query = keychainQuery()
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess, let data = item as? Data else { return nil }
+    private func loadSessionFromStorage() -> AuthSession? {
+        guard let data = UserDefaults.standard.data(forKey: sessionKey) else { return nil }
         return try? decoder.decode(AuthSession.self, from: data)
     }
 
-    private func deleteSessionFromKeychain() {
-        SecItemDelete(keychainQuery() as CFDictionary)
-    }
-
-    private func keychainQuery() -> [String: Any] {
-        [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-        ]
+    private func deleteSessionFromStorage() {
+        UserDefaults.standard.removeObject(forKey: sessionKey)
     }
 }
 

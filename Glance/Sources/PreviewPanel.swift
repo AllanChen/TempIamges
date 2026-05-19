@@ -202,9 +202,7 @@ class PreviewPanel: NSPanel {
     }
 
     private func shouldCloseForEscape(_ event: NSEvent) -> Bool {
-        guard isVisible, event.keyCode == 53 else { return false }
-        let keyWindow = NSApp.keyWindow
-        return keyWindow == nil || keyWindow?.isVisible == false || keyWindow === self || keyWindow === ContentPanel.shared
+        isVisible && event.keyCode == 53
     }
 
     deinit {

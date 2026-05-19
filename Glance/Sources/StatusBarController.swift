@@ -151,6 +151,16 @@ class StatusBarController: NSObject, NSMenuDelegate {
         NSApplication.shared.terminate(nil)
     }
 
+    private func loginPanelAnchorPoint() -> NSPoint {
+        if let button = statusItem.button,
+           let window = button.window {
+            let windowFrame = button.convert(button.bounds, to: nil)
+            let screenFrame = window.convertToScreen(windowFrame)
+            return NSPoint(x: screenFrame.midX, y: screenFrame.minY)
+        }
+        return NSEvent.mouseLocation
+    }
+
     func menuWillOpen(_ menu: NSMenu) {
         let permissionManager = PermissionManager.shared
         let inputMonitoringGranted = permissionManager.isInputMonitoringGranted
@@ -177,13 +187,4 @@ class StatusBarController: NSObject, NSMenuDelegate {
         }
     }
 
-    private func loginPanelAnchorPoint() -> NSPoint {
-        if let button = statusItem.button,
-           let window = button.window {
-            let windowFrame = button.convert(button.bounds, to: nil)
-            let screenFrame = window.convertToScreen(windowFrame)
-            return NSPoint(x: screenFrame.midX, y: screenFrame.minY)
-        }
-        return NSEvent.mouseLocation
-    }
 }

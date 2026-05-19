@@ -94,6 +94,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         self.center()
         self.title = "Glance"
         installEscapeKeyMonitor()
+        observeThemeChanges()
 
         buildLayout()
         showWebView()  // default
@@ -499,6 +500,27 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     deinit {
         if let escapeKeyMonitor {
             NSEvent.removeMonitor(escapeKeyMonitor)
+        }
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func observeThemeChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateToolbarAppearance),
+            name: .preferencesDidChange,
+            object: nil
+        )
+    }
+
+    @objc private func updateToolbarAppearance() {
+        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
+        if let sep = toolbarBar.subviews.first(where: { $0.frame.height == 1 }) {
+            sep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
+        }
+        webFindBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
+        if let findSep = webFindBar.subviews.first(where: { $0.frame.height == 1 }) {
+            findSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
         }
     }
 

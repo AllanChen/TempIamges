@@ -24,12 +24,13 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
         contentController.add(self, name: "loginHandler")
 
         isFloatingPanel = true
-        level = .floating
+        level = .statusBar
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         backgroundColor = .clear
         hasShadow = true
         isOpaque = false
         isMovableByWindowBackground = true
+        hidesOnDeactivate = false
 
         buildLayout()
     }

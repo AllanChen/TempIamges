@@ -54,6 +54,12 @@ final class HistoryWindow: NSWindow {
             name: .preferencesDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateToolbarAppearance),
+            name: .preferencesDidChange,
+            object: nil
+        )
     }
 
     deinit {
@@ -83,11 +89,11 @@ final class HistoryWindow: NSWindow {
                                    width: bounds.width, height: Self.toolbarHeight)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
         toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = NSColor(white: 0.96, alpha: 1).cgColor
+        toolbarBar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
         let sep = NSView(frame: NSRect(x: 0, y: 0, width: bounds.width, height: 1))
         sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor(white: 0.85, alpha: 1).cgColor
+        sep.layer?.backgroundColor = NSColor.separatorColor.cgColor
         sep.autoresizingMask = [.width]
         toolbarBar.addSubview(sep)
 
@@ -268,10 +274,16 @@ final class HistoryWindow: NSWindow {
 
     private func handleResize() {
         let newWidth = scrollView.contentSize.width
-        // Skip if width didn't change — masonry only depends on width.
         if abs(docView.frame.width - newWidth) < 0.5 { return }
         docView.frame.size.width = newWidth
         rebuildSections()
+    }
+
+    @objc private func updateToolbarAppearance() {
+        toolbarBar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        if let sep = toolbarBar.subviews.first(where: { $0.frame.height == 1 }) {
+            sep.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        }
     }
 }
 
@@ -366,8 +378,7 @@ private final class HistorySectionView: NSView {
     private func makeHeader(width: CGFloat, height: CGFloat) -> NSView {
         let header = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         header.wantsLayer = true
-        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        header.layer?.backgroundColor = (isDark ? NSColor(white: 0.18, alpha: 1) : NSColor(white: 0.94, alpha: 1)).cgColor
+        header.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         header.layer?.cornerRadius = 6
 
         let formatter = DateFormatter()
