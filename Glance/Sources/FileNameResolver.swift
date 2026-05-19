@@ -1,11 +1,13 @@
 import AppKit
 import Foundation
 
-/// Resolves bare filenames / relative paths to absolute URLs via Spotlight.
+/// Resolves bare filenames / relative paths to absolute URLs.
 ///
-/// Two-phase scope:
-///   1. `NSMetadataQueryUserHomeScope` — fast (~50–150 ms on a warm cache).
-///   2. If phase 1 returns 0 results, retry with `NSMetadataQueryLocalComputerScope`.
+/// Resolution order:
+///   1. Cache + direct filesystem checks around likely project roots.
+///   2. `NSMetadataQueryUserHomeScope`.
+///   3. If phase 2 returns 0 results, retry with `NSMetadataQueryLocalComputerScope`.
+///   4. FDA-gated filesystem fallback for common user folders.
 ///
 /// Cancels in-flight queries on hotkey release. Completion always fires
 /// exactly once, on the main queue.
@@ -58,6 +60,15 @@ final class FileNameResolver {
         NSHomeDirectory() + "/Downloads",
         NSHomeDirectory() + "/Documents",
     ]
+    private let quickSearchBaseNames = ["Desktop", "Documents", "Downloads"]
+    private let quickSearchMaxDirectories = 12_000
+    private let quickSearchTimeBudget: TimeInterval = 0.35
+    private let quickSearchMaxDepth = 7
+    private let skippedDirectoryNames: Set<String> = [
+        ".git", ".svn", ".hg", "node_modules", "DerivedData", "build", "dist",
+        ".build", ".dart_tool", ".next", ".nuxt", ".cache", "Pods", "Carthage",
+        "Library", "Applications", "Movies", "Music", "Pictures"
+    ]
 
     /// Resolve a filename or relative path. Completion fires once, on .main.
     /// - parameter token: e.g. `"screenshot.png"` or `"assets/foo.png"`.
@@ -68,9 +79,13 @@ final class FileNameResolver {
                  timeout: TimeInterval = 1.2,
                  limit: Int = 24,
                  completion: @escaping ([Match]) -> Void) {
-        // Bare filenames (no path separator) are cached after the first
-        // successful resolution so repeated lookups bypass Spotlight.
-        if !token.contains("/"), let cachedURL = FilenameCache.shared.lookup(token: token) {
+        let normalizedToken = normalizeToken(token)
+        guard !normalizedToken.isEmpty else {
+            completion([])
+            return
+        }
+
+        if let cachedURL = FilenameCache.shared.lookup(token: normalizedToken) {
             Logger.info("FileNameResolver: cache hit for '\(token)' → \(cachedURL.path)")
             let match = Match(url: cachedURL,
                               lastModified: nil,
@@ -79,8 +94,18 @@ final class FileNameResolver {
             return
         }
 
-        let basename = (token as NSString).lastPathComponent
-        let pathSuffix: String? = token.contains("/") ? "/" + token : nil
+        let quickMatches = quickFilesystemMatches(token: normalizedToken, limit: limit)
+        if !quickMatches.isEmpty {
+            if let best = quickMatches.first {
+                FilenameCache.shared.store(token: normalizedToken, url: best.url)
+            }
+            Logger.info("FileNameResolver: quick hit for '\(token)' → \(quickMatches.count) match(es)")
+            completion(quickMatches)
+            return
+        }
+
+        let basename = (normalizedToken as NSString).lastPathComponent
+        let pathSuffix: String? = normalizedToken.contains("/") ? "/" + normalizedToken : nil
 
         let query = NSMetadataQuery()
         query.searchScopes = [NSMetadataQueryUserHomeScope]
@@ -90,7 +115,7 @@ final class FileNameResolver {
                              ascending: false)
         ]
 
-        let job = Job(token: token, query: query,
+        let job = Job(token: normalizedToken, query: query,
                       pathSuffix: pathSuffix, completion: completion)
 
         let timeoutWork = DispatchWorkItem { [weak self] in
@@ -258,12 +283,284 @@ final class FileNameResolver {
         jobs.removeAll { $0 === job }
         Logger.info("FileNameResolver: '\(job.token)' → \(matches.count) match(es) [\(reason)]")
 
-        // Cache the best match for bare filenames so the next lookup is instant.
-        if let best = matches.first, !job.token.contains("/") {
+        // Cache the best match so the next lookup is instant. Cache lookup
+        // verifies the file still exists before returning it.
+        if let best = matches.first {
             FilenameCache.shared.store(token: job.token, url: best.url)
         }
 
         DispatchQueue.main.async { job.completion(matches) }
+    }
+
+    // MARK: - Fast local search
+
+    /// Cheap path resolution before Spotlight. This handles the common case
+    /// where the user gives a project-relative path such as
+    /// `Glance/Sources/PreviewPanel.swift`.
+    private func quickFilesystemMatches(token: String, limit: Int) -> [Match] {
+        let basename = (token as NSString).lastPathComponent
+        guard !basename.isEmpty else { return [] }
+
+        let suffix = token.contains("/") ? "/" + token.lowercased() : nil
+        var matches: [Match] = []
+        var seen = Set<String>()
+
+        func append(_ url: URL) {
+            guard matches.count < limit,
+                  let match = makeMatch(url: url),
+                  matchesSuffix(match.url.path, suffix: suffix),
+                  seen.insert(match.url.path).inserted else { return }
+            matches.append(match)
+        }
+
+        for url in directCandidateURLs(for: token) {
+            append(url)
+        }
+        if matches.count >= limit {
+            return sortedMatches(matches, limit: limit)
+        }
+
+        let started = Date()
+        var visitedDirectories = 0
+        for root in quickSearchRoots() {
+            guard Date().timeIntervalSince(started) < quickSearchTimeBudget else { break }
+            searchDirectory(
+                root: root,
+                basename: basename,
+                suffix: suffix,
+                maxDepth: quickSearchMaxDepth,
+                limit: limit,
+                started: started,
+                visitedDirectories: &visitedDirectories,
+                seen: &seen,
+                matches: &matches
+            )
+            if matches.count >= limit || visitedDirectories >= quickSearchMaxDirectories {
+                break
+            }
+        }
+
+        return sortedMatches(matches, limit: limit)
+    }
+
+    private func directCandidateURLs(for token: String) -> [URL] {
+        var candidates: [URL] = []
+
+        if token.lowercased().hasPrefix("file://"), let url = URL(string: token) {
+            candidates.append(url)
+        } else if token.hasPrefix("~/") {
+            candidates.append(URL(fileURLWithPath: (token as NSString).expandingTildeInPath))
+        } else if token.hasPrefix("/") {
+            candidates.append(URL(fileURLWithPath: token))
+        } else {
+            for root in relativeCandidateRoots() {
+                candidates.append(appendingRelativePath(token, to: root))
+            }
+        }
+
+        return candidates
+    }
+
+    private func relativeCandidateRoots() -> [URL] {
+        var roots = orderedUnique(commonRoots())
+        let expandableRoots = commonRoots().filter { url in
+            quickSearchBaseNames.contains(url.lastPathComponent)
+                || url.path == FileManager.default.currentDirectoryPath
+        }
+        for root in expandableRoots {
+            roots.append(contentsOf: shallowDirectories(under: root, maxDepth: 2, limit: 500))
+        }
+        return orderedUnique(roots)
+    }
+
+    private func quickSearchRoots() -> [URL] {
+        let homePath = NSHomeDirectory()
+        var roots: [URL] = []
+        roots.append(contentsOf: commonRoots().filter { $0.path != homePath })
+        for root in commonRoots() where quickSearchBaseNames.contains(root.lastPathComponent) {
+            roots.append(contentsOf: shallowDirectories(under: root, maxDepth: 1, limit: 200))
+        }
+        roots.append(URL(fileURLWithPath: homePath, isDirectory: true))
+        return orderedUnique(roots)
+    }
+
+    private func commonRoots() -> [URL] {
+        let fm = FileManager.default
+        let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        var roots: [URL] = []
+
+        let cwd = URL(fileURLWithPath: fm.currentDirectoryPath, isDirectory: true).standardizedFileURL
+        if cwd.path != "/" {
+            roots.append(cwd)
+            var parent = cwd.deletingLastPathComponent()
+            while parent.path != "/" && parent.path.hasPrefix(home.path) {
+                roots.append(parent)
+                if parent.path == home.path { break }
+                parent = parent.deletingLastPathComponent()
+            }
+        }
+
+        roots.append(home)
+        for name in quickSearchBaseNames {
+            roots.append(home.appendingPathComponent(name, isDirectory: true))
+        }
+        return orderedUnique(roots).filter { isSearchableDirectory($0) }
+    }
+
+    private func shallowDirectories(under root: URL, maxDepth: Int, limit: Int) -> [URL] {
+        guard maxDepth > 0 else { return [] }
+        var result: [URL] = []
+        var queue: [(URL, Int)] = [(root, 0)]
+        let fm = FileManager.default
+        let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .contentModificationDateKey]
+
+        while !queue.isEmpty && result.count < limit {
+            let (dir, depth) = queue.removeFirst()
+            guard depth < maxDepth,
+                  let children = try? fm.contentsOfDirectory(
+                    at: dir,
+                    includingPropertiesForKeys: keys,
+                    options: [.skipsHiddenFiles, .skipsPackageDescendants]
+                  ) else { continue }
+
+            let dirs = children.compactMap { child -> (URL, Date)? in
+                guard isSearchableDirectory(child),
+                      let values = try? child.resourceValues(forKeys: Set(keys)),
+                      values.isDirectory == true,
+                      values.isPackage != true else { return nil }
+                return (child, values.contentModificationDate ?? .distantPast)
+            }.sorted { $0.1 > $1.1 }
+
+            for (child, _) in dirs {
+                result.append(child)
+                if depth + 1 < maxDepth {
+                    queue.append((child, depth + 1))
+                }
+                if result.count >= limit { break }
+            }
+        }
+
+        return result
+    }
+
+    private func searchDirectory(root: URL,
+                                 basename: String,
+                                 suffix: String?,
+                                 maxDepth: Int,
+                                 limit: Int,
+                                 started: Date,
+                                 visitedDirectories: inout Int,
+                                 seen: inout Set<String>,
+                                 matches: inout [Match]) {
+        var queue: [(URL, Int)] = [(root, 0)]
+        let fm = FileManager.default
+        let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .contentModificationDateKey]
+
+        while !queue.isEmpty,
+              matches.count < limit,
+              visitedDirectories < quickSearchMaxDirectories,
+              Date().timeIntervalSince(started) < quickSearchTimeBudget {
+            let (dir, depth) = queue.removeFirst()
+            visitedDirectories += 1
+            guard let children = try? fm.contentsOfDirectory(
+                at: dir,
+                includingPropertiesForKeys: keys,
+                options: [.skipsHiddenFiles, .skipsPackageDescendants]
+            ) else { continue }
+
+            var childDirs: [(URL, Date)] = []
+            for child in children {
+                let values = try? child.resourceValues(forKeys: Set(keys))
+                if child.lastPathComponent.compare(basename, options: [.caseInsensitive]) == .orderedSame,
+                   values?.isDirectory != true,
+                   let match = makeMatch(url: child),
+                   matchesSuffix(match.url.path, suffix: suffix),
+                   seen.insert(match.url.path).inserted {
+                    matches.append(match)
+                    if matches.count >= limit { break }
+                }
+
+                guard depth < maxDepth,
+                      values?.isDirectory == true,
+                      values?.isPackage != true,
+                      isSearchableDirectory(child) else { continue }
+                childDirs.append((child, values?.contentModificationDate ?? .distantPast))
+            }
+
+            childDirs.sort { $0.1 > $1.1 }
+            queue.append(contentsOf: childDirs.map { ($0.0, depth + 1) })
+        }
+    }
+
+    private func makeMatch(url: URL) -> Match? {
+        let canonical = url.standardizedFileURL.resolvingSymlinksInPath()
+        let path = canonical.path
+        if blocklistSubstrings.contains(where: { path.contains($0) }) { return nil }
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              !isDirectory.boolValue else { return nil }
+
+        let values = try? canonical.resourceValues(forKeys: [.contentModificationDateKey])
+        let home = NSHomeDirectory()
+        return Match(
+            url: canonical,
+            lastModified: values?.contentModificationDate,
+            isInUserHome: path.hasPrefix(home + "/") || path == home
+        )
+    }
+
+    private func sortedMatches(_ matches: [Match], limit: Int) -> [Match] {
+        let sorted = matches.sorted { a, b in
+            let aPref = isUnderPreferred(a.url.path)
+            let bPref = isUnderPreferred(b.url.path)
+            if aPref != bPref { return aPref && !bPref }
+            if a.isInUserHome != b.isInUserHome { return a.isInUserHome && !b.isInUserHome }
+            switch (a.lastModified, b.lastModified) {
+            case let (la?, lb?): return la > lb
+            case (_?, nil):       return true
+            case (nil, _?):       return false
+            default:              return a.url.path.count < b.url.path.count
+            }
+        }
+        return Array(sorted.prefix(limit))
+    }
+
+    private func matchesSuffix(_ path: String, suffix: String?) -> Bool {
+        guard let suffix else { return true }
+        return path.lowercased().hasSuffix(suffix)
+    }
+
+    private func appendingRelativePath(_ token: String, to root: URL) -> URL {
+        URL(fileURLWithPath: (root.path as NSString).appendingPathComponent(token)).standardizedFileURL
+    }
+
+    private func isSearchableDirectory(_ url: URL) -> Bool {
+        !skippedDirectoryNames.contains(url.lastPathComponent)
+    }
+
+    private func orderedUnique(_ urls: [URL]) -> [URL] {
+        var seen = Set<String>()
+        var result: [URL] = []
+        for url in urls {
+            let path = url.standardizedFileURL.path
+            if seen.insert(path).inserted {
+                result.append(URL(fileURLWithPath: path, isDirectory: true))
+            }
+        }
+        return result
+    }
+
+    private func normalizeToken(_ token: String) -> String {
+        var value = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        value = value.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`"))
+        while let last = value.last, ",.;!?\"')]}".contains(last) {
+            value.removeLast()
+        }
+        while value.hasPrefix("./") {
+            value.removeFirst(2)
+        }
+        return value
     }
 
     private func processItems(_ items: [NSMetadataItem], suffix: String?, limit: Int) -> [Match] {
