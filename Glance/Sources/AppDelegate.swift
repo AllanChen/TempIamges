@@ -544,11 +544,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     func checkAndRequestPermissions() {
-        let permissionManager = PermissionManager.shared
-
-        if !permissionManager.isInputMonitoringGranted || !permissionManager.isAccessibilityGranted {
-            showOnboardingWindow()
-        }
+        showOnboardingWindow()
     }
 
     func clearImageCache() {
