@@ -31,14 +31,8 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     private func updateMenuBarIcon() {
         guard let button = statusItem.button else { return }
-
-        if #available(macOS 11.0, *) {
-            let symbolName = Preferences.shared.enabled ? "eye" : "eye.slash"
-            button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Glance")
-        } else {
-            button.title = Preferences.shared.enabled ? "👁" : "🚫"
-        }
-        button.image?.isTemplate = true
+        button.title = "􁔕"
+        button.image = nil
     }
 
     private func createMenu() -> NSMenu {
