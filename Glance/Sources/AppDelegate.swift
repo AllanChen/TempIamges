@@ -465,6 +465,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let frame = ScreenManager.shared.adjustedFrame(for: contentSize, at: mousePos, offset: CGPoint(x: 20, y: 0))
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
+        panel.makeKey()
     }
 
     /// Spawn a ContentViewerWindow and own it until the user closes it.
