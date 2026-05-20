@@ -20,6 +20,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private let toggleButton = NSButton()  // Edit ↔ View for markdown
     private let locateButton = NSButton()  // Reveal in Finder, local-only
     private let modifiedLabel = NSTextField(labelWithString: "")
+    private let addressBar = NSTextField()
 
     // WebView find UI
     private let webFindBar = NSView()
@@ -112,7 +113,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         webView.load(URLRequest(url: url))
         saveButton.isHidden = true
         toggleButton.isHidden = true
+        modifiedLabel.isHidden = true
         locateButton.isHidden = !url.isFileURL
+        addressBar.isHidden = false
+        addressBar.stringValue = url.absoluteString
         updateModifiedDate(for: url)
         showWebView()
     }
@@ -237,6 +241,20 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
                                       y: 9, width: 160, height: 18)
         modifiedLabel.autoresizingMask = [.minXMargin]
         toolbarBar.addSubview(modifiedLabel)
+
+        addressBar.font = NSFont.systemFont(ofSize: 12)
+        addressBar.alignment = .center
+        addressBar.isEditable = true
+        addressBar.isSelectable = true
+        addressBar.isBordered = true
+        addressBar.backgroundColor = NSColor(white: 0.18, alpha: 1)
+        addressBar.textColor = .secondaryLabelColor
+        addressBar.frame = NSRect(x: 80, y: 6, width: bounds.width - 160, height: 24)
+        addressBar.autoresizingMask = [.width]
+        addressBar.isHidden = true
+        addressBar.target = self
+        addressBar.action = #selector(addressBarSubmitted)
+        toolbarBar.addSubview(addressBar)
 
         content.addSubview(toolbarBar)
 
@@ -421,7 +439,6 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         let body = textView.string
         do {
             try body.write(to: url, atomically: true, encoding: .utf8)
-            // Quick visual ack — flip the title for ~1.5s, then back.
             saveButton.title = "Saved ✓".localized
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 self?.saveButton.title = "Save".localized
@@ -431,6 +448,21 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
             alert.messageText = String(format: "Couldn't save %@".localized, url.lastPathComponent)
             alert.beginSheetModal(for: self, completionHandler: nil)
         }
+    }
+
+    @objc private func addressBarSubmitted() {
+        let text = addressBar.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let urlString: String
+        if text.lowercased().hasPrefix("http://") || text.lowercased().hasPrefix("https://") {
+            urlString = text
+        } else {
+            urlString = "https://\(text)"
+        }
+        guard let url = URL(string: urlString) else { return }
+        currentURL = url
+        title = url.host ?? url.absoluteString
+        webView.load(URLRequest(url: url))
     }
 
     // MARK: - Static content helpers (reused by PreviewPanel)
@@ -662,14 +694,23 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
     func control(_ control: NSControl, textView fieldEditor: NSTextView,
                  doCommandBy commandSelector: Selector) -> Bool {
-        guard control === webFindField else { return false }
-        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
-            hideWebFindBar()
-            return true
+        if control === webFindField {
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                hideWebFindBar()
+                return true
+            }
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                webFindNext(nil)
+                return true
+            }
+            return false
         }
-        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-            webFindNext(nil)
-            return true
+        if control === addressBar {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                addressBarSubmitted()
+                return true
+            }
+            return false
         }
         return false
     }

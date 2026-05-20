@@ -20,6 +20,17 @@ class StatusBarController: NSObject, NSMenuDelegate {
     override init() {
         super.init()
         setupStatusBar()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(preferencesDidChange),
+            name: .preferencesDidChange,
+            object: nil
+        )
+    }
+
+    @objc private func preferencesDidChange() {
+        enableMenuItem?.state = Preferences.shared.enabled ? .on : .off
+        updateMenuBarIcon()
     }
 
     private func setupStatusBar() {
@@ -33,6 +44,13 @@ class StatusBarController: NSObject, NSMenuDelegate {
         guard let button = statusItem.button else { return }
         button.title = "􁔕"
         button.image = nil
+        if Preferences.shared.enabled {
+            button.contentTintColor = .controlAccentColor
+            button.alphaValue = 1.0
+        } else {
+            button.contentTintColor = .secondaryLabelColor
+            button.alphaValue = 0.5
+        }
     }
 
     private func createMenu() -> NSMenu {
