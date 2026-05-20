@@ -16,7 +16,7 @@ class OnboardingWindow: NSWindow {
             defer: false
         )
 
-        self.title = "Glance Needs Permissions"
+        self.title = "Glance Needs Permissions".localized
         self.center()
         self.isReleasedWhenClosed = false
         self.level = .floating
@@ -34,12 +34,12 @@ class OnboardingWindow: NSWindow {
         containerView.autoresizingMask = [.width, .height]
         contentView.addSubview(containerView)
 
-        let titleLabel = NSTextField(labelWithString: "Glance Needs Permissions")
+        let titleLabel = NSTextField(labelWithString: "Glance Needs Permissions".localized)
         titleLabel.font = NSFont.boldSystemFont(ofSize: 18)
         titleLabel.frame = NSRect(x: 20, y: 410, width: 480, height: 30)
         containerView.addSubview(titleLabel)
 
-        let subtitleLabel = NSTextField(labelWithString: "To enable image previews on hover, please grant the following permissions:")
+        let subtitleLabel = NSTextField(labelWithString: "To enable image previews on hover, please grant the following permissions:".localized)
         subtitleLabel.font = NSFont.systemFont(ofSize: 13)
         subtitleLabel.textColor = NSColor.secondaryLabelColor
         subtitleLabel.frame = NSRect(x: 20, y: 380, width: 480, height: 20)
@@ -49,24 +49,24 @@ class OnboardingWindow: NSWindow {
         createAccessibilitySection(containerView: containerView, y: 200)
         createFullDiskAccessSection(containerView: containerView, y: 110)
 
-        continueButton = NSButton(title: "Continue", target: self, action: #selector(continuePressed))
+        continueButton = NSButton(title: "Continue".localized, target: self, action: #selector(continuePressed))
         continueButton.bezelStyle = .rounded
         continueButton.frame = NSRect(x: 320, y: 30, width: 100, height: 32)
         continueButton.isEnabled = false
         containerView.addSubview(continueButton)
 
-        dontShowAgainCheckbox = NSButton(checkboxWithTitle: "Don't show again", target: self, action: #selector(dontShowAgainToggled))
+        dontShowAgainCheckbox = NSButton(checkboxWithTitle: "Don't show again".localized, target: self, action: #selector(dontShowAgainToggled))
         dontShowAgainCheckbox.frame = NSRect(x: 20, y: 35, width: 150, height: 20)
         containerView.addSubview(dontShowAgainCheckbox)
     }
 
     private func createInputMonitoringSection(containerView: NSView, y: CGFloat) {
-        let titleLabel = NSTextField(labelWithString: "Input Monitoring")
+        let titleLabel = NSTextField(labelWithString: "Input Monitoring".localized)
         titleLabel.font = NSFont.boldSystemFont(ofSize: 14)
         titleLabel.frame = NSRect(x: 20, y: y + 50, width: 240, height: 20)
         containerView.addSubview(titleLabel)
 
-        let descLabel = NSTextField(labelWithString: "Required — detect when you hold the hotkey to activate preview mode.")
+        let descLabel = NSTextField(labelWithString: "Required — detect when you hold the hotkey to activate preview mode.".localized)
         descLabel.font = NSFont.systemFont(ofSize: 12)
         descLabel.textColor = NSColor.secondaryLabelColor
         descLabel.frame = NSRect(x: 20, y: y + 25, width: 380, height: 30)
@@ -74,24 +74,24 @@ class OnboardingWindow: NSWindow {
         descLabel.maximumNumberOfLines = 2
         containerView.addSubview(descLabel)
 
-        inputMonitoringStatusLabel = NSTextField(labelWithString: "❌ Not Granted")
+        inputMonitoringStatusLabel = NSTextField(labelWithString: "❌ Not Granted".localized)
         inputMonitoringStatusLabel.font = NSFont.systemFont(ofSize: 12)
         inputMonitoringStatusLabel.frame = NSRect(x: 410, y: y + 50, width: 90, height: 20)
         containerView.addSubview(inputMonitoringStatusLabel)
 
-        let openButton = NSButton(title: "Open Settings", target: self, action: #selector(openInputMonitoringSettings))
+        let openButton = NSButton(title: "Open Settings".localized, target: self, action: #selector(openInputMonitoringSettings))
         openButton.bezelStyle = .rounded
         openButton.frame = NSRect(x: 410, y: y + 20, width: 100, height: 24)
         containerView.addSubview(openButton)
     }
 
     private func createAccessibilitySection(containerView: NSView, y: CGFloat) {
-        let titleLabel = NSTextField(labelWithString: "Accessibility")
+        let titleLabel = NSTextField(labelWithString: "Accessibility".localized)
         titleLabel.font = NSFont.boldSystemFont(ofSize: 14)
         titleLabel.frame = NSRect(x: 20, y: y + 50, width: 240, height: 20)
         containerView.addSubview(titleLabel)
 
-        let descLabel = NSTextField(labelWithString: "Required — read the selected text in the active app so we know what to preview.")
+        let descLabel = NSTextField(labelWithString: "Required — read the selected text in the active app so we know what to preview.".localized)
         descLabel.font = NSFont.systemFont(ofSize: 12)
         descLabel.textColor = NSColor.secondaryLabelColor
         descLabel.frame = NSRect(x: 20, y: y + 25, width: 380, height: 30)
@@ -99,24 +99,24 @@ class OnboardingWindow: NSWindow {
         descLabel.maximumNumberOfLines = 2
         containerView.addSubview(descLabel)
 
-        accessibilityStatusLabel = NSTextField(labelWithString: "❌ Not Granted")
+        accessibilityStatusLabel = NSTextField(labelWithString: "❌ Not Granted".localized)
         accessibilityStatusLabel.font = NSFont.systemFont(ofSize: 12)
         accessibilityStatusLabel.frame = NSRect(x: 410, y: y + 50, width: 90, height: 20)
         containerView.addSubview(accessibilityStatusLabel)
 
-        let openButton = NSButton(title: "Open Settings", target: self, action: #selector(openAccessibilitySettings))
+        let openButton = NSButton(title: "Open Settings".localized, target: self, action: #selector(openAccessibilitySettings))
         openButton.bezelStyle = .rounded
         openButton.frame = NSRect(x: 410, y: y + 20, width: 100, height: 24)
         containerView.addSubview(openButton)
     }
 
     private func createFullDiskAccessSection(containerView: NSView, y: CGFloat) {
-        let titleLabel = NSTextField(labelWithString: "Full Disk Access (Recommended)")
+        let titleLabel = NSTextField(labelWithString: "Full Disk Access (Recommended)".localized)
         titleLabel.font = NSFont.boldSystemFont(ofSize: 14)
         titleLabel.frame = NSRect(x: 20, y: y + 50, width: 300, height: 20)
         containerView.addSubview(titleLabel)
 
-        let descLabel = NSTextField(labelWithString: "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts.")
+        let descLabel = NSTextField(labelWithString: "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts.".localized)
         descLabel.font = NSFont.systemFont(ofSize: 12)
         descLabel.textColor = NSColor.secondaryLabelColor
         descLabel.frame = NSRect(x: 20, y: y + 25, width: 380, height: 30)
@@ -124,12 +124,12 @@ class OnboardingWindow: NSWindow {
         descLabel.maximumNumberOfLines = 2
         containerView.addSubview(descLabel)
 
-        fullDiskAccessStatusLabel = NSTextField(labelWithString: "ℹ️ Optional")
+        fullDiskAccessStatusLabel = NSTextField(labelWithString: "ℹ️ Optional".localized)
         fullDiskAccessStatusLabel.font = NSFont.systemFont(ofSize: 12)
         fullDiskAccessStatusLabel.frame = NSRect(x: 410, y: y + 50, width: 90, height: 20)
         containerView.addSubview(fullDiskAccessStatusLabel)
 
-        let openButton = NSButton(title: "Open Settings", target: self, action: #selector(openFullDiskAccessSettings))
+        let openButton = NSButton(title: "Open Settings".localized, target: self, action: #selector(openFullDiskAccessSettings))
         openButton.bezelStyle = .rounded
         openButton.frame = NSRect(x: 410, y: y + 20, width: 100, height: 24)
         containerView.addSubview(openButton)
@@ -139,15 +139,15 @@ class OnboardingWindow: NSWindow {
         let permissionManager = PermissionManager.shared
 
         if permissionManager.isInputMonitoringGranted {
-            inputMonitoringStatusLabel.stringValue = "✅ Granted"
+            inputMonitoringStatusLabel.stringValue = "✅ Granted".localized
         } else {
-            inputMonitoringStatusLabel.stringValue = "❌ Not Granted"
+            inputMonitoringStatusLabel.stringValue = "❌ Not Granted".localized
         }
 
         if permissionManager.isAccessibilityGranted {
-            accessibilityStatusLabel.stringValue = "✅ Granted"
+            accessibilityStatusLabel.stringValue = "✅ Granted".localized
         } else {
-            accessibilityStatusLabel.stringValue = "❌ Not Granted"
+            accessibilityStatusLabel.stringValue = "❌ Not Granted".localized
         }
 
         // FDA can't be checked at runtime without trying to read a protected

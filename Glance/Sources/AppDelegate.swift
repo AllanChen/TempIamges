@@ -31,6 +31,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
+        applyLanguage()
         applyTheme()
         setupComponents()
         setupNotifications()
@@ -93,6 +94,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             self,
             selector: #selector(preferencesChanged),
             name: .preferencesDidChange,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(languageChanged),
+            name: .languageDidChange,
             object: nil
         )
 
@@ -230,7 +238,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 anchor = mousePos
             } else {
                 Logger.info("AppDelegate: No selected text to preview")
-                showErrorTooltip(message: "No text selected", at: mousePos)
+                showErrorTooltip(message: "No text selected".localized, at: mousePos)
                 return
             }
         }
@@ -243,7 +251,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         if resolved.isEmpty && unresolvedTokens.isEmpty {
             Logger.info("AppDelegate: No media path in selected text")
             currentPath = selected
-            showErrorTooltip(message: "No image or video found in selection", at: anchor)
+            showErrorTooltip(message: "No image or video found in selection".localized, at: anchor)
             return
         }
 
@@ -312,7 +320,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 self.previewPanel?.hidePanel()
                 let label = uniqueTokens.first ?? ""
                 self.showErrorTooltip(
-                    message: "No file found matching '\(label)'",
+                    message: String(format: "No file found matching '%@'".localized, label),
                     at: anchor
                 )
                 return
@@ -389,7 +397,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let infos = paths.compactMap { MediaInfo.from($0) }
         guard !infos.isEmpty else {
             isLoadingImage = false
-            showErrorTooltip(message: "No media to preview", at: position)
+            showErrorTooltip(message: "No media to preview".localized, at: position)
             return
         }
 
@@ -408,7 +416,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 Logger.info("AppDelegate: Loaded \(loadedCount)/\(paths.count) media")
                 if loadedCount == 0 {
                     self?.previewPanel?.hidePanel()
-                    self?.showErrorTooltip(message: "Failed to load media", at: position)
+                    self?.showErrorTooltip(message: "Failed to load media".localized, at: position)
                 }
             }
         )
@@ -494,6 +502,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             previewModeDeactivated()
         }
         applyTheme()
+    }
+
+    @objc private func languageChanged() {
+        Logger.info("AppDelegate: Language changed to \(Preferences.shared.appLanguage.rawValue)")
+        if let oldWindow = preferencesWindow {
+            oldWindow.close()
+            preferencesWindow = nil
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
+            let newWindow = PreferencesWindow()
+            self.preferencesWindow = newWindow
+            newWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    /// Apply the user's chosen language by setting AppleLanguages in
+    /// UserDefaults before any UI is created.
+    private func applyLanguage() {
+        let lang = Preferences.shared.appLanguage.rawValue
+        UserDefaults.standard.set([lang], forKey: "AppleLanguages")
     }
 
     /// Pin the app to the user's chosen appearance (or release it back to

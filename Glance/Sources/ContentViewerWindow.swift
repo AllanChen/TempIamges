@@ -92,7 +92,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         )
         self.isReleasedWhenClosed = false
         self.center()
-        self.title = "Glance"
+        self.title = "Glance".localized
         installEscapeKeyMonitor()
         observeThemeChanges()
 
@@ -123,7 +123,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         title = url.lastPathComponent
         isEditing = false
         toggleButton.isHidden = false
-        toggleButton.title = "Edit"
+        toggleButton.title = "Edit".localized
         saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
         updateModifiedDate(for: url)
@@ -138,7 +138,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         title = url.lastPathComponent
         isEditing = false
         toggleButton.isHidden = false
-        toggleButton.title = "Edit"
+        toggleButton.title = "Edit".localized
         saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
         updateModifiedDate(for: url)
@@ -190,11 +190,11 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         let locateW: CGFloat = 32
         locateButton.bezelStyle = .rounded
         locateButton.image = NSImage(systemSymbolName: "folder.fill",
-                                       accessibilityDescription: "Reveal in Finder")
+                                       accessibilityDescription: "Reveal in Finder".localized)
         locateButton.imagePosition = .imageOnly
         locateButton.target = self
         locateButton.action = #selector(locateTapped)
-        locateButton.toolTip = "Reveal in Finder"
+        locateButton.toolTip = "Reveal in Finder".localized
         locateButton.frame = NSRect(x: bounds.width - 12 - locateW, y: 6,
                                      width: locateW, height: 24)
         locateButton.autoresizingMask = [.minXMargin]
@@ -203,7 +203,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
         // Save — only when editing a local file. Sits to the left of locate.
         saveButton.bezelStyle = .rounded
-        saveButton.title = "Save"
+        saveButton.title = "Save".localized
         saveButton.keyEquivalent = "s"
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
@@ -216,7 +216,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
         // Toggle (Edit ↔ View) — only shown for markdown. Left of Save.
         toggleButton.bezelStyle = .rounded
-        toggleButton.title = "Edit"
+        toggleButton.title = "Edit".localized
         toggleButton.target = self
         toggleButton.action = #selector(toggleEditTapped)
         toggleButton.frame = NSRect(x: bounds.width - 30 - locateW - 70 - 70, y: 6,
@@ -272,7 +272,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         findSep.autoresizingMask = [.width]
         webFindBar.addSubview(findSep)
 
-        webFindField.placeholderString = "Find in page"
+        webFindField.placeholderString = "Find in page".localized
         webFindField.frame = NSRect(x: 12, y: 6, width: 240, height: 24)
         webFindField.delegate = self
         webFindBar.addSubview(webFindField)
@@ -294,7 +294,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         nextBtn.autoresizingMask = [.minXMargin]
         webFindBar.addSubview(nextBtn)
 
-        let doneBtn = NSButton(title: "Done", target: self, action: #selector(hideWebFindBar))
+        let doneBtn = NSButton(title: "Done".localized, target: self, action: #selector(hideWebFindBar))
         doneBtn.bezelStyle = .rounded
         doneBtn.frame = NSRect(x: bodyFrame.width - 60, y: 6, width: 50, height: 24)
         doneBtn.autoresizingMask = [.minXMargin]
@@ -314,7 +314,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
             modifiedLabel.stringValue = ""
             return
         }
-        modifiedLabel.stringValue = "Modified \(Self.friendlyDate(date))"
+        modifiedLabel.stringValue = "Modified ".localized + Self.friendlyDate(date)
     }
 
     /// Human-readable date string: relative when recent, absolute otherwise.
@@ -388,7 +388,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         guard kind == .markdown || kind == .text else { return }
         isEditing.toggle()
         if isEditing {
-            toggleButton.title = "View"
+            toggleButton.title = "View".localized
             saveButton.isHidden = !url.isFileURL
             if kind == .markdown {
                 // Show raw markdown source in the editor (no pretty-printing).
@@ -398,7 +398,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
                 loadEditableText(url: url, prettyPrint: false)
             }
         } else {
-            toggleButton.title = "Edit"
+            toggleButton.title = "Edit".localized
             saveButton.isHidden = true
             if kind == .markdown {
                 renderMarkdownView(url: url)
@@ -419,13 +419,13 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         do {
             try body.write(to: url, atomically: true, encoding: .utf8)
             // Quick visual ack — flip the title for ~1.5s, then back.
-            saveButton.title = "Saved ✓"
+            saveButton.title = "Saved ✓".localized
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                self?.saveButton.title = "Save"
+                self?.saveButton.title = "Save".localized
             }
         } catch {
             let alert = NSAlert(error: error)
-            alert.messageText = "Couldn't save \(url.lastPathComponent)"
+            alert.messageText = String(format: "Couldn't save %@".localized, url.lastPathComponent)
             alert.beginSheetModal(for: self, completionHandler: nil)
         }
     }
@@ -440,14 +440,14 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
                let text = String(data: data, encoding: .utf8) {
                 return text
             }
-            return "# Could not read file\n\nPath: `\(url.path)`"
+            return String(format: "# Could not read file\n\nPath: `%@`".localized, url.path)
         }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             return String(data: data, encoding: .utf8)
-                ?? "# Could not decode content\n\nURL: \(url.absoluteString)"
+                ?? String(format: "# Could not decode content\n\nURL: %@".localized, url.absoluteString)
         } catch {
-            return "# Failed to load\n\n\(error.localizedDescription)\n\n`\(url.absoluteString)`"
+            return String(format: "# Failed to load\n\n%@\n\n`%@`".localized, error.localizedDescription, url.absoluteString)
         }
     }
 
@@ -620,7 +620,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
     private func updateWebFindCountLabel() {
         if webFindMatchCount == 0 {
-            webFindCountLabel.stringValue = webFindField.stringValue.isEmpty ? "" : "0 results"
+            webFindCountLabel.stringValue = webFindField.stringValue.isEmpty ? "" : "0 results".localized
         } else {
             webFindCountLabel.stringValue = "\(webFindCurrentIndex + 1) / \(webFindMatchCount)"
         }

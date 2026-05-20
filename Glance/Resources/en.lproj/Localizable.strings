@@ -1,0 +1,126 @@
+/* 
+  Localizable.strings
+  Glance
+
+  English localization
+*/
+
+// MARK: - App Name
+"Glance" = "Glance";
+
+// MARK: - Onboarding Window
+"Glance Needs Permissions" = "Glance Needs Permissions";
+"To enable image previews on hover, please grant the following permissions:" = "To enable image previews on hover, please grant the following permissions:";
+"Continue" = "Continue";
+"Don't show again" = "Don't show again";
+"Input Monitoring" = "Input Monitoring";
+"Required — detect when you hold the hotkey to activate preview mode." = "Required — detect when you hold the hotkey to activate preview mode.";
+"❌ Not Granted" = "❌ Not Granted";
+"Open Settings" = "Open Settings";
+"Accessibility" = "Accessibility";
+"Required — read the selected text in the active app so we know what to preview." = "Required — read the selected text in the active app so we know what to preview.";
+"Full Disk Access (Recommended)" = "Full Disk Access (Recommended)";
+"Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts." = "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts.";
+"ℹ️ Optional" = "ℹ️ Optional";
+"✅ Granted" = "✅ Granted";
+
+// MARK: - Preferences Window
+"Preferences" = "Preferences";
+"Glance Preferences" = "Glance Preferences";
+"Language" = "Language";
+"General" = "General";
+"Enable Image Hover Preview" = "Enable Image Hover Preview";
+"Read clipboard when no text is selected" = "Read clipboard when no text is selected";
+"Launch at Login" = "Launch at Login";
+"Maximum Preview Size" = "Maximum Preview Size";
+"%d px" = "%d px";
+"Activation Hotkey" = "Activation Hotkey";
+"Hold these keys while hovering to show previews:" = "Hold these keys while hovering to show previews:";
+"Control (⌃)" = "Control (⌃)";
+"Option (⌥)" = "Option (⌥)";
+"Reset to Defaults" = "Reset to Defaults";
+"(no hotkey — preview disabled)" = "(no hotkey — preview disabled)";
+"Current: " = "Current: ";
+
+// MARK: - Status Bar Menu
+"Preferences..." = "Preferences...";
+"Enable Preview" = "Enable Preview";
+"Permissions..." = "Permissions...";
+"History" = "History";
+"Clear Cache" = "Clear Cache";
+"Theme" = "Theme";
+"Login" = "Login";
+"Account" = "Account";
+"About Glance" = "About Glance";
+"Quit Glance" = "Quit Glance";
+"Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews." = "Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews.";
+"OK" = "OK";
+"Permissions ✅" = "Permissions ✅";
+"Permissions ⚠️" = "Permissions ⚠️";
+
+// MARK: - Preview Panel
+"Loading…" = "Loading…";
+"Failed" = "Failed";
+"Failed to load" = "Failed to load";
+"Reveal in Finder" = "Reveal in Finder";
+"Download" = "Download";
+"Download failed" = "Download failed";
+"in %@" = "in %@";
+
+// MARK: - Content Panel / Viewer
+"Save" = "Save";
+"Saved ✓" = "Saved ✓";
+"Edit" = "Edit";
+"View" = "View";
+"Diff" = "Diff";
+"Compare with Git" = "Compare with Git";
+"Find in page" = "Find in page";
+"Done" = "Done";
+"0 results" = "0 results";
+"Modified " = "Modified ";
+"Couldn't load Git diff" = "Couldn't load Git diff";
+"Couldn't save %@" = "Couldn't save %@";
+"# Could not read file\n\nPath: `%@`" = "# Could not read file\n\nPath: `%@`";
+"# Could not decode content\n\nURL: %@" = "# Could not decode content\n\nURL: %@";
+"# Failed to load\n\n%@\n\n`%@`" = "# Failed to load\n\n%@\n\n`%@`";
+
+// MARK: - Git Diff
+"Before - HEAD" = "Before - HEAD";
+"Before - New file" = "Before - New file";
+"After - Working Tree" = "After - Working Tree";
+"Last committed change" = "Last committed change";
+"No working-tree changes" = "No working-tree changes";
+
+// MARK: - History Window
+"Preview History" = "Preview History";
+"No preview history yet." = "No preview history yet.";
+"Clear History" = "Clear History";
+"Clear all history?" = "Clear all history?";
+"This removes the saved list of past previews. It does not affect any actual files." = "This removes the saved list of past previews. It does not affect any actual files.";
+"Clear" = "Clear";
+"Cancel" = "Cancel";
+
+// MARK: - Login Panel
+"Sign In" = "Sign In";
+
+// MARK: - Error Messages / Tooltips
+"No text selected" = "No text selected";
+"No image or video found in selection" = "No image or video found in selection";
+"No file found matching '%@'" = "No file found matching '%@'";
+"No media to preview" = "No media to preview";
+"Failed to load media" = "Failed to load media";
+
+// MARK: - Language Change Alert
+"Language Changed" = "Language Changed";
+"The language has been updated." = "The language has been updated.";
+
+// MARK: - File Access
+"Allow Glance to access your files" = "Allow Glance to access your files";
+"fda_alert_body" = "To find files Spotlight hasn't indexed yet, Glance needs Full Disk Access. Granting it here means we won't ask again for each folder (Documents, Desktop, Downloads).\n\nClick \"Open Settings\" to enable it in System Settings → Privacy & Security → Full Disk Access, then toggle Glance (or Glance) on. You may need to restart the app for it to take effect.";
+"Not Now" = "Not Now";
+
+// MARK: - Debug Window
+"Glance Debug" = "Glance Debug";
+"Run" = "Run";
+"Clean" = "Clean";
+"Paste any text — click Run (or press ⏎) to test detection." = "Paste any text — click Run (or press ⏎) to test detection.";

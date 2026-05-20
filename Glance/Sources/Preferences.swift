@@ -25,12 +25,36 @@ class Preferences {
         }
     }
 
+    enum AppLanguage: String, CaseIterable {
+        case english = "en"
+        case chinese = "zh-Hans"
+
+        var displayName: String {
+            switch self {
+            case .english: return "English"
+            case .chinese: return "简体中文"
+            }
+        }
+    }
+
     var theme: Theme {
         get {
             let raw = defaults.string(forKey: "\(suiteName).theme") ?? ""
             return Theme(rawValue: raw) ?? .system
         }
         set { defaults.set(newValue.rawValue, forKey: "\(suiteName).theme") }
+    }
+
+    var appLanguage: AppLanguage {
+        get {
+            let raw = defaults.string(forKey: "\(suiteName).language") ?? ""
+            return AppLanguage(rawValue: raw) ?? .english
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: "\(suiteName).language")
+            UserDefaults.standard.set([newValue.rawValue], forKey: "AppleLanguages")
+            UserDefaults.standard.synchronize()
+        }
     }
 
     var maxPreviewSize: CGFloat {
@@ -102,5 +126,6 @@ class Preferences {
         hotkeyModifiers = [.control]
         hotkeyRequiresOption = false
         hotkeyRequiresControl = true
+        appLanguage = .english
     }
 }

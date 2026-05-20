@@ -31,6 +31,10 @@ if [ -z "$BUILT_APP" ]; then
     exit 1
 fi
 
+if [ -d "./Resources" ]; then
+    cp -R "./Resources" "$BUILT_APP/Contents/Resources"
+fi
+
 DEST_APP="$(cd .. && pwd)/Glance.app"
 
 [ -d "$DEST_APP" ] && rm -rf "$DEST_APP"

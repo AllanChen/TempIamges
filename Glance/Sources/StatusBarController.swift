@@ -45,37 +45,37 @@ class StatusBarController: NSObject, NSMenuDelegate {
         menu = NSMenu()
         menu.delegate = self
 
-        let preferencesItem = NSMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ",")
+        let preferencesItem = NSMenuItem(title: "Preferences...".localized, action: #selector(openPreferences), keyEquivalent: ",")
         preferencesItem.target = self
         menu.addItem(preferencesItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        enableMenuItem = NSMenuItem(title: "Enable Preview", action: #selector(toggleEnable), keyEquivalent: "")
+        enableMenuItem = NSMenuItem(title: "Enable Preview".localized, action: #selector(toggleEnable), keyEquivalent: "")
         enableMenuItem.target = self
         enableMenuItem.state = Preferences.shared.enabled ? .on : .off
         menu.addItem(enableMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        permissionMenuItem = NSMenuItem(title: "Permissions...", action: #selector(openPermissions), keyEquivalent: "")
+        permissionMenuItem = NSMenuItem(title: "Permissions...".localized, action: #selector(openPermissions), keyEquivalent: "")
         permissionMenuItem.target = self
         menu.addItem(permissionMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let historyItem = NSMenuItem(title: "History", action: #selector(openHistory), keyEquivalent: "")
+        let historyItem = NSMenuItem(title: "History".localized, action: #selector(openHistory), keyEquivalent: "")
         historyItem.target = self
         menu.addItem(historyItem)
 
-        let clearCacheItem = NSMenuItem(title: "Clear Cache", action: #selector(clearCache), keyEquivalent: "")
+        let clearCacheItem = NSMenuItem(title: "Clear Cache".localized, action: #selector(clearCache), keyEquivalent: "")
         clearCacheItem.target = self
         menu.addItem(clearCacheItem)
 
         // Theme submenu — system / light / dark. Selection is reflected as
         // a checkmark in `menuWillOpen`.
-        let themeItem = NSMenuItem(title: "Theme", action: nil, keyEquivalent: "")
-        let themeSubmenu = NSMenu(title: "Theme")
+        let themeItem = NSMenuItem(title: "Theme".localized, action: nil, keyEquivalent: "")
+        let themeSubmenu = NSMenu(title: "Theme".localized)
         for theme in Preferences.Theme.allCases {
             let item = NSMenuItem(title: theme.displayName,
                                    action: #selector(selectTheme(_:)),
@@ -87,17 +87,17 @@ class StatusBarController: NSObject, NSMenuDelegate {
         themeItem.submenu = themeSubmenu
         menu.addItem(themeItem)
 
-        loginMenuItem = NSMenuItem(title: "Login", action: #selector(openLogin), keyEquivalent: "")
+        loginMenuItem = NSMenuItem(title: "Login".localized, action: #selector(openLogin), keyEquivalent: "")
         loginMenuItem.target = self
         menu.addItem(loginMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let aboutItem = NSMenuItem(title: "About Glance", action: #selector(showAbout), keyEquivalent: "")
+        let aboutItem = NSMenuItem(title: "About Glance".localized, action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
 
-        let quitItem = NSMenuItem(title: "Quit Glance", action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit Glance".localized, action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -140,10 +140,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func showAbout() {
         let alert = NSAlert()
-        alert.messageText = "Glance"
-        alert.informativeText = "Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews."
+        alert.messageText = "Glance".localized
+        alert.informativeText = "Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews.".localized
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "OK".localized)
         alert.runModal()
     }
 
@@ -167,20 +167,20 @@ class StatusBarController: NSObject, NSMenuDelegate {
         let accessibilityGranted = permissionManager.isAccessibilityGranted
 
         if inputMonitoringGranted && accessibilityGranted {
-            permissionMenuItem.title = "Permissions ✅"
+            permissionMenuItem.title = "Permissions ✅".localized
         } else {
             var missing: [String] = []
             if !inputMonitoringGranted { missing.append("Input Monitoring") }
             if !accessibilityGranted { missing.append("Accessibility") }
-            permissionMenuItem.title = "Permissions ⚠️"
+            permissionMenuItem.title = "Permissions ⚠️".localized
         }
 
-        loginMenuItem.title = AuthManager.shared.isSignedIn ? "Account" : "Login"
+        loginMenuItem.title = AuthManager.shared.isSignedIn ? "Account".localized : "Login".localized
 
         // Reflect the active theme in the submenu.
         let active = Preferences.shared.theme.rawValue
         for item in self.menu.items {
-            guard let submenu = item.submenu, submenu.title == "Theme" else { continue }
+            guard let submenu = item.submenu, submenu.title == "Theme".localized else { continue }
             for sub in submenu.items {
                 sub.state = ((sub.representedObject as? String) == active) ? .on : .off
             }

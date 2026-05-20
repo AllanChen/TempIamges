@@ -43,7 +43,7 @@ final class DebugInputWindow: NSWindow {
             backing: .buffered,
             defer: false
         )
-        title = "Glance Debug"
+        title = "Glance Debug".localized
         isReleasedWhenClosed = false
 
         // Stay visible across spaces, on top of normal app windows, and
@@ -76,21 +76,21 @@ final class DebugInputWindow: NSWindow {
         scroll.documentView = tv
         root.addSubview(scroll)
 
-        let runBtn = NSButton(title: "Run", target: self, action: #selector(runTapped))
+        let runBtn = NSButton(title: "Run".localized, target: self, action: #selector(runTapped))
         runBtn.bezelStyle = .rounded
         runBtn.keyEquivalent = "\r"   // Enter triggers Run
         runBtn.frame = NSRect(x: w - 96, y: 16, width: 80, height: 28)
         runBtn.autoresizingMask = [.minXMargin]
         root.addSubview(runBtn)
 
-        let cleanBtn = NSButton(title: "Clean", target: self, action: #selector(cleanTapped))
+        let cleanBtn = NSButton(title: "Clean".localized, target: self, action: #selector(cleanTapped))
         cleanBtn.bezelStyle = .rounded
         cleanBtn.frame = NSRect(x: w - 184, y: 16, width: 80, height: 28)
         cleanBtn.autoresizingMask = [.minXMargin]
         root.addSubview(cleanBtn)
 
         let hint = NSTextField(labelWithString:
-            "Paste any text — click Run (or press ⏎) to test detection.")
+            "Paste any text — click Run (or press ⏎) to test detection.".localized)
         hint.font = NSFont.systemFont(ofSize: 11)
         hint.textColor = .secondaryLabelColor
         hint.frame = NSRect(x: 16, y: 22, width: w - 208, height: 16)

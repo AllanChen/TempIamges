@@ -1,0 +1,126 @@
+/* 
+  Localizable.strings
+  Glance
+
+  简体中文 (Simplified Chinese)
+*/
+
+// MARK: - App Name
+"Glance" = "Glance";
+
+// MARK: - Onboarding Window
+"Glance Needs Permissions" = "Glance 需要权限";
+"To enable image previews on hover, please grant the following permissions:" = "要启用悬停图片预览，请授予以下权限：";
+"Continue" = "继续";
+"Don't show again" = "不再显示";
+"Input Monitoring" = "输入监听";
+"Required — detect when you hold the hotkey to activate preview mode." = "必需 — 检测你按住热键以激活预览模式。";
+"❌ Not Granted" = "❌ 未授权";
+"Open Settings" = "打开设置";
+"Accessibility" = "辅助功能";
+"Required — read the selected text in the active app so we know what to preview." = "必需 — 读取当前应用中选中的文本，以便我们知道要预览什么。";
+"Full Disk Access (Recommended)" = "完全磁盘访问（推荐）";
+"Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts." = "可选 — 让应用无需逐文件夹授权即可预览桌面/文稿/iCloud 中的文件。";
+"ℹ️ Optional" = "ℹ️ 可选";
+"✅ Granted" = "✅ 已授权";
+
+// MARK: - Preferences Window
+"Preferences" = "偏好设置";
+"Glance Preferences" = "Glance 偏好设置";
+"Language" = "语言";
+"General" = "通用";
+"Enable Image Hover Preview" = "启用悬停图片预览";
+"Read clipboard when no text is selected" = "未选中文本时读取剪贴板";
+"Launch at Login" = "登录时启动";
+"Maximum Preview Size" = "最大预览尺寸";
+"%d px" = "%d 像素";
+"Activation Hotkey" = "激活热键";
+"Hold these keys while hovering to show previews:" = "悬停时按住这些键以显示预览：";
+"Control (⌃)" = "Control (⌃)";
+"Option (⌥)" = "Option (⌥)";
+"Reset to Defaults" = "恢复默认";
+"(no hotkey — preview disabled)" = "（无热键 — 预览已禁用）";
+"Current: " = "当前：";
+
+// MARK: - Status Bar Menu
+"Preferences..." = "偏好设置…";
+"Enable Preview" = "启用预览";
+"Permissions..." = "权限…";
+"History" = "历史记录";
+"Clear Cache" = "清除缓存";
+"Theme" = "主题";
+"Login" = "登录";
+"Account" = "账户";
+"About Glance" = "关于 Glance";
+"Quit Glance" = "退出 Glance";
+"Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews." = "版本 1.0\n\n按住 Cmd+Shift 并将鼠标悬停在图片 URL 或文件路径上即可查看即时预览。";
+"OK" = "好";
+"Permissions ✅" = "权限 ✅";
+"Permissions ⚠️" = "权限 ⚠️";
+
+// MARK: - Preview Panel
+"Loading…" = "加载中…";
+"Failed" = "失败";
+"Failed to load" = "加载失败";
+"Reveal in Finder" = "在 Finder 中显示";
+"Download" = "下载";
+"Download failed" = "下载失败";
+"in %@" = "位于 %@";
+
+// MARK: - Content Panel / Viewer
+"Save" = "保存";
+"Saved ✓" = "已保存 ✓";
+"Edit" = "编辑";
+"View" = "查看";
+"Diff" = "差异";
+"Compare with Git" = "与 Git 比较";
+"Find in page" = "在页面中查找";
+"Done" = "完成";
+"0 results" = "0 个结果";
+"Modified " = "修改于 ";
+"Couldn't load Git diff" = "无法加载 Git 差异";
+"Couldn't save %@" = "无法保存 %@";
+"# Could not read file\n\nPath: `%@`" = "# 无法读取文件\n\n路径：`%@`";
+"# Could not decode content\n\nURL: %@" = "# 无法解码内容\n\nURL：%@";
+"# Failed to load\n\n%@\n\n`%@`" = "# 加载失败\n\n%@\n\n`%@`";
+
+// MARK: - Git Diff
+"Before - HEAD" = "修改前 - HEAD";
+"Before - New file" = "修改前 - 新文件";
+"After - Working Tree" = "修改后 - 工作区";
+"Last committed change" = "上次提交更改";
+"No working-tree changes" = "工作区无更改";
+
+// MARK: - History Window
+"Preview History" = "预览历史";
+"No preview history yet." = "暂无预览历史。";
+"Clear History" = "清除历史";
+"Clear all history?" = "清除所有历史？";
+"This removes the saved list of past previews. It does not affect any actual files." = "这将移除已保存的历史预览列表。不会影响任何实际文件。";
+"Clear" = "清除";
+"Cancel" = "取消";
+
+// MARK: - Login Panel
+"Sign In" = "登录";
+
+// MARK: - Error Messages / Tooltips
+"No text selected" = "未选中文本";
+"No image or video found in selection" = "选中内容中未找到图片或视频";
+"No file found matching '%@'" = "未找到匹配 '%@' 的文件";
+"No media to preview" = "没有可预览的媒体";
+"Failed to load media" = "加载媒体失败";
+
+// MARK: - Language Change Alert
+"Language Changed" = "语言已更改";
+"The language has been updated." = "语言已更新。";
+
+// MARK: - File Access
+"Allow Glance to access your files" = "允许 Glance 访问你的文件";
+"fda_alert_body" = "要查找 Spotlight 尚未索引的文件，Glance 需要完全磁盘访问权限。在此处授权意味着我们不会再针对每个文件夹（文稿、桌面、下载）重复请求。\n\n点击「打开设置」在系统设置 → 隐私与安全性 → 完全磁盘访问中启用，然后将 Glance（或 Glance）开关打开。你可能需要重启应用才能生效。";
+"Not Now" = "稍后";
+
+// MARK: - Debug Window
+"Glance Debug" = "Glance 调试";
+"Run" = "运行";
+"Clean" = "清空";
+"Paste any text — click Run (or press ⏎) to test detection." = "粘贴任意文本 — 点击运行（或按回车键）来测试识别。";

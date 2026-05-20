@@ -77,7 +77,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
         closeBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
         bar.addSubview(closeBtn)
 
-        let titleLbl = NSTextField(labelWithString: "Sign In")
+        let titleLbl = NSTextField(labelWithString: "Sign In".localized)
         titleLbl.textColor = .labelColor
         titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titleLbl.alignment = .center
@@ -190,7 +190,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
     }
 
     private func loadAuthPage(status: String? = nil) {
-        titleLabel?.stringValue = "Sign In"
+        titleLabel?.stringValue = "Sign In".localized
         let statusScript = status.map { "window.addEventListener('load', function() { window.GlanceAuth.setStatus(\(Self.jsString($0)), 'error'); });" } ?? ""
         let html = """
         <!DOCTYPE html>
@@ -363,7 +363,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
     }
 
     private func loadAccountPage(session: AuthSession) {
-        titleLabel?.stringValue = "Account"
+        titleLabel?.stringValue = "Account".localized
         let displayName = session.user.name?.isEmpty == false ? session.user.name! : session.user.email
         let email = session.user.email
         let provider = session.user.authProvider == "google" ? "Google" : "Email"

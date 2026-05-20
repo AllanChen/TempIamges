@@ -573,7 +573,7 @@ class PreviewPanel: NSPanel {
         bar.addSubview(closeBtn)
         singleCloseBtn = closeBtn
 
-        let titleLbl = NSTextField(labelWithString: "Glance")
+        let titleLbl = NSTextField(labelWithString: "Glance".localized)
         titleLbl.textColor = Self.textDark
         titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titleLbl.alignment = .center
@@ -882,9 +882,9 @@ class PreviewPanel: NSPanel {
         guard let button = loginButton else { return }
         let signedIn = AuthManager.shared.isSignedIn
         let symbol = signedIn ? "person.crop.circle.fill" : "person.circle"
-        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: signedIn ? "Account" : "Sign In")
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: signedIn ? "Account".localized : "Sign In".localized)
         button.contentTintColor = signedIn ? NSColor.systemBlue : Self.textDark
-        button.toolTip = signedIn ? "Account" : "Sign In"
+        button.toolTip = signedIn ? "Account".localized : "Sign In".localized
     }
 
     /// Downloads a remote URL to ~/Downloads. Drives the tile's progress UI;
@@ -1062,7 +1062,7 @@ final class MediaTileView: NSView {
     private let mediaContainer = NSView()
     private let imageLayer = CALayer()
     private let spinner = NSProgressIndicator()
-    private let loadingLabel = NSTextField(labelWithString: "Loading…")
+    private let loadingLabel = NSTextField(labelWithString: "Loading…".localized)
     private let shimmerLayer = CAGradientLayer()
     private var downloadBtn: NSButton?
     private let downloadSpinner = NSProgressIndicator()
@@ -1299,9 +1299,9 @@ final class MediaTileView: NSView {
         btn.target = self
         btn.action = #selector(locateTapped)
         btn.image = NSImage(systemSymbolName: "folder.fill",
-                             accessibilityDescription: "Reveal in Finder")
+                             accessibilityDescription: "Reveal in Finder".localized)
         btn.contentTintColor = .white
-        btn.toolTip = "Reveal in Finder"
+        btn.toolTip = "Reveal in Finder".localized
         addSubview(btn)
         locateBtn = btn
     }
@@ -1347,7 +1347,7 @@ final class MediaTileView: NSView {
         switch state {
         case .idle:
             downloadBtn?.image = NSImage(systemSymbolName: "arrow.down.circle.fill",
-                                          accessibilityDescription: "Download")
+                                          accessibilityDescription: "Download".localized)
             downloadBtn?.contentTintColor = .white
             downloadBtn?.isHidden = false
             downloadSpinner.stopAnimation(nil)
@@ -1359,15 +1359,15 @@ final class MediaTileView: NSView {
         case .downloaded:
             // Folder badge — clicking reveals the file in Finder.
             downloadBtn?.image = NSImage(systemSymbolName: "folder.fill",
-                                          accessibilityDescription: "Reveal in Finder")
+                                          accessibilityDescription: "Reveal in Finder".localized)
             downloadBtn?.contentTintColor = .white
-            downloadBtn?.toolTip = "Reveal in Finder"
+            downloadBtn?.toolTip = "Reveal in Finder".localized
             downloadBtn?.isHidden = false
             downloadSpinner.stopAnimation(nil)
             downloadSpinner.isHidden = true
         case .failed:
             downloadBtn?.image = NSImage(systemSymbolName: "exclamationmark.circle.fill",
-                                          accessibilityDescription: "Download failed")
+                                          accessibilityDescription: "Download failed".localized)
             downloadBtn?.contentTintColor = .systemRed
             downloadBtn?.isHidden = false
             downloadSpinner.stopAnimation(nil)
@@ -1526,7 +1526,7 @@ final class MediaTileView: NSView {
     func setFailed() {
         spinner.stopAnimation(nil)
         spinner.isHidden = true
-        loadingLabel.stringValue = "Failed"
+        loadingLabel.stringValue = "Failed".localized
         loadingLabel.textColor = .systemRed
         stopShimmer()
         filenameLabel?.isHidden = false
@@ -1535,7 +1535,7 @@ final class MediaTileView: NSView {
         // Dim the kind placeholder so the "Failed" label reads clearly.
         placeholderIconView?.alphaValue = 0.35
         if style == .masonry {
-            dimsLabel?.stringValue = "Failed to load"
+            dimsLabel?.stringValue = "Failed to load".localized
             dimsLabel?.textColor = .systemRed
         }
     }
@@ -1640,7 +1640,7 @@ final class MediaTileView: NSView {
                 pieces.append(f.string(fromByteCount: bytes))
             }
             if let hint = info.disambiguationHint, !hint.isEmpty {
-                pieces.append("in \(hint)")
+                pieces.append(String(format: "in %@".localized, hint))
             }
             dimsLabel?.stringValue = pieces.joined(separator: " · ")
             sizeLabel?.stringValue = ""
@@ -1660,7 +1660,7 @@ final class MediaTileView: NSView {
                 pieces.append(f.string(fromByteCount: bytes))
             }
             if let hint = info.disambiguationHint, !hint.isEmpty {
-                pieces.append("in \(hint)")
+                pieces.append(String(format: "in %@".localized, hint))
             }
             dimsLabel?.stringValue = pieces.joined(separator: " · ")
             sizeLabel?.stringValue = ""
@@ -1684,7 +1684,7 @@ final class MediaTileView: NSView {
         }
         if !info.formatName.isEmpty { pieces.append(info.formatName) }
         if let hint = info.disambiguationHint, !hint.isEmpty {
-            pieces.append("in \(hint)")
+            pieces.append(String(format: "in %@".localized, hint))
         }
         dimsLabel?.stringValue = pieces.joined(separator: " · ")
         sizeLabel?.stringValue = ""

@@ -35,7 +35,6 @@ targets:
       - Sources
     resources:
       - Resources
-      - PreviewContent
     dependencies: []
     settings:
       base:

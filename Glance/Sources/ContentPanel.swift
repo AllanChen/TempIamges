@@ -280,11 +280,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
         locateButton.bezelStyle = .rounded
         locateButton.image = NSImage(systemSymbolName: "folder.fill",
-                                       accessibilityDescription: "Reveal in Finder")
+                                       accessibilityDescription: "Reveal in Finder".localized)
         locateButton.imagePosition = .imageOnly
         locateButton.target = self
         locateButton.action = #selector(locateTapped)
-        locateButton.toolTip = "Reveal in Finder"
+        locateButton.toolTip = "Reveal in Finder".localized
         locateButton.frame = NSRect(x: currentRight - locateW, y: btnY,
                                      width: locateW, height: btnH)
         locateButton.autoresizingMask = [.minXMargin]
@@ -293,7 +293,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         currentRight -= locateW + gap
 
         saveButton.bezelStyle = .rounded
-        saveButton.title = "Save"
+        saveButton.title = "Save".localized
         saveButton.keyEquivalent = "s"
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
@@ -306,7 +306,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         currentRight -= saveW + gap
 
         toggleButton.bezelStyle = .rounded
-        toggleButton.title = "Edit"
+        toggleButton.title = "Edit".localized
         toggleButton.target = self
         toggleButton.action = #selector(toggleEditTapped)
         toggleButton.frame = NSRect(x: currentRight - editW, y: btnY,
@@ -317,10 +317,10 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         currentRight -= editW + gap
 
         gitDiffButton.bezelStyle = .rounded
-        gitDiffButton.title = "Diff"
+        gitDiffButton.title = "Diff".localized
         gitDiffButton.target = self
         gitDiffButton.action = #selector(gitDiffTapped)
-        gitDiffButton.toolTip = "Compare with Git"
+        gitDiffButton.toolTip = "Compare with Git".localized
         gitDiffButton.frame = NSRect(x: currentRight - diffW, y: btnY,
                                       width: diffW, height: btnH)
         gitDiffButton.autoresizingMask = [.minXMargin]
@@ -384,7 +384,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         findSep.autoresizingMask = [.width]
         webFindBar.addSubview(findSep)
 
-        webFindField.placeholderString = "Find in page"
+        webFindField.placeholderString = "Find in page".localized
         webFindField.frame = NSRect(x: 12, y: 6, width: 240, height: 24)
         webFindField.delegate = self
         webFindBar.addSubview(webFindField)
@@ -406,7 +406,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         nextBtn.autoresizingMask = [.minXMargin]
         webFindBar.addSubview(nextBtn)
 
-        let doneBtn = NSButton(title: "Done", target: self, action: #selector(hideWebFindBar))
+        let doneBtn = NSButton(title: "Done".localized, target: self, action: #selector(hideWebFindBar))
         doneBtn.bezelStyle = .rounded
         doneBtn.frame = NSRect(x: contentFrame.width - 60, y: 6, width: 50, height: 24)
         doneBtn.autoresizingMask = [.minXMargin]
@@ -434,7 +434,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         spinner.startAnimation(nil)
         overlay.addSubview(spinner)
 
-        let loadingLbl = NSTextField(labelWithString: "Loading…")
+        let loadingLbl = NSTextField(labelWithString: "Loading…".localized)
         loadingLbl.textColor = NSColor(white: 1, alpha: 0.7)
         loadingLbl.font = NSFont.systemFont(ofSize: 11, weight: .medium)
         loadingLbl.alignment = .center
@@ -500,7 +500,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         closeBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
         bar.addSubview(closeBtn)
 
-        let titleLbl = NSTextField(labelWithString: "Glance")
+        let titleLbl = NSTextField(labelWithString: "Glance".localized)
         titleLbl.textColor = .labelColor
         titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titleLbl.alignment = .center
@@ -555,7 +555,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             showToolbar()
             imageInfoBar.isHidden = true
             toggleButton.isHidden = false
-            toggleButton.title = "Edit"
+            toggleButton.title = "Edit".localized
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
             updateToolbarPath(for: info.url)
@@ -568,7 +568,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             showToolbar()
             imageInfoBar.isHidden = true
             toggleButton.isHidden = false
-            toggleButton.title = "Edit"
+            toggleButton.title = "Edit".localized
             saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
             updateToolbarPath(for: info.url)
@@ -706,11 +706,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         guard kind == .markdown || kind == .text else { return }
         isEditing.toggle()
         if isEditing {
-            toggleButton.title = "View"
+            toggleButton.title = "View".localized
             saveButton.isHidden = !url.isFileURL
             loadEditableText(url: url, prettyPrint: false)
         } else {
-            toggleButton.title = "Edit"
+            toggleButton.title = "Edit".localized
             saveButton.isHidden = true
             if kind == .markdown {
                 renderMarkdownView(url: url)
@@ -730,11 +730,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.gitDiffButton.isEnabled = true
-                self.gitDiffButton.title = "Diff"
+                self.gitDiffButton.title = "Diff".localized
 
                 guard let snapshot = snapshot else {
                     let alert = NSAlert()
-                    alert.messageText = "Couldn't load Git diff"
+                    alert.messageText = "Couldn't load Git diff".localized
                     alert.informativeText = context.fileURL.path
                     alert.beginSheetModal(for: self, completionHandler: nil)
                     return
@@ -766,13 +766,13 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         let body = textView.string
         do {
             try body.write(to: url, atomically: true, encoding: .utf8)
-            saveButton.title = "Saved ✓"
+            saveButton.title = "Saved ✓".localized
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                self?.saveButton.title = "Save"
+                self?.saveButton.title = "Save".localized
             }
         } catch {
             let alert = NSAlert(error: error)
-            alert.messageText = "Couldn't save \(url.lastPathComponent)"
+            alert.messageText = String(format: "Couldn't save %@".localized, url.lastPathComponent)
             alert.beginSheetModal(for: self, completionHandler: nil)
         }
     }
@@ -793,7 +793,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         currentGitContext = nil
         gitDiffButton.isHidden = true
         gitDiffButton.isEnabled = true
-        gitDiffButton.title = "Diff"
+        gitDiffButton.title = "Diff".localized
     }
 
     private func refreshGitDiffAvailability(for url: URL) {
@@ -913,7 +913,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
     private func updateWebFindCountLabel() {
         if webFindMatchCount == 0 {
-            webFindCountLabel.stringValue = webFindField.stringValue.isEmpty ? "" : "0 results"
+            webFindCountLabel.stringValue = webFindField.stringValue.isEmpty ? "" : "0 results".localized
         } else {
             webFindCountLabel.stringValue = "\(webFindCurrentIndex + 1) / \(webFindMatchCount)"
         }
@@ -1025,16 +1025,16 @@ private enum GitDiffService {
             let beforeTitle: String
             if context.isTracked || !context.history.isEmpty {
                 beforeText = showFile("HEAD", relativePath: context.relativePath, rootURL: context.rootURL) ?? ""
-                beforeTitle = "Before - HEAD"
+                beforeTitle = "Before - HEAD".localized
             } else {
                 beforeText = ""
-                beforeTitle = "Before - New file"
+                beforeTitle = "Before - New file".localized
             }
             return Snapshot(fileURL: context.fileURL,
                             rootURL: context.rootURL,
                             relativePath: context.relativePath,
                             beforeTitle: beforeTitle,
-                            afterTitle: "After - Working Tree",
+                            afterTitle: "After - Working Tree".localized,
                             beforeText: beforeText,
                             afterText: currentText,
                             summary: context.statusLine)
@@ -1052,18 +1052,18 @@ private enum GitDiffService {
                             afterTitle: "After - \(shortHash(afterRev))",
                             beforeText: beforeText,
                             afterText: afterText,
-                            summary: "Last committed change")
+                            summary: "Last committed change".localized)
         }
 
         let beforeText = showFile("HEAD", relativePath: context.relativePath, rootURL: context.rootURL) ?? currentText
         return Snapshot(fileURL: context.fileURL,
                         rootURL: context.rootURL,
                         relativePath: context.relativePath,
-                        beforeTitle: "Before - HEAD",
-                        afterTitle: "After - Working Tree",
+                        beforeTitle: "Before - HEAD".localized,
+                        afterTitle: "After - Working Tree".localized,
                         beforeText: beforeText,
                         afterText: currentText,
-                        summary: "No working-tree changes")
+                        summary: "No working-tree changes".localized)
     }
 
     private static func showFile(_ revision: String, relativePath: String, rootURL: URL) -> String? {

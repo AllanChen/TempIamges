@@ -32,11 +32,13 @@
 		E2E05277AA71ABA7538D1E89 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59D8600C79EDF16169AAED1B /* main.swift */; };
 		E3E2AD8D7041D3D756D6A7CD /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD95F30FC69AA12EDEE59F28 /* PermissionManager.swift */; };
 		E8A68919EBCFE158D8918BDB /* FilenameCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82487A06B07A2503B6D2FAC1 /* FilenameCache.swift */; };
+		EEDBCB39C263989AF783FAE6 /* String+Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1226FC2E8B5B461B9BE59026 /* String+Localization.swift */; };
 		FFF5D1228AA1650743EDF0F4 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3520FACC62177E559702CE /* ImageLoader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0C5179624322D2F186F271A1 /* HistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryManager.swift; sourceTree = "<group>"; };
+		1226FC2E8B5B461B9BE59026 /* String+Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Localization.swift"; sourceTree = "<group>"; };
 		1433E6467F5201FE5A730FEC /* PreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanel.swift; sourceTree = "<group>"; };
 		1D1FEF81F349C3468DF46A45 /* HistoryWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryWindow.swift; sourceTree = "<group>"; };
 		2A683F6DB94CE572022B5AA0 /* PreviewPanelPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanelPreview.swift; sourceTree = "<group>"; };
@@ -95,6 +97,7 @@
 				658FDB8BCED20C2ECE359B84 /* ScreenManager.swift */,
 				9E3752BB582E3A80CC0F50EB /* SelectedTextExtractor.swift */,
 				CCE03B0D47694EA64670432E /* StatusBarController.swift */,
+				1226FC2E8B5B461B9BE59026 /* String+Localization.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -198,6 +201,7 @@
 				AAE02EAD160CC4F1385DF930 /* ScreenManager.swift in Sources */,
 				DDC3B6DB4CA276E80EF371A9 /* SelectedTextExtractor.swift in Sources */,
 				AA5BDE8FB2A97259B0116087 /* StatusBarController.swift in Sources */,
+				EEDBCB39C263989AF783FAE6 /* String+Localization.swift in Sources */,
 				E2E05277AA71ABA7538D1E89 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

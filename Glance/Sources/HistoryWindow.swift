@@ -7,7 +7,7 @@ import AppKit
 final class HistoryWindow: NSWindow {
     private let scrollView = NSScrollView()
     private let docView = FlippedDocView()
-    private let emptyLabel = NSTextField(labelWithString: "No preview history yet.")
+    private let emptyLabel = NSTextField(labelWithString: "No preview history yet.".localized)
     private let toolbarBar = NSView()
     private let clearButton = NSButton()
 
@@ -33,7 +33,7 @@ final class HistoryWindow: NSWindow {
             backing: .buffered,
             defer: false
         )
-        self.title = "Preview History"
+        self.title = "Preview History".localized
         self.isReleasedWhenClosed = false
         self.center()
         self.minSize = NSSize(width: 520, height: 360)
@@ -98,7 +98,7 @@ final class HistoryWindow: NSWindow {
         toolbarBar.addSubview(sep)
 
         clearButton.bezelStyle = .rounded
-        clearButton.title = "Clear History"
+        clearButton.title = "Clear History".localized
         clearButton.target = self
         clearButton.action = #selector(clearTapped)
         clearButton.frame = NSRect(x: bounds.width - 130, y: 8,
@@ -251,11 +251,11 @@ final class HistoryWindow: NSWindow {
 
     @objc private func clearTapped() {
         let alert = NSAlert()
-        alert.messageText = "Clear all history?"
-        alert.informativeText = "This removes the saved list of past previews. It does not affect any actual files."
+        alert.messageText = "Clear all history?".localized
+        alert.informativeText = "This removes the saved list of past previews. It does not affect any actual files.".localized
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Clear")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Clear".localized)
+        alert.addButton(withTitle: "Cancel".localized)
         alert.beginSheetModal(for: self) { response in
             if response == .alertFirstButtonReturn {
                 HistoryManager.shared.clear()
