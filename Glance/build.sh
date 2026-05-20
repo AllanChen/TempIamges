@@ -32,8 +32,12 @@ if [ -z "$BUILT_APP" ]; then
 fi
 
 if [ -d "./Resources" ]; then
-    cp -R "./Resources" "$BUILT_APP/Contents/Resources"
+    mkdir -p "$BUILT_APP/Contents/Resources"
+    cp -R ./Resources/* "$BUILT_APP/Contents/Resources/"
 fi
+
+rm -rf "$BUILT_APP/Contents/Resources/Resources"
+rm -rf "$BUILT_APP/Contents/Resources/Assets.xcassets"
 
 if [ -d "./Resources/Assets.xcassets" ]; then
     mkdir -p "$BUILT_APP/Contents/Resources"
