@@ -35,6 +35,30 @@ if [ -d "./Resources" ]; then
     cp -R "./Resources" "$BUILT_APP/Contents/Resources"
 fi
 
+if [ -d "./Resources/Assets.xcassets" ]; then
+    mkdir -p "$BUILT_APP/Contents/Resources"
+    ASSETS_CAR="$BUILT_APP/Contents/Resources/Assets.car"
+    xcrun actool \
+        --output-format human-readable-text \
+        --notices --warnings \
+        --platform macosx \
+        --minimum-deployment-target 12.3 \
+        --target-device mac \
+        --app-icon AppIcon \
+        --development-region en \
+        --enable-on-demand-resources NO \
+        --output-partial-info-plist "$BUILT_APP/Contents/Resources/partial.plist" \
+        --compile "$BUILT_APP/Contents/Resources" \
+        "./Resources/Assets.xcassets" \
+        > /dev/null 2>&1
+    if [ -f "$ASSETS_CAR" ]; then
+        echo "  Compiled Assets.car"
+        rm -f "$BUILT_APP/Contents/Resources/partial.plist"
+    else
+        echo "  Warning: actool failed to compile Assets.car"
+    fi
+fi
+
 DEST_APP="$(cd .. && pwd)/Glance.app"
 
 [ -d "$DEST_APP" ] && rm -rf "$DEST_APP"
