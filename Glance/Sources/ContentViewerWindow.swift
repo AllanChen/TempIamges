@@ -28,6 +28,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private var webFindMatchCount = 0
     private var webFindCurrentIndex = -1
     private var escapeKeyMonitor: Any?
+    private var resizeCursorMonitor: Any?
 
     private enum Kind { case webpage, markdown, text, pdf }
     private var kind: Kind = .webpage
@@ -95,6 +96,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         self.title = "Glance".localized
         installEscapeKeyMonitor()
         observeThemeChanges()
+        installResizeCursorMonitor()
 
         buildLayout()
         showWebView()  // default
@@ -333,6 +335,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private func showTextView() {
         webView.isHidden = true
         textScroll.isHidden = false
+        makeFirstResponder(textView)
     }
 
     // MARK: - Loading helpers
@@ -501,7 +504,32 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         if let escapeKeyMonitor {
             NSEvent.removeMonitor(escapeKeyMonitor)
         }
+        if let resizeCursorMonitor {
+            NSEvent.removeMonitor(resizeCursorMonitor)
+        }
         NotificationCenter.default.removeObserver(self)
+    }
+
+    private func installResizeCursorMonitor() {
+        resizeCursorMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
+            guard let self = self, self.isVisible, event.window === self else { return event }
+            let loc = event.locationInWindow
+            let edgeSize: CGFloat = 8
+            let w = self.frame.width
+            let h = self.frame.height
+            let onLeft = loc.x <= edgeSize
+            let onRight = loc.x >= w - edgeSize
+            let onBottom = loc.y <= edgeSize
+            let onTop = loc.y >= h - edgeSize
+            switch (onTop, onBottom, onLeft, onRight) {
+            case (true, _, true, _), (_, true, _, true): NSCursor.crosshair.set()
+            case (true, _, _, true), (_, true, true, _): NSCursor.crosshair.set()
+            case (true, _, _, _), (_, true, _, _):       NSCursor.resizeUpDown.set()
+            case (_, _, true, _), (_, _, _, true):       NSCursor.resizeLeftRight.set()
+            default: break
+            }
+            return event
+        }
     }
 
     private func observeThemeChanges() {

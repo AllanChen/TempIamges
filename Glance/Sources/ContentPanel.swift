@@ -110,8 +110,10 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         buildLayout()
         showWebView()
         installEscapeKeyMonitors()
-        installGlobalMouseMonitor()
+        installMouseCursorMonitor()
     }
+
+    override var canBecomeKey: Bool { true }
 
     /// Move the panel so it sits immediately to the right of the given
     /// preview frame.  Called by PreviewPanel when it moves — unless the
@@ -202,20 +204,19 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         super.mouseUp(with: event)
     }
 
-    private func installGlobalMouseMonitor() {
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] _ in
-            guard let self = self, self.isVisible else { return }
-            let mouseScreen = NSEvent.mouseLocation
-            guard self.frame.contains(mouseScreen) else { return }
-            let loc = self.convertPoint(fromScreen: mouseScreen)
+    private func installMouseCursorMonitor() {
+        globalMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
+            guard let self = self, self.isVisible, event.window === self else { return event }
+            let loc = event.locationInWindow
             let edge = self.resizeEdge(at: loc)
             switch edge {
             case .top, .bottom: NSCursor.resizeUpDown.set()
             case .left, .right: NSCursor.resizeLeftRight.set()
             case .topLeft, .bottomRight: NSCursor.crosshair.set()
             case .topRight, .bottomLeft: NSCursor.crosshair.set()
-            case .none: NSCursor.arrow.set()
+            case .none: break
             }
+            return event
         }
     }
 
@@ -684,6 +685,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private func showTextView() {
         webView.isHidden = true
         textScroll.isHidden = false
+        makeFirstResponder(textView)
     }
 
     private func showAddressBar(for url: URL) {
