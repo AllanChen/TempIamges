@@ -42,15 +42,20 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     private func updateMenuBarIcon() {
         guard let button = statusItem.button else { return }
-        button.title = "􁔕"
-        button.image = nil
+        let text = "􁔕"
+        let attrs: [NSAttributedString.Key: Any]
         if Preferences.shared.enabled {
-            button.contentTintColor = .controlAccentColor
-            button.alphaValue = 1.0
+            attrs = [.foregroundColor: NSColor.controlAccentColor]
         } else {
-            button.contentTintColor = .secondaryLabelColor
-            button.alphaValue = 0.5
+            attrs = [
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                .strikethroughColor: NSColor.secondaryLabelColor,
+                .baselineOffset: 0
+            ]
         }
+        button.attributedTitle = NSAttributedString(string: text, attributes: attrs)
+        button.image = nil
     }
 
     private func createMenu() -> NSMenu {
