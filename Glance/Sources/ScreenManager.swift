@@ -36,6 +36,13 @@ class ScreenManager {
         return NSRect(x: originX, y: originY, width: panelSize.width, height: panelSize.height)
     }
 
+    func centerFrame(for panelSize: NSSize, on screen: NSScreen) -> NSRect {
+        let screenFrame = screen.visibleFrame
+        let originX = screenFrame.midX - panelSize.width / 2
+        let originY = screenFrame.midY - panelSize.height / 2
+        return NSRect(x: originX, y: originY, width: panelSize.width, height: panelSize.height)
+    }
+
     func scaleFactorForMouseLocation(_ location: CGPoint) -> CGFloat {
         return screenForMouseLocation(location)?.backingScaleFactor ?? 1.0
     }

@@ -36,8 +36,10 @@
 "%d px" = "%d px";
 "Activation Hotkey" = "Activation Hotkey";
 "Hold these keys while hovering to show previews:" = "Hold these keys while hovering to show previews:";
-"Control (⌃)" = "Control (⌃)";
 "Option (⌥)" = "Option (⌥)";
+"Custom" = "Custom";
+"Click to record shortcut" = "Click to record shortcut";
+"Press shortcut..." = "Press shortcut...";
 "Reset to Defaults" = "Reset to Defaults";
 "(no hotkey — preview disabled)" = "(no hotkey — preview disabled)";
 "Current: " = "Current: ";

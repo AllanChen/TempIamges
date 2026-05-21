@@ -37,6 +37,18 @@ class Preferences {
         }
     }
 
+    enum ActivationMode: String, CaseIterable {
+        case option = "option"
+        case custom = "custom"
+
+        var displayName: String {
+            switch self {
+            case .option: return "Option (⌥)".localized
+            case .custom: return "Custom".localized
+            }
+        }
+    }
+
     var theme: Theme {
         get {
             let raw = defaults.string(forKey: "\(suiteName).theme") ?? ""
@@ -82,22 +94,32 @@ class Preferences {
         set { defaults.set(newValue, forKey: "\(suiteName).loginURL") }
     }
 
-    var hotkeyModifiers: NSEvent.ModifierFlags {
+    var activationMode: ActivationMode {
         get {
-            let rawValue = UInt(defaults.integer(forKey: "\(suiteName).hotkeyModifiers"))
+            let raw = defaults.string(forKey: "\(suiteName).activationMode") ?? ""
+            if raw.isEmpty {
+                let hadControl = defaults.bool(forKey: "\(suiteName).hotkeyRequiresControl")
+                let hadOption  = defaults.bool(forKey: "\(suiteName).hotkeyRequiresOption")
+                return (hadControl || hadOption) ? .option : .option
+            }
+            return ActivationMode(rawValue: raw) ?? .option
+        }
+        set { defaults.set(newValue.rawValue, forKey: "\(suiteName).activationMode") }
+    }
+
+    var customHotkeyModifiers: NSEvent.ModifierFlags {
+        get {
+            let rawValue = UInt(defaults.integer(forKey: "\(suiteName).customHotkeyModifiers"))
             return NSEvent.ModifierFlags(rawValue: rawValue)
         }
-        set { defaults.set(Int(newValue.rawValue), forKey: "\(suiteName).hotkeyModifiers") }
+        set { defaults.set(Int(newValue.rawValue), forKey: "\(suiteName).customHotkeyModifiers") }
     }
 
-    var hotkeyRequiresOption: Bool {
-        get { defaults.bool(forKey: "\(suiteName).hotkeyRequiresOption") }
-        set { defaults.set(newValue, forKey: "\(suiteName).hotkeyRequiresOption") }
-    }
-
-    var hotkeyRequiresControl: Bool {
-        get { defaults.bool(forKey: "\(suiteName).hotkeyRequiresControl") }
-        set { defaults.set(newValue, forKey: "\(suiteName).hotkeyRequiresControl") }
+    var effectiveModifiers: NSEvent.ModifierFlags {
+        switch activationMode {
+        case .option: return .option
+        case .custom: return customHotkeyModifiers
+        }
     }
 
     private init() {
@@ -110,9 +132,8 @@ class Preferences {
             "\(suiteName).enabled": true,
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
-            "\(suiteName).hotkeyModifiers": Int(NSEvent.ModifierFlags([.control]).rawValue),
-            "\(suiteName).hotkeyRequiresOption": false,
-            "\(suiteName).hotkeyRequiresControl": true
+            "\(suiteName).activationMode": ActivationMode.option.rawValue,
+            "\(suiteName).customHotkeyModifiers": 0
         ]
         defaults.register(defaults: defaultValues)
     }
@@ -123,9 +144,8 @@ class Preferences {
         launchAtLogin = false
         readClipboard = true
         loginURL = nil
-        hotkeyModifiers = [.control]
-        hotkeyRequiresOption = false
-        hotkeyRequiresControl = true
+        activationMode = .option
+        customHotkeyModifiers = []
         appLanguage = .english
     }
 }

@@ -36,8 +36,10 @@
 "%d px" = "%d 像素";
 "Activation Hotkey" = "激活热键";
 "Hold these keys while hovering to show previews:" = "悬停时按住这些键以显示预览：";
-"Control (⌃)" = "Control (⌃)";
 "Option (⌥)" = "Option (⌥)";
+"Custom" = "自定义";
+"Click to record shortcut" = "点击录制热键";
+"Press shortcut..." = "按下热键…";
 "Reset to Defaults" = "恢复默认";
 "(no hotkey — preview disabled)" = "（无热键 — 预览已禁用）";
 "Current: " = "当前：";

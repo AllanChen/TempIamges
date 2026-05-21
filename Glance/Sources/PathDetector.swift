@@ -147,6 +147,7 @@ class PathDetector {
     private let homePathRegex: NSRegularExpression
     private let relativePathRegex: NSRegularExpression
     private let bareFilenameRegex: NSRegularExpression
+    private let bareFilenameNoExtRegex: NSRegularExpression
     private let allRegexes: [NSRegularExpression]
 
     init() {
@@ -215,6 +216,10 @@ class PathDetector {
         // (not preceded by slashes, tildes, dots, dashes, or alphanumerics).
         self.bareFilenameRegex = try! NSRegularExpression(
             pattern: "(?<![\\p{L}\\p{N}_./~\\-])[\\p{L}\\p{N}_][\\p{L}\\p{N}_.\\- ]{2,}\\.(?i:\(extAlt))(?![\\p{L}\\p{N}])",
+            options: []
+        )
+        self.bareFilenameNoExtRegex = try! NSRegularExpression(
+            pattern: "(?<![\\p{L}\\p{N}_./~\\-])[\\p{L}\\p{N}_][\\p{L}\\p{N}_\\-]{2,29}(?![\\p{L}\\p{N}])",
             options: []
         )
 
@@ -339,26 +344,38 @@ class PathDetector {
             }
         }
 
-        // ─── Phase C: bare-filename regex. ─────────────────────────────────
-        // Always runs (alongside Phase A+B). The regex itself is strict
-        // (stem ≥3 chars, supported extension, word boundaries), and we cap
-        // at 16 candidates as a backstop against pathological inputs.
         let maxBareCandidates = 16
-        do {
-            var bareCount = 0
-            bareFilenameRegex.enumerateMatches(in: text, options: [], range: full) { m, _, stop in
+        var bareCount = 0
+        bareFilenameRegex.enumerateMatches(in: text, options: [], range: full) { m, _, stop in
+            guard let m = m else { return }
+            let token = ns.substring(with: m.range)
+            if seen.insert(token).inserted {
+                Logger.info("PathDetector: bare filename candidate '\(token)'")
+                results.append(.unresolvedFilename(token))
+                bareCount += 1
+                if bareCount >= maxBareCandidates {
+                    stop.pointee = true
+                }
+            }
+        }
+
+        if results.isEmpty {
+            let maxNoExtCandidates = 3
+            var noExtCount = 0
+            bareFilenameNoExtRegex.enumerateMatches(in: text, options: [], range: full) { m, _, stop in
                 guard let m = m else { return }
                 let token = ns.substring(with: m.range)
-                if seen.insert(token).inserted {
-                    Logger.info("PathDetector: bare filename candidate '\(token)'")
+                if token.count >= 3 && token.count <= 30 && seen.insert(token).inserted {
+                    Logger.info("PathDetector: no-ext candidate '\(token)'")
                     results.append(.unresolvedFilename(token))
-                    bareCount += 1
-                    if bareCount >= maxBareCandidates {
+                    noExtCount += 1
+                    if noExtCount >= maxNoExtCandidates {
                         stop.pointee = true
                     }
                 }
             }
         }
+
         return results
     }
 

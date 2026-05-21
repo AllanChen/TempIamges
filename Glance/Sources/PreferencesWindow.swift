@@ -1,15 +1,70 @@
 import AppKit
 
-class PreferencesWindow: NSWindow {
+protocol ShortcutRecorderDelegate: AnyObject {
+    func shortcutRecorderDidBeginRecording(_ recorder: ShortcutRecorderField)
+    func shortcutRecorder(_ recorder: ShortcutRecorderField, didRecordModifiers modifiers: NSEvent.ModifierFlags)
+    func shortcutRecorderDidEndRecording(_ recorder: ShortcutRecorderField)
+    func shortcutRecorderDidCancelRecording(_ recorder: ShortcutRecorderField)
+}
+
+final class ShortcutRecorderField: NSTextField {
+    weak var recorderDelegate: ShortcutRecorderDelegate?
+    private(set) var isRecording: Bool = false
+
+    override var acceptsFirstResponder: Bool { isRecording }
+
+    func beginRecording() {
+        guard !isRecording else { return }
+        isRecording = true
+        window?.makeFirstResponder(self)
+        recorderDelegate?.shortcutRecorderDidBeginRecording(self)
+    }
+
+    func endRecording() {
+        guard isRecording else { return }
+        isRecording = false
+        window?.makeFirstResponder(nil)
+        recorderDelegate?.shortcutRecorderDidEndRecording(self)
+    }
+
+    func cancelRecording() {
+        guard isRecording else { return }
+        isRecording = false
+        window?.makeFirstResponder(nil)
+        recorderDelegate?.shortcutRecorderDidCancelRecording(self)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if !isRecording {
+            beginRecording()
+        }
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        guard isRecording else { return }
+        let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        recorderDelegate?.shortcutRecorder(self, didRecordModifiers: mods)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard isRecording else { return }
+        if event.keyCode == 53 {
+            cancelRecording()
+        }
+    }
+}
+
+class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private var maxSizeSlider: NSSlider!
     private var maxSizeLabel: NSTextField!
     private var enabledCheckbox: NSButton!
     private var launchAtLoginCheckbox: NSButton!
     private var readClipboardCheckbox: NSButton!
-    private var optionCheckbox: NSButton!
-    private var controlCheckbox: NSButton!
+    private var modePopup: NSPopUpButton!
+    private var customShortcutField: ShortcutRecorderField!
     private var currentHotkeyLabel: NSTextField!
     private var languagePopup: NSPopUpButton!
+    private var recordedModifiers: NSEvent.ModifierFlags = []
 
     init() {
         let windowRect = NSRect(x: 0, y: 0, width: 460, height: 455)
@@ -99,18 +154,30 @@ class PreferencesWindow: NSWindow {
         hotkeyDesc.frame = NSRect(x: 20, y: 105, width: 400, height: 20)
         containerView.addSubview(hotkeyDesc)
 
-        controlCheckbox = NSButton(checkboxWithTitle: "Control (⌃)".localized, target: self, action: #selector(hotkeyChanged))
-        controlCheckbox.frame = NSRect(x: 20, y: 75, width: 140, height: 20)
-        containerView.addSubview(controlCheckbox)
+        modePopup = NSPopUpButton(frame: NSRect(x: 20, y: 75, width: 160, height: 24), pullsDown: false)
+        modePopup.target = self
+        modePopup.action = #selector(modeChanged)
+        for m in Preferences.ActivationMode.allCases {
+            modePopup.addItem(withTitle: m.displayName.localized)
+            modePopup.lastItem?.representedObject = m.rawValue
+        }
+        containerView.addSubview(modePopup)
 
-        optionCheckbox = NSButton(checkboxWithTitle: "Option (⌥)".localized, target: self, action: #selector(hotkeyChanged))
-        optionCheckbox.frame = NSRect(x: 170, y: 75, width: 140, height: 20)
-        containerView.addSubview(optionCheckbox)
+        customShortcutField = ShortcutRecorderField(frame: NSRect(x: 190, y: 75, width: 200, height: 24))
+        customShortcutField.isEditable = false
+        customShortcutField.isSelectable = false
+        customShortcutField.alignment = .center
+        customShortcutField.isBordered = true
+        customShortcutField.backgroundColor = .textBackgroundColor
+        customShortcutField.font = NSFont.systemFont(ofSize: 13)
+        customShortcutField.placeholderString = "Click to record shortcut".localized
+        customShortcutField.recorderDelegate = self
+        containerView.addSubview(customShortcutField)
 
         currentHotkeyLabel = NSTextField(labelWithString: "")
         currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
         currentHotkeyLabel.textColor = .secondaryLabelColor
-        currentHotkeyLabel.frame = NSRect(x: 20, y: 50, width: 420, height: 20)
+        currentHotkeyLabel.frame = NSRect(x: 20, y: 46, width: 420, height: 20)
         containerView.addSubview(currentHotkeyLabel)
 
         let resetButton = NSButton(title: "Reset to Defaults".localized, target: self, action: #selector(resetToDefaults))
@@ -126,10 +193,31 @@ class PreferencesWindow: NSWindow {
         enabledCheckbox.state = prefs.enabled ? .on : .off
         readClipboardCheckbox.state = prefs.readClipboard ? .on : .off
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
-        optionCheckbox.state = prefs.hotkeyRequiresOption ? .on : .off
-        controlCheckbox.state = prefs.hotkeyRequiresControl ? .on : .off
-        updateCurrentHotkeyLabel()
+        updateModePopup()
+        updateHotkeyUI()
         updateLanguagePopup()
+    }
+
+    private func updateModePopup() {
+        let current = Preferences.shared.activationMode.rawValue
+        for (index, item) in modePopup.itemArray.enumerated() {
+            if (item.representedObject as? String) == current {
+                modePopup.selectItem(at: index)
+                break
+            }
+        }
+    }
+
+    private func updateHotkeyUI() {
+        let prefs = Preferences.shared
+        let isCustom = prefs.activationMode == .custom
+        customShortcutField.isHidden = !isCustom
+        if isCustom {
+            let mods = prefs.customHotkeyModifiers
+            customShortcutField.stringValue = modifierString(mods)
+        customShortcutField.placeholderString = "Click to record shortcut".localized
+        }
+        updateCurrentHotkeyLabel()
     }
 
     private func updateLanguagePopup() {
@@ -161,12 +249,58 @@ class PreferencesWindow: NSWindow {
     }
 
     private func updateCurrentHotkeyLabel() {
-        var parts: [String] = []
-        if controlCheckbox.state == .on { parts.append("⌃") }
-        if optionCheckbox.state == .on  { parts.append("⌥") }
-        currentHotkeyLabel.stringValue = parts.isEmpty
+        let modifiers = Preferences.shared.effectiveModifiers
+        let symbol = modifierString(modifiers)
+        currentHotkeyLabel.stringValue = symbol.isEmpty
             ? "(no hotkey — preview disabled)".localized
-            : "Current: ".localized + parts.joined(separator: " + ")
+            : "Current: ".localized + symbol
+    }
+
+    private func modifierString(_ modifiers: NSEvent.ModifierFlags) -> String {
+        var parts: [String] = []
+        if modifiers.contains(.control) { parts.append("⌃") }
+        if modifiers.contains(.option)  { parts.append("⌥") }
+        if modifiers.contains(.command) { parts.append("⌘") }
+        if modifiers.contains(.shift)   { parts.append("⇧") }
+        return parts.joined(separator: " + ")
+    }
+
+    @objc private func modeChanged(_ sender: NSPopUpButton) {
+        guard let raw = sender.selectedItem?.representedObject as? String,
+              let mode = Preferences.ActivationMode(rawValue: raw) else { return }
+        Preferences.shared.activationMode = mode
+        updateHotkeyUI()
+        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+    }
+
+    func shortcutRecorderDidBeginRecording(_ recorder: ShortcutRecorderField) {
+        recordedModifiers = []
+        customShortcutField.stringValue = ""
+        customShortcutField.placeholderString = "Press shortcut...".localized
+        customShortcutField.textColor = .systemBlue
+    }
+
+    func shortcutRecorder(_ recorder: ShortcutRecorderField, didRecordModifiers modifiers: NSEvent.ModifierFlags) {
+        if modifiers.isEmpty {
+            if !recordedModifiers.isEmpty {
+                recorder.endRecording()
+            }
+        } else {
+            recordedModifiers = recordedModifiers.union(modifiers)
+            customShortcutField.stringValue = modifierString(recordedModifiers)
+        }
+    }
+
+    func shortcutRecorderDidEndRecording(_ recorder: ShortcutRecorderField) {
+        Preferences.shared.customHotkeyModifiers = recordedModifiers
+        customShortcutField.textColor = .labelColor
+        updateHotkeyUI()
+        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+    }
+
+    func shortcutRecorderDidCancelRecording(_ recorder: ShortcutRecorderField) {
+        customShortcutField.textColor = .labelColor
+        updateHotkeyUI()
     }
 
     @objc private func maxSizeChanged(_ sender: NSSlider) {
@@ -188,13 +322,6 @@ class PreferencesWindow: NSWindow {
 
     @objc private func launchAtLoginToggled(_ sender: NSButton) {
         Preferences.shared.launchAtLogin = sender.state == .on
-        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
-    }
-
-    @objc private func hotkeyChanged(_ sender: NSButton) {
-        Preferences.shared.hotkeyRequiresOption = optionCheckbox.state == .on
-        Preferences.shared.hotkeyRequiresControl = controlCheckbox.state == .on
-        updateCurrentHotkeyLabel()
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 

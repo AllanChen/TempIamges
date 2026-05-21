@@ -613,9 +613,8 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         default:
             currentURL = info.url
             kind = .webpage
-            showToolbar()
+            showAddressBar(for: info.url)
             imageInfoBar.isHidden = true
-            locateButton.isHidden = !info.url.isFileURL
             updateToolbarPath(for: info.url)
             webView.load(URLRequest(url: info.url))
             showWebView()
@@ -696,6 +695,9 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         modifiedLabel.isHidden = true
         addressBar.isHidden = false
         addressBar.stringValue = url.absoluteString
+        addressBar.isEditable = true
+        addressBar.target = self
+        addressBar.action = #selector(addressBarSubmitted)
     }
 
     private func showToolbar() {
@@ -761,6 +763,20 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     @objc private func locateTapped() {
         guard let url = currentURL, url.isFileURL else { return }
         NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    @objc private func addressBarSubmitted() {
+        let text = addressBar.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let urlString: String
+        if text.lowercased().hasPrefix("http://") || text.lowercased().hasPrefix("https://") {
+            urlString = text
+        } else {
+            urlString = "https://\(text)"
+        }
+        guard let url = URL(string: urlString) else { return }
+        currentURL = url
+        webView.load(URLRequest(url: url))
     }
 
     @objc private func saveTapped() {

@@ -175,12 +175,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     @objc private func previewModeActivated() {
-        // Toggle: if a preview is already visible, dismiss it. Otherwise
-        // start a fresh preview cycle.
         if let panel = previewPanel, panel.isVisible {
             panel.closePanel()
             previewModeDeactivated()
-            return
         }
         activatePreview(injectedText: nil)
     }
@@ -462,7 +459,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         panel.load(info: info)
         let mousePos = NSEvent.mouseLocation
         let contentSize = NSSize(width: 700, height: 600)
-        let frame = ScreenManager.shared.adjustedFrame(for: contentSize, at: mousePos, offset: CGPoint(x: 20, y: 0))
+        let screen = ScreenManager.shared.screenForMouseLocation(mousePos) ?? NSScreen.main
+        let frame = screen.map { ScreenManager.shared.centerFrame(for: contentSize, on: $0) }
+            ?? NSRect(origin: mousePos, size: contentSize)
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
         panel.makeKey()

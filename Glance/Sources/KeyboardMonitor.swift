@@ -47,15 +47,13 @@ class KeyboardMonitor: NSObject {
     }
 
     var previewModeActive: Bool {
-        let prefs = Preferences.shared
-        let needsOpt = prefs.hotkeyRequiresOption
-        let needsCtrl = prefs.hotkeyRequiresControl
-        // No modifier configured — never activate.
-        guard needsOpt || needsCtrl else { return false }
-        // Subset match: every required modifier must be held. Cmd and Shift
-        // are never required so holding them never blocks activation.
-        return (!needsOpt  || optionHeld)
-            && (!needsCtrl || controlHeld)
+        let required = Preferences.shared.effectiveModifiers
+        guard !required.isEmpty else { return false }
+        if required.contains(.option)  && !optionHeld  { return false }
+        if required.contains(.control) && !controlHeld { return false }
+        if required.contains(.command) && !cmdHeld     { return false }
+        if required.contains(.shift)   && !shiftHeld   { return false }
+        return true
     }
 
     func startMonitoring() -> Bool {
