@@ -373,7 +373,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         // hotkey is released.  It is only dismissed by clicking the X
         // button or by re-pressing the hotkey (toggle).
         errorTooltip?.hide()
-        fileNameResolver?.cancelAll()
+        // 不要取消正在进行的文件搜索 —— 用户释放热键后面板应保持可见，
+        // 搜索完成后应自动显示结果。取消搜索会导致文件已找到但无法显示。
+        // fileNameResolver?.cancelAll()
         currentPath = nil
         isLoadingImage = false
         lastSelectedText = nil
