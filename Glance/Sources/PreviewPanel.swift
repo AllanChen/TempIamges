@@ -295,7 +295,7 @@ class PreviewPanel: NSPanel {
         return root
     }
 
-    func updateTile(at index: Int, with media: LoadedMedia?) {
+    func updateTile(at index: Int, with media: LoadedMedia?, failedMessage: String? = nil) {
         guard tiles.indices.contains(index) else { return }
         let tile = tiles[index]
         if let m = media {
@@ -309,7 +309,7 @@ class PreviewPanel: NSPanel {
                 // not overwrite it with the filename when media finishes loading.
             }
         } else {
-            tile.setFailed()
+            tile.setFailed(message: failedMessage)
         }
         if currentMode == .singleCard, tiles.count == 1, let m = media {
             relayoutSingleCard(with: m)
@@ -1523,10 +1523,10 @@ final class MediaTileView: NSView {
         }
     }
 
-    func setFailed() {
+    func setFailed(message: String? = nil) {
         spinner.stopAnimation(nil)
         spinner.isHidden = true
-        loadingLabel.stringValue = "Failed".localized
+        loadingLabel.stringValue = message ?? "Failed".localized
         loadingLabel.textColor = .systemRed
         stopShimmer()
         filenameLabel?.isHidden = false
@@ -1535,7 +1535,7 @@ final class MediaTileView: NSView {
         // Dim the kind placeholder so the "Failed" label reads clearly.
         placeholderIconView?.alphaValue = 0.35
         if style == .masonry {
-            dimsLabel?.stringValue = "Failed to load".localized
+            dimsLabel?.stringValue = message ?? "Failed to load".localized
             dimsLabel?.textColor = .systemRed
         }
     }

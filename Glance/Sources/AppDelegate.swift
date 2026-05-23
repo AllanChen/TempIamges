@@ -277,6 +277,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                                  tokens: [String],
                                  at anchor: CGPoint) {
         let uniqueTokens = NSOrderedSet(array: tokens).array as? [String] ?? tokens
+        
+        // 先显示 loading 面板，让用户知道搜索正在进行
+        let loadingInfo = MediaInfo(url: URL(fileURLWithPath: "/dev/null"), isLocal: true, kind: .other)
+        self.previewPanel?.showLoading(infos: [loadingInfo], at: anchor)
 
         let group = DispatchGroup()
         var resultsByToken: [String: [FileNameResolver.Match]] = [:]
@@ -314,12 +318,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             let combined = resolved + spotlightPaths
 
             guard !combined.isEmpty else {
-                self.previewPanel?.hidePanel()
                 let label = uniqueTokens.first ?? ""
-                self.showErrorTooltip(
-                    message: String(format: "No file found matching '%@'".localized, label),
-                    at: anchor
-                )
+                let failMessage = String(format: "No file found matching '%@'".localized, label)
+                // 更新现有 tile 显示失败信息，而不是隐藏面板
+                self.previewPanel?.updateTile(at: 0, with: nil, failedMessage: failMessage)
                 return
             }
 
