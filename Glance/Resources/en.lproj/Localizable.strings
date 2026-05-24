@@ -32,8 +32,6 @@
 "Enable Image Hover Preview" = "Enable Image Hover Preview";
 "Read clipboard when no text is selected" = "Read clipboard when no text is selected";
 "Launch at Login" = "Launch at Login";
-"Maximum Preview Size" = "Maximum Preview Size";
-"%d px" = "%d px";
 "Activation Hotkey" = "Activation Hotkey";
 "Hold these keys while hovering to show previews:" = "Hold these keys while hovering to show previews:";
 "Option (⌥)" = "Option (⌥)";

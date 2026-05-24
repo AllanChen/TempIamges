@@ -55,8 +55,6 @@ final class ShortcutRecorderField: NSTextField {
 }
 
 class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
-    private var maxSizeSlider: NSSlider!
-    private var maxSizeLabel: NSTextField!
     private var enabledCheckbox: NSButton!
     private var launchAtLoginCheckbox: NSButton!
     private var readClipboardCheckbox: NSButton!
@@ -67,7 +65,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private var recordedModifiers: NSEvent.ModifierFlags = []
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 460, height: 455)
+        let windowRect = NSRect(x: 0, y: 0, width: 460, height: 360)
         super.init(
             contentRect: windowRect,
             styleMask: [.titled, .closable],
@@ -92,15 +90,15 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
         let titleLabel = NSTextField(labelWithString: "Glance Preferences".localized)
         titleLabel.font = NSFont.boldSystemFont(ofSize: 16)
-        titleLabel.frame = NSRect(x: 20, y: 415, width: 420, height: 24)
+        titleLabel.frame = NSRect(x: 20, y: 320, width: 420, height: 24)
         containerView.addSubview(titleLabel)
 
         let languageLabel = NSTextField(labelWithString: "Language".localized)
         languageLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        languageLabel.frame = NSRect(x: 20, y: 385, width: 200, height: 20)
+        languageLabel.frame = NSRect(x: 20, y: 290, width: 200, height: 20)
         containerView.addSubview(languageLabel)
 
-        languagePopup = NSPopUpButton(frame: NSRect(x: 20, y: 360, width: 200, height: 24), pullsDown: false)
+        languagePopup = NSPopUpButton(frame: NSRect(x: 20, y: 265, width: 200, height: 24), pullsDown: false)
         languagePopup.target = self
         languagePopup.action = #selector(languageChanged)
         for lang in Preferences.AppLanguage.allCases {
@@ -111,50 +109,33 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
         let generalLabel = NSTextField(labelWithString: "General".localized)
         generalLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        generalLabel.frame = NSRect(x: 20, y: 330, width: 420, height: 20)
+        generalLabel.frame = NSRect(x: 20, y: 235, width: 420, height: 20)
         containerView.addSubview(generalLabel)
 
         enabledCheckbox = NSButton(checkboxWithTitle: "Enable Image Hover Preview".localized, target: self, action: #selector(enabledToggled))
-        enabledCheckbox.frame = NSRect(x: 20, y: 300, width: 300, height: 20)
+        enabledCheckbox.frame = NSRect(x: 20, y: 205, width: 300, height: 20)
         containerView.addSubview(enabledCheckbox)
 
         readClipboardCheckbox = NSButton(checkboxWithTitle: "Read clipboard when no text is selected".localized, target: self, action: #selector(readClipboardToggled))
-        readClipboardCheckbox.frame = NSRect(x: 20, y: 270, width: 380, height: 20)
+        readClipboardCheckbox.frame = NSRect(x: 20, y: 175, width: 380, height: 20)
         containerView.addSubview(readClipboardCheckbox)
 
         launchAtLoginCheckbox = NSButton(checkboxWithTitle: "Launch at Login".localized, target: self, action: #selector(launchAtLoginToggled))
-        launchAtLoginCheckbox.frame = NSRect(x: 20, y: 240, width: 300, height: 20)
+        launchAtLoginCheckbox.frame = NSRect(x: 20, y: 145, width: 300, height: 20)
         containerView.addSubview(launchAtLoginCheckbox)
-
-        let sizeLabel = NSTextField(labelWithString: "Maximum Preview Size".localized)
-        sizeLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        sizeLabel.frame = NSRect(x: 20, y: 200, width: 200, height: 20)
-        containerView.addSubview(sizeLabel)
-
-        maxSizeSlider = NSSlider(value: 400, minValue: 200, maxValue: 800, target: self, action: #selector(maxSizeChanged))
-        maxSizeSlider.frame = NSRect(x: 20, y: 170, width: 300, height: 20)
-        maxSizeSlider.numberOfTickMarks = 7
-        maxSizeSlider.allowsTickMarkValuesOnly = false
-        containerView.addSubview(maxSizeSlider)
-
-        maxSizeLabel = NSTextField(labelWithString: String(format: "%d px".localized, Int(Preferences.shared.maxPreviewSize)))
-        maxSizeLabel.font = NSFont.systemFont(ofSize: 12)
-        maxSizeLabel.textColor = .secondaryLabelColor
-        maxSizeLabel.frame = NSRect(x: 330, y: 170, width: 80, height: 20)
-        containerView.addSubview(maxSizeLabel)
 
         let hotkeyLabel = NSTextField(labelWithString: "Activation Hotkey".localized)
         hotkeyLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        hotkeyLabel.frame = NSRect(x: 20, y: 130, width: 200, height: 20)
+        hotkeyLabel.frame = NSRect(x: 20, y: 105, width: 200, height: 20)
         containerView.addSubview(hotkeyLabel)
 
         let hotkeyDesc = NSTextField(labelWithString: "Hold these keys while hovering to show previews:".localized)
         hotkeyDesc.font = NSFont.systemFont(ofSize: 12)
         hotkeyDesc.textColor = .secondaryLabelColor
-        hotkeyDesc.frame = NSRect(x: 20, y: 105, width: 400, height: 20)
+        hotkeyDesc.frame = NSRect(x: 20, y: 80, width: 400, height: 20)
         containerView.addSubview(hotkeyDesc)
 
-        modePopup = NSPopUpButton(frame: NSRect(x: 20, y: 75, width: 160, height: 24), pullsDown: false)
+        modePopup = NSPopUpButton(frame: NSRect(x: 20, y: 50, width: 160, height: 24), pullsDown: false)
         modePopup.target = self
         modePopup.action = #selector(modeChanged)
         for m in Preferences.ActivationMode.allCases {
@@ -163,7 +144,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         }
         containerView.addSubview(modePopup)
 
-        customShortcutField = ShortcutRecorderField(frame: NSRect(x: 190, y: 75, width: 200, height: 24))
+        customShortcutField = ShortcutRecorderField(frame: NSRect(x: 190, y: 50, width: 200, height: 24))
         customShortcutField.isEditable = false
         customShortcutField.isSelectable = false
         customShortcutField.alignment = .center
@@ -177,7 +158,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         currentHotkeyLabel = NSTextField(labelWithString: "")
         currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
         currentHotkeyLabel.textColor = .secondaryLabelColor
-        currentHotkeyLabel.frame = NSRect(x: 20, y: 46, width: 420, height: 20)
+        currentHotkeyLabel.frame = NSRect(x: 20, y: 21, width: 420, height: 20)
         containerView.addSubview(currentHotkeyLabel)
 
         let resetButton = NSButton(title: "Reset to Defaults".localized, target: self, action: #selector(resetToDefaults))
@@ -188,8 +169,6 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
     private func loadSettings() {
         let prefs = Preferences.shared
-        maxSizeSlider.doubleValue = Double(prefs.maxPreviewSize)
-        maxSizeLabel.stringValue = String(format: "%d px".localized, Int(prefs.maxPreviewSize))
         enabledCheckbox.state = prefs.enabled ? .on : .off
         readClipboardCheckbox.state = prefs.readClipboard ? .on : .off
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
@@ -301,13 +280,6 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     func shortcutRecorderDidCancelRecording(_ recorder: ShortcutRecorderField) {
         customShortcutField.textColor = .labelColor
         updateHotkeyUI()
-    }
-
-    @objc private func maxSizeChanged(_ sender: NSSlider) {
-        let value = CGFloat(sender.doubleValue)
-        maxSizeLabel.stringValue = String(format: "%d px".localized, Int(value))
-        Preferences.shared.maxPreviewSize = value
-        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 
     @objc private func enabledToggled(_ sender: NSButton) {

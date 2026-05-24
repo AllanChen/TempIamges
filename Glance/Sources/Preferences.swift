@@ -69,11 +69,6 @@ class Preferences {
         }
     }
 
-    var maxPreviewSize: CGFloat {
-        get { CGFloat(defaults.double(forKey: "\(suiteName).maxSize")) }
-        set { defaults.set(Double(newValue), forKey: "\(suiteName).maxSize") }
-    }
-
     var enabled: Bool {
         get { defaults.bool(forKey: "\(suiteName).enabled") }
         set { defaults.set(newValue, forKey: "\(suiteName).enabled") }
@@ -128,7 +123,6 @@ class Preferences {
 
     private func registerDefaults() {
         let defaultValues: [String: Any] = [
-            "\(suiteName).maxSize": 400.0,
             "\(suiteName).enabled": true,
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
@@ -139,7 +133,6 @@ class Preferences {
     }
 
     func resetToDefaults() {
-        maxPreviewSize = 400
         enabled = true
         launchAtLogin = false
         readClipboard = true

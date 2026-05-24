@@ -31,9 +31,7 @@
 "General" = "通用";
 "Enable Image Hover Preview" = "启用悬停图片预览";
 "Read clipboard when no text is selected" = "未选中文本时读取剪贴板";
-"Launch at Login" = "登录时启动";
-"Maximum Preview Size" = "最大预览尺寸";
-"%d px" = "%d 像素";
+ "Launch at Login" = "登录时启动";
 "Activation Hotkey" = "激活热键";
 "Hold these keys while hovering to show previews:" = "悬停时按住这些键以显示预览：";
 "Option (⌥)" = "Option (⌥)";
