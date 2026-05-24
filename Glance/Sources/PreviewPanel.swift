@@ -364,12 +364,20 @@ class PreviewPanel: NSPanel {
 
     /// Public close entry-point used by AppDelegate when the user re-presses
     /// the hotkey while a preview is already visible (toggle behaviour).
+    /// Also dismisses ContentPanel so both panels close together.
     func closePanel() {
-        forceHidePanel()
+        forceHidePanel(dismissContent: true)
     }
 
-    /// Always hide, regardless of pinned state (used by the X button).
-    private func forceHidePanel() {
+    /// Hide PreviewPanel but leave ContentPanel open.
+    /// Used by the "single-hit shortcut" path where we open ContentPanel
+    /// directly and only want PreviewPanel to go away.
+    func closeWithoutAffectingContent() {
+        forceHidePanel(dismissContent: false)
+    }
+
+    /// Always hide, regardless of pinned state.
+    private func forceHidePanel(dismissContent: Bool = true) {
         stopFollowingContentPanel()
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
@@ -378,7 +386,9 @@ class PreviewPanel: NSPanel {
             self?.isPinned = false
             self?.orderOut(nil)
             self?.teardownTiles()
-            ContentPanel.shared.dismiss()
+            if dismissContent {
+                ContentPanel.shared.dismiss()
+            }
         })
     }
 

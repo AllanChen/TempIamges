@@ -258,7 +258,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             HistoryManager.shared.record(selectedText: selected, detectedPaths: resolved)
             if resolved.count == 1, shouldDirectOpen(resolved[0]) {
                 // Single ContentPanel-supported hit — skip PreviewPanel entirely.
-                previewPanel?.closePanel()
+                previewPanel?.closeWithoutAffectingContent()
                 directOpen(resolved[0])
                 return
             }
@@ -333,13 +333,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 }
 
                 HistoryManager.shared.record(selectedText: selectedText, detectedPaths: combined)
-            if combined.count == 1, self.shouldDirectOpen(combined[0]) {
-                // Same single-hit shortcut as the fast path — close PreviewPanel
-                // so the user only sees ContentPanel.
-                self.previewPanel?.closePanel()
-                self.directOpen(combined[0])
-                return
-            }
+                if combined.count == 1, self.shouldDirectOpen(combined[0]) {
+                    // Same single-hit shortcut as the fast path — close PreviewPanel
+                    // so the user only sees ContentPanel.
+                    self.previewPanel?.closeWithoutAffectingContent()
+                    self.directOpen(combined[0])
+                    return
+                }
                 self.loadAndShowMedia(paths: combined, at: anchor)
                 // Apply per-tile hints for Spotlight matches — they sit AFTER the
                 // pre-resolved ones in the combined list.
