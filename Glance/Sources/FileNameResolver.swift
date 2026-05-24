@@ -49,9 +49,9 @@ final class FileNameResolver {
     }
 
     func resolve(token: String,
-                 timeout: TimeInterval = 1.5,
-                 limit: Int = 24,
-                 completion: @escaping ([Match]) -> Void) {
+                  timeout: TimeInterval = 1.5,
+                  limit: Int = 24,
+                  completion: @escaping ([Match]) -> Void) {
         let normalizedToken = normalizeToken(token)
         guard !normalizedToken.isEmpty else {
             completion([])
@@ -65,73 +65,83 @@ final class FileNameResolver {
             return
         }
 
-        let quickMatches = quickFilesystemMatches(token: normalizedToken, limit: limit)
-        if !quickMatches.isEmpty {
-            if let best = quickMatches.first {
-                FilenameCache.shared.store(token: normalizedToken, url: best.url)
+        // Run the entire search pipeline off the main thread so the loading
+        // panel (PreviewPanel) can appear immediately without being blocked
+        // by synchronous filesystem traversal.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else {
+                DispatchQueue.main.async { completion([]) }
+                return
             }
-            Logger.info("FileNameResolver: quick hit for '\(token)' -> \(quickMatches.count)")
-            completion(quickMatches)
-            return
-        }
 
-        let resolution = ActiveResolution(
-            completion: completion,
-            normalizedToken: normalizedToken
-        )
-        resolutionLock.lock()
-        activeResolutions.append(resolution)
-        resolutionLock.unlock()
-
-        let group = DispatchGroup()
-        let resultLock = NSLock()
-        var allMatches: [Match] = []
-        var seenPaths = Set<String>()
-
-        func addMatches(_ matches: [Match]) {
-            resultLock.lock()
-            for match in matches {
-                let path = match.url.path
-                if seenPaths.insert(path).inserted {
-                    allMatches.append(match)
+            let quickMatches = self.quickFilesystemMatches(token: normalizedToken, limit: limit)
+            if !quickMatches.isEmpty {
+                if let best = quickMatches.first {
+                    FilenameCache.shared.store(token: normalizedToken, url: best.url)
                 }
+                Logger.info("FileNameResolver: quick hit for '\(token)' -> \(quickMatches.count)")
+                DispatchQueue.main.async { completion(quickMatches) }
+                return
             }
-            resultLock.unlock()
-        }
 
-        group.enter()
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            defer { group.leave() }
-            guard let self = self else { return }
-            addMatches(self.mdfindExact(basename: (normalizedToken as NSString).lastPathComponent,
-                                         limit: limit))
-        }
+            let resolution = ActiveResolution(
+                completion: completion,
+                normalizedToken: normalizedToken
+            )
+            self.resolutionLock.lock()
+            self.activeResolutions.append(resolution)
+            self.resolutionLock.unlock()
 
-        group.enter()
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            defer { group.leave() }
-            guard let self = self else { return }
-            addMatches(self.mdfindFuzzy(basename: (normalizedToken as NSString).lastPathComponent,
-                                         limit: limit))
-        }
+            let group = DispatchGroup()
+            let resultLock = NSLock()
+            var allMatches: [Match] = []
+            var seenPaths = Set<String>()
 
-        group.enter()
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            defer { group.leave() }
-            guard let self = self else { return }
-            addMatches(self.deepFilesystemSearch(token: normalizedToken, limit: limit))
-        }
+            func addMatches(_ matches: [Match]) {
+                resultLock.lock()
+                for match in matches {
+                    let path = match.url.path
+                    if seenPaths.insert(path).inserted {
+                        allMatches.append(match)
+                    }
+                }
+                resultLock.unlock()
+            }
 
-        let timeoutWork = DispatchWorkItem { [weak self] in
-            self?.finishResolution(id: resolution.id, matches: allMatches, limit: limit,
-                                   reason: "timeout", token: normalizedToken)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: timeoutWork)
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                defer { group.leave() }
+                guard let self = self else { return }
+                addMatches(self.mdfindExact(basename: (normalizedToken as NSString).lastPathComponent,
+                                             limit: limit))
+            }
 
-        group.notify(queue: .main) { [weak self] in
-            timeoutWork.cancel()
-            self?.finishResolution(id: resolution.id, matches: allMatches, limit: limit,
-                                   reason: "completed", token: normalizedToken)
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                defer { group.leave() }
+                guard let self = self else { return }
+                addMatches(self.mdfindFuzzy(basename: (normalizedToken as NSString).lastPathComponent,
+                                             limit: limit))
+            }
+
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                defer { group.leave() }
+                guard let self = self else { return }
+                addMatches(self.deepFilesystemSearch(token: normalizedToken, limit: limit))
+            }
+
+            let timeoutWork = DispatchWorkItem { [weak self] in
+                self?.finishResolution(id: resolution.id, matches: allMatches, limit: limit,
+                                       reason: "timeout", token: normalizedToken)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: timeoutWork)
+
+            group.notify(queue: .main) { [weak self] in
+                timeoutWork.cancel()
+                self?.finishResolution(id: resolution.id, matches: allMatches, limit: limit,
+                                       reason: "completed", token: normalizedToken)
+            }
         }
     }
 
