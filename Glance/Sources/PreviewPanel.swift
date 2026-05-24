@@ -263,6 +263,7 @@ class PreviewPanel: NSPanel {
 
         alphaValue = 0
         orderFrontRegardless()
+        makeKey()
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.15
             self.animator().alphaValue = 1
@@ -951,6 +952,7 @@ class PreviewPanel: NSPanel {
         let frame = NSRect(origin: CGPoint(x: originX, y: originY), size: contentSize)
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
+        panel.makeKey()
 
         if currentMode == .singleCard {
             forceHidePanel()

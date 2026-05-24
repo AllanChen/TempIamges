@@ -175,9 +175,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     @objc private func previewModeActivated() {
-        if let panel = previewPanel, panel.isVisible {
-            panel.closePanel()
+        let previewVisible = previewPanel?.isVisible ?? false
+        let contentVisible = ContentPanel.shared.isVisible
+        if previewVisible || contentVisible {
+            previewPanel?.closePanel()
+            ContentPanel.shared.dismiss()
             previewModeDeactivated()
+            return
         }
         activatePreview(injectedText: nil)
     }
