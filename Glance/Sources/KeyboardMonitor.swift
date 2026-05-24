@@ -11,6 +11,7 @@ class KeyboardMonitor: NSObject {
     private var shiftHeld: Bool = false
     private var optionHeld: Bool = false
     private var controlHeld: Bool = false
+    private var activeKeyCodes: Set<UInt16> = []
     private var wasPreviewModeActive: Bool = false
 
     override init() {
@@ -39,6 +40,7 @@ class KeyboardMonitor: NSObject {
         shiftHeld   = false
         optionHeld  = false
         controlHeld = false
+        activeKeyCodes.removeAll()
         if wasPreviewModeActive {
             wasPreviewModeActive = false
             Logger.info("KeyboardMonitor: System woke — forcing preview mode DEACTIVATED")
@@ -47,17 +49,24 @@ class KeyboardMonitor: NSObject {
     }
 
     var previewModeActive: Bool {
-        let required = Preferences.shared.effectiveModifiers
+        let prefs = Preferences.shared
+        let required = prefs.effectiveModifiers
         guard !required.isEmpty else { return false }
         if required.contains(.option)  && !optionHeld  { return false }
         if required.contains(.control) && !controlHeld { return false }
         if required.contains(.command) && !cmdHeld     { return false }
         if required.contains(.shift)   && !shiftHeld   { return false }
+        // Combo hotkey: also require the specific regular key to be held.
+        if let keyCode = prefs.customHotkeyKeyCode {
+            return activeKeyCodes.contains(keyCode)
+        }
         return true
     }
 
     func startMonitoring() -> Bool {
         let eventMask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
+                                     | (1 << CGEventType.keyDown.rawValue)
+                                     | (1 << CGEventType.keyUp.rawValue)
 
         let callback: CGEventTapCallBack = { proxy, type, event, refcon in
             guard let refcon = refcon else { return Unmanaged.passRetained(event) }
@@ -109,7 +118,9 @@ class KeyboardMonitor: NSObject {
     }
 
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) {
-        if type == .flagsChanged {
+        let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+        switch type {
+        case .flagsChanged:
             let flags = event.flags
             let prevCmd = cmdHeld
             let prevShift = shiftHeld
@@ -126,6 +137,17 @@ class KeyboardMonitor: NSObject {
                 Logger.info("KeyboardMonitor: Cmd=\(cmdHeld) Shift=\(shiftHeld) Opt=\(optionHeld) Ctrl=\(controlHeld)")
                 checkPreviewModeStateChanged()
             }
+
+        case .keyDown:
+            activeKeyCodes.insert(keyCode)
+            checkPreviewModeStateChanged()
+
+        case .keyUp:
+            activeKeyCodes.remove(keyCode)
+            checkPreviewModeStateChanged()
+
+        default:
+            break
         }
     }
 

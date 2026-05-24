@@ -110,11 +110,26 @@ class Preferences {
         set { defaults.set(Int(newValue.rawValue), forKey: "\(suiteName).customHotkeyModifiers") }
     }
 
+    /// Key code for the non-modifier key in a combo hotkey (e.g. 'L' in ⌘L).
+    /// When nil, the hotkey is modifier-only (legacy behaviour).
+    var customHotkeyKeyCode: UInt16? {
+        get {
+            let raw = defaults.integer(forKey: "\(suiteName).customHotkeyKeyCode")
+            return raw == 0 ? nil : UInt16(raw)
+        }
+        set { defaults.set(newValue.map(Int.init) ?? 0, forKey: "\(suiteName).customHotkeyKeyCode") }
+    }
+
     var effectiveModifiers: NSEvent.ModifierFlags {
         switch activationMode {
         case .option: return .option
         case .custom: return customHotkeyModifiers
         }
+    }
+
+    /// True when the custom hotkey uses a combo (modifiers + regular key).
+    var usesComboHotkey: Bool {
+        activationMode == .custom && customHotkeyKeyCode != nil
     }
 
     private init() {
@@ -127,7 +142,8 @@ class Preferences {
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
             "\(suiteName).activationMode": ActivationMode.option.rawValue,
-            "\(suiteName).customHotkeyModifiers": 0
+            "\(suiteName).customHotkeyModifiers": 0,
+            "\(suiteName).customHotkeyKeyCode": 0
         ]
         defaults.register(defaults: defaultValues)
     }
@@ -139,6 +155,7 @@ class Preferences {
         loginURL = nil
         activationMode = .option
         customHotkeyModifiers = []
+        customHotkeyKeyCode = nil
         appLanguage = .english
     }
 }

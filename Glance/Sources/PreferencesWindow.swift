@@ -2,7 +2,7 @@ import AppKit
 
 protocol ShortcutRecorderDelegate: AnyObject {
     func shortcutRecorderDidBeginRecording(_ recorder: ShortcutRecorderField)
-    func shortcutRecorder(_ recorder: ShortcutRecorderField, didRecordModifiers modifiers: NSEvent.ModifierFlags)
+    func shortcutRecorder(_ recorder: ShortcutRecorderField, didRecordModifiers modifiers: NSEvent.ModifierFlags, keyCode: UInt16?)
     func shortcutRecorderDidEndRecording(_ recorder: ShortcutRecorderField)
     func shortcutRecorderDidCancelRecording(_ recorder: ShortcutRecorderField)
 }
@@ -43,14 +43,17 @@ final class ShortcutRecorderField: NSTextField {
     override func flagsChanged(with event: NSEvent) {
         guard isRecording else { return }
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        recorderDelegate?.shortcutRecorder(self, didRecordModifiers: mods)
+        recorderDelegate?.shortcutRecorder(self, didRecordModifiers: mods, keyCode: nil)
     }
 
     override func keyDown(with event: NSEvent) {
         guard isRecording else { return }
         if event.keyCode == 53 {
             cancelRecording()
+            return
         }
+        let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        recorderDelegate?.shortcutRecorder(self, didRecordModifiers: mods, keyCode: event.keyCode)
     }
 }
 
@@ -63,6 +66,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private var currentHotkeyLabel: NSTextField!
     private var languagePopup: NSPopUpButton!
     private var recordedModifiers: NSEvent.ModifierFlags = []
+    private var recordedKeyCode: UInt16?
 
     init() {
         let windowRect = NSRect(x: 0, y: 0, width: 460, height: 360)
@@ -192,9 +196,11 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         let isCustom = prefs.activationMode == .custom
         customShortcutField.isHidden = !isCustom
         if isCustom {
-            let mods = prefs.customHotkeyModifiers
-            customShortcutField.stringValue = modifierString(mods)
-        customShortcutField.placeholderString = "Click to record shortcut".localized
+            customShortcutField.stringValue = hotkeyDisplayString(
+                modifiers: prefs.customHotkeyModifiers,
+                keyCode: prefs.customHotkeyKeyCode
+            )
+            customShortcutField.placeholderString = "Click to record shortcut".localized
         }
         updateCurrentHotkeyLabel()
     }
@@ -228,8 +234,11 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     }
 
     private func updateCurrentHotkeyLabel() {
-        let modifiers = Preferences.shared.effectiveModifiers
-        let symbol = modifierString(modifiers)
+        let prefs = Preferences.shared
+        let symbol = hotkeyDisplayString(
+            modifiers: prefs.effectiveModifiers,
+            keyCode: prefs.customHotkeyKeyCode
+        )
         currentHotkeyLabel.stringValue = symbol.isEmpty
             ? "(no hotkey — preview disabled)".localized
             : "Current: ".localized + symbol
@@ -244,6 +253,115 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         return parts.joined(separator: " + ")
     }
 
+    private func hotkeyDisplayString(modifiers: NSEvent.ModifierFlags, keyCode: UInt16?) -> String {
+        var result = modifierString(modifiers)
+        if let keyCode = keyCode, let char = keyCodeToCharacter(keyCode) {
+            result += (result.isEmpty ? "" : "+") + char.uppercased()
+        }
+        return result
+    }
+
+    private func keyCodeToCharacter(_ keyCode: UInt16) -> String? {
+        switch keyCode {
+        case 0:   return "a"
+        case 1:   return "s"
+        case 2:   return "d"
+        case 3:   return "f"
+        case 4:   return "h"
+        case 5:   return "g"
+        case 6:   return "z"
+        case 7:   return "x"
+        case 8:   return "c"
+        case 9:   return "v"
+        case 11:  return "b"
+        case 12:  return "q"
+        case 13:  return "w"
+        case 14:  return "e"
+        case 15:  return "r"
+        case 16:  return "y"
+        case 17:  return "t"
+        case 18:  return "1"
+        case 19:  return "2"
+        case 20:  return "3"
+        case 21:  return "4"
+        case 22:  return "6"
+        case 23:  return "5"
+        case 24:  return "="
+        case 25:  return "9"
+        case 26:  return "7"
+        case 27:  return "-"
+        case 28:  return "8"
+        case 29:  return "0"
+        case 30:  return "]"
+        case 31:  return "o"
+        case 32:  return "u"
+        case 33:  return "["
+        case 34:  return "i"
+        case 35:  return "p"
+        case 36:  return "↩"
+        case 37:  return "l"
+        case 38:  return "j"
+        case 39:  return "'"
+        case 40:  return "k"
+        case 41:  return ";"
+        case 42:  return "\\"
+        case 43:  return ","
+        case 44:  return "/"
+        case 45:  return "n"
+        case 46:  return "m"
+        case 47:  return "."
+        case 48:  return "⇥"
+        case 49:  return "␣"
+        case 50:  return "`"
+        case 51:  return "⌫"
+        case 52:  return "⌤"
+        case 53:  return "⎋"
+        case 65:  return "."
+        case 67:  return "*"
+        case 69:  return "+"
+        case 71:  return "⌧"
+        case 75:  return "/"
+        case 76:  return "↩"
+        case 78:  return "-"
+        case 81:  return "="
+        case 82:  return "0"
+        case 83:  return "1"
+        case 84:  return "2"
+        case 85:  return "3"
+        case 86:  return "4"
+        case 87:  return "5"
+        case 88:  return "6"
+        case 89:  return "7"
+        case 91:  return "8"
+        case 92:  return "9"
+        case 96:  return "f5"
+        case 97:  return "f6"
+        case 98:  return "f7"
+        case 99:  return "f3"
+        case 100: return "f8"
+        case 101: return "f9"
+        case 103: return "f11"
+        case 105: return "f13"
+        case 106: return "f14"
+        case 107: return "f10"
+        case 109: return "f12"
+        case 111: return "f15"
+        case 113: return "home"
+        case 114: return "pageup"
+        case 115: return "⌦"
+        case 116: return "f4"
+        case 117: return "end"
+        case 118: return "f2"
+        case 119: return "pagedown"
+        case 120: return "f1"
+        case 121: return "←"
+        case 122: return "→"
+        case 123: return "↓"
+        case 124: return "↑"
+        default:  return nil
+        }
+    }
+
     @objc private func modeChanged(_ sender: NSPopUpButton) {
         guard let raw = sender.selectedItem?.representedObject as? String,
               let mode = Preferences.ActivationMode(rawValue: raw) else { return }
@@ -254,32 +372,55 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
     func shortcutRecorderDidBeginRecording(_ recorder: ShortcutRecorderField) {
         recordedModifiers = []
+        recordedKeyCode = nil
         customShortcutField.stringValue = ""
         customShortcutField.placeholderString = "Press shortcut...".localized
         customShortcutField.textColor = .systemBlue
     }
 
-    func shortcutRecorder(_ recorder: ShortcutRecorderField, didRecordModifiers modifiers: NSEvent.ModifierFlags) {
-        if modifiers.isEmpty {
-            if !recordedModifiers.isEmpty {
+    func shortcutRecorderDidCancelRecording(_ recorder: ShortcutRecorderField) {
+        customShortcutField.textColor = .labelColor
+        updateHotkeyUI()
+    }
+
+    func shortcutRecorder(_ recorder: ShortcutRecorderField, didRecordModifiers modifiers: NSEvent.ModifierFlags, keyCode: UInt16?) {
+        if modifiers.isEmpty && keyCode == nil {
+            if !recordedModifiers.isEmpty || recordedKeyCode != nil {
                 recorder.endRecording()
             }
-        } else {
-            recordedModifiers = recordedModifiers.union(modifiers)
-            customShortcutField.stringValue = modifierString(recordedModifiers)
+            return
         }
+
+        // Enforce maximum of 3 keys total (modifiers + regular key).
+        let modifierCount = [
+            modifiers.contains(.control),
+            modifiers.contains(.option),
+            modifiers.contains(.command),
+            modifiers.contains(.shift)
+        ].filter { $0 }.count
+        let keyCount = (keyCode != nil ? 1 : 0)
+        if modifierCount + keyCount > 3 {
+            return
+        }
+
+        recordedModifiers = recordedModifiers.union(modifiers)
+        if let keyCode = keyCode {
+            recordedKeyCode = keyCode
+            recorder.endRecording()
+        }
+
+        customShortcutField.stringValue = hotkeyDisplayString(
+            modifiers: recordedModifiers,
+            keyCode: recordedKeyCode
+        )
     }
 
     func shortcutRecorderDidEndRecording(_ recorder: ShortcutRecorderField) {
         Preferences.shared.customHotkeyModifiers = recordedModifiers
+        Preferences.shared.customHotkeyKeyCode = recordedKeyCode
         customShortcutField.textColor = .labelColor
         updateHotkeyUI()
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
-    }
-
-    func shortcutRecorderDidCancelRecording(_ recorder: ShortcutRecorderField) {
-        customShortcutField.textColor = .labelColor
-        updateHotkeyUI()
     }
 
     @objc private func enabledToggled(_ sender: NSButton) {
@@ -299,6 +440,8 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
     @objc private func resetToDefaults() {
         Preferences.shared.resetToDefaults()
+        recordedModifiers = []
+        recordedKeyCode = nil
         loadSettings()
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
