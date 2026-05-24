@@ -282,63 +282,71 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let loadingInfo = MediaInfo(url: URL(fileURLWithPath: "/dev/null"), isLocal: true, kind: .other)
         self.previewPanel?.showLoading(infos: [loadingInfo], at: anchor)
 
-        let group = DispatchGroup()
-        var resultsByToken: [String: [FileNameResolver.Match]] = [:]
-        for token in uniqueTokens {
-            group.enter()
-            fileNameResolver?.resolve(token: token) { matches in
-                resultsByToken[token] = matches
-                group.leave()
-            }
-        }
-        group.notify(queue: .main) { [weak self] in
+        // 延迟一帧开始搜索，确保 loading UI 有机会先渲染出来。
+        // FileNameResolver.resolve 内部的 quickFilesystemMatches 是同步执行的，
+        // 如果在 showLoading 的动画尚未开始前就阻塞主线程，panel 会一直保持
+        // alpha = 0，用户就只能等到搜索结束后才看到面板弹出。
+        DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            // Round-robin pick from each token's match list.
-            let maxFromSpotlight = max(0, 24 - resolved.count)
-            var spotlight: [FileNameResolver.Match] = []
-            var cursors = Array(repeating: 0, count: uniqueTokens.count)
-            outer: while spotlight.count < maxFromSpotlight {
-                var advanced = false
-                for (i, token) in uniqueTokens.enumerated() {
-                    let list = resultsByToken[token] ?? []
-                    if cursors[i] < list.count {
-                        spotlight.append(list[cursors[i]])
-                        cursors[i] += 1
-                        advanced = true
-                        if spotlight.count >= maxFromSpotlight { break outer }
-                    }
+
+            let group = DispatchGroup()
+            var resultsByToken: [String: [FileNameResolver.Match]] = [:]
+            for token in uniqueTokens {
+                group.enter()
+                self.fileNameResolver?.resolve(token: token) { matches in
+                    resultsByToken[token] = matches
+                    group.leave()
                 }
-                if !advanced { break }
             }
+            group.notify(queue: .main) { [weak self] in
+                guard let self = self else { return }
+                // Round-robin pick from each token's match list.
+                let maxFromSpotlight = max(0, 24 - resolved.count)
+                var spotlight: [FileNameResolver.Match] = []
+                var cursors = Array(repeating: 0, count: uniqueTokens.count)
+                outer: while spotlight.count < maxFromSpotlight {
+                    var advanced = false
+                    for (i, token) in uniqueTokens.enumerated() {
+                        let list = resultsByToken[token] ?? []
+                        if cursors[i] < list.count {
+                            spotlight.append(list[cursors[i]])
+                            cursors[i] += 1
+                            advanced = true
+                            if spotlight.count >= maxFromSpotlight { break outer }
+                        }
+                    }
+                    if !advanced { break }
+                }
 
-            // Spotlight matches → DetectedPath, then append to the already-resolved list.
-            let spotlightPaths: [DetectedPath] = spotlight.map { match in
-                self.pathDetector?.localKind(for: match.url.path) ?? .localImage(match.url)
-            }
-            let combined = resolved + spotlightPaths
+                // Spotlight matches → DetectedPath, then append to the already-resolved list.
+                let spotlightPaths: [DetectedPath] = spotlight.map { match in
+                    self.pathDetector?.localKind(for: match.url.path) ?? .localImage(match.url)
+                }
+                let combined = resolved + spotlightPaths
 
-            guard !combined.isEmpty else {
-                let label = uniqueTokens.first ?? ""
-                let failMessage = String(format: "No file found matching '%@'".localized, label)
-                // 更新现有 tile 显示失败信息，而不是隐藏面板
-                self.previewPanel?.updateTile(at: 0, with: nil, failedMessage: failMessage)
-                return
-            }
+                guard !combined.isEmpty else {
+                    let label = uniqueTokens.first ?? ""
+                    let failMessage = String(format: "No file found matching '%@'".localized, label)
+                    // 更新现有 tile 显示失败信息，而不是隐藏面板
+                    self.previewPanel?.updateTile(at: 0, with: nil, failedMessage: failMessage)
+                    return
+                }
 
-            HistoryManager.shared.record(selectedText: selectedText, detectedPaths: combined)
-            if combined.count == 1, self.shouldDirectOpen(combined[0]) {
-                // Same single-hit shortcut as the fast path.
-                self.previewPanel?.hidePanel()
-                self.directOpen(combined[0])
-                return
-            }
-            self.loadAndShowMedia(paths: combined, at: anchor)
-            // Apply per-tile hints for Spotlight matches — they sit AFTER the
-            // pre-resolved ones in the combined list.
-            for (offset, match) in spotlight.enumerated() {
-                let tileIndex = resolved.count + offset
-                let hint = Self.disambiguationHint(for: match.url)
-                self.previewPanel?.applyHint(at: tileIndex, hint: hint)
+                HistoryManager.shared.record(selectedText: selectedText, detectedPaths: combined)
+                if combined.count == 1, self.shouldDirectOpen(combined[0]) {
+                    // Same single-hit shortcut as the fast path.
+                    self.previewPanel?.hidePanel()
+                    self.directOpen(combined[0])
+                    return
+                }
+                self.loadAndShowMedia(paths: combined, at: anchor)
+                // Apply per-tile hints for Spotlight matches — they sit AFTER the
+                // pre-resolved ones in the combined list.
+                for (offset, match) in spotlight.enumerated() {
+                    let tileIndex = resolved.count + offset
+                    let hint = Self.disambiguationHint(for: match.url)
+                    self.previewPanel?.applyHint(at: tileIndex, hint: hint)
+                }
             }
         }
     }
