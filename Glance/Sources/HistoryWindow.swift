@@ -37,6 +37,9 @@ final class HistoryWindow: NSWindow {
         self.isReleasedWhenClosed = false
         self.center()
         self.minSize = NSSize(width: 520, height: 360)
+        // Prevent blank flash on first open: start invisible and fade in once
+        // the section content has been built.
+        self.alphaValue = 0
 
         buildLayout()
 
@@ -213,6 +216,12 @@ final class HistoryWindow: NSWindow {
             )
         }
         scrollView.documentView?.scroll(.zero)
+
+        // Fade in after content is ready to eliminate blank flash on open.
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.15
+            self.animator().alphaValue = 1
+        }
     }
 
     private func handleTileTap(info: MediaInfo) {

@@ -1074,7 +1074,7 @@ final class MediaTileView: NSView {
     private let mediaContainer = NSView()
     private let imageLayer = CALayer()
     private let spinner = NSProgressIndicator()
-    private let loadingLabel = NSTextField(labelWithString: "Loading…".localized)
+    private let loadingLabel = NSTextField(labelWithString: "Searching…".localized)
     private let shimmerLayer = CAGradientLayer()
     private var downloadBtn: NSButton?
     private let downloadSpinner = NSProgressIndicator()
@@ -1538,17 +1538,29 @@ final class MediaTileView: NSView {
     func setFailed(message: String? = nil) {
         spinner.stopAnimation(nil)
         spinner.isHidden = true
-        loadingLabel.stringValue = message ?? "Failed".localized
-        loadingLabel.textColor = .systemRed
         stopShimmer()
-        filenameLabel?.isHidden = false
-        dimsLabel?.isHidden = false
         overlayGradient.isHidden = false
-        // Dim the kind placeholder so the "Failed" label reads clearly.
         placeholderIconView?.alphaValue = 0.35
-        if style == .masonry {
-            dimsLabel?.stringValue = message ?? "Failed to load".localized
+
+        if let token = info.searchToken, !token.isEmpty {
+            // Spotlight search failure — show the token we were looking for.
+            loadingLabel.stringValue = "File not found".localized
+            loadingLabel.textColor = .systemRed
+            filenameLabel?.stringValue = token
+            filenameLabel?.isHidden = false
+            dimsLabel?.stringValue = message ?? "No matching file found".localized
+            dimsLabel?.isHidden = false
             dimsLabel?.textColor = .systemRed
+        } else {
+            // Normal media load failure.
+            loadingLabel.stringValue = message ?? "Failed".localized
+            loadingLabel.textColor = .systemRed
+            filenameLabel?.isHidden = false
+            dimsLabel?.isHidden = false
+            if style == .masonry {
+                dimsLabel?.stringValue = message ?? "Failed to load".localized
+                dimsLabel?.textColor = .systemRed
+            }
         }
     }
 

@@ -283,7 +283,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let uniqueTokens = NSOrderedSet(array: tokens).array as? [String] ?? tokens
         
         // 先显示 loading 面板，让用户知道搜索正在进行
-        let loadingInfo = MediaInfo(url: URL(fileURLWithPath: "/dev/null"), isLocal: true, kind: .other)
+        var loadingInfo = MediaInfo(url: URL(fileURLWithPath: "/dev/null"), isLocal: true, kind: .other)
+        loadingInfo.searchToken = uniqueTokens.first ?? ""
         self.previewPanel?.showLoading(infos: [loadingInfo], at: anchor)
 
         // 延迟一帧开始搜索，确保 loading UI 有机会先渲染出来。

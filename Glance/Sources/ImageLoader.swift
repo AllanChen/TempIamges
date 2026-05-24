@@ -12,6 +12,10 @@ struct MediaInfo {
     /// disambiguate when multiple Spotlight matches share a filename.
     /// e.g. "~/Desktop/work". Rendered in the tile's metadata overlay.
     var disambiguationHint: String? = nil
+    /// The raw search token (e.g. bare filename) that led to this tile.
+    /// Used by the loading/failure UI so the user knows what is being
+    /// searched for.
+    var searchToken: String? = nil
 
     enum Kind { case image, video, markdown, text, pdf, webPage, other }
 
