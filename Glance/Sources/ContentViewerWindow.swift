@@ -175,7 +175,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     }
 
     private func resizeToDocumentSize() {
-        let targetSize = NSSize(width: 400, height: 800)
+        let targetSize = NSSize(width: 600, height: 800)
         let currentFrame = frame
         let newFrame = NSRect(
             origin: NSPoint(x: currentFrame.origin.x,

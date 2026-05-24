@@ -946,13 +946,7 @@ class PreviewPanel: NSPanel {
         panel.load(info: info)
 
         let mainFrame = self.frame
-        let contentSize: NSSize
-        switch info.kind {
-        case .markdown, .pdf:
-            contentSize = NSSize(width: 400, height: 800)
-        default:
-            contentSize = NSSize(width: 700, height: 600)
-        }
+        let contentSize = NSSize(width: 700, height: 600)
         let originX = mainFrame.maxX
         let originY = mainFrame.maxY - contentSize.height
         let frame = NSRect(origin: CGPoint(x: originX, y: originY), size: contentSize)

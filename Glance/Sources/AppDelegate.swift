@@ -479,7 +479,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let contentSize: NSSize
         switch info.kind {
         case .markdown, .pdf:
-            contentSize = NSSize(width: 400, height: 800)
+            contentSize = NSSize(width: 600, height: 800)
         default:
             contentSize = NSSize(width: 700, height: 600)
         }
