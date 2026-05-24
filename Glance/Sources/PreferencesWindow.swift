@@ -162,12 +162,12 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         currentHotkeyLabel = NSTextField(labelWithString: "")
         currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
         currentHotkeyLabel.textColor = .secondaryLabelColor
-        currentHotkeyLabel.frame = NSRect(x: 20, y: 21, width: 420, height: 20)
+        currentHotkeyLabel.frame = NSRect(x: 20, y: 25, width: 280, height: 20)
         containerView.addSubview(currentHotkeyLabel)
 
         let resetButton = NSButton(title: "Reset to Defaults".localized, target: self, action: #selector(resetToDefaults))
         resetButton.bezelStyle = .rounded
-        resetButton.frame = NSRect(x: 20, y: 15, width: 140, height: 28)
+        resetButton.frame = NSRect(x: 320, y: 20, width: 120, height: 28)
         containerView.addSubview(resetButton)
     }
 
