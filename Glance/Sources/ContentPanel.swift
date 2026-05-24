@@ -548,6 +548,21 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         currentMediaInfo = info
         resetGitDiffAvailability()
         showLoading()
+
+        let targetSize: NSSize
+        switch info.kind {
+        case .markdown, .pdf:
+            targetSize = NSSize(width: 400, height: 800)
+        default:
+            targetSize = NSSize(width: 700, height: 600)
+        }
+        let currentFrame = frame
+        let newFrame = NSRect(
+            origin: NSPoint(x: currentFrame.origin.x, y: currentFrame.maxY - targetSize.height),
+            size: targetSize
+        )
+        setFrame(newFrame, display: true)
+
         switch info.kind {
         case .markdown:
             currentURL = info.url

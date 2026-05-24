@@ -133,6 +133,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
         updateModifiedDate(for: url)
+        resizeToDocumentSize()
         renderMarkdownView(url: url)
     }
 
@@ -161,6 +162,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toggleButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
         updateModifiedDate(for: url)
+        resizeToDocumentSize()
         if url.isFileURL {
             // Sandbox-friendly: explicit grant for the parent directory so
             // WebKit can read the file and any sibling assets.
@@ -170,6 +172,17 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
             webView.load(URLRequest(url: url))
         }
         showWebView()
+    }
+
+    private func resizeToDocumentSize() {
+        let targetSize = NSSize(width: 400, height: 800)
+        let currentFrame = frame
+        let newFrame = NSRect(
+            origin: NSPoint(x: currentFrame.origin.x,
+                            y: currentFrame.maxY - targetSize.height),
+            size: targetSize
+        )
+        setFrame(newFrame, display: true)
     }
 
     // MARK: - Layout
