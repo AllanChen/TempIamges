@@ -430,8 +430,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 self?.isLoadingImage = false
                 Logger.info("AppDelegate: Loaded \(loadedCount)/\(paths.count) media")
                 if loadedCount == 0 {
-                    self?.previewPanel?.hidePanel()
-                    self?.showErrorTooltip(message: "Failed to load media".localized, at: position)
+                    Logger.info("AppDelegate: All media failed to load, keeping panel visible with error state")
+                    return
                 }
             }
         )
