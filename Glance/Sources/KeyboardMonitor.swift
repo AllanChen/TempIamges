@@ -71,14 +71,17 @@ class KeyboardMonitor: NSObject {
         let callback: CGEventTapCallBack = { proxy, type, event, refcon in
             guard let refcon = refcon else { return Unmanaged.passRetained(event) }
             let monitor = Unmanaged<KeyboardMonitor>.fromOpaque(refcon).takeUnretainedValue()
-            monitor.handleEvent(proxy: proxy, type: type, event: event)
+            let discard = monitor.handleEvent(proxy: proxy, type: type, event: event)
+            if discard {
+                return nil
+            }
             return Unmanaged.passRetained(event)
         }
 
         eventTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
-            options: .listenOnly,
+            options: .defaultTap,
             eventsOfInterest: eventMask,
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
@@ -117,7 +120,7 @@ class KeyboardMonitor: NSObject {
         runLoopSource = nil
     }
 
-    private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) {
+    private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Bool {
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
         switch type {
         case .flagsChanged:
@@ -137,17 +140,25 @@ class KeyboardMonitor: NSObject {
                 Logger.info("KeyboardMonitor: Cmd=\(cmdHeld) Shift=\(shiftHeld) Opt=\(optionHeld) Ctrl=\(controlHeld)")
                 checkPreviewModeStateChanged()
             }
+            return false
 
         case .keyDown:
+            let previouslyActive = previewModeActive
             activeKeyCodes.insert(keyCode)
             checkPreviewModeStateChanged()
+            if !previouslyActive && previewModeActive && Preferences.shared.usesComboHotkey {
+                Logger.info("KeyboardMonitor: Discarding combo hotkey keyDown (keyCode=\(keyCode))")
+                return true
+            }
+            return false
 
         case .keyUp:
             activeKeyCodes.remove(keyCode)
             checkPreviewModeStateChanged()
+            return false
 
         default:
-            break
+            return false
         }
     }
 
