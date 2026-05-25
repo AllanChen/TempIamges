@@ -141,7 +141,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private func checkPermissions() {
         let permissionManager = PermissionManager.shared
 
-        let needsOnboarding = !permissionManager.isInputMonitoringGranted || !permissionManager.isAccessibilityGranted
+        let needsOnboarding = !permissionManager.isInputMonitoringGranted
+            || !permissionManager.isAccessibilityGranted
+            || !permissionManager.isFullDiskAccessGranted
         let dontShowAgain = UserDefaults.standard.bool(forKey: "dontShowOnboardingAgain")
 
         if needsOnboarding && !dontShowAgain {

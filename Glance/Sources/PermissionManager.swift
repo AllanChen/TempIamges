@@ -12,14 +12,22 @@ class PermissionManager: NSObject {
         AXIsProcessTrusted()
     }
     
+    /// Full Disk Access can't be queried directly via a clean API.
+    /// We probe a protected path (Safari bookmarks DB) as a proxy.
+    var isFullDiskAccessGranted: Bool {
+        let protectedPath = ("~/Library/Safari/Bookmarks.plist" as NSString).expandingTildeInPath
+        return FileManager.default.isReadableFile(atPath: protectedPath)
+    }
+    
     func requestInputMonitoring() {
         CGRequestListenEventAccess()
     }
     
-    func checkPermissionStatusChanged() -> (inputMonitoring: Bool, accessibility: Bool) {
+    func checkPermissionStatusChanged() -> (inputMonitoring: Bool, accessibility: Bool, fullDiskAccess: Bool) {
         let currentInputMonitoring = CGPreflightListenEventAccess()
         let currentAccessibility = AXIsProcessTrusted()
-        return (currentInputMonitoring, currentAccessibility)
+        let currentFullDiskAccess = isFullDiskAccessGranted
+        return (currentInputMonitoring, currentAccessibility, currentFullDiskAccess)
     }
     
     func requestAccessibility() {
