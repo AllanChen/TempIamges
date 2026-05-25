@@ -8,7 +8,7 @@ class OnboardingWindow: NSWindow {
     private var dontShowAgainCheckbox: NSButton!
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 560, height: 520)
+        let windowRect = NSRect(x: 0, y: 0, width: 560, height: 600)
         super.init(
             contentRect: windowRect,
             styleMask: [.titled, .closable],
@@ -67,7 +67,7 @@ class OnboardingWindow: NSWindow {
         )
         inputMonitoringStatusView.target = self
         inputMonitoringStatusView.openSettingsAction = #selector(openInputMonitoringSettings)
-        inputMonitoringStatusView.frame = NSRect(x: itemX, y: currentY - 80, width: itemWidth, height: 80)
+        inputMonitoringStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
         contentView.addSubview(inputMonitoringStatusView)
         currentY -= 100
 
@@ -78,7 +78,7 @@ class OnboardingWindow: NSWindow {
         )
         accessibilityStatusView.target = self
         accessibilityStatusView.openSettingsAction = #selector(openAccessibilitySettings)
-        accessibilityStatusView.frame = NSRect(x: itemX, y: currentY - 80, width: itemWidth, height: 80)
+        accessibilityStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
         contentView.addSubview(accessibilityStatusView)
         currentY -= 100
 
@@ -89,7 +89,7 @@ class OnboardingWindow: NSWindow {
         )
         fullDiskAccessStatusView.target = self
         fullDiskAccessStatusView.openSettingsAction = #selector(openFullDiskAccessSettings)
-        fullDiskAccessStatusView.frame = NSRect(x: itemX, y: currentY - 80, width: itemWidth, height: 80)
+        fullDiskAccessStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
         contentView.addSubview(fullDiskAccessStatusView)
         currentY -= 100
 
