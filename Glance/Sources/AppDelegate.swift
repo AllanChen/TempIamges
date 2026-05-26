@@ -144,9 +144,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let needsOnboarding = !permissionManager.isInputMonitoringGranted
             || !permissionManager.isAccessibilityGranted
             || !permissionManager.isFullDiskAccessGranted
-        let dontShowAgain = UserDefaults.standard.bool(forKey: "dontShowOnboardingAgain")
 
-        if needsOnboarding && !dontShowAgain {
+        if needsOnboarding {
             showOnboardingWindow()
         }
 

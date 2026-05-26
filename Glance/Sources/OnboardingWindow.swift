@@ -152,7 +152,6 @@ class OnboardingWindow: NSWindow {
     }
 
     @objc private func continuePressed() {
-        UserDefaults.standard.set(true, forKey: "dontShowOnboardingAgain")
         stopPermissionPolling()
         self.close()
     }
