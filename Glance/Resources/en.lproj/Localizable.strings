@@ -72,6 +72,7 @@
 // MARK: - Preview Panel
 "Loading…" = "Loading…";
 "Failed" = "Failed";
+"Folder" = "Folder";
 "Failed to load" = "Failed to load";
 "Reveal in Finder" = "Reveal in Finder";
 "Download" = "Download";

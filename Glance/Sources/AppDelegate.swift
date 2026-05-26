@@ -464,7 +464,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             openInContentPanel(info: info)
         case .video:
             NSWorkspace.shared.open(info.url)
-        case .other:
+        case .other, .folder:
             if info.isLocal {
                 NSWorkspace.shared.activateFileViewerSelecting([info.url])
             } else {

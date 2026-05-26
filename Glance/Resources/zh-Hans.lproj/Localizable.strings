@@ -72,6 +72,7 @@
 // MARK: - Preview Panel
 "Loading…" = "加载中…";
 "Failed" = "失败";
+"Folder" = "文件夹";
 "Failed to load" = "加载失败";
 "Reveal in Finder" = "在 Finder 中显示";
 "Download" = "下载";

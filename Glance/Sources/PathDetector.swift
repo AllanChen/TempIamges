@@ -17,6 +17,7 @@ enum DetectedPath {
     /// them in Finder (local) or opens the URL in the browser (remote).
     case localOther(URL)
     case remoteOther(URL)
+    case localFolder(URL)
     /// Bare filename in the selection (no slashes), e.g. "screenshot.png".
     /// FileNameResolver will Spotlight-search for this before previewing.
     case unresolvedFilename(String)
@@ -33,6 +34,7 @@ enum DetectedPath {
              .localText(let url), .remoteText(let url),
              .localPDF(let url), .remotePDF(let url),
              .localOther(let url), .remoteOther(let url),
+             .localFolder(let url),
              .webPage(let url):
             return url
         case .unresolvedFilename, .unresolvedRelativePath, .invalid:
@@ -55,6 +57,7 @@ enum DetectedPath {
              .localText, .remoteText,
              .localPDF, .remotePDF,
              .localOther, .remoteOther,
+             .localFolder,
              .webPage:
             return true
         case .unresolvedFilename, .unresolvedRelativePath, .invalid:
@@ -148,6 +151,8 @@ class PathDetector {
     private let relativePathRegex: NSRegularExpression
     private let bareFilenameRegex: NSRegularExpression
     private let bareFilenameNoExtRegex: NSRegularExpression
+    private let folderAbsolutePathRegex: NSRegularExpression
+    private let folderHomePathRegex: NSRegularExpression
     private let allRegexes: [NSRegularExpression]
 
     init() {
@@ -222,6 +227,14 @@ class PathDetector {
             pattern: "(?<![\\p{L}\\p{N}_./~\\-])[\\p{L}\\p{N}_][\\p{L}\\p{N}_\\-]{2,29}(?![\\p{L}\\p{N}])",
             options: []
         )
+        self.folderAbsolutePathRegex = try! NSRegularExpression(
+            pattern: "(?<![\\p{L}\\p{N}_.~\\-])/(?:Users|System|Library|Applications|Volumes|private|tmp|var|usr|bin|sbin|opt|dev|etc|home)/[^\"'<>()\\[\\]{},\\n\\r\\t ]+(?:/[^\"'<>()\\[\\]{},\\n\\r\\t ]+)*",
+            options: []
+        )
+        self.folderHomePathRegex = try! NSRegularExpression(
+            pattern: "(?<![\\p{L}\\p{N}_.~\\-])~/[^\"'<>()\\[\\]{},\\n\\r\\t ]+(?:/[^\"'<>()\\[\\]{},\\n\\r\\t ]+)*",
+            options: []
+        )
 
         self.allRegexes = [httpRegex, fileURLRegex, homePathRegex, absolutePathRegex]
     }
@@ -257,9 +270,6 @@ class PathDetector {
         let ns = text as NSString
         let full = NSRange(location: 0, length: ns.length)
 
-        // ─── Phase A: existing absolute-path / URL detectors. ─────────────
-        // bareDomainRegex has the lowest priority so scheme-prefixed URLs
-        // (httpRegex) win when both match the same range.
         let prioritized: [(NSRegularExpression, Int)] = [
             (httpRegex, 0),
             (fileURLRegex, 1),
@@ -275,7 +285,6 @@ class PathDetector {
             }
         }
 
-        // ─── Phase B: relative-path regex (always runs, additive). ────────
         relativePathRegex.enumerateMatches(in: text, options: [], range: full) { m, _, _ in
             guard let m = m else { return }
             hits.append(Hit(range: m.range, str: ns.substring(with: m.range), priority: 4))
@@ -341,6 +350,21 @@ class PathDetector {
             if seen.insert(key).inserted {
                 Logger.info("PathDetector: matched '\(hit.str)' -> '\(key)'")
                 results.append(path)
+            }
+        }
+
+        if results.isEmpty {
+            let folderHits = collectFolderHits(in: text, range: full)
+            for hit in folderHits {
+                if hit.range.location < lastEnd { continue }
+                if let path = resolveFolderCandidate(hit.str) {
+                    let key = path.url?.absoluteString ?? ""
+                    if !key.isEmpty && seen.insert(key).inserted {
+                        Logger.info("PathDetector: folder match '\(hit.str)' -> '\(key)'")
+                        results.append(path)
+                        lastEnd = hit.range.location + hit.range.length
+                    }
+                }
             }
         }
 
@@ -506,14 +530,18 @@ class PathDetector {
     func localKind(for path: String) -> DetectedPath {
         let ext = (path as NSString).pathExtension.lowercased()
         let url = URL(fileURLWithPath: path)
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+           isDirectory.boolValue {
+            let isPackage = (try? url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
+            if !isPackage { return .localFolder(url) }
+        }
         if videoExtensions.contains(ext)    { return .localVideo(url) }
         if markdownExtensions.contains(ext) { return .localMarkdown(url) }
         if textExtensions.contains(ext)     { return .localText(url) }
         if pdfExtensions.contains(ext)      { return .localPDF(url) }
         if otherExtensions.contains(ext)    { return .localOther(url) }
         if imageExtensions.contains(ext)    { return .localImage(url) }
-        // Fallback — extension matched the regex but isn't in any bucket
-        // (shouldn't happen since the regex is built from these same sets).
         return .localOther(url)
     }
 
@@ -542,14 +570,67 @@ class PathDetector {
             return false
         }
         if isDirectory.boolValue {
-            // macOS bundles (.app, .framework, .plugin, etc.) are directories
-            // but should be treated as files for preview purposes.
             let url = URL(fileURLWithPath: path)
             let isPackage = (try? url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
-            guard isPackage else { return false }
+            if isPackage {
+                return true
+            }
+            let ext = (path as NSString).pathExtension.lowercased()
+            return localSupportedExtensions.contains(ext)
         }
         let ext = (path as NSString).pathExtension.lowercased()
         return localSupportedExtensions.contains(ext)
+    }
+
+    private func collectFolderHits(in text: String, range: NSRange) -> [(range: NSRange, str: String)] {
+        var hits: [(range: NSRange, str: String)] = []
+        let ns = text as NSString
+        let regexes = [folderAbsolutePathRegex, folderHomePathRegex]
+        for regex in regexes {
+            regex.enumerateMatches(in: text, options: [], range: range) { m, _, _ in
+                guard let m = m else { return }
+                hits.append((range: m.range, str: ns.substring(with: m.range)))
+            }
+        }
+        hits.sort { $0.range.location < $1.range.location }
+        return hits
+    }
+
+    private func resolveFolderCandidate(_ rawCandidate: String) -> DetectedPath? {
+        var candidate = rawCandidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        while let last = candidate.last, ",.;!?\"')]}".contains(last) {
+            candidate.removeLast()
+        }
+        guard !candidate.isEmpty else { return nil }
+
+        let path: String
+        if candidate.hasPrefix("file://") {
+            guard let url = parseLenientURL(candidate) else { return nil }
+            path = url.path
+        } else if candidate.hasPrefix("~/") {
+            path = (candidate as NSString).expandingTildeInPath
+        } else if candidate.hasPrefix("/") {
+            path = candidate
+        } else {
+            return nil
+        }
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              isDirectory.boolValue else {
+            return nil
+        }
+
+        let url = URL(fileURLWithPath: path)
+        let isPackage = (try? url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
+        guard !isPackage else { return nil }
+
+        let ext = (path as NSString).pathExtension.lowercased()
+        guard ext.isEmpty || !localSupportedExtensions.contains(ext) else {
+            return nil
+        }
+
+        return .localFolder(url)
     }
 
     private func truncate(_ s: String, max: Int = 200) -> String {

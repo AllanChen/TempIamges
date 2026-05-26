@@ -1059,6 +1059,12 @@ final class FlippedDocView: NSView {
     override var isFlipped: Bool { true }
 }
 
+final class PassthroughView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        return nil
+    }
+}
+
 // MARK: - Tile view
 
 final class MediaTileView: NSView {
@@ -1067,7 +1073,7 @@ final class MediaTileView: NSView {
     var info: MediaInfo
     let style: Style
 
-    private let mediaContainer = NSView()
+    private var mediaContainer: NSView!
     private let imageLayer = CALayer()
     private let spinner = NSProgressIndicator()
     private let loadingLabel = NSTextField(labelWithString: "Searching…".localized)
@@ -1115,6 +1121,7 @@ final class MediaTileView: NSView {
         case .singleCard:
             layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
 
+            mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
             mediaContainer.layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
@@ -1175,13 +1182,13 @@ final class MediaTileView: NSView {
             sizeLabel = sizeLbl
 
         case .masonry:
-            // Image fills the entire card; text overlay sits in the top-left.
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             let tileBg = isDark ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.18, alpha: 1)
             layer?.cornerRadius = 8
             layer?.masksToBounds = true
             layer?.backgroundColor = tileBg.cgColor
 
+            mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
             mediaContainer.layer?.backgroundColor = tileBg.cgColor
@@ -1301,7 +1308,7 @@ final class MediaTileView: NSView {
     /// in-app viewer.
     private func installLocateButtonIfNeeded(for info: MediaInfo) {
         guard info.isLocal,
-              info.kind == .markdown || info.kind == .text else { return }
+              info.kind == .markdown || info.kind == .text || info.kind == .folder else { return }
 
         let btn = NSButton(frame: .zero)
         btn.bezelStyle = .recessed
@@ -1604,7 +1611,7 @@ final class MediaTileView: NSView {
         switch info.kind {
         case .image, .webPage, .markdown, .text, .pdf:
             onTileTap?()
-        case .other:
+        case .other, .folder:
             if info.isLocal {
                 if info.url.pathExtension.lowercased() == "app" {
                     NSWorkspace.shared.open(info.url)
@@ -1673,7 +1680,6 @@ final class MediaTileView: NSView {
             dimsLabel?.stringValue = info.url.absoluteString
             sizeLabel?.stringValue = ""
         case .other:
-            // Non-previewable file — show extension/size/hint as the meta line.
             filenameLabel?.stringValue = info.filename
             var pieces: [String] = []
             if !info.formatName.isEmpty { pieces.append(info.formatName) }
@@ -1686,6 +1692,19 @@ final class MediaTileView: NSView {
                 pieces.append(String(format: "in %@".localized, hint))
             }
             dimsLabel?.stringValue = pieces.joined(separator: " · ")
+            sizeLabel?.stringValue = ""
+        case .folder:
+            filenameLabel?.stringValue = info.filename
+            var pieces: [String] = []
+            if let bytes = info.fileSize {
+                let f = ByteCountFormatter()
+                f.countStyle = .file
+                pieces.append(f.string(fromByteCount: bytes))
+            }
+            if let hint = info.disambiguationHint, !hint.isEmpty {
+                pieces.append(String(format: "in %@".localized, hint))
+            }
+            dimsLabel?.stringValue = pieces.isEmpty ? "Folder".localized : pieces.joined(separator: " · ")
             sizeLabel?.stringValue = ""
         }
     }

@@ -19,6 +19,7 @@ struct HistoryRecord: Codable {
             case localText, remoteText
             case localPDF, remotePDF
             case localOther, remoteOther
+            case localFolder
             case webPage
             case unresolvedFilename, unresolvedRelativePath
         }
@@ -40,6 +41,7 @@ struct HistoryRecord: Codable {
             case .remotePDF(let url):      return Item(kind: .remotePDF, value: url.absoluteString)
             case .localOther(let url):     return Item(kind: .localOther, value: url.absoluteString)
             case .remoteOther(let url):    return Item(kind: .remoteOther, value: url.absoluteString)
+            case .localFolder(let url):    return Item(kind: .localFolder, value: url.absoluteString)
             case .webPage(let url):        return Item(kind: .webPage, value: url.absoluteString)
             case .unresolvedFilename(let s):     return Item(kind: .unresolvedFilename, value: s)
             case .unresolvedRelativePath(let s): return Item(kind: .unresolvedRelativePath, value: s)
@@ -47,8 +49,6 @@ struct HistoryRecord: Codable {
             }
         }
 
-        /// Rehydrate to a DetectedPath so the History view can hand the items
-        /// straight to MediaInfo.from(_:) and reuse the preview tile pipeline.
         var detectedPath: DetectedPath? {
             switch kind {
             case .localImage:     return URL(string: value).map { .localImage($0) }
@@ -63,6 +63,7 @@ struct HistoryRecord: Codable {
             case .remotePDF:      return URL(string: value).map { .remotePDF($0) }
             case .localOther:     return URL(string: value).map { .localOther($0) }
             case .remoteOther:    return URL(string: value).map { .remoteOther($0) }
+            case .localFolder:    return URL(string: value).map { .localFolder($0) }
             case .webPage:        return URL(string: value).map { .webPage($0) }
             case .unresolvedFilename:     return .unresolvedFilename(value)
             case .unresolvedRelativePath: return .unresolvedRelativePath(value)

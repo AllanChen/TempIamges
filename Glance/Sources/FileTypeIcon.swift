@@ -68,6 +68,14 @@ enum FileTypeIcon {
             )
         case .other:
             return otherStyle(ext: ext)
+        case .folder:
+            return Style(
+                backgroundColor: NSColor(red: 0.40, green: 0.55, blue: 0.72, alpha: 1),
+                symbol: "📁",
+                symbolColor: .white,
+                fontFraction: 0.38,
+                fontWeight: .bold
+            )
         }
     }
 

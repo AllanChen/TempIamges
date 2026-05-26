@@ -17,7 +17,7 @@ struct MediaInfo {
     /// searched for.
     var searchToken: String? = nil
 
-    enum Kind { case image, video, markdown, text, pdf, webPage, other }
+    enum Kind { case image, video, markdown, text, pdf, webPage, other, folder }
 
     var filename: String { url.lastPathComponent }
     var formatName: String { (filename as NSString).pathExtension.uppercased() }
@@ -27,15 +27,14 @@ struct MediaInfo {
     var isPDF: Bool      { kind == .pdf }
     var isWebPage: Bool  { kind == .webPage }
     var isOther: Bool    { kind == .other }
+    var isFolder: Bool   { kind == .folder }
     /// True for kinds that have no inline preview — clicking the tile opens
     /// them in a separate viewer window instead.
     var opensInViewer: Bool {
         kind == .markdown || kind == .text || kind == .webPage || kind == .pdf
     }
-    /// True for kinds whose tile renders a static icon as the final content
-    /// (no thumbnail / no async load): openable kinds + .other.
     var hasIconContent: Bool {
-        opensInViewer || kind == .other
+        opensInViewer || kind == .other || kind == .folder
     }
 
     static func from(_ path: DetectedPath) -> MediaInfo? {
@@ -53,6 +52,7 @@ struct MediaInfo {
         case .webPage(let url):        return MediaInfo(url: url, isLocal: false, kind: .webPage)
         case .localOther(let url):     return MediaInfo(url: url, isLocal: true,  kind: .other)
         case .remoteOther(let url):    return MediaInfo(url: url, isLocal: false, kind: .other)
+        case .localFolder(let url):    return MediaInfo(url: url, isLocal: true,  kind: .folder)
         case .unresolvedFilename, .unresolvedRelativePath, .invalid: return nil
         }
     }
@@ -146,6 +146,7 @@ class ImageLoader {
                  .localText, .remoteText,
                  .localPDF, .remotePDF,
                  .localOther, .remoteOther,
+                 .localFolder,
                  .webPage:
                 // No async work — the tile shows a placeholder icon and the
                 // content is fetched only when the user clicks to open it

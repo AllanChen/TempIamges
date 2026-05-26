@@ -228,7 +228,7 @@ final class HistoryWindow: NSWindow {
         switch info.kind {
         case .image, .video:
             NSWorkspace.shared.open(info.url)
-        case .other:
+        case .other, .folder:
             if info.isLocal {
                 NSWorkspace.shared.activateFileViewerSelecting([info.url])
             } else {
@@ -420,7 +420,7 @@ private final class HistorySectionView: NSView {
             // so the tile attaches an AVPlayer. AVPlayerView resolves the
             // natural size itself.
             tile.setLoaded(.video(info.url, naturalSize: info.dimensions ?? .zero, info))
-        case .markdown, .text, .pdf, .webPage, .other:
+        case .markdown, .text, .pdf, .webPage, .other, .folder:
             tile.setLoaded(.openable(info))
         }
     }
