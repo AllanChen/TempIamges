@@ -1126,9 +1126,6 @@ final class MediaTileView: NSView {
         case .singleCard:
             layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
 
-            let pinch = NSMagnificationGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
-            addGestureRecognizer(pinch)
-
             mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
@@ -1660,15 +1657,14 @@ final class MediaTileView: NSView {
         super.scrollWheel(with: event)
     }
 
-    @objc private func handlePinch(_ gesture: NSMagnificationGestureRecognizer) {
+    override func magnify(with event: NSEvent) {
         guard style == .singleCard, info.kind == .image else { return }
-        let newScale = max(minZoomScale, min(maxZoomScale, zoomScale * (1 + gesture.magnification)))
+        let newScale = max(minZoomScale, min(maxZoomScale, zoomScale * (1 + event.magnification)))
         zoomScale = newScale
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         imageLayer.transform = CATransform3DMakeScale(zoomScale, zoomScale, 1)
         CATransaction.commit()
-        gesture.magnification = 0
     }
 
     private func attachPlayer(url: URL) {
