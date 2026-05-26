@@ -85,7 +85,7 @@ enum LoadedMedia {
 class ImageLoader {
     private let imageCache = NSCache<NSString, NSImage>()
     private let maxCacheSize: Int = 50 * 1024 * 1024
-    private let loadSemaphore = DispatchSemaphore(value: 4)
+    private let loadSemaphore = DispatchSemaphore(value: 2)
 
     init() {
         imageCache.totalCostLimit = maxCacheSize
@@ -204,14 +204,19 @@ class ImageLoader {
     }
 
     private func loadLocalImage(from url: URL, cacheKey: NSString, completion: @escaping (NSImage?) -> Void) {
-        loadSemaphore.wait()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            defer { self?.loadSemaphore.signal() }
+            guard let self = self else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            self.loadSemaphore.wait()
+            defer { self.loadSemaphore.signal() }
+
             guard let image = NSImage(contentsOf: url) else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 guard let self = self else { completion(nil); return }
                 let resized = self.resizeImage(image, maxDimension: 800)
                 let cost = Int(resized.size.width * resized.size.height * 4)
