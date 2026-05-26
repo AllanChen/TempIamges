@@ -715,7 +715,7 @@ class PreviewPanel: NSPanel {
         meta.font = NSFont.systemFont(ofSize: 10)
         meta.alignment = .center
         meta.lineBreakMode = .byTruncatingTail
-        meta.maximumNumberOfLines = 2
+        meta.maximumNumberOfLines = 3
         meta.usesSingleLineMode = false
         pill.addSubview(meta)
         metaPillMeta = meta
@@ -1168,7 +1168,7 @@ final class MediaTileView: NSView {
             dimsLbl.textColor = NSColor(white: 1, alpha: 0.85)
             dimsLbl.font = NSFont.systemFont(ofSize: 12)
             dimsLbl.lineBreakMode = .byTruncatingTail
-            dimsLbl.maximumNumberOfLines = 2
+            dimsLbl.maximumNumberOfLines = 3
             dimsLbl.usesSingleLineMode = false
             dimsLbl.isHidden = true
             addSubview(dimsLbl)
@@ -1237,7 +1237,7 @@ final class MediaTileView: NSView {
             dimsLbl.textColor = NSColor(white: 1, alpha: 0.95)
             dimsLbl.font = NSFont.systemFont(ofSize: 11)
             dimsLbl.lineBreakMode = .byTruncatingTail
-            dimsLbl.maximumNumberOfLines = 2
+            dimsLbl.maximumNumberOfLines = 3
             dimsLbl.usesSingleLineMode = false
             dimsLbl.isHidden = true
             addSubview(dimsLbl)
