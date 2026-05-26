@@ -953,10 +953,6 @@ class PreviewPanel: NSPanel {
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
         panel.makeKey()
-
-        if currentMode == .singleCard {
-            forceHidePanel(dismissContent: false)
-        }
     }
 
     private func uniqueDestination(in dir: URL, filename: String) -> URL {
