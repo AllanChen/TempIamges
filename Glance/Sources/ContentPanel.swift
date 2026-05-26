@@ -8,18 +8,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private let textView: NSTextView
     private let textScroll: NSScrollView
     private let imageView: NSImageView
-    private let imageScrollView = ZoomableScrollView()
-    private var imageZoomScale: CGFloat = 1.0
-    private let minImageZoom: CGFloat = 0.1
-    private let maxImageZoom: CGFloat = 5.0
     private let toolbarBar = NSView()
     private let saveButton = NSButton()
     private let toggleButton = NSButton()
     private let gitDiffButton = NSButton()
     private let locateButton = NSButton()
-    private let zoomOutButton = NSButton()
-    private let zoomInButton = NSButton()
-    private let zoomPercentLabel = NSTextField(labelWithString: "100%")
     private let modifiedLabel = NSTextField(labelWithString: "")
     private let addressBar = NSTextField()
 
@@ -126,7 +119,6 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         showWebView()
         installEscapeKeyMonitors()
         installMouseCursorMonitor()
-        installImageZoomGestures()
     }
 
     override var canBecomeKey: Bool { true }
@@ -218,54 +210,6 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         isResizing = false
         currentResizeEdge = .none
         super.mouseUp(with: event)
-    }
-
-    private func installImageZoomGestures() {
-        let pinch = NSMagnificationGestureRecognizer(target: self, action: #selector(handleImageMagnify(_:)))
-        imageScrollView.addGestureRecognizer(pinch)
-
-        let doubleClick = NSClickGestureRecognizer(target: self, action: #selector(resetImageZoom))
-        doubleClick.numberOfClicksRequired = 2
-        imageScrollView.addGestureRecognizer(doubleClick)
-
-        imageScrollView.onZoom = { [weak self] factor in
-            self?.zoomImage(by: factor)
-        }
-    }
-
-    @objc private func handleImageMagnify(_ gesture: NSMagnificationGestureRecognizer) {
-        guard gesture.state == .changed || gesture.state == .ended else { return }
-        let factor = 1 + gesture.magnification
-        zoomImage(by: factor)
-        gesture.magnification = 0
-    }
-
-    @objc private func zoomInTapped() {
-        zoomImage(by: 1.25)
-    }
-
-    @objc private func zoomOutTapped() {
-        zoomImage(by: 0.8)
-    }
-
-    @objc private func resetImageZoom() {
-        imageZoomScale = 1.0
-        applyImageZoom()
-    }
-
-    private func zoomImage(by factor: CGFloat) {
-        let newScale = max(minImageZoom, min(maxImageZoom, imageZoomScale * factor))
-        guard newScale != imageZoomScale else { return }
-        imageZoomScale = newScale
-        applyImageZoom()
-    }
-
-    private func applyImageZoom() {
-        guard let image = imageView.image else { return }
-        let newSize = NSSize(width: image.size.width * imageZoomScale,
-                            height: image.size.height * imageZoomScale)
-        imageView.frame = NSRect(origin: .zero, size: newSize)
-        zoomPercentLabel.stringValue = String(format: "%.0f%%", imageZoomScale * 100)
     }
 
     private func installMouseCursorMonitor() {
@@ -393,37 +337,6 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         toolbarBar.addSubview(gitDiffButton)
         currentRight -= diffW + gap
 
-        zoomInButton.bezelStyle = .rounded
-        zoomInButton.image = NSImage(systemSymbolName: "plus.magnifyingglass", accessibilityDescription: "Zoom in")
-        zoomInButton.imagePosition = .imageOnly
-        zoomInButton.target = self
-        zoomInButton.action = #selector(zoomInTapped)
-        zoomInButton.frame = NSRect(x: currentRight - 28, y: btnY, width: 28, height: btnH)
-        zoomInButton.autoresizingMask = [.minXMargin]
-        zoomInButton.isHidden = true
-        toolbarBar.addSubview(zoomInButton)
-        currentRight -= 28 + 4
-
-        zoomPercentLabel.font = NSFont.systemFont(ofSize: 11)
-        zoomPercentLabel.textColor = .secondaryLabelColor
-        zoomPercentLabel.alignment = .center
-        zoomPercentLabel.frame = NSRect(x: currentRight - 50, y: btnY, width: 50, height: btnH)
-        zoomPercentLabel.autoresizingMask = [.minXMargin]
-        zoomPercentLabel.isHidden = true
-        toolbarBar.addSubview(zoomPercentLabel)
-        currentRight -= 50 + 4
-
-        zoomOutButton.bezelStyle = .rounded
-        zoomOutButton.image = NSImage(systemSymbolName: "minus.magnifyingglass", accessibilityDescription: "Zoom out")
-        zoomOutButton.imagePosition = .imageOnly
-        zoomOutButton.target = self
-        zoomOutButton.action = #selector(zoomOutTapped)
-        zoomOutButton.frame = NSRect(x: currentRight - 28, y: btnY, width: 28, height: btnH)
-        zoomOutButton.autoresizingMask = [.minXMargin]
-        zoomOutButton.isHidden = true
-        toolbarBar.addSubview(zoomOutButton)
-        currentRight -= 28 + gap
-
         modifiedLabel.font = NSFont.systemFont(ofSize: 11)
         modifiedLabel.textColor = .secondaryLabelColor
         modifiedLabel.alignment = .left
@@ -455,19 +368,9 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         webView.autoresizingMask = [.width, .height]
         root.addSubview(webView)
 
-        imageScrollView.frame = contentFrame
-        imageScrollView.autoresizingMask = [.width, .height]
-        imageScrollView.hasVerticalScroller = true
-        imageScrollView.hasHorizontalScroller = true
-        imageScrollView.borderType = .noBorder
-        imageScrollView.backgroundColor = NSColor(white: 0.04, alpha: 1)
-        imageScrollView.drawsBackground = true
-        imageScrollView.isHidden = true
-        root.addSubview(imageScrollView)
-
-        imageView.frame = NSRect(origin: .zero, size: contentFrame.size)
-        imageView.imageScaling = .scaleAxesIndependently
-        imageScrollView.documentView = imageView
+        imageView.frame = contentFrame
+        imageView.autoresizingMask = [.width, .height]
+        root.addSubview(imageView)
 
         textScroll.frame = contentFrame
         textScroll.autoresizingMask = [.width, .height]
@@ -712,8 +615,6 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             imageInfoBar.isHidden = false
             if let image = NSImage(contentsOf: info.url) {
                 imageView.image = image
-                imageZoomScale = 1.0
-                applyImageZoom()
                 showImageView()
             } else {
                 let html = """
@@ -796,32 +697,20 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private func showWebView() {
         webView.isHidden = false
         textScroll.isHidden = true
-        imageScrollView.isHidden = true
         imageView.isHidden = true
-        zoomOutButton.isHidden = true
-        zoomInButton.isHidden = true
-        zoomPercentLabel.isHidden = true
     }
 
     private func showTextView() {
         webView.isHidden = true
         textScroll.isHidden = false
-        imageScrollView.isHidden = true
         imageView.isHidden = true
-        zoomOutButton.isHidden = true
-        zoomInButton.isHidden = true
-        zoomPercentLabel.isHidden = true
         makeFirstResponder(textView)
     }
 
     private func showImageView() {
         webView.isHidden = true
         textScroll.isHidden = true
-        imageScrollView.isHidden = false
         imageView.isHidden = false
-        zoomOutButton.isHidden = false
-        zoomInButton.isHidden = false
-        zoomPercentLabel.isHidden = false
     }
 
     private func showAddressBar(for url: URL) {
@@ -1107,23 +996,6 @@ extension ContentPanel {
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         hideLoading()
-    }
-}
-
-private final class ZoomableScrollView: NSScrollView {
-    var onZoom: ((CGFloat) -> Void)?
-
-    override func scrollWheel(with event: NSEvent) {
-        if event.modifierFlags.contains(.command) {
-            let delta = event.scrollingDeltaY
-            if delta > 0 {
-                onZoom?(1.1)
-            } else if delta < 0 {
-                onZoom?(0.9)
-            }
-            return
-        }
-        super.scrollWheel(with: event)
     }
 }
 
