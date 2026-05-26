@@ -84,7 +84,8 @@ enum LoadedMedia {
 
 class ImageLoader {
     private let imageCache = NSCache<NSString, NSImage>()
-    private let maxCacheSize: Int = 50 * 1024 * 1024 // 50MB
+    private let maxCacheSize: Int = 50 * 1024 * 1024
+    private let loadSemaphore = DispatchSemaphore(value: 4)
 
     init() {
         imageCache.totalCostLimit = maxCacheSize
@@ -203,15 +204,20 @@ class ImageLoader {
     }
 
     private func loadLocalImage(from url: URL, cacheKey: NSString, completion: @escaping (NSImage?) -> Void) {
+        loadSemaphore.wait()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            defer { self?.loadSemaphore.signal() }
             guard let image = NSImage(contentsOf: url) else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
-            let resized = self?.resizeImage(image, maxDimension: 800) ?? image
-            let cost = Int(resized.size.width * resized.size.height * 4)
-            self?.imageCache.setObject(resized, forKey: cacheKey, cost: cost)
-            DispatchQueue.main.async { completion(resized) }
+            DispatchQueue.main.async {
+                guard let self = self else { completion(nil); return }
+                let resized = self.resizeImage(image, maxDimension: 800)
+                let cost = Int(resized.size.width * resized.size.height * 4)
+                self.imageCache.setObject(resized, forKey: cacheKey, cost: cost)
+                completion(resized)
+            }
         }
     }
 
@@ -237,10 +243,12 @@ class ImageLoader {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
-            let resized = self.resizeImage(image, maxDimension: 800)
-            let cost = Int(resized.size.width * resized.size.height * 4)
-            self.imageCache.setObject(resized, forKey: cacheKey, cost: cost)
-            DispatchQueue.main.async { completion(resized) }
+            DispatchQueue.main.async {
+                let resized = self.resizeImage(image, maxDimension: 800)
+                let cost = Int(resized.size.width * resized.size.height * 4)
+                self.imageCache.setObject(resized, forKey: cacheKey, cost: cost)
+                completion(resized)
+            }
         }
         task.resume()
     }
