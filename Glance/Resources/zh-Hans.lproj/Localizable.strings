@@ -9,18 +9,29 @@
 "Glance" = "Glance";
 
 // MARK: - Onboarding Window
-"Glance Needs Permissions" = "Glance 需要权限";
-"To enable image previews on hover, please grant the following permissions:" = "要启用悬停图片预览，请授予以下权限：";
+"Welcome to Glance" = "欢迎使用 Glance";
+"Welcome to Glance!" = "欢迎使用 Glance！";
+"Before you can start previewing, we need to ask you for a few permissions." = "在开始预览之前，我们需要向你申请几项权限。";
 "Continue" = "继续";
 "Don't show again" = "不再显示";
-"Input Monitoring" = "输入监听";
-"Required — detect when you hold the hotkey to activate preview mode." = "必需 — 检测你按住热键以激活预览模式。";
+"Input Monitoring Permission" = "输入监听权限";
+"Glance needs to detect when you hold the hotkey to activate preview mode." = "Glance 需要检测你按住热键以激活预览模式。";
+"Input Monitoring Enabled" = "输入监听已启用";
 "❌ Not Granted" = "❌ 未授权";
 "Open Settings" = "打开设置";
-"Accessibility" = "辅助功能";
-"Required — read the selected text in the active app so we know what to preview." = "必需 — 读取当前应用中选中的文本，以便我们知道要预览什么。";
+"Accessibility Permission" = "辅助功能权限";
+"Glance needs to read the selected text in the active app so we know what to preview." = "Glance 需要读取当前应用中选中的文本，以便我们知道要预览什么。";
+"Accessibility access enabled" = "辅助功能已启用";
+"Full Disk Access Permission" = "完全磁盘访问权限";
 "Full Disk Access (Recommended)" = "完全磁盘访问（推荐）";
 "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts." = "可选 — 让应用无需逐文件夹授权即可预览桌面/文稿/iCloud 中的文件。";
+"Full Disk Access enabled" = "完全磁盘访问已启用";
+"Glance Needs Permissions" = "Glance 需要权限";
+"To enable image previews on hover, please grant the following permissions:" = "要启用悬停图片预览，请授予以下权限：";
+"Input Monitoring" = "输入监听";
+"Required — detect when you hold the hotkey to activate preview mode." = "必需 — 检测你按住热键以激活预览模式。";
+"Accessibility" = "辅助功能";
+"Required — read the selected text in the active app so we know what to preview." = "必需 — 读取当前应用中选中的文本，以便我们知道要预览什么。";
 "ℹ️ Optional" = "ℹ️ 可选";
 "✅ Granted" = "✅ 已授权";
 

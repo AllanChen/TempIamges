@@ -9,18 +9,29 @@
 "Glance" = "Glance";
 
 // MARK: - Onboarding Window
-"Glance Needs Permissions" = "Glance Needs Permissions";
-"To enable image previews on hover, please grant the following permissions:" = "To enable image previews on hover, please grant the following permissions:";
+"Welcome to Glance" = "Welcome to Glance";
+"Welcome to Glance!" = "Welcome to Glance!";
+"Before you can start previewing, we need to ask you for a few permissions." = "Before you can start previewing, we need to ask you for a few permissions.";
 "Continue" = "Continue";
 "Don't show again" = "Don't show again";
-"Input Monitoring" = "Input Monitoring";
-"Required — detect when you hold the hotkey to activate preview mode." = "Required — detect when you hold the hotkey to activate preview mode.";
+"Input Monitoring Permission" = "Input Monitoring Permission";
+"Glance needs to detect when you hold the hotkey to activate preview mode." = "Glance needs to detect when you hold the hotkey to activate preview mode.";
+"Input Monitoring Enabled" = "Input Monitoring Enabled";
 "❌ Not Granted" = "❌ Not Granted";
 "Open Settings" = "Open Settings";
-"Accessibility" = "Accessibility";
-"Required — read the selected text in the active app so we know what to preview." = "Required — read the selected text in the active app so we know what to preview.";
+"Accessibility Permission" = "Accessibility Permission";
+"Glance needs to read the selected text in the active app so we know what to preview." = "Glance needs to read the selected text in the active app so we know what to preview.";
+"Accessibility access enabled" = "Accessibility access enabled";
+"Full Disk Access Permission" = "Full Disk Access Permission";
 "Full Disk Access (Recommended)" = "Full Disk Access (Recommended)";
 "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts." = "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts.";
+"Full Disk Access enabled" = "Full Disk Access enabled";
+"Glance Needs Permissions" = "Glance Needs Permissions";
+"To enable image previews on hover, please grant the following permissions:" = "To enable image previews on hover, please grant the following permissions:";
+"Input Monitoring" = "Input Monitoring";
+"Required — detect when you hold the hotkey to activate preview mode." = "Required — detect when you hold the hotkey to activate preview mode.";
+"Accessibility" = "Accessibility";
+"Required — read the selected text in the active app so we know what to preview." = "Required — read the selected text in the active app so we know what to preview.";
 "ℹ️ Optional" = "ℹ️ Optional";
 "✅ Granted" = "✅ Granted";
 

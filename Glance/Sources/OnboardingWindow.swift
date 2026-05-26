@@ -205,7 +205,7 @@ class PermissionStatusView: NSView {
         statusContainer.wantsLayer = true
         statusContainer.layer?.cornerRadius = 6
         statusContainer.layer?.borderWidth = 1
-        statusContainer.frame = NSRect(x: 330, y: 16, width: 190, height: 32)
+        statusContainer.frame = NSRect(x: 370, y: 10, width: 120, height: 44)
         addSubview(statusContainer)
 
         statusLabel.isEditable = false
@@ -213,7 +213,9 @@ class PermissionStatusView: NSView {
         statusLabel.backgroundColor = .clear
         statusLabel.font = NSFont.systemFont(ofSize: 12)
         statusLabel.alignment = .center
-        statusLabel.frame = NSRect(x: 0, y: 0, width: 190, height: 32)
+        statusLabel.lineBreakMode = .byWordWrapping
+        statusLabel.maximumNumberOfLines = 2
+        statusLabel.frame = NSRect(x: 4, y: 4, width: 112, height: 36)
         statusContainer.addSubview(statusLabel)
 
         openSettingsButton.title = "Open Settings".localized
