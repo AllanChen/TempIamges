@@ -955,7 +955,7 @@ class PreviewPanel: NSPanel {
         panel.makeKey()
 
         if currentMode == .singleCard {
-            forceHidePanel()
+            forceHidePanel(dismissContent: false)
         }
     }
 
