@@ -1095,6 +1095,11 @@ final class MediaTileView: NSView {
     private var player: AVPlayer?
     private var endObserver: NSObjectProtocol?
 
+    // MARK: - Zoom (singleCard image only)
+    private var zoomScale: CGFloat = 1.0
+    private let minZoomScale: CGFloat = 1.0
+    private let maxZoomScale: CGFloat = 2.0
+
     var onClose: (() -> Void)?
     var onAction: (() -> Void)?
     var onDownload: (() -> Void)?
@@ -1120,6 +1125,9 @@ final class MediaTileView: NSView {
         switch style {
         case .singleCard:
             layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
+
+            let pinch = NSMagnificationGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+            addGestureRecognizer(pinch)
 
             mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
@@ -1522,6 +1530,12 @@ final class MediaTileView: NSView {
         filenameLabel?.isHidden = false
         dimsLabel?.isHidden = false
 
+        zoomScale = 1.0
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        imageLayer.transform = CATransform3DIdentity
+        CATransaction.commit()
+
         switch media {
         case .image(let img, let info):
             imageLayer.contents = img
@@ -1631,7 +1645,30 @@ final class MediaTileView: NSView {
             enclosingScrollView?.scrollWheel(with: event)
             return
         }
+        if style == .singleCard, info.kind == .image, event.modifierFlags.contains(.command) {
+            let delta = event.scrollingDeltaY
+            let factor = delta > 0 ? 1.1 : (delta < 0 ? 0.9 : 1.0)
+            let newScale = max(minZoomScale, min(maxZoomScale, zoomScale * factor))
+            guard newScale != zoomScale else { return }
+            zoomScale = newScale
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            imageLayer.transform = CATransform3DMakeScale(zoomScale, zoomScale, 1)
+            CATransaction.commit()
+            return
+        }
         super.scrollWheel(with: event)
+    }
+
+    @objc private func handlePinch(_ gesture: NSMagnificationGestureRecognizer) {
+        guard style == .singleCard, info.kind == .image else { return }
+        let newScale = max(minZoomScale, min(maxZoomScale, zoomScale * (1 + gesture.magnification)))
+        zoomScale = newScale
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        imageLayer.transform = CATransform3DMakeScale(zoomScale, zoomScale, 1)
+        CATransaction.commit()
+        gesture.magnification = 0
     }
 
     private func attachPlayer(url: URL) {
