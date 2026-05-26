@@ -221,6 +221,9 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     }
 
     private func installImageZoomGestures() {
+        let pinch = NSMagnificationGestureRecognizer(target: self, action: #selector(handleImageMagnify(_:)))
+        imageScrollView.addGestureRecognizer(pinch)
+
         let doubleClick = NSClickGestureRecognizer(target: self, action: #selector(resetImageZoom))
         doubleClick.numberOfClicksRequired = 2
         imageScrollView.addGestureRecognizer(doubleClick)
@@ -228,6 +231,13 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         imageScrollView.onZoom = { [weak self] factor in
             self?.zoomImage(by: factor)
         }
+    }
+
+    @objc private func handleImageMagnify(_ gesture: NSMagnificationGestureRecognizer) {
+        guard gesture.state == .changed || gesture.state == .ended else { return }
+        let factor = 1 + gesture.magnification
+        zoomImage(by: factor)
+        gesture.magnification = 0
     }
 
     @objc private func zoomInTapped() {
@@ -1102,10 +1112,6 @@ extension ContentPanel {
 
 private final class ZoomableScrollView: NSScrollView {
     var onZoom: ((CGFloat) -> Void)?
-
-    override func magnify(with event: NSEvent) {
-        onZoom?(1 + event.magnification)
-    }
 
     override func scrollWheel(with event: NSEvent) {
         if event.modifierFlags.contains(.command) {
