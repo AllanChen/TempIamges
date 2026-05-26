@@ -7,7 +7,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private let webView: WKWebView
     private let textView: NSTextView
     private let textScroll: NSScrollView
-    private let imageView: NSImageView
+    private let imageView: ImageFillView
     private let toolbarBar = NSView()
     private let saveButton = NSButton()
     private let toggleButton = NSButton()
@@ -91,10 +91,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         scroll.documentView = tv
         textScroll = scroll
 
-        let iv = NSImageView(frame: .zero)
-        iv.imageScaling = .scaleProportionallyUpOrDown
-        iv.wantsLayer = true
-        iv.layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
+        let iv = ImageFillView(frame: .zero)
         iv.isHidden = true
         imageView = iv
 
@@ -996,6 +993,31 @@ extension ContentPanel {
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         hideLoading()
+    }
+}
+
+private final class ImageFillView: NSView {
+    var image: NSImage? {
+        didSet {
+            layer?.contents = image
+        }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
+        layer?.contentsGravity = .resizeAspectFill
+        layer?.masksToBounds = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        layer?.frame = bounds
     }
 }
 
