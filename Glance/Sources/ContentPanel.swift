@@ -7,6 +7,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private let webView: WKWebView
     private let textView: NSTextView
     private let textScroll: NSScrollView
+    private let imageView: NSImageView
     private let toolbarBar = NSView()
     private let saveButton = NSButton()
     private let toggleButton = NSButton()
@@ -89,6 +90,13 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         scroll.borderType = .noBorder
         scroll.documentView = tv
         textScroll = scroll
+
+        let iv = NSImageView(frame: .zero)
+        iv.imageScaling = .scaleProportionallyUpOrDown
+        iv.wantsLayer = true
+        iv.layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
+        iv.isHidden = true
+        imageView = iv
 
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
@@ -360,6 +368,10 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         webView.autoresizingMask = [.width, .height]
         root.addSubview(webView)
 
+        imageView.frame = contentFrame
+        imageView.autoresizingMask = [.width, .height]
+        root.addSubview(imageView)
+
         textScroll.frame = contentFrame
         textScroll.autoresizingMask = [.width, .height]
         textView.textContainer?.containerSize = NSSize(
@@ -601,15 +613,20 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             updateToolbarPath(for: info.url)
             updateImageInfoBar(with: info)
             imageInfoBar.isHidden = false
-            let html = """
-            <html><head><style>
-            body { margin: 0; display: flex; align-items: center; justify-content: center;
-                   background: #0a0a0a; height: 100vh; overflow: hidden; }
-            img { max-width: 100%; max-height: 100%; object-fit: contain; }
-            </style></head><body><img src="\(info.url.lastPathComponent)"></body></html>
-            """
-            webView.loadHTMLString(html, baseURL: info.url.deletingLastPathComponent())
-            showWebView()
+            if let image = NSImage(contentsOf: info.url) {
+                imageView.image = image
+                showImageView()
+            } else {
+                let html = """
+                <html><head><style>
+                body { margin: 0; display: flex; align-items: center; justify-content: center;
+                       background: #0a0a0a; height: 100vh; overflow: hidden; }
+                img { max-width: 100%; max-height: 100%; object-fit: contain; }
+                </style></head><body><img src="\(info.url.absoluteString)"></body></html>
+                """
+                webView.loadHTMLString(html, baseURL: nil)
+                showWebView()
+            }
             hideLoading()
         default:
             currentURL = info.url
@@ -680,12 +697,20 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private func showWebView() {
         webView.isHidden = false
         textScroll.isHidden = true
+        imageView.isHidden = true
     }
 
     private func showTextView() {
         webView.isHidden = true
         textScroll.isHidden = false
+        imageView.isHidden = true
         makeFirstResponder(textView)
+    }
+
+    private func showImageView() {
+        webView.isHidden = true
+        textScroll.isHidden = true
+        imageView.isHidden = false
     }
 
     private func showAddressBar(for url: URL) {
