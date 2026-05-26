@@ -80,10 +80,19 @@ final class FilenameCache {
         let snapshot = entries
         let url = storeURL
         ioQueue.async {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            guard let data = try? encoder.encode(snapshot) else { return }
+            let formatter = ISO8601DateFormatter()
+            var json: [String: [String: String]] = [:]
+            for (token, entry) in snapshot {
+                json[token] = [
+                    "url": entry.url,
+                    "timestamp": formatter.string(from: entry.timestamp)
+                ]
+            }
+            guard JSONSerialization.isValidJSONObject(json),
+                  let data = try? JSONSerialization.data(
+                    withJSONObject: json,
+                    options: [.prettyPrinted, .sortedKeys]
+                  ) else { return }
             try? data.write(to: url, options: .atomic)
         }
     }
