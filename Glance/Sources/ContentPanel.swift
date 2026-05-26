@@ -604,11 +604,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             let html = """
             <html><head><style>
             body { margin: 0; display: flex; align-items: center; justify-content: center;
-                   background: #0a0a0a; height: 100vh; }
+                   background: #0a0a0a; height: 100vh; overflow: hidden; }
             img { max-width: 100%; max-height: 100%; object-fit: contain; }
-            </style></head><body><img src="\(info.url.absoluteString)"></body></html>
+            </style></head><body><img src="\(info.url.lastPathComponent)"></body></html>
             """
-            webView.loadHTMLString(html, baseURL: nil)
+            webView.loadHTMLString(html, baseURL: info.url.deletingLastPathComponent())
             showWebView()
             hideLoading()
         default:
