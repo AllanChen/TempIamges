@@ -1168,7 +1168,8 @@ final class MediaTileView: NSView {
             dimsLbl.textColor = NSColor(white: 1, alpha: 0.85)
             dimsLbl.font = NSFont.systemFont(ofSize: 12)
             dimsLbl.lineBreakMode = .byTruncatingTail
-            dimsLbl.maximumNumberOfLines = 1
+            dimsLbl.maximumNumberOfLines = 2
+            dimsLbl.usesSingleLineMode = false
             dimsLbl.isHidden = true
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
@@ -1236,7 +1237,8 @@ final class MediaTileView: NSView {
             dimsLbl.textColor = NSColor(white: 1, alpha: 0.95)
             dimsLbl.font = NSFont.systemFont(ofSize: 11)
             dimsLbl.lineBreakMode = .byTruncatingTail
-            dimsLbl.maximumNumberOfLines = 1
+            dimsLbl.maximumNumberOfLines = 2
+            dimsLbl.usesSingleLineMode = false
             dimsLbl.isHidden = true
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
@@ -1427,6 +1429,7 @@ final class MediaTileView: NSView {
                 width: side, height: side
             )
         }
+        let hasHint = info.disambiguationHint != nil && !info.disambiguationHint!.isEmpty
         switch style {
         case .singleCard:
             mediaContainer.frame = bounds
@@ -1434,7 +1437,7 @@ final class MediaTileView: NSView {
             playerView?.frame = mediaContainer.bounds
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            let gradH: CGFloat = 96
+            let gradH: CGFloat = hasHint ? 120 : 96
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradH)
             shimmerLayer.frame = mediaContainer.bounds
             CATransaction.commit()
@@ -1449,9 +1452,11 @@ final class MediaTileView: NSView {
             let dlBtnSize: CGFloat = 34
             let dlReserved = (downloadBtn != nil) ? (dlBtnSize + 12) : 14
             let textW = bounds.width - textX - dlReserved
-            // Two-row overlay: big filename above, single meta line below.
-            filenameLabel?.frame = NSRect(x: textX, y: 36, width: textW, height: 22)
-            dimsLabel?.frame     = NSRect(x: textX, y: 14, width: textW, height: 18)
+            let dimsHeight: CGFloat = hasHint ? 34 : 18
+            let filenameY: CGFloat = hasHint ? 52 : 36
+            let filenameHeight: CGFloat = hasHint ? 20 : 22
+            filenameLabel?.frame = NSRect(x: textX, y: filenameY, width: textW, height: filenameHeight)
+            dimsLabel?.frame     = NSRect(x: textX, y: 14, width: textW, height: dimsHeight)
             sizeLabel?.frame     = .zero
             downloadBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSize - 10,
@@ -1475,7 +1480,7 @@ final class MediaTileView: NSView {
             playerView?.frame = mediaContainer.bounds
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            let gradientH: CGFloat = 76
+            let gradientH: CGFloat = hasHint ? 100 : 76
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradientH)
             shimmerLayer.frame = mediaContainer.bounds
             CATransaction.commit()
@@ -1491,9 +1496,11 @@ final class MediaTileView: NSView {
             let dlBtnSizeM: CGFloat = 28
             let dlReservedM = (downloadBtn != nil) ? (dlBtnSizeM + 10) : 8
             let textW = bounds.width - textX - dlReservedM
-            // Two-row overlay: filename + one merged meta line.
-            filenameLabel?.frame = NSRect(x: textX, y: 28, width: textW, height: 18)
-            dimsLabel?.frame     = NSRect(x: textX, y: 10, width: textW, height: 14)
+            let dimsHeight: CGFloat = hasHint ? 28 : 14
+            let filenameY: CGFloat = hasHint ? 42 : 28
+            let filenameHeight: CGFloat = hasHint ? 14 : 18
+            filenameLabel?.frame = NSRect(x: textX, y: filenameY, width: textW, height: filenameHeight)
+            dimsLabel?.frame     = NSRect(x: textX, y: 10, width: textW, height: dimsHeight)
             sizeLabel?.frame     = .zero
             downloadBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSizeM - 6,
@@ -1660,7 +1667,6 @@ final class MediaTileView: NSView {
         case .image, .video:
             applyMediaText(info: info)
         case .markdown, .text, .pdf:
-            // Plain-text-ish file: format + optional location hint, joined.
             filenameLabel?.stringValue = info.filename
             var pieces: [String] = []
             if !info.formatName.isEmpty { pieces.append(info.formatName) }
@@ -1669,13 +1675,15 @@ final class MediaTileView: NSView {
                 f.countStyle = .file
                 pieces.append(f.string(fromByteCount: bytes))
             }
+            let metaLine = pieces.joined(separator: " · ")
             if let hint = info.disambiguationHint, !hint.isEmpty {
-                pieces.append(String(format: "in %@".localized, hint))
+                let hintText = String(format: "in %@".localized, hint)
+                dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
+            } else {
+                dimsLabel?.stringValue = metaLine
             }
-            dimsLabel?.stringValue = pieces.joined(separator: " · ")
             sizeLabel?.stringValue = ""
         case .webPage:
-            // Show host on the filename line, full URL on the meta line.
             filenameLabel?.stringValue = info.url.host ?? info.filename
             dimsLabel?.stringValue = info.url.absoluteString
             sizeLabel?.stringValue = ""
@@ -1688,10 +1696,13 @@ final class MediaTileView: NSView {
                 f.countStyle = .file
                 pieces.append(f.string(fromByteCount: bytes))
             }
+            let metaLine = pieces.joined(separator: " · ")
             if let hint = info.disambiguationHint, !hint.isEmpty {
-                pieces.append(String(format: "in %@".localized, hint))
+                let hintText = String(format: "in %@".localized, hint)
+                dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
+            } else {
+                dimsLabel?.stringValue = metaLine
             }
-            dimsLabel?.stringValue = pieces.joined(separator: " · ")
             sizeLabel?.stringValue = ""
         case .folder:
             filenameLabel?.stringValue = info.filename
@@ -1701,10 +1712,13 @@ final class MediaTileView: NSView {
                 f.countStyle = .file
                 pieces.append(f.string(fromByteCount: bytes))
             }
+            let metaLine = pieces.joined(separator: " · ")
             if let hint = info.disambiguationHint, !hint.isEmpty {
-                pieces.append(String(format: "in %@".localized, hint))
+                let hintText = String(format: "in %@".localized, hint)
+                dimsLabel?.stringValue = pieces.isEmpty ? hintText : "\(metaLine)\n\(hintText)"
+            } else {
+                dimsLabel?.stringValue = pieces.isEmpty ? "Folder".localized : metaLine
             }
-            dimsLabel?.stringValue = pieces.isEmpty ? "Folder".localized : pieces.joined(separator: " · ")
             sizeLabel?.stringValue = ""
         }
     }
@@ -1712,9 +1726,6 @@ final class MediaTileView: NSView {
     private func applyMediaText(info: MediaInfo) {
         filenameLabel?.stringValue = info.filename
 
-        // One-line meta: dimensions · size · format · location-hint.
-        // The line truncates with an ellipsis if too long; trailing labels
-        // (hint, format) are dropped first by virtue of order.
         var pieces: [String] = []
         if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
             pieces.append("\(Int(dim.width)) × \(Int(dim.height))")
@@ -1725,10 +1736,14 @@ final class MediaTileView: NSView {
             pieces.append(f.string(fromByteCount: bytes))
         }
         if !info.formatName.isEmpty { pieces.append(info.formatName) }
+
+        let metaLine = pieces.joined(separator: " · ")
         if let hint = info.disambiguationHint, !hint.isEmpty {
-            pieces.append(String(format: "in %@".localized, hint))
+            let hintText = String(format: "in %@".localized, hint)
+            dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
+        } else {
+            dimsLabel?.stringValue = metaLine
         }
-        dimsLabel?.stringValue = pieces.joined(separator: " · ")
         sizeLabel?.stringValue = ""
     }
 }
