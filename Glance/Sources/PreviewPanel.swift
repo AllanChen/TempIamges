@@ -1281,6 +1281,9 @@ final class MediaTileView: NSView {
             // (reveal in Finder).
             downloadBtn?.isHidden = true
             downloadSpinner.isHidden = true
+        } else if info.kind == .image || info.kind == .video {
+            downloadBtn?.isHidden = true
+            downloadSpinner.isHidden = true
         } else if info.isLocal {
             setDownloadState(.downloaded, fileURL: info.url)
         } else {
