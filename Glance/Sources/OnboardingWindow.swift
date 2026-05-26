@@ -236,8 +236,20 @@ class PermissionStatusView: NSView {
             let fullText = "✓  \(enabledText)"
             let attrString = NSMutableAttributedString(string: fullText)
             let checkColor = NSColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 1.0)
-            attrString.addAttribute(.foregroundColor, value: checkColor, range: NSRange(location: 0, length: 1))
-            attrString.addAttribute(.foregroundColor, value: checkColor, range: NSRange(location: 2, length: enabledText.count))
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.alignment = .center
+            paragraphStyle.lineBreakMode = .byWordWrapping
+            attrString.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attrString.length))
+            attrString.addAttribute(.foregroundColor, value: checkColor, range: NSRange(location: 0, length: attrString.length))
+            attrString.addAttribute(.font, value: NSFont.systemFont(ofSize: 12), range: NSRange(location: 0, length: attrString.length))
+
+            let maxSize = NSSize(width: 112, height: CGFloat.greatestFiniteMagnitude)
+            let textRect = attrString.boundingRect(with: maxSize, options: [.usesLineFragmentOrigin, .usesFontLeading])
+            let textHeight = ceil(textRect.height)
+            let labelHeight = min(textHeight, 44)
+            let labelY = (44 - labelHeight) / 2
+            statusLabel.frame = NSRect(x: 4, y: labelY, width: 112, height: labelHeight)
+
             statusLabel.attributedStringValue = attrString
             statusContainer.layer?.backgroundColor = NSColor(red: 0.15, green: 0.35, blue: 0.2, alpha: 0.3).cgColor
             statusContainer.layer?.borderColor = NSColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 0.5).cgColor
