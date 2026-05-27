@@ -116,6 +116,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         showWebView()
         installEscapeKeyMonitors()
         installMouseCursorMonitor()
+        applyShadowToContent()
     }
 
     override var canBecomeKey: Bool { true }
@@ -209,6 +210,15 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         super.mouseUp(with: event)
     }
 
+    private func applyShadowToContent() {
+        guard let root = contentView else { return }
+        root.wantsLayer = true
+        root.layer?.shadowOpacity = 0.35
+        root.layer?.shadowRadius = 32
+        root.layer?.shadowOffset = NSSize(width: 0, height: 12)
+        root.layer?.shadowColor = NSColor.black.cgColor
+    }
+
     private func installMouseCursorMonitor() {
         globalMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
             guard let self = self, self.isVisible, event.window === self else { return event }
@@ -266,12 +276,13 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
                                   width: bodyFrame.width, height: toolbarH)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
         toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        let sep = NSView(frame: NSRect(x: 0, y: 0, width: bodyFrame.width, height: 1))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor.separatorColor.cgColor
-        sep.autoresizingMask = [.width]
-        toolbarBar.addSubview(sep)
+        toolbarBar.layer?.backgroundColor = NSColor(white: 0.10, alpha: 1).cgColor
+
+        let toolbarSep = NSView(frame: NSRect(x: 20, y: 0, width: bodyFrame.width - 40, height: 1))
+        toolbarSep.wantsLayer = true
+        toolbarSep.layer?.backgroundColor = NSColor(white: 1, alpha: 0.08).cgColor
+        toolbarSep.autoresizingMask = [.width]
+        toolbarBar.addSubview(toolbarSep)
 
         let gap: CGFloat = 10
         let locateW: CGFloat = 32
@@ -426,29 +437,37 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
         let overlay = NSView(frame: contentFrame)
         overlay.wantsLayer = true
-        overlay.layer?.backgroundColor = NSColor(white: 0.05, alpha: 1).cgColor
+        overlay.layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
         overlay.autoresizingMask = [.width, .height]
         overlay.isHidden = true
 
+        let spinnerContainer = NSView(frame: NSRect(
+            x: (contentFrame.width - 40) / 2,
+            y: (contentFrame.height - 40) / 2,
+            width: 40, height: 40
+        ))
+        spinnerContainer.wantsLayer = true
+        spinnerContainer.layer?.cornerRadius = 10
+        spinnerContainer.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
+        spinnerContainer.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
+        overlay.addSubview(spinnerContainer)
+
         let spinner = NSProgressIndicator(frame: NSRect(
-            x: (contentFrame.width - 28) / 2,
-            y: (contentFrame.height - 28) / 2,
-            width: 28, height: 28
+            x: 10, y: 10, width: 20, height: 20
         ))
         spinner.style = .spinning
-        spinner.controlSize = .regular
+        spinner.controlSize = .small
         spinner.isIndeterminate = true
         spinner.usesThreadedAnimation = true
         spinner.appearance = NSAppearance(named: .vibrantDark)
-        spinner.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         spinner.startAnimation(nil)
-        overlay.addSubview(spinner)
+        spinnerContainer.addSubview(spinner)
 
         let loadingLbl = NSTextField(labelWithString: "Loading…".localized)
-        loadingLbl.textColor = NSColor(white: 1, alpha: 0.65)
-        loadingLbl.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        loadingLbl.textColor = NSColor(white: 1, alpha: 0.55)
+        loadingLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         loadingLbl.alignment = .center
-        loadingLbl.frame = NSRect(x: 0, y: spinner.frame.minY - 24,
+        loadingLbl.frame = NSRect(x: 0, y: spinnerContainer.frame.minY - 32,
                                    width: contentFrame.width, height: 18)
         loadingLbl.autoresizingMask = [.width, .minXMargin, .maxXMargin]
         overlay.addSubview(loadingLbl)
@@ -490,13 +509,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private func buildNavBar(width: CGFloat) -> NSView {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
         bar.wantsLayer = true
-        bar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-
-        let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor.separatorColor.cgColor
-        sep.autoresizingMask = [.width]
-        bar.addSubview(sep)
+        bar.layer?.backgroundColor = NSColor(white: 0.08, alpha: 1).cgColor
 
         let closeBtn = NSButton(frame: .zero)
         closeBtn.bezelStyle = .recessed
@@ -506,14 +519,14 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         closeBtn.contentTintColor = .labelColor
         closeBtn.target = self
         closeBtn.action = #selector(closeTapped)
-        closeBtn.frame = NSRect(x: 14, y: (headerHeight - 24) / 2, width: 24, height: 24)
+        closeBtn.frame = NSRect(x: 16, y: (headerHeight - 28) / 2, width: 28, height: 28)
         bar.addSubview(closeBtn)
 
         let titleLbl = NSTextField(labelWithString: "Glance".localized)
         titleLbl.textColor = .labelColor
-        titleLbl.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        titleLbl.font = NSFont.systemFont(ofSize: 15, weight: .bold)
         titleLbl.alignment = .center
-        titleLbl.frame = NSRect(x: 48, y: (headerHeight - 20) / 2, width: width - 96, height: 20)
+        titleLbl.frame = NSRect(x: 52, y: (headerHeight - 22) / 2, width: width - 104, height: 22)
         titleLbl.autoresizingMask = [.width]
         bar.addSubview(titleLbl)
 

@@ -179,6 +179,20 @@ class PreviewPanel: NSPanel {
         installEscapeKeyMonitors()
     }
 
+    override func orderFront(_ sender: Any?) {
+        super.orderFront(sender)
+        applyShadowToContent()
+    }
+
+    private func applyShadowToContent() {
+        guard let root = contentView else { return }
+        root.wantsLayer = true
+        root.layer?.shadowOpacity = 0.35
+        root.layer?.shadowRadius = 32
+        root.layer?.shadowOffset = NSSize(width: 0, height: 12)
+        root.layer?.shadowColor = NSColor.black.cgColor
+    }
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
@@ -261,11 +275,18 @@ class PreviewPanel: NSPanel {
         relayoutPanel(contentSize: root.frame.size)
         contentView = root
 
+        let isFirstShow = alphaValue == 0
         alphaValue = 0
+        if isFirstShow {
+            setFrame(NSRect(x: frame.origin.x, y: frame.origin.y,
+                           width: frame.width, height: frame.height),
+                    display: true)
+        }
         orderFrontRegardless()
         makeKey()
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.15
+            ctx.duration = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             self.animator().alphaValue = 1
         }
     }
@@ -381,7 +402,8 @@ class PreviewPanel: NSPanel {
     private func forceHidePanel(dismissContent: Bool = true) {
         stopFollowingContentPanel()
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.15
+            ctx.duration = 0.18
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             self.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             self?.isPinned = false
@@ -572,32 +594,26 @@ class PreviewPanel: NSPanel {
         bar.wantsLayer = true
         bar.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
 
-        let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = Self.resolvedCG(Self.separator)
-        sep.autoresizingMask = [.width]
-        bar.addSubview(sep)
-
         let closeBtn = makeIconButton(symbol: "xmark", action: #selector(closeButtonTapped), tint: Self.textDark)
-        closeBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
+        closeBtn.frame = NSRect(x: 16, y: (headerHeight - 28) / 2, width: 28, height: 28)
         closeBtn.tag = 1
         bar.addSubview(closeBtn)
         singleCloseBtn = closeBtn
 
         let titleLbl = NSTextField(labelWithString: "Glance".localized)
         titleLbl.textColor = Self.textDark
-        titleLbl.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        titleLbl.font = NSFont.systemFont(ofSize: 15, weight: .bold)
         titleLbl.alignment = .center
         titleLbl.lineBreakMode = .byTruncatingMiddle
         titleLbl.maximumNumberOfLines = 1
-        titleLbl.frame = NSRect(x: 48, y: (headerHeight - 20) / 2, width: width - 96, height: 20)
+        titleLbl.frame = NSRect(x: 52, y: (headerHeight - 22) / 2, width: width - 104, height: 22)
         titleLbl.autoresizingMask = [.width]
         titleLbl.tag = 3
         bar.addSubview(titleLbl)
         singleHeaderTitle = titleLbl
 
         let loginBtn = makeIconButton(symbol: "person.circle", action: #selector(loginButtonTapped), tint: Self.textDark)
-        loginBtn.frame = NSRect(x: width - 36, y: (headerHeight - 24) / 2, width: 24, height: 24)
+        loginBtn.frame = NSRect(x: width - 44, y: (headerHeight - 28) / 2, width: 28, height: 28)
         loginBtn.autoresizingMask = [.minXMargin]
         bar.addSubview(loginBtn)
         loginButton = loginBtn
@@ -1119,17 +1135,27 @@ final class MediaTileView: NSView {
 
         switch style {
         case .singleCard:
-            layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
+            layer?.backgroundColor = NSColor(white: 0.03, alpha: 1).cgColor
 
             mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
-            mediaContainer.layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
+            mediaContainer.layer?.backgroundColor = NSColor(white: 0.03, alpha: 1).cgColor
             addSubview(mediaContainer)
+
+            let ambientGradient = CAGradientLayer()
+            ambientGradient.colors = [
+                NSColor(white: 0.08, alpha: 1).cgColor,
+                NSColor(white: 0.03, alpha: 1).cgColor
+            ]
+            ambientGradient.locations = [0.0, 1.0]
+            ambientGradient.startPoint = CGPoint(x: 0.5, y: 0)
+            ambientGradient.endPoint = CGPoint(x: 0.5, y: 1)
+            mediaContainer.layer?.addSublayer(ambientGradient)
 
             shimmerLayer.colors = [
                 NSColor(white: 1, alpha: 0).cgColor,
-                NSColor(white: 1, alpha: 0.05).cgColor,
+                NSColor(white: 1, alpha: 0.04).cgColor,
                 NSColor(white: 1, alpha: 0).cgColor
             ]
             shimmerLayer.locations = [0.0, 0.5, 1.0]
@@ -1143,11 +1169,11 @@ final class MediaTileView: NSView {
             mediaContainer.layer?.addSublayer(imageLayer)
 
             overlayGradient.colors = [
-                NSColor(white: 0, alpha: 0.92).cgColor,
-                NSColor(white: 0, alpha: 0.50).cgColor,
+                NSColor(white: 0, alpha: 0.94).cgColor,
+                NSColor(white: 0, alpha: 0.60).cgColor,
                 NSColor(white: 0, alpha: 0.0).cgColor
             ]
-            overlayGradient.locations = [0.0, 0.45, 1.0]
+            overlayGradient.locations = [0.0, 0.35, 1.0]
             overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
             overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
             overlayGradient.isHidden = true
@@ -1155,7 +1181,7 @@ final class MediaTileView: NSView {
 
             let nameLbl = NSTextField(labelWithString: info.filename)
             nameLbl.textColor = .white
-            nameLbl.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+            nameLbl.font = NSFont.systemFont(ofSize: 17, weight: .bold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
             nameLbl.isHidden = true
@@ -1163,8 +1189,8 @@ final class MediaTileView: NSView {
             filenameLabel = nameLbl
 
             let dimsLbl = NSTextField(labelWithString: "")
-            dimsLbl.textColor = NSColor(white: 1, alpha: 0.80)
-            dimsLbl.font = NSFont.systemFont(ofSize: 13)
+            dimsLbl.textColor = NSColor(white: 1, alpha: 0.75)
+            dimsLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 3
             dimsLbl.usesSingleLineMode = false
@@ -1179,8 +1205,8 @@ final class MediaTileView: NSView {
 
         case .masonry:
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            let tileBg = isDark ? NSColor(white: 0.10, alpha: 1) : NSColor(white: 0.16, alpha: 1)
-            layer?.cornerRadius = 12
+            let tileBg = isDark ? NSColor(white: 0.08, alpha: 1) : NSColor(white: 0.14, alpha: 1)
+            layer?.cornerRadius = 14
             layer?.masksToBounds = true
             layer?.backgroundColor = tileBg.cgColor
 
@@ -1192,7 +1218,7 @@ final class MediaTileView: NSView {
 
             shimmerLayer.colors = [
                 NSColor(white: 1, alpha: 0).cgColor,
-                NSColor(white: 1, alpha: 0.08).cgColor,
+                NSColor(white: 1, alpha: 0.06).cgColor,
                 NSColor(white: 1, alpha: 0).cgColor
             ]
             shimmerLayer.locations = [0.0, 0.5, 1.0]
@@ -1206,11 +1232,11 @@ final class MediaTileView: NSView {
             mediaContainer.layer?.addSublayer(imageLayer)
 
             overlayGradient.colors = [
-                NSColor(white: 0, alpha: 0.90).cgColor,
-                NSColor(white: 0, alpha: 0.70).cgColor,
+                NSColor(white: 0, alpha: 0.92).cgColor,
+                NSColor(white: 0, alpha: 0.72).cgColor,
                 NSColor(white: 0, alpha: 0.0).cgColor
             ]
-            overlayGradient.locations = [0.0, 0.40, 1.0]
+            overlayGradient.locations = [0.0, 0.35, 1.0]
             overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
             overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
             overlayGradient.isHidden = true
@@ -1218,7 +1244,7 @@ final class MediaTileView: NSView {
 
             let nameLbl = NSTextField(labelWithString: info.filename)
             nameLbl.textColor = .white
-            nameLbl.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+            nameLbl.font = NSFont.systemFont(ofSize: 14, weight: .bold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
             nameLbl.isHidden = true
@@ -1226,8 +1252,8 @@ final class MediaTileView: NSView {
             filenameLabel = nameLbl
 
             let dimsLbl = NSTextField(labelWithString: "")
-            dimsLbl.textColor = NSColor(white: 1, alpha: 0.90)
-            dimsLbl.font = NSFont.systemFont(ofSize: 12)
+            dimsLbl.textColor = NSColor(white: 1, alpha: 0.85)
+            dimsLbl.font = NSFont.systemFont(ofSize: 12, weight: .medium)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 3
             dimsLbl.usesSingleLineMode = false
