@@ -1,0 +1,282 @@
+- main [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]:
+      - link "Glance" [ref=e5] [cursor=pointer]:
+        - /url: "#"
+        - img [ref=e6]
+        - generic [ref=e10]: Glance
+      - generic [ref=e11]:
+        - link "功能特性" [ref=e12] [cursor=pointer]:
+          - /url: "#features"
+        - link "支持格式" [ref=e13] [cursor=pointer]:
+          - /url: "#formats"
+        - link "使用方法" [ref=e14] [cursor=pointer]:
+          - /url: "#usage"
+        - generic [ref=e15]:
+          - button "中" [ref=e16] [cursor=pointer]
+          - button "EN" [ref=e17] [cursor=pointer]
+        - link "下载" [ref=e18] [cursor=pointer]:
+          - /url: "#download"
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - img [ref=e22]
+      - generic [ref=e24]: 原生 macOS 应用
+    - heading "随处预览， 万物皆可。" [level=1] [ref=e25]:
+      - text: 随处预览，
+      - text: 万物皆可。
+    - paragraph [ref=e26]: Glance 常驻于菜单栏。选中任意文本——无论是网址、文件路径还是文件名——按住热键，即可即时预览图片、视频、文档等内容。
+    - generic [ref=e27]:
+      - link "下载 macOS 版" [ref=e28] [cursor=pointer]:
+        - /url: "#download"
+        - img [ref=e29]
+        - generic [ref=e31]: 下载 macOS 版
+      - link "了解更多" [ref=e32] [cursor=pointer]:
+        - /url: "#features"
+        - img [ref=e33]
+        - generic [ref=e35]: 了解更多
+    - generic [ref=e37]:
+      - generic [ref=e42]: Glance 预览面板
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]: 媒体
+          - generic [ref=e46]:
+            - img [ref=e48]
+            - img [ref=e53]
+            - img [ref=e58]
+            - img [ref=e63]
+        - generic [ref=e67]:
+          - generic [ref=e68]: 内容
+          - generic [ref=e69]:
+            - text: ~/Documents/project/
+            - text: README.md
+            - text: "# Glance"
+            - text: Quick preview tool...
+            - text: https://example.com
+  - generic [ref=e71]:
+    - generic [ref=e72]:
+      - heading "核心功能" [level=2] [ref=e73]
+      - paragraph [ref=e74]: 为 macOS 原生打造，满足你对极速预览的一切需求。
+    - generic [ref=e75]:
+      - generic [ref=e76]:
+        - img [ref=e78]
+        - heading "全局热键触发" [level=3] [ref=e81]
+        - paragraph [ref=e82]: 按住 Control 或 Option（可自定义）即可从任意应用中选中的文本即时触发预览。
+      - generic [ref=e83]:
+        - img [ref=e85]
+        - heading "跨应用文本识别" [level=3] [ref=e87]
+        - paragraph [ref=e88]: 通过 Accessibility API 在所有应用中无缝工作，并配备可靠的剪贴板回退机制以确保通用兼容性。
+      - generic [ref=e89]:
+        - img [ref=e91]
+        - heading "多类型路径识别" [level=3] [ref=e93]
+        - paragraph [ref=e94]: 智能识别 HTTP 网址、本地文件路径、~/ 主目录路径、file:// URI、相对路径，乃至裸文件名。
+      - generic [ref=e95]:
+        - img [ref=e97]
+        - heading "Spotlight 文件解析" [level=3] [ref=e101]
+        - paragraph [ref=e102]: 找不到完整路径？Glance 通过 Spotlight 查询解析不完整的文件名，在 Mac 的任何位置定位文件。
+      - generic [ref=e103]:
+        - img [ref=e105]
+        - heading "媒体预览面板" [level=3] [ref=e109]
+        - paragraph [ref=e110]: 图片和视频在精致的浮动面板中渲染，智能网格布局会根据项目数量自动适配。
+      - generic [ref=e111]:
+        - img [ref=e113]
+        - heading "内容查看器" [level=3] [ref=e115]
+        - paragraph [ref=e116]: 预览 Markdown、纯文本、代码文件、PDF，甚至网页。直接在预览面板中编辑文本和 Markdown。
+      - generic [ref=e117]:
+        - img [ref=e119]
+        - heading "文件卡片" [level=3] [ref=e121]
+        - paragraph [ref=e122]: 其他格式——Office 文档、设计文件、压缩包、音频、字体、安装包——以精美的文件卡片展示，附带元数据和快速打开操作。
+      - generic [ref=e123]:
+        - img [ref=e125]
+        - heading "预览历史" [level=3] [ref=e127]
+        - paragraph [ref=e128]: 直接从菜单栏访问最近预览的内容。无需重新选中文本即可跳转到任意已查看项目。
+      - generic [ref=e129]:
+        - img [ref=e131]
+        - heading "权限引导" [level=3] [ref=e133]
+        - paragraph [ref=e134]: 智能多显示器定位确保预览面板出现在你期望的位置。引导式设置帮助你授予正确的权限。
+  - generic [ref=e136]:
+    - generic [ref=e137]:
+      - heading "支持格式" [level=2] [ref=e138]
+      - paragraph [ref=e139]: Glance 支持广泛的文件类型和协议——只要你能选中，就能预览。
+    - generic [ref=e140]:
+      - generic [ref=e141]:
+        - generic [ref=e142]:
+          - img [ref=e144]
+          - heading "图片" [level=3] [ref=e148]
+        - generic [ref=e149]:
+          - generic [ref=e150]: jpg
+          - generic [ref=e151]: jpeg
+          - generic [ref=e152]: png
+          - generic [ref=e153]: gif
+          - generic [ref=e154]: webp
+          - generic [ref=e155]: heic
+          - generic [ref=e156]: heif
+          - generic [ref=e157]: bmp
+          - generic [ref=e158]: tiff
+          - generic [ref=e159]: tif
+          - generic [ref=e160]: raw
+          - generic [ref=e161]: cr2
+          - generic [ref=e162]: nef
+          - generic [ref=e163]: arw
+      - generic [ref=e164]:
+        - generic [ref=e165]:
+          - img [ref=e167]
+          - heading "视频" [level=3] [ref=e170]
+        - generic [ref=e171]:
+          - generic [ref=e172]: mp4
+          - generic [ref=e173]: mov
+          - generic [ref=e174]: m4v
+          - generic [ref=e175]: webm
+          - generic [ref=e176]: mkv
+          - generic [ref=e177]: avi
+      - generic [ref=e178]:
+        - generic [ref=e179]:
+          - img [ref=e181]
+          - heading "文档与文本" [level=3] [ref=e183]
+        - generic [ref=e184]:
+          - generic [ref=e185]: md
+          - generic [ref=e186]: markdown
+          - generic [ref=e187]: txt
+          - generic [ref=e188]: json
+          - generic [ref=e189]: xml
+          - generic [ref=e190]: yaml
+          - generic [ref=e191]: html
+          - generic [ref=e192]: css
+          - generic [ref=e193]: js
+          - generic [ref=e194]: ts
+          - generic [ref=e195]: swift
+          - generic [ref=e196]: py
+          - generic [ref=e197]: go
+          - generic [ref=e198]: rs
+          - generic [ref=e199]: sh
+          - generic [ref=e200]: sql
+          - generic [ref=e201]: log
+          - generic [ref=e202]: + more
+      - generic [ref=e203]:
+        - generic [ref=e204]:
+          - img [ref=e206]
+          - heading "其他格式" [level=3] [ref=e210]
+        - generic [ref=e211]:
+          - generic [ref=e212]: pdf
+          - generic [ref=e213]: url
+          - generic [ref=e214]: docx
+          - generic [ref=e215]: xlsx
+          - generic [ref=e216]: pptx
+          - generic [ref=e217]: psd
+          - generic [ref=e218]: sketch
+          - generic [ref=e219]: fig
+          - generic [ref=e220]: mp3
+          - generic [ref=e221]: wav
+          - generic [ref=e222]: zip
+          - generic [ref=e223]: dmg
+          - generic [ref=e224]: pkg
+          - generic [ref=e225]: ttf
+          - generic [ref=e226]: otf
+  - generic [ref=e228]:
+    - generic [ref=e229]:
+      - heading "使用方法" [level=2] [ref=e230]
+      - paragraph [ref=e231]: 三个简单步骤，即刻开启预览体验。
+    - generic [ref=e232]:
+      - generic [ref=e233]:
+        - generic [ref=e234]: "1"
+        - heading "选中文本" [level=3] [ref=e235]
+        - paragraph [ref=e236]: 在任意 macOS 应用中高亮包含网址、文件路径、文件名或域名的文本。
+      - generic [ref=e237]:
+        - generic [ref=e238]: "2"
+        - heading "按住热键" [level=3] [ref=e239]
+        - paragraph [ref=e240]: 按住配置好的热键（默认：Control）即可即时触发预览。
+      - generic [ref=e241]:
+        - generic [ref=e242]: "3"
+        - heading "查看与交互" [level=3] [ref=e243]
+        - paragraph [ref=e244]: 媒体内容会显示在浮动预览面板中。点击文件卡片即可在默认应用中打开文件。
+  - generic [ref=e246]:
+    - generic [ref=e247]:
+      - heading "键盘快捷键" [level=2] [ref=e248]
+      - paragraph [ref=e249]: 完全通过键盘掌控 Glance。
+    - table [ref=e251]:
+      - rowgroup [ref=e252]:
+        - row "操作 快捷键 说明" [ref=e253]:
+          - columnheader "操作" [ref=e254]
+          - columnheader "快捷键" [ref=e255]
+          - columnheader "说明" [ref=e256]
+      - rowgroup [ref=e257]:
+        - row "触发预览 Ctrl （按住） 选中文本时按住以显示预览面板" [ref=e258]:
+          - cell "触发预览" [ref=e259]
+          - cell "Ctrl （按住）" [ref=e260]:
+            - generic [ref=e261]: Ctrl
+            - generic [ref=e262]: （按住）
+          - cell "选中文本时按住以显示预览面板" [ref=e263]
+        - row "触发预览（替代） Option （按住） 替代热键（可在偏好设置中配置）" [ref=e264]:
+          - cell "触发预览（替代）" [ref=e265]
+          - cell "Option （按住）" [ref=e266]:
+            - generic [ref=e267]: Option
+            - generic [ref=e268]: （按住）
+          - cell "替代热键（可在偏好设置中配置）" [ref=e269]
+        - row "打开文件 Return / 点击 在默认应用中打开选中的文件或网址" [ref=e270]:
+          - cell "打开文件" [ref=e271]
+          - cell "Return / 点击" [ref=e272]:
+            - generic [ref=e273]: Return
+            - text: /
+            - generic [ref=e274]: 点击
+          - cell "在默认应用中打开选中的文件或网址" [ref=e275]
+        - row "关闭预览 Esc 关闭预览面板" [ref=e276]:
+          - cell "关闭预览" [ref=e277]
+          - cell "Esc" [ref=e278]:
+            - generic [ref=e279]: Esc
+          - cell "关闭预览面板" [ref=e280]
+        - row "复制内容 Cmd C 将预览的文本或文件路径复制到剪贴板" [ref=e281]:
+          - cell "复制内容" [ref=e282]
+          - cell "Cmd C" [ref=e283]:
+            - generic [ref=e284]: Cmd
+            - generic [ref=e285]: C
+          - cell "将预览的文本或文件路径复制到剪贴板" [ref=e286]
+        - row "编辑文本 双击 进入文本和 Markdown 文件的编辑模式" [ref=e287]:
+          - cell "编辑文本" [ref=e288]
+          - cell "双击" [ref=e289]:
+            - generic [ref=e290]: 双击
+          - cell "进入文本和 Markdown 文件的编辑模式" [ref=e291]
+  - generic [ref=e293]:
+    - generic [ref=e294]:
+      - heading "系统要求" [level=2] [ref=e295]
+      - paragraph [ref=e296]: Glance 在 Mac 上流畅运行所需的一切。
+    - generic [ref=e297]:
+      - generic [ref=e298]:
+        - img [ref=e300]
+        - heading "macOS 版本" [level=3] [ref=e302]
+        - paragraph [ref=e303]: macOS 12.3（Monterey）或更高版本。针对 Apple 芯片和 Intel Mac 优化。
+        - generic [ref=e304]: 必需
+      - generic [ref=e305]:
+        - img [ref=e307]
+        - heading "输入监控" [level=3] [ref=e309]
+        - paragraph [ref=e310]: 用于在 Glance 后台运行时检测跨应用的全局热键按下。
+        - generic [ref=e311]: 必需
+      - generic [ref=e312]:
+        - img [ref=e314]
+        - heading "辅助功能" [level=3] [ref=e316]
+        - paragraph [ref=e317]: 用于通过 macOS Accessibility API 读取其他应用中的选中文本。
+        - generic [ref=e318]: 必需
+      - generic [ref=e319]:
+        - img [ref=e321]
+        - heading "完全磁盘访问" [level=3] [ref=e323]
+        - paragraph [ref=e324]: 可选但推荐。允许 Glance 预览受保护系统目录中的文件，并更可靠地解析路径。
+        - generic [ref=e325]: 可选
+      - generic [ref=e326]:
+        - img [ref=e328]
+        - heading "网络访问" [level=3] [ref=e330]
+        - paragraph [ref=e331]: 用于预览网页网址和获取远程内容。不收集或传输任何数据。
+        - generic [ref=e332]: 可选
+  - generic [ref=e334]:
+    - heading "准备好使用 Glance 了吗？" [level=2] [ref=e335]
+    - paragraph [ref=e336]: 下载 Glance，几秒钟内开始预览文件、图片和网址。
+    - generic [ref=e337]:
+      - img [ref=e338]
+      - generic [ref=e340]: macOS 12.3+ • 通用二进制
+    - generic [ref=e341]:
+      - link "下载 Glance" [ref=e342] [cursor=pointer]:
+        - /url: "#"
+        - img [ref=e343]
+        - generic [ref=e345]: 下载 Glance
+      - link "联系我们" [ref=e346] [cursor=pointer]:
+        - /url: mailto:hello@glance.app
+        - img [ref=e347]
+        - generic [ref=e350]: 联系我们
+  - paragraph [ref=e353]: © 2026 Glance. 保留所有权利。用心为 macOS 打造。

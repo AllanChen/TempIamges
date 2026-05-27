@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="pageTitle">Glance — macOS Menu Bar Tool for Quick Preview</title>
+  <meta name="description" content="Glance is a native macOS menu bar tool that lets you preview images, videos, documents, and URLs from any selected text.">
+
+  <!-- Outfit Typography — Selected by Python RNG (seed=6) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+  <style>
+    /* ============================================
+       DESIGN TOKENS & RESET
+       ============================================ */
+    :root {
+      --bg-primary: #070708;
+      --bg-secondary: #0e0e10;
+      --bg-card: #141416;
+      --bg-card-hover: #1a1a1d;
+      --border-subtle: rgba(200, 170, 130, 0.05);
+      --border-accent: rgba(200, 170, 130, 0.18);
+      --text-primary: #f2efe9;
+      --text-secondary: #a39e96;
+      --text-muted: #6b6560;
+      --accent: #c8aa82;
+      --accent-glow: rgba(200, 170, 130, 0.10);
+      --accent-dim: rgba(200, 170, 130, 0.04);
+      --accent-warm: #b8986e;
+      --success: #7cb89a;
+      --warning: #d4b896;
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+      --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Outfit', sans-serif;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+      font-weight: 400;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    p { color: var(--text-secondary); font-weight: 400; }
+
+    /* ============================================
+       LAYOUT & UTILITIES
+       ============================================ */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    section {
+      padding: 140px 0;
+      position: relative;
+    }
+
+    /* ============================================
+       AMBIENT BACKGROUND EFFECTS
+       ============================================ */
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .ambient-glow::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      right: -10%;
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(200, 170, 130, 0.06) 0%, transparent 65%);
+      border-radius: 50%;
+      animation: breathe 10s ease-in-out infinite;
+    }
+
+    .ambient-glow::after {
+      content: '';
+      position: absolute;
+      bottom: -15%;
+      left: -10%;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(180, 160, 140, 0.04) 0%, transparent 60%);
+      border-radius: 50%;
+      animation: breathe 12s ease-in-out infinite reverse;
+    }
+
+    .gradient-mesh {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.35;
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(200, 170, 130, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(180, 160, 140, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(190, 165, 125, 0.02) 0%, transparent 60%);
+    }
+
+    .noise-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    main {
+      position: relative;
+      z-index: 2;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.65; }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      25% { transform: translateY(-18px) translateX(8px); }
+      50% { transform: translateY(-8px) translateX(-8px); }
+      75% { transform: translateY(-24px) translateX(4px); }
+    }
+
+    /* ============================================
+       NAVIGATION — Floating Glass Pill
+       ============================================ */
+    nav {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      backdrop-filter: blur(32px) saturate(200%);
+      -webkit-backdrop-filter: blur(32px) saturate(200%);
+      background: rgba(14, 14, 16, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: 100px;
+      padding: 10px 24px;
+      transition: var(--transition);
+    }
+
+    nav.scrolled {
+      background: rgba(14, 14, 16, 0.9);
+      border-color: var(--border-accent);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .nav-content {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: var(--text-primary);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+      transition: var(--transition);
+    }
+
+    .nav-logo:hover { opacity: 0.7; }
+
+    .nav-logo svg { width: 26px; height: 26px; }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 1.5px;
+      background: var(--accent);
+      transition: width 0.3s var(--ease-out-expo);
+      border-radius: 1px;
+    }
+
+    .nav-links a:hover { color: var(--text-primary); }
+    .nav-links a:hover::after { width: 100%; }
+
+    .nav-cta {
+      background: var(--accent);
+      color: var(--bg-primary) !important;
+      padding: 8px 20px;
+      border-radius: 100px;
+      font-weight: 600 !important;
+      font-size: 0.8125rem !important;
+      letter-spacing: 0.01em;
+    }
+
+    .nav-cta::after { display: none !important; }
+
+    .nav-cta:hover {
+      background: var(--accent-warm);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(200, 170, 130, 0.25);
+    }
+
+    .lang-switcher {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 100px;
+      padding: 4px;
+      margin-left: 8px;
+    }
+
+    .lang-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: var(--font-body);
+    }
+
+    .lang-btn:hover { color: var(--text-secondary); }
+    .lang-btn.active { background: var(--accent-dim); color: var(--accent); }
+
+    @media (max-width: 768px) {
+      nav { padding: 10px 16px; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-content { gap: 16px; }
+    }
+
+    /* ============================================
+       HERO — Cinematic Center (RNG Selected)
+       ============================================ */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      padding: 160px 0 100px;
+    }
+
+    .hero-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: radial-gradient(ellipse at 50% 0%, rgba(200, 170, 130, 0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at 80% 80%, rgba(180, 160, 140, 0.04) 0%, transparent 40%);
+    }
+
+    .hero-bg-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+      background: url('https://picsum.photos/seed/glance-hero-dark/1920/1080') center/cover no-repeat;
+      filter: grayscale(40%) contrast(110%) brightness(0.25);
+      opacity: 0.6;
+    }
+
+    .hero-bg-image::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, transparent 0%, var(--bg-primary) 70%);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    .hero h1 {
+      font-size: clamp(3rem, 5.5vw, 5.5rem);
+      font-weight: 800;
+      line-height: 1.05;
+      margin-bottom: 32px;
+      background: linear-gradient(180deg, #ffffff 0%, var(--accent-warm) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      max-width: 100%;
+    }
+
+    .hero h1 .inline-image {
+      display: inline-block;
+      width: 80px;
+      height: 36px;
+      border-radius: 100px;
+      background: url('https://picsum.photos/seed/inline-preview/200/100') center/cover no-repeat;
+      vertical-align: middle;
+      margin: 0 8px;
+      filter: grayscale(30%) contrast(120%);
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    .hero > .hero-content > p {
+      font-size: clamp(1.125rem, 2.2vw, 1.5rem);
+      max-width: 560px;
+      margin: 0 auto 44px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 36px;
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: var(--transition);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      letter-spacing: 0.01em;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+      box-shadow: 0 4px 32px rgba(200, 170, 130, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-warm);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 40px rgba(200, 170, 130, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.04);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+
+    .btn svg { width: 20px; height: 20px; }
+
+    /* Scroll Indicator */
+    .scroll-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-top: 64px;
+      opacity: 0.4;
+    }
+
+    .scroll-mouse {
+      width: 22px;
+      height: 36px;
+      border: 1.5px solid var(--accent);
+      border-radius: 14px;
+      position: relative;
+    }
+
+    .scroll-mouse::after {
+      content: '';
+      position: absolute;
+      top: 7px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 2px;
+      animation: scrollWheel 2s ease-in-out infinite;
+    }
+
+    @keyframes scrollWheel {
+      0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    }
+
+    /* ============================================
+       FEATURES BENTO GRID — Gapless, Dense
+       ============================================ */
+    .features {
+      padding: 160px 0;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-auto-rows: minmax(180px, auto);
+      gap: 20px;
+      grid-auto-flow: dense;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-accent);
+      transform: translateY(-4px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4), 0 0 50px var(--accent-glow);
+    }
+
+    .feature-card .card-glow {
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 50% 0%, rgba(200, 170, 130, 0.06), transparent 50%);
+      opacity: 0;
+      transition: opacity 0.5s var(--ease-out-expo);
+      pointer-events: none;
+    }
+
+    .feature-card:hover .card-glow { opacity: 1; }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--accent-dim);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      transition: var(--transition);
+    }
+
+    .feature-card:hover .feature-icon {
+      background: var(--accent-glow);
+      transform: scale(1.08);
+    }
+
+    .feature-icon svg { width: 22px; height: 22px; color: var(--accent); }
+
+    .feature-card h3 {
+      margin-bottom: 10px;
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 1.15rem;
+    }
+
+    .feature-card p {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    /* Bento sizing — mathematically verified, zero empty spaces */
+    .feature-card:nth-child(1) { grid-column: span 4; grid-row: span 2; }
+    .feature-card:nth-child(2) { grid-column: span 4; grid-row: span 1; }
+    .feature-card:nth-child(3) { grid-column: span 4; grid-row: span 1; }
+    .feature-card:nth-child(4) { grid-column: span 3; grid-row: span 1; }
+    .feature-card:nth-child(5) { grid-column: span 3; grid-row: span 1; }
+    .feature-card:nth-child(6) { grid-column: span 3; grid-row: span 1; }
+    .feature-card:nth-child(7) { grid-column: span 3; grid-row: span 1; }
+    .feature-card:nth-child(8) { grid-column: span 4; grid-row: span 1; }
+    .feature-card:nth-child(9) { grid-column: span 4; grid-row: span 1; }
+    .feature-card:nth-child(9) { grid-column: span 4; grid-row: span 1; }
+
+    /* Feature 1 is the hero card with image */
+    .feature-card:nth-child(1) {
+      justify-content: flex-end;
+      background: linear-gradient(180deg, rgba(20,20,22,0.95) 0%, rgba(20,20,22,0.7) 100%),
+                  url('https://picsum.photos/seed/feature-hotkey/800/600') center/cover no-repeat;
+      filter: contrast(110%);
+    }
+
+    .feature-card:nth-child(1) .feature-icon {
+      background: rgba(200, 170, 130, 0.15);
+      border-color: rgba(200, 170, 130, 0.3);
+    }
+
+    @media (max-width: 1024px) {
+      .features-grid { grid-template-columns: repeat(6, 1fr); }
+      .feature-card:nth-child(1) { grid-column: span 6; grid-row: span 2; }
+      .feature-card:nth-child(2) { grid-column: span 3; }
+      .feature-card:nth-child(3) { grid-column: span 3; }
+      .feature-card:nth-child(4) { grid-column: span 3; }
+      .feature-card:nth-child(5) { grid-column: span 3; }
+      .feature-card:nth-child(6) { grid-column: span 3; }
+      .feature-card:nth-child(7) { grid-column: span 3; }
+      .feature-card:nth-child(8) { grid-column: span 3; }
+      .feature-card:nth-child(9) { grid-column: span 3; }
+    }
+
+    @media (max-width: 640px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .feature-card { grid-column: span 1 !important; grid-row: span 1 !important; }
+    }
+
+    /* ============================================
+       HORIZONTAL ACCORDIONS — Formats
+       ============================================ */
+    .formats-accordion {
+      display: flex;
+      gap: 12px;
+      height: 480px;
+      margin-top: 60px;
+    }
+
+    .accordion-slice {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: pointer;
+      transition: flex 0.6s var(--ease-out-expo), background 0.4s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 32px 24px;
+    }
+
+    .accordion-slice:hover {
+      flex: 3;
+      background: var(--bg-card-hover);
+      border-color: var(--border-accent);
+    }
+
+    .accordion-slice .slice-image {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.5s;
+      background-size: cover;
+      background-position: center;
+      filter: grayscale(50%) contrast(120%) brightness(0.3);
+    }
+
+    .accordion-slice:hover .slice-image { opacity: 1; }
+
+    .accordion-slice .slice-content {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .accordion-slice .slice-title {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      transition: all 0.4s;
+      white-space: nowrap;
+    }
+
+    .accordion-slice:hover .slice-title {
+      writing-mode: horizontal-tb;
+      font-size: 1.5rem;
+      margin-bottom: 16px;
+    }
+
+    .accordion-slice .slice-body {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.4s 0.1s;
+      flex: 1;
+    }
+
+    .accordion-slice:hover .slice-body {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .accordion-slice .format-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .format-tag {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-family: 'SF Mono', Monaco, monospace;
+      transition: var(--transition);
+    }
+
+    .accordion-slice:hover .format-tag {
+      border-color: var(--border-accent);
+      color: var(--text-primary);
+    }
+
+    @media (max-width: 768px) {
+      .formats-accordion { flex-direction: column; height: auto; }
+      .accordion-slice { padding: 24px; min-height: 80px; }
+      .accordion-slice .slice-title { writing-mode: horizontal-tb; font-size: 1.1rem; }
+      .accordion-slice .slice-body { opacity: 1; transform: none; margin-top: 12px; }
+    }
+
+    /* ============================================
+       USAGE STEPS — With Scroll Pinning (GSAP)
+       ============================================ */
+    .usage-section {
+      padding: 160px 0;
+      position: relative;
+    }
+
+    .usage-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+    }
+
+    .usage-title-pin {
+      position: sticky;
+      top: 120px;
+    }
+
+    .usage-title-pin h2 {
+      font-size: clamp(2.5rem, 4vw, 3.5rem);
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-warm) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+    }
+
+    .usage-title-pin p {
+      font-size: 1.125rem;
+      max-width: 380px;
+      line-height: 1.7;
+    }
+
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+    }
+
+    .step-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .step-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+    }
+
+    .step-number {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--accent);
+      opacity: 0.3;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+
+    .step-card h3 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    .step-card p {
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 768px) {
+      .usage-wrapper { grid-template-columns: 1fr; gap: 40px; }
+      .usage-title-pin { position: relative; top: 0; }
+    }
+
+    /* ============================================
+       SHORTCUTS TABLE
+       ============================================ */
+    .shortcuts-section { padding: 140px 0; }
+
+    .shortcuts-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .shortcuts-table th,
+    .shortcuts-table td {
+      padding: 20px 32px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .shortcuts-table th {
+      background: var(--bg-secondary);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .shortcuts-table tr:last-child td { border-bottom: none; }
+    .shortcuts-table tr { transition: background 0.2s; }
+    .shortcuts-table tr:hover td { background: var(--bg-card-hover); }
+    .shortcuts-table td:first-child { font-weight: 500; color: var(--text-primary); }
+
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.8125rem;
+      color: var(--accent);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    @media (max-width: 640px) {
+      .shortcuts-table th, .shortcuts-table td { padding: 14px 18px; font-size: 0.875rem; }
+    }
+
+    /* ============================================
+       REQUIREMENTS GRID
+       ============================================ */
+    .requirements-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .requirement-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .requirement-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .requirement-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--accent-dim);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      transition: transform 0.3s;
+    }
+
+    .requirement-card:hover .requirement-icon { transform: scale(1.1); }
+    .requirement-icon svg { width: 20px; height: 20px; color: var(--accent); }
+
+    .requirement-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .requirement-card p { font-size: 0.9375rem; line-height: 1.6; }
+
+    .requirement-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+
+    .status-required { color: var(--success); }
+    .status-optional { color: var(--warning); }
+
+    .status-required::before,
+    .status-optional::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status-required::before { background: var(--success); box-shadow: 0 0 6px rgba(124, 184, 154, 0.4); }
+    .status-optional::before { background: var(--warning); box-shadow: 0 0 6px rgba(212, 184, 150, 0.4); }
+
+    @media (max-width: 1024px) {
+      .requirements-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .requirements-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ============================================
+       INFINITE MARQUEE — Trusted / Formats strip
+       ============================================ */
+    .marquee-section {
+      padding: 80px 0;
+      overflow: hidden;
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .marquee-track {
+      display: flex;
+      gap: 48px;
+      animation: marquee 30s linear infinite;
+      width: max-content;
+    }
+
+    .marquee-track:hover { animation-play-state: paused; }
+
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    .marquee-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 1.125rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: color 0.3s;
+    }
+
+    .marquee-item:hover { color: var(--accent); }
+    .marquee-item svg { width: 24px; height: 24px; opacity: 0.5; }
+
+    /* ============================================
+       DOWNLOAD / FOOTER
+       ============================================ */
+    .download {
+      text-align: center;
+      padding: 160px 0 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .download-orb {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(200, 170, 130, 0.05) 0%, transparent 60%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .download h2 {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-warm) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .download > .container > p {
+      font-size: 1.125rem;
+      max-width: 500px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    .download-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 10px 24px;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      margin-bottom: 36px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px 0 60px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    footer p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    footer a:hover { color: var(--accent); }
+
+    /* ============================================
+       SCROLL REVEAL ANIMATIONS
+       ============================================ */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ============================================
+       I18N TRANSITIONS
+       ============================================ */
+    [data-i18n] { transition: opacity 0.15s ease; }
+    .i18n-switching [data-i18n] { opacity: 0; }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 375px) {
+      .container { padding: 0 20px; }
+      section { padding: 80px 0; }
+      .hero { padding: 120px 0 60px; }
+      .btn { padding: 14px 28px; font-size: 0.9375rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+      }
+      .marquee-track { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="gradient-mesh"></div>
+  <div class="ambient-glow"></div>
+  <div class="noise-overlay"></div>
+
+  <main class="overflow-x-hidden w-full max-w-full">
+    <!-- Navigation — Floating Glass Pill -->
+    <nav id="main-nav">
+      <div class="nav-content">
+        <a href="#" class="nav-logo">
+          <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="nav-logo-grad" x1="0" y1="0" x2="28" y2="28">
+                <stop offset="0%" stop-color="#e8a87c"/>
+                <stop offset="100%" stop-color="#c8aa82"/>
+              </linearGradient>
+            </defs>
+            <rect x="2" y="2" width="24" height="24" rx="7" fill="url(#nav-logo-grad)" fill-opacity="0.12" stroke="url(#nav-logo-grad)" stroke-width="1.5"/>
+            <path d="M6 14C6 9.582 9.582 6 14 6C18.418 6 22 9.582 22 14C22 18.418 18.418 22 14 22" stroke="url(#nav-logo-grad)" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="14" cy="14" r="3" fill="url(#nav-logo-grad)"/>
+            <circle cx="15.2" cy="12.8" r="1" fill="#ffffff" fill-opacity="0.9"/>
+          </svg>
+          <span data-i18n="nav.logo">Glance</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features" data-i18n="nav.features">Features</a>
+          <a href="#formats" data-i18n="nav.formats">Formats</a>
+          <a href="#usage" data-i18n="nav.howItWorks">How It Works</a>
+          <div class="lang-switcher">
+            <button class="lang-btn active" data-lang="zh" onclick="setLanguage('zh')">中</button>
+            <button class="lang-btn" data-lang="en" onclick="setLanguage('en')">EN</button>
+          </div>
+          <a href="#download" class="nav-cta" data-i18n="nav.download">Download</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero — Cinematic Center (RNG: seed=6) -->
+    <section class="hero" id="hero">
+      <div class="hero-bg-image"></div>
+      <div class="hero-bg"></div>
+      <div class="hero-content">
+        <h1 data-i18n="hero.title">Preview <span class="inline-image"></span> Anything, Anywhere.</h1>
+        <p data-i18n="hero.description">Glance lives in your menu bar. Select any text — a URL, file path, or filename — hold a hotkey, and instantly preview images, videos, documents, and more.</p>
+        <div class="hero-cta-group">
+          <a href="#download" class="btn btn-primary">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+            <span data-i18n="hero.downloadBtn">Download for macOS</span>
+          </a>
+          <a href="#features" class="btn btn-secondary">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <span data-i18n="hero.learnMoreBtn">Learn More</span>
+          </a>
+        </div>
+        <div class="scroll-indicator">
+          <div class="scroll-mouse"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features — Gapless Bento Grid (RNG: seed=6) -->
+    <section class="features" id="features">
+      <div class="container">
+        <div class="section-header reveal" style="text-align: center; max-width: 600px; margin: 0 auto 80px;">
+          <h2 data-i18n="features.title" style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 18px; background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-warm) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Core Features</h2>
+          <p data-i18n="features.subtitle" style="font-size: 1.125rem; line-height: 1.7;">Everything you need for lightning-fast previews, built natively for macOS.</p>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M6 14h.01M10 10h4M10 14h4M14 10h4M14 14h4"/></svg>
+            </div>
+            <h3 data-i18n="features.hotkey.title">Global Hotkey Trigger</h3>
+            <p data-i18n="features.hotkey.desc">Hold Control or Option (customizable) to instantly trigger a preview from any selected text, in any application.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <h3 data-i18n="features.crossApp.title">Cross-App Text Selection</h3>
+            <p data-i18n="features.crossApp.desc">Works seamlessly across all apps using the Accessibility API, with a reliable clipboard fallback for universal compatibility.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            </div>
+            <h3 data-i18n="features.pathDetect.title">Multi-Type Path Detection</h3>
+            <p data-i18n="features.pathDetect.desc">Intelligently detects HTTP URLs, local file paths, home paths, file:// URIs, relative paths, and even bare filenames.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+            </div>
+            <h3 data-i18n="features.spotlight.title">Spotlight File Resolution</h3>
+            <p data-i18n="features.spotlight.desc">Can't find the full path? Glance queries Spotlight to resolve incomplete filenames and locate files anywhere on your Mac.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </div>
+            <h3 data-i18n="features.mediaPanel.title">Media Preview Panel</h3>
+            <p data-i18n="features.mediaPanel.desc">Images and videos render in a sleek floating panel with an intelligent grid layout that adapts to the number of items.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <h3 data-i18n="features.contentViewer.title">Content Viewer</h3>
+            <p data-i18n="features.contentViewer.desc">Preview Markdown, plain text, code files, PDFs, and even web pages. Edit text and Markdown directly within the preview panel.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <h3 data-i18n="features.fileCards.title">File Cards</h3>
+            <p data-i18n="features.fileCards.desc">Other formats — Office docs, design files, archives, audio, fonts, installers — appear as beautiful file cards with metadata and quick-open actions.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <h3 data-i18n="features.history.title">Preview History</h3>
+            <p data-i18n="features.history.desc">Access your recent previews directly from the menu bar. Jump back to anything you viewed without re-selecting text.</p>
+          </div>
+          <div class="feature-card reveal">
+            <div class="card-glow"></div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <h3 data-i18n="features.permissions.title">Permission Guidance</h3>
+            <p data-i18n="features.permissions.desc">Smart multi-monitor positioning ensures the preview panel appears where you expect. Guided setup helps you grant the right permissions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Infinite Marquee — Format badges -->
+    <section class="marquee-section">
+      <div class="marquee-track">
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Images</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" fill-opacity="0.5"/></svg> Videos</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Documents</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> PDF</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg> URLs</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Images</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10,8 16,12 10,16" fill="currentColor" fill-opacity="0.5"/></svg> Videos</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Documents</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> PDF</div>
+        <div class="marquee-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg> URLs</div>
+      </div>
+    </section>
+
+    <!-- Formats — Horizontal Accordions (RNG: seed=6) -->
+    <section class="features" id="formats">
+      <div class="container">
+        <div class="section-header reveal" style="text-align: center; max-width: 600px; margin: 0 auto 60px;">
+          <h2 data-i18n="formats.title" style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 18px; background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-warm) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Supported Formats</h2>
+          <p data-i18n="formats.subtitle" style="font-size: 1.125rem; line-height: 1.7;">Glance handles a wide range of file types and protocols — if you can select it, you can preview it.</p>
+        </div>
+        <div class="formats-accordion">
+          <div class="accordion-slice">
+            <div class="slice-image" style="background-image: url('https://picsum.photos/seed/formats-images/600/800')"></div>
+            <div class="slice-content">
+              <div class="slice-title" data-i18n="formats.images">Images</div>
+              <div class="slice-body">
+                <div class="format-list">
+                  <span class="format-tag">jpg</span><span class="format-tag">jpeg</span><span class="format-tag">png</span><span class="format-tag">gif</span><span class="format-tag">webp</span><span class="format-tag">heic</span><span class="format-tag">heif</span><span class="format-tag">bmp</span><span class="format-tag">tiff</span><span class="format-tag">tif</span><span class="format-tag">raw</span><span class="format-tag">cr2</span><span class="format-tag">nef</span><span class="format-tag">arw</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-slice">
+            <div class="slice-image" style="background-image: url('https://picsum.photos/seed/formats-videos/600/800')"></div>
+            <div class="slice-content">
+              <div class="slice-title" data-i18n="formats.videos">Videos</div>
+              <div class="slice-body">
+                <div class="format-list">
+                  <span class="format-tag">mp4</span><span class="format-tag">mov</span><span class="format-tag">m4v</span><span class="format-tag">webm</span><span class="format-tag">mkv</span><span class="format-tag">avi</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-slice">
+            <div class="slice-image" style="background-image: url('https://picsum.photos/seed/formats-docs/600/800')"></div>
+            <div class="slice-content">
+              <div class="slice-title" data-i18n="formats.documents">Documents &amp; Text</div>
+              <div class="slice-body">
+                <div class="format-list">
+                  <span class="format-tag">md</span><span class="format-tag">markdown</span><span class="format-tag">txt</span><span class="format-tag">json</span><span class="format-tag">xml</span><span class="format-tag">yaml</span><span class="format-tag">html</span><span class="format-tag">css</span><span class="format-tag">js</span><span class="format-tag">ts</span><span class="format-tag">swift</span><span class="format-tag">py</span><span class="format-tag">go</span><span class="format-tag">rs</span><span class="format-tag">sh</span><span class="format-tag">sql</span><span class="format-tag">log</span><span class="format-tag">+ more</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-slice">
+            <div class="slice-image" style="background-image: url('https://picsum.photos/seed/formats-others/600/800')"></div>
+            <div class="slice-content">
+              <div class="slice-title" data-i18n="formats.others">Other Formats</div>
+              <div class="slice-body">
+                <div class="format-list">
+                  <span class="format-tag">pdf</span><span class="format-tag">url</span><span class="format-tag">docx</span><span class="format-tag">xlsx</span><span class="format-tag">pptx</span><span class="format-tag">psd</span><span class="format-tag">sketch</span><span class="format-tag">fig</span><span class="format-tag">mp3</span><span class="format-tag">wav</span><span class="format-tag">zip</span><span class="format-tag">dmg</span><span class="format-tag">pkg</span><span class="format-tag">ttf</span><span class="format-tag">otf</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Usage — Scroll Pinning (GSAP Paradigm 1) -->
+    <section class="usage-section" id="usage">
+      <div class="container">
+        <div class="usage-wrapper">
+          <div class="usage-title-pin">
+            <h2 data-i18n="usage.title">How It Works</h2>
+            <p data-i18n="usage.subtitle">Three simple steps between you and instant previews.</p>
+          </div>
+          <div class="steps-list">
+            <div class="step-card reveal">
+              <div class="step-number">01</div>
+              <h3 data-i18n="usage.step1.title">Select Text</h3>
+              <p data-i18n="usage.step1.desc">Highlight any text containing a URL, file path, filename, or domain name in any macOS application.</p>
+            </div>
+            <div class="step-card reveal">
+              <div class="step-number">02</div>
+              <h3 data-i18n="usage.step2.title">Hold the Hotkey</h3>
+              <p data-i18n="usage.step2.desc">Press and hold your configured hotkey (default: Control) to trigger the preview instantly.</p>
+            </div>
+            <div class="step-card reveal">
+              <div class="step-number">03</div>
+              <h3 data-i18n="usage.step3.title">View &amp; Interact</h3>
+              <p data-i18n="usage.step3.desc">Media appears in a floating preview panel. Click file cards to open files in their default applications.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="shortcuts-section" id="shortcuts">
+      <div class="container">
+        <div class="section-header reveal" style="text-align: center; max-width: 600px; margin: 0 auto 60px;">
+          <h2 data-i18n="shortcuts.title" style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 18px; background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-warm) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Keyboard Shortcuts</h2>
+          <p data-i18n="shortcuts.subtitle" style="font-size: 1.125rem; line-height: 1.7;">Control Glance entirely from your keyboard.</p>
+        </div>
+        <div class="reveal">
+          <table class="shortcuts-table">
+            <thead>
+              <tr>
+                <th data-i18n="shortcuts.colAction">Action</th>
+                <th data-i18n="shortcuts.colShortcut">Shortcut</th>
+                <th data-i18n="shortcuts.colDescription">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-i18n="shortcuts.row1.action">Trigger Preview</td>
+                <td><span class="kbd">Ctrl</span> <span class="kbd" data-i18n="shortcuts.row1.hold">(hold)</span></td>
+                <td data-i18n="shortcuts.row1.desc">Hold while text is selected to show the preview panel</td>
+              </tr>
+              <tr>
+                <td data-i18n="shortcuts.row2.action">Trigger Preview (Alt)</td>
+                <td><span class="kbd">Option</span> <span class="kbd" data-i18n="shortcuts.row2.hold">(hold)</span></td>
+                <td data-i18n="shortcuts.row2.desc">Alternative hotkey (configurable in Preferences)</td>
+              </tr>
+              <tr>
+                <td data-i18n="shortcuts.row3.action">Open File</td>
+                <td><span class="kbd">Return</span> / <span class="kbd" data-i18n="shortcuts.row3.click">Click</span></td>
+                <td data-i18n="shortcuts.row3.desc">Open the selected file or URL in its default application</td>
+              </tr>
+              <tr>
+                <td data-i18n="shortcuts.row4.action">Close Preview</td>
+                <td><span class="kbd">Esc</span></td>
+                <td data-i18n="shortcuts.row4.desc">Close the preview panel</td>
+              </tr>
+              <tr>
+                <td data-i18n="shortcuts.row5.action">Copy Content</td>
+                <td><span class="kbd">Cmd</span> <span class="kbd">C</span></td>
+                <td data-i18n="shortcuts.row5.desc">Copy previewed text or file path to clipboard</td>
+              </tr>
+              <tr>
+                <td data-i18n="shortcuts.row6.action">Edit Text</td>
+                <td><span class="kbd" data-i18n="shortcuts.row6.dblclick">Double-click</span></td>
+                <td data-i18n="shortcuts.row6.desc">Enter edit mode for text and Markdown files</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="requirements">
+      <div class="container">
+        <div class="section-header reveal" style="text-align: center; max-width: 600px; margin: 0 auto 60px;">
+          <h2 data-i18n="requirements.title" style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 18px; background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-warm) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">System Requirements</h2>
+          <p data-i18n="requirements.subtitle" style="font-size: 1.125rem; line-height: 1.7;">Everything Glance needs to run smoothly on your Mac.</p>
+        </div>
+        <div class="requirements-grid">
+          <div class="requirement-card reveal">
+            <div class="requirement-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <h3 data-i18n="requirements.macos.title">macOS Version</h3>
+            <p data-i18n="requirements.macos.desc">macOS 12.3 (Monterey) or later. Optimized for Apple Silicon and Intel Macs.</p>
+            <span class="requirement-status status-required" data-i18n="requirements.statusRequired">Required</span>
+          </div>
+          <div class="requirement-card reveal">
+            <div class="requirement-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+            </div>
+            <h3 data-i18n="requirements.input.title">Input Monitoring</h3>
+            <p data-i18n="requirements.input.desc">Required to detect global hotkey presses across all applications while Glance runs in the background.</p>
+            <span class="requirement-status status-required" data-i18n="requirements.statusRequired">Required</span>
+          </div>
+          <div class="requirement-card reveal">
+            <div class="requirement-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <h3 data-i18n="requirements.accessibility.title">Accessibility</h3>
+            <p data-i18n="requirements.accessibility.desc">Needed to read selected text from other applications using macOS Accessibility APIs.</p>
+            <span class="requirement-status status-required" data-i18n="requirements.statusRequired">Required</span>
+          </div>
+          <div class="requirement-card reveal">
+            <div class="requirement-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
+            <h3 data-i18n="requirements.disk.title">Full Disk Access</h3>
+            <p data-i18n="requirements.disk.desc">Optional but recommended. Allows Glance to preview files in protected system directories and resolve paths more reliably.</p>
+            <span class="requirement-status status-optional" data-i18n="requirements.statusOptional">Optional</span>
+          </div>
+          <div class="requirement-card reveal">
+            <div class="requirement-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+            </div>
+            <h3 data-i18n="requirements.network.title">Network Access</h3>
+            <p data-i18n="requirements.network.desc">Required for previewing web URLs and fetching remote content. No data is collected or transmitted.</p>
+            <span class="requirement-status status-optional" data-i18n="requirements.statusOptional">Optional</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="download" id="download">
+      <div class="download-orb"></div>
+      <div class="container">
+        <h2 data-i18n="download.title">Ready to Glance?</h2>
+        <p data-i18n="download.desc">Download Glance and start previewing files, images, and URLs in seconds.</p>
+        <div class="download-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <span data-i18n="download.badge">macOS 12.3+ &bull; Universal Binary</span>
+        </div>
+        <div class="hero-cta-group">
+          <a href="#" class="btn btn-primary" onclick="alert('Download coming soon!'); return false;">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            <span data-i18n="download.downloadBtn">Download Glance</span>
+          </a>
+          <a href="mailto:hello@glance.app" class="btn btn-secondary">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+            <span data-i18n="download.contactBtn">Get in Touch</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container">
+        <p data-i18n="footer.text">&copy; 2026 Glance. All rights reserved. Built for macOS with care.</p>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // ============================================
+    // I18N SYSTEM (preserved from original)
+    // ============================================
+    const i18n = {
+      zh: {
+        'nav.logo': 'Glance',
+        'nav.features': '功能特性',
+        'nav.formats': '支持格式',
+        'nav.howItWorks': '使用方法',
+        'nav.download': '下载',
+        'hero.title': '随处<span class="inline-image"></span>预览，万物皆可。',
+        'hero.description': 'Glance 常驻于菜单栏。选中任意文本——无论是网址、文件路径还是文件名——按住热键，即可即时预览图片、视频、文档等内容。',
+        'hero.downloadBtn': '下载 macOS 版',
+        'hero.learnMoreBtn': '了解更多',
+        'features.title': '核心功能',
+        'features.subtitle': '为 macOS 原生打造，满足你对极速预览的一切需求。',
+        'features.hotkey.title': '全局热键触发',
+        'features.hotkey.desc': '按住 Control 或 Option（可自定义）即可从任意应用中选中的文本即时触发预览。',
+        'features.crossApp.title': '跨应用文本识别',
+        'features.crossApp.desc': '通过 Accessibility API 在所有应用中无缝工作，并配备可靠的剪贴板回退机制以确保通用兼容性。',
+        'features.pathDetect.title': '多类型路径识别',
+        'features.pathDetect.desc': '智能识别 HTTP 网址、本地文件路径、主目录路径、file:// URI、相对路径，乃至裸文件名。',
+        'features.spotlight.title': 'Spotlight 文件解析',
+        'features.spotlight.desc': '找不到完整路径？Glance 通过 Spotlight 查询解析不完整的文件名，在 Mac 的任何位置定位文件。',
+        'features.mediaPanel.title': '媒体预览面板',
+        'features.mediaPanel.desc': '图片和视频在精致的浮动面板中渲染，智能网格布局会根据项目数量自动适配。',
+        'features.contentViewer.title': '内容查看器',
+        'features.contentViewer.desc': '预览 Markdown、纯文本、代码文件、PDF，甚至网页。直接在预览面板中编辑文本和 Markdown。',
+        'features.fileCards.title': '文件卡片',
+        'features.fileCards.desc': '其他格式——Office 文档、设计文件、压缩包、音频、字体、安装包——以精美的文件卡片展示，附带元数据和快速打开操作。',
+        'features.history.title': '预览历史',
+        'features.history.desc': '直接从菜单栏访问最近预览的内容。无需重新选中文本即可跳转到任意已查看项目。',
+        'features.permissions.title': '权限引导',
+        'features.permissions.desc': '智能多显示器定位确保预览面板出现在你期望的位置。引导式设置帮助你授予正确的权限。',
+        'formats.title': '支持格式',
+        'formats.subtitle': 'Glance 支持广泛的文件类型和协议——只要你能选中，就能预览。',
+        'formats.images': '图片',
+        'formats.videos': '视频',
+        'formats.documents': '文档与文本',
+        'formats.others': '其他格式',
+        'usage.title': '使用方法',
+        'usage.subtitle': '三个简单步骤，即刻开启预览体验。',
+        'usage.step1.title': '选中文本',
+        'usage.step1.desc': '在任意 macOS 应用中高亮包含网址、文件路径、文件名或域名的文本。',
+        'usage.step2.title': '按住热键',
+        'usage.step2.desc': '按住配置好的热键（默认：Control）即可即时触发预览。',
+        'usage.step3.title': '查看与交互',
+        'usage.step3.desc': '媒体内容会显示在浮动预览面板中。点击文件卡片即可在默认应用中打开文件。',
+        'shortcuts.title': '键盘快捷键',
+        'shortcuts.subtitle': '完全通过键盘掌控 Glance。',
+        'shortcuts.colAction': '操作',
+        'shortcuts.colShortcut': '快捷键',
+        'shortcuts.colDescription': '说明',
+        'shortcuts.row1.action': '触发预览',
+        'shortcuts.row1.hold': '（按住）',
+        'shortcuts.row1.desc': '选中文本时按住以显示预览面板',
+        'shortcuts.row2.action': '触发预览（替代）',
+        'shortcuts.row2.hold': '（按住）',
+        'shortcuts.row2.desc': '替代热键（可在偏好设置中配置）',
+        'shortcuts.row3.action': '打开文件',
+        'shortcuts.row3.click': '点击',
+        'shortcuts.row3.desc': '在默认应用中打开选中的文件或网址',
+        'shortcuts.row4.action': '关闭预览',
+        'shortcuts.row4.desc': '关闭预览面板',
+        'shortcuts.row5.action': '复制内容',
+        'shortcuts.row5.desc': '将预览的文本或文件路径复制到剪贴板',
+        'shortcuts.row6.action': '编辑文本',
+        'shortcuts.row6.dblclick': '双击',
+        'shortcuts.row6.desc': '进入文本和 Markdown 文件的编辑模式',
+        'requirements.title': '系统要求',
+        'requirements.subtitle': 'Glance 在 Mac 上流畅运行所需的一切。',
+        'requirements.macos.title': 'macOS 版本',
+        'requirements.macos.desc': 'macOS 12.3（Monterey）或更高版本。针对 Apple 芯片和 Intel Mac 优化。',
+        'requirements.input.title': '输入监控',
+        'requirements.input.desc': '用于在 Glance 后台运行时检测跨应用的全局热键按下。',
+        'requirements.accessibility.title': '辅助功能',
+        'requirements.accessibility.desc': '用于通过 macOS Accessibility API 读取其他应用中的选中文本。',
+        'requirements.disk.title': '完全磁盘访问',
+        'requirements.disk.desc': '可选但推荐。允许 Glance 预览受保护系统目录中的文件，并更可靠地解析路径。',
+        'requirements.network.title': '网络访问',
+        'requirements.network.desc': '用于预览网页网址和获取远程内容。不收集或传输任何数据。',
+        'requirements.statusRequired': '必需',
+        'requirements.statusOptional': '可选',
+        'download.title': '准备好使用 Glance 了吗？',
+        'download.desc': '下载 Glance，几秒钟内开始预览文件、图片和网址。',
+        'download.badge': 'macOS 12.3+ • 通用二进制',
+        'download.downloadBtn': '下载 Glance',
+        'download.contactBtn': '联系我们',
+        'footer.text': '© 2026 Glance. 保留所有权利。用心为 macOS 打造。',
+        'pageTitle': 'Glance — macOS 菜单栏快速预览工具'
+      },
+      en: {
+        'nav.logo': 'Glance',
+        'nav.features': 'Features',
+        'nav.formats': 'Formats',
+        'nav.howItWorks': 'How It Works',
+        'nav.download': 'Download',
+        'hero.title': 'Preview <span class="inline-image"></span> Anything, Anywhere.',
+        'hero.description': 'Glance lives in your menu bar. Select any text — a URL, file path, or filename — hold a hotkey, and instantly preview images, videos, documents, and more.',
+        'hero.downloadBtn': 'Download for macOS',
+        'hero.learnMoreBtn': 'Learn More',
+        'features.title': 'Core Features',
+        'features.subtitle': 'Everything you need for lightning-fast previews, built natively for macOS.',
+        'features.hotkey.title': 'Global Hotkey Trigger',
+        'features.hotkey.desc': 'Hold Control or Option (customizable) to instantly trigger a preview from any selected text, in any application.',
+        'features.crossApp.title': 'Cross-App Text Selection',
+        'features.crossApp.desc': 'Works seamlessly across all apps using the Accessibility API, with a reliable clipboard fallback for universal compatibility.',
+        'features.pathDetect.title': 'Multi-Type Path Detection',
+        'features.pathDetect.desc': 'Intelligently detects HTTP URLs, local file paths, home paths, file:// URIs, relative paths, and even bare filenames.',
+        'features.spotlight.title': 'Spotlight File Resolution',
+        'features.spotlight.desc': "Can't find the full path? Glance queries Spotlight to resolve incomplete filenames and locate files anywhere on your Mac.",
+        'features.mediaPanel.title': 'Media Preview Panel',
+        'features.mediaPanel.desc': 'Images and videos render in a sleek floating panel with an intelligent grid layout that adapts to the number of items.',
+        'features.contentViewer.title': 'Content Viewer',
+        'features.contentViewer.desc': 'Preview Markdown, plain text, code files, PDFs, and even web pages. Edit text and Markdown directly within the preview panel.',
+        'features.fileCards.title': 'File Cards',
+        'features.fileCards.desc': 'Other formats — Office docs, design files, archives, audio, fonts, installers — appear as beautiful file cards with metadata and quick-open actions.',
+        'features.history.title': 'Preview History',
+        'features.history.desc': 'Access your recent previews directly from the menu bar. Jump back to anything you viewed without re-selecting text.',
+        'features.permissions.title': 'Permission Guidance',
+        'features.permissions.desc': 'Smart multi-monitor positioning ensures the preview panel appears where you expect. Guided setup helps you grant the right permissions.',
+        'formats.title': 'Supported Formats',
+        'formats.subtitle': 'Glance handles a wide range of file types and protocols — if you can select it, you can preview it.',
+        'formats.images': 'Images',
+        'formats.videos': 'Videos',
+        'formats.documents': 'Documents & Text',
+        'formats.others': 'Other Formats',
+        'usage.title': 'How It Works',
+        'usage.subtitle': 'Three simple steps between you and instant previews.',
+        'usage.step1.title': 'Select Text',
+        'usage.step1.desc': 'Highlight any text containing a URL, file path, filename, or domain name in any macOS application.',
+        'usage.step2.title': 'Hold the Hotkey',
+        'usage.step2.desc': 'Press and hold your configured hotkey (default: Control) to trigger the preview instantly.',
+        'usage.step3.title': 'View & Interact',
+        'usage.step3.desc': 'Media appears in a floating preview panel. Click file cards to open files in their default applications.',
+        'shortcuts.title': 'Keyboard Shortcuts',
+        'shortcuts.subtitle': 'Control Glance entirely from your keyboard.',
+        'shortcuts.colAction': 'Action',
+        'shortcuts.colShortcut': 'Shortcut',
+        'shortcuts.colDescription': 'Description',
+        'shortcuts.row1.action': 'Trigger Preview',
+        'shortcuts.row1.hold': '(hold)',
+        'shortcuts.row1.desc': 'Hold while text is selected to show the preview panel',
+        'shortcuts.row2.action': 'Trigger Preview (Alt)',
+        'shortcuts.row2.hold': '(hold)',
+        'shortcuts.row2.desc': 'Alternative hotkey (configurable in Preferences)',
+        'shortcuts.row3.action': 'Open File',
+        'shortcuts.row3.click': 'Click',
+        'shortcuts.row3.desc': 'Open the selected file or URL in its default application',
+        'shortcuts.row4.action': 'Close Preview',
+        'shortcuts.row4.desc': 'Close the preview panel',
+        'shortcuts.row5.action': 'Copy Content',
+        'shortcuts.row5.desc': 'Copy previewed text or file path to clipboard',
+        'shortcuts.row6.action': 'Edit Text',
+        'shortcuts.row6.dblclick': 'Double-click',
+        'shortcuts.row6.desc': 'Enter edit mode for text and Markdown files',
+        'requirements.title': 'System Requirements',
+        'requirements.subtitle': 'Everything Glance needs to run smoothly on your Mac.',
+        'requirements.macos.title': 'macOS Version',
+        'requirements.macos.desc': 'macOS 12.3 (Monterey) or later. Optimized for Apple Silicon and Intel Macs.',
+        'requirements.input.title': 'Input Monitoring',
+        'requirements.input.desc': 'Required to detect global hotkey presses across all applications while Glance runs in the background.',
+        'requirements.accessibility.title': 'Accessibility',
+        'requirements.accessibility.desc': 'Needed to read selected text from other applications using macOS Accessibility APIs.',
+        'requirements.disk.title': 'Full Disk Access',
+        'requirements.disk.desc': 'Optional but recommended. Allows Glance to preview files in protected system directories and resolve paths more reliably.',
+        'requirements.network.title': 'Network Access',
+        'requirements.network.desc': 'Required for previewing web URLs and fetching remote content. No data is collected or transmitted.',
+        'requirements.statusRequired': 'Required',
+        'requirements.statusOptional': 'Optional',
+        'download.title': 'Ready to Glance?',
+        'download.desc': 'Download Glance and start previewing files, images, and URLs in seconds.',
+        'download.badge': 'macOS 12.3+ • Universal Binary',
+        'download.downloadBtn': 'Download Glance',
+        'download.contactBtn': 'Get in Touch',
+        'footer.text': '&copy; 2026 Glance. All rights reserved. Built for macOS with care.',
+        'pageTitle': 'Glance — macOS Menu Bar Tool for Quick Preview'
+      }
+    };
+
+    let currentLang = 'zh';
+
+    function applyLanguage(lang) {
+      const elements = document.querySelectorAll('[data-i18n]');
+      elements.forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        const translation = i18n[lang][key];
+        if (translation === undefined) return;
+        const hasChildElements = Array.from(el.childNodes).some(node => node.nodeType === Node.ELEMENT_NODE);
+        if (hasChildElements) { el.innerHTML = translation; }
+        else { el.textContent = translation; }
+      });
+      document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+      });
+      currentLang = lang;
+    }
+
+    function setLanguage(lang) {
+      if (lang === currentLang) return;
+      document.body.classList.add('i18n-switching');
+      setTimeout(() => {
+        applyLanguage(lang);
+        localStorage.setItem('glance-lang', lang);
+        document.body.classList.remove('i18n-switching');
+      }, 150);
+    }
+
+    const savedLang = localStorage.getItem('glance-lang');
+    if (savedLang && i18n[savedLang]) { currentLang = savedLang; }
+    applyLanguage(currentLang);
+
+    // ============================================
+    // GSAP SCROLL ANIMATIONS (RNG Paradigms)
+    // ============================================
+    gsap.registerPlugin(ScrollTrigger);
+
+    // 1. Image Scale & Fade Scroll (GSAP Paradigm)
+    gsap.utils.toArray('.accordion-slice').forEach(slice => {
+      gsap.fromTo(slice,
+        { scale: 0.92, opacity: 0.6 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.8,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: slice,
+            start: 'top 85%',
+            end: 'top 40%',
+            scrub: 1
+          }
+        }
+      );
+    });
+
+    // 2. Scroll-triggered reveals with stagger
+    gsap.utils.toArray('.reveal').forEach((el, i) => {
+      gsap.fromTo(el,
+        { y: 50, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: el,
+            start: 'top 88%',
+            toggleActions: 'play none none none'
+          },
+          delay: i * 0.06
+        }
+      );
+    });
+
+    // 3. Nav background on scroll
+    const nav = document.getElementById('main-nav');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 60) { nav.classList.add('scrolled'); }
+      else { nav.classList.remove('scrolled'); }
+    });
+  </script>
+</body>
+</html>

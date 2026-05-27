@@ -1,0 +1,279 @@
+- main [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]:
+      - link "Glance" [ref=e5] [cursor=pointer]:
+        - /url: "#"
+        - img [ref=e6]
+        - text: Glance
+      - generic [ref=e10]:
+        - link "Features" [ref=e11] [cursor=pointer]:
+          - /url: "#features"
+        - link "Formats" [ref=e12] [cursor=pointer]:
+          - /url: "#formats"
+        - link "How It Works" [ref=e13] [cursor=pointer]:
+          - /url: "#usage"
+        - link "Download" [ref=e14] [cursor=pointer]:
+          - /url: "#download"
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - img [ref=e18]
+      - text: Native macOS App
+    - heading "Preview Anything, Anywhere." [level=1] [ref=e20]:
+      - text: Preview Anything,
+      - text: Anywhere.
+    - paragraph [ref=e21]: Glance lives in your menu bar. Select any text — a URL, file path, or filename — hold a hotkey, and instantly preview images, videos, documents, and more.
+    - generic [ref=e22]:
+      - link "Download for macOS" [ref=e23] [cursor=pointer]:
+        - /url: "#download"
+        - img [ref=e24]
+        - text: Download for macOS
+      - link "Learn More" [ref=e26] [cursor=pointer]:
+        - /url: "#features"
+        - img [ref=e27]
+        - text: Learn More
+    - generic [ref=e30]:
+      - generic [ref=e35]: Glance Preview Panel
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]: Media
+          - generic [ref=e39]:
+            - img [ref=e41]
+            - img [ref=e46]
+            - img [ref=e51]
+            - img [ref=e56]
+        - generic [ref=e60]:
+          - generic [ref=e61]: Content
+          - generic [ref=e62]:
+            - text: ~/Documents/project/
+            - text: README.md
+            - text: "# Glance"
+            - text: Quick preview tool...
+            - text: https://example.com
+  - generic [ref=e64]:
+    - generic [ref=e65]:
+      - heading "Core Features" [level=2] [ref=e66]
+      - paragraph [ref=e67]: Everything you need for lightning-fast previews, built natively for macOS.
+    - generic [ref=e68]:
+      - generic [ref=e69]:
+        - img [ref=e71]
+        - heading "Global Hotkey Trigger" [level=3] [ref=e74]
+        - paragraph [ref=e75]: Hold Control or Option (customizable) to instantly trigger a preview from any selected text, in any application.
+      - generic [ref=e76]:
+        - img [ref=e78]
+        - heading "Cross-App Text Selection" [level=3] [ref=e80]
+        - paragraph [ref=e81]: Works seamlessly across all apps using the Accessibility API, with a reliable clipboard fallback for universal compatibility.
+      - generic [ref=e82]:
+        - img [ref=e84]
+        - heading "Multi-Type Path Detection" [level=3] [ref=e86]
+        - paragraph [ref=e87]: Intelligently detects HTTP URLs, local file paths, ~/ home paths, file:// URIs, relative paths, and even bare filenames.
+      - generic [ref=e88]:
+        - img [ref=e90]
+        - heading "Spotlight File Resolution" [level=3] [ref=e94]
+        - paragraph [ref=e95]: Can't find the full path? Glance queries Spotlight to resolve incomplete filenames and locate files anywhere on your Mac.
+      - generic [ref=e96]:
+        - img [ref=e98]
+        - heading "Media Preview Panel" [level=3] [ref=e102]
+        - paragraph [ref=e103]: Images and videos render in a sleek floating panel with an intelligent grid layout that adapts to the number of items.
+      - generic [ref=e104]:
+        - img [ref=e106]
+        - heading "Content Viewer" [level=3] [ref=e108]
+        - paragraph [ref=e109]: Preview Markdown, plain text, code files, PDFs, and even web pages. Edit text and Markdown directly within the preview panel.
+      - generic [ref=e110]:
+        - img [ref=e112]
+        - heading "File Cards" [level=3] [ref=e114]
+        - paragraph [ref=e115]: Other formats — Office docs, design files, archives, audio, fonts, installers — appear as beautiful file cards with metadata and quick-open actions.
+      - generic [ref=e116]:
+        - img [ref=e118]
+        - heading "Preview History" [level=3] [ref=e120]
+        - paragraph [ref=e121]: Access your recent previews directly from the menu bar. Jump back to anything you viewed without re-selecting text.
+      - generic [ref=e122]:
+        - img [ref=e124]
+        - heading "Permission Guidance" [level=3] [ref=e126]
+        - paragraph [ref=e127]: Smart multi-monitor positioning ensures the preview panel appears where you expect. Guided setup helps you grant the right permissions.
+  - generic [ref=e129]:
+    - generic [ref=e130]:
+      - heading "Supported Formats" [level=2] [ref=e131]
+      - paragraph [ref=e132]: Glance handles a wide range of file types and protocols — if you can select it, you can preview it.
+    - generic [ref=e133]:
+      - generic [ref=e134]:
+        - generic [ref=e135]:
+          - img [ref=e137]
+          - heading "Images" [level=3] [ref=e141]
+        - generic [ref=e142]:
+          - generic [ref=e143]: jpg
+          - generic [ref=e144]: jpeg
+          - generic [ref=e145]: png
+          - generic [ref=e146]: gif
+          - generic [ref=e147]: webp
+          - generic [ref=e148]: heic
+          - generic [ref=e149]: heif
+          - generic [ref=e150]: bmp
+          - generic [ref=e151]: tiff
+          - generic [ref=e152]: tif
+          - generic [ref=e153]: raw
+          - generic [ref=e154]: cr2
+          - generic [ref=e155]: nef
+          - generic [ref=e156]: arw
+      - generic [ref=e157]:
+        - generic [ref=e158]:
+          - img [ref=e160]
+          - heading "Videos" [level=3] [ref=e163]
+        - generic [ref=e164]:
+          - generic [ref=e165]: mp4
+          - generic [ref=e166]: mov
+          - generic [ref=e167]: m4v
+          - generic [ref=e168]: webm
+          - generic [ref=e169]: mkv
+          - generic [ref=e170]: avi
+      - generic [ref=e171]:
+        - generic [ref=e172]:
+          - img [ref=e174]
+          - heading "Documents & Text" [level=3] [ref=e176]
+        - generic [ref=e177]:
+          - generic [ref=e178]: md
+          - generic [ref=e179]: markdown
+          - generic [ref=e180]: txt
+          - generic [ref=e181]: json
+          - generic [ref=e182]: xml
+          - generic [ref=e183]: yaml
+          - generic [ref=e184]: html
+          - generic [ref=e185]: css
+          - generic [ref=e186]: js
+          - generic [ref=e187]: ts
+          - generic [ref=e188]: swift
+          - generic [ref=e189]: py
+          - generic [ref=e190]: go
+          - generic [ref=e191]: rs
+          - generic [ref=e192]: sh
+          - generic [ref=e193]: sql
+          - generic [ref=e194]: log
+          - generic [ref=e195]: + more
+      - generic [ref=e196]:
+        - generic [ref=e197]:
+          - img [ref=e199]
+          - heading "Other Formats" [level=3] [ref=e203]
+        - generic [ref=e204]:
+          - generic [ref=e205]: pdf
+          - generic [ref=e206]: url
+          - generic [ref=e207]: docx
+          - generic [ref=e208]: xlsx
+          - generic [ref=e209]: pptx
+          - generic [ref=e210]: psd
+          - generic [ref=e211]: sketch
+          - generic [ref=e212]: fig
+          - generic [ref=e213]: mp3
+          - generic [ref=e214]: wav
+          - generic [ref=e215]: zip
+          - generic [ref=e216]: dmg
+          - generic [ref=e217]: pkg
+          - generic [ref=e218]: ttf
+          - generic [ref=e219]: otf
+  - generic [ref=e221]:
+    - generic [ref=e222]:
+      - heading "How It Works" [level=2] [ref=e223]
+      - paragraph [ref=e224]: Three simple steps between you and instant previews.
+    - generic [ref=e225]:
+      - generic [ref=e226]:
+        - generic [ref=e227]: "1"
+        - heading "Select Text" [level=3] [ref=e228]
+        - paragraph [ref=e229]: Highlight any text containing a URL, file path, filename, or domain name in any macOS application.
+      - generic [ref=e230]:
+        - generic [ref=e231]: "2"
+        - heading "Hold the Hotkey" [level=3] [ref=e232]
+        - paragraph [ref=e233]: "Press and hold your configured hotkey (default: Control) to trigger the preview instantly."
+      - generic [ref=e234]:
+        - generic [ref=e235]: "3"
+        - heading "View & Interact" [level=3] [ref=e236]
+        - paragraph [ref=e237]: Media appears in a floating preview panel. Click file cards to open files in their default applications.
+  - generic [ref=e239]:
+    - generic [ref=e240]:
+      - heading "Keyboard Shortcuts" [level=2] [ref=e241]
+      - paragraph [ref=e242]: Control Glance entirely from your keyboard.
+    - table [ref=e244]:
+      - rowgroup [ref=e245]:
+        - row "Action Shortcut Description" [ref=e246]:
+          - columnheader "Action" [ref=e247]
+          - columnheader "Shortcut" [ref=e248]
+          - columnheader "Description" [ref=e249]
+      - rowgroup [ref=e250]:
+        - row "Trigger Preview Ctrl (hold) Hold while text is selected to show the preview panel" [ref=e251]:
+          - cell "Trigger Preview" [ref=e252]
+          - cell "Ctrl (hold)" [ref=e253]:
+            - generic [ref=e254]: Ctrl
+            - generic [ref=e255]: (hold)
+          - cell "Hold while text is selected to show the preview panel" [ref=e256]
+        - row "Trigger Preview (Alt) Option (hold) Alternative hotkey (configurable in Preferences)" [ref=e257]:
+          - cell "Trigger Preview (Alt)" [ref=e258]
+          - cell "Option (hold)" [ref=e259]:
+            - generic [ref=e260]: Option
+            - generic [ref=e261]: (hold)
+          - cell "Alternative hotkey (configurable in Preferences)" [ref=e262]
+        - row "Open File Return / Click Open the selected file or URL in its default application" [ref=e263]:
+          - cell "Open File" [ref=e264]
+          - cell "Return / Click" [ref=e265]:
+            - generic [ref=e266]: Return
+            - text: /
+            - generic [ref=e267]: Click
+          - cell "Open the selected file or URL in its default application" [ref=e268]
+        - row "Close Preview Esc Close the preview panel" [ref=e269]:
+          - cell "Close Preview" [ref=e270]
+          - cell "Esc" [ref=e271]:
+            - generic [ref=e272]: Esc
+          - cell "Close the preview panel" [ref=e273]
+        - row "Copy Content Cmd C Copy previewed text or file path to clipboard" [ref=e274]:
+          - cell "Copy Content" [ref=e275]
+          - cell "Cmd C" [ref=e276]:
+            - generic [ref=e277]: Cmd
+            - generic [ref=e278]: C
+          - cell "Copy previewed text or file path to clipboard" [ref=e279]
+        - row "Edit Text Double-click Enter edit mode for text and Markdown files" [ref=e280]:
+          - cell "Edit Text" [ref=e281]
+          - cell "Double-click" [ref=e282]:
+            - generic [ref=e283]: Double-click
+          - cell "Enter edit mode for text and Markdown files" [ref=e284]
+  - generic [ref=e286]:
+    - generic [ref=e287]:
+      - heading "System Requirements" [level=2] [ref=e288]
+      - paragraph [ref=e289]: Everything Glance needs to run smoothly on your Mac.
+    - generic [ref=e290]:
+      - generic [ref=e291]:
+        - img [ref=e293]
+        - heading "macOS Version" [level=3] [ref=e295]
+        - paragraph [ref=e296]: macOS 12.3 (Monterey) or later. Optimized for Apple Silicon and Intel Macs.
+        - generic [ref=e297]: Required
+      - generic [ref=e298]:
+        - img [ref=e300]
+        - heading "Input Monitoring" [level=3] [ref=e302]
+        - paragraph [ref=e303]: Required to detect global hotkey presses across all applications while Glance runs in the background.
+        - generic [ref=e304]: Required
+      - generic [ref=e305]:
+        - img [ref=e307]
+        - heading "Accessibility" [level=3] [ref=e309]
+        - paragraph [ref=e310]: Needed to read selected text from other applications using macOS Accessibility APIs.
+        - generic [ref=e311]: Required
+      - generic [ref=e312]:
+        - img [ref=e314]
+        - heading "Full Disk Access" [level=3] [ref=e316]
+        - paragraph [ref=e317]: Optional but recommended. Allows Glance to preview files in protected system directories and resolve paths more reliably.
+        - generic [ref=e318]: Optional
+      - generic [ref=e319]:
+        - img [ref=e321]
+        - heading "Network Access" [level=3] [ref=e323]
+        - paragraph [ref=e324]: Required for previewing web URLs and fetching remote content. No data is collected or transmitted.
+        - generic [ref=e325]: Optional
+  - generic [ref=e327]:
+    - heading "Ready to Glance?" [level=2] [ref=e328]
+    - paragraph [ref=e329]: Download Glance and start previewing files, images, and URLs in seconds.
+    - generic [ref=e330]:
+      - img [ref=e331]
+      - text: macOS 12.3+ • Universal Binary
+    - generic [ref=e333]:
+      - link "Download Glance" [ref=e334] [cursor=pointer]:
+        - /url: "#"
+        - img [ref=e335]
+        - text: Download Glance
+      - link "Get in Touch" [ref=e337] [cursor=pointer]:
+        - /url: mailto:hello@glance.app
+        - img [ref=e338]
+        - text: Get in Touch
+  - paragraph [ref=e343]: © 2026 Glance. All rights reserved. Built for macOS with care.

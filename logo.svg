@@ -1,0 +1,61 @@
+<svg viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e0e10"/>
+      <stop offset="100%" stop-color="#070708"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8a87c"/>
+      <stop offset="50%" stop-color="#d4a574"/>
+      <stop offset="100%" stop-color="#c8aa82"/>
+    </linearGradient>
+    <linearGradient id="amber-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0b896"/>
+      <stop offset="100%" stop-color="#e8c87c"/>
+    </linearGradient>
+    
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="30" result="blur"/>
+      <feFlood flood-color="#e8a87c" flood-opacity="0.15"/>
+      <feComposite in2="blur" operator="in"/>
+      <feComposite in2="SourceGraphic" operator="over"/>
+    </filter>
+  </defs>
+  
+  <rect x="0" y="0" width="1080" height="1080" rx="240" fill="url(#bg-grad)"/>
+  
+  <rect x="60" y="60" width="960" height="960" rx="216" fill="none" stroke="url(#amber)" stroke-width="6" opacity="0.25"/>
+  
+  <path d="M 160 540
+           C 160 330, 330 160, 540 160
+           C 750 160, 920 330, 920 540
+           C 920 750, 750 920, 540 920
+           C 330 920, 160 750, 160 540 Z" 
+        fill="none" 
+        stroke="url(#amber)" 
+        stroke-width="48" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        filter="url(#glow)"/>
+  
+  <circle cx="540" cy="540" r="220" fill="none" stroke="url(#amber)" stroke-width="32" opacity="0.5" filter="url(#glow)"/>
+  
+  <circle cx="540" cy="540" r="120" fill="url(#amber)"/>
+  
+  <circle cx="540" cy="540" r="120" fill="none" stroke="url(#amber-light)" stroke-width="4" opacity="0.6"/>
+  
+  <circle cx="588" cy="492" r="36" fill="#ffffff" opacity="0.95"/>
+  
+  <path d="M 540 340 L 540 400 M 540 680 L 540 740 M 340 540 L 400 540 M 680 540 L 740 540" 
+        stroke="url(#amber-light)" 
+        stroke-width="20" 
+        stroke-linecap="round" 
+        opacity="0.35"/>
+  
+  <circle cx="540" cy="540" r="340" fill="none" stroke="url(#amber)" stroke-width="2" opacity="0.12" stroke-dasharray="20 20"/>
+  </svg>

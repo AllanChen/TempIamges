@@ -37,3 +37,4 @@ prototype/*
 !prototype/*.sh
 !prototype/*.html
 !prototype/.gitignore
+.gstack/
