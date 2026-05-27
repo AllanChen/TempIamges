@@ -6,17 +6,17 @@ import WebKit
 class PreviewPanel: NSPanel {
     // MARK: - Layout constants
     private let anchorOffset = CGPoint(x: 20, y: 0)
-    private let panelCornerRadius: CGFloat = 16
-    private let headerHeight: CGFloat = 48
+    private let panelCornerRadius: CGFloat = 20
+    private let headerHeight: CGFloat = 52
     /// Fixed width for single-card view; height follows a 9:16 portrait ratio.
-    private let singleCardWidth: CGFloat = 300
+    private let singleCardWidth: CGFloat = 320
     private var singleCardImageHeight: CGFloat { singleCardWidth * 16 / 9 }
     private let bottomBarHeight: CGFloat = 72
 
     // Single-card middle area (around the dark inset)
-    private let middlePadding: CGFloat = 18
-    private let insetCornerRadius: CGFloat = 18
-    private let insetTopArea: CGFloat = 48        // space above the image for anchor + filename pill
+    private let middlePadding: CGFloat = 20
+    private let insetCornerRadius: CGFloat = 20
+    private let insetTopArea: CGFloat = 52        // space above the image for anchor + filename pill
     private let metaPillArea: CGFloat = 56        // filename/meta pill below image
     private let filmstripHeight: CGFloat = 56
     private let dotsHeight: CGFloat = 18
@@ -24,12 +24,12 @@ class PreviewPanel: NSPanel {
     private let insetBottomPad: CGFloat = 10
 
     // Multi-image masonry
-    private let masonryHorizontalPad: CGFloat = 8
-    private let masonryTopPad: CGFloat = 6      // small gap below header
-    private let masonryBottomPad: CGFloat = 8
-    private let masonryColumnSpacing: CGFloat = 8
-    private let masonryRowSpacing: CGFloat = 8
-    private let masonryColumnWidth: CGFloat = 150
+    private let masonryHorizontalPad: CGFloat = 10
+    private let masonryTopPad: CGFloat = 8      // small gap below header
+    private let masonryBottomPad: CGFloat = 10
+    private let masonryColumnSpacing: CGFloat = 10
+    private let masonryRowSpacing: CGFloat = 10
+    private let masonryColumnWidth: CGFloat = 160
     private let masonryColumns: Int = 2
     /// Max visible cards-area height before the masonry view starts scrolling.
     /// Fits exactly 2 rows (4 cards).
@@ -42,15 +42,15 @@ class PreviewPanel: NSPanel {
     fileprivate static let middleBackground  = NSColor.underPageBackgroundColor
     /// Always-dark image canvas — stays dark in light mode too because the
     /// image needs a neutral dark frame to read against.
-    fileprivate static let darkInset         = NSColor(white: 0.07, alpha: 1)
-    fileprivate static let bottomBar         = NSColor(white: 0.32, alpha: 1)
+    fileprivate static let darkInset         = NSColor(white: 0.05, alpha: 1)
+    fileprivate static let bottomBar         = NSColor(white: 0.28, alpha: 1)
     fileprivate static let separator         = NSColor.separatorColor
-    fileprivate static let pillBackground    = NSColor(white: 1, alpha: 0.10)
-    fileprivate static let pillBackgroundLight = NSColor(white: 1, alpha: 0.16)
+    fileprivate static let pillBackground    = NSColor(white: 1, alpha: 0.08)
+    fileprivate static let pillBackgroundLight = NSColor(white: 1, alpha: 0.14)
     fileprivate static let textDark          = NSColor.labelColor
     fileprivate static let textSecondary     = NSColor.secondaryLabelColor
     fileprivate static let textOnDark        = NSColor.white
-    fileprivate static let textOnDarkSecondary = NSColor(white: 1, alpha: 0.70)
+    fileprivate static let textOnDarkSecondary = NSColor(white: 1, alpha: 0.65)
     fileprivate static let thumbPlaceholder  = NSColor.tertiaryLabelColor
     fileprivate static let filmstripBorder   = NSColor.systemBlue
     fileprivate static let accentBlue        = NSColor.systemBlue
@@ -586,11 +586,11 @@ class PreviewPanel: NSPanel {
 
         let titleLbl = NSTextField(labelWithString: "Glance".localized)
         titleLbl.textColor = Self.textDark
-        titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLbl.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
         titleLbl.alignment = .center
         titleLbl.lineBreakMode = .byTruncatingMiddle
         titleLbl.maximumNumberOfLines = 1
-        titleLbl.frame = NSRect(x: 48, y: (headerHeight - 18) / 2, width: width - 96, height: 18)
+        titleLbl.frame = NSRect(x: 48, y: (headerHeight - 20) / 2, width: width - 96, height: 20)
         titleLbl.autoresizingMask = [.width]
         titleLbl.tag = 3
         bar.addSubview(titleLbl)
@@ -1119,18 +1119,17 @@ final class MediaTileView: NSView {
 
         switch style {
         case .singleCard:
-            layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
+            layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
 
             mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
-            mediaContainer.layer?.backgroundColor = NSColor(white: 0.07, alpha: 1).cgColor
+            mediaContainer.layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
             addSubview(mediaContainer)
 
-            // Subtle shimmer while the image loads.
             shimmerLayer.colors = [
                 NSColor(white: 1, alpha: 0).cgColor,
-                NSColor(white: 1, alpha: 0.06).cgColor,
+                NSColor(white: 1, alpha: 0.05).cgColor,
                 NSColor(white: 1, alpha: 0).cgColor
             ]
             shimmerLayer.locations = [0.0, 0.5, 1.0]
@@ -1143,13 +1142,12 @@ final class MediaTileView: NSView {
             imageLayer.masksToBounds = true
             mediaContainer.layer?.addSublayer(imageLayer)
 
-            // Bottom dark gradient + filename/dims/size labels overlaid on the image.
             overlayGradient.colors = [
-                NSColor(white: 0, alpha: 0.85).cgColor,
-                NSColor(white: 0, alpha: 0.45).cgColor,
+                NSColor(white: 0, alpha: 0.92).cgColor,
+                NSColor(white: 0, alpha: 0.50).cgColor,
                 NSColor(white: 0, alpha: 0.0).cgColor
             ]
-            overlayGradient.locations = [0.0, 0.55, 1.0]
+            overlayGradient.locations = [0.0, 0.45, 1.0]
             overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
             overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
             overlayGradient.isHidden = true
@@ -1157,7 +1155,7 @@ final class MediaTileView: NSView {
 
             let nameLbl = NSTextField(labelWithString: info.filename)
             nameLbl.textColor = .white
-            nameLbl.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+            nameLbl.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
             nameLbl.isHidden = true
@@ -1165,8 +1163,8 @@ final class MediaTileView: NSView {
             filenameLabel = nameLbl
 
             let dimsLbl = NSTextField(labelWithString: "")
-            dimsLbl.textColor = NSColor(white: 1, alpha: 0.85)
-            dimsLbl.font = NSFont.systemFont(ofSize: 12)
+            dimsLbl.textColor = NSColor(white: 1, alpha: 0.80)
+            dimsLbl.font = NSFont.systemFont(ofSize: 13)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 3
             dimsLbl.usesSingleLineMode = false
@@ -1174,9 +1172,6 @@ final class MediaTileView: NSView {
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
 
-            // Retained for API compatibility; the meta line collapses
-            // dimensions + size + format into `dimsLabel`, so this stays
-            // hidden and off-frame.
             let sizeLbl = NSTextField(labelWithString: "")
             sizeLbl.isHidden = true
             addSubview(sizeLbl)
@@ -1184,8 +1179,8 @@ final class MediaTileView: NSView {
 
         case .masonry:
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            let tileBg = isDark ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.18, alpha: 1)
-            layer?.cornerRadius = 8
+            let tileBg = isDark ? NSColor(white: 0.10, alpha: 1) : NSColor(white: 0.16, alpha: 1)
+            layer?.cornerRadius = 12
             layer?.masksToBounds = true
             layer?.backgroundColor = tileBg.cgColor
 
@@ -1195,10 +1190,9 @@ final class MediaTileView: NSView {
             mediaContainer.layer?.backgroundColor = tileBg.cgColor
             addSubview(mediaContainer)
 
-            // Animated shimmer band — moves left→right while the image is loading.
             shimmerLayer.colors = [
                 NSColor(white: 1, alpha: 0).cgColor,
-                NSColor(white: 1, alpha: 0.10).cgColor,
+                NSColor(white: 1, alpha: 0.08).cgColor,
                 NSColor(white: 1, alpha: 0).cgColor
             ]
             shimmerLayer.locations = [0.0, 0.5, 1.0]
@@ -1211,14 +1205,12 @@ final class MediaTileView: NSView {
             imageLayer.masksToBounds = true
             mediaContainer.layer?.addSublayer(imageLayer)
 
-            // Dark gradient on the bottom edge so the white text overlay is readable.
-            // Must live above the image layer (same container) and below the text NSTextFields.
             overlayGradient.colors = [
-                NSColor(white: 0, alpha: 0.88).cgColor,
-                NSColor(white: 0, alpha: 0.75).cgColor,
+                NSColor(white: 0, alpha: 0.90).cgColor,
+                NSColor(white: 0, alpha: 0.70).cgColor,
                 NSColor(white: 0, alpha: 0.0).cgColor
             ]
-            overlayGradient.locations = [0.0, 0.55, 1.0]
+            overlayGradient.locations = [0.0, 0.40, 1.0]
             overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
             overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
             overlayGradient.isHidden = true
@@ -1226,7 +1218,7 @@ final class MediaTileView: NSView {
 
             let nameLbl = NSTextField(labelWithString: info.filename)
             nameLbl.textColor = .white
-            nameLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+            nameLbl.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
             nameLbl.isHidden = true
@@ -1234,8 +1226,8 @@ final class MediaTileView: NSView {
             filenameLabel = nameLbl
 
             let dimsLbl = NSTextField(labelWithString: "")
-            dimsLbl.textColor = NSColor(white: 1, alpha: 0.95)
-            dimsLbl.font = NSFont.systemFont(ofSize: 11)
+            dimsLbl.textColor = NSColor(white: 1, alpha: 0.90)
+            dimsLbl.font = NSFont.systemFont(ofSize: 12)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 3
             dimsLbl.usesSingleLineMode = false
@@ -1243,7 +1235,6 @@ final class MediaTileView: NSView {
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
 
-            // Retained for API compatibility; meta info collapses into dimsLabel.
             let sizeLbl = NSTextField(labelWithString: "")
             sizeLbl.isHidden = true
             addSubview(sizeLbl)

@@ -18,15 +18,15 @@ final class HistoryWindow: NSWindow {
 
     // Layout constants shared with HistorySectionView.
     fileprivate static let columns: Int = 4
-    fileprivate static let tileSize = NSSize(width: 174, height: 174)
-    fileprivate static let tileSpacing: CGFloat = 10
-    fileprivate static let sectionSpacing: CGFloat = 22
-    fileprivate static let headerHeight: CGFloat = 56
-    fileprivate static let contentInset: CGFloat = 18
-    fileprivate static let toolbarHeight: CGFloat = 40
+    fileprivate static let tileSize = NSSize(width: 180, height: 180)
+    fileprivate static let tileSpacing: CGFloat = 12
+    fileprivate static let sectionSpacing: CGFloat = 28
+    fileprivate static let headerHeight: CGFloat = 60
+    fileprivate static let contentInset: CGFloat = 20
+    fileprivate static let toolbarHeight: CGFloat = 44
 
     init() {
-        let initialSize = NSSize(width: 820, height: 640)
+        let initialSize = NSSize(width: 860, height: 680)
         super.init(
             contentRect: NSRect(origin: .zero, size: initialSize),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
@@ -36,7 +36,7 @@ final class HistoryWindow: NSWindow {
         self.title = "Preview History".localized
         self.isReleasedWhenClosed = false
         self.center()
-        self.minSize = NSSize(width: 520, height: 360)
+        self.minSize = NSSize(width: 560, height: 400)
         // Prevent blank flash on first open: start invisible and fade in once
         // the section content has been built.
         self.alphaValue = 0
@@ -87,7 +87,6 @@ final class HistoryWindow: NSWindow {
         guard let content = contentView else { return }
         let bounds = content.bounds
 
-        // Toolbar
         toolbarBar.frame = NSRect(x: 0, y: bounds.height - Self.toolbarHeight,
                                    width: bounds.width, height: Self.toolbarHeight)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
@@ -104,8 +103,8 @@ final class HistoryWindow: NSWindow {
         clearButton.title = "Clear History".localized
         clearButton.target = self
         clearButton.action = #selector(clearTapped)
-        clearButton.frame = NSRect(x: bounds.width - 130, y: 8,
-                                    width: 116, height: 24)
+        clearButton.frame = NSRect(x: bounds.width - 136, y: 10,
+                                    width: 120, height: 26)
         clearButton.autoresizingMask = [.minXMargin]
         toolbarBar.addSubview(clearButton)
 
@@ -388,14 +387,14 @@ private final class HistorySectionView: NSView {
         let header = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         header.wantsLayer = true
         header.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        header.layer?.cornerRadius = 6
+        header.layer?.cornerRadius = 8
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd  EEEE"
         let dateLabel = NSTextField(labelWithString: formatter.string(from: date))
-        dateLabel.font = NSFont.systemFont(ofSize: 14, weight: .bold)
+        dateLabel.font = NSFont.systemFont(ofSize: 15, weight: .bold)
         dateLabel.textColor = .labelColor
-        dateLabel.frame = NSRect(x: 12, y: (height - 20) / 2, width: width - 24, height: 20)
+        dateLabel.frame = NSRect(x: 14, y: (height - 22) / 2, width: width - 28, height: 22)
         dateLabel.lineBreakMode = .byTruncatingTail
         header.addSubview(dateLabel)
 

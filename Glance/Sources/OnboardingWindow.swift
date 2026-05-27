@@ -7,7 +7,7 @@ class OnboardingWindow: NSWindow {
     private var continueButton: NSButton!
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 560, height: 560)
+        let windowRect = NSRect(x: 0, y: 0, width: 580, height: 580)
         super.init(
             contentRect: windowRect,
             styleMask: [.titled, .closable],
@@ -31,10 +31,10 @@ class OnboardingWindow: NSWindow {
         contentView.wantsLayer = true
         contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
-        let iconSize: CGFloat = 64
+        let iconSize: CGFloat = 72
         let iconView = NSImageView(frame: NSRect(
             x: (contentView.bounds.width - iconSize) / 2,
-            y: contentView.bounds.height - 100,
+            y: contentView.bounds.height - 110,
             width: iconSize,
             height: iconSize
         ))
@@ -42,22 +42,22 @@ class OnboardingWindow: NSWindow {
         iconView.imageScaling = .scaleProportionallyUpOrDown
         contentView.addSubview(iconView)
 
-        let titleLabel = NSTextField(labelWithString: "Welcome to Glance!".localized)
-        titleLabel.font = NSFont.boldSystemFont(ofSize: 22)
+        let titleLabel = NSTextField(labelWithString: "Welcome to Glance".localized)
+        titleLabel.font = NSFont.boldSystemFont(ofSize: 26)
         titleLabel.alignment = .center
-        titleLabel.frame = NSRect(x: 20, y: contentView.bounds.height - 140, width: contentView.bounds.width - 40, height: 30)
+        titleLabel.frame = NSRect(x: 20, y: contentView.bounds.height - 152, width: contentView.bounds.width - 40, height: 34)
         contentView.addSubview(titleLabel)
 
         let subtitleLabel = NSTextField(labelWithString: "Before you can start previewing, we need to ask you for a few permissions.".localized)
-        subtitleLabel.font = NSFont.systemFont(ofSize: 13)
+        subtitleLabel.font = NSFont.systemFont(ofSize: 14)
         subtitleLabel.textColor = .secondaryLabelColor
         subtitleLabel.alignment = .center
-        subtitleLabel.frame = NSRect(x: 40, y: contentView.bounds.height - 170, width: contentView.bounds.width - 80, height: 20)
+        subtitleLabel.frame = NSRect(x: 40, y: contentView.bounds.height - 186, width: contentView.bounds.width - 80, height: 22)
         contentView.addSubview(subtitleLabel)
 
         let itemWidth: CGFloat = contentView.bounds.width - 80
         let itemX: CGFloat = 40
-        var currentY = contentView.bounds.height - 210
+        var currentY = contentView.bounds.height - 230
 
         inputMonitoringStatusView = PermissionStatusView(
             title: "Input Monitoring Permission".localized,
@@ -66,9 +66,9 @@ class OnboardingWindow: NSWindow {
         )
         inputMonitoringStatusView.target = self
         inputMonitoringStatusView.openSettingsAction = #selector(openInputMonitoringSettings)
-        inputMonitoringStatusView.frame = NSRect(x: itemX, y: currentY - 65, width: itemWidth, height: 65)
+        inputMonitoringStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
         contentView.addSubview(inputMonitoringStatusView)
-        currentY -= 85
+        currentY -= 90
 
         accessibilityStatusView = PermissionStatusView(
             title: "Accessibility Permission".localized,
@@ -77,9 +77,9 @@ class OnboardingWindow: NSWindow {
         )
         accessibilityStatusView.target = self
         accessibilityStatusView.openSettingsAction = #selector(openAccessibilitySettings)
-        accessibilityStatusView.frame = NSRect(x: itemX, y: currentY - 65, width: itemWidth, height: 65)
+        accessibilityStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
         contentView.addSubview(accessibilityStatusView)
-        currentY -= 85
+        currentY -= 90
 
         fullDiskAccessStatusView = PermissionStatusView(
             title: "Full Disk Access Permission".localized,
@@ -88,15 +88,15 @@ class OnboardingWindow: NSWindow {
         )
         fullDiskAccessStatusView.target = self
         fullDiskAccessStatusView.openSettingsAction = #selector(openFullDiskAccessSettings)
-        fullDiskAccessStatusView.frame = NSRect(x: itemX, y: currentY - 65, width: itemWidth, height: 65)
+        fullDiskAccessStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
         contentView.addSubview(fullDiskAccessStatusView)
-        currentY -= 85
+        currentY -= 90
 
         continueButton = NSButton(title: "Continue".localized, target: self, action: #selector(continuePressed))
         continueButton.bezelStyle = .rounded
         continueButton.frame = NSRect(
             x: (contentView.bounds.width - 120) / 2,
-            y: 40,
+            y: 44,
             width: 120,
             height: 32
         )
@@ -186,9 +186,9 @@ class PermissionStatusView: NSView {
         titleLabel.isEditable = false
         titleLabel.isBordered = false
         titleLabel.backgroundColor = .clear
-        titleLabel.font = NSFont.boldSystemFont(ofSize: 14)
+        titleLabel.font = NSFont.boldSystemFont(ofSize: 15)
         titleLabel.stringValue = title
-        titleLabel.frame = NSRect(x: 0, y: 40, width: 320, height: 20)
+        titleLabel.frame = NSRect(x: 0, y: 42, width: 340, height: 22)
         addSubview(titleLabel)
 
         descLabel.isEditable = false
@@ -199,13 +199,13 @@ class PermissionStatusView: NSView {
         descLabel.stringValue = description
         descLabel.lineBreakMode = .byWordWrapping
         descLabel.maximumNumberOfLines = 2
-        descLabel.frame = NSRect(x: 0, y: 0, width: 320, height: 36)
+        descLabel.frame = NSRect(x: 0, y: 0, width: 340, height: 38)
         addSubview(descLabel)
 
         statusContainer.wantsLayer = true
-        statusContainer.layer?.cornerRadius = 6
+        statusContainer.layer?.cornerRadius = 8
         statusContainer.layer?.borderWidth = 1
-        statusContainer.frame = NSRect(x: 370, y: 10, width: 120, height: 44)
+        statusContainer.frame = NSRect(x: 390, y: 10, width: 120, height: 48)
         addSubview(statusContainer)
 
         statusLabel.isEditable = false
@@ -215,13 +215,13 @@ class PermissionStatusView: NSView {
         statusLabel.alignment = .center
         statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.maximumNumberOfLines = 2
-        statusLabel.frame = NSRect(x: 4, y: 4, width: 112, height: 36)
+        statusLabel.frame = NSRect(x: 4, y: 4, width: 112, height: 40)
         statusContainer.addSubview(statusLabel)
 
         openSettingsButton.title = "Open Settings".localized
         openSettingsButton.bezelStyle = .rounded
-        openSettingsButton.font = NSFont.systemFont(ofSize: 11)
-        openSettingsButton.frame = NSRect(x: 370, y: 18, width: 120, height: 28)
+        openSettingsButton.font = NSFont.systemFont(ofSize: 12)
+        openSettingsButton.frame = NSRect(x: 390, y: 18, width: 120, height: 30)
         openSettingsButton.target = self
         openSettingsButton.action = #selector(settingsButtonClicked)
         addSubview(openSettingsButton)
