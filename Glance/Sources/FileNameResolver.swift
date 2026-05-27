@@ -207,21 +207,29 @@ final class FileNameResolver {
             return nil
         }
 
-        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global())
-        timer.schedule(deadline: .now() + mdfindTimeout)
-        timer.setEventHandler { [weak task] in
-            task?.terminate()
+        let semaphore = DispatchSemaphore(value: 0)
+        var outputData: Data?
+        var terminationStatus: Int32 = -1
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            outputData = pipe.fileHandleForReading.readDataToEndOfFile()
+            task.waitUntilExit()
+            terminationStatus = task.terminationStatus
+            semaphore.signal()
         }
-        timer.resume()
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        timer.cancel()
-        task.waitUntilExit()
-
-        guard task.terminationStatus == 0 else {
-            Logger.info("FileNameResolver: mdfind exited with status \(task.terminationStatus)")
+        let waitResult = semaphore.wait(timeout: .now() + mdfindTimeout)
+        if waitResult == .timedOut {
+            Logger.info("FileNameResolver: mdfind timed out after \(mdfindTimeout)s")
+            task.terminate()
             return nil
         }
+
+        guard terminationStatus == 0 else {
+            Logger.info("FileNameResolver: mdfind exited with status \(terminationStatus)")
+            return nil
+        }
+        guard let data = outputData else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
@@ -383,8 +391,10 @@ final class FileNameResolver {
         var queue: [(URL, Int)] = [(root, 0)]
         let fm = FileManager.default
         let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .contentModificationDateKey]
+        let started = Date()
 
         while !queue.isEmpty && result.count < limit {
+            guard Date().timeIntervalSince(started) < quickSearchTimeBudget else { break }
             let (dir, depth) = queue.removeFirst()
             guard depth < maxDepth,
                   let children = try? fm.contentsOfDirectory(
@@ -428,6 +438,7 @@ final class FileNameResolver {
               Date().timeIntervalSince(started) < deepSearchTimeBudget {
             let (dir, depth) = queue.removeFirst()
             visitedDirectories += 1
+            guard Date().timeIntervalSince(started) < deepSearchTimeBudget else { break }
             guard let children = try? fm.contentsOfDirectory(
                 at: dir, includingPropertiesForKeys: keys,
                 options: [.skipsHiddenFiles, .skipsPackageDescendants]

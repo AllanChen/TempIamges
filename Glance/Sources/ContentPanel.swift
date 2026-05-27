@@ -1202,7 +1202,7 @@ private enum GitDiffService {
         String(hash.prefix(7))
     }
 
-    private static func runGit(_ arguments: [String], cwd: URL) -> CommandResult? {
+    private static func runGit(_ arguments: [String], cwd: URL, timeout: TimeInterval = 5.0) -> CommandResult? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = arguments
@@ -1222,14 +1222,34 @@ private enum GitDiffService {
             return nil
         }
 
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        let semaphore = DispatchSemaphore(value: 0)
+        var outputData: Data?
+        var errorData: Data?
+        var exitStatus: Int32 = -1
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            exitStatus = process.terminationStatus
+            semaphore.signal()
+        }
+
+        let waitResult = semaphore.wait(timeout: .now() + timeout)
+        if waitResult == .timedOut {
+            Logger.info("GitDiffService: git timed out after \(timeout)s: \(arguments.joined(separator: " "))")
+            process.terminate()
+            return nil
+        }
+
+        guard let outData = outputData, let errData = errorData else {
+            return nil
+        }
 
         return CommandResult(
-            status: process.terminationStatus,
-            output: String(decoding: outputData, as: UTF8.self),
-            error: String(decoding: errorData, as: UTF8.self)
+            status: exitStatus,
+            output: String(decoding: outData, as: UTF8.self),
+            error: String(decoding: errData, as: UTF8.self)
         )
     }
 }
