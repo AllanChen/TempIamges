@@ -483,7 +483,7 @@ class PreviewPanel: NSPanel {
             let shortest = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
             let x = masonryHorizontalPad + CGFloat(shortest) * (colW + spacing)
             let visualY = colHeights[shortest]
-            let cardHeight = colW * 16 / 9
+            let cardHeight = colW * 16 / 9 + 14
 
             visualLayouts.append((x: x, visualY: visualY, w: colW, h: cardHeight))
             colHeights[shortest] = visualY + cardHeight + rowSpacing
@@ -553,7 +553,7 @@ class PreviewPanel: NSPanel {
             let shortest = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
             let x = masonryHorizontalPad + CGFloat(shortest) * (colW + spacing)
             let visualY = colHeights[shortest]
-            let cardHeight = colW * 16 / 9
+            let cardHeight = colW * 16 / 9 + 14
             visualLayouts.append((x: x, visualY: visualY, w: colW, h: cardHeight))
             colHeights[shortest] = visualY + cardHeight + rowSpacing
         }
@@ -1106,6 +1106,7 @@ final class MediaTileView: NSView {
     private var filenameLabel: NSTextField?
     private var dimsLabel: NSTextField?
     private var sizeLabel: NSTextField?
+    private var pathLabel: NSTextField?
 
     private var playerView: AVPlayerView?
     private var player: AVPlayer?
@@ -1265,6 +1266,15 @@ final class MediaTileView: NSView {
             sizeLbl.isHidden = true
             addSubview(sizeLbl)
             sizeLabel = sizeLbl
+
+            let pathLbl = NSTextField(labelWithString: "")
+            pathLbl.textColor = NSColor(white: 1, alpha: 0.55)
+            pathLbl.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+            pathLbl.lineBreakMode = .byTruncatingMiddle
+            pathLbl.maximumNumberOfLines = 1
+            pathLbl.isHidden = true
+            addSubview(pathLbl)
+            pathLabel = pathLbl
         }
 
         spinner.style = .spinning
@@ -1492,7 +1502,7 @@ final class MediaTileView: NSView {
             )
 
         case .masonry:
-            mediaContainer.frame = bounds
+            mediaContainer.frame = NSRect(x: 0, y: 14, width: bounds.width, height: bounds.height - 14)
             imageLayer.frame = mediaContainer.bounds
             playerView?.frame = mediaContainer.bounds
             CATransaction.begin()
@@ -1519,6 +1529,7 @@ final class MediaTileView: NSView {
             filenameLabel?.frame = NSRect(x: textX, y: filenameY, width: textW, height: filenameHeight)
             dimsLabel?.frame     = NSRect(x: textX, y: 10, width: textW, height: dimsHeight)
             sizeLabel?.frame     = .zero
+            pathLabel?.frame     = NSRect(x: textX, y: 0, width: textW, height: 12)
             downloadBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSizeM - 6,
                 y: 14,
@@ -1545,6 +1556,7 @@ final class MediaTileView: NSView {
         overlayGradient.isHidden = false
         filenameLabel?.isHidden = false
         dimsLabel?.isHidden = false
+        pathLabel?.isHidden = false
 
         switch media {
         case .image(let img, let info):
@@ -1581,6 +1593,10 @@ final class MediaTileView: NSView {
             dimsLabel?.stringValue = message ?? "No matching file found".localized
             dimsLabel?.isHidden = false
             dimsLabel?.textColor = .systemRed
+            if style == .masonry {
+                pathLabel?.stringValue = info.url.path
+                pathLabel?.isHidden = false
+            }
         } else {
             // Normal media load failure.
             loadingLabel.stringValue = message ?? "Failed".localized
@@ -1590,6 +1606,8 @@ final class MediaTileView: NSView {
             if style == .masonry {
                 dimsLabel?.stringValue = message ?? "Failed to load".localized
                 dimsLabel?.textColor = .systemRed
+                pathLabel?.stringValue = info.url.path
+                pathLabel?.isHidden = false
             }
         }
     }
@@ -1700,10 +1718,18 @@ final class MediaTileView: NSView {
                 dimsLabel?.stringValue = metaLine
             }
             sizeLabel?.stringValue = ""
+            if style == .masonry {
+                pathLabel?.stringValue = info.url.path
+                pathLabel?.isHidden = false
+            }
         case .webPage:
             filenameLabel?.stringValue = info.url.host ?? info.filename
             dimsLabel?.stringValue = info.url.absoluteString
             sizeLabel?.stringValue = ""
+            if style == .masonry {
+                pathLabel?.stringValue = info.url.absoluteString
+                pathLabel?.isHidden = false
+            }
         case .other:
             filenameLabel?.stringValue = info.filename
             var pieces: [String] = []
@@ -1721,6 +1747,10 @@ final class MediaTileView: NSView {
                 dimsLabel?.stringValue = metaLine
             }
             sizeLabel?.stringValue = ""
+            if style == .masonry {
+                pathLabel?.stringValue = info.url.path
+                pathLabel?.isHidden = false
+            }
         case .folder:
             filenameLabel?.stringValue = info.filename
             var pieces: [String] = []
@@ -1737,6 +1767,10 @@ final class MediaTileView: NSView {
                 dimsLabel?.stringValue = pieces.isEmpty ? "Folder".localized : metaLine
             }
             sizeLabel?.stringValue = ""
+            if style == .masonry {
+                pathLabel?.stringValue = info.url.path
+                pathLabel?.isHidden = false
+            }
         }
     }
 
@@ -1762,6 +1796,12 @@ final class MediaTileView: NSView {
             dimsLabel?.stringValue = metaLine
         }
         sizeLabel?.stringValue = ""
+
+        if style == .masonry {
+            let path = info.url.isFileURL ? info.url.path : info.url.absoluteString
+            pathLabel?.stringValue = path
+            pathLabel?.isHidden = false
+        }
     }
 }
 
