@@ -443,7 +443,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     /// or open them from a tile.
     private func shouldDirectOpen(_ path: DetectedPath) -> Bool {
         switch path {
-        case .localMarkdown, .remoteMarkdown,
+        case .localImage,  .remoteImage,
+             .localMarkdown, .remoteMarkdown,
              .localText,     .remoteText,
              .localPDF,      .remotePDF,
              .webPage:
