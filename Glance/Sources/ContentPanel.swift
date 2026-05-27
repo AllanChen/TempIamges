@@ -284,14 +284,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         toolbarSep.autoresizingMask = [.width]
         toolbarBar.addSubview(toolbarSep)
 
-        let gap: CGFloat = 10
-        let locateW: CGFloat = 32
-        let btnH: CGFloat = 26
-        let btnY: CGFloat = 7
-        let rightMargin: CGFloat = 14
-        let saveW: CGFloat = 72
-        let editW: CGFloat = 72
-        let diffW: CGFloat = 60
+        let gap: CGFloat = 8
+        let btnW: CGFloat = 80
+        let btnH: CGFloat = 28
+        let btnY: CGFloat = 6
+        let rightMargin: CGFloat = 16
 
         var currentRight = bodyFrame.width - rightMargin
 
@@ -302,12 +299,12 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         locateButton.target = self
         locateButton.action = #selector(locateTapped)
         locateButton.toolTip = "Reveal in Finder".localized
-        locateButton.frame = NSRect(x: currentRight - locateW, y: btnY,
-                                     width: locateW, height: btnH)
+        locateButton.frame = NSRect(x: currentRight - btnW, y: btnY,
+                                     width: btnW, height: btnH)
         locateButton.autoresizingMask = [.minXMargin]
         locateButton.isHidden = true
         toolbarBar.addSubview(locateButton)
-        currentRight -= locateW + gap
+        currentRight -= btnW + gap
 
         saveButton.bezelStyle = .rounded
         saveButton.title = "Save".localized
@@ -315,35 +312,35 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.frame = NSRect(x: currentRight - saveW, y: btnY,
-                                   width: saveW, height: btnH)
+        saveButton.frame = NSRect(x: currentRight - btnW, y: btnY,
+                                   width: btnW, height: btnH)
         saveButton.autoresizingMask = [.minXMargin]
         saveButton.isHidden = true
         toolbarBar.addSubview(saveButton)
-        currentRight -= saveW + gap
+        currentRight -= btnW + gap
 
         toggleButton.bezelStyle = .rounded
         toggleButton.title = "Edit".localized
         toggleButton.target = self
         toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.frame = NSRect(x: currentRight - editW, y: btnY,
-                                     width: editW, height: btnH)
+        toggleButton.frame = NSRect(x: currentRight - btnW, y: btnY,
+                                     width: btnW, height: btnH)
         toggleButton.autoresizingMask = [.minXMargin]
         toggleButton.isHidden = true
         toolbarBar.addSubview(toggleButton)
-        currentRight -= editW + gap
+        currentRight -= btnW + gap
 
         gitDiffButton.bezelStyle = .rounded
         gitDiffButton.title = "Diff".localized
         gitDiffButton.target = self
         gitDiffButton.action = #selector(gitDiffTapped)
         gitDiffButton.toolTip = "Compare with Git".localized
-        gitDiffButton.frame = NSRect(x: currentRight - diffW, y: btnY,
-                                      width: diffW, height: btnH)
+        gitDiffButton.frame = NSRect(x: currentRight - btnW, y: btnY,
+                                       width: btnW, height: btnH)
         gitDiffButton.autoresizingMask = [.minXMargin]
         gitDiffButton.isHidden = true
         toolbarBar.addSubview(gitDiffButton)
-        currentRight -= diffW + gap
+        currentRight -= btnW + gap
 
         modifiedLabel.font = NSFont.systemFont(ofSize: 12)
         modifiedLabel.textColor = .secondaryLabelColor

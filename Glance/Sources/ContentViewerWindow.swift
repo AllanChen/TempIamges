@@ -205,8 +205,13 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toolbarBar.addSubview(sep)
 
         // Right-anchored toolbar: [ Toggle ] [ Save ] [ 📁 ]
-        // Locate (folder) — rightmost; reveals the file in Finder.
-        let locateW: CGFloat = 32
+        let gap: CGFloat = 8
+        let btnW: CGFloat = 80
+        let btnH: CGFloat = 28
+        let rightMargin: CGFloat = 16
+
+        var currentRight = bounds.width - rightMargin
+
         locateButton.bezelStyle = .rounded
         locateButton.image = NSImage(systemSymbolName: "folder.fill",
                                        accessibilityDescription: "Reveal in Finder".localized)
@@ -214,45 +219,46 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         locateButton.target = self
         locateButton.action = #selector(locateTapped)
         locateButton.toolTip = "Reveal in Finder".localized
-        locateButton.frame = NSRect(x: bounds.width - 12 - locateW, y: 6,
-                                     width: locateW, height: 24)
+        locateButton.frame = NSRect(x: currentRight - btnW, y: 4,
+                                     width: btnW, height: btnH)
         locateButton.autoresizingMask = [.minXMargin]
         locateButton.isHidden = true
         toolbarBar.addSubview(locateButton)
+        currentRight -= btnW + gap
 
-        // Save — only when editing a local file. Sits to the left of locate.
         saveButton.bezelStyle = .rounded
         saveButton.title = "Save".localized
         saveButton.keyEquivalent = "s"
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.frame = NSRect(x: bounds.width - 20 - locateW - 70, y: 6,
-                                   width: 70, height: 24)
+        saveButton.frame = NSRect(x: currentRight - btnW, y: 4,
+                                   width: btnW, height: btnH)
         saveButton.autoresizingMask = [.minXMargin]
         saveButton.isHidden = true
         toolbarBar.addSubview(saveButton)
+        currentRight -= btnW + gap
 
-        // Toggle (Edit ↔ View) — only shown for markdown. Left of Save.
         toggleButton.bezelStyle = .rounded
         toggleButton.title = "Edit".localized
         toggleButton.target = self
         toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.frame = NSRect(x: bounds.width - 30 - locateW - 70 - 70, y: 6,
-                                     width: 70, height: 24)
+        toggleButton.frame = NSRect(x: currentRight - btnW, y: 4,
+                                     width: btnW, height: btnH)
         toggleButton.autoresizingMask = [.minXMargin]
         toggleButton.isHidden = true
         toolbarBar.addSubview(toggleButton)
+        currentRight -= btnW + gap
 
-        // Modified date — sits to the left of the button group.
         modifiedLabel.font = NSFont.systemFont(ofSize: 11)
         modifiedLabel.textColor = .secondaryLabelColor
         modifiedLabel.alignment = .right
         modifiedLabel.lineBreakMode = .byTruncatingTail
         modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.frame = NSRect(x: bounds.width - 30 - locateW - 70 - 70 - 160 - 12,
-                                      y: 9, width: 160, height: 18)
-        modifiedLabel.autoresizingMask = [.minXMargin]
+        modifiedLabel.frame = NSRect(x: 16, y: 9,
+                                      width: max(100, currentRight - 16 - gap),
+                                      height: 18)
+        modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
 
         addressBar.font = NSFont.systemFont(ofSize: 12)
