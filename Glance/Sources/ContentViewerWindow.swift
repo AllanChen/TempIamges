@@ -266,7 +266,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         addressBar.isEditable = true
         addressBar.isSelectable = true
         addressBar.isBordered = true
-        addressBar.backgroundColor = NSColor(white: 0.18, alpha: 1)
+        addressBar.backgroundColor = NSColor.textBackgroundColor
         addressBar.textColor = .secondaryLabelColor
         addressBar.frame = NSRect(x: 80, y: 6, width: bounds.width - 160, height: 24)
         addressBar.autoresizingMask = [.width]

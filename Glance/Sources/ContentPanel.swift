@@ -59,6 +59,14 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         case topLeft, topRight, bottomLeft, bottomRight
     }
 
+    private static func resolvedCG(_ color: NSColor) -> CGColor {
+        var resolved: CGColor!
+        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
+            resolved = color.cgColor
+        }
+        return resolved
+    }
+
     private init() {
         let config = WKWebViewConfiguration()
         let findScript = WKUserScript(
@@ -117,6 +125,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         installEscapeKeyMonitors()
         installMouseCursorMonitor()
         applyShadowToContent()
+        observeThemeChanges()
     }
 
     override var canBecomeKey: Bool { true }
@@ -263,7 +272,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         root.wantsLayer = true
         root.layer?.cornerRadius = 16
         root.layer?.masksToBounds = true
-        root.layer?.backgroundColor = NSColor(white: 0.08, alpha: 1).cgColor
+        root.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
 
         let navBar = buildNavBar(width: 700)
         navBar.frame = NSRect(x: 0, y: 600 - headerHeight, width: 700, height: headerHeight)
@@ -276,11 +285,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
                                   width: bodyFrame.width, height: toolbarH)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
         toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = NSColor(white: 0.10, alpha: 1).cgColor
+        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
 
         let toolbarSep = NSView(frame: NSRect(x: 20, y: 0, width: bodyFrame.width - 40, height: 1))
         toolbarSep.wantsLayer = true
-        toolbarSep.layer?.backgroundColor = NSColor(white: 1, alpha: 0.08).cgColor
+        toolbarSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
         toolbarSep.autoresizingMask = [.width]
         toolbarBar.addSubview(toolbarSep)
 
@@ -358,7 +367,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         addressBar.isEditable = false
         addressBar.isSelectable = true
         addressBar.isBordered = true
-        addressBar.backgroundColor = NSColor(white: 0.16, alpha: 1)
+        addressBar.backgroundColor = NSColor.textBackgroundColor
         addressBar.textColor = .secondaryLabelColor
         addressBar.frame = NSRect(x: 80, y: 7, width: bodyFrame.width - 160, height: 26)
         addressBar.autoresizingMask = [.width]
@@ -434,7 +443,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
         let overlay = NSView(frame: contentFrame)
         overlay.wantsLayer = true
-        overlay.layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
+        overlay.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
         overlay.autoresizingMask = [.width, .height]
         overlay.isHidden = true
 
@@ -445,7 +454,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         ))
         spinnerContainer.wantsLayer = true
         spinnerContainer.layer?.cornerRadius = 10
-        spinnerContainer.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
+        spinnerContainer.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
         spinnerContainer.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         overlay.addSubview(spinnerContainer)
 
@@ -461,7 +470,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         spinnerContainer.addSubview(spinner)
 
         let loadingLbl = NSTextField(labelWithString: "Loading…".localized)
-        loadingLbl.textColor = NSColor(white: 1, alpha: 0.55)
+        loadingLbl.textColor = .secondaryLabelColor
         loadingLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         loadingLbl.alignment = .center
         loadingLbl.frame = NSRect(x: 0, y: spinnerContainer.frame.minY - 32,
@@ -477,11 +486,11 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
                                      width: bodyFrame.width, height: imageInfoBarH)
         imageInfoBar.autoresizingMask = [.width, .maxYMargin]
         imageInfoBar.wantsLayer = true
-        imageInfoBar.layer?.backgroundColor = NSColor(white: 0, alpha: 0.82).cgColor
+        imageInfoBar.layer?.backgroundColor = Self.resolvedCG(.underPageBackgroundColor)
         imageInfoBar.isHidden = true
 
         imageInfoNameLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-        imageInfoNameLabel.textColor = .white
+        imageInfoNameLabel.textColor = .labelColor
         imageInfoNameLabel.lineBreakMode = .byTruncatingMiddle
         imageInfoNameLabel.maximumNumberOfLines = 1
         imageInfoNameLabel.frame = NSRect(x: 16, y: 26,
@@ -490,7 +499,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         imageInfoBar.addSubview(imageInfoNameLabel)
 
         imageInfoMetaLabel.font = NSFont.systemFont(ofSize: 12)
-        imageInfoMetaLabel.textColor = NSColor(white: 1, alpha: 0.72)
+        imageInfoMetaLabel.textColor = .secondaryLabelColor
         imageInfoMetaLabel.lineBreakMode = .byTruncatingTail
         imageInfoMetaLabel.maximumNumberOfLines = 1
         imageInfoMetaLabel.frame = NSRect(x: 16, y: 8,
@@ -506,7 +515,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private func buildNavBar(width: CGFloat) -> NSView {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
         bar.wantsLayer = true
-        bar.layer?.backgroundColor = NSColor(white: 0.08, alpha: 1).cgColor
+        bar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
 
         let closeBtn = NSButton(frame: .zero)
         closeBtn.bezelStyle = .recessed
@@ -986,6 +995,32 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
             return true
         }
         return false
+    }
+
+    private func observeThemeChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateAppearance),
+            name: .preferencesDidChange,
+            object: nil
+        )
+    }
+
+    @objc private func updateAppearance() {
+        guard let root = contentView else { return }
+        root.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
+        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
+        if let toolbarSep = toolbarBar.subviews.first(where: { $0.frame.height == 1 && $0 !== webFindBar }) {
+            toolbarSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
+        }
+        webFindBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
+        if let findSep = webFindBar.subviews.first(where: { $0.frame.height == 1 }) {
+            findSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
+        }
+        if let overlay = loadingOverlay {
+            overlay.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
+        }
+        imageInfoBar.layer?.backgroundColor = Self.resolvedCG(.underPageBackgroundColor)
     }
 
     deinit {
