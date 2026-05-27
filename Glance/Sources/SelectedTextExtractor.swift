@@ -8,6 +8,29 @@ struct SelectionResult {
 }
 
 class SelectedTextExtractor {
+    func extractSelection(completion: @escaping (SelectionResult?) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+
+            if let axResult = self.readViaAXWithTimeout(timeout: 1.0) {
+                DispatchQueue.main.async { completion(axResult) }
+                return
+            }
+
+            Logger.info("SelectedTextExtractor: AX yielded nothing or timed out, trying clipboard")
+
+            if let clipboardResult = self.readViaClipboard() {
+                DispatchQueue.main.async { completion(clipboardResult) }
+                return
+            }
+
+            DispatchQueue.main.async { completion(nil) }
+        }
+    }
+
     func extractSelection() -> SelectionResult? {
         if let result = readViaAX() {
             return result
@@ -21,7 +44,33 @@ class SelectedTextExtractor {
         return extractSelection()?.text
     }
 
+    func readClipboardDirectly(completion: @escaping (SelectionResult?) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            let result = self.readClipboardDirectly()
+            DispatchQueue.main.async { completion(result) }
+        }
+    }
+
     // MARK: - AX path (native Cocoa apps)
+
+    private func readViaAXWithTimeout(timeout: TimeInterval) -> SelectionResult? {
+        let semaphore = DispatchSemaphore(value: 0)
+        var result: SelectionResult?
+        DispatchQueue.global(qos: .userInitiated).async {
+            result = self.readViaAX()
+            semaphore.signal()
+        }
+        let waitResult = semaphore.wait(timeout: .now() + timeout)
+        if waitResult == .timedOut {
+            Logger.info("SelectedTextExtractor: AX read timed out after \(timeout)s")
+            return nil
+        }
+        return result
+    }
 
     private func readViaAX() -> SelectionResult? {
         let systemWide = AXUIElementCreateSystemWide()

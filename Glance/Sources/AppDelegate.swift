@@ -198,53 +198,57 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
 
         let mousePos = currentCursorAXPoint()
-        // Debug mode pipes in pre-baked text. Anchor at screen centre.
-        let selected: String
-        let anchor: CGPoint
+
         if let text = injectedText {
-            selected = text
+            let anchor: CGPoint
             if let screen = NSScreen.main {
-                // Park the preview on the right half of the screen so the
-                // debug input window (top-left) stays visible.
                 let f = screen.frame
                 anchor = CGPoint(x: f.midX + f.width * 0.2, y: f.midY)
             } else {
                 anchor = mousePos
             }
-        } else {
-            let permissionManager = PermissionManager.shared
-            guard permissionManager.isInputMonitoringGranted else {
-                Logger.info("AppDelegate: Cannot activate preview - Input Monitoring permission not granted")
-                return
-            }
-            guard permissionManager.isAccessibilityGranted else {
-                Logger.info("AppDelegate: Cannot activate preview - Accessibility permission not granted")
-                return
-            }
-
-            // Try the live AX selection first; cache it on success.
-            let axResult = selectedTextExtractor?.extractSelection()
-            if let result = axResult, !result.text.isEmpty {
-                selected = result.text
-                lastSelectedText = result.text
-                anchor = mousePos
-            } else if let cached = lastSelectedText, !cached.isEmpty {
-                Logger.info("AppDelegate: AX empty — falling back to cached selection")
-                selected = cached
-                anchor = mousePos
-            } else if Preferences.shared.readClipboard,
-                      let clipboardResult = selectedTextExtractor?.readClipboardDirectly() {
-                Logger.info("AppDelegate: AX empty — falling back to clipboard content")
-                selected = clipboardResult.text
-                lastSelectedText = clipboardResult.text
-                anchor = mousePos
-            } else {
-                Logger.info("AppDelegate: No selected text to preview")
-                showErrorTooltip(message: "No text selected".localized, at: mousePos)
-                return
-            }
+            proceedWithPreview(text: text, anchor: anchor)
+            return
         }
 
+        let permissionManager = PermissionManager.shared
+        guard permissionManager.isInputMonitoringGranted else {
+            Logger.info("AppDelegate: Cannot activate preview - Input Monitoring permission not granted")
+            return
+        }
+        guard permissionManager.isAccessibilityGranted else {
+            Logger.info("AppDelegate: Cannot activate preview - Accessibility permission not granted")
+            return
+        }
+
+        selectedTextExtractor?.extractSelection { [weak self] result in
+            guard let self = self else { return }
+
+            let selected: String
+            let anchor = mousePos
+
+            if let result = result, !result.text.isEmpty {
+                selected = result.text
+                self.lastSelectedText = result.text
+            } else if let cached = self.lastSelectedText, !cached.isEmpty {
+                Logger.info("AppDelegate: AX empty — falling back to cached selection")
+                selected = cached
+            } else if Preferences.shared.readClipboard,
+                      let clipboardResult = self.selectedTextExtractor?.readClipboardDirectly() {
+                Logger.info("AppDelegate: AX empty — falling back to clipboard content")
+                selected = clipboardResult.text
+                self.lastSelectedText = clipboardResult.text
+            } else {
+                Logger.info("AppDelegate: No selected text to preview")
+                self.showErrorTooltip(message: "No text selected".localized, at: mousePos)
+                return
+            }
+
+            self.proceedWithPreview(text: selected, anchor: anchor)
+        }
+    }
+
+    private func proceedWithPreview(text selected: String, anchor: CGPoint) {
         let allHits = pathDetector?.detectAll(selected) ?? []
         let resolved = allHits.filter { $0.url != nil }
         let unresolvedTokens = allHits.compactMap { $0.unresolvedToken }
@@ -258,11 +262,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
 
         if unresolvedTokens.isEmpty {
-            // Fast path: only concrete URLs/paths — preview immediately.
             currentPath = resolved.compactMap { $0.url?.absoluteString }.joined(separator: "|")
             HistoryManager.shared.record(selectedText: selected, detectedPaths: resolved)
             if resolved.count == 1, shouldDirectOpen(resolved[0]) {
-                // Single ContentPanel-supported hit — skip PreviewPanel entirely.
                 previewPanel?.closeWithoutAffectingContent()
                 directOpen(resolved[0])
                 return
@@ -271,8 +273,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             return
         }
 
-        // Mixed (or unresolved-only): resolve filename/path tokens first, then
-        // decide whether to open ContentPanel directly or show PreviewPanel.
         currentPath = (resolved.compactMap { $0.url?.absoluteString } + unresolvedTokens).joined(separator: "|")
         resolveAndShow(selectedText: selected, resolved: resolved, tokens: unresolvedTokens, at: anchor)
     }
