@@ -1007,7 +1007,7 @@ private final class ImageFillView: NSView {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
-        layer?.contentsGravity = .resizeAspectFill
+        layer?.contentsGravity = .resizeAspect
         layer?.masksToBounds = true
     }
 
