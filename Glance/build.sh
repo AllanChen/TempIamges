@@ -11,6 +11,9 @@ cd "$(dirname "$0")"
 
 if command -v xcodegen > /dev/null 2>&1; then
     xcodegen generate
+    # Ensure the project defaults to Release so that auto-generated schemes
+    # and any tool falling back to project defaults build a release binary.
+    sed -i '' 's/defaultConfigurationName = Debug;/defaultConfigurationName = Release;/g' Glance.xcodeproj/project.pbxproj
 fi
 
 xcodebuild \
