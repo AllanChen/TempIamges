@@ -28,6 +28,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     /// stole focus) and pressed Control again on the original selection,
     /// some apps clear the selection on focus loss.
     private var lastSelectedText: String?
+    private var hasShownFDAAlertThisSession = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
@@ -333,8 +334,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 guard !combined.isEmpty else {
                     let label = uniqueTokens.first ?? ""
                     let failMessage = String(format: "No file found matching '%@'".localized, label)
-                    // 更新现有 tile 显示失败信息，而不是隐藏面板
                     self.previewPanel?.updateTile(at: 0, with: nil, failedMessage: failMessage)
+                    self.promptForFullDiskAccessIfNeeded()
                     return
                 }
 
@@ -669,6 +670,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         """
     }
     #endif
+
+    private func promptForFullDiskAccessIfNeeded() {
+        guard !hasShownFDAAlertThisSession,
+              !PermissionManager.shared.isFullDiskAccessGranted else { return }
+        hasShownFDAAlertThisSession = true
+
+        let alert = NSAlert()
+        alert.messageText = "Full Disk Access Required".localized
+        alert.informativeText = "Glance needs Full Disk Access to search files in protected locations (Desktop, Documents, Downloads). Enable it in System Settings to improve search results.".localized
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Open Settings".localized)
+        alert.addButton(withTitle: "Cancel".localized)
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            PermissionManager.shared.openFullDiskAccessSettings()
+        }
+    }
 }
 
 // MARK: - Debug Extension
