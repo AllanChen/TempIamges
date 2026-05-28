@@ -1,7 +1,7 @@
 import AppKit
 import WebKit
 
-final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
+final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     static let shared = ContentPanel()
 
     private let webView: WKWebView
@@ -46,18 +46,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private var escapeLocalMonitor: Any?
     private var escapeGlobalMonitor: Any?
 
-    private let resizeEdgeSize: CGFloat = 8
-    private var isResizing = false
-    private var resizeStartPoint: NSPoint = .zero
-    private var resizeStartFrame: NSRect = .zero
-    private var currentResizeEdge: ResizeEdge = .none
-    private var globalMouseMonitor: Any?
 
-    private enum ResizeEdge {
-        case none
-        case top, bottom, left, right
-        case topLeft, topRight, bottomLeft, bottomRight
-    }
 
     private static func resolvedCG(_ color: NSColor) -> CGColor {
         var resolved: CGColor!
@@ -105,34 +94,27 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
 
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
-            styleMask: [.borderless, .nonactivatingPanel, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
 
         webView.navigationDelegate = self
 
-        isFloatingPanel = true
-        level = .floating
+        title = "Glance".localized
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        backgroundColor = .clear
-        hasShadow = true
-        isOpaque = false
-        isMovableByWindowBackground = true
+        isReleasedWhenClosed = false
 
         buildLayout()
         showWebView()
         installEscapeKeyMonitors()
-        installMouseCursorMonitor()
-        applyShadowToContent()
         observeThemeChanges()
     }
 
     override var canBecomeKey: Bool { true }
 
-    /// Move the panel so it sits immediately to the right of the given
-    /// preview frame.  Called by PreviewPanel when it moves — unless the
-    /// user has already dragged this panel independently.
+    /// Move the window so it sits immediately to the right of the given
+    /// preview frame. Called by PreviewPanel when it moves.
     func syncPosition(to previewFrame: NSRect) {
         guard !hasBeenManuallyMoved else { return }
         let contentSize = frame.size
@@ -142,127 +124,15 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         setFrame(newFrame, display: true)
     }
 
-    /// Call when a fresh preview cycle starts so the panel will resume
+    /// Call when a fresh preview cycle starts so the window will resume
     /// following PreviewPanel even if it was manually dragged before.
     func resetFollowState() {
         hasBeenManuallyMoved = false
     }
 
     override func mouseDown(with event: NSEvent) {
-        let loc = event.locationInWindow
-        if loc.y > frame.height - headerHeight {
-            hasBeenManuallyMoved = true
-        }
-        let edge = resizeEdge(at: loc)
-        if edge != .none {
-            isResizing = true
-            currentResizeEdge = edge
-            resizeStartPoint = NSEvent.mouseLocation
-            resizeStartFrame = frame
-        } else {
-            super.mouseDown(with: event)
-        }
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard isResizing else {
-            super.mouseDragged(with: event)
-            return
-        }
-        let currentScreenPoint = NSEvent.mouseLocation
-        let deltaX = currentScreenPoint.x - resizeStartPoint.x
-        let deltaY = currentScreenPoint.y - resizeStartPoint.y
-        var newFrame = resizeStartFrame
-
-        switch currentResizeEdge {
-        case .right:
-            newFrame.size.width = max(400, resizeStartFrame.width + deltaX)
-        case .left:
-            let newWidth = max(400, resizeStartFrame.width - deltaX)
-            newFrame.origin.x = resizeStartFrame.maxX - newWidth
-            newFrame.size.width = newWidth
-        case .bottom:
-            let newHeight = max(300, resizeStartFrame.height - deltaY)
-            newFrame.origin.y = resizeStartFrame.maxY - newHeight
-            newFrame.size.height = newHeight
-        case .top:
-            newFrame.size.height = max(300, resizeStartFrame.height + deltaY)
-        case .topRight:
-            newFrame.size.width = max(400, resizeStartFrame.width + deltaX)
-            newFrame.size.height = max(300, resizeStartFrame.height + deltaY)
-        case .topLeft:
-            let newWidth = max(400, resizeStartFrame.width - deltaX)
-            newFrame.origin.x = resizeStartFrame.maxX - newWidth
-            newFrame.size.width = newWidth
-            newFrame.size.height = max(300, resizeStartFrame.height + deltaY)
-        case .bottomRight:
-            newFrame.size.width = max(400, resizeStartFrame.width + deltaX)
-            let newHeight = max(300, resizeStartFrame.height - deltaY)
-            newFrame.origin.y = resizeStartFrame.maxY - newHeight
-            newFrame.size.height = newHeight
-        case .bottomLeft:
-            let newWidth = max(400, resizeStartFrame.width - deltaX)
-            newFrame.origin.x = resizeStartFrame.maxX - newWidth
-            newFrame.size.width = newWidth
-            let newHeight = max(300, resizeStartFrame.height - deltaY)
-            newFrame.origin.y = resizeStartFrame.maxY - newHeight
-            newFrame.size.height = newHeight
-        case .none:
-            break
-        }
-        setFrame(newFrame, display: true)
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        isResizing = false
-        currentResizeEdge = .none
-        super.mouseUp(with: event)
-    }
-
-    private func applyShadowToContent() {
-        guard let root = contentView else { return }
-        root.wantsLayer = true
-        root.layer?.shadowOpacity = 0.35
-        root.layer?.shadowRadius = 32
-        root.layer?.shadowOffset = NSSize(width: 0, height: 12)
-        root.layer?.shadowColor = NSColor.black.cgColor
-    }
-
-    private func installMouseCursorMonitor() {
-        globalMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
-            guard let self = self, self.isVisible, event.window === self else { return event }
-            let loc = event.locationInWindow
-            let edge = self.resizeEdge(at: loc)
-            switch edge {
-            case .top, .bottom: NSCursor.resizeUpDown.set()
-            case .left, .right: NSCursor.resizeLeftRight.set()
-            case .topLeft, .bottomRight: NSCursor.crosshair.set()
-            case .topRight, .bottomLeft: NSCursor.crosshair.set()
-            case .none: break
-            }
-            return event
-        }
-    }
-
-    private func resizeEdge(at loc: NSPoint) -> ResizeEdge {
-        let w = frame.width
-        let h = frame.height
-        let onLeft = loc.x <= resizeEdgeSize
-        let onRight = loc.x >= w - resizeEdgeSize
-        let onBottom = loc.y <= resizeEdgeSize
-        let onTop = loc.y >= h - resizeEdgeSize
-
-        switch (onTop, onBottom, onLeft, onRight) {
-        case (true, _, true, _): return .topLeft
-        case (true, _, _, true): return .topRight
-        case (_, true, true, _): return .bottomLeft
-        case (_, true, _, true): return .bottomRight
-        case (true, _, _, _): return .top
-        case (_, true, _, _): return .bottom
-        case (_, _, true, _): return .left
-        case (_, _, _, true): return .right
-        default: return .none
-        }
+        hasBeenManuallyMoved = true
+        super.mouseDown(with: event)
     }
 
 
@@ -270,16 +140,9 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
     private func buildLayout() {
         let root = NSView(frame: NSRect(x: 0, y: 0, width: 700, height: 600))
         root.wantsLayer = true
-        root.layer?.cornerRadius = 16
-        root.layer?.masksToBounds = true
         root.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
 
-        let navBar = buildNavBar(width: 700)
-        navBar.frame = NSRect(x: 0, y: 600 - headerHeight, width: 700, height: headerHeight)
-        navBar.autoresizingMask = [.width, .minYMargin]
-        root.addSubview(navBar)
-
-        let bodyFrame = NSRect(x: 0, y: 0, width: 700, height: 600 - headerHeight)
+        let bodyFrame = NSRect(x: 0, y: 0, width: 700, height: 600)
 
         toolbarBar.frame = NSRect(x: 0, y: bodyFrame.height - toolbarH,
                                   width: bodyFrame.width, height: toolbarH)
@@ -510,37 +373,6 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         root.addSubview(imageInfoBar)
 
         contentView = root
-    }
-
-    private func buildNavBar(width: CGFloat) -> NSView {
-        let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
-        bar.wantsLayer = true
-        bar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
-
-        let closeBtn = NSButton(frame: .zero)
-        closeBtn.bezelStyle = .recessed
-        closeBtn.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: nil)
-        closeBtn.imagePosition = .imageOnly
-        closeBtn.isBordered = false
-        closeBtn.contentTintColor = .labelColor
-        closeBtn.target = self
-        closeBtn.action = #selector(closeTapped)
-        closeBtn.frame = NSRect(x: 16, y: (headerHeight - 28) / 2, width: 28, height: 28)
-        bar.addSubview(closeBtn)
-
-        let titleLbl = NSTextField(labelWithString: "Glance".localized)
-        titleLbl.textColor = .labelColor
-        titleLbl.font = NSFont.systemFont(ofSize: 15, weight: .bold)
-        titleLbl.alignment = .center
-        titleLbl.frame = NSRect(x: 52, y: (headerHeight - 22) / 2, width: width - 104, height: 22)
-        titleLbl.autoresizingMask = [.width]
-        bar.addSubview(titleLbl)
-
-        return bar
-    }
-
-    @objc private func closeTapped() {
-        orderOut(nil)
     }
 
     func dismiss() {
@@ -1023,11 +855,7 @@ final class ContentPanel: NSPanel, NSTextFieldDelegate, WKNavigationDelegate {
         imageInfoBar.layer?.backgroundColor = Self.resolvedCG(.underPageBackgroundColor)
     }
 
-    deinit {
-        if let globalMouseMonitor {
-            NSEvent.removeMonitor(globalMouseMonitor)
-        }
-    }
+
 }
 
 extension ContentPanel {
