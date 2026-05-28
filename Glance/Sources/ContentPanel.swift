@@ -247,14 +247,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         toolbarSep.autoresizingMask = [.width]
         toolbarBar.addSubview(toolbarSep)
 
-        let gap: CGFloat = 10
-        let btnW: CGFloat = 72
-        let btnH: CGFloat = 26
-        let btnY: CGFloat = 9
-        let rightMargin: CGFloat = 20
-
-        var currentRight = bodyFrame.width - rightMargin
-
         locateButton.bezelStyle = .rounded
         locateButton.image = NSImage(systemSymbolName: "folder.fill",
                                        accessibilityDescription: "Reveal in Finder".localized)
@@ -262,12 +254,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         locateButton.target = self
         locateButton.action = #selector(locateTapped)
         locateButton.toolTip = "Reveal in Finder".localized
-        locateButton.frame = NSRect(x: currentRight - btnW, y: btnY,
-                                     width: btnW, height: btnH)
         locateButton.autoresizingMask = [.minXMargin]
         locateButton.isHidden = true
         toolbarBar.addSubview(locateButton)
-        currentRight -= btnW + gap
 
         saveButton.bezelStyle = .rounded
         saveButton.title = "Save".localized
@@ -275,44 +264,32 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.frame = NSRect(x: currentRight - btnW, y: btnY,
-                                   width: btnW, height: btnH)
         saveButton.autoresizingMask = [.minXMargin]
         saveButton.isHidden = true
         toolbarBar.addSubview(saveButton)
-        currentRight -= btnW + gap
 
         toggleButton.bezelStyle = .rounded
         toggleButton.title = "Edit".localized
         toggleButton.target = self
         toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.frame = NSRect(x: currentRight - btnW, y: btnY,
-                                     width: btnW, height: btnH)
         toggleButton.autoresizingMask = [.minXMargin]
         toggleButton.isHidden = true
         toolbarBar.addSubview(toggleButton)
-        currentRight -= btnW + gap
 
         gitDiffButton.bezelStyle = .rounded
         gitDiffButton.title = "Diff".localized
         gitDiffButton.target = self
         gitDiffButton.action = #selector(gitDiffTapped)
         gitDiffButton.toolTip = "Compare with Git".localized
-        gitDiffButton.frame = NSRect(x: currentRight - btnW, y: btnY,
-                                       width: btnW, height: btnH)
         gitDiffButton.autoresizingMask = [.minXMargin]
         gitDiffButton.isHidden = true
         toolbarBar.addSubview(gitDiffButton)
-        currentRight -= btnW + gap
 
         modifiedLabel.font = NSFont.systemFont(ofSize: 11)
         modifiedLabel.textColor = .tertiaryLabelColor
         modifiedLabel.alignment = .left
         modifiedLabel.lineBreakMode = .byTruncatingMiddle
         modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.frame = NSRect(x: 20, y: btnY,
-                                      width: max(100, currentRight - 20 - gap),
-                                      height: btnH)
         modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
 
@@ -329,6 +306,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         toolbarBar.addSubview(addressBar)
 
         root.addSubview(toolbarBar)
+        layoutToolbarButtons()
 
         let contentFrame = NSRect(x: 0, y: 0, width: bodyFrame.width,
                                    height: bodyFrame.height - toolbarH)
@@ -466,6 +444,41 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         contentView = root
     }
 
+    /// Re-pack the right-anchored toolbar buttons so hidden ones collapse and
+    /// visible ones stay grouped, then resize modifiedLabel to fill the
+    /// remaining space with a consistent gap before the button group.
+    private func layoutToolbarButtons() {
+        let gap: CGFloat = 10
+        let btnW: CGFloat = 72
+        let btnH: CGFloat = 26
+        let btnY: CGFloat = 9
+        let rightMargin: CGFloat = 20
+        let leftMargin: CGFloat = 20
+        let labelButtonGap: CGFloat = 24
+        let bodyWidth = toolbarBar.bounds.width
+
+        let buttons: [NSButton] = [locateButton, saveButton, toggleButton, gitDiffButton]
+        var currentRight = bodyWidth - rightMargin
+        var leftmostVisibleX: CGFloat?
+        for button in buttons {
+            guard !button.isHidden else { continue }
+            let x = currentRight - btnW
+            button.frame = NSRect(x: x, y: btnY, width: btnW, height: btnH)
+            leftmostVisibleX = x
+            currentRight = x - gap
+        }
+
+        if !modifiedLabel.isHidden {
+            let rightEdge = leftmostVisibleX.map { $0 - labelButtonGap } ?? (bodyWidth - rightMargin)
+            modifiedLabel.frame = NSRect(
+                x: leftMargin,
+                y: btnY,
+                width: max(100, rightEdge - leftMargin),
+                height: btnH
+            )
+        }
+    }
+
     func dismiss() {
         orderOut(nil)
     }
@@ -599,6 +612,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
             webView.load(URLRequest(url: info.url))
             showWebView()
         }
+        layoutToolbarButtons()
     }
 
     private func showLoading() {
@@ -686,11 +700,13 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         addressBar.isEditable = true
         addressBar.target = self
         addressBar.action = #selector(addressBarSubmitted)
+        layoutToolbarButtons()
     }
 
     private func showToolbar() {
         addressBar.isHidden = true
         modifiedLabel.isHidden = false
+        layoutToolbarButtons()
     }
 
     @objc private func toggleEditTapped() {
@@ -710,6 +726,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
                 renderHighlightedCode(url: url)
             }
         }
+        layoutToolbarButtons()
     }
 
     @objc private func gitDiffTapped() {
@@ -800,6 +817,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         gitDiffButton.isHidden = true
         gitDiffButton.isEnabled = true
         gitDiffButton.title = "Diff".localized
+        layoutToolbarButtons()
     }
 
     private func refreshGitDiffAvailability(for url: URL) {
@@ -812,6 +830,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
                 guard let self = self, self.gitDiffLookupID == lookupID else { return }
                 self.currentGitContext = context
                 self.gitDiffButton.isHidden = context == nil
+                self.layoutToolbarButtons()
             }
         }
     }

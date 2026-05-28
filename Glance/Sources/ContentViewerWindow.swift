@@ -126,6 +126,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         addressBar.isHidden = false
         addressBar.stringValue = url.absoluteString
         updateModifiedDate(for: url)
+        layoutToolbarButtons()
         showWebView()
         setFrame(ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0)), display: true)
     }
@@ -141,7 +142,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toggleButton.title = "Edit".localized
         saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
+        modifiedLabel.isHidden = false
+        addressBar.isHidden = true
         updateModifiedDate(for: url)
+        layoutToolbarButtons()
         resizeToDocumentSize()
         renderMarkdownView(url: url)
     }
@@ -157,7 +161,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toggleButton.title = "Edit".localized
         saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
+        modifiedLabel.isHidden = false
+        addressBar.isHidden = true
         updateModifiedDate(for: url)
+        layoutToolbarButtons()
         renderHighlightedCode(url: url)
         setFrame(ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0)), display: true)
     }
@@ -171,7 +178,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         saveButton.isHidden = true
         toggleButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
+        modifiedLabel.isHidden = false
+        addressBar.isHidden = true
         updateModifiedDate(for: url)
+        layoutToolbarButtons()
         resizeToDocumentSize()
         if url.isFileURL {
             // Sandbox-friendly: explicit grant for the parent directory so
@@ -209,14 +219,6 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toolbarBar.addSubview(sep)
 
         // Right-anchored toolbar: [ Toggle ] [ Save ] [ 📁 ]
-        let gap: CGFloat = 10
-        let btnW: CGFloat = 72
-        let btnH: CGFloat = 26
-        let btnY: CGFloat = 9
-        let rightMargin: CGFloat = 20
-
-        var currentRight = bounds.width - rightMargin
-
         locateButton.bezelStyle = .rounded
         locateButton.image = NSImage(systemSymbolName: "folder.fill",
                                        accessibilityDescription: "Reveal in Finder".localized)
@@ -224,12 +226,9 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         locateButton.target = self
         locateButton.action = #selector(locateTapped)
         locateButton.toolTip = "Reveal in Finder".localized
-        locateButton.frame = NSRect(x: currentRight - btnW, y: btnY,
-                                     width: btnW, height: btnH)
         locateButton.autoresizingMask = [.minXMargin]
         locateButton.isHidden = true
         toolbarBar.addSubview(locateButton)
-        currentRight -= btnW + gap
 
         saveButton.bezelStyle = .rounded
         saveButton.title = "Save".localized
@@ -237,32 +236,23 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.frame = NSRect(x: currentRight - btnW, y: btnY,
-                                   width: btnW, height: btnH)
         saveButton.autoresizingMask = [.minXMargin]
         saveButton.isHidden = true
         toolbarBar.addSubview(saveButton)
-        currentRight -= btnW + gap
 
         toggleButton.bezelStyle = .rounded
         toggleButton.title = "Edit".localized
         toggleButton.target = self
         toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.frame = NSRect(x: currentRight - btnW, y: btnY,
-                                     width: btnW, height: btnH)
         toggleButton.autoresizingMask = [.minXMargin]
         toggleButton.isHidden = true
         toolbarBar.addSubview(toggleButton)
-        currentRight -= btnW + gap
 
         modifiedLabel.font = NSFont.systemFont(ofSize: 11)
         modifiedLabel.textColor = .tertiaryLabelColor
         modifiedLabel.alignment = .right
         modifiedLabel.lineBreakMode = .byTruncatingTail
         modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.frame = NSRect(x: 20, y: 13,
-                                      width: max(100, currentRight - 20 - gap),
-                                      height: 18)
         modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
 
@@ -345,6 +335,42 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         webFindBar.addSubview(doneBtn)
 
         content.addSubview(webFindBar)
+        layoutToolbarButtons()
+    }
+
+    /// Re-pack the right-anchored toolbar buttons so hidden ones collapse and
+    /// visible ones stay grouped, then resize modifiedLabel to fill the
+    /// remaining space with a consistent gap before the button group.
+    private func layoutToolbarButtons() {
+        let gap: CGFloat = 10
+        let btnW: CGFloat = 72
+        let btnH: CGFloat = 26
+        let btnY: CGFloat = 9
+        let rightMargin: CGFloat = 20
+        let leftMargin: CGFloat = 20
+        let labelButtonGap: CGFloat = 24
+        let bodyWidth = toolbarBar.bounds.width
+
+        let buttons: [NSButton] = [locateButton, saveButton, toggleButton]
+        var currentRight = bodyWidth - rightMargin
+        var leftmostVisibleX: CGFloat?
+        for button in buttons {
+            guard !button.isHidden else { continue }
+            let x = currentRight - btnW
+            button.frame = NSRect(x: x, y: btnY, width: btnW, height: btnH)
+            leftmostVisibleX = x
+            currentRight = x - gap
+        }
+
+        if !modifiedLabel.isHidden {
+            let rightEdge = leftmostVisibleX.map { $0 - labelButtonGap } ?? (bodyWidth - rightMargin)
+            modifiedLabel.frame = NSRect(
+                x: leftMargin,
+                y: 13,
+                width: max(100, rightEdge - leftMargin),
+                height: 18
+            )
+        }
     }
 
     private func updateModifiedDate(for url: URL?) {
@@ -451,6 +477,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
                 renderHighlightedCode(url: url)
             }
         }
+        layoutToolbarButtons()
     }
 
     @objc private func locateTapped() {
