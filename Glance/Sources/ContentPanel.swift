@@ -45,8 +45,13 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     private(set) var hasBeenManuallyMoved: Bool = false
     private var escapeLocalMonitor: Any?
     private var escapeGlobalMonitor: Any?
+    private var zoomMonitor: Any?
 
-
+    private var currentZoomLevel: CGFloat = 1.0
+    private var gestureStartZoomLevel: CGFloat = 1.0
+    private let minZoomLevel: CGFloat = 0.25
+    private let maxZoomLevel: CGFloat = 5.0
+    private let zoomStep: CGFloat = 1.1
 
     private static func resolvedCG(_ color: NSColor) -> CGColor {
         var resolved: CGColor!
@@ -101,6 +106,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         )
 
         webView.navigationDelegate = self
+        webView.allowsMagnification = false
 
         title = "Glance".localized
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -109,6 +115,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         buildLayout()
         showWebView()
         installEscapeKeyMonitors()
+        installZoomMonitor()
         observeThemeChanges()
     }
 
@@ -139,6 +146,46 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         super.setFrame(frameRect, display: flag)
         Logger.info("ContentPanel frame changed: x=\(frameRect.origin.x), y=\(frameRect.origin.y), width=\(frameRect.size.width), height=\(frameRect.size.height)")
+    }
+
+    override func beginGesture(with event: NSEvent) {
+        gestureStartZoomLevel = currentZoomLevel
+    }
+
+    override func magnify(with event: NSEvent) {
+        let newZoom = gestureStartZoomLevel * event.magnification
+        currentZoomLevel = min(max(newZoom, minZoomLevel), maxZoomLevel)
+        applyZoom()
+    }
+
+    private func zoomIn() {
+        guard currentZoomLevel < maxZoomLevel else { return }
+        currentZoomLevel *= zoomStep
+        applyZoom()
+    }
+
+    private func zoomOut() {
+        guard currentZoomLevel > minZoomLevel else { return }
+        currentZoomLevel /= zoomStep
+        applyZoom()
+    }
+
+    private func resetZoom() {
+        currentZoomLevel = 1.0
+        applyZoom()
+    }
+
+    private func applyZoom() {
+        switch kind {
+        case .webpage, .markdown, .pdf:
+            webView.magnification = currentZoomLevel
+        case .text:
+            let baseSize: CGFloat = 13
+            let newSize = max(6, min(200, baseSize * currentZoomLevel))
+            textView.font = NSFont.monospacedSystemFont(ofSize: newSize, weight: .regular)
+        case .image:
+            imageView.layer?.transform = CATransform3DMakeScale(currentZoomLevel, currentZoomLevel, 1)
+        }
     }
 
     private func buildLayout() {
@@ -405,6 +452,22 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
 
     private func shouldCloseForEscape(_ event: NSEvent) -> Bool {
         isVisible && event.keyCode == 53
+    }
+
+    private func installZoomMonitor() {
+        zoomMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            guard let self = self, event.window === self, self.isVisible else { return event }
+            if event.modifierFlags.contains(.command) {
+                let delta = event.scrollingDeltaY
+                if delta > 0 {
+                    self.zoomIn()
+                } else if delta < 0 {
+                    self.zoomOut()
+                }
+                return nil
+            }
+            return event
+        }
     }
 
     func load(info: MediaInfo) {
@@ -752,6 +815,18 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
                     invokeTextFinder(isShift ? .previousMatch : .nextMatch)
                     return true
                 }
+            }
+            if key == "0" {
+                resetZoom()
+                return true
+            }
+            if key == "+" || key == "=" {
+                zoomIn()
+                return true
+            }
+            if key == "-" {
+                zoomOut()
+                return true
             }
         }
         return super.performKeyEquivalent(with: event)
