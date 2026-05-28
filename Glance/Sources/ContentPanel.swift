@@ -48,7 +48,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     private var zoomMonitor: Any?
 
     private var currentZoomLevel: CGFloat = 1.0
-    private var gestureStartZoomLevel: CGFloat = 1.0
     private let minZoomLevel: CGFloat = 0.25
     private let maxZoomLevel: CGFloat = 5.0
     private let zoomStep: CGFloat = 1.1
@@ -149,10 +148,8 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     }
 
     override func sendEvent(_ event: NSEvent) {
-        if event.type == .beginGesture {
-            gestureStartZoomLevel = currentZoomLevel
-        } else if event.type == .magnify, isVisible {
-            let newZoom = gestureStartZoomLevel * event.magnification
+        if event.type == .magnify, isVisible {
+            let newZoom = currentZoomLevel * (1 + event.magnification)
             currentZoomLevel = min(max(newZoom, minZoomLevel), maxZoomLevel)
             applyZoom()
             return
@@ -160,12 +157,8 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         super.sendEvent(event)
     }
 
-    override func beginGesture(with event: NSEvent) {
-        gestureStartZoomLevel = currentZoomLevel
-    }
-
     override func magnify(with event: NSEvent) {
-        let newZoom = gestureStartZoomLevel * event.magnification
+        let newZoom = currentZoomLevel * (1 + event.magnification)
         currentZoomLevel = min(max(newZoom, minZoomLevel), maxZoomLevel)
         applyZoom()
     }
@@ -196,7 +189,11 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
             let newSize = max(6, min(200, baseSize * currentZoomLevel))
             textView.font = NSFont.monospacedSystemFont(ofSize: newSize, weight: .regular)
         case .image:
-            imageView.setZoom(currentZoomLevel)
+            if imageView.isHidden {
+                webView.magnification = currentZoomLevel
+            } else {
+                imageView.setZoom(currentZoomLevel)
+            }
         }
     }
 
