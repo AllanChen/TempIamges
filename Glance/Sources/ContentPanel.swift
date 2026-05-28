@@ -93,7 +93,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         imageView = iv
 
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
+            contentRect: NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -135,14 +135,17 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         super.mouseDown(with: event)
     }
 
-
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        super.setFrame(frameRect, display: flag)
+        Logger.info("ContentPanel frame changed: x=\(frameRect.origin.x), y=\(frameRect.origin.y), width=\(frameRect.size.width), height=\(frameRect.size.height)")
+    }
 
     private func buildLayout() {
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: 700, height: 600))
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: 652.0, height: 962.0))
         root.wantsLayer = true
         root.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
 
-        let bodyFrame = NSRect(x: 0, y: 0, width: 700, height: 600)
+        let bodyFrame = NSRect(x: 0, y: 0, width: 652.0, height: 962.0)
 
         toolbarBar.frame = NSRect(x: 0, y: bodyFrame.height - toolbarH,
                                   width: bodyFrame.width, height: toolbarH)
@@ -407,6 +410,10 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         currentMediaInfo = info
         resetGitDiffAvailability()
         showLoading()
+
+        let fixedFrame = NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0)
+        hasBeenManuallyMoved = true
+        setFrame(fixedFrame, display: true)
 
         switch info.kind {
         case .markdown:

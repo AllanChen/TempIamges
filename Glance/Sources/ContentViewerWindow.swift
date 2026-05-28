@@ -87,13 +87,12 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         textScroll = scroll
 
         super.init(
-            contentRect: NSRect(origin: .zero, size: initialSize),
+            contentRect: NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
         self.isReleasedWhenClosed = false
-        self.center()
         self.title = "Glance".localized
         installEscapeKeyMonitor()
         observeThemeChanges()
@@ -119,6 +118,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         addressBar.stringValue = url.absoluteString
         updateModifiedDate(for: url)
         showWebView()
+        setFrame(NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0), display: true)
     }
 
     /// Loads a markdown file. Starts in rendered (view) mode with an Edit
@@ -150,6 +150,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         locateButton.isHidden = !url.isFileURL
         updateModifiedDate(for: url)
         renderHighlightedCode(url: url)
+        setFrame(NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0), display: true)
     }
 
     /// Loads a PDF file in the WKWebView. macOS WebKit ships a native PDF
@@ -175,14 +176,8 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     }
 
     private func resizeToDocumentSize() {
-        let targetSize = NSSize(width: 600, height: 800)
-        let currentFrame = frame
-        let newFrame = NSRect(
-            origin: NSPoint(x: currentFrame.origin.x,
-                            y: currentFrame.maxY - targetSize.height),
-            size: targetSize
-        )
-        setFrame(newFrame, display: true)
+        let fixedFrame = NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0)
+        setFrame(fixedFrame, display: true)
     }
 
     // MARK: - Layout
@@ -536,6 +531,11 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
             return
         }
         super.keyDown(with: event)
+    }
+
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        super.setFrame(frameRect, display: flag)
+        Logger.info("ContentViewerWindow frame changed: x=\(frameRect.origin.x), y=\(frameRect.origin.y), width=\(frameRect.size.width), height=\(frameRect.size.height)")
     }
 
     private func installEscapeKeyMonitor() {

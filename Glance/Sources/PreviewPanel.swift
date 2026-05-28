@@ -964,13 +964,6 @@ class PreviewPanel: NSPanel {
         contentPanelOpenedByTileClick = true
         let panel = ContentPanel.shared
         panel.load(info: info)
-
-        let mainFrame = self.frame
-        let contentSize = NSSize(width: 700, height: 600)
-        let originX = mainFrame.maxX
-        let originY = mainFrame.maxY - contentSize.height
-        let frame = NSRect(origin: CGPoint(x: originX, y: originY), size: contentSize)
-        panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
         panel.makeKey()
     }
@@ -1651,6 +1644,10 @@ final class MediaTileView: NSView {
         icon.frame = NSRect(x: (bounds.width  - side) / 2,
                              y: (bounds.height - side) / 2,
                              width: side, height: side)
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        return true
     }
 
     override func mouseDown(with event: NSEvent) {

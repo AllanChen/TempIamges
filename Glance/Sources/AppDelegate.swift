@@ -478,18 +478,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private func openInContentPanel(info: MediaInfo) {
         let panel = ContentPanel.shared
         panel.load(info: info)
-        let mousePos = NSEvent.mouseLocation
-        let contentSize: NSSize
-        switch info.kind {
-        case .markdown, .pdf:
-            contentSize = NSSize(width: 600, height: 800)
-        default:
-            contentSize = NSSize(width: 700, height: 600)
-        }
-        let screen = ScreenManager.shared.screenForMouseLocation(mousePos) ?? NSScreen.main
-        let frame = screen.map { ScreenManager.shared.centerFrame(for: contentSize, on: $0) }
-            ?? NSRect(origin: mousePos, size: contentSize)
-        panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
         panel.makeKey()
     }
