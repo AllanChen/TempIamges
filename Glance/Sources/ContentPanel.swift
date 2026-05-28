@@ -175,6 +175,37 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         applyZoom()
     }
 
+    private static func calculateImageWindowSize(imageSize: CGSize) -> NSSize {
+        let maxWindowWidth: CGFloat = 1200
+        let maxWindowHeight: CGFloat = 900
+        let minWindowWidth: CGFloat = 300
+        let minWindowHeight: CGFloat = 200
+        let extraHeight: CGFloat = 40 + 52
+
+        let screenSize = NSScreen.main?.visibleFrame.size ?? NSSize(width: 1280, height: 800)
+        let maxW = min(maxWindowWidth, screenSize.width * 0.8)
+        let maxH = min(maxWindowHeight, screenSize.height * 0.8)
+
+        var width = imageSize.width
+        var height = imageSize.height + extraHeight
+
+        if width > maxW {
+            let scale = maxW / width
+            width = maxW
+            height = (imageSize.height * scale) + extraHeight
+        }
+        if height > maxH {
+            let scale = (maxH - extraHeight) / imageSize.height
+            height = maxH
+            width = imageSize.width * scale
+        }
+
+        width = max(width, minWindowWidth)
+        height = max(height, minWindowHeight)
+
+        return NSSize(width: width, height: height)
+    }
+
     private func resetZoom() {
         currentZoomLevel = 1.0
         applyZoom()
@@ -543,6 +574,10 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
             if let image = NSImage(contentsOf: info.url) {
                 imageView.image = image
                 showImageView()
+                let imageSize = image.size
+                let windowSize = Self.calculateImageWindowSize(imageSize: imageSize)
+                let imageFrame = ScreenManager.shared.contentFrame(for: windowSize)
+                setFrame(imageFrame, display: true)
             } else {
                 let html = """
                 <html><head><style>
