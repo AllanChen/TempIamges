@@ -148,6 +148,18 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         Logger.info("ContentPanel frame changed: x=\(frameRect.origin.x), y=\(frameRect.origin.y), width=\(frameRect.size.width), height=\(frameRect.size.height)")
     }
 
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .beginGesture {
+            gestureStartZoomLevel = currentZoomLevel
+        } else if event.type == .magnify, isVisible {
+            let newZoom = gestureStartZoomLevel * event.magnification
+            currentZoomLevel = min(max(newZoom, minZoomLevel), maxZoomLevel)
+            applyZoom()
+            return
+        }
+        super.sendEvent(event)
+    }
+
     override func beginGesture(with event: NSEvent) {
         gestureStartZoomLevel = currentZoomLevel
     }
@@ -184,7 +196,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
             let newSize = max(6, min(200, baseSize * currentZoomLevel))
             textView.font = NSFont.monospacedSystemFont(ofSize: newSize, weight: .regular)
         case .image:
-            imageView.layer?.transform = CATransform3DMakeScale(currentZoomLevel, currentZoomLevel, 1)
+            imageView.setZoom(currentZoomLevel)
         }
     }
 
@@ -954,16 +966,21 @@ extension ContentPanel {
 private final class ImageFillView: NSView {
     var image: NSImage? {
         didSet {
-            layer?.contents = image
+            imageLayer.contents = image
         }
     }
+
+    private let imageLayer = CALayer()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
-        layer?.contentsGravity = .resizeAspect
         layer?.masksToBounds = true
+
+        imageLayer.contentsGravity = .resizeAspect
+        imageLayer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        layer?.addSublayer(imageLayer)
     }
 
     required init?(coder: NSCoder) {
@@ -972,7 +989,12 @@ private final class ImageFillView: NSView {
 
     override func layout() {
         super.layout()
-        layer?.frame = bounds
+        imageLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        imageLayer.bounds = bounds
+    }
+
+    func setZoom(_ zoom: CGFloat) {
+        imageLayer.transform = CATransform3DMakeScale(zoom, zoom, 1)
     }
 }
 

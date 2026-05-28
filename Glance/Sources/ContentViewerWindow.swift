@@ -548,6 +548,18 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         Logger.info("ContentViewerWindow frame changed: x=\(frameRect.origin.x), y=\(frameRect.origin.y), width=\(frameRect.size.width), height=\(frameRect.size.height)")
     }
 
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .beginGesture {
+            gestureStartZoomLevel = currentZoomLevel
+        } else if event.type == .magnify, isVisible {
+            let newZoom = gestureStartZoomLevel * event.magnification
+            currentZoomLevel = min(max(newZoom, minZoomLevel), maxZoomLevel)
+            applyZoom()
+            return
+        }
+        super.sendEvent(event)
+    }
+
     override func beginGesture(with event: NSEvent) {
         gestureStartZoomLevel = currentZoomLevel
     }
