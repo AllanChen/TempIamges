@@ -86,8 +86,9 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         scroll.documentView = tv
         textScroll = scroll
 
+        let initialFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0))
         super.init(
-            contentRect: NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0),
+            contentRect: initialFrame,
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -118,7 +119,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         addressBar.stringValue = url.absoluteString
         updateModifiedDate(for: url)
         showWebView()
-        setFrame(NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0), display: true)
+        setFrame(ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0)), display: true)
     }
 
     /// Loads a markdown file. Starts in rendered (view) mode with an Edit
@@ -150,7 +151,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         locateButton.isHidden = !url.isFileURL
         updateModifiedDate(for: url)
         renderHighlightedCode(url: url)
-        setFrame(NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0), display: true)
+        setFrame(ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0)), display: true)
     }
 
     /// Loads a PDF file in the WKWebView. macOS WebKit ships a native PDF
@@ -176,7 +177,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     }
 
     private func resizeToDocumentSize() {
-        let fixedFrame = NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0)
+        let fixedFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0))
         setFrame(fixedFrame, display: true)
     }
 

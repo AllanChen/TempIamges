@@ -92,8 +92,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         iv.isHidden = true
         imageView = iv
 
+        let initialFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0))
         super.init(
-            contentRect: NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0),
+            contentRect: initialFrame,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -411,7 +412,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         resetGitDiffAvailability()
         showLoading()
 
-        let fixedFrame = NSRect(x: 501.0, y: -941.0, width: 652.0, height: 962.0)
+        let fixedFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0))
         hasBeenManuallyMoved = true
         setFrame(fixedFrame, display: true)
 
