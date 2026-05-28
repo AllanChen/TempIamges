@@ -136,6 +136,7 @@ class PreviewPanel: NSPanel {
     private var lastSyncedFrame: NSRect = .zero
     private var escapeLocalMonitor: Any?
     private var escapeGlobalMonitor: Any?
+    private var contentPanelOpenedByTileClick: Bool = false
 
     private enum Mode { case singleCard, grid }
 
@@ -167,7 +168,8 @@ class PreviewPanel: NSPanel {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.forceHidePanel()
+            guard let self = self, !self.contentPanelOpenedByTileClick else { return }
+            self.forceHidePanel()
         }
         NotificationCenter.default.addObserver(
             forName: .authDidChange,
@@ -197,20 +199,20 @@ class PreviewPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 
     override func cancelOperation(_ sender: Any?) {
-        forceHidePanel()
+        forceHidePanel(dismissContent: !contentPanelOpenedByTileClick)
     }
 
     private func installEscapeKeyMonitors() {
         escapeLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self, self.shouldCloseForEscape(event) else { return event }
-            self.forceHidePanel()
+            self.forceHidePanel(dismissContent: !self.contentPanelOpenedByTileClick)
             return nil
         }
 
         escapeGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self, self.shouldCloseForEscape(event) else { return }
             DispatchQueue.main.async {
-                self.forceHidePanel()
+                self.forceHidePanel(dismissContent: !self.contentPanelOpenedByTileClick)
             }
         }
     }
@@ -261,6 +263,7 @@ class PreviewPanel: NSPanel {
             forceHidePanel()
             return
         }
+        contentPanelOpenedByTileClick = false
         ContentPanel.shared.resetFollowState()
         startFollowingContentPanel()
         teardownTiles()
@@ -388,7 +391,7 @@ class PreviewPanel: NSPanel {
     /// the hotkey while a preview is already visible (toggle behaviour).
     /// Also dismisses ContentPanel so both panels close together.
     func closePanel() {
-        forceHidePanel(dismissContent: true)
+        forceHidePanel(dismissContent: !contentPanelOpenedByTileClick)
     }
 
     /// Hide PreviewPanel but leave ContentPanel open.
@@ -891,7 +894,7 @@ class PreviewPanel: NSPanel {
     }
 
     @objc private func closeButtonTapped() {
-        forceHidePanel()
+        forceHidePanel(dismissContent: !contentPanelOpenedByTileClick)
     }
 
     @objc private func actionButtonTapped() {
@@ -958,6 +961,7 @@ class PreviewPanel: NSPanel {
     }
 
     private func openInViewer(info: MediaInfo) {
+        contentPanelOpenedByTileClick = true
         let panel = ContentPanel.shared
         panel.load(info: info)
 
