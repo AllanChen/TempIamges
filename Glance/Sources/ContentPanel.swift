@@ -31,9 +31,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     private var gitDiffWindows: [GitDiffWindow] = []
     private var isEditing: Bool = false
 
-    private let headerHeight: CGFloat = 52
-    private let toolbarH: CGFloat = 40
-    private let imageInfoBarH: CGFloat = 52
+    private let headerHeight: CGFloat = 56
+    private let toolbarH: CGFloat = 44
+    private let imageInfoBarH: CGFloat = 56
 
     private weak var loadingOverlay: NSView?
     private weak var loadingSpinner: NSProgressIndicator?
@@ -180,7 +180,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         let maxWindowHeight: CGFloat = 900
         let minWindowWidth: CGFloat = 300
         let minWindowHeight: CGFloat = 200
-        let extraHeight: CGFloat = 40 + 52
+        let extraHeight: CGFloat = 44 + 56
 
         let screenSize = NSScreen.main?.visibleFrame.size ?? NSSize(width: 1280, height: 800)
         let maxW = min(maxWindowWidth, screenSize.width * 0.8)
@@ -239,19 +239,19 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
                                   width: bodyFrame.width, height: toolbarH)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
         toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
+        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
 
-        let toolbarSep = NSView(frame: NSRect(x: 20, y: 0, width: bodyFrame.width - 40, height: 1))
+        let toolbarSep = NSView(frame: NSRect(x: 0, y: 0, width: bodyFrame.width, height: 1))
         toolbarSep.wantsLayer = true
         toolbarSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
         toolbarSep.autoresizingMask = [.width]
         toolbarBar.addSubview(toolbarSep)
 
-        let gap: CGFloat = 8
-        let btnW: CGFloat = 80
-        let btnH: CGFloat = 28
-        let btnY: CGFloat = 6
-        let rightMargin: CGFloat = 16
+        let gap: CGFloat = 10
+        let btnW: CGFloat = 72
+        let btnH: CGFloat = 26
+        let btnY: CGFloat = 9
+        let rightMargin: CGFloat = 20
 
         var currentRight = bodyFrame.width - rightMargin
 
@@ -305,13 +305,13 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         toolbarBar.addSubview(gitDiffButton)
         currentRight -= btnW + gap
 
-        modifiedLabel.font = NSFont.systemFont(ofSize: 12)
-        modifiedLabel.textColor = .secondaryLabelColor
+        modifiedLabel.font = NSFont.systemFont(ofSize: 11)
+        modifiedLabel.textColor = .tertiaryLabelColor
         modifiedLabel.alignment = .left
         modifiedLabel.lineBreakMode = .byTruncatingMiddle
         modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.frame = NSRect(x: 14, y: btnY,
-                                      width: max(100, currentRight - 14 - gap),
+        modifiedLabel.frame = NSRect(x: 20, y: btnY,
+                                      width: max(100, currentRight - 20 - gap),
                                       height: btnH)
         modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
@@ -323,7 +323,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         addressBar.isBordered = true
         addressBar.backgroundColor = NSColor.textBackgroundColor
         addressBar.textColor = .secondaryLabelColor
-        addressBar.frame = NSRect(x: 80, y: 7, width: bodyFrame.width - 160, height: 26)
+        addressBar.frame = NSRect(x: 80, y: 9, width: bodyFrame.width - 160, height: 26)
         addressBar.autoresizingMask = [.width]
         addressBar.isHidden = true
         toolbarBar.addSubview(addressBar)
@@ -443,21 +443,21 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         imageInfoBar.layer?.backgroundColor = Self.resolvedCG(.underPageBackgroundColor)
         imageInfoBar.isHidden = true
 
-        imageInfoNameLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        imageInfoNameLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
         imageInfoNameLabel.textColor = .labelColor
         imageInfoNameLabel.lineBreakMode = .byTruncatingMiddle
         imageInfoNameLabel.maximumNumberOfLines = 1
-        imageInfoNameLabel.frame = NSRect(x: 16, y: 26,
-                                           width: bodyFrame.width - 32, height: 18)
+        imageInfoNameLabel.frame = NSRect(x: 20, y: 30,
+                                           width: bodyFrame.width - 40, height: 20)
         imageInfoNameLabel.autoresizingMask = [.width]
         imageInfoBar.addSubview(imageInfoNameLabel)
 
-        imageInfoMetaLabel.font = NSFont.systemFont(ofSize: 12)
+        imageInfoMetaLabel.font = NSFont.systemFont(ofSize: 11)
         imageInfoMetaLabel.textColor = .secondaryLabelColor
         imageInfoMetaLabel.lineBreakMode = .byTruncatingTail
         imageInfoMetaLabel.maximumNumberOfLines = 1
-        imageInfoMetaLabel.frame = NSRect(x: 16, y: 8,
-                                           width: bodyFrame.width - 32, height: 14)
+        imageInfoMetaLabel.frame = NSRect(x: 20, y: 9,
+                                           width: bodyFrame.width - 40, height: 14)
         imageInfoMetaLabel.autoresizingMask = [.width]
         imageInfoBar.addSubview(imageInfoMetaLabel)
 
@@ -968,7 +968,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     @objc private func updateAppearance() {
         guard let root = contentView else { return }
         root.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
-        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
+        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
         if let toolbarSep = toolbarBar.subviews.first(where: { $0.frame.height == 1 && $0 !== webFindBar }) {
             toolbarSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
         }

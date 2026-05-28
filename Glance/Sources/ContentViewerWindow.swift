@@ -194,7 +194,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private func buildLayout() {
         guard let content = contentView else { return }
         let bounds = content.bounds
-        let toolbarH: CGFloat = 36
+        let toolbarH: CGFloat = 44
 
         // Toolbar across the top.
         toolbarBar.frame = NSRect(x: 0, y: bounds.height - toolbarH,
@@ -209,10 +209,11 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toolbarBar.addSubview(sep)
 
         // Right-anchored toolbar: [ Toggle ] [ Save ] [ 📁 ]
-        let gap: CGFloat = 8
-        let btnW: CGFloat = 80
-        let btnH: CGFloat = 28
-        let rightMargin: CGFloat = 16
+        let gap: CGFloat = 10
+        let btnW: CGFloat = 72
+        let btnH: CGFloat = 26
+        let btnY: CGFloat = 9
+        let rightMargin: CGFloat = 20
 
         var currentRight = bounds.width - rightMargin
 
@@ -223,7 +224,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         locateButton.target = self
         locateButton.action = #selector(locateTapped)
         locateButton.toolTip = "Reveal in Finder".localized
-        locateButton.frame = NSRect(x: currentRight - btnW, y: 4,
+        locateButton.frame = NSRect(x: currentRight - btnW, y: btnY,
                                      width: btnW, height: btnH)
         locateButton.autoresizingMask = [.minXMargin]
         locateButton.isHidden = true
@@ -236,7 +237,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.frame = NSRect(x: currentRight - btnW, y: 4,
+        saveButton.frame = NSRect(x: currentRight - btnW, y: btnY,
                                    width: btnW, height: btnH)
         saveButton.autoresizingMask = [.minXMargin]
         saveButton.isHidden = true
@@ -247,7 +248,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         toggleButton.title = "Edit".localized
         toggleButton.target = self
         toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.frame = NSRect(x: currentRight - btnW, y: 4,
+        toggleButton.frame = NSRect(x: currentRight - btnW, y: btnY,
                                      width: btnW, height: btnH)
         toggleButton.autoresizingMask = [.minXMargin]
         toggleButton.isHidden = true
@@ -255,12 +256,12 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         currentRight -= btnW + gap
 
         modifiedLabel.font = NSFont.systemFont(ofSize: 11)
-        modifiedLabel.textColor = .secondaryLabelColor
+        modifiedLabel.textColor = .tertiaryLabelColor
         modifiedLabel.alignment = .right
         modifiedLabel.lineBreakMode = .byTruncatingTail
         modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.frame = NSRect(x: 16, y: 9,
-                                      width: max(100, currentRight - 16 - gap),
+        modifiedLabel.frame = NSRect(x: 20, y: 13,
+                                      width: max(100, currentRight - 20 - gap),
                                       height: 18)
         modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
@@ -272,7 +273,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         addressBar.isBordered = true
         addressBar.backgroundColor = NSColor.textBackgroundColor
         addressBar.textColor = .secondaryLabelColor
-        addressBar.frame = NSRect(x: 80, y: 6, width: bounds.width - 160, height: 24)
+        addressBar.frame = NSRect(x: 80, y: 10, width: bounds.width - 160, height: 24)
         addressBar.autoresizingMask = [.width]
         addressBar.isHidden = true
         addressBar.target = self
@@ -736,7 +737,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
     private func showWebFindBar() {
         webFindBar.isHidden = false
-        webFindBar.frame.origin.y = (contentView?.bounds.height ?? 0) - 36 /* toolbar */ - webFindBar.bounds.height
+        webFindBar.frame.origin.y = (contentView?.bounds.height ?? 0) - 44 /* toolbar */ - webFindBar.bounds.height
         makeFirstResponder(webFindField)
         webFindField.selectText(nil)
         if !webFindField.stringValue.isEmpty {
