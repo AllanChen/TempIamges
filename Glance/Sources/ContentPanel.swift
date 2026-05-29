@@ -232,6 +232,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
 
     private func resetZoom() {
         currentZoomLevel = 1.0
+        imageView.resetPan()
         applyZoom()
     }
 
@@ -732,7 +733,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
 
     private func showToolbar() {
         addressBar.isHidden = true
-        modifiedLabel.isHidden = false
+        modifiedLabel.isHidden = true
         layoutToolbarButtons()
     }
 
@@ -1049,6 +1050,10 @@ private final class ImageFillView: NSView {
     }
 
     private let imageLayer = CALayer()
+    private var panOffset = CGPoint.zero
+    private var lastMouseLocation = CGPoint.zero
+    private var currentZoom: CGFloat = 1.0
+    private var isDragging = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -1072,7 +1077,82 @@ private final class ImageFillView: NSView {
     }
 
     func setZoom(_ zoom: CGFloat) {
-        imageLayer.transform = CATransform3DMakeScale(zoom, zoom, 1)
+        currentZoom = zoom
+        applyTransform()
+    }
+
+    func resetPan() {
+        panOffset = .zero
+        applyTransform()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard currentZoom > 1.0 else {
+            super.mouseDown(with: event)
+            return
+        }
+        isDragging = true
+        lastMouseLocation = event.locationInWindow
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isDragging, currentZoom > 1.0 else { return }
+        let loc = event.locationInWindow
+        let delta = CGPoint(x: loc.x - lastMouseLocation.x, y: loc.y - lastMouseLocation.y)
+        panOffset.x += delta.x
+        panOffset.y += delta.y
+        lastMouseLocation = loc
+        constrainPan()
+        applyTransform()
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        isDragging = false
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        guard currentZoom > 1.0 else {
+            super.scrollWheel(with: event)
+            return
+        }
+        let deltaX = event.scrollingDeltaX
+        let deltaY = event.scrollingDeltaY
+        guard abs(deltaX) > 0 || abs(deltaY) > 0 else { return }
+        panOffset.x -= deltaX
+        panOffset.y -= deltaY
+        constrainPan()
+        applyTransform()
+    }
+
+    private func applyTransform() {
+        var transform = CATransform3DIdentity
+        transform = CATransform3DScale(transform, currentZoom, currentZoom, 1)
+        transform = CATransform3DTranslate(transform, panOffset.x, panOffset.y, 0)
+        imageLayer.transform = transform
+    }
+
+    private func constrainPan() {
+        guard currentZoom > 1.0, let image = image else { return }
+
+        let viewSize = bounds.size
+        let imageSize = image.size
+        guard imageSize.width > 0, imageSize.height > 0, viewSize.width > 0, viewSize.height > 0 else { return }
+
+        // Compute the aspect-fitted rendered size (same logic as resizeAspect)
+        let scale = min(viewSize.width / imageSize.width, viewSize.height / imageSize.height)
+        let renderedWidth = imageSize.width * scale
+        let renderedHeight = imageSize.height * scale
+
+        // After zoom, the rendered image dimensions
+        let scaledWidth = renderedWidth * currentZoom
+        let scaledHeight = renderedHeight * currentZoom
+
+        // Max pan in each direction: half the overflow
+        let maxPanX = max(0, (scaledWidth - viewSize.width) / 2)
+        let maxPanY = max(0, (scaledHeight - viewSize.height) / 2)
+
+        panOffset.x = max(-maxPanX, min(maxPanX, panOffset.x))
+        panOffset.y = max(-maxPanY, min(maxPanY, panOffset.y))
     }
 }
 
