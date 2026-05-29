@@ -145,7 +145,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let needsOnboarding = !permissionManager.isInputMonitoringGranted
             || !permissionManager.isAccessibilityGranted
             || !permissionManager.isFullDiskAccessGranted
-
+        
         if needsOnboarding {
             showOnboardingWindow()
         }
@@ -433,6 +433,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 Logger.info("AppDelegate: Loaded \(loadedCount)/\(paths.count) media")
                 if loadedCount == 0 {
                     Logger.info("AppDelegate: All media failed to load, keeping panel visible with error state")
+                    let needsFDA = paths.contains { path in
+                        guard let url = path.url, url.isFileURL else { return false }
+                        return self?.isUnderProtectedDirectory(url) ?? false
+                    }
+                    if needsFDA && !PermissionManager.shared.isFullDiskAccessGranted {
+                        self?.promptForFullDiskAccessIfNeeded()
+                    }
                     return
                 }
             }
@@ -455,11 +462,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
     }
 
+    private func isUnderProtectedDirectory(_ url: URL) -> Bool {
+        guard url.isFileURL else { return false }
+        let path = url.path
+        let home = NSHomeDirectory()
+        let protected = ["/Desktop", "/Documents", "/Downloads", "/Library"]
+        return protected.contains { path.hasPrefix(home + $0) }
+    }
+
     /// One-hit shortcut: when path detection settles on exactly one file,
     /// bypass the preview panel and perform the same action that clicking
     /// the tile would have triggered.
     private func directOpen(_ path: DetectedPath) {
         guard let info = MediaInfo.from(path) else { return }
+
+        if info.isLocal && isUnderProtectedDirectory(info.url)
+            && !PermissionManager.shared.isFullDiskAccessGranted {
+            promptForFullDiskAccessIfNeeded()
+            return
+        }
+
         Logger.info("AppDelegate: single-hit shortcut → opening \(info.url.absoluteString)")
         switch info.kind {
         case .image, .markdown, .text, .pdf, .webPage:

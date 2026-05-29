@@ -89,21 +89,6 @@ class StatusBarController: NSObject, NSMenuDelegate {
         clearCacheItem.target = self
         menu.addItem(clearCacheItem)
 
-        // Theme submenu — system / light / dark. Selection is reflected as
-        // a checkmark in `menuWillOpen`.
-        let themeItem = NSMenuItem(title: "Theme".localized, action: nil, keyEquivalent: "")
-        let themeSubmenu = NSMenu(title: "Theme".localized)
-        for theme in Preferences.Theme.allCases {
-            let item = NSMenuItem(title: theme.displayName,
-                                   action: #selector(selectTheme(_:)),
-                                   keyEquivalent: "")
-            item.target = self
-            item.representedObject = theme.rawValue
-            themeSubmenu.addItem(item)
-        }
-        themeItem.submenu = themeSubmenu
-        menu.addItem(themeItem)
-
         loginMenuItem = NSMenuItem(title: "Login".localized, action: #selector(openLogin), keyEquivalent: "")
         loginMenuItem.target = self
         menu.addItem(loginMenuItem)
@@ -148,13 +133,6 @@ class StatusBarController: NSObject, NSMenuDelegate {
         delegate?.openLogin(at: loginPanelAnchorPoint())
     }
 
-    @objc private func selectTheme(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let theme = Preferences.Theme(rawValue: raw) else { return }
-        Preferences.shared.theme = theme
-        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
-    }
-
     @objc private func showAbout() {
         let alert = NSAlert()
         alert.messageText = "Glance".localized
@@ -193,15 +171,6 @@ class StatusBarController: NSObject, NSMenuDelegate {
         }
 
         loginMenuItem.title = AuthManager.shared.isSignedIn ? "Account".localized : "Login".localized
-
-        // Reflect the active theme in the submenu.
-        let active = Preferences.shared.theme.rawValue
-        for item in self.menu.items {
-            guard let submenu = item.submenu, submenu.title == "Theme".localized else { continue }
-            for sub in submenu.items {
-                sub.state = ((sub.representedObject as? String) == active) ? .on : .off
-            }
-        }
     }
 
 }

@@ -115,6 +115,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
     /// Loads a web page URL directly (read-only).
     func loadWebPage(_ url: URL) {
+        resetZoom()
         currentURL = url
         kind = .webpage
         title = url.host ?? url.absoluteString
@@ -128,12 +129,13 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         updateModifiedDate(for: url)
         layoutToolbarButtons()
         showWebView()
-        setFrame(ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0)), display: true)
+        resizeToDocumentSize()
     }
 
     /// Loads a markdown file. Starts in rendered (view) mode with an Edit
     /// toggle that swaps to the raw source.
     func loadMarkdown(_ url: URL) {
+        resetZoom()
         currentURL = url
         kind = .markdown
         title = url.lastPathComponent
@@ -153,6 +155,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     /// Loads a plain-text or code file. Defaults to a syntax-highlighted
     /// read-only view; an "Edit" toggle swaps to the raw source in NSTextView.
     func loadText(_ url: URL) {
+        resetZoom()
         currentURL = url
         kind = .text
         title = url.lastPathComponent
@@ -166,12 +169,13 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         updateModifiedDate(for: url)
         layoutToolbarButtons()
         renderHighlightedCode(url: url)
-        setFrame(ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0)), display: true)
+        resizeToDocumentSize()
     }
 
     /// Loads a PDF file in the WKWebView. macOS WebKit ships a native PDF
     /// renderer, so no extra dependencies needed. Read-only.
     func loadPDF(_ url: URL) {
+        resetZoom()
         currentURL = url
         kind = .pdf
         title = url.lastPathComponent
@@ -194,8 +198,22 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         showWebView()
     }
 
+    private static func windowSize(for kind: Kind) -> NSSize {
+        switch kind {
+        case .webpage:
+            return NSSize(width: 970.0, height: 990.0)
+        case .text:
+            return NSSize(width: 970.0, height: 990.0)
+        case .markdown:
+            return NSSize(width: 863.0, height: 919.0)
+        case .pdf:
+            return NSSize(width: 863.0, height: 919.0)
+        }
+    }
+
     private func resizeToDocumentSize() {
-        let fixedFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0))
+        let size = Self.windowSize(for: kind)
+        let fixedFrame = ScreenManager.shared.contentFrame(for: size)
         setFrame(fixedFrame, display: true)
     }
 

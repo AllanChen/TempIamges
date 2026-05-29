@@ -83,7 +83,7 @@ class OnboardingWindow: NSWindow {
 
         fullDiskAccessStatusView = PermissionStatusView(
             title: "Full Disk Access Permission".localized,
-            description: "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts.".localized,
+            description: "Required — Glance needs access to search and preview files in Desktop, Documents, and Downloads.".localized,
             enabledText: "Full Disk Access enabled".localized
         )
         fullDiskAccessStatusView.target = self
@@ -115,7 +115,7 @@ class OnboardingWindow: NSWindow {
         accessibilityStatusView.updateStatus(granted: accessibilityGranted)
         fullDiskAccessStatusView.updateStatus(granted: fullDiskAccessGranted)
 
-        continueButton.isEnabled = inputMonitoringGranted && accessibilityGranted
+        continueButton.isEnabled = inputMonitoringGranted && accessibilityGranted && fullDiskAccessGranted
     }
 
     @objc private func openInputMonitoringSettings() {

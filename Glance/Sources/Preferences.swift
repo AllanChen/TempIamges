@@ -52,7 +52,7 @@ class Preferences {
     var theme: Theme {
         get {
             let raw = defaults.string(forKey: "\(suiteName).theme") ?? ""
-            return Theme(rawValue: raw) ?? .system
+            return Theme(rawValue: raw) ?? .dark
         }
         set { defaults.set(newValue.rawValue, forKey: "\(suiteName).theme") }
     }
@@ -141,6 +141,7 @@ class Preferences {
             "\(suiteName).enabled": true,
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
+            "\(suiteName).theme": Theme.dark.rawValue,
             "\(suiteName).activationMode": ActivationMode.option.rawValue,
             "\(suiteName).customHotkeyModifiers": 0,
             "\(suiteName).customHotkeyKeyCode": 0
@@ -153,6 +154,7 @@ class Preferences {
         launchAtLogin = false
         readClipboard = true
         loginURL = nil
+        theme = .dark
         activationMode = .option
         customHotkeyModifiers = []
         customHotkeyKeyCode = nil

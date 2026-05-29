@@ -26,6 +26,7 @@
 "Full Disk Access (Recommended)" = "完全磁盘访问（推荐）";
 "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts." = "可选 — 让应用无需逐文件夹授权即可预览桌面/文稿/iCloud 中的文件。";
 "Full Disk Access enabled" = "完全磁盘访问已启用";
+"Required — Glance needs access to search and preview files in Desktop, Documents, and Downloads." = "必需 — Glance 需要访问桌面、文稿和下载文件夹中的文件，以便搜索和预览。";
 "Glance Needs Permissions" = "Glance 需要权限";
 "To enable image previews on hover, please grant the following permissions:" = "要启用悬停图片预览，请授予以下权限：";
 "Input Monitoring" = "输入监听";

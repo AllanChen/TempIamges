@@ -175,6 +175,30 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         applyZoom()
     }
 
+    private static func windowSize(for kind: Kind) -> NSSize {
+        switch kind {
+        case .webpage:
+            return NSSize(width: 970.0, height: 990.0)
+        case .text:
+            return NSSize(width: 970.0, height: 990.0)
+        case .markdown:
+            return NSSize(width: 863.0, height: 919.0)
+        case .pdf:
+            return NSSize(width: 863.0, height: 919.0)
+        case .image:
+            return NSSize(width: 652.0, height: 962.0)
+        }
+    }
+
+    private static func windowSize(for mediaKind: MediaInfo.Kind) -> NSSize {
+        switch mediaKind {
+        case .text:     return NSSize(width: 970.0, height: 990.0)
+        case .markdown: return NSSize(width: 863.0, height: 919.0)
+        case .pdf:      return NSSize(width: 863.0, height: 919.0)
+        default:        return NSSize(width: 970.0, height: 990.0)
+        }
+    }
+
     private static func calculateImageWindowSize(imageSize: CGSize) -> NSSize {
         let maxWindowWidth: CGFloat = 1200
         let maxWindowHeight: CGFloat = 900
@@ -528,9 +552,11 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         resetGitDiffAvailability()
         showLoading()
 
-        let fixedFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0))
-        hasBeenManuallyMoved = true
-        setFrame(fixedFrame, display: true)
+        if info.kind != .image && info.kind != .video {
+            let fixedFrame = ScreenManager.shared.contentFrame(for: Self.windowSize(for: info.kind))
+            hasBeenManuallyMoved = true
+            setFrame(fixedFrame, display: true)
+        }
 
         switch info.kind {
         case .markdown:
@@ -577,6 +603,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         case .image:
             currentURL = info.url
             kind = .image
+            resetZoom()
             showToolbar()
             toggleButton.isHidden = true
             saveButton.isHidden = true

@@ -26,6 +26,7 @@
 "Full Disk Access (Recommended)" = "Full Disk Access (Recommended)";
 "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts." = "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts.";
 "Full Disk Access enabled" = "Full Disk Access enabled";
+"Required — Glance needs access to search and preview files in Desktop, Documents, and Downloads." = "Required — Glance needs access to search and preview files in Desktop, Documents, and Downloads.";
 "Glance Needs Permissions" = "Glance Needs Permissions";
 "To enable image previews on hover, please grant the following permissions:" = "To enable image previews on hover, please grant the following permissions:";
 "Input Monitoring" = "Input Monitoring";
