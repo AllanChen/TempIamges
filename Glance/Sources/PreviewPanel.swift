@@ -38,22 +38,30 @@ class PreviewPanel: NSPanel {
     // Colors. The semantic ones (windowBackgroundColor, labelColor, etc.)
     // are dynamic NSColors that resolve against NSApp.effectiveAppearance,
     // so flipping the Theme menu updates the panel on next rebuild.
-    fileprivate static let panelBackground   = NSColor.windowBackgroundColor
-    fileprivate static let middleBackground  = NSColor.underPageBackgroundColor
-    /// Always-dark image canvas — stays dark in light mode too because the
-    /// image needs a neutral dark frame to read against.
-    fileprivate static let darkInset         = NSColor(white: 0.05, alpha: 1)
-    fileprivate static let bottomBar         = NSColor(white: 0.28, alpha: 1)
-    fileprivate static let separator         = NSColor.separatorColor
-    fileprivate static let pillBackground    = NSColor(white: 1, alpha: 0.08)
-    fileprivate static let pillBackgroundLight = NSColor(white: 1, alpha: 0.14)
-    fileprivate static let textDark          = NSColor.labelColor
-    fileprivate static let textSecondary     = NSColor.secondaryLabelColor
+    // The panel now floats on a translucent dark-frosted base (NSVisualEffectView
+    // + black tint), so the whole chrome commits to an on-glass dark palette
+    // regardless of system theme. Fills are translucent white so the frost reads
+    // through them; text is white / dimmed-white.
+    fileprivate static let panelBackground   = NSColor.clear
+    fileprivate static let middleBackground  = NSColor.clear
+    /// Always-dark image canvas — the image needs a neutral dark frame to read
+    /// against, even on the frosted base.
+    fileprivate static let darkInset         = NSColor(white: 0.03, alpha: 1)
+    fileprivate static let bottomBar         = NSColor(white: 1, alpha: 0.06)
+    fileprivate static let separator         = NSColor(white: 1, alpha: 0.08)
+    fileprivate static let pillBackground    = NSColor(white: 1, alpha: 0.12)
+    fileprivate static let pillBackgroundLight = NSColor(white: 1, alpha: 0.18)
+    fileprivate static let textDark          = NSColor.white
+    fileprivate static let textSecondary     = NSColor(white: 1, alpha: 0.55)
     fileprivate static let textOnDark        = NSColor.white
     fileprivate static let textOnDarkSecondary = NSColor(white: 1, alpha: 0.65)
-    fileprivate static let thumbPlaceholder  = NSColor.tertiaryLabelColor
+    fileprivate static let thumbPlaceholder  = NSColor(white: 1, alpha: 0.10)
     fileprivate static let filmstripBorder   = NSColor.systemBlue
     fileprivate static let accentBlue        = NSColor.systemBlue
+    /// Hairline that defines the panel edge against any wallpaper.
+    fileprivate static let hairline          = NSColor(white: 1, alpha: 0.10)
+    /// Translucent card fill for tiles / grouped controls on the frost.
+    fileprivate static let glassCard         = NSColor(white: 1, alpha: 0.07)
 
     /// Resolve a (possibly dynamic) NSColor to a CGColor against the app's
     /// current effective appearance. We need this because `layer.background`
@@ -76,6 +84,28 @@ class PreviewPanel: NSPanel {
             resolved = color.cgColor
         }
         return resolved
+    }
+
+    /// A dark, semi-transparent frosted base. `.hudWindow` + vibrant-dark gives
+    /// the translucent black "磨砂" material; a black tint sublayer biases the
+    /// frost toward black so it reads consistently over bright wallpapers.
+    fileprivate static func makeFrostedBase(cornerRadius: CGFloat) -> NSVisualEffectView {
+        let blur = NSVisualEffectView()
+        blur.material = .hudWindow
+        blur.blendingMode = .behindWindow
+        blur.state = .active
+        blur.appearance = NSAppearance(named: .vibrantDark)
+        blur.wantsLayer = true
+        blur.layer?.cornerRadius = cornerRadius
+        blur.layer?.masksToBounds = true
+
+        let tint = CALayer()
+        tint.backgroundColor = NSColor(white: 0, alpha: 0.30).cgColor
+        tint.cornerRadius = cornerRadius
+        tint.frame = blur.bounds
+        tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        blur.layer?.addSublayer(tint)
+        return blur
     }
 
     /// 📌 emoji rendered into a fixed-size NSImage — looks identical across
@@ -303,7 +333,15 @@ class PreviewPanel: NSPanel {
         root.wantsLayer = true
         root.layer?.cornerRadius = panelCornerRadius
         root.layer?.masksToBounds = true
-        root.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
+        root.layer?.backgroundColor = NSColor.clear.cgColor
+        // Hairline edge so the panel stays defined over any wallpaper.
+        root.layer?.borderColor = Self.hairline.cgColor
+        root.layer?.borderWidth = 1
+
+        let frost = Self.makeFrostedBase(cornerRadius: panelCornerRadius)
+        frost.frame = root.bounds
+        frost.autoresizingMask = [.width, .height]
+        root.addSubview(frost)
 
         navBar.frame = NSRect(x: 0, y: rootHeight - headerHeight,
                               width: rootWidth, height: headerHeight)
@@ -442,6 +480,14 @@ class PreviewPanel: NSPanel {
         return buildContainer(infos: infos)
     }
 
+    #if DEBUG
+    /// Full panel chrome (frosted base + nav bar + content) for SwiftUI previews.
+    func buildPreviewRoot(infos: [MediaInfo]) -> NSView {
+        let content = buildPreviewContainer(infos: infos)
+        return buildRootView(mainContent: content)
+    }
+    #endif
+
     // MARK: - Single-card layout
 
     private func buildSingleCard(info: MediaInfo) -> NSView {
@@ -499,8 +545,8 @@ class PreviewPanel: NSPanel {
 
         let container = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: visibleCardsHeight))
         container.wantsLayer = true
-        let isDark = Self.isDarkAppearance
-        container.layer?.backgroundColor = isDark ? NSColor.black.cgColor : Self.resolvedCG(Self.panelBackground)
+        // Transparent — the frosted base shows through the gaps between cards.
+        container.layer?.backgroundColor = NSColor.clear.cgColor
 
         let scrollView = NSScrollView(frame: container.bounds)
         scrollView.autoresizingMask = [.width, .height]
@@ -595,7 +641,15 @@ class PreviewPanel: NSPanel {
     private func buildNavigationBar(width: CGFloat) -> NSView {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
         bar.wantsLayer = true
-        bar.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
+        // Transparent so the frosted base shows through; a hairline at the
+        // bottom separates the chrome from the content below.
+        bar.layer?.backgroundColor = NSColor.clear.cgColor
+
+        let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
+        sep.wantsLayer = true
+        sep.layer?.backgroundColor = Self.hairline.cgColor
+        sep.autoresizingMask = [.width]
+        bar.addSubview(sep)
 
         let closeBtn = makeIconButton(symbol: "xmark", action: #selector(closeButtonTapped), tint: Self.textDark)
         closeBtn.frame = NSRect(x: 16, y: (headerHeight - 28) / 2, width: 28, height: 28)
@@ -1202,16 +1256,18 @@ final class MediaTileView: NSView {
             sizeLabel = sizeLbl
 
         case .masonry:
-            let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            let tileBg = isDark ? NSColor(white: 0.08, alpha: 1) : NSColor(white: 0.14, alpha: 1)
+            // Translucent glass card sitting on the frosted base, with a
+            // hairline edge; the image itself rests on a dark canvas.
             layer?.cornerRadius = 14
             layer?.masksToBounds = true
-            layer?.backgroundColor = tileBg.cgColor
+            layer?.backgroundColor = NSColor(white: 1, alpha: 0.07).cgColor
+            layer?.borderColor = NSColor(white: 1, alpha: 0.10).cgColor
+            layer?.borderWidth = 1
 
             mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
-            mediaContainer.layer?.backgroundColor = tileBg.cgColor
+            mediaContainer.layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
             addSubview(mediaContainer)
 
             shimmerLayer.colors = [

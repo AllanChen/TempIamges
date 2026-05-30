@@ -70,10 +70,10 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private var recordedKeyCode: UInt16?
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 480, height: 440)
+        let windowRect = NSRect(x: 0, y: 0, width: 480, height: 560)
         super.init(
             contentRect: windowRect,
-            styleMask: [.titled, .closable],
+            styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -82,6 +82,15 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         self.center()
         self.isReleasedWhenClosed = false
 
+        // Frosted dark chrome — the blur runs full height under a transparent
+        // title bar so the window reads as one continuous translucent surface.
+        self.appearance = NSAppearance(named: .darkAqua)
+        self.titlebarAppearsTransparent = true
+        self.titleVisibility = .hidden
+        self.isMovableByWindowBackground = true
+        self.isOpaque = false
+        self.backgroundColor = .clear
+
         setupUI()
         loadSettings()
     }
@@ -89,101 +98,166 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private func setupUI() {
         guard let contentView = self.contentView else { return }
 
-        let containerView = NSView(frame: contentView.bounds)
-        containerView.autoresizingMask = [.width, .height]
-        contentView.addSubview(containerView)
+        // Frosted base — fills the whole window, blurs the wallpaper behind it.
+        let frost = NSVisualEffectView(frame: contentView.bounds)
+        frost.material = .hudWindow
+        frost.blendingMode = .behindWindow
+        frost.state = .active
+        frost.appearance = NSAppearance(named: .vibrantDark)
+        frost.autoresizingMask = [.width, .height]
+        frost.wantsLayer = true
+        contentView.addSubview(frost)
 
+        // Black tint biases the frost toward black for the "磨砂黑" look.
+        let tint = NSView(frame: contentView.bounds)
+        tint.wantsLayer = true
+        tint.layer?.backgroundColor = NSColor(white: 0, alpha: 0.32).cgColor
+        tint.autoresizingMask = [.width, .height]
+        contentView.addSubview(tint)
+
+        // Flipped container so the layout reads top-down.
+        let container = FlippedView(frame: contentView.bounds)
+        container.autoresizingMask = [.width, .height]
+        contentView.addSubview(container)
+
+        // Title
         let titleLabel = NSTextField(labelWithString: "Glance Preferences".localized)
-        titleLabel.font = NSFont.boldSystemFont(ofSize: 18)
-        titleLabel.frame = NSRect(x: 24, y: 390, width: 430, height: 28)
-        containerView.addSubview(titleLabel)
+        titleLabel.font = NSFont.systemFont(ofSize: 22, weight: .bold)
+        titleLabel.textColor = .white
+        titleLabel.frame = NSRect(x: 24, y: 24, width: 432, height: 30)
+        container.addSubview(titleLabel)
 
-        let languageLabel = NSTextField(labelWithString: "Language".localized)
-        languageLabel.font = NSFont.boldSystemFont(ofSize: 14)
-        languageLabel.frame = NSRect(x: 24, y: 356, width: 200, height: 22)
-        containerView.addSubview(languageLabel)
+        // ---- Card 1: Appearance ----
+        let card1 = makeCard(NSRect(x: 20, y: 72, width: 440, height: 132))
+        container.addSubview(card1)
+        container.addSubview(makeSectionHeader("Appearance".localized, at: NSRect(x: 36, y: 86, width: 408, height: 14)))
 
-        languagePopup = NSPopUpButton(frame: NSRect(x: 24, y: 330, width: 220, height: 26), pullsDown: false)
+        container.addSubview(makeFieldLabel("Language".localized, at: NSRect(x: 36, y: 114, width: 120, height: 22)))
+        languagePopup = NSPopUpButton(frame: NSRect(x: 196, y: 112, width: 244, height: 26), pullsDown: false)
         languagePopup.target = self
         languagePopup.action = #selector(languageChanged)
         for lang in Preferences.AppLanguage.allCases {
             languagePopup.addItem(withTitle: lang.displayName)
             languagePopup.lastItem?.representedObject = lang.rawValue
         }
-        containerView.addSubview(languagePopup)
+        container.addSubview(languagePopup)
 
-        let themeLabel = NSTextField(labelWithString: "Theme".localized)
-        themeLabel.font = NSFont.boldSystemFont(ofSize: 14)
-        themeLabel.frame = NSRect(x: 24, y: 298, width: 200, height: 22)
-        containerView.addSubview(themeLabel)
-
-        themePopup = NSPopUpButton(frame: NSRect(x: 24, y: 272, width: 220, height: 26), pullsDown: false)
+        container.addSubview(makeFieldLabel("Theme".localized, at: NSRect(x: 36, y: 154, width: 120, height: 22)))
+        themePopup = NSPopUpButton(frame: NSRect(x: 196, y: 152, width: 244, height: 26), pullsDown: false)
         themePopup.target = self
         themePopup.action = #selector(themeChanged)
         for t in Preferences.Theme.allCases {
             themePopup.addItem(withTitle: t.displayName)
             themePopup.lastItem?.representedObject = t.rawValue
         }
-        containerView.addSubview(themePopup)
+        container.addSubview(themePopup)
 
-        let generalLabel = NSTextField(labelWithString: "General".localized)
-        generalLabel.font = NSFont.boldSystemFont(ofSize: 14)
-        generalLabel.frame = NSRect(x: 24, y: 240, width: 430, height: 22)
-        containerView.addSubview(generalLabel)
+        // ---- Card 2: General ----
+        let card2 = makeCard(NSRect(x: 20, y: 220, width: 440, height: 132))
+        container.addSubview(card2)
+        container.addSubview(makeSectionHeader("General".localized, at: NSRect(x: 36, y: 234, width: 408, height: 14)))
 
-        enabledCheckbox = NSButton(checkboxWithTitle: "Enable Image Hover Preview".localized, target: self, action: #selector(enabledToggled))
-        enabledCheckbox.frame = NSRect(x: 24, y: 210, width: 320, height: 22)
-        containerView.addSubview(enabledCheckbox)
+        enabledCheckbox = makeCheckbox("Enable Image Hover Preview".localized, action: #selector(enabledToggled))
+        enabledCheckbox.frame = NSRect(x: 36, y: 264, width: 408, height: 22)
+        container.addSubview(enabledCheckbox)
 
-        readClipboardCheckbox = NSButton(checkboxWithTitle: "Read clipboard when no text is selected".localized, target: self, action: #selector(readClipboardToggled))
-        readClipboardCheckbox.frame = NSRect(x: 24, y: 182, width: 420, height: 22)
-        containerView.addSubview(readClipboardCheckbox)
+        readClipboardCheckbox = makeCheckbox("Read clipboard when no text is selected".localized, action: #selector(readClipboardToggled))
+        readClipboardCheckbox.frame = NSRect(x: 36, y: 294, width: 408, height: 22)
+        container.addSubview(readClipboardCheckbox)
 
-        launchAtLoginCheckbox = NSButton(checkboxWithTitle: "Launch at Login".localized, target: self, action: #selector(launchAtLoginToggled))
-        launchAtLoginCheckbox.frame = NSRect(x: 24, y: 154, width: 320, height: 22)
-        containerView.addSubview(launchAtLoginCheckbox)
+        launchAtLoginCheckbox = makeCheckbox("Launch at Login".localized, action: #selector(launchAtLoginToggled))
+        launchAtLoginCheckbox.frame = NSRect(x: 36, y: 324, width: 408, height: 22)
+        container.addSubview(launchAtLoginCheckbox)
 
-        let hotkeyLabel = NSTextField(labelWithString: "Activation Hotkey".localized)
-        hotkeyLabel.font = NSFont.boldSystemFont(ofSize: 14)
-        hotkeyLabel.frame = NSRect(x: 24, y: 112, width: 200, height: 22)
-        containerView.addSubview(hotkeyLabel)
+        // ---- Card 3: Activation Hotkey ----
+        let card3 = makeCard(NSRect(x: 20, y: 368, width: 440, height: 140))
+        container.addSubview(card3)
+        container.addSubview(makeSectionHeader("Activation Hotkey".localized, at: NSRect(x: 36, y: 382, width: 408, height: 14)))
 
         let hotkeyDesc = NSTextField(labelWithString: "Hold these keys while hovering to show previews:".localized)
         hotkeyDesc.font = NSFont.systemFont(ofSize: 12)
-        hotkeyDesc.textColor = .secondaryLabelColor
-        hotkeyDesc.frame = NSRect(x: 24, y: 90, width: 420, height: 20)
-        containerView.addSubview(hotkeyDesc)
+        hotkeyDesc.textColor = NSColor(white: 1, alpha: 0.55)
+        hotkeyDesc.lineBreakMode = .byWordWrapping
+        hotkeyDesc.maximumNumberOfLines = 2
+        hotkeyDesc.frame = NSRect(x: 36, y: 404, width: 408, height: 32)
+        container.addSubview(hotkeyDesc)
 
-        modePopup = NSPopUpButton(frame: NSRect(x: 24, y: 60, width: 160, height: 26), pullsDown: false)
+        modePopup = NSPopUpButton(frame: NSRect(x: 36, y: 444, width: 150, height: 26), pullsDown: false)
         modePopup.target = self
         modePopup.action = #selector(modeChanged)
         for m in Preferences.ActivationMode.allCases {
             modePopup.addItem(withTitle: m.displayName.localized)
             modePopup.lastItem?.representedObject = m.rawValue
         }
-        containerView.addSubview(modePopup)
+        container.addSubview(modePopup)
 
-        customShortcutField = ShortcutRecorderField(frame: NSRect(x: 196, y: 60, width: 220, height: 26))
+        customShortcutField = ShortcutRecorderField(frame: NSRect(x: 196, y: 444, width: 244, height: 26))
         customShortcutField.isEditable = false
         customShortcutField.isSelectable = false
         customShortcutField.alignment = .center
-        customShortcutField.isBordered = true
-        customShortcutField.backgroundColor = .textBackgroundColor
+        customShortcutField.isBordered = false
+        customShortcutField.drawsBackground = true
+        customShortcutField.backgroundColor = NSColor(white: 1, alpha: 0.10)
+        customShortcutField.textColor = .white
+        customShortcutField.wantsLayer = true
+        customShortcutField.layer?.cornerRadius = 6
+        customShortcutField.layer?.masksToBounds = true
         customShortcutField.font = NSFont.systemFont(ofSize: 13)
         customShortcutField.placeholderString = "Click to record shortcut".localized
         customShortcutField.recorderDelegate = self
-        containerView.addSubview(customShortcutField)
+        container.addSubview(customShortcutField)
 
         currentHotkeyLabel = NSTextField(labelWithString: "")
         currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
-        currentHotkeyLabel.textColor = .secondaryLabelColor
-        currentHotkeyLabel.frame = NSRect(x: 24, y: 34, width: 300, height: 20)
-        containerView.addSubview(currentHotkeyLabel)
+        currentHotkeyLabel.textColor = NSColor(white: 1, alpha: 0.50)
+        currentHotkeyLabel.frame = NSRect(x: 36, y: 478, width: 408, height: 18)
+        container.addSubview(currentHotkeyLabel)
 
+        // ---- Footer ----
         let resetButton = NSButton(title: "Reset to Defaults".localized, target: self, action: #selector(resetToDefaults))
         resetButton.bezelStyle = .rounded
-        resetButton.frame = NSRect(x: 336, y: 8, width: 120, height: 28)
-        containerView.addSubview(resetButton)
+        resetButton.frame = NSRect(x: 340, y: 520, width: 120, height: 28)
+        container.addSubview(resetButton)
+    }
+
+    // MARK: - UI builders
+
+    private func makeCard(_ frame: NSRect) -> NSView {
+        let card = NSView(frame: frame)
+        card.wantsLayer = true
+        card.layer?.backgroundColor = NSColor(white: 1, alpha: 0.06).cgColor
+        card.layer?.cornerRadius = 12
+        card.layer?.borderColor = NSColor(white: 1, alpha: 0.09).cgColor
+        card.layer?.borderWidth = 1
+        return card
+    }
+
+    private func makeSectionHeader(_ text: String, at frame: NSRect) -> NSTextField {
+        let lbl = NSTextField(labelWithString: text.uppercased())
+        lbl.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        lbl.textColor = NSColor(white: 1, alpha: 0.40)
+        lbl.frame = frame
+        return lbl
+    }
+
+    private func makeFieldLabel(_ text: String, at frame: NSRect) -> NSTextField {
+        let lbl = NSTextField(labelWithString: text)
+        lbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        lbl.textColor = .white
+        lbl.frame = frame
+        return lbl
+    }
+
+    private func makeCheckbox(_ title: String, action: Selector) -> NSButton {
+        let btn = NSButton(checkboxWithTitle: title, target: self, action: action)
+        btn.attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .foregroundColor: NSColor.white,
+                .font: NSFont.systemFont(ofSize: 13)
+            ]
+        )
+        return btn
     }
 
     private func loadSettings() {
@@ -485,4 +559,9 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 extension Notification.Name {
     static let preferencesDidChange = Notification.Name("Preferences.preferencesDidChange")
     static let languageDidChange = Notification.Name("Preferences.languageDidChange")
+}
+
+/// Top-left origin so the preferences layout can be expressed top-down.
+final class FlippedView: NSView {
+    override var isFlipped: Bool { true }
 }

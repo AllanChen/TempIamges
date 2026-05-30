@@ -39,6 +39,7 @@
 // MARK: - Preferences Window
 "Preferences" = "Preferences";
 "Glance Preferences" = "Glance Preferences";
+"Appearance" = "Appearance";
 "Language" = "Language";
 "General" = "General";
 "Enable Image Hover Preview" = "Enable Image Hover Preview";

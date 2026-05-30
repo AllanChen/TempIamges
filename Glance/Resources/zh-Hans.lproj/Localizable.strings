@@ -39,6 +39,7 @@
 // MARK: - Preferences Window
 "Preferences" = "偏好设置";
 "Glance Preferences" = "Glance 偏好设置";
+"Appearance" = "外观";
 "Language" = "语言";
 "General" = "通用";
 "Enable Image Hover Preview" = "启用悬停图片预览";
