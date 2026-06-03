@@ -23,17 +23,24 @@ class PreviewPanel: NSPanel {
     private let insetHorizontalPad: CGFloat = 16  // space between image and dark inset sides
     private let insetBottomPad: CGFloat = 10
 
-    // Multi-image masonry
-    private let masonryHorizontalPad: CGFloat = 10
-    private let masonryTopPad: CGFloat = 8      // small gap below header
-    private let masonryBottomPad: CGFloat = 10
-    private let masonryColumnSpacing: CGFloat = 10
-    private let masonryRowSpacing: CGFloat = 10
-    private let masonryColumnWidth: CGFloat = 160
-    private let masonryColumns: Int = 2
-    /// Max visible cards-area height before the masonry view starts scrolling.
-    /// Fits exactly 2 rows (4 cards).
-    private let masonryMaxScrollHeight: CGFloat = 560
+    private let splitTotalWidth: CGFloat = 652
+    private let splitMaxHeight: CGFloat = 939
+    private let splitItemHeight: CGFloat = 64
+    private let splitItemSpacing: CGFloat = 2
+    private let splitSidebarPad: CGFloat = 8
+    private let splitSelectionIndicatorWidth: CGFloat = 3
+    private let splitSidebarMinWidth: CGFloat = 120
+    private let splitSidebarMaxWidth: CGFloat = 400
+    private let splitterWidth: CGFloat = 4
+    private var userSidebarWidth: CGFloat {
+        get {
+            let saved = UserDefaults.standard.double(forKey: "PreviewPanelSidebarWidth")
+            return saved > 0 ? saved : 180
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "PreviewPanelSidebarWidth")
+        }
+    }
 
     // Colors. The semantic ones (windowBackgroundColor, labelColor, etc.)
     // are dynamic NSColors that resolve against NSApp.effectiveAppearance,
@@ -135,9 +142,10 @@ class PreviewPanel: NSPanel {
 
     private var tiles: [MediaTileView] = []
     private var anchorPoint: CGPoint = .zero
-    private var currentMode: Mode = .grid
+    private var currentMode: Mode = .singleCard
     private var currentInfos: [MediaInfo] = []
     private var selectedIndex: Int = 0
+    private var loadedMediaByIndex: [Int: LoadedMedia] = [:]
 
     // Single-card view references (used to update labels once load completes).
     private weak var singleHeaderTitle: NSTextField?
@@ -151,8 +159,12 @@ class PreviewPanel: NSPanel {
     private weak var singlePinBtn: NSButton?
     private weak var loginButton: NSButton?
     private weak var navBarView: NSView?
-    private weak var masonryScrollView: NSScrollView?
-    private weak var masonryDocView: NSView?
+    private weak var splitSidebarScrollView: NSScrollView?
+    private weak var splitSidebarDocView: NSView?
+    private weak var splitContentView: NSView?
+    private var splitSidebarItems: [SplitSidebarItem] = []
+    private weak var contentWebView: WKWebView?
+    private weak var splitterView: NSView?
 
     /// When pinned, hidePanel() is ignored and the close (X) button shows.
     /// New previews via showLoading() reset this to false.
@@ -167,13 +179,28 @@ class PreviewPanel: NSPanel {
     private var escapeLocalMonitor: Any?
     private var escapeGlobalMonitor: Any?
     private var contentPanelOpenedByTileClick: Bool = false
+    private var hasUserResized: Bool = false
+    private var userSetSize: NSSize? {
+        get {
+            guard let dict = UserDefaults.standard.dictionary(forKey: "PreviewPanelUserSize") as? [String: CGFloat],
+                  let w = dict["w"], let h = dict["h"] else { return nil }
+            return NSSize(width: w, height: h)
+        }
+        set {
+            if let size = newValue {
+                UserDefaults.standard.set(["w": size.width, "h": size.height], forKey: "PreviewPanelUserSize")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "PreviewPanelUserSize")
+            }
+        }
+    }
 
-    private enum Mode { case singleCard, grid }
+    private enum Mode { case singleCard, splitView, contentOnly }
 
     init() {
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless, .nonactivatingPanel, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -208,6 +235,15 @@ class PreviewPanel: NSPanel {
         ) { [weak self] _ in
             self?.updateLoginButtonState()
         }
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didResizeNotification,
+            object: self,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            self.hasUserResized = true
+            self.userSetSize = self.frame.size
+        }
         installEscapeKeyMonitors()
     }
 
@@ -234,9 +270,15 @@ class PreviewPanel: NSPanel {
 
     private func installEscapeKeyMonitors() {
         escapeLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self, self.shouldCloseForEscape(event) else { return event }
-            self.forceHidePanel(dismissContent: !self.contentPanelOpenedByTileClick)
-            return nil
+            guard let self = self, self.isVisible else { return event }
+            if self.shouldCloseForEscape(event) {
+                self.forceHidePanel(dismissContent: !self.contentPanelOpenedByTileClick)
+                return nil
+            }
+            if self.handleArrowKey(event) {
+                return nil
+            }
+            return event
         }
 
         escapeGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -249,6 +291,34 @@ class PreviewPanel: NSPanel {
 
     private func shouldCloseForEscape(_ event: NSEvent) -> Bool {
         isVisible && event.keyCode == 53
+    }
+
+    private func handleArrowKey(_ event: NSEvent) -> Bool {
+        guard currentMode == .splitView, currentInfos.count > 1 else { return false }
+        let newIndex: Int?
+        switch event.keyCode {
+        case 126:
+            newIndex = selectedIndex > 0 ? selectedIndex - 1 : currentInfos.count - 1
+        case 125:
+            newIndex = selectedIndex < currentInfos.count - 1 ? selectedIndex + 1 : 0
+        default:
+            return false
+        }
+        guard let index = newIndex else { return false }
+        selectSplitItem(at: index)
+        return true
+    }
+
+    private func determineMode(for infos: [MediaInfo]) -> Mode {
+        if infos.count == 1 {
+            switch infos[0].kind {
+            case .image, .video:
+                return .singleCard
+            default:
+                return .contentOnly
+            }
+        }
+        return .splitView
     }
 
     deinit {
@@ -298,9 +368,9 @@ class PreviewPanel: NSPanel {
         startFollowingContentPanel()
         teardownTiles()
         anchorPoint = mouseLocation
-        currentMode = infos.count == 1 ? .singleCard : .grid
+        currentMode = determineMode(for: infos)
         currentInfos = infos
-        selectedIndex = 0
+        selectedIndex = currentMode == .splitView ? -1 : 0
 
         let mainContent = buildContainer(infos: infos)
         let root = buildRootView(mainContent: mainContent)
@@ -326,15 +396,22 @@ class PreviewPanel: NSPanel {
 
     private func buildRootView(mainContent: NSView) -> NSView {
         let navBar = buildNavigationBar(width: mainContent.frame.width)
-        let rootWidth = mainContent.frame.width
-        let rootHeight = headerHeight + mainContent.frame.height
+
+        let rootWidth: CGFloat
+        let rootHeight: CGFloat
+        if hasUserResized, let saved = userSetSize {
+            rootWidth = saved.width
+            rootHeight = saved.height
+        } else {
+            rootWidth = mainContent.frame.width
+            rootHeight = headerHeight + mainContent.frame.height
+        }
 
         let root = NSView(frame: NSRect(x: 0, y: 0, width: rootWidth, height: rootHeight))
         root.wantsLayer = true
         root.layer?.cornerRadius = panelCornerRadius
         root.layer?.masksToBounds = true
         root.layer?.backgroundColor = NSColor.clear.cgColor
-        // Hairline edge so the panel stays defined over any wallpaper.
         root.layer?.borderColor = Self.hairline.cgColor
         root.layer?.borderWidth = 1
 
@@ -359,36 +436,74 @@ class PreviewPanel: NSPanel {
     }
 
     func updateTile(at index: Int, with media: LoadedMedia?, failedMessage: String? = nil) {
-        guard tiles.indices.contains(index) else { return }
-        let tile = tiles[index]
-        if let m = media {
-            tile.setLoaded(m)
-            if index < currentInfos.count {
-                var updatedInfo = currentInfos[index]
-                updatedInfo.dimensions = m.naturalSize
-                currentInfos[index] = updatedInfo
-                tile.updateInfo(updatedInfo)
-                // Header title is intentionally static ("Glance") — do
-                // not overwrite it with the filename when media finishes loading.
+        switch currentMode {
+        case .singleCard:
+            guard tiles.indices.contains(index) else { return }
+            let tile = tiles[index]
+            if let m = media {
+                tile.setLoaded(m)
+                if index < currentInfos.count {
+                    var updatedInfo = currentInfos[index]
+                    updatedInfo.dimensions = m.naturalSize
+                    currentInfos[index] = updatedInfo
+                    tile.updateInfo(updatedInfo)
+                }
+            } else {
+                tile.setFailed(message: failedMessage)
             }
-        } else {
-            tile.setFailed(message: failedMessage)
-        }
-        if currentMode == .singleCard, tiles.count == 1, let m = media {
-            relayoutSingleCard(with: m)
-        } else if currentMode == .grid {
-            relayoutMasonry()
+            if tiles.count == 1, let m = media {
+                relayoutSingleCard(with: m)
+            }
+
+        case .splitView, .contentOnly:
+            guard index < currentInfos.count else { return }
+
+            if let m = media {
+                loadedMediaByIndex[index] = m
+                if currentMode == .splitView, index < splitSidebarItems.count {
+                    splitSidebarItems[index].updateInfo(currentInfos[index])
+                    if case .image(let img, _) = m {
+                        splitSidebarItems[index].setThumbnail(img)
+                    }
+                }
+                if index == selectedIndex, let contentTile = tiles.first {
+                    contentTile.setLoaded(m)
+                }
+            } else {
+                loadedMediaByIndex.removeValue(forKey: index)
+                if index == selectedIndex, let contentTile = tiles.first {
+                    contentTile.setFailed(message: failedMessage)
+                }
+            }
+
+            updateSplitView()
         }
     }
 
     /// Push a disambiguation hint (e.g. "~/Desktop") onto the tile at `index`.
     /// Safe to call before or after the tile's media has loaded.
     func applyHint(at index: Int, hint: String?) {
-        guard tiles.indices.contains(index), index < currentInfos.count else { return }
+        guard index < currentInfos.count else { return }
         var info = currentInfos[index]
         info.disambiguationHint = hint
         currentInfos[index] = info
-        tiles[index].updateInfo(info)
+
+        switch currentMode {
+        case .singleCard:
+            guard tiles.indices.contains(index) else { return }
+            tiles[index].updateInfo(info)
+        case .splitView:
+            if index < splitSidebarItems.count {
+                splitSidebarItems[index].updateInfo(info)
+            }
+            if index == selectedIndex, let contentTile = tiles.first {
+                contentTile.updateInfo(info)
+            }
+        case .contentOnly:
+            if index == selectedIndex, let contentTile = tiles.first {
+                contentTile.updateInfo(info)
+            }
+        }
     }
 
     func showImage(_ image: NSImage, at point: NSPoint) {
@@ -467,16 +582,17 @@ class PreviewPanel: NSPanel {
 
     private func buildContainer(infos: [MediaInfo]) -> NSView {
         switch currentMode {
-        case .singleCard: return buildSingleCard(info: infos[0])
-        case .grid:       return buildList(infos: infos)
+        case .singleCard:  return buildSingleCard(info: infos[0])
+        case .splitView:   return buildSplitView(infos: infos)
+        case .contentOnly: return buildContentOnlyView(info: infos[0])
         }
     }
 
     func buildPreviewContainer(infos: [MediaInfo]) -> NSView {
         teardownTiles()
-        currentMode = infos.count == 1 ? .singleCard : .grid
+        currentMode = determineMode(for: infos)
         currentInfos = infos
-        selectedIndex = 0
+        selectedIndex = currentMode == .splitView ? -1 : 0
         return buildContainer(infos: infos)
     }
 
@@ -516,124 +632,265 @@ class PreviewPanel: NSPanel {
         return view
     }
 
-    // MARK: - Multi-image masonry layout
+    private func buildSplitView(infos: [MediaInfo]) -> NSView {
+        let sidebarW = userSidebarWidth
+        let splitterW = splitterWidth
+        let contentW = splitTotalWidth - sidebarW - splitterW
+        let totalW = splitTotalWidth
 
-    private func buildList(infos: [MediaInfo]) -> NSView {
-        let cols = masonryColumns
-        let colW = masonryColumnWidth
-        let spacing = masonryColumnSpacing
-        let rowSpacing = masonryRowSpacing
+        let itemH = splitItemHeight
+        let spacing = splitItemSpacing
+        let sidebarTotalH = CGFloat(infos.count) * (itemH + spacing) + splitSidebarPad * 2
+        let sidebarH = min(sidebarTotalH, splitMaxHeight)
+        let contentH = sidebarH
 
-        // Two-column shortest-column packing.
-        var colHeights = Array(repeating: masonryTopPad, count: cols)
-        var visualLayouts: [(x: CGFloat, visualY: CGFloat, w: CGFloat, h: CGFloat)] = []
-
-        for info in infos {
-            let shortest = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
-            let x = masonryHorizontalPad + CGFloat(shortest) * (colW + spacing)
-            let visualY = colHeights[shortest]
-            let cardHeight = colW * 16 / 9 + 14
-
-            visualLayouts.append((x: x, visualY: visualY, w: colW, h: cardHeight))
-            colHeights[shortest] = visualY + cardHeight + rowSpacing
-        }
-
-        let cardsBottomVisualY = (colHeights.map { $0 - rowSpacing }.max() ?? masonryTopPad)
-        let cardsTotalHeight = cardsBottomVisualY + masonryBottomPad
-        let contentWidth = CGFloat(cols) * colW + CGFloat(cols - 1) * spacing + masonryHorizontalPad * 2
-        let visibleCardsHeight = min(cardsTotalHeight, masonryMaxScrollHeight)
-
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: visibleCardsHeight))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: totalW, height: contentH))
         container.wantsLayer = true
-        // Transparent — the frosted base shows through the gaps between cards.
         container.layer?.backgroundColor = NSColor.clear.cgColor
 
-        let scrollView = NSScrollView(frame: container.bounds)
+        let sidebarContainer = NSView(frame: NSRect(x: 0, y: 0, width: sidebarW, height: contentH))
+        sidebarContainer.wantsLayer = true
+        sidebarContainer.layer?.backgroundColor = NSColor.clear.cgColor
+        sidebarContainer.layer?.masksToBounds = true
+
+        let frost = Self.makeFrostedBase(cornerRadius: 0)
+        frost.frame = sidebarContainer.bounds
+        frost.autoresizingMask = [.width, .height]
+        sidebarContainer.addSubview(frost)
+
+        let scrollView = NSScrollView(frame: sidebarContainer.bounds)
         scrollView.autoresizingMask = [.width, .height]
-        scrollView.hasVerticalScroller = false
+        scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
-        container.addSubview(scrollView)
-        masonryScrollView = scrollView
+        scrollView.autohidesScrollers = true
+        sidebarContainer.addSubview(scrollView)
+        splitSidebarScrollView = scrollView
 
-        let docView = FlippedDocView(frame: NSRect(x: 0, y: 0,
-                                                    width: contentWidth,
-                                                    height: cardsTotalHeight))
-        masonryDocView = docView
+        let docView = FlippedDocView(frame: NSRect(x: 0, y: 0, width: sidebarW, height: sidebarTotalH))
+        splitSidebarDocView = docView
 
-        var newTiles: [MediaTileView] = []
+        var newItems: [SplitSidebarItem] = []
         for (i, info) in infos.enumerated() {
-            let layout = visualLayouts[i]
-            let frame = NSRect(x: layout.x, y: layout.visualY,
-                                width: layout.w, height: layout.h)
-            let tile = MediaTileView(info: info, style: .masonry, frame: frame)
-            let url = info.url
-            tile.onDownload = { [weak self, weak tile] in
-                guard let tile = tile else { return }
-                self?.downloadRemote(url: url, tile: tile)
+            let y = splitSidebarPad + CGFloat(i) * (itemH + spacing)
+            let item = SplitSidebarItem(info: info, frame: NSRect(x: splitSidebarPad, y: y,
+                                                                   width: sidebarW - splitSidebarPad * 2,
+                                                                   height: itemH))
+            item.onSelect = { [weak self] in
+                self?.selectSplitItem(at: i)
             }
-            tile.onTileTap = { [weak self] in
-                guard let self = self, self.currentInfos.indices.contains(i) else { return }
-                self.openInViewer(info: self.currentInfos[i])
-            }
-            docView.addSubview(tile)
-            newTiles.append(tile)
+            docView.addSubview(item)
+            newItems.append(item)
         }
         scrollView.documentView = docView
-        // Start scrolled to the top of the document.
         docView.scroll(NSPoint(x: 0, y: 0))
 
-        tiles = newTiles
+        let splitter = SplitterView(frame: NSRect(x: sidebarW, y: 0, width: splitterW, height: contentH))
+        splitter.autoresizingMask = [.minXMargin, .height]
+        splitter.onDrag = { [weak self] delta in
+            self?.handleSplitterDrag(delta: delta)
+        }
+        container.addSubview(splitter)
+        splitterView = splitter
+
+        let contentView = NSView(frame: NSRect(x: sidebarW + splitterW, y: 0, width: contentW, height: contentH))
+        contentView.wantsLayer = true
+        contentView.layer?.backgroundColor = Self.darkInset.cgColor
+        contentView.layer?.masksToBounds = true
+        contentView.autoresizingMask = [.width, .height]
+        splitContentView = contentView
+
+        container.addSubview(sidebarContainer)
+        container.addSubview(contentView)
+
+        splitSidebarItems = newItems
+        selectedIndex = -1
+        for item in splitSidebarItems {
+            item.isSelected = false
+        }
+
         return container
     }
 
-    private func relayoutMasonry() {
-        guard currentMode == .grid, !tiles.isEmpty else { return }
-        let cols = masonryColumns
-        let colW = masonryColumnWidth
-        let spacing = masonryColumnSpacing
-        let rowSpacing = masonryRowSpacing
+    private func buildContentOnlyView(info: MediaInfo) -> NSView {
+        let contentW = splitTotalWidth
+        let contentH: CGFloat = splitMaxHeight
 
-        var colHeights = Array(repeating: masonryTopPad, count: cols)
-        var visualLayouts: [(x: CGFloat, visualY: CGFloat, w: CGFloat, h: CGFloat)] = []
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: contentW, height: contentH))
+        container.wantsLayer = true
+        container.layer?.backgroundColor = Self.darkInset.cgColor
+        container.layer?.masksToBounds = true
 
-        for info in currentInfos {
-            let shortest = colHeights.enumerated().min(by: { $0.element < $1.element })?.0 ?? 0
-            let x = masonryHorizontalPad + CGFloat(shortest) * (colW + spacing)
-            let visualY = colHeights[shortest]
-            let cardHeight = colW * 16 / 9 + 14
-            visualLayouts.append((x: x, visualY: visualY, w: colW, h: cardHeight))
-            colHeights[shortest] = visualY + cardHeight + rowSpacing
+        let contentView = NSView(frame: container.bounds)
+        contentView.autoresizingMask = [.width, .height]
+        container.addSubview(contentView)
+        splitContentView = contentView
+
+        loadContent(for: info, into: contentView)
+
+        return container
+    }
+
+    private func selectSplitItem(at index: Int) {
+        guard index < currentInfos.count else { return }
+        selectedIndex = index
+
+        for (i, item) in splitSidebarItems.enumerated() {
+            item.isSelected = (i == index)
         }
 
-        let cardsBottomVisualY = (colHeights.map { $0 - rowSpacing }.max() ?? masonryTopPad)
-        let cardsTotalHeight = cardsBottomVisualY + masonryBottomPad
-        let contentWidth = CGFloat(cols) * colW + CGFloat(cols - 1) * spacing + masonryHorizontalPad * 2
-        let visibleCardsHeight = min(cardsTotalHeight, masonryMaxScrollHeight)
-        let totalHeight = headerHeight + visibleCardsHeight
+        guard let contentView = splitContentView else { return }
+
+        for subview in contentView.subviews {
+            subview.removeFromSuperview()
+        }
+        tiles.removeAll()
+        contentWebView = nil
+
+        let info = currentInfos[index]
+        loadContent(for: info, into: contentView)
+
+        if ContentPanel.shared.isVisible {
+            ContentPanel.shared.load(info: info)
+        }
+
+        if let docView = splitSidebarDocView,
+           index < splitSidebarItems.count {
+            docView.scrollToVisible(splitSidebarItems[index].frame)
+        }
+    }
+
+    private func loadContent(for info: MediaInfo, into container: NSView) {
+        switch info.kind {
+        case .image, .video:
+            let tile = MediaTileView(info: info, style: .singleCard, frame: container.bounds)
+            tile.autoresizingMask = [.width, .height]
+            tile.onClose = { [weak self] in self?.hidePanel() }
+            let infoURL = info.url
+            tile.onAction = { NSWorkspace.shared.open(infoURL) }
+            tile.onDownload = { [weak self, weak tile] in
+                guard let tile = tile else { return }
+                self?.downloadRemote(url: infoURL, tile: tile)
+            }
+            tile.onTileTap = { [weak self] in
+                guard let self = self, !self.currentInfos.isEmpty else { return }
+                self.openInViewer(info: self.currentInfos[self.selectedIndex])
+            }
+            container.addSubview(tile)
+            tiles = [tile]
+
+            if let media = loadedMediaByIndex[selectedIndex] {
+                tile.setLoaded(media)
+            }
+
+        case .markdown, .text, .pdf, .webPage:
+            let config = WKWebViewConfiguration()
+            let webView = WKWebView(frame: container.bounds, configuration: config)
+            webView.autoresizingMask = [.width, .height]
+            container.addSubview(webView)
+            contentWebView = webView
+
+            switch info.kind {
+            case .markdown:
+                renderMarkdownView(url: info.url, webView: webView)
+            case .text:
+                renderHighlightedCode(url: info.url, webView: webView)
+            case .pdf:
+                if info.url.isFileURL {
+                    webView.loadFileURL(info.url, allowingReadAccessTo: info.url.deletingLastPathComponent())
+                } else {
+                    webView.load(URLRequest(url: info.url))
+                }
+            case .webPage:
+                webView.load(URLRequest(url: info.url))
+            default:
+                break
+            }
+
+        default:
+            let tile = MediaTileView(info: info, style: .singleCard, frame: container.bounds)
+            tile.autoresizingMask = [.width, .height]
+            tile.onClose = { [weak self] in self?.hidePanel() }
+            container.addSubview(tile)
+            tiles = [tile]
+        }
+    }
+
+    private func renderMarkdownView(url: URL, webView: WKWebView) {
+        Task.detached { [weak webView] in
+            let raw = await ContentViewerWindow.fetchTextContent(from: url)
+            let html = ContentViewerWindow.wrapMarkdownInHTML(raw)
+            await MainActor.run {
+                webView?.loadHTMLString(html, baseURL: url)
+            }
+        }
+    }
+
+    private func renderHighlightedCode(url: URL, webView: WKWebView) {
+        Task.detached { [weak webView] in
+            let raw = await ContentViewerWindow.fetchTextContent(from: url)
+            let lang = ContentViewerWindow.languageIdentifier(for: url)
+            let html = ContentViewerWindow.wrapCodeInHTML(raw, language: lang)
+            await MainActor.run {
+                webView?.loadHTMLString(html, baseURL: url)
+            }
+        }
+    }
+
+    private func updateSplitView() {
+        switch currentMode {
+        case .splitView:
+            updateSplitViewLayout()
+        case .contentOnly:
+            updateContentOnlyLayout()
+        default:
+            break
+        }
+    }
+
+    private func updateSplitViewLayout() {
+        guard !splitSidebarItems.isEmpty else { return }
 
         guard let root = contentView else { return }
-        root.frame = NSRect(x: 0, y: 0, width: contentWidth, height: totalHeight)
+        let totalW = root.frame.width
+        let totalH = root.frame.height
+        let contentH = totalH - headerHeight
 
-        // Reposition the navigation bar at the top of the root view.
-        navBarView?.frame = NSRect(x: 0, y: totalHeight - headerHeight,
-                                   width: contentWidth, height: headerHeight)
+        let sidebarW = userSidebarWidth
+        let splitterW = splitterWidth
+        let contentW = totalW - sidebarW - splitterW
 
-        masonryScrollView?.frame = NSRect(x: 0, y: 0,
-                                           width: contentWidth,
-                                           height: visibleCardsHeight)
-        masonryDocView?.frame = NSRect(x: 0, y: 0,
-                                        width: contentWidth,
-                                        height: cardsTotalHeight)
+        let itemH = splitItemHeight
+        let spacing = splitItemSpacing
+        let sidebarTotalH = CGFloat(currentInfos.count) * (itemH + spacing) + splitSidebarPad * 2
 
-        // Tiles live in a flipped document view — visualY maps directly.
-        for (i, layout) in visualLayouts.enumerated() where i < tiles.count {
-            tiles[i].frame = NSRect(x: layout.x, y: layout.visualY,
-                                     width: layout.w, height: layout.h)
-            tiles[i].relayoutChildren()
+        navBarView?.frame = NSRect(x: 0, y: totalH - headerHeight,
+                                   width: totalW, height: headerHeight)
+
+        splitSidebarScrollView?.frame = NSRect(x: 0, y: 0, width: sidebarW, height: contentH)
+        splitSidebarDocView?.frame = NSRect(x: 0, y: 0, width: sidebarW, height: sidebarTotalH)
+        splitterView?.frame = NSRect(x: sidebarW, y: 0, width: splitterW, height: contentH)
+        splitContentView?.frame = NSRect(x: sidebarW + splitterW, y: 0, width: contentW, height: contentH)
+
+        for (i, item) in splitSidebarItems.enumerated() where i < currentInfos.count {
+            let y = splitSidebarPad + CGFloat(i) * (itemH + spacing)
+            item.frame = NSRect(x: splitSidebarPad, y: y,
+                                width: sidebarW - splitSidebarPad * 2, height: itemH)
+            item.updateInfo(currentInfos[i])
         }
-        relayoutPanel(contentSize: NSSize(width: contentWidth, height: totalHeight))
+    }
+
+    private func updateContentOnlyLayout() {
+        guard let root = contentView else { return }
+        let totalW = root.frame.width
+        let totalH = root.frame.height
+        let contentH = totalH - headerHeight
+
+        navBarView?.frame = NSRect(x: 0, y: totalH - headerHeight,
+                                   width: totalW, height: headerHeight)
+
+        splitContentView?.frame = NSRect(x: 0, y: 0, width: totalW, height: contentH)
     }
 
     // MARK: - Navigation bar (fixed at top)
@@ -641,9 +898,12 @@ class PreviewPanel: NSPanel {
     private func buildNavigationBar(width: CGFloat) -> NSView {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
         bar.wantsLayer = true
-        // Transparent so the frosted base shows through; a hairline at the
-        // bottom separates the chrome from the content below.
         bar.layer?.backgroundColor = NSColor.clear.cgColor
+
+        let frost = Self.makeFrostedBase(cornerRadius: 0)
+        frost.frame = bar.bounds
+        frost.autoresizingMask = [.width, .height]
+        bar.addSubview(frost)
 
         let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
         sep.wantsLayer = true
@@ -1092,7 +1352,17 @@ class PreviewPanel: NSPanel {
     }
 
     private func relayoutPanel(contentSize: NSSize) {
-        if let saved = savedPosition {
+        if hasUserResized, let savedSize = userSetSize {
+            if let saved = savedPosition {
+                var frame = saved
+                frame.size = savedSize
+                setFrame(frame, display: true)
+            } else {
+                var frame = ScreenManager.shared.adjustedFrame(for: savedSize, at: anchorPoint, offset: anchorOffset)
+                frame.size = savedSize
+                setFrame(frame, display: true)
+            }
+        } else if let saved = savedPosition {
             var frame = saved
             frame.size = contentSize
             setFrame(frame, display: true)
@@ -1106,11 +1376,16 @@ class PreviewPanel: NSPanel {
         for tile in tiles { tile.teardown() }
         tiles.removeAll()
         currentInfos.removeAll()
+        loadedMediaByIndex.removeAll()
         singleHeaderTitle = nil
         singleCloseBtn = nil
         singlePinBtn = nil
-        masonryScrollView = nil
-        masonryDocView = nil
+        splitSidebarScrollView = nil
+        splitSidebarDocView = nil
+        splitContentView = nil
+        splitterView = nil
+        contentWebView = nil
+        splitSidebarItems.removeAll()
         bottomFilenameLabel = nil
         bottomDimsLabel = nil
         bottomSizeLabel = nil
@@ -1118,10 +1393,176 @@ class PreviewPanel: NSPanel {
         metaPillFilename = nil
         metaPillMeta = nil
     }
+
+    private func handleSplitterDrag(delta: CGFloat) {
+        let newWidth = userSidebarWidth + delta
+        let clamped = max(splitSidebarMinWidth, min(splitSidebarMaxWidth, newWidth))
+        guard clamped != userSidebarWidth else { return }
+        userSidebarWidth = clamped
+        updateSplitViewLayout()
+    }
 }
 
-/// Flipped document view so masonry tiles can be laid out with visualY
-/// (increasing downward) — matches how `relayoutMasonry` computes positions.
+final class SplitterView: NSView {
+    var onDrag: ((CGFloat) -> Void)?
+    private var lastX: CGFloat = 0
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+        addCursorRect(bounds, cursor: .resizeLeftRight)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        NSCursor.resizeLeftRight.set()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        lastX = event.locationInWindow.x
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        let currentX = event.locationInWindow.x
+        let delta = currentX - lastX
+        lastX = currentX
+        onDrag?(delta)
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .resizeLeftRight)
+    }
+}
+
+final class SplitSidebarItem: NSView {
+    var info: MediaInfo
+    var isSelected: Bool = false {
+        didSet { updateAppearance() }
+    }
+    var onSelect: (() -> Void)?
+
+    private let thumbnailLayer = CALayer()
+    private let nameLabel = NSTextField()
+    private let metaLabel = NSTextField()
+    private let selectionIndicator = NSView()
+
+    init(info: MediaInfo, frame: NSRect) {
+        self.info = info
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.masksToBounds = true
+
+        selectionIndicator.wantsLayer = true
+        selectionIndicator.layer?.backgroundColor = NSColor.systemBlue.cgColor
+        selectionIndicator.layer?.cornerRadius = 1.5
+        selectionIndicator.isHidden = true
+        addSubview(selectionIndicator)
+
+        thumbnailLayer.contentsGravity = .resizeAspectFill
+        thumbnailLayer.masksToBounds = true
+        thumbnailLayer.cornerRadius = 4
+        layer?.addSublayer(thumbnailLayer)
+
+        if info.kind != .image && info.kind != .video {
+            let icon = FileTypeIcon.makeImage(for: info, size: CGSize(width: 48, height: 48))
+            thumbnailLayer.contents = icon
+        }
+
+        nameLabel.stringValue = info.filename
+        nameLabel.textColor = .white
+        nameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        nameLabel.lineBreakMode = .byTruncatingMiddle
+        nameLabel.maximumNumberOfLines = 1
+        nameLabel.isEditable = false
+        nameLabel.isBordered = false
+        nameLabel.backgroundColor = .clear
+        addSubview(nameLabel)
+
+        metaLabel.textColor = NSColor(white: 1, alpha: 0.55)
+        metaLabel.font = NSFont.systemFont(ofSize: 10)
+        metaLabel.lineBreakMode = .byTruncatingTail
+        metaLabel.maximumNumberOfLines = 1
+        metaLabel.isEditable = false
+        metaLabel.isBordered = false
+        metaLabel.backgroundColor = .clear
+        addSubview(metaLabel)
+
+        updateMeta()
+        updateAppearance()
+        relayout()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func updateInfo(_ newInfo: MediaInfo) {
+        self.info = newInfo
+        nameLabel.stringValue = newInfo.filename
+        updateMeta()
+    }
+
+    private func updateMeta() {
+        var parts: [String] = []
+        if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
+            parts.append("\(Int(dim.width)) × \(Int(dim.height))")
+        }
+        if let bytes = info.fileSize {
+            let f = ByteCountFormatter()
+            f.countStyle = .file
+            parts.append(f.string(fromByteCount: bytes))
+        }
+        metaLabel.stringValue = parts.joined(separator: " · ")
+    }
+
+    func setThumbnail(_ image: NSImage) {
+        thumbnailLayer.contents = image
+    }
+
+    private func updateAppearance() {
+        if isSelected {
+            layer?.backgroundColor = NSColor(white: 1, alpha: 0.12).cgColor
+            selectionIndicator.isHidden = false
+        } else {
+            layer?.backgroundColor = NSColor.clear.cgColor
+            selectionIndicator.isHidden = true
+        }
+    }
+
+    private func relayout() {
+        let thumbSize: CGFloat = 48
+        let pad: CGFloat = 8
+        let textX = pad + thumbSize + pad
+        let textW = bounds.width - textX - pad
+
+        selectionIndicator.frame = NSRect(x: 0, y: 4, width: 3, height: bounds.height - 8)
+        thumbnailLayer.frame = NSRect(x: pad, y: (bounds.height - thumbSize) / 2, width: thumbSize, height: thumbSize)
+        nameLabel.frame = NSRect(x: textX, y: bounds.height / 2 - 2, width: textW, height: 16)
+        metaLabel.frame = NSRect(x: textX, y: bounds.height / 2 - 18, width: textW, height: 14)
+    }
+
+    override func layout() {
+        super.layout()
+        relayout()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onSelect?()
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        return true
+    }
+}
+
 final class FlippedDocView: NSView {
     override var isFlipped: Bool { true }
 }

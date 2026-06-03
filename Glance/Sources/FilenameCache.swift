@@ -20,6 +20,7 @@ final class FilenameCache {
     private var entries: [String: CacheEntry] = [:]
     private let maxEntries = 500
     private let ioQueue = DispatchQueue(label: "Glance.FilenameCache.io")
+    private let lock = NSLock()
 
     private var storeURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory,
@@ -39,17 +40,24 @@ final class FilenameCache {
     /// Look up a token. On hit the entry's timestamp is refreshed
     /// so it ranks as most-recently-used.
     func lookup(token: String) -> URL? {
-        guard var entry = entries[token] else { return nil }
+        lock.lock()
+        guard var entry = entries[token] else {
+            lock.unlock()
+            return nil
+        }
         let url = URL(fileURLWithPath: entry.url)
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
               !isDirectory.boolValue else {
             entries.removeValue(forKey: token)
-            save()
+            let snapshot = entries
+            lock.unlock()
+            save(snapshot: snapshot)
             return nil
         }
         entry = CacheEntry(url: entry.url, timestamp: Date())
         entries[token] = entry
+        lock.unlock()
         return url
     }
 
@@ -57,9 +65,12 @@ final class FilenameCache {
     /// evicts the oldest entry if the cache has grown past `maxEntries`.
     func store(token: String, url: URL) {
         let path = url.path
+        lock.lock()
         entries[token] = CacheEntry(url: path, timestamp: Date())
         evictIfNeeded()
-        save()
+        let snapshot = entries
+        lock.unlock()
+        save(snapshot: snapshot)
     }
 
     // MARK: - Persistence
@@ -73,11 +84,12 @@ final class FilenameCache {
             try? FileManager.default.removeItem(at: storeURL)
             return
         }
+        lock.lock()
         entries = decoded
+        lock.unlock()
     }
 
-    private func save() {
-        let snapshot = entries
+    private func save(snapshot: [String: CacheEntry]) {
         let url = storeURL
         ioQueue.async {
             let formatter = ISO8601DateFormatter()

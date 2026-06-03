@@ -4,7 +4,10 @@ import AppKit
 
 // 你可以直接修改下面的 urls 数组来测试不同的图片
 let previewURLs: [String] = [
-    "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg"
+    "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/0434049c-d9e7-4a36-9e68-4f8a3faad7b4.jpg",
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",
+    "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80",
+    "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=800&q=80"
 ]
 
 struct PreviewPanelPreviewWrapper: NSViewRepresentable {
