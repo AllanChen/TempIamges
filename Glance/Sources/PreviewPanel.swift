@@ -162,6 +162,7 @@ class PreviewPanel: NSPanel {
     private weak var splitSidebarScrollView: NSScrollView?
     private weak var splitSidebarDocView: NSView?
     private weak var splitContentView: NSView?
+    private weak var splitSidebarContainer: NSView?
     private var splitSidebarItems: [SplitSidebarItem] = []
     private weak var contentWebView: WKWebView?
     private weak var splitterView: NSView?
@@ -243,6 +244,7 @@ class PreviewPanel: NSPanel {
             guard let self = self else { return }
             self.hasUserResized = true
             self.userSetSize = self.frame.size
+            self.updateSplitView()
         }
         installEscapeKeyMonitors()
     }
@@ -370,7 +372,7 @@ class PreviewPanel: NSPanel {
         anchorPoint = mouseLocation
         currentMode = determineMode(for: infos)
         currentInfos = infos
-        selectedIndex = currentMode == .splitView ? -1 : 0
+        selectedIndex = 0
 
         let mainContent = buildContainer(infos: infos)
         let root = buildRootView(mainContent: mainContent)
@@ -612,6 +614,7 @@ class PreviewPanel: NSPanel {
                                         height: singleCardImageHeight))
         view.wantsLayer = true
         view.layer?.backgroundColor = Self.darkInset.cgColor
+        view.autoresizingMask = [.width, .height]
 
         let tile = MediaTileView(info: info, style: .singleCard, frame: view.bounds)
         tile.autoresizingMask = [.width, .height]
@@ -647,11 +650,13 @@ class PreviewPanel: NSPanel {
         let container = NSView(frame: NSRect(x: 0, y: 0, width: totalW, height: contentH))
         container.wantsLayer = true
         container.layer?.backgroundColor = NSColor.clear.cgColor
+        container.autoresizingMask = [.width, .height]
 
         let sidebarContainer = NSView(frame: NSRect(x: 0, y: 0, width: sidebarW, height: contentH))
         sidebarContainer.wantsLayer = true
         sidebarContainer.layer?.backgroundColor = NSColor.clear.cgColor
         sidebarContainer.layer?.masksToBounds = true
+        sidebarContainer.autoresizingMask = [.height]
 
         let frost = Self.makeFrostedBase(cornerRadius: 0)
         frost.frame = sidebarContainer.bounds
@@ -704,10 +709,10 @@ class PreviewPanel: NSPanel {
         container.addSubview(sidebarContainer)
         container.addSubview(contentView)
 
+        splitSidebarContainer = sidebarContainer
         splitSidebarItems = newItems
-        selectedIndex = -1
-        for item in splitSidebarItems {
-            item.isSelected = false
+        if !splitSidebarItems.isEmpty {
+            selectSplitItem(at: 0)
         }
 
         return container
@@ -721,6 +726,7 @@ class PreviewPanel: NSPanel {
         container.wantsLayer = true
         container.layer?.backgroundColor = Self.darkInset.cgColor
         container.layer?.masksToBounds = true
+        container.autoresizingMask = [.width, .height]
 
         let contentView = NSView(frame: container.bounds)
         contentView.autoresizingMask = [.width, .height]
@@ -868,6 +874,7 @@ class PreviewPanel: NSPanel {
         navBarView?.frame = NSRect(x: 0, y: totalH - headerHeight,
                                    width: totalW, height: headerHeight)
 
+        splitSidebarContainer?.frame = NSRect(x: 0, y: 0, width: sidebarW, height: contentH)
         splitSidebarScrollView?.frame = NSRect(x: 0, y: 0, width: sidebarW, height: contentH)
         splitSidebarDocView?.frame = NSRect(x: 0, y: 0, width: sidebarW, height: sidebarTotalH)
         splitterView?.frame = NSRect(x: sidebarW, y: 0, width: splitterW, height: contentH)
@@ -1383,6 +1390,7 @@ class PreviewPanel: NSPanel {
         splitSidebarScrollView = nil
         splitSidebarDocView = nil
         splitContentView = nil
+        splitSidebarContainer = nil
         splitterView = nil
         contentWebView = nil
         splitSidebarItems.removeAll()
