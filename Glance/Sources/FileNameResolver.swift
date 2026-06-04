@@ -371,7 +371,7 @@ final class FileNameResolver {
 
     private func directCandidateURLs(for token: String) -> [URL] {
         var candidates: [URL] = []
-        if token.lowercased().hasPrefix("file://"), let url = URL(string: token) {
+        if token.lowercased().hasPrefix("file://"), let url = parseFileURL(token) {
             candidates.append(url)
         } else if token.hasPrefix("~/") {
             candidates.append(URL(fileURLWithPath: (token as NSString).expandingTildeInPath))
@@ -540,5 +540,28 @@ final class FileNameResolver {
         while let last = value.last, ",.;!?\"')]}".contains(last) { value.removeLast() }
         while value.hasPrefix("./") { value.removeFirst(2) }
         return value
+    }
+
+    /// Parse a file:// URL string, tolerating non-ASCII characters (e.g. CJK)
+    /// that `URL(string:)` would otherwise reject.
+    private func parseFileURL(_ s: String) -> URL? {
+        if let url = URL(string: s) { return url }
+
+        if #available(macOS 14.0, *) {
+            if let url = URL(string: s, encodingInvalidCharacters: true) {
+                return url
+            }
+        }
+
+        let safe = CharacterSet.urlPathAllowed
+            .union(.urlHostAllowed)
+            .union(.urlQueryAllowed)
+            .union(.urlFragmentAllowed)
+            .union(CharacterSet(charactersIn: ":/?#&=%@"))
+        if let encoded = s.addingPercentEncoding(withAllowedCharacters: safe),
+           let url = URL(string: encoded) {
+            return url
+        }
+        return nil
     }
 }

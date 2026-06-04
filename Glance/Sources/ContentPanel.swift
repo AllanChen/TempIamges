@@ -627,7 +627,8 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
                 img { max-width: 100%; max-height: 100%; object-fit: contain; }
                 </style></head><body><img src="\(info.url.absoluteString)"></body></html>
                 """
-                webView.loadHTMLString(html, baseURL: nil)
+                let baseURL = info.url.isFileURL ? info.url.deletingLastPathComponent() : nil
+                webView.loadHTMLString(html, baseURL: baseURL)
                 showWebView()
             }
             hideLoading()
