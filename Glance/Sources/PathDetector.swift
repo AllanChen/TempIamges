@@ -176,8 +176,13 @@ class PathDetector {
         // decided in resolveCandidate() based on the URL's extension. Anything
         // without a recognised media extension falls into .webPage.
         // The `:?` makes the colon optional so typos like `https//foo.com` still match.
+        // A comma is normally a delimiter (so "urlA,urlB" splits into two), but
+        // some CDNs put commas *inside* the path (e.g. civitai's
+        // ".../anim=false,width=450,optimized=true/x.jpeg"). So we accept a comma
+        // only when it is NOT followed by whitespace/bracket and NOT followed by
+        // another "https?://" — i.e. it's clearly mid-URL, not a separator.
         self.httpRegex = try! NSRegularExpression(
-            pattern: "https?:?//[^\\s\"'<>()\\[\\]{},]+",
+            pattern: "https?:?//(?:[^\\s\"'<>()\\[\\]{},]|,(?![\\s\"'<>()\\[\\]{}])(?!https?:?//))+",
             options: []
         )
         // Bare domain without scheme — `www.foo.com[/...]` or `something.com[/...]`.
