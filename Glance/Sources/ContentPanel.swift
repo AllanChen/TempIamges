@@ -612,26 +612,26 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
             updateToolbarPath(for: info.url)
             updateImageInfoBar(with: info)
             imageInfoBar.isHidden = false
-            if let image = NSImage(contentsOf: info.url) {
-                imageView.image = image
-                showImageView()
-                let imageSize = image.size
-                let windowSize = Self.calculateImageWindowSize(imageSize: imageSize)
-                let imageFrame = ScreenManager.shared.contentFrame(for: windowSize)
-                setFrame(imageFrame, display: true)
+            let imageURL = info.url
+            if imageURL.isFileURL {
+                // Local files decode from disk fast enough to stay synchronous.
+                applyLoadedImage(NSImage(contentsOf: imageURL), for: imageURL)
             } else {
-                let html = """
-                <html><head><style>
-                body { margin: 0; display: flex; align-items: center; justify-content: center;
-                       background: #0a0a0a; height: 100vh; overflow: hidden; }
-                img { max-width: 100%; max-height: 100%; object-fit: contain; }
-                </style></head><body><img src="\(info.url.absoluteString)"></body></html>
-                """
-                let baseURL = info.url.isFileURL ? info.url.deletingLastPathComponent() : nil
-                webView.loadHTMLString(html, baseURL: baseURL)
-                showWebView()
+                // Remote URLs: NSImage(contentsOf:) downloads synchronously, so
+                // run it off the main thread — otherwise the panel freezes until
+                // the whole image arrives. The loading overlay (shown above)
+                // stays up meanwhile.
+                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    let image = NSImage(contentsOf: imageURL)
+                    DispatchQueue.main.async {
+                        guard let self = self else { return }
+                        // The user may have navigated to another item while the
+                        // download was in flight — only apply if still current.
+                        guard self.currentURL == imageURL else { return }
+                        self.applyLoadedImage(image, for: imageURL)
+                    }
+                }
             }
-            hideLoading()
         default:
             currentURL = info.url
             kind = .webpage
@@ -642,6 +642,32 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
             showWebView()
         }
         layoutToolbarButtons()
+    }
+
+    /// Display a decoded image (native NSImageView path), or fall back to a
+    /// WebKit <img> render when decoding failed. Sizes the window to the image
+    /// and clears the loading overlay. Safe to call from the main thread only.
+    private func applyLoadedImage(_ image: NSImage?, for url: URL) {
+        if let image = image {
+            imageView.image = image
+            showImageView()
+            let imageSize = image.size
+            let windowSize = Self.calculateImageWindowSize(imageSize: imageSize)
+            let imageFrame = ScreenManager.shared.contentFrame(for: windowSize)
+            setFrame(imageFrame, display: true)
+        } else {
+            let html = """
+            <html><head><style>
+            body { margin: 0; display: flex; align-items: center; justify-content: center;
+                   background: #0a0a0a; height: 100vh; overflow: hidden; }
+            img { max-width: 100%; max-height: 100%; object-fit: contain; }
+            </style></head><body><img src="\(url.absoluteString)"></body></html>
+            """
+            let baseURL = url.isFileURL ? url.deletingLastPathComponent() : nil
+            webView.loadHTMLString(html, baseURL: baseURL)
+            showWebView()
+        }
+        hideLoading()
     }
 
     private func showLoading() {
