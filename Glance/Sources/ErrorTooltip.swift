@@ -3,6 +3,8 @@ import AppKit
 class ErrorTooltip: NSPanel {
     private let textField: NSTextField
     private let offset = CGPoint(x: 20, y: -20)
+    private let autoHideDelay: TimeInterval = 3.0
+    private var autoHideWorkItem: DispatchWorkItem?
 
     init() {
         textField = NSTextField(labelWithString: "")
@@ -66,9 +68,23 @@ class ErrorTooltip: NSPanel {
             context.duration = 0.15
             self.animator().alphaValue = 1
         }
+
+        scheduleAutoHide()
+    }
+
+    private func scheduleAutoHide() {
+        autoHideWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            self?.hide()
+        }
+        autoHideWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + autoHideDelay, execute: item)
     }
 
     func hide() {
+        autoHideWorkItem?.cancel()
+        autoHideWorkItem = nil
+        guard isVisible else { return }
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.15
             self.animator().alphaValue = 0

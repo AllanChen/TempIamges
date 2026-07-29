@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 APP_NAME="Glance"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 VOL_NAME="${APP_NAME} ${VERSION}"

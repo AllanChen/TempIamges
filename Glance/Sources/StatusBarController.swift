@@ -42,20 +42,16 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     private func updateMenuBarIcon() {
         guard let button = statusItem.button else { return }
-        let text = "􁔕"
-        let attrs: [NSAttributedString.Key: Any]
-        if Preferences.shared.enabled {
-            attrs = [.foregroundColor: NSColor.controlAccentColor]
-        } else {
-            attrs = [
-                .foregroundColor: NSColor.secondaryLabelColor,
-                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                .strikethroughColor: NSColor.secondaryLabelColor,
-                .baselineOffset: 0
-            ]
-        }
-        button.attributedTitle = NSAttributedString(string: text, attributes: attrs)
-        button.image = nil
+        let enabled = Preferences.shared.enabled
+        let symbolName = enabled ? "eye.fill" : "eye.slash"
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Glance")?
+            .withSymbolConfiguration(config)
+        image?.isTemplate = true
+        button.attributedTitle = NSAttributedString(string: "")
+        button.image = image
+        button.imagePosition = .imageOnly
+        button.contentTintColor = enabled ? .controlAccentColor : nil
     }
 
     private func createMenu() -> NSMenu {
