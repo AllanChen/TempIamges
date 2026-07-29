@@ -15,17 +15,11 @@ settings:
     CODE_SIGN_IDENTITY: "-"
 
 # Swift Package Manager 依赖配置
-# 如需添加第三方库，取消注释并配置：
-#
-# packages:
-#   # 远程依赖示例：
-#   # Alamofire:
-#   #   url: https://github.com/Alamofire/Alamofire
-#   #   from: "5.9.0"
-#   #
-#   # 本地依赖示例：
-#   # MyLocalPackage:
-#   #   path: ../Packages/MyLocalPackage
+packages:
+  # 语法高亮（highlight.js 封装，离线可用），用于可编辑代码视图。
+  Highlightr:
+    url: https://github.com/raspu/Highlightr
+    from: "2.1.0"
 
 targets:
   Glance:
@@ -35,7 +29,8 @@ targets:
       - Sources
     resources:
       - Resources
-    dependencies: []
+    dependencies:
+      - package: Highlightr
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.glance.app
@@ -45,8 +40,6 @@ targets:
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/../Frameworks"
         SWIFT_EMIT_LOC_STRINGS: YES
-        CONFIGURATION_BUILD_DIR: "$(SRCROOT)/debug/$(CONFIGURATION)"
-        BUILD_ROOT: "$(SRCROOT)/debug"
     entitlements:
       path: Glance.entitlements
       properties:

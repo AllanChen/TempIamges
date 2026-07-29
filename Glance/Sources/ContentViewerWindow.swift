@@ -1,5 +1,6 @@
 import AppKit
 import WebKit
+import Highlightr
 
 /// Standalone window that displays markdown, plain-text formats (txt/json/xml),
 /// or arbitrary web pages from a preview-panel tile.
@@ -11,19 +12,20 @@ import WebKit
 ///   swaps to the raw source in NSTextView.
 /// - For local files a Save button writes the buffer back to disk. Remote
 ///   files are editable in-memory but the Save button is disabled.
-final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
+final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelegate {
     private let webView: WKWebView
     private let textView: NSTextView
     private let textScroll: NSScrollView
-    private let toolbarBar = NSView()
+    private let toolbarBar = PanelStyle.makeBarBlur()
+    private let filenameLabel = NSTextField(labelWithString: "")  // identity: file name
     private let saveButton = NSButton()
-    private let toggleButton = NSButton()  // Edit ↔ View for markdown
-    private let locateButton = NSButton()  // Reveal in Finder, local-only
-    private let modifiedLabel = NSTextField(labelWithString: "")
+    private var findButton = NSButton()     // toggles the find bar
+    private var locateButton = NSButton()   // Reveal in Finder, local-only
+    private let modifiedLabel = NSTextField(labelWithString: "")  // identity subtitle: path · modified
     private let addressBar = NSTextField()
 
     // WebView find UI
-    private let webFindBar = NSView()
+    private let webFindBar = PanelStyle.makeBarBlur()
     private let webFindField = NSTextField()
     private let webFindCountLabel = NSTextField(labelWithString: "")
     private var webFindMatchCount = 0
@@ -40,19 +42,9 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private enum Kind { case webpage, markdown, text, pdf }
     private var kind: Kind = .webpage
     private var currentURL: URL?
-    private var isEditing: Bool = false
-
-    /// Resolve a (possibly dynamic) NSColor against the app's current
-    /// effective appearance. Without this wrapper, semantic NSColors lose
-    /// their theme binding when assigned to `layer.backgroundColor` outside
-    /// a drawing context (see PreviewPanel.resolvedCG for the long story).
-    private static func resolvedCG(_ color: NSColor) -> CGColor {
-        var resolved: CGColor!
-        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
-            resolved = color.cgColor
-        }
-        return resolved
-    }
+    /// True once the editable text view has unsaved user edits. Drives whether
+    /// the always-visible Save button is clickable.
+    private var isDirty: Bool = false
 
     init() {
         // Standard desktop browser dimensions — fits most modern websites
@@ -69,21 +61,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         webView = WKWebView(frame: .zero, configuration: config)
         webView.allowsMagnification = false
 
-        let tv = NSTextView(frame: .zero)
-        tv.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        tv.isRichText = false
-        tv.allowsUndo = true
-        tv.isAutomaticQuoteSubstitutionEnabled = false
-        tv.isAutomaticDashSubstitutionEnabled = false
-        tv.isAutomaticTextReplacementEnabled = false
-        tv.isAutomaticSpellingCorrectionEnabled = false
-        tv.isVerticallyResizable = true
-        tv.isHorizontallyResizable = false
-        tv.autoresizingMask = [.width]
-        // Built-in find-bar support: ⌘F opens an inline find bar across the
-        // top of the scroll view; ⌘G / ⌘⇧G cycle next / previous matches.
-        tv.usesFindBar = true
-        tv.isIncrementalSearchingEnabled = true
+        let tv = PanelStyle.makeCodeTextView()
         textView = tv
 
         let scroll = NSScrollView(frame: .zero)
@@ -102,6 +80,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         )
         self.isReleasedWhenClosed = false
         self.title = "Glance".localized
+        // Match ContentPanel's dark-glass chrome regardless of system theme.
+        appearance = NSAppearance(named: .darkAqua)
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
         installEscapeKeyMonitor()
         installZoomMonitor()
         observeThemeChanges()
@@ -120,55 +102,40 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         kind = .webpage
         title = url.host ?? url.absoluteString
         webView.load(URLRequest(url: url))
-        saveButton.isHidden = true
-        toggleButton.isHidden = true
-        modifiedLabel.isHidden = true
         locateButton.isHidden = !url.isFileURL
-        addressBar.isHidden = false
-        addressBar.stringValue = url.absoluteString
-        updateModifiedDate(for: url)
+        showAddressBarIdentity(for: url)
+        refreshSaveButton()
         layoutToolbarButtons()
         showWebView()
         resizeToDocumentSize()
     }
 
-    /// Loads a markdown file. Starts in rendered (view) mode with an Edit
-    /// toggle that swaps to the raw source.
+    /// Loads a markdown file — rendered (read-only). No edit mode; the styled
+    /// view is what you see.
     func loadMarkdown(_ url: URL) {
         resetZoom()
         currentURL = url
         kind = .markdown
         title = url.lastPathComponent
-        isEditing = false
-        toggleButton.isHidden = false
-        toggleButton.title = "Edit".localized
-        saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
-        modifiedLabel.isHidden = false
-        addressBar.isHidden = true
-        updateModifiedDate(for: url)
+        showFileIdentity(for: url)
+        refreshSaveButton()
         layoutToolbarButtons()
         resizeToDocumentSize()
         renderMarkdownView(url: url)
     }
 
-    /// Loads a plain-text or code file. Defaults to a syntax-highlighted
-    /// read-only view; an "Edit" toggle swaps to the raw source in NSTextView.
+    /// Loads a plain-text or code file directly into the editable text view.
+    /// Save lights up once the content is modified.
     func loadText(_ url: URL) {
         resetZoom()
         currentURL = url
         kind = .text
         title = url.lastPathComponent
-        isEditing = false
-        toggleButton.isHidden = false
-        toggleButton.title = "Edit".localized
-        saveButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
-        modifiedLabel.isHidden = false
-        addressBar.isHidden = true
-        updateModifiedDate(for: url)
+        showFileIdentity(for: url)
         layoutToolbarButtons()
-        renderHighlightedCode(url: url)
+        loadEditableText(url: url)
         resizeToDocumentSize()
     }
 
@@ -179,12 +146,9 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         currentURL = url
         kind = .pdf
         title = url.lastPathComponent
-        saveButton.isHidden = true
-        toggleButton.isHidden = true
         locateButton.isHidden = !url.isFileURL
-        modifiedLabel.isHidden = false
-        addressBar.isHidden = true
-        updateModifiedDate(for: url)
+        showFileIdentity(for: url)
+        refreshSaveButton()
         layoutToolbarButtons()
         resizeToDocumentSize()
         if url.isFileURL {
@@ -222,73 +186,78 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     private func buildLayout() {
         guard let content = contentView else { return }
         let bounds = content.bounds
-        let toolbarH: CGFloat = 44
+        let toolbarH: CGFloat = 52
 
-        // Toolbar across the top.
+        // Toolbar across the top: identity block on the left, action icons +
+        // Save on the right (positions set in layoutToolbarButtons).
         toolbarBar.frame = NSRect(x: 0, y: bounds.height - toolbarH,
                                 width: bounds.width, height: toolbarH)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
-        toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
-        let sep = NSView(frame: NSRect(x: 0, y: 0, width: bounds.width, height: 1))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
-        sep.autoresizingMask = [.width]
-        toolbarBar.addSubview(sep)
+        PanelStyle.addHairline(to: toolbarBar, edge: .minY)
 
-        // Right-anchored toolbar: [ Toggle ] [ Save ] [ 📁 ]
-        locateButton.bezelStyle = .rounded
-        locateButton.image = NSImage(systemSymbolName: "folder.fill",
-                                       accessibilityDescription: "Reveal in Finder".localized)
-        locateButton.imagePosition = .imageOnly
-        locateButton.target = self
-        locateButton.action = #selector(locateTapped)
-        locateButton.toolTip = "Reveal in Finder".localized
-        locateButton.autoresizingMask = [.minXMargin]
-        locateButton.isHidden = true
-        toolbarBar.addSubview(locateButton)
+        // ── Identity (left): filename over a path · modified subtitle ──
+        filenameLabel.font = PanelStyle.headline
+        filenameLabel.textColor = PanelStyle.textPrimary
+        filenameLabel.lineBreakMode = .byTruncatingMiddle
+        filenameLabel.maximumNumberOfLines = 1
+        filenameLabel.autoresizingMask = [.width]
+        toolbarBar.addSubview(filenameLabel)
 
-        saveButton.bezelStyle = .rounded
-        saveButton.title = "Save".localized
-        saveButton.keyEquivalent = "s"
-        saveButton.keyEquivalentModifierMask = [.command]
-        saveButton.target = self
-        saveButton.action = #selector(saveTapped)
-        saveButton.autoresizingMask = [.minXMargin]
-        saveButton.isHidden = true
-        toolbarBar.addSubview(saveButton)
-
-        toggleButton.bezelStyle = .rounded
-        toggleButton.title = "Edit".localized
-        toggleButton.target = self
-        toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.autoresizingMask = [.minXMargin]
-        toggleButton.isHidden = true
-        toolbarBar.addSubview(toggleButton)
-
-        modifiedLabel.font = NSFont.systemFont(ofSize: 11)
-        modifiedLabel.textColor = .tertiaryLabelColor
-        modifiedLabel.alignment = .right
-        modifiedLabel.lineBreakMode = .byTruncatingTail
+        modifiedLabel.font = PanelStyle.caption
+        modifiedLabel.textColor = PanelStyle.textSecondary
+        modifiedLabel.alignment = .left
+        modifiedLabel.lineBreakMode = .byTruncatingHead   // keep the filename tail
         modifiedLabel.maximumNumberOfLines = 1
         modifiedLabel.autoresizingMask = [.width]
         toolbarBar.addSubview(modifiedLabel)
 
-        addressBar.font = NSFont.systemFont(ofSize: 12)
-        addressBar.alignment = .center
+        // Address bar replaces the identity block for web pages.
+        addressBar.font = PanelStyle.label
+        addressBar.alignment = .left
         addressBar.isEditable = true
         addressBar.isSelectable = true
-        addressBar.isBordered = true
-        addressBar.backgroundColor = NSColor.textBackgroundColor
-        addressBar.textColor = .secondaryLabelColor
-        addressBar.frame = NSRect(x: 80, y: 10, width: bounds.width - 160, height: 24)
+        addressBar.isBordered = false
+        addressBar.isBezeled = false
+        addressBar.drawsBackground = true
+        addressBar.backgroundColor = PanelStyle.controlFill
+        addressBar.textColor = PanelStyle.textSecondary
+        addressBar.wantsLayer = true
+        addressBar.layer?.cornerRadius = 6
+        addressBar.layer?.masksToBounds = true
         addressBar.autoresizingMask = [.width]
         addressBar.isHidden = true
         addressBar.target = self
         addressBar.action = #selector(addressBarSubmitted)
         toolbarBar.addSubview(addressBar)
 
+        // ── Actions (right): Find, Locate (icons) + Save (text) ──
+        findButton = PanelStyle.makeIconButton(symbol: "magnifyingglass",
+                                               tooltip: "Find in page".localized,
+                                               target: self, action: #selector(findTapped))
+        findButton.autoresizingMask = [.minXMargin]
+        toolbarBar.addSubview(findButton)
+
+        locateButton = PanelStyle.makeIconButton(symbol: "folder",
+                                                 tooltip: "Reveal in Finder".localized,
+                                                 target: self, action: #selector(locateTapped))
+        locateButton.autoresizingMask = [.minXMargin]
+        locateButton.isHidden = true
+        toolbarBar.addSubview(locateButton)
+
+        saveButton.bezelStyle = .texturedRounded
+        saveButton.title = "Save".localized
+        saveButton.keyEquivalent = "s"
+        saveButton.keyEquivalentModifierMask = [.command]
+        saveButton.target = self
+        saveButton.action = #selector(saveTapped)
+        saveButton.autoresizingMask = [.minXMargin]
+        saveButton.isEnabled = false   // always visible, lit only when dirty
+        toolbarBar.addSubview(saveButton)
+
         content.addSubview(toolbarBar)
+
+        // Dirty-tracking for the editable text view.
+        textView.delegate = self
 
         // Body — webView + textScroll occupy the area below the toolbar.
         let bodyFrame = NSRect(x: 0, y: 0, width: bounds.width,
@@ -314,40 +283,33 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
             width: bodyFrame.width, height: findBarH
         )
         webFindBar.autoresizingMask = [.width, .minYMargin]
-        webFindBar.wantsLayer = true
-        webFindBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
         webFindBar.isHidden = true
-
-        let findSep = NSView(frame: NSRect(x: 0, y: 0, width: bodyFrame.width, height: 1))
-        findSep.wantsLayer = true
-        findSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
-        findSep.autoresizingMask = [.width]
-        webFindBar.addSubview(findSep)
+        PanelStyle.addHairline(to: webFindBar, edge: .minY)
 
         webFindField.placeholderString = "Find in page".localized
         webFindField.frame = NSRect(x: 12, y: 6, width: 240, height: 24)
         webFindField.delegate = self
         webFindBar.addSubview(webFindField)
 
-        webFindCountLabel.font = NSFont.systemFont(ofSize: 11)
-        webFindCountLabel.textColor = .secondaryLabelColor
+        webFindCountLabel.font = PanelStyle.caption
+        webFindCountLabel.textColor = PanelStyle.textSecondary
         webFindCountLabel.frame = NSRect(x: 260, y: 9, width: 80, height: 18)
         webFindBar.addSubview(webFindCountLabel)
 
         let prevBtn = NSButton(title: "‹", target: self, action: #selector(webFindPrev))
-        prevBtn.bezelStyle = .rounded
+        prevBtn.bezelStyle = .texturedRounded
         prevBtn.frame = NSRect(x: bodyFrame.width - 140, y: 6, width: 32, height: 24)
         prevBtn.autoresizingMask = [.minXMargin]
         webFindBar.addSubview(prevBtn)
 
         let nextBtn = NSButton(title: "›", target: self, action: #selector(webFindNext))
-        nextBtn.bezelStyle = .rounded
+        nextBtn.bezelStyle = .texturedRounded
         nextBtn.frame = NSRect(x: bodyFrame.width - 102, y: 6, width: 32, height: 24)
         nextBtn.autoresizingMask = [.minXMargin]
         webFindBar.addSubview(nextBtn)
 
         let doneBtn = NSButton(title: "Done".localized, target: self, action: #selector(hideWebFindBar))
-        doneBtn.bezelStyle = .rounded
+        doneBtn.bezelStyle = .texturedRounded
         doneBtn.frame = NSRect(x: bodyFrame.width - 60, y: 6, width: 50, height: 24)
         doneBtn.autoresizingMask = [.minXMargin]
         webFindBar.addSubview(doneBtn)
@@ -356,53 +318,85 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         layoutToolbarButtons()
     }
 
-    /// Re-pack the right-anchored toolbar buttons so hidden ones collapse and
-    /// visible ones stay grouped, then resize modifiedLabel to fill the
-    /// remaining space with a consistent gap before the button group.
+    /// Pack the right action group (Save + icon buttons) right-to-left, hidden
+    /// ones collapsing, then size the left identity block / address bar to fill
+    /// the remaining space.
     private func layoutToolbarButtons() {
-        let gap: CGFloat = 10
-        let btnW: CGFloat = 72
-        let btnH: CGFloat = 26
-        let btnY: CGFloat = 9
-        let rightMargin: CGFloat = 20
-        let leftMargin: CGFloat = 20
-        let labelButtonGap: CGFloat = 24
+        let gap: CGFloat = 8
+        let saveW: CGFloat = 72
+        let iconW: CGFloat = 30
+        let ctrlH: CGFloat = 26
+        let rightMargin: CGFloat = 16
+        let leftMargin: CGFloat = 18
+        let labelGap: CGFloat = 16
+        let barH = toolbarBar.bounds.height
+        let ctrlY = (barH - ctrlH) / 2
         let bodyWidth = toolbarBar.bounds.width
 
-        let buttons: [NSButton] = [locateButton, saveButton, toggleButton]
+        // Right group, packed right→left; each entry carries its width.
+        let group: [(NSButton, CGFloat)] = [
+            (saveButton, saveW),
+            (locateButton, iconW),
+            (findButton, iconW),
+        ]
         var currentRight = bodyWidth - rightMargin
         var leftmostVisibleX: CGFloat?
-        for button in buttons {
+        for (button, w) in group {
             guard !button.isHidden else { continue }
-            let x = currentRight - btnW
-            button.frame = NSRect(x: x, y: btnY, width: btnW, height: btnH)
+            let x = currentRight - w
+            button.frame = NSRect(x: x, y: ctrlY, width: w, height: ctrlH)
             leftmostVisibleX = x
             currentRight = x - gap
         }
 
-        if !modifiedLabel.isHidden {
-            let rightEdge = leftmostVisibleX.map { $0 - labelButtonGap } ?? (bodyWidth - rightMargin)
-            modifiedLabel.frame = NSRect(
-                x: leftMargin,
-                y: 13,
-                width: max(100, rightEdge - leftMargin),
-                height: 18
-            )
+        let identityRight = leftmostVisibleX.map { $0 - labelGap } ?? (bodyWidth - rightMargin)
+        let identityWidth = max(80, identityRight - leftMargin)
+
+        // Two-line identity block (filename over subtitle).
+        if !filenameLabel.isHidden {
+            filenameLabel.frame = NSRect(x: leftMargin, y: barH - 29, width: identityWidth, height: 18)
+            modifiedLabel.frame  = NSRect(x: leftMargin, y: 9, width: identityWidth, height: 15)
+        }
+        // Address bar (web pages) fills the same area, vertically centered.
+        if !addressBar.isHidden {
+            addressBar.frame = NSRect(x: leftMargin, y: (barH - 26) / 2, width: identityWidth, height: 26)
         }
     }
 
-    private func updateModifiedDate(for url: URL?) {
-        guard let url = url, url.isFileURL else {
-            modifiedLabel.stringValue = ""
-            return
+    // MARK: - Identity (toolbar left)
+
+    private func showFileIdentity(for url: URL) {
+        addressBar.isHidden = true
+        filenameLabel.isHidden = false
+        modifiedLabel.isHidden = false
+        filenameLabel.stringValue = url.lastPathComponent
+        modifiedLabel.stringValue = Self.subtitleString(for: url)
+        modifiedLabel.toolTip = url.isFileURL ? url.path : url.absoluteString
+    }
+
+    private func showAddressBarIdentity(for url: URL) {
+        filenameLabel.isHidden = true
+        modifiedLabel.isHidden = true
+        addressBar.isHidden = false
+        addressBar.stringValue = url.absoluteString
+    }
+
+    /// "~/dir · Modified <date>" subtitle shown under the filename.
+    static func subtitleString(for url: URL) -> String {
+        guard url.isFileURL else { return url.absoluteString }
+        var parts: [String] = []
+        let dir = (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+        if !dir.isEmpty { parts.append(dir) }
+        if let date = modificationDate(for: url) {
+            parts.append("Modified ".localized + friendlyDate(date))
         }
-        let fm = FileManager.default
-        guard let attrs = try? fm.attributesOfItem(atPath: url.path),
-              let date = attrs[.modificationDate] as? Date else {
-            modifiedLabel.stringValue = ""
-            return
-        }
-        modifiedLabel.stringValue = "Modified ".localized + Self.friendlyDate(date)
+        return parts.joined(separator: " · ")
+    }
+
+    private static func modificationDate(for url: URL) -> Date? {
+        guard url.isFileURL,
+              let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) else { return nil }
+        return attrs[.modificationDate] as? Date
     }
 
     /// Human-readable date string: relative when recent, absolute otherwise.
@@ -411,6 +405,13 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         fmt.dateStyle = .medium
         fmt.timeStyle = .short
         return fmt.string(from: date)
+    }
+
+    /// Save is always visible; only clickable for a dirty, local, editable file.
+    private func refreshSaveButton() {
+        saveButton.isHidden = false
+        let editable = (kind == .text) && (currentURL?.isFileURL ?? false)
+        saveButton.isEnabled = editable && isDirty
     }
 
     private func showWebView() {
@@ -437,65 +438,32 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         }
     }
 
-    private func renderHighlightedCode(url: URL) {
+    /// Load raw file/URL text into the editable text view. Assigning
+    /// `textView.string` does not fire `textDidChange`, so the buffer starts
+    /// clean (isDirty = false) until the user actually types.
+    private func loadEditableText(url: URL) {
+        isDirty = false
         Task.detached { [weak self] in
             let raw = await Self.fetchTextContent(from: url)
-            let lang = Self.languageIdentifier(for: url)
-            let html = Self.wrapCodeInHTML(raw, language: lang)
             await MainActor.run {
-                self?.webView.loadHTMLString(html, baseURL: url)
-                self?.showWebView()
-            }
-        }
-    }
-
-    private func loadEditableText(url: URL, prettyPrint: Bool) {
-        Task.detached { [weak self] in
-            let raw = await Self.fetchTextContent(from: url)
-            let body: String
-            if prettyPrint {
-                let ext = url.pathExtension.lowercased()
-                switch ext {
-                case "json": body = Self.prettyPrintJSON(raw) ?? raw
-                case "xml":  body = Self.prettyPrintXML(raw)  ?? raw
-                default:     body = raw
-                }
-            } else {
-                body = raw
-            }
-            await MainActor.run {
-                self?.textView.string = body
-                self?.showTextView()
+                guard let self = self else { return }
+                (self.textView.textStorage as? CodeAttributedString)?.language = Self.hljsLanguage(for: url)
+                self.textView.string = raw
+                self.isDirty = false
+                self.showTextView()
+                self.refreshSaveButton()
             }
         }
     }
 
     // MARK: - Actions
 
-    @objc private func toggleEditTapped() {
-        guard let url = currentURL else { return }
-        guard kind == .markdown || kind == .text else { return }
-        isEditing.toggle()
-        if isEditing {
-            toggleButton.title = "View".localized
-            saveButton.isHidden = !url.isFileURL
-            if kind == .markdown {
-                // Show raw markdown source in the editor (no pretty-printing).
-                loadEditableText(url: url, prettyPrint: false)
-            } else {
-                // Show raw code source in the editor.
-                loadEditableText(url: url, prettyPrint: false)
-            }
-        } else {
-            toggleButton.title = "Edit".localized
-            saveButton.isHidden = true
-            if kind == .markdown {
-                renderMarkdownView(url: url)
-            } else {
-                renderHighlightedCode(url: url)
-            }
+    @objc private func findTapped() {
+        if !webView.isHidden {
+            showWebFindBar()
+        } else if !textScroll.isHidden {
+            invokeTextFinder(.showFindInterface)
         }
-        layoutToolbarButtons()
     }
 
     @objc private func locateTapped() {
@@ -504,10 +472,12 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     }
 
     @objc private func saveTapped() {
-        guard let url = currentURL, url.isFileURL else { return }
+        guard kind == .text, let url = currentURL, url.isFileURL else { return }
         let body = textView.string
         do {
             try body.write(to: url, atomically: true, encoding: .utf8)
+            isDirty = false
+            saveButton.isEnabled = false
             saveButton.title = "Saved ✓".localized
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 self?.saveButton.title = "Save".localized
@@ -517,6 +487,13 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
             alert.messageText = String(format: "Couldn't save %@".localized, url.lastPathComponent)
             alert.beginSheetModal(for: self, completionHandler: nil)
         }
+    }
+
+    // NSTextViewDelegate — mark the buffer dirty on user edits so Save lights up.
+    func textDidChange(_ notification: Notification) {
+        guard (notification.object as? NSTextView) === textView else { return }
+        isDirty = true
+        refreshSaveButton()
     }
 
     @objc private func addressBarSubmitted() {
@@ -633,7 +610,13 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
         case .text:
             let baseSize: CGFloat = 13
             let newSize = max(6, min(200, baseSize * currentZoomLevel))
-            textView.font = NSFont.monospacedSystemFont(ofSize: newSize, weight: .regular)
+            let font = NSFont.monospacedSystemFont(ofSize: newSize, weight: .regular)
+            textView.font = font
+            if let storage = textView.textStorage as? CodeAttributedString {
+                storage.highlightr.theme.codeFont = font
+                let lang = storage.language
+                storage.language = lang   // re-highlight at the new size
+            }
         }
     }
 
@@ -711,13 +694,11 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     }
 
     @objc private func updateToolbarAppearance() {
-        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
-        if let sep = toolbarBar.subviews.first(where: { $0.frame.height == 1 }) {
-            sep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
-        }
-        webFindBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
-        if let findSep = webFindBar.subviews.first(where: { $0.frame.height == 1 }) {
-            findSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
+        // Dark-glass chrome is theme-independent; just re-tint the hairlines.
+        for bar in [toolbarBar, webFindBar] {
+            for sub in bar.subviews where sub.frame.height == 1 {
+                sub.layer?.backgroundColor = PanelStyle.hairline.cgColor
+            }
         }
     }
 
@@ -782,7 +763,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
 
     private func showWebFindBar() {
         webFindBar.isHidden = false
-        webFindBar.frame.origin.y = (contentView?.bounds.height ?? 0) - 44 /* toolbar */ - webFindBar.bounds.height
+        webFindBar.frame.origin.y = (contentView?.bounds.height ?? 0) - 52 /* toolbar */ - webFindBar.bounds.height
         makeFirstResponder(webFindField)
         webFindField.selectText(nil)
         if !webFindField.stringValue.isEmpty {
@@ -969,6 +950,17 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
     })();
     """
 
+    /// Language identifier for Highlightr (highlight.js). Reuses the Prism map
+    /// and remaps the few names that differ between the two.
+    static func hljsLanguage(for url: URL) -> String? {
+        guard let lang = languageIdentifier(for: url) else { return nil }
+        switch lang {
+        case "markup": return "xml"
+        case "batch":  return "dos"
+        default:       return lang
+        }
+    }
+
     /// Map a file extension to a Prism.js language identifier.
     static func languageIdentifier(for url: URL) -> String? {
         switch url.pathExtension.lowercased() {
@@ -1043,23 +1035,28 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
             body {
               font-family: ui-monospace, "SF Mono", Menlo, monospace;
               font-size: 13px;
-              line-height: 1.5;
+              line-height: 1.6;
               margin: 0;
-              padding: 16px 20px;
-              background: #1e1e1e;
-              color: #d4d4d4;
+              padding: 16px 22px 40px;
+              background: #1b1d21;
+              color: #d6d9dd;
+              -webkit-font-smoothing: antialiased;
             }
+            ::selection { background: rgba(108,182,255,0.30); }
             .file-header {
               font-family: -apple-system, BlinkMacSystemFont, sans-serif;
               font-size: 11px;
-              font-weight: 500;
-              color: #888;
-              margin-bottom: 12px;
-              padding-bottom: 8px;
-              border-bottom: 1px solid #333;
+              font-weight: 600;
+              letter-spacing: 0.02em;
+              color: #9aa0a6;
+              margin: -4px -6px 14px;
+              padding: 6px 10px;
+              border-radius: 7px;
+              background: rgba(255,255,255,0.05);
               display: flex;
               justify-content: space-between;
             }
+            .file-header span:first-child { text-transform: uppercase; }
             pre {
               margin: 0;
               background: transparent !important;
@@ -1067,7 +1064,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
             code {
               font-family: ui-monospace, "SF Mono", Menlo, monospace;
               font-size: 13px;
-              line-height: 1.55;
+              line-height: 1.6;
             }
             pre[class*="language-"] {
               background: transparent !important;
@@ -1079,8 +1076,9 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
               text-shadow: none !important;
             }
             :not(pre) > code[class*="language-"] {
-              background: #2a2a2a !important;
+              background: rgba(255,255,255,0.08) !important;
               padding: 2px 5px !important;
+              border-radius: 4px;
             }
           </style>
         </head>
@@ -1109,36 +1107,69 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                   max-width: 760px; margin: 32px auto; padding: 0 24px;
-                   line-height: 1.65; color: #1f1f1f; }
-            h1, h2, h3, h4 { line-height: 1.25; margin-top: 1.5em; }
-            h1 { border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
-            p, ul, ol, blockquote { margin: 0.85em 0; }
-            blockquote { border-left: 3px solid #d0d0d0; padding-left: 1em; color: #555; }
-            code { font-family: ui-monospace, "SF Mono", Menlo, monospace;
-                   background: #f3f3f3; padding: 2px 6px; border-radius: 4px;
-                   font-size: 0.92em; }
-            pre { background: #f6f8fa; padding: 14px 16px; border-radius: 6px;
-                  white-space: pre-wrap; word-wrap: break-word;
-                  overflow-x: hidden; line-height: 1.5; }
-            pre code { background: transparent; padding: 0; font-size: 0.88em; }
-            img { max-width: 100%; height: auto; border-radius: 4px; }
-            a { color: #0a66c2; text-decoration: none; }
-            a:hover { text-decoration: underline; }
-            table { border-collapse: collapse; margin: 1em 0; }
-            th, td { border: 1px solid #ddd; padding: 6px 12px; }
-            th { background: #f6f8fa; }
-            @media (prefers-color-scheme: dark) {
-              body { background: #1c1c1c; color: #e5e5e5; }
-              h1 { border-color: #333; }
-              blockquote { border-color: #444; color: #aaa; }
-              code { background: #2a2a2a; }
-              pre { background: #1a1a1a; }
-              a { color: #6cb6ff; }
-              th, td { border-color: #333; }
-              th { background: #2a2a2a; }
+            /* Dark reading theme — committed to dark so the rendered page sits
+               cohesively inside Glance's dark-glass panel regardless of the
+               system appearance. */
+            :root {
+              --bg: #1b1d21;
+              --fg: #e7e9ec;
+              --muted: #9aa0a6;
+              --hairline: rgba(255,255,255,0.10);
+              --fill: rgba(255,255,255,0.06);
+              --fill-strong: rgba(255,255,255,0.09);
+              --accent: #6cb6ff;
             }
+            * { box-sizing: border-box; }
+            html { -webkit-text-size-adjust: 100%; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                           system-ui, sans-serif;
+              font-size: 15px;
+              line-height: 1.72;
+              color: var(--fg);
+              background: var(--bg);
+              max-width: 740px;
+              margin: 0 auto;
+              padding: 40px 28px 64px;
+              -webkit-font-smoothing: antialiased;
+            }
+            ::selection { background: rgba(108,182,255,0.30); }
+            h1, h2, h3, h4, h5, h6 {
+              line-height: 1.3; margin: 1.6em 0 0.6em; font-weight: 600;
+              letter-spacing: -0.01em; color: #f3f5f8;
+            }
+            h1 { font-size: 1.9em; border-bottom: 1px solid var(--hairline); padding-bottom: 0.3em; }
+            h2 { font-size: 1.5em; border-bottom: 1px solid var(--hairline); padding-bottom: 0.25em; }
+            h3 { font-size: 1.25em; }
+            h4 { font-size: 1.05em; }
+            p, ul, ol, blockquote, table { margin: 0.9em 0; }
+            ul, ol { padding-left: 1.4em; }
+            li { margin: 0.25em 0; }
+            blockquote {
+              border-left: 3px solid var(--accent);
+              padding: 0.2em 0 0.2em 1em; margin-left: 0;
+              color: var(--muted);
+            }
+            hr { border: none; border-top: 1px solid var(--hairline); margin: 2em 0; }
+            code {
+              font-family: ui-monospace, "SF Mono", Menlo, monospace;
+              background: var(--fill-strong); padding: 0.15em 0.4em;
+              border-radius: 5px; font-size: 0.88em;
+            }
+            pre {
+              background: #111317; border: 1px solid var(--hairline);
+              padding: 14px 16px; border-radius: 10px;
+              white-space: pre-wrap; word-wrap: break-word;
+              overflow-x: auto; line-height: 1.55;
+            }
+            pre code { background: transparent; padding: 0; font-size: 0.86em; border: none; }
+            img { max-width: 100%; height: auto; border-radius: 8px; }
+            a { color: var(--accent); text-decoration: none; }
+            a:hover { text-decoration: underline; }
+            table { border-collapse: collapse; width: 100%; font-size: 0.92em; }
+            th, td { border: 1px solid var(--hairline); padding: 7px 12px; text-align: left; }
+            th { background: var(--fill); font-weight: 600; }
+            tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
           </style>
         </head>
         <body>

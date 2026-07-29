@@ -1,12 +1,32 @@
 import AppKit
 import CoreGraphics
 
-class KeyboardMonitor: NSObject {
+/// Watches the global keyboard for the activation hotkey via a `CGEventTap`.
+///
+/// An active session-level head-insert tap sees every keystroke *before* the
+/// focused app, and the WindowServer blocks delivery of each key until the
+/// callback returns. Therefore the tap MUST live on its own thread with its own
+/// run loop — if it ran on the main run loop, any main-thread stall (layout,
+/// synchronous I/O, a busy timer) would freeze keyboard input system-wide.
+///
+/// The callback only updates cheap modifier state and hands the event straight
+/// back; activate/deactivate notifications are posted asynchronously to the main
+/// thread so the callback always returns immediately.
+final class KeyboardMonitor: NSObject {
     static let previewModeDidActivate = Notification.Name("KeyboardMonitor.previewModeDidActivate")
     static let previewModeDidDeactivate = Notification.Name("KeyboardMonitor.previewModeDidDeactivate")
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+
+    // Dedicated tap thread + its run loop. Keeping the tap off the main run loop
+    // is what prevents a busy main thread from blocking all keyboard input.
+    private var tapThread: Thread?
+    private var tapRunLoop: CFRunLoop?
+
+    // Hotkey/modifier state. Read and written from both the tap thread and the
+    // main thread (preference + wake notifications), so guarded by `stateLock`.
+    private let stateLock = NSLock()
     private var cmdHeld: Bool = false
     private var shiftHeld: Bool = false
     private var optionHeld: Bool = false
@@ -32,23 +52,37 @@ class KeyboardMonitor: NSObject {
     }
 
     @objc private func preferencesChanged() {
-        checkPreviewModeStateChanged()
+        stateLock.lock()
+        let change = stateChangeLocked()
+        stateLock.unlock()
+        postIfChanged(change)
     }
 
     @objc private func systemDidWake() {
+        stateLock.lock()
         cmdHeld     = false
         shiftHeld   = false
         optionHeld  = false
         controlHeld = false
         activeKeyCodes.removeAll()
-        if wasPreviewModeActive {
-            wasPreviewModeActive = false
+        let wasActive = wasPreviewModeActive
+        wasPreviewModeActive = false
+        stateLock.unlock()
+
+        if wasActive {
             Logger.info("KeyboardMonitor: System woke — forcing preview mode DEACTIVATED")
-            NotificationCenter.default.post(name: KeyboardMonitor.previewModeDidDeactivate, object: self)
+            postOnMain(KeyboardMonitor.previewModeDidDeactivate)
         }
     }
 
+    /// Current activation state. Locks because it reads the shared modifier set.
     var previewModeActive: Bool {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return previewModeActiveLocked()
+    }
+
+    /// `stateLock` must be held by the caller.
+    private func previewModeActiveLocked() -> Bool {
         let prefs = Preferences.shared
         let required = prefs.effectiveModifiers
         guard !required.isEmpty else { return false }
@@ -64,117 +98,157 @@ class KeyboardMonitor: NSObject {
     }
 
     func startMonitoring() -> Bool {
+        guard eventTap == nil else { return true }
+
         let eventMask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
                                      | (1 << CGEventType.keyDown.rawValue)
                                      | (1 << CGEventType.keyUp.rawValue)
 
-        let callback: CGEventTapCallBack = { proxy, type, event, refcon in
-            guard let refcon = refcon else { return Unmanaged.passRetained(event) }
+        let callback: CGEventTapCallBack = { _, type, event, refcon in
+            guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
             let monitor = Unmanaged<KeyboardMonitor>.fromOpaque(refcon).takeUnretainedValue()
-            let discard = monitor.handleEvent(proxy: proxy, type: type, event: event)
-            if discard {
-                return nil
+
+            // The system disables the tap if a callback runs too long or on
+            // certain user input; re-enable it so the hotkey keeps working.
+            if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                if let tap = monitor.eventTap {
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+                return Unmanaged.passUnretained(event)
             }
-            return Unmanaged.passRetained(event)
+
+            let discard = monitor.handleEvent(type: type, event: event)
+            return discard ? nil : Unmanaged.passUnretained(event)
         }
 
-        eventTap = CGEvent.tapCreate(
+        // Create the tap on the calling thread so we can report success now…
+        guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: eventMask,
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
-        )
-
-        guard let eventTap = eventTap else {
+        ) else {
             Logger.info("KeyboardMonitor: Failed to create event tap")
             return false
         }
+        eventTap = tap
 
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
-
-        guard let runLoopSource = runLoopSource else {
+        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        guard runLoopSource != nil else {
             Logger.info("KeyboardMonitor: Failed to create run loop source")
+            eventTap = nil
             return false
         }
 
-        CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
-        CGEvent.tapEnable(tap: eventTap, enable: true)
-        
-        Logger.info("KeyboardMonitor: Event tap created and enabled successfully")
+        // …but service it on a dedicated thread so a busy main thread can never
+        // stall keyboard delivery.
+        let thread = Thread { [weak self] in
+            self?.runTapThread()
+        }
+        thread.name = "com.glance.keyboard-tap"
+        thread.qualityOfService = .userInteractive
+        tapThread = thread
+        thread.start()
 
+        Logger.info("KeyboardMonitor: Event tap created; servicing on dedicated thread")
         return true
+    }
+
+    /// Entry point for the dedicated tap thread: bind the source to this
+    /// thread's run loop and keep it spinning until the thread is cancelled.
+    private func runTapThread() {
+        guard let source = runLoopSource, let tap = eventTap else { return }
+        let runLoop = CFRunLoopGetCurrent()
+        tapRunLoop = runLoop
+        CFRunLoopAddSource(runLoop, source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+        Logger.info("KeyboardMonitor: Tap run loop started")
+
+        // Wake every 0.5s to re-check the cancel flag; the tap source wakes the
+        // loop on its own whenever an event arrives.
+        while !Thread.current.isCancelled {
+            CFRunLoopRunInMode(.defaultMode, 0.5, false)
+        }
+        Logger.info("KeyboardMonitor: Tap run loop stopped")
     }
 
     func stopMonitoring() {
         if let eventTap = eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
         }
-
-        if let runLoopSource = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+        tapThread?.cancel()
+        if let tapRunLoop = tapRunLoop {
+            CFRunLoopStop(tapRunLoop)   // wake the loop so it observes the cancel
         }
-
         eventTap = nil
         runLoopSource = nil
+        tapThread = nil
+        tapRunLoop = nil
     }
 
-    private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Bool {
+    /// Runs on the dedicated tap thread. Keep this cheap: update state, post the
+    /// activate/deactivate notification asynchronously, and return at once.
+    private func handleEvent(type: CGEventType, event: CGEvent) -> Bool {
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+        var discard = false
+        var change: Bool?
+
+        stateLock.lock()
         switch type {
         case .flagsChanged:
             let flags = event.flags
-            let prevCmd = cmdHeld
-            let prevShift = shiftHeld
-            let prevOpt = optionHeld
-            let prevCtrl = controlHeld
-
             cmdHeld     = flags.contains(.maskCommand)
             shiftHeld   = flags.contains(.maskShift)
             optionHeld  = flags.contains(.maskAlternate)
             controlHeld = flags.contains(.maskControl)
-
-            if cmdHeld != prevCmd || shiftHeld != prevShift
-                || optionHeld != prevOpt || controlHeld != prevCtrl {
-                Logger.info("KeyboardMonitor: Cmd=\(cmdHeld) Shift=\(shiftHeld) Opt=\(optionHeld) Ctrl=\(controlHeld)")
-                checkPreviewModeStateChanged()
-            }
-            return false
+            change = stateChangeLocked()
 
         case .keyDown:
-            let previouslyActive = previewModeActive
+            let previouslyActive = previewModeActiveLocked()
             activeKeyCodes.insert(keyCode)
-            checkPreviewModeStateChanged()
-            if !previouslyActive && previewModeActive && Preferences.shared.usesComboHotkey {
-                Logger.info("KeyboardMonitor: Discarding combo hotkey keyDown (keyCode=\(keyCode))")
-                return true
+            change = stateChangeLocked()
+            if !previouslyActive && previewModeActiveLocked() && Preferences.shared.usesComboHotkey {
+                discard = true
             }
-            return false
 
         case .keyUp:
             activeKeyCodes.remove(keyCode)
-            checkPreviewModeStateChanged()
-            return false
+            change = stateChangeLocked()
 
         default:
-            return false
+            break
+        }
+        stateLock.unlock()
+
+        postIfChanged(change)
+        return discard
+    }
+
+    /// `stateLock` must be held. Returns the new activation state if it changed
+    /// since the last check (updating `wasPreviewModeActive`), otherwise nil.
+    private func stateChangeLocked() -> Bool? {
+        let isActive = previewModeActiveLocked()
+        guard isActive != wasPreviewModeActive else { return nil }
+        wasPreviewModeActive = isActive
+        return isActive
+    }
+
+    private func postIfChanged(_ change: Bool?) {
+        guard let isActive = change else { return }
+        if isActive {
+            Logger.info("KeyboardMonitor: Preview mode ACTIVATED")
+            postOnMain(KeyboardMonitor.previewModeDidActivate)
+        } else {
+            Logger.info("KeyboardMonitor: Preview mode DEACTIVATED")
+            postOnMain(KeyboardMonitor.previewModeDidDeactivate)
         }
     }
 
-    private func checkPreviewModeStateChanged() {
-        let isActive = previewModeActive
-
-        if isActive != wasPreviewModeActive {
-            wasPreviewModeActive = isActive
-
-            if isActive {
-                Logger.info("KeyboardMonitor: Preview mode ACTIVATED")
-                NotificationCenter.default.post(name: KeyboardMonitor.previewModeDidActivate, object: self)
-            } else {
-                Logger.info("KeyboardMonitor: Preview mode DEACTIVATED")
-                NotificationCenter.default.post(name: KeyboardMonitor.previewModeDidDeactivate, object: self)
-            }
+    private func postOnMain(_ name: Notification.Name) {
+        DispatchQueue.main.async { [weak self] in
+            NotificationCenter.default.post(name: name, object: self)
         }
     }
 

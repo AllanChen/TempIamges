@@ -537,7 +537,7 @@ final class FileNameResolver {
     private func normalizeToken(_ token: String) -> String {
         var value = token.trimmingCharacters(in: .whitespacesAndNewlines)
         value = value.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`"))
-        while let last = value.last, ",.;!?\"')]}".contains(last) { value.removeLast() }
+        while let last = value.last, ",.;!?\"')]}\\".contains(last) { value.removeLast() }
         while value.hasPrefix("./") { value.removeFirst(2) }
         return value
     }

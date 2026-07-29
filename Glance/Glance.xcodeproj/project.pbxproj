@@ -10,12 +10,14 @@
 		0671565D6790C1DBF89A9ADB /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE55BDC72E73C79AA2510706 /* Logger.swift */; };
 		138642D3D17B78486E4EEE94 /* KeyboardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F16EAB787F6102D7451E27 /* KeyboardMonitor.swift */; };
 		1F1B67947A6304BC8C4D9734 /* ErrorTooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8883A25E4A148B14EAAA2A18 /* ErrorTooltip.swift */; };
+		23351DDC3268AF8896BC75B2 /* PanelStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13155D15A2DBA8ED50704C8 /* PanelStyle.swift */; };
 		27A210A20912C7689F9B58B7 /* HistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C5179624322D2F186F271A1 /* HistoryManager.swift */; };
 		2C6ED2B68D4E7C2BDC9E9788 /* ContentViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE094D8C91B76410621B788E /* ContentViewerWindow.swift */; };
 		2CAC2E99441CB4BF1FF0E5A7 /* PreviewPanel.swift.bak in Resources */ = {isa = PBXBuildFile; fileRef = B5923A9663E10A73F40BA544 /* PreviewPanel.swift.bak */; };
 		3999291816C60724A9596385 /* LoginPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62246959374FE67D5FD83B9D /* LoginPanel.swift */; };
 		3BA1B5BEDBB22E3357179E1B /* ContentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A17C936FB9F57D95925D960 /* ContentPanel.swift */; };
 		4C6BAE97FDAAFBADB096007E /* PreferencesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2E2F8F90A0A7276E70FA93C /* PreferencesWindow.swift */; };
+		508804CD84F27A12CF0C0AA0 /* Highlightr in Frameworks */ = {isa = PBXBuildFile; productRef = C96ACA981C9C32B7FA35152E /* Highlightr */; };
 		51FFD25FB60810929EC2166E /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B82D153A70DA5590B431D5 /* OnboardingWindow.swift */; };
 		548FD6C261DF875B6EB41135 /* FileTypeIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B64B424505C01A08B5DFF29 /* FileTypeIcon.swift */; };
 		59E94B3294CB2E062A068A55 /* PreviewPanelPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A683F6DB94CE572022B5AA0 /* PreviewPanelPreview.swift */; };
@@ -61,6 +63,7 @@
 		A0B82D153A70DA5590B431D5 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
 		B5923A9663E10A73F40BA544 /* PreviewPanel.swift.bak */ = {isa = PBXFileReference; path = PreviewPanel.swift.bak; sourceTree = "<group>"; };
 		BD95F30FC69AA12EDEE59F28 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
+		C13155D15A2DBA8ED50704C8 /* PanelStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelStyle.swift; sourceTree = "<group>"; };
 		C94DBC9997333D10A429AA36 /* PathDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathDetector.swift; sourceTree = "<group>"; };
 		CCE03B0D47694EA64670432E /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		CE094D8C91B76410621B788E /* ContentViewerWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewerWindow.swift; sourceTree = "<group>"; };
@@ -70,6 +73,17 @@
 		FA7C380412FEC8205F193F6F /* ImageLoader.swift.bak */ = {isa = PBXFileReference; path = ImageLoader.swift.bak; sourceTree = "<group>"; };
 		FE55BDC72E73C79AA2510706 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F1692AA5A14C8B9B17915D27 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				508804CD84F27A12CF0C0AA0 /* Highlightr in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		07F1448DEE5F0D10E6EC7D3D /* Sources */ = {
@@ -93,6 +107,7 @@
 				62246959374FE67D5FD83B9D /* LoginPanel.swift */,
 				59D8600C79EDF16169AAED1B /* main.swift */,
 				A0B82D153A70DA5590B431D5 /* OnboardingWindow.swift */,
+				C13155D15A2DBA8ED50704C8 /* PanelStyle.swift */,
 				C94DBC9997333D10A429AA36 /* PathDetector.swift */,
 				BD95F30FC69AA12EDEE59F28 /* PermissionManager.swift */,
 				5DC10A80E0682249D4C76FAD /* Preferences.swift */,
@@ -133,6 +148,7 @@
 			buildPhases = (
 				32DD4C8A891B8A91C685238C /* Sources */,
 				A3C361D35F468850BEF053AB /* Resources */,
+				F1692AA5A14C8B9B17915D27 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -140,6 +156,7 @@
 			);
 			name = Glance;
 			packageProductDependencies = (
+				C96ACA981C9C32B7FA35152E /* Highlightr */,
 			);
 			productName = Glance;
 			productReference = E6681C13BACBBD0D74A80EB4 /* Glance.app */;
@@ -169,6 +186,9 @@
 			);
 			mainGroup = 1A7345DEDC89903C9907667A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				3E7FDE13AEF45801E7B5C411 /* XCRemoteSwiftPackageReference "Highlightr" */,
+			);
 			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectRoot = "";
@@ -211,6 +231,7 @@
 				0671565D6790C1DBF89A9ADB /* Logger.swift in Sources */,
 				3999291816C60724A9596385 /* LoginPanel.swift in Sources */,
 				51FFD25FB60810929EC2166E /* OnboardingWindow.swift in Sources */,
+				23351DDC3268AF8896BC75B2 /* PanelStyle.swift in Sources */,
 				6517E9498999A7FDDDDD7727 /* PathDetector.swift in Sources */,
 				E3E2AD8D7041D3D756D6A7CD /* PermissionManager.swift in Sources */,
 				B0D706856EF690BF636AC184 /* Preferences.swift in Sources */,
@@ -232,10 +253,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				BUILD_ROOT = "$(SRCROOT)/debug";
 				CODE_SIGN_ENTITLEMENTS = Glance.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/debug/$(CONFIGURATION)";
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/../Frameworks",
@@ -310,10 +329,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				BUILD_ROOT = "$(SRCROOT)/debug";
 				CODE_SIGN_ENTITLEMENTS = Glance.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/debug/$(CONFIGURATION)";
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/../Frameworks",
@@ -413,6 +430,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3E7FDE13AEF45801E7B5C411 /* XCRemoteSwiftPackageReference "Highlightr" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/raspu/Highlightr";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C96ACA981C9C32B7FA35152E /* Highlightr */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3E7FDE13AEF45801E7B5C411 /* XCRemoteSwiftPackageReference "Highlightr" */;
+			productName = Highlightr;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 070164DEC24115A8F4F2D9F7 /* Project object */;
 }

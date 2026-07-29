@@ -5,7 +5,6 @@ import WebKit
 
 class PreviewPanel: NSPanel {
     // MARK: - Layout constants
-    private let anchorOffset = CGPoint(x: 20, y: 0)
     private let panelCornerRadius: CGFloat = 20
     private let headerHeight: CGFloat = 52
     /// Fixed width for single-card view; height follows a 9:16 portrait ratio.
@@ -32,6 +31,8 @@ class PreviewPanel: NSPanel {
     private let splitSidebarMinWidth: CGFloat = 120
     private let splitSidebarMaxWidth: CGFloat = 400
     private let splitterWidth: CGFloat = 4
+    /// Height of the identity toolbar pinned above the split-view content area.
+    private let splitToolbarHeight: CGFloat = 52
     private var userSidebarWidth: CGFloat {
         get {
             let saved = UserDefaults.standard.double(forKey: "PreviewPanelSidebarWidth")
@@ -166,6 +167,17 @@ class PreviewPanel: NSPanel {
     private var splitSidebarItems: [SplitSidebarItem] = []
     private weak var contentWebView: WKWebView?
     private weak var splitterView: NSView?
+    /// Identity toolbar pinned above the split-view content area, plus its
+    /// child labels. Mirrors ContentViewerWindow's chrome.
+    private weak var splitToolbar: NSView?
+    private weak var splitToolbarTitle: NSTextField?
+    private weak var splitToolbarSubtitle: NSTextField?
+    /// Media/webview area below the toolbar. Its subviews are cleared and
+    /// rebuilt on every selection change (the toolbar, a sibling, survives).
+    private weak var splitContentBody: NSView?
+    /// Folder button in the split-view toolbar. Reveals the currently-selected
+    /// file in Finder.
+    private weak var splitFolderBtn: NSButton?
 
     /// When pinned, hidePanel() is ignored and the close (X) button shows.
     /// New previews via showLoading() reset this to false.
@@ -175,8 +187,9 @@ class PreviewPanel: NSPanel {
     /// mouse cursor.
     private var savedPosition: NSRect?
 
-    private var followTimer: Timer?
-    private var lastSyncedFrame: NSRect = .zero
+    /// True while a preview is showing, so the didMove observer keeps ContentPanel
+    /// docked. Replaces the old 50ms polling follow timer.
+    private var isFollowingContentPanel: Bool = false
     private var escapeLocalMonitor: Any?
     private var escapeGlobalMonitor: Any?
     private var contentPanelOpenedByTileClick: Bool = false
@@ -219,7 +232,13 @@ class PreviewPanel: NSPanel {
             object: self,
             queue: .main
         ) { [weak self] _ in
-            self?.savedPosition = self?.frame
+            guard let self = self else { return }
+            self.savedPosition = self.frame
+            // Drive ContentPanel following from the move event itself (fires
+            // continuously during a live drag) instead of a polling timer.
+            if self.isFollowingContentPanel, ContentPanel.shared.isVisible {
+                ContentPanel.shared.syncPosition(to: self.frame)
+            }
         }
         NotificationCenter.default.addObserver(
             forName: .init("ContentPanelDidClose"),
@@ -342,20 +361,13 @@ class PreviewPanel: NSPanel {
     }
 
     func startFollowingContentPanel() {
-        guard followTimer == nil else { return }
-        lastSyncedFrame = self.frame
-        followTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            let currentFrame = self.frame
-            guard !NSEqualRects(currentFrame, self.lastSyncedFrame) else { return }
-            self.lastSyncedFrame = currentFrame
-            ContentPanel.shared.syncPosition(to: currentFrame)
-        }
+        // Event-driven now: the didMove observer syncs ContentPanel while this
+        // flag is set, so there is no polling timer to start.
+        isFollowingContentPanel = true
     }
 
     func stopFollowingContentPanel() {
-        followTimer?.invalidate()
-        followTimer = nil
+        isFollowingContentPanel = false
     }
 
     // MARK: - Public API
@@ -619,6 +631,7 @@ class PreviewPanel: NSPanel {
         let tile = MediaTileView(info: info, style: .singleCard, frame: view.bounds)
         tile.autoresizingMask = [.width, .height]
         tile.onClose = { [weak self] in self?.hidePanel() }
+        tile.onOpenExternally = { [weak self] in self?.closePanel() }
         let infoURL = info.url
         tile.onAction = { NSWorkspace.shared.open(infoURL) }
         tile.onDownload = { [weak self, weak tile] in
@@ -706,8 +719,55 @@ class PreviewPanel: NSPanel {
         contentView.autoresizingMask = [.width, .height]
         splitContentView = contentView
 
+        // Identity toolbar pinned to the top of the content panel (frosted bar
+        // with filename + path·modified subtitle on the left, Reveal-in-Finder
+        // button on the right). Mirrors ContentViewerWindow's chrome. Sits as a
+        // sibling of the media body so it survives the per-selection rebuild.
+        let toolbar = PanelStyle.makeBarBlur()
+        toolbar.frame = NSRect(x: 0, y: contentH - splitToolbarHeight,
+                               width: contentW, height: splitToolbarHeight)
+        toolbar.autoresizingMask = [.width, .minYMargin]
+        PanelStyle.addHairline(to: toolbar, edge: .minY)
+
+        let titleLbl = NSTextField(labelWithString: "")
+        titleLbl.font = PanelStyle.headline
+        titleLbl.textColor = PanelStyle.textPrimary
+        titleLbl.lineBreakMode = .byTruncatingMiddle
+        titleLbl.maximumNumberOfLines = 1
+        titleLbl.autoresizingMask = [.width]
+        toolbar.addSubview(titleLbl)
+        splitToolbarTitle = titleLbl
+
+        let subtitleLbl = NSTextField(labelWithString: "")
+        subtitleLbl.font = PanelStyle.caption
+        subtitleLbl.textColor = PanelStyle.textSecondary
+        subtitleLbl.lineBreakMode = .byTruncatingHead   // keep the path tail
+        subtitleLbl.maximumNumberOfLines = 1
+        subtitleLbl.autoresizingMask = [.width]
+        toolbar.addSubview(subtitleLbl)
+        splitToolbarSubtitle = subtitleLbl
+
+        let folderBtn = PanelStyle.makeIconButton(symbol: "folder",
+                                                  tooltip: "Reveal in Finder".localized,
+                                                  target: self, action: #selector(splitFolderTapped))
+        folderBtn.autoresizingMask = [.minXMargin]
+        toolbar.addSubview(folderBtn)
+        splitFolderBtn = folderBtn
+
+        contentView.addSubview(toolbar)
+        splitToolbar = toolbar
+
+        // Media/webview body fills the area below the toolbar.
+        let body = NSView(frame: NSRect(x: 0, y: 0, width: contentW,
+                                        height: contentH - splitToolbarHeight))
+        body.autoresizingMask = [.width, .height]
+        contentView.addSubview(body)
+        splitContentBody = body
+
         container.addSubview(sidebarContainer)
         container.addSubview(contentView)
+
+        layoutSplitToolbar()
 
         splitSidebarContainer = sidebarContainer
         splitSidebarItems = newItems
@@ -746,16 +806,18 @@ class PreviewPanel: NSPanel {
             item.isSelected = (i == index)
         }
 
-        guard let contentView = splitContentView else { return }
+        guard let body = splitContentBody else { return }
 
-        for subview in contentView.subviews {
+        for subview in body.subviews {
             subview.removeFromSuperview()
         }
         tiles.removeAll()
         contentWebView = nil
 
         let info = currentInfos[index]
-        loadContent(for: info, into: contentView)
+        loadContent(for: info, into: body)
+
+        updateSplitToolbar(for: info)
 
         if ContentPanel.shared.isVisible {
             ContentPanel.shared.load(info: info)
@@ -765,6 +827,46 @@ class PreviewPanel: NSPanel {
            index < splitSidebarItems.count {
             docView.scrollToVisible(splitSidebarItems[index].frame)
         }
+    }
+
+    /// Refresh the split-view toolbar's identity (filename + path·modified)
+    /// for the given selection, and hide the folder button for remote items.
+    private func updateSplitToolbar(for info: MediaInfo) {
+        splitToolbarTitle?.stringValue = info.filename
+        splitToolbarSubtitle?.stringValue = ContentViewerWindow.subtitleString(for: info.url)
+        splitToolbarSubtitle?.toolTip = info.isLocal ? info.url.path : info.url.absoluteString
+        // The folder button only makes sense for files that exist on disk.
+        splitFolderBtn?.isHidden = !info.isLocal
+        layoutSplitToolbar()
+    }
+
+    /// Position the toolbar's identity labels (filename over subtitle) and the
+    /// right-aligned folder button within the current toolbar width.
+    private func layoutSplitToolbar() {
+        guard let toolbar = splitToolbar else { return }
+        let barW = toolbar.bounds.width
+        let barH = toolbar.bounds.height
+        let leftMargin: CGFloat = 16
+        let rightMargin: CGFloat = 12
+        let folderSize: CGFloat = 28
+        let labelGap: CGFloat = 12
+
+        let folderHidden = splitFolderBtn?.isHidden ?? true
+        let folderX = barW - rightMargin - folderSize
+        splitFolderBtn?.frame = NSRect(x: folderX, y: (barH - folderSize) / 2,
+                                       width: folderSize, height: folderSize)
+
+        let identityRight = folderHidden ? (barW - rightMargin) : (folderX - labelGap)
+        let identityWidth = max(60, identityRight - leftMargin)
+        splitToolbarTitle?.frame    = NSRect(x: leftMargin, y: barH - 29, width: identityWidth, height: 18)
+        splitToolbarSubtitle?.frame = NSRect(x: leftMargin, y: 9, width: identityWidth, height: 15)
+    }
+
+    @objc private func splitFolderTapped() {
+        guard selectedIndex >= 0, selectedIndex < currentInfos.count else { return }
+        let info = currentInfos[selectedIndex]
+        guard info.isLocal else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([info.url])
     }
 
     private func loadContent(for info: MediaInfo, into container: NSView) {
@@ -818,6 +920,7 @@ class PreviewPanel: NSPanel {
             let tile = MediaTileView(info: info, style: .singleCard, frame: container.bounds)
             tile.autoresizingMask = [.width, .height]
             tile.onClose = { [weak self] in self?.hidePanel() }
+            tile.onOpenExternally = { [weak self] in self?.closePanel() }
             container.addSubview(tile)
             tiles = [tile]
         }
@@ -879,6 +982,8 @@ class PreviewPanel: NSPanel {
         splitSidebarDocView?.frame = NSRect(x: 0, y: 0, width: sidebarW, height: sidebarTotalH)
         splitterView?.frame = NSRect(x: sidebarW, y: 0, width: splitterW, height: contentH)
         splitContentView?.frame = NSRect(x: sidebarW + splitterW, y: 0, width: contentW, height: contentH)
+        // Toolbar/body follow via autoresizing; re-flow the labels for the new width.
+        layoutSplitToolbar()
 
         for (i, item) in splitSidebarItems.enumerated() where i < currentInfos.count {
             let y = splitSidebarPad + CGFloat(i) * (itemH + spacing)
@@ -1359,22 +1464,24 @@ class PreviewPanel: NSPanel {
     }
 
     private func relayoutPanel(contentSize: NSSize) {
+        // Default placement is centered on the cursor's screen (clamped fully
+        // on-screen). A position the user deliberately dragged to is honored
+        // instead — still clamped so it can't end up off a smaller display.
         if hasUserResized, let savedSize = userSetSize {
             if let saved = savedPosition {
                 var frame = saved
                 frame.size = savedSize
-                setFrame(frame, display: true)
+                setFrame(ScreenManager.shared.clampedToVisible(frame), display: true)
             } else {
-                var frame = ScreenManager.shared.adjustedFrame(for: savedSize, at: anchorPoint, offset: anchorOffset)
-                frame.size = savedSize
+                let frame = ScreenManager.shared.centeredFrame(for: savedSize, near: anchorPoint)
                 setFrame(frame, display: true)
             }
         } else if let saved = savedPosition {
             var frame = saved
             frame.size = contentSize
-            setFrame(frame, display: true)
+            setFrame(ScreenManager.shared.clampedToVisible(frame), display: true)
         } else {
-            let frame = ScreenManager.shared.adjustedFrame(for: contentSize, at: anchorPoint, offset: anchorOffset)
+            let frame = ScreenManager.shared.centeredFrame(for: contentSize, near: anchorPoint)
             setFrame(frame, display: true)
         }
     }
@@ -1392,6 +1499,11 @@ class PreviewPanel: NSPanel {
         splitContentView = nil
         splitSidebarContainer = nil
         splitterView = nil
+        splitToolbar = nil
+        splitContentBody = nil
+        splitToolbarTitle = nil
+        splitToolbarSubtitle = nil
+        splitFolderBtn = nil
         contentWebView = nil
         splitSidebarItems.removeAll()
         bottomFilenameLabel = nil
@@ -1618,6 +1730,9 @@ final class MediaTileView: NSView {
     /// Called when the user clicks anywhere on the tile body (used to open
     /// markdown/webpage tiles in the viewer window).
     var onTileTap: (() -> Void)?
+    /// Called after the tile hands its content off to an external app
+    /// (e.g. revealing a folder in Finder) so the panel can dismiss itself.
+    var onOpenExternally: (() -> Void)?
 
     private var openableIconView: NSImageView?
     /// Type-specific SF Symbol shown behind the spinner while the tile is
@@ -2168,6 +2283,9 @@ final class MediaTileView: NSView {
                 }
             } else {
                 NSWorkspace.shared.open(info.url)
+            }
+            if info.kind == .folder {
+                onOpenExternally?()
             }
         default:
             NSWorkspace.shared.open(info.url)

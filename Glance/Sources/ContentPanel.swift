@@ -1,22 +1,24 @@
 import AppKit
 import WebKit
+import Highlightr
 
-final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
+final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKNavigationDelegate {
     static let shared = ContentPanel()
 
     private let webView: WKWebView
     private let textView: NSTextView
     private let textScroll: NSScrollView
     private let imageView: ImageFillView
-    private let toolbarBar = NSView()
+    private let toolbarBar = PanelStyle.makeBarBlur()
+    private let filenameLabel = NSTextField(labelWithString: "")  // identity: file name
     private let saveButton = NSButton()
-    private let toggleButton = NSButton()
+    private var findButton = NSButton()     // toggles the find bar
     private let gitDiffButton = NSButton()
-    private let locateButton = NSButton()
-    private let modifiedLabel = NSTextField(labelWithString: "")
+    private var locateButton = NSButton()   // Reveal in Finder, local-only
+    private let modifiedLabel = NSTextField(labelWithString: "")  // identity subtitle: path · modified
     private let addressBar = NSTextField()
 
-    private let webFindBar = NSView()
+    private let webFindBar = PanelStyle.makeBarBlur()
     private let webFindField = NSTextField()
     private let webFindCountLabel = NSTextField(labelWithString: "")
     private var webFindMatchCount = 0
@@ -29,16 +31,17 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     private var currentGitContext: GitDiffService.Context?
     private var gitDiffLookupID = UUID()
     private var gitDiffWindows: [GitDiffWindow] = []
-    private var isEditing: Bool = false
+    /// True once the editable text view has unsaved user edits.
+    private var isDirty: Bool = false
 
     private let headerHeight: CGFloat = 56
-    private let toolbarH: CGFloat = 44
+    private let toolbarH: CGFloat = 52
     private let imageInfoBarH: CGFloat = 56
 
     private weak var loadingOverlay: NSView?
     private weak var loadingSpinner: NSProgressIndicator?
 
-    private let imageInfoBar = NSView()
+    private let imageInfoBar = PanelStyle.makeBarBlur()
     private let imageInfoNameLabel = NSTextField(labelWithString: "")
     private let imageInfoMetaLabel = NSTextField(labelWithString: "")
 
@@ -52,13 +55,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     private let maxZoomLevel: CGFloat = 5.0
     private let zoomStep: CGFloat = 1.1
 
-    private static func resolvedCG(_ color: NSColor) -> CGColor {
-        var resolved: CGColor!
-        NSApp.effectiveAppearance.performAsCurrentDrawingAppearance {
-            resolved = color.cgColor
-        }
-        return resolved
-    }
 
     private init() {
         let config = WKWebViewConfiguration()
@@ -70,19 +66,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         config.userContentController.addUserScript(findScript)
         webView = WKWebView(frame: .zero, configuration: config)
 
-        let tv = NSTextView(frame: .zero)
-        tv.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        tv.isRichText = false
-        tv.allowsUndo = true
-        tv.isAutomaticQuoteSubstitutionEnabled = false
-        tv.isAutomaticDashSubstitutionEnabled = false
-        tv.isAutomaticTextReplacementEnabled = false
-        tv.isAutomaticSpellingCorrectionEnabled = false
-        tv.isVerticallyResizable = true
-        tv.isHorizontallyResizable = false
-        tv.autoresizingMask = [.width]
-        tv.usesFindBar = true
-        tv.isIncrementalSearchingEnabled = true
+        let tv = PanelStyle.makeCodeTextView()
         textView = tv
 
         let scroll = NSScrollView(frame: .zero)
@@ -111,11 +95,29 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
 
+        // Commit the whole window to the dark-glass look so it matches
+        // PreviewPanel regardless of the system theme. A transparent, title-less
+        // titlebar lets the top of the window read as one continuous dark strip
+        // (traffic lights on the left, our toolbar below).
+        appearance = NSAppearance(named: .darkAqua)
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+
         buildLayout()
         showWebView()
         installEscapeKeyMonitors()
         installZoomMonitor()
         observeThemeChanges()
+
+        // The red close button bypasses dismiss()/cancelOperation — stop any
+        // in-page media so audio doesn't keep playing after the window closes.
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: self,
+            queue: .main
+        ) { [weak self] _ in
+            self?.stopWebMedia()
+        }
     }
 
     override var canBecomeKey: Bool { true }
@@ -128,7 +130,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         let originX = previewFrame.maxX
         let originY = previewFrame.maxY - contentSize.height
         let newFrame = NSRect(origin: CGPoint(x: originX, y: originY), size: contentSize)
-        setFrame(newFrame, display: true)
+        // Keep the docked window fully on-screen even when the preview sits near
+        // a screen edge.
+        setFrame(ScreenManager.shared.clampedToVisible(newFrame), display: true)
     }
 
     /// Call when a fresh preview cycle starts so the window will resume
@@ -243,7 +247,13 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         case .text:
             let baseSize: CGFloat = 13
             let newSize = max(6, min(200, baseSize * currentZoomLevel))
-            textView.font = NSFont.monospacedSystemFont(ofSize: newSize, weight: .regular)
+            let font = NSFont.monospacedSystemFont(ofSize: newSize, weight: .regular)
+            textView.font = font
+            if let storage = textView.textStorage as? CodeAttributedString {
+                storage.highlightr.theme.codeFont = font
+                let lang = storage.language
+                storage.language = lang   // re-highlight at the new size
+            }
         case .image:
             if imageView.isHidden {
                 webView.magnification = currentZoomLevel
@@ -256,52 +266,65 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     private func buildLayout() {
         let root = NSView(frame: NSRect(x: 0, y: 0, width: 652.0, height: 962.0))
         root.wantsLayer = true
-        root.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
+        // Solid dark base. The bars on top are translucent vibrant-dark frost,
+        // so this only shows in the gaps / during transitions.
+        root.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
 
         let bodyFrame = NSRect(x: 0, y: 0, width: 652.0, height: 962.0)
 
         toolbarBar.frame = NSRect(x: 0, y: bodyFrame.height - toolbarH,
                                   width: bodyFrame.width, height: toolbarH)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
-        toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
+        PanelStyle.addHairline(to: toolbarBar, edge: .minY)
 
-        let toolbarSep = NSView(frame: NSRect(x: 0, y: 0, width: bodyFrame.width, height: 1))
-        toolbarSep.wantsLayer = true
-        toolbarSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
-        toolbarSep.autoresizingMask = [.width]
-        toolbarBar.addSubview(toolbarSep)
+        // ── Identity (left): filename over a path · modified subtitle ──
+        filenameLabel.font = PanelStyle.headline
+        filenameLabel.textColor = PanelStyle.textPrimary
+        filenameLabel.lineBreakMode = .byTruncatingMiddle
+        filenameLabel.maximumNumberOfLines = 1
+        filenameLabel.autoresizingMask = [.width]
+        toolbarBar.addSubview(filenameLabel)
 
-        locateButton.bezelStyle = .rounded
-        locateButton.image = NSImage(systemSymbolName: "folder.fill",
-                                       accessibilityDescription: "Reveal in Finder".localized)
-        locateButton.imagePosition = .imageOnly
-        locateButton.target = self
-        locateButton.action = #selector(locateTapped)
-        locateButton.toolTip = "Reveal in Finder".localized
+        modifiedLabel.font = PanelStyle.caption
+        modifiedLabel.textColor = PanelStyle.textSecondary
+        modifiedLabel.alignment = .left
+        modifiedLabel.lineBreakMode = .byTruncatingHead   // keep the filename tail
+        modifiedLabel.maximumNumberOfLines = 1
+        modifiedLabel.autoresizingMask = [.width]
+        toolbarBar.addSubview(modifiedLabel)
+
+        // Address bar replaces the identity block for web pages.
+        addressBar.font = PanelStyle.label
+        addressBar.alignment = .left
+        addressBar.isEditable = false
+        addressBar.isSelectable = true
+        addressBar.isBordered = false
+        addressBar.isBezeled = false
+        addressBar.drawsBackground = true
+        addressBar.backgroundColor = PanelStyle.controlFill
+        addressBar.textColor = PanelStyle.textSecondary
+        addressBar.wantsLayer = true
+        addressBar.layer?.cornerRadius = 6
+        addressBar.layer?.masksToBounds = true
+        addressBar.autoresizingMask = [.width]
+        addressBar.isHidden = true
+        toolbarBar.addSubview(addressBar)
+
+        // ── Actions (right): Find, Locate (icons) + Diff + Save (text) ──
+        findButton = PanelStyle.makeIconButton(symbol: "magnifyingglass",
+                                               tooltip: "Find in page".localized,
+                                               target: self, action: #selector(findTapped))
+        findButton.autoresizingMask = [.minXMargin]
+        toolbarBar.addSubview(findButton)
+
+        locateButton = PanelStyle.makeIconButton(symbol: "folder",
+                                                 tooltip: "Reveal in Finder".localized,
+                                                 target: self, action: #selector(locateTapped))
         locateButton.autoresizingMask = [.minXMargin]
         locateButton.isHidden = true
         toolbarBar.addSubview(locateButton)
 
-        saveButton.bezelStyle = .rounded
-        saveButton.title = "Save".localized
-        saveButton.keyEquivalent = "s"
-        saveButton.keyEquivalentModifierMask = [.command]
-        saveButton.target = self
-        saveButton.action = #selector(saveTapped)
-        saveButton.autoresizingMask = [.minXMargin]
-        saveButton.isHidden = true
-        toolbarBar.addSubview(saveButton)
-
-        toggleButton.bezelStyle = .rounded
-        toggleButton.title = "Edit".localized
-        toggleButton.target = self
-        toggleButton.action = #selector(toggleEditTapped)
-        toggleButton.autoresizingMask = [.minXMargin]
-        toggleButton.isHidden = true
-        toolbarBar.addSubview(toggleButton)
-
-        gitDiffButton.bezelStyle = .rounded
+        gitDiffButton.bezelStyle = .texturedRounded
         gitDiffButton.title = "Diff".localized
         gitDiffButton.target = self
         gitDiffButton.action = #selector(gitDiffTapped)
@@ -310,28 +333,21 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         gitDiffButton.isHidden = true
         toolbarBar.addSubview(gitDiffButton)
 
-        modifiedLabel.font = NSFont.systemFont(ofSize: 11)
-        modifiedLabel.textColor = .tertiaryLabelColor
-        modifiedLabel.alignment = .left
-        modifiedLabel.lineBreakMode = .byTruncatingMiddle
-        modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.autoresizingMask = [.width]
-        toolbarBar.addSubview(modifiedLabel)
-
-        addressBar.font = NSFont.systemFont(ofSize: 12)
-        addressBar.alignment = .center
-        addressBar.isEditable = false
-        addressBar.isSelectable = true
-        addressBar.isBordered = true
-        addressBar.backgroundColor = NSColor.textBackgroundColor
-        addressBar.textColor = .secondaryLabelColor
-        addressBar.frame = NSRect(x: 80, y: 9, width: bodyFrame.width - 160, height: 26)
-        addressBar.autoresizingMask = [.width]
-        addressBar.isHidden = true
-        toolbarBar.addSubview(addressBar)
+        saveButton.bezelStyle = .texturedRounded
+        saveButton.title = "Save".localized
+        saveButton.keyEquivalent = "s"
+        saveButton.keyEquivalentModifierMask = [.command]
+        saveButton.target = self
+        saveButton.action = #selector(saveTapped)
+        saveButton.autoresizingMask = [.minXMargin]
+        saveButton.isEnabled = false   // always visible, lit only when dirty
+        toolbarBar.addSubview(saveButton)
 
         root.addSubview(toolbarBar)
         layoutToolbarButtons()
+
+        // Dirty-tracking for the editable text view.
+        textView.delegate = self
 
         let contentFrame = NSRect(x: 0, y: 0, width: bodyFrame.width,
                                    height: bodyFrame.height - toolbarH)
@@ -358,40 +374,33 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
             width: contentFrame.width, height: findBarH
         )
         webFindBar.autoresizingMask = [.width, .minYMargin]
-        webFindBar.wantsLayer = true
-        webFindBar.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         webFindBar.isHidden = true
-
-        let findSep = NSView(frame: NSRect(x: 0, y: 0, width: contentFrame.width, height: 1))
-        findSep.wantsLayer = true
-        findSep.layer?.backgroundColor = NSColor.separatorColor.cgColor
-        findSep.autoresizingMask = [.width]
-        webFindBar.addSubview(findSep)
+        PanelStyle.addHairline(to: webFindBar, edge: .minY)
 
         webFindField.placeholderString = "Find in page".localized
         webFindField.frame = NSRect(x: 12, y: 6, width: 240, height: 24)
         webFindField.delegate = self
         webFindBar.addSubview(webFindField)
 
-        webFindCountLabel.font = NSFont.systemFont(ofSize: 11)
-        webFindCountLabel.textColor = .secondaryLabelColor
+        webFindCountLabel.font = PanelStyle.caption
+        webFindCountLabel.textColor = PanelStyle.textSecondary
         webFindCountLabel.frame = NSRect(x: 260, y: 9, width: 80, height: 18)
         webFindBar.addSubview(webFindCountLabel)
 
         let prevBtn = NSButton(title: "‹", target: self, action: #selector(webFindPrev))
-        prevBtn.bezelStyle = .rounded
+        prevBtn.bezelStyle = .texturedRounded
         prevBtn.frame = NSRect(x: contentFrame.width - 140, y: 6, width: 32, height: 24)
         prevBtn.autoresizingMask = [.minXMargin]
         webFindBar.addSubview(prevBtn)
 
         let nextBtn = NSButton(title: "›", target: self, action: #selector(webFindNext))
-        nextBtn.bezelStyle = .rounded
+        nextBtn.bezelStyle = .texturedRounded
         nextBtn.frame = NSRect(x: contentFrame.width - 102, y: 6, width: 32, height: 24)
         nextBtn.autoresizingMask = [.minXMargin]
         webFindBar.addSubview(nextBtn)
 
         let doneBtn = NSButton(title: "Done".localized, target: self, action: #selector(hideWebFindBar))
-        doneBtn.bezelStyle = .rounded
+        doneBtn.bezelStyle = .texturedRounded
         doneBtn.frame = NSRect(x: contentFrame.width - 60, y: 6, width: 50, height: 24)
         doneBtn.autoresizingMask = [.minXMargin]
         webFindBar.addSubview(doneBtn)
@@ -400,7 +409,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
 
         let overlay = NSView(frame: contentFrame)
         overlay.wantsLayer = true
-        overlay.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
+        overlay.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
         overlay.autoresizingMask = [.width, .height]
         overlay.isHidden = true
 
@@ -411,7 +420,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         ))
         spinnerContainer.wantsLayer = true
         spinnerContainer.layer?.cornerRadius = 10
-        spinnerContainer.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
+        spinnerContainer.layer?.backgroundColor = PanelStyle.glassCard.cgColor
         spinnerContainer.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         overlay.addSubview(spinnerContainer)
 
@@ -427,7 +436,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         spinnerContainer.addSubview(spinner)
 
         let loadingLbl = NSTextField(labelWithString: "Loading…".localized)
-        loadingLbl.textColor = .secondaryLabelColor
+        loadingLbl.textColor = PanelStyle.textSecondary
         loadingLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         loadingLbl.alignment = .center
         loadingLbl.frame = NSRect(x: 0, y: spinnerContainer.frame.minY - 32,
@@ -442,12 +451,11 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         imageInfoBar.frame = NSRect(x: 0, y: 0,
                                      width: bodyFrame.width, height: imageInfoBarH)
         imageInfoBar.autoresizingMask = [.width, .maxYMargin]
-        imageInfoBar.wantsLayer = true
-        imageInfoBar.layer?.backgroundColor = Self.resolvedCG(.underPageBackgroundColor)
         imageInfoBar.isHidden = true
+        PanelStyle.addHairline(to: imageInfoBar, edge: .maxY)
 
-        imageInfoNameLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        imageInfoNameLabel.textColor = .labelColor
+        imageInfoNameLabel.font = PanelStyle.title
+        imageInfoNameLabel.textColor = PanelStyle.textPrimary
         imageInfoNameLabel.lineBreakMode = .byTruncatingMiddle
         imageInfoNameLabel.maximumNumberOfLines = 1
         imageInfoNameLabel.frame = NSRect(x: 20, y: 30,
@@ -455,8 +463,8 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         imageInfoNameLabel.autoresizingMask = [.width]
         imageInfoBar.addSubview(imageInfoNameLabel)
 
-        imageInfoMetaLabel.font = NSFont.systemFont(ofSize: 11)
-        imageInfoMetaLabel.textColor = .secondaryLabelColor
+        imageInfoMetaLabel.font = PanelStyle.caption
+        imageInfoMetaLabel.textColor = PanelStyle.textSecondary
         imageInfoMetaLabel.lineBreakMode = .byTruncatingTail
         imageInfoMetaLabel.maximumNumberOfLines = 1
         imageInfoMetaLabel.frame = NSRect(x: 20, y: 9,
@@ -469,48 +477,70 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         contentView = root
     }
 
-    /// Re-pack the right-anchored toolbar buttons so hidden ones collapse and
-    /// visible ones stay grouped, then resize modifiedLabel to fill the
-    /// remaining space with a consistent gap before the button group.
+    /// Pack the right action group (Save + Diff + icon buttons) right-to-left,
+    /// hidden ones collapsing, then size the left identity block / address bar
+    /// to fill the remaining space.
     private func layoutToolbarButtons() {
-        let gap: CGFloat = 10
-        let btnW: CGFloat = 72
-        let btnH: CGFloat = 26
-        let btnY: CGFloat = 9
-        let rightMargin: CGFloat = 20
-        let leftMargin: CGFloat = 20
-        let labelButtonGap: CGFloat = 24
+        let gap: CGFloat = 8
+        let textW: CGFloat = 72
+        let iconW: CGFloat = 30
+        let ctrlH: CGFloat = 26
+        let rightMargin: CGFloat = 16
+        let leftMargin: CGFloat = 18
+        let labelGap: CGFloat = 16
+        let barH = toolbarBar.bounds.height
+        let ctrlY = (barH - ctrlH) / 2
         let bodyWidth = toolbarBar.bounds.width
 
-        let buttons: [NSButton] = [locateButton, saveButton, toggleButton, gitDiffButton]
+        // Right group, packed right→left; each entry carries its width.
+        let group: [(NSButton, CGFloat)] = [
+            (saveButton, textW),
+            (gitDiffButton, textW),
+            (locateButton, iconW),
+            (findButton, iconW),
+        ]
         var currentRight = bodyWidth - rightMargin
         var leftmostVisibleX: CGFloat?
-        for button in buttons {
+        for (button, w) in group {
             guard !button.isHidden else { continue }
-            let x = currentRight - btnW
-            button.frame = NSRect(x: x, y: btnY, width: btnW, height: btnH)
+            let x = currentRight - w
+            button.frame = NSRect(x: x, y: ctrlY, width: w, height: ctrlH)
             leftmostVisibleX = x
             currentRight = x - gap
         }
 
-        if !modifiedLabel.isHidden {
-            let rightEdge = leftmostVisibleX.map { $0 - labelButtonGap } ?? (bodyWidth - rightMargin)
-            modifiedLabel.frame = NSRect(
-                x: leftMargin,
-                y: btnY,
-                width: max(100, rightEdge - leftMargin),
-                height: btnH
-            )
+        let identityRight = leftmostVisibleX.map { $0 - labelGap } ?? (bodyWidth - rightMargin)
+        let identityWidth = max(80, identityRight - leftMargin)
+
+        if !filenameLabel.isHidden {
+            filenameLabel.frame = NSRect(x: leftMargin, y: barH - 29, width: identityWidth, height: 18)
+            modifiedLabel.frame  = NSRect(x: leftMargin, y: 9, width: identityWidth, height: 15)
+        }
+        if !addressBar.isHidden {
+            addressBar.frame = NSRect(x: leftMargin, y: (barH - 26) / 2, width: identityWidth, height: 26)
         }
     }
 
     func dismiss() {
+        stopWebMedia()
         orderOut(nil)
     }
 
     override func cancelOperation(_ sender: Any?) {
+        stopWebMedia()
         orderOut(nil)
         NotificationCenter.default.post(name: .init("ContentPanelDidClose"), object: self)
+    }
+
+    /// Pause in-page audio/video and halt loading so a dismissed panel (e.g.
+    /// a direct mp4 URL rendered by WKWebView) doesn't keep playing sound in
+    /// the background. The webView itself is reused across loads.
+    private func stopWebMedia() {
+        webView.stopLoading()
+        webView.evaluateJavaScript(
+            "document.querySelectorAll('video,audio').forEach(function(m){ m.pause(); })",
+            completionHandler: nil
+        )
     }
 
     private func installEscapeKeyMonitors() {
@@ -563,38 +593,27 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         case .markdown:
             currentURL = info.url
             kind = .markdown
-            isEditing = false
-            showToolbar()
             imageInfoBar.isHidden = true
-            toggleButton.isHidden = false
-            toggleButton.title = "Edit".localized
-            saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
-            updateToolbarPath(for: info.url)
+            showFileIdentity(for: info.url)
+            refreshSaveButton()
             refreshGitDiffAvailability(for: info.url)
             renderMarkdownView(url: info.url)
         case .text:
             currentURL = info.url
             kind = .text
-            isEditing = false
-            showToolbar()
             imageInfoBar.isHidden = true
-            toggleButton.isHidden = false
-            toggleButton.title = "Edit".localized
-            saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
-            updateToolbarPath(for: info.url)
+            showFileIdentity(for: info.url)
             refreshGitDiffAvailability(for: info.url)
-            renderHighlightedCode(url: info.url)
+            loadEditableText(url: info.url)
         case .pdf:
             currentURL = info.url
             kind = .pdf
-            showToolbar()
             imageInfoBar.isHidden = true
-            toggleButton.isHidden = true
-            saveButton.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
-            updateToolbarPath(for: info.url)
+            showFileIdentity(for: info.url)
+            refreshSaveButton()
             if info.url.isFileURL {
                 webView.loadFileURL(info.url, allowingReadAccessTo: info.url.deletingLastPathComponent())
             } else {
@@ -605,13 +624,11 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
             currentURL = info.url
             kind = .image
             resetZoom()
-            showToolbar()
-            toggleButton.isHidden = true
-            saveButton.isHidden = true
-            locateButton.isHidden = !info.url.isFileURL
-            updateToolbarPath(for: info.url)
-            updateImageInfoBar(with: info)
             imageInfoBar.isHidden = false
+            locateButton.isHidden = !info.url.isFileURL
+            showFileIdentity(for: info.url)
+            refreshSaveButton()
+            updateImageInfoBar(with: info)
             let imageURL = info.url
             if imageURL.isFileURL {
                 // Local files decode from disk fast enough to stay synchronous.
@@ -635,9 +652,10 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         default:
             currentURL = info.url
             kind = .webpage
-            showAddressBar(for: info.url)
             imageInfoBar.isHidden = true
-            updateToolbarPath(for: info.url)
+            locateButton.isHidden = !info.url.isFileURL
+            showAddressBarIdentity(for: info.url)
+            refreshSaveButton()
             webView.load(URLRequest(url: info.url))
             showWebView()
         }
@@ -690,37 +708,21 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         }
     }
 
-    private func renderHighlightedCode(url: URL) {
+    /// Load raw file/URL text into the editable text view. Assigning
+    /// `textView.string` does not fire `textDidChange`, so the buffer starts
+    /// clean (isDirty = false) until the user actually types.
+    private func loadEditableText(url: URL) {
+        isDirty = false
         Task.detached { [weak self] in
             let raw = await ContentViewerWindow.fetchTextContent(from: url)
-            let lang = ContentViewerWindow.languageIdentifier(for: url)
-            let html = ContentViewerWindow.wrapCodeInHTML(raw, language: lang)
             await MainActor.run {
-                self?.webView.loadHTMLString(html, baseURL: url)
-                self?.showWebView()
-                self?.hideLoading()
-            }
-        }
-    }
-
-    private func loadEditableText(url: URL, prettyPrint: Bool) {
-        Task.detached { [weak self] in
-            let raw = await ContentViewerWindow.fetchTextContent(from: url)
-            let body: String
-            if prettyPrint {
-                let ext = url.pathExtension.lowercased()
-                switch ext {
-                case "json": body = await ContentViewerWindow.prettyPrintJSON(raw) ?? raw
-                case "xml":  body = await ContentViewerWindow.prettyPrintXML(raw)  ?? raw
-                default:     body = raw
-                }
-            } else {
-                body = raw
-            }
-            await MainActor.run {
-                self?.textView.string = body
-                self?.showTextView()
-                self?.hideLoading()
+                guard let self = self else { return }
+                (self.textView.textStorage as? CodeAttributedString)?.language = ContentViewerWindow.hljsLanguage(for: url)
+                self.textView.string = raw
+                self.isDirty = false
+                self.showTextView()
+                self.hideLoading()
+                self.refreshSaveButton()
             }
         }
     }
@@ -744,44 +746,40 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         imageView.isHidden = false
     }
 
-    private func showAddressBar(for url: URL) {
-        toggleButton.isHidden = true
-        saveButton.isHidden = true
-        gitDiffButton.isHidden = true
-        locateButton.isHidden = !url.isFileURL
+    // MARK: - Identity (toolbar left)
+
+    private func showFileIdentity(for url: URL) {
+        addressBar.isHidden = true
+        filenameLabel.isHidden = false
+        modifiedLabel.isHidden = false
+        filenameLabel.stringValue = url.lastPathComponent
+        modifiedLabel.stringValue = ContentViewerWindow.subtitleString(for: url)
+        modifiedLabel.toolTip = url.isFileURL ? url.path : url.absoluteString
+    }
+
+    private func showAddressBarIdentity(for url: URL) {
+        filenameLabel.isHidden = true
         modifiedLabel.isHidden = true
         addressBar.isHidden = false
         addressBar.stringValue = url.absoluteString
         addressBar.isEditable = true
         addressBar.target = self
         addressBar.action = #selector(addressBarSubmitted)
-        layoutToolbarButtons()
     }
 
-    private func showToolbar() {
-        addressBar.isHidden = true
-        modifiedLabel.isHidden = true
-        layoutToolbarButtons()
+    /// Save is always visible; only clickable for a dirty, local, editable file.
+    private func refreshSaveButton() {
+        saveButton.isHidden = false
+        let editable = (kind == .text) && (currentURL?.isFileURL ?? false)
+        saveButton.isEnabled = editable && isDirty
     }
 
-    @objc private func toggleEditTapped() {
-        guard let url = currentURL else { return }
-        guard kind == .markdown || kind == .text else { return }
-        isEditing.toggle()
-        if isEditing {
-            toggleButton.title = "View".localized
-            saveButton.isHidden = !url.isFileURL
-            loadEditableText(url: url, prettyPrint: false)
-        } else {
-            toggleButton.title = "Edit".localized
-            saveButton.isHidden = true
-            if kind == .markdown {
-                renderMarkdownView(url: url)
-            } else {
-                renderHighlightedCode(url: url)
-            }
+    @objc private func findTapped() {
+        if !webView.isHidden {
+            showWebFindBar()
+        } else if !textScroll.isHidden {
+            invokeTextFinder(.showFindInterface)
         }
-        layoutToolbarButtons()
     }
 
     @objc private func gitDiffTapped() {
@@ -840,10 +838,12 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     }
 
     @objc private func saveTapped() {
-        guard let url = currentURL, url.isFileURL else { return }
+        guard kind == .text, let url = currentURL, url.isFileURL else { return }
         let body = textView.string
         do {
             try body.write(to: url, atomically: true, encoding: .utf8)
+            isDirty = false
+            saveButton.isEnabled = false
             saveButton.title = "Saved ✓".localized
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 self?.saveButton.title = "Save".localized
@@ -855,15 +855,11 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
         }
     }
 
-    private func updateToolbarPath(for url: URL?) {
-        guard let url = url else {
-            modifiedLabel.stringValue = ""
-            modifiedLabel.toolTip = nil
-            return
-        }
-        let label = url.isFileURL ? url.path : url.absoluteString
-        modifiedLabel.stringValue = label
-        modifiedLabel.toolTip = label
+    // NSTextViewDelegate — mark the buffer dirty on user edits so Save lights up.
+    func textDidChange(_ notification: Notification) {
+        guard (notification.object as? NSTextView) === textView else { return }
+        isDirty = true
+        refreshSaveButton()
     }
 
     private func resetGitDiffAvailability() {
@@ -1040,20 +1036,18 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, WKNavigationDelegate {
     }
 
     @objc private func updateAppearance() {
+        // The panel commits to the dark-glass palette regardless of the system
+        // theme (the frosted bars are vibrant-dark NSVisualEffectViews), so all
+        // we need to do on a preferences change is re-assert the dark base and
+        // re-tint the hairline separators.
         guard let root = contentView else { return }
-        root.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
-        toolbarBar.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
-        if let toolbarSep = toolbarBar.subviews.first(where: { $0.frame.height == 1 && $0 !== webFindBar }) {
-            toolbarSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
+        root.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
+        loadingOverlay?.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
+        for bar in [toolbarBar, webFindBar, imageInfoBar] {
+            for sub in bar.subviews where sub.frame.height == 1 {
+                sub.layer?.backgroundColor = PanelStyle.hairline.cgColor
+            }
         }
-        webFindBar.layer?.backgroundColor = Self.resolvedCG(.controlBackgroundColor)
-        if let findSep = webFindBar.subviews.first(where: { $0.frame.height == 1 }) {
-            findSep.layer?.backgroundColor = Self.resolvedCG(.separatorColor)
-        }
-        if let overlay = loadingOverlay {
-            overlay.layer?.backgroundColor = Self.resolvedCG(.windowBackgroundColor)
-        }
-        imageInfoBar.layer?.backgroundColor = Self.resolvedCG(.underPageBackgroundColor)
     }
 
 

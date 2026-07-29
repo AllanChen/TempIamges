@@ -38,3 +38,6 @@ prototype/*
 !prototype/*.html
 !prototype/.gitignore
 .gstack/
+
+# Cloudflare Pages build output
+dist/

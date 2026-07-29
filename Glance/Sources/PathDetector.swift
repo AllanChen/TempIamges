@@ -182,14 +182,14 @@ class PathDetector {
         // only when it is NOT followed by whitespace/bracket and NOT followed by
         // another "https?://" — i.e. it's clearly mid-URL, not a separator.
         self.httpRegex = try! NSRegularExpression(
-            pattern: "https?:?//(?:[^\\s\"'<>()\\[\\]{},]|,(?![\\s\"'<>()\\[\\]{}])(?!https?:?//))+",
+            pattern: "https?:?//(?:[^\\s\"'<>()\\[\\]{},\\\\]|,(?![\\s\"'<>()\\[\\]{}])(?!https?:?//))+",
             options: []
         )
         // Bare domain without scheme — `www.foo.com[/...]` or `something.com[/...]`.
         // Restricted to a www. prefix or a known multi-letter TLD to bound
         // false-positive risk against ordinary prose with periods.
-        self.bareDomainRegex = try! NSRegularExpression(
-            pattern: "(?<![A-Za-z0-9._/@-])(?:www\\.[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+|[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.(?:com|net|org|io|ai|app|dev|co|me|info|xyz|page|site|store|tech|gov|edu))(?:/[^\\s\"'<>()\\[\\]{},]*)?(?![A-Za-z0-9])",
+        self.bareDomainRegex = try! NSRegularExpression(    
+            pattern: "(?<![A-Za-z0-9._/@-])(?:www\\.[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+|[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.(?:com|net|org|io|ai|app|dev|co|me|info|xyz|page|site|store|tech|gov|edu))(?:/[^\\s\"'<>()\\[\\]{},\\\\]*)?(?![A-Za-z0-9])",
             options: []
         )
         // Comma is excluded so comma-separated lists of paths (e.g.
@@ -201,15 +201,15 @@ class PathDetector {
         // file-existence check. Newlines and tabs remain excluded so
         // matches can't span lines.
         self.fileURLRegex = try! NSRegularExpression(
-            pattern: "file://[^\"'<>()\\[\\]{},\\n\\r\\t]+?\\.(?i:\(extAlt))",
+            pattern: "file://[^\"'<>()\\[\\]{},\\n\\r\\t\\\\]+?\\.(?i:\(extAlt))",
             options: []
         )
         self.absolutePathRegex = try! NSRegularExpression(
-            pattern: "/[^\"'<>()\\[\\]{},\\n\\r\\t]+?\\.(?i:\(extAlt))",
+            pattern: "/[^\"'<>()\\[\\]{},\\n\\r\\t\\\\]+?\\.(?i:\(extAlt))",
             options: []
         )
         self.homePathRegex = try! NSRegularExpression(
-            pattern: "~/[^\"'<>()\\[\\]{},\\n\\r\\t]+?\\.(?i:\(extAlt))",
+            pattern: "~/[^\"'<>()\\[\\]{},\\n\\r\\t\\\\]+?\\.(?i:\(extAlt))",
             options: []
         )
         // Relative path: at least one interior '/', optional ./ or ../ prefix.
@@ -233,11 +233,11 @@ class PathDetector {
             options: []
         )
         self.folderAbsolutePathRegex = try! NSRegularExpression(
-            pattern: "(?<![\\p{L}\\p{N}_.~\\-])/(?:Users|System|Library|Applications|Volumes|private|tmp|var|usr|bin|sbin|opt|dev|etc|home)/[^\"'<>()\\[\\]{},\\n\\r\\t ]+(?:/[^\"'<>()\\[\\]{},\\n\\r\\t ]+)*",
+            pattern: "(?<![\\p{L}\\p{N}_.~\\-])/(?:Users|System|Library|Applications|Volumes|private|tmp|var|usr|bin|sbin|opt|dev|etc|home)/[^\"'<>()\\[\\]{},\\n\\r\\t \\\\]+(?:/[^\"'<>()\\[\\]{},\\n\\r\\t \\\\]+)*",
             options: []
         )
         self.folderHomePathRegex = try! NSRegularExpression(
-            pattern: "(?<![\\p{L}\\p{N}_.~\\-])~/[^\"'<>()\\[\\]{},\\n\\r\\t ]+(?:/[^\"'<>()\\[\\]{},\\n\\r\\t ]+)*",
+            pattern: "(?<![\\p{L}\\p{N}_.~\\-])~/[^\"'<>()\\[\\]{},\\n\\r\\t \\\\]+(?:/[^\"'<>()\\[\\]{},\\n\\r\\t \\\\]+)*",
             options: []
         )
 
@@ -410,7 +410,7 @@ class PathDetector {
 
     private func resolveCandidate(_ rawCandidate: String) -> DetectedPath? {
         var candidate = rawCandidate.trimmingCharacters(in: .whitespacesAndNewlines)
-        while let last = candidate.last, ",.;!?\"')]}".contains(last) {
+        while let last = candidate.last, ",.;!?\"')]}\\".contains(last) {
             candidate.removeLast()
         }
         guard !candidate.isEmpty else { return nil }
@@ -553,7 +553,10 @@ class PathDetector {
     private func mediaExtension(of candidate: String) -> String {
         // Strip query string before pathExtension lookup, since the http
         // regex captures `?...` for remote URLs.
-        let withoutQuery = candidate.split(separator: "?", maxSplits: 1).first.map(String.init) ?? candidate
+        var withoutQuery = candidate.split(separator: "?", maxSplits: 1).first.map(String.init) ?? candidate
+        while withoutQuery.hasSuffix("\\") {
+            withoutQuery.removeLast()
+        }
         return (withoutQuery as NSString).pathExtension.lowercased()
     }
 
@@ -603,7 +606,7 @@ class PathDetector {
 
     private func resolveFolderCandidate(_ rawCandidate: String) -> DetectedPath? {
         var candidate = rawCandidate.trimmingCharacters(in: .whitespacesAndNewlines)
-        while let last = candidate.last, ",.;!?\"')]}".contains(last) {
+        while let last = candidate.last, ",.;!?\"')]}\\".contains(last) {
             candidate.removeLast()
         }
         guard !candidate.isEmpty else { return nil }
