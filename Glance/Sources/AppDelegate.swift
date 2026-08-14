@@ -221,9 +221,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private func handleGlobalMouseDown(_ event: NSEvent) {
         guard Preferences.shared.enabled, Preferences.shared.clickToPreview else { return }
 
-        // Require exactly the activation modifiers — same set the keyboard
-        // hotkey uses — so click and hotkey stay consistent.
-        let required = Preferences.shared.effectiveModifiers
+        // Require exactly the click modifiers. Independent from the keyboard
+        // hotkey (which defaults to ⌥) so click can default to ⌘.
+        let required = Preferences.shared.clickModifiers
         guard !required.isEmpty else { return }
         let deviceIndependent = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let relevant: NSEvent.ModifierFlags = [.command, .option, .control, .shift]

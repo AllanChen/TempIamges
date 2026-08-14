@@ -84,12 +84,24 @@ class Preferences {
         set { defaults.set(newValue, forKey: "\(suiteName).readClipboard") }
     }
 
-    /// When enabled, holding the activation modifier and clicking a path/filename
+    /// When enabled, holding the click modifier(s) and clicking a path/filename
     /// in any app triggers a preview (reads the text under the cursor). Provides
     /// an escape hatch in case it conflicts with an app's own modifier-click.
     var clickToPreview: Bool {
         get { defaults.bool(forKey: "\(suiteName).clickToPreview") }
         set { defaults.set(newValue, forKey: "\(suiteName).clickToPreview") }
+    }
+
+    /// Modifier flags that must be held while clicking to trigger a preview.
+    /// Independent from the keyboard hotkey so click can default to ⌘ while the
+    /// hotkey stays ⌥. Falls back to ⌘ when unset.
+    var clickModifiers: NSEvent.ModifierFlags {
+        get {
+            let stored = defaults.object(forKey: "\(suiteName).clickModifiers") as? Int
+            guard let raw = stored, raw != 0 else { return .command }
+            return NSEvent.ModifierFlags(rawValue: UInt(raw))
+        }
+        set { defaults.set(Int(newValue.rawValue), forKey: "\(suiteName).clickModifiers") }
     }
 
     var loginURL: String? {
@@ -163,6 +175,7 @@ class Preferences {
         launchAtLogin = false
         readClipboard = true
         clickToPreview = true
+        clickModifiers = .command
         loginURL = nil
         theme = .dark
         activationMode = .option
