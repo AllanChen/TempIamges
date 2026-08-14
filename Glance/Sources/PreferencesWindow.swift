@@ -61,6 +61,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private var enabledCheckbox: NSButton!
     private var launchAtLoginCheckbox: NSButton!
     private var readClipboardCheckbox: NSButton!
+    private var clickToPreviewCheckbox: NSButton!
     private var modePopup: NSPopUpButton!
     private var customShortcutField: ShortcutRecorderField!
     private var currentHotkeyLabel: NSTextField!
@@ -70,7 +71,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private var recordedKeyCode: UInt16?
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 480, height: 560)
+        let windowRect = NSRect(x: 0, y: 0, width: 480, height: 590)
         super.init(
             contentRect: windowRect,
             styleMask: [.titled, .closable, .fullSizeContentView],
@@ -153,7 +154,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         container.addSubview(themePopup)
 
         // ---- Card 2: General ----
-        let card2 = makeCard(NSRect(x: 20, y: 220, width: 440, height: 132))
+        let card2 = makeCard(NSRect(x: 20, y: 220, width: 440, height: 162))
         container.addSubview(card2)
         container.addSubview(makeSectionHeader("General".localized, at: NSRect(x: 36, y: 234, width: 408, height: 14)))
 
@@ -165,24 +166,28 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         readClipboardCheckbox.frame = NSRect(x: 36, y: 294, width: 408, height: 22)
         container.addSubview(readClipboardCheckbox)
 
+        clickToPreviewCheckbox = makeCheckbox("Preview on modifier + click".localized, action: #selector(clickToPreviewToggled))
+        clickToPreviewCheckbox.frame = NSRect(x: 36, y: 324, width: 408, height: 22)
+        container.addSubview(clickToPreviewCheckbox)
+
         launchAtLoginCheckbox = makeCheckbox("Launch at Login".localized, action: #selector(launchAtLoginToggled))
-        launchAtLoginCheckbox.frame = NSRect(x: 36, y: 324, width: 408, height: 22)
+        launchAtLoginCheckbox.frame = NSRect(x: 36, y: 354, width: 408, height: 22)
         container.addSubview(launchAtLoginCheckbox)
 
         // ---- Card 3: Activation Hotkey ----
-        let card3 = makeCard(NSRect(x: 20, y: 368, width: 440, height: 140))
+        let card3 = makeCard(NSRect(x: 20, y: 398, width: 440, height: 140))
         container.addSubview(card3)
-        container.addSubview(makeSectionHeader("Activation Hotkey".localized, at: NSRect(x: 36, y: 382, width: 408, height: 14)))
+        container.addSubview(makeSectionHeader("Activation Hotkey".localized, at: NSRect(x: 36, y: 412, width: 408, height: 14)))
 
         let hotkeyDesc = NSTextField(labelWithString: "Hold these keys while hovering to show previews:".localized)
         hotkeyDesc.font = NSFont.systemFont(ofSize: 12)
         hotkeyDesc.textColor = NSColor(white: 1, alpha: 0.55)
         hotkeyDesc.lineBreakMode = .byWordWrapping
         hotkeyDesc.maximumNumberOfLines = 2
-        hotkeyDesc.frame = NSRect(x: 36, y: 404, width: 408, height: 32)
+        hotkeyDesc.frame = NSRect(x: 36, y: 434, width: 408, height: 32)
         container.addSubview(hotkeyDesc)
 
-        modePopup = NSPopUpButton(frame: NSRect(x: 36, y: 444, width: 150, height: 26), pullsDown: false)
+        modePopup = NSPopUpButton(frame: NSRect(x: 36, y: 474, width: 150, height: 26), pullsDown: false)
         modePopup.target = self
         modePopup.action = #selector(modeChanged)
         for m in Preferences.ActivationMode.allCases {
@@ -191,7 +196,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         }
         container.addSubview(modePopup)
 
-        customShortcutField = ShortcutRecorderField(frame: NSRect(x: 196, y: 444, width: 244, height: 26))
+        customShortcutField = ShortcutRecorderField(frame: NSRect(x: 196, y: 474, width: 244, height: 26))
         customShortcutField.isEditable = false
         customShortcutField.isSelectable = false
         customShortcutField.alignment = .center
@@ -210,13 +215,13 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         currentHotkeyLabel = NSTextField(labelWithString: "")
         currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
         currentHotkeyLabel.textColor = NSColor(white: 1, alpha: 0.50)
-        currentHotkeyLabel.frame = NSRect(x: 36, y: 478, width: 408, height: 18)
+        currentHotkeyLabel.frame = NSRect(x: 36, y: 508, width: 408, height: 18)
         container.addSubview(currentHotkeyLabel)
 
         // ---- Footer ----
         let resetButton = NSButton(title: "Reset to Defaults".localized, target: self, action: #selector(resetToDefaults))
         resetButton.bezelStyle = .rounded
-        resetButton.frame = NSRect(x: 340, y: 520, width: 120, height: 28)
+        resetButton.frame = NSRect(x: 340, y: 550, width: 120, height: 28)
         container.addSubview(resetButton)
     }
 
@@ -264,6 +269,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         let prefs = Preferences.shared
         enabledCheckbox.state = prefs.enabled ? .on : .off
         readClipboardCheckbox.state = prefs.readClipboard ? .on : .off
+        clickToPreviewCheckbox.state = prefs.clickToPreview ? .on : .off
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
         updateModePopup()
         updateHotkeyUI()
@@ -534,6 +540,11 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
     @objc private func enabledToggled(_ sender: NSButton) {
         Preferences.shared.enabled = sender.state == .on
+        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+    }
+
+    @objc private func clickToPreviewToggled(_ sender: NSButton) {
+        Preferences.shared.clickToPreview = sender.state == .on
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 

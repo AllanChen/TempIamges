@@ -44,6 +44,7 @@
 "General" = "General";
 "Enable Image Hover Preview" = "Enable Image Hover Preview";
 "Read clipboard when no text is selected" = "Read clipboard when no text is selected";
+"Preview on modifier + click" = "Preview on modifier + click";
 "Launch at Login" = "Launch at Login";
 "Activation Hotkey" = "Activation Hotkey";
 "Hold these keys while hovering to show previews:" = "Hold these keys while hovering to show previews:";

@@ -55,6 +55,68 @@ class SelectedTextExtractor {
         }
     }
 
+    // MARK: - Cursor hit-test (read the text under the mouse, any app)
+
+    /// Reads the accessibility text of the UI element directly under the given
+    /// screen point (Cocoa coords, bottom-left origin, y-up). Works in any app
+    /// whose AX tree exposes the element (VSCode/browser/Finder/native views).
+    /// Terminals and self-drawn canvases usually return nothing — callers should
+    /// fall back to selection/clipboard.
+    ///
+    /// Runs a blocking AX read, so call it off the main thread.
+    func extractTextAtCursor(at screenPoint: CGPoint) -> SelectionResult? {
+        // AX uses top-left origin, y-down. Convert using the screen that
+        // actually contains the point so multi-monitor setups map correctly
+        // (NSScreen.main is the key-window screen, not necessarily the one the
+        // cursor is on).
+        let screen = NSScreen.screens.first { NSMouseInRect(screenPoint, $0.frame, false) }
+            ?? NSScreen.main
+        guard let screen = screen else {
+            Logger.info("SelectedTextExtractor: no screen for cursor point \(screenPoint)")
+            return nil
+        }
+        // Flip within the frame of the containing screen. `maxY` of that frame is
+        // the global top edge of the screen in Cocoa space; subtracting the point
+        // yields the AX (y-down) coordinate.
+        let axY = screen.frame.maxY - screenPoint.y
+
+        let systemWide = AXUIElementCreateSystemWide()
+        var elementRef: AXUIElement?
+        let hitResult = AXUIElementCopyElementAtPosition(
+            systemWide,
+            Float(screenPoint.x),
+            Float(axY),
+            &elementRef
+        )
+        guard hitResult == .success, let element = elementRef else {
+            Logger.info("SelectedTextExtractor: no AX element at cursor (status=\(hitResult.rawValue))")
+            return nil
+        }
+
+        let attributes: [String] = [
+            kAXValueAttribute as String,
+            kAXDescriptionAttribute as String,
+            kAXTitleAttribute as String,
+            kAXRoleDescriptionAttribute as String,
+        ]
+        for attr in attributes {
+            var value: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(element, attr as CFString, &value) == .success,
+                  let raw = value,
+                  CFGetTypeID(raw) == CFStringGetTypeID() else {
+                continue
+            }
+            let text = (raw as! CFString) as String
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                Logger.info("SelectedTextExtractor: cursor text via \(attr)='\(trimmed)'")
+                return SelectionResult(text: trimmed, bounds: nil)
+            }
+        }
+        Logger.info("SelectedTextExtractor: AX element at cursor had no usable text")
+        return nil
+    }
+
     // MARK: - AX path (native Cocoa apps)
 
     private func readViaAXWithTimeout(timeout: TimeInterval) -> SelectionResult? {

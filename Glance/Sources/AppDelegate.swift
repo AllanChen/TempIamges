@@ -30,6 +30,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var lastSelectedText: String?
     private var hasShownFDAAlertThisSession = false
 
+    /// Global monitor for modifier+click preview (read-only; does not intercept
+    /// the click). nil when disabled or permission is missing.
+    private var mouseClickMonitor: Any?
+    /// De-dupe guard so a double-click (or repeated events at the same spot)
+    /// doesn't fire two previews.
+    private var lastModifierClickTime: TimeInterval = 0
+    private var lastModifierClickPoint: CGPoint = .zero
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
         applyLanguage()
@@ -55,6 +63,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     func applicationWillTerminate(_ notification: Notification) {
         keyboardMonitor?.stopMonitoring()
+        if let monitor = mouseClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            mouseClickMonitor = nil
+        }
         NSAppleEventManager.shared().removeEventHandler(
             forEventClass: AEEventClass(kInternetEventClass),
             andEventID: AEEventID(kAEGetURL)
@@ -155,6 +167,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         } else {
             Logger.info("AppDelegate: Input Monitoring permission not granted - keyboard monitoring disabled")
         }
+
+        updateMouseClickMonitoring()
     }
 
     private func showOnboardingWindow() {
@@ -173,6 +187,100 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             Logger.info("AppDelegate: Keyboard monitoring started")
         } else {
             Logger.info("AppDelegate: Failed to start keyboard monitoring")
+        }
+    }
+
+    // MARK: - Modifier+click preview (global, read-only)
+
+    /// Start/stop the global left-mouse-down monitor based on the current
+    /// preference and Accessibility permission. Safe to call repeatedly.
+    private func updateMouseClickMonitoring() {
+        let wantEnabled = Preferences.shared.clickToPreview
+            && PermissionManager.shared.isAccessibilityGranted
+
+        if wantEnabled {
+            guard mouseClickMonitor == nil else { return }
+            // A *global* monitor is read-only: it observes clicks headed to other
+            // apps without consuming them, so it never breaks an app's own
+            // modifier-click and satisfies the "don't intercept" design choice.
+            mouseClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] event in
+                self?.handleGlobalMouseDown(event)
+            }
+            Logger.info("AppDelegate: Modifier+click monitoring started")
+        } else {
+            if let monitor = mouseClickMonitor {
+                NSEvent.removeMonitor(monitor)
+                mouseClickMonitor = nil
+                Logger.info("AppDelegate: Modifier+click monitoring stopped")
+            }
+        }
+    }
+
+    /// Runs on the main thread (NSEvent global monitor). Keep the synchronous
+    /// part cheap: gate on modifiers, then hand off the heavy AX read async.
+    private func handleGlobalMouseDown(_ event: NSEvent) {
+        guard Preferences.shared.enabled, Preferences.shared.clickToPreview else { return }
+
+        // Require exactly the activation modifiers — same set the keyboard
+        // hotkey uses — so click and hotkey stay consistent.
+        let required = Preferences.shared.effectiveModifiers
+        guard !required.isEmpty else { return }
+        let deviceIndependent = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let relevant: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+        guard deviceIndependent.intersection(relevant) == required.intersection(relevant) else { return }
+
+        let point = NSEvent.mouseLocation
+
+        // De-dupe rapid repeats / double-clicks at (approximately) the same spot.
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - lastModifierClickTime < 0.3,
+           abs(point.x - lastModifierClickPoint.x) < 6,
+           abs(point.y - lastModifierClickPoint.y) < 6 {
+            return
+        }
+        lastModifierClickTime = now
+        lastModifierClickPoint = point
+
+        handleModifierClick(at: point)
+    }
+
+    /// Read text under the cursor (falling back to selection, then clipboard),
+    /// then run it through the normal preview pipeline. Silent on total miss so
+    /// stray clicks don't spam error tooltips.
+    private func handleModifierClick(at point: CGPoint) {
+        guard PermissionManager.shared.isAccessibilityGranted else { return }
+        guard let extractor = selectedTextExtractor else { return }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+
+            var text: String?
+            if let cursor = extractor.extractTextAtCursor(at: point), !cursor.text.isEmpty {
+                text = cursor.text
+            } else if let selection = extractor.extractSelection(), !selection.text.isEmpty {
+                Logger.info("AppDelegate: click — cursor text empty, using selection")
+                text = selection.text
+            } else if Preferences.shared.readClipboard,
+                      let clip = extractor.readClipboardDirectly(), !clip.text.isEmpty {
+                Logger.info("AppDelegate: click — falling back to clipboard")
+                text = clip.text
+            }
+
+            guard let resolved = text, !resolved.isEmpty else {
+                Logger.info("AppDelegate: click — no text found under cursor; ignoring")
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.lastSelectedText = resolved
+                // If a preview is already open, close it first so the new click
+                // opens a fresh preview ("click what you see").
+                if self.previewPanel?.isVisible ?? false || ContentPanel.shared.isVisible {
+                    self.previewPanel?.closePanel()
+                    ContentPanel.shared.dismiss()
+                }
+                self.proceedWithPreview(text: resolved, anchor: point)
+            }
         }
     }
 
@@ -538,6 +646,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         if !Preferences.shared.enabled {
             previewModeDeactivated()
         }
+        updateMouseClickMonitoring()
         applyTheme()
     }
 

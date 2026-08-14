@@ -84,6 +84,14 @@ class Preferences {
         set { defaults.set(newValue, forKey: "\(suiteName).readClipboard") }
     }
 
+    /// When enabled, holding the activation modifier and clicking a path/filename
+    /// in any app triggers a preview (reads the text under the cursor). Provides
+    /// an escape hatch in case it conflicts with an app's own modifier-click.
+    var clickToPreview: Bool {
+        get { defaults.bool(forKey: "\(suiteName).clickToPreview") }
+        set { defaults.set(newValue, forKey: "\(suiteName).clickToPreview") }
+    }
+
     var loginURL: String? {
         get { defaults.string(forKey: "\(suiteName).loginURL") }
         set { defaults.set(newValue, forKey: "\(suiteName).loginURL") }
@@ -141,6 +149,7 @@ class Preferences {
             "\(suiteName).enabled": true,
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
+            "\(suiteName).clickToPreview": true,
             "\(suiteName).theme": Theme.dark.rawValue,
             "\(suiteName).activationMode": ActivationMode.option.rawValue,
             "\(suiteName).customHotkeyModifiers": 0,
@@ -153,6 +162,7 @@ class Preferences {
         enabled = true
         launchAtLogin = false
         readClipboard = true
+        clickToPreview = true
         loginURL = nil
         theme = .dark
         activationMode = .option
