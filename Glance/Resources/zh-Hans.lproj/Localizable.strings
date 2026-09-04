@@ -47,6 +47,8 @@
  "Launch at Login" = "登录时启动";
 "Activation Hotkey" = "激活热键";
 "Hold these keys while hovering to show previews:" = "悬停时按住这些键以显示预览：";
+"Select a path, then press the shortcut to show or hide Peek:" = "选中路径，然后按快捷键显示或关闭快速预览：";
+"Option + Space (⌥␣)" = "Option + Space (⌥␣)";
 "Option (⌥)" = "Option (⌥)";
 "Custom" = "自定义";
 "Click to record shortcut" = "点击录制热键";
@@ -76,10 +78,24 @@
 "Failed" = "失败";
 "Folder" = "文件夹";
 "Failed to load" = "加载失败";
+"Searching…" = "正在查找…";
+"File not found" = "未找到文件";
+"No matching file found" = "未找到匹配文件";
 "Reveal in Finder" = "在 Finder 中显示";
 "Download" = "下载";
 "Download failed" = "下载失败";
 "in %@" = "位于 %@";
+"%d files" = "%d 个文件";
+
+// MARK: - Image Inspect
+"Image Inspect" = "图片检查";
+"Focus" = "聚焦";
+"Side by side" = "左右并排";
+"Slider" = "滑杆";
+"Image information" = "图片信息";
+"Pixel alignment" = "像素对齐";
+"Relative alignment" = "相对对齐";
+"%d differences" = "%d 项差异";
 
 // MARK: - Content Panel / Viewer
 "Save" = "保存";
@@ -123,6 +139,8 @@
 "No file found matching '%@'" = "未找到匹配 '%@' 的文件";
 "No media to preview" = "没有可预览的媒体";
 "Failed to load media" = "加载媒体失败";
+"Full Disk Access Required" = "需要完全磁盘访问权限";
+"Glance needs Full Disk Access to search files in protected locations (Desktop, Documents, Downloads). Enable it in System Settings to improve search results." = "Glance 需要完全磁盘访问权限才能搜索受保护位置中的文件。你可以在系统设置中启用它以改善搜索结果。";
 
 // MARK: - Language Change Alert
 "Language Changed" = "语言已更改";

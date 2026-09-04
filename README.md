@@ -6,7 +6,7 @@ Glance 是一个原生 macOS 菜单栏工具，用来从任意应用中选中的
 
 ## 主要能力
 
-- 全局热键触发：默认按住 Control，可在偏好设置中改为 Control、Option 或二者组合。
+- 全局热键触发：默认使用 `Option + Space` 显示或关闭 Peek，可在偏好设置中自定义。
 - 跨应用读取选中文本：优先使用 Accessibility API，失败时可通过剪贴板回退读取。
 - 多类型路径识别：支持 HTTP(S) URL、裸域名、本地绝对路径、`~/` 路径、`file://`、相对路径和裸文件名。
 - Spotlight 文件解析：当文本只有 `screenshot.png` 或 `docs/readme.md` 这类不完整路径时，会尝试通过 Spotlight 查找实际文件。
@@ -16,15 +16,18 @@ Glance 是一个原生 macOS 菜单栏工具，用来从任意应用中选中的
 - 历史记录：菜单栏中可打开 Preview History，查看最近预览过的内容。
 - 权限引导：首次启动会提示 Input Monitoring 和 Accessibility 权限。
 - 多显示器定位：预览窗口会根据当前鼠标所在屏幕自动避让边缘。
+- 图片深度检查：单击 Peek 中的图片进入 Image Inspect，支持适应窗口、100%、指针中心缩放和平移。
+- 多图浏览与比较：多张明确图片路径使用缩略网格；Finder 同时打开两张图片会直接进入并排或滑杆比较，并显示技术属性差异。
+- Finder 文件入口：可通过“打开方式 > Glance”或将 Glance 设为图片查看器打开一张或多张图片。
 
 ## 使用方式
 
 1. 启动 `Glance.app`，它会作为菜单栏应用运行，不显示 Dock 图标。
 2. 按提示授予 Input Monitoring 和 Accessibility 权限。
 3. 在任意应用中选中一段包含 URL、路径、文件名或域名的文本。
-4. 按住默认热键 Control 触发预览。
-5. 使用预览面板查看媒体，或点击文件卡片打开内容、网页、Finder 位置。
-6. 再次触发热键或点击面板上的关闭按钮可以收起当前预览。
+4. 按 `Option + Space` 触发 Peek；再次按相同快捷键可以关闭。
+5. 使用 Peek 快速确认内容；单击图片进入 Image Inspect 查看细节。
+6. 在 Finder 中用 Glance 打开两张图片可直接比较，打开三张以上则进入同组浏览。
 
 ## 支持内容
 
@@ -114,13 +117,13 @@ tccutil reset All com.glance.app
 
 ## 核心流程
 
-1. `KeyboardMonitor` 通过 `CGEventTap` 监听 Control/Option 状态。
+1. `KeyboardMonitor` 通过 `CGEventTap` 在专用线程监听默认 `Option + Space` 或用户自定义快捷键。
 2. `AppDelegate` 收到热键激活通知，检查权限和偏好设置。
 3. `SelectedTextExtractor` 从当前焦点控件读取选中文本，必要时用剪贴板回退。
 4. `PathDetector` 从文本中提取 URL、本地路径、相对路径或裸文件名。
 5. `FileNameResolver` 对未解析的文件名/相对路径执行 Spotlight 查询和缓存。
 6. `ImageLoader` 加载图片、探测视频元数据，或生成可打开文件的占位信息。
-7. `PreviewPanel`、`ContentPanel`、`ContentViewerWindow` 根据文件类型展示预览或内容。
+7. `PreviewPanel` 负责不抢焦点的 Peek；`ImageInspectWindow` 负责图片 Focus、Browse 和 Compare；其他内容继续由 `ContentPanel`、`ContentViewerWindow` 展示。
 8. `HistoryManager` 将已解析的预览记录写入 Application Support。
 
 ## 运行数据

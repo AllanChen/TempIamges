@@ -4,6 +4,8 @@ import AVFoundation
 import WebKit
 
 class PreviewPanel: NSPanel {
+    var onInspectImages: (([MediaInfo], [LoadedMedia?], Int) -> Void)?
+    var onDismiss: (() -> Void)?
     // MARK: - Layout constants
     private let panelCornerRadius: CGFloat = 20
     private let headerHeight: CGFloat = 52
@@ -190,10 +192,9 @@ class PreviewPanel: NSPanel {
     /// True while a preview is showing, so the didMove observer keeps ContentPanel
     /// docked. Replaces the old 50ms polling follow timer.
     private var isFollowingContentPanel: Bool = false
-    private var escapeLocalMonitor: Any?
-    private var escapeGlobalMonitor: Any?
     private var contentPanelOpenedByTileClick: Bool = false
     private var hasUserResized: Bool = false
+    private var isApplyingProgrammaticFrame = false
     private var userSetSize: NSSize? {
         get {
             guard let dict = UserDefaults.standard.dictionary(forKey: "PreviewPanelUserSize") as? [String: CGFloat],
@@ -209,7 +210,7 @@ class PreviewPanel: NSPanel {
         }
     }
 
-    private enum Mode { case singleCard, splitView, contentOnly }
+    private enum Mode { case singleCard, imageGrid, splitView, contentOnly }
 
     init() {
         super.init(
@@ -233,7 +234,9 @@ class PreviewPanel: NSPanel {
             queue: .main
         ) { [weak self] _ in
             guard let self = self else { return }
-            self.savedPosition = self.frame
+            if !self.isApplyingProgrammaticFrame, NSEvent.pressedMouseButtons != 0 {
+                self.savedPosition = self.frame
+            }
             // Drive ContentPanel following from the move event itself (fires
             // continuously during a live drag) instead of a polling timer.
             if self.isFollowingContentPanel, ContentPanel.shared.isVisible {
@@ -261,11 +264,11 @@ class PreviewPanel: NSPanel {
             queue: .main
         ) { [weak self] _ in
             guard let self = self else { return }
+            guard self.inLiveResize else { return }
             self.hasUserResized = true
             self.userSetSize = self.frame.size
             self.updateSplitView()
         }
-        installEscapeKeyMonitors()
     }
 
     override func orderFront(_ sender: Any?) {
@@ -286,48 +289,7 @@ class PreviewPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 
     override func cancelOperation(_ sender: Any?) {
-        forceHidePanel(dismissContent: !contentPanelOpenedByTileClick)
-    }
-
-    private func installEscapeKeyMonitors() {
-        escapeLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self, self.isVisible else { return event }
-            if self.shouldCloseForEscape(event) {
-                self.forceHidePanel(dismissContent: !self.contentPanelOpenedByTileClick)
-                return nil
-            }
-            if self.handleArrowKey(event) {
-                return nil
-            }
-            return event
-        }
-
-        escapeGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self, self.shouldCloseForEscape(event) else { return }
-            DispatchQueue.main.async {
-                self.forceHidePanel(dismissContent: !self.contentPanelOpenedByTileClick)
-            }
-        }
-    }
-
-    private func shouldCloseForEscape(_ event: NSEvent) -> Bool {
-        isVisible && event.keyCode == 53
-    }
-
-    private func handleArrowKey(_ event: NSEvent) -> Bool {
-        guard currentMode == .splitView, currentInfos.count > 1 else { return false }
-        let newIndex: Int?
-        switch event.keyCode {
-        case 126:
-            newIndex = selectedIndex > 0 ? selectedIndex - 1 : currentInfos.count - 1
-        case 125:
-            newIndex = selectedIndex < currentInfos.count - 1 ? selectedIndex + 1 : 0
-        default:
-            return false
-        }
-        guard let index = newIndex else { return false }
-        selectSplitItem(at: index)
-        return true
+        closePanel()
     }
 
     private func determineMode(for infos: [MediaInfo]) -> Mode {
@@ -339,16 +301,13 @@ class PreviewPanel: NSPanel {
                 return .contentOnly
             }
         }
+        if infos.allSatisfy({ $0.kind == .image }) {
+            return .imageGrid
+        }
         return .splitView
     }
 
     deinit {
-        if let escapeLocalMonitor {
-            NSEvent.removeMonitor(escapeLocalMonitor)
-        }
-        if let escapeGlobalMonitor {
-            NSEvent.removeMonitor(escapeGlobalMonitor)
-        }
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -400,7 +359,6 @@ class PreviewPanel: NSPanel {
                     display: true)
         }
         orderFrontRegardless()
-        makeKey()
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.22
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -455,6 +413,7 @@ class PreviewPanel: NSPanel {
             guard tiles.indices.contains(index) else { return }
             let tile = tiles[index]
             if let m = media {
+                loadedMediaByIndex[index] = m
                 tile.setLoaded(m)
                 if index < currentInfos.count {
                     var updatedInfo = currentInfos[index]
@@ -469,11 +428,30 @@ class PreviewPanel: NSPanel {
                 relayoutSingleCard(with: m)
             }
 
+        case .imageGrid:
+            guard currentInfos.indices.contains(index) else { return }
+            if let media {
+                loadedMediaByIndex[index] = media
+                currentInfos[index].dimensions = media.info.dimensions
+                currentInfos[index].fileSize = media.info.fileSize
+                if tiles.indices.contains(index) {
+                    tiles[index].updateInfo(currentInfos[index])
+                    tiles[index].setLoaded(media)
+                }
+            } else {
+                if tiles.indices.contains(index) { tiles[index].setFailed(message: failedMessage) }
+            }
+
         case .splitView, .contentOnly:
             guard index < currentInfos.count else { return }
 
             if let m = media {
                 loadedMediaByIndex[index] = m
+                var updatedInfo = currentInfos[index]
+                updatedInfo.dimensions = m.info.dimensions
+                updatedInfo.fileSize = m.info.fileSize
+                updatedInfo.duration = m.info.duration
+                currentInfos[index] = updatedInfo
                 if currentMode == .splitView, index < splitSidebarItems.count {
                     splitSidebarItems[index].updateInfo(currentInfos[index])
                     if case .image(let img, _) = m {
@@ -506,6 +484,8 @@ class PreviewPanel: NSPanel {
         case .singleCard:
             guard tiles.indices.contains(index) else { return }
             tiles[index].updateInfo(info)
+        case .imageGrid:
+            if tiles.indices.contains(index) { tiles[index].updateInfo(info) }
         case .splitView:
             if index < splitSidebarItems.count {
                 splitSidebarItems[index].updateInfo(info)
@@ -558,6 +538,7 @@ class PreviewPanel: NSPanel {
     /// the hotkey while a preview is already visible (toggle behaviour).
     /// Also dismisses ContentPanel so both panels close together.
     func closePanel() {
+        onDismiss?()
         forceHidePanel(dismissContent: !contentPanelOpenedByTileClick)
     }
 
@@ -597,6 +578,7 @@ class PreviewPanel: NSPanel {
     private func buildContainer(infos: [MediaInfo]) -> NSView {
         switch currentMode {
         case .singleCard:  return buildSingleCard(info: infos[0])
+        case .imageGrid:   return buildImageGrid(infos: infos)
         case .splitView:   return buildSplitView(infos: infos)
         case .contentOnly: return buildContentOnlyView(info: infos[0])
         }
@@ -630,7 +612,7 @@ class PreviewPanel: NSPanel {
 
         let tile = MediaTileView(info: info, style: .singleCard, frame: view.bounds)
         tile.autoresizingMask = [.width, .height]
-        tile.onClose = { [weak self] in self?.hidePanel() }
+        tile.onClose = { [weak self] in self?.closePanel() }
         tile.onOpenExternally = { [weak self] in self?.closePanel() }
         let infoURL = info.url
         tile.onAction = { NSWorkspace.shared.open(infoURL) }
@@ -640,7 +622,7 @@ class PreviewPanel: NSPanel {
         }
         tile.onTileTap = { [weak self] in
             guard let self = self, !self.currentInfos.isEmpty else { return }
-            self.openInViewer(info: self.currentInfos[0])
+            self.openInViewer(info: self.currentInfos[0], index: 0)
         }
         view.addSubview(tile)
 
@@ -778,6 +760,66 @@ class PreviewPanel: NSPanel {
         return container
     }
 
+    private func buildImageGrid(infos: [MediaInfo]) -> NSView {
+        let shownCount = min(infos.count, 6)
+        let mediaCount = infos.count > 6 ? 5 : shownCount
+        let columns = shownCount <= 2 ? shownCount : (shownCount <= 4 ? 2 : 3)
+        let rows = Int(ceil(Double(shownCount) / Double(max(columns, 1))))
+        let tileWidth: CGFloat = columns == 3 ? 220 : 300
+        let tileHeight: CGFloat = 240
+        let gap: CGFloat = 10
+        let padding: CGFloat = 12
+        let width = CGFloat(columns) * tileWidth + CGFloat(max(0, columns - 1)) * gap + padding * 2
+        let height = CGFloat(rows) * tileHeight + CGFloat(max(0, rows - 1)) * gap + padding * 2
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        container.wantsLayer = true
+        container.layer?.backgroundColor = Self.darkInset.cgColor
+
+        var gridTiles: [MediaTileView] = []
+        for index in 0..<mediaCount {
+            let info = infos[index]
+            let row = index / columns
+            let column = index % columns
+            let x = padding + CGFloat(column) * (tileWidth + gap)
+            let y = height - padding - CGFloat(row + 1) * tileHeight - CGFloat(row) * gap
+            let tile = MediaTileView(info: info, style: .masonry,
+                                     frame: NSRect(x: x, y: y, width: tileWidth, height: tileHeight))
+            tile.onTileTap = { [weak self] in
+                guard let self else { return }
+                let loaded = self.currentInfos.indices.map { self.loadedMediaByIndex[$0] }
+                self.onInspectImages?(self.currentInfos, loaded, index)
+            }
+            container.addSubview(tile)
+            gridTiles.append(tile)
+        }
+        if infos.count > 6 {
+            let index = 5
+            let row = index / columns
+            let column = index % columns
+            let x = padding + CGFloat(column) * (tileWidth + gap)
+            let y = height - padding - CGFloat(row + 1) * tileHeight - CGFloat(row) * gap
+            let more = FirstMouseButton(title: "+\(infos.count - 5)", target: nil, action: nil)
+            more.frame = NSRect(x: x, y: y, width: tileWidth, height: tileHeight)
+            more.bezelStyle = .regularSquare
+            more.isBordered = false
+            more.font = NSFont.systemFont(ofSize: 28, weight: .semibold)
+            more.contentTintColor = PanelStyle.textPrimary
+            more.wantsLayer = true
+            more.layer?.cornerRadius = 12
+            more.layer?.backgroundColor = PanelStyle.glassCard.cgColor
+            more.target = self
+            more.action = #selector(openEntireImageGroup)
+            container.addSubview(more)
+        }
+        tiles = gridTiles
+        return container
+    }
+
+    @objc private func openEntireImageGroup() {
+        let loaded = currentInfos.indices.map { loadedMediaByIndex[$0] }
+        onInspectImages?(currentInfos, loaded, 0)
+    }
+
     private func buildContentOnlyView(info: MediaInfo) -> NSView {
         let contentW = splitTotalWidth
         let contentH: CGFloat = splitMaxHeight
@@ -874,7 +916,7 @@ class PreviewPanel: NSPanel {
         case .image, .video:
             let tile = MediaTileView(info: info, style: .singleCard, frame: container.bounds)
             tile.autoresizingMask = [.width, .height]
-            tile.onClose = { [weak self] in self?.hidePanel() }
+            tile.onClose = { [weak self] in self?.closePanel() }
             let infoURL = info.url
             tile.onAction = { NSWorkspace.shared.open(infoURL) }
             tile.onDownload = { [weak self, weak tile] in
@@ -883,7 +925,7 @@ class PreviewPanel: NSPanel {
             }
             tile.onTileTap = { [weak self] in
                 guard let self = self, !self.currentInfos.isEmpty else { return }
-                self.openInViewer(info: self.currentInfos[self.selectedIndex])
+                self.openInViewer(info: self.currentInfos[self.selectedIndex], index: self.selectedIndex)
             }
             container.addSubview(tile)
             tiles = [tile]
@@ -919,7 +961,7 @@ class PreviewPanel: NSPanel {
         default:
             let tile = MediaTileView(info: info, style: .singleCard, frame: container.bounds)
             tile.autoresizingMask = [.width, .height]
-            tile.onClose = { [weak self] in self?.hidePanel() }
+            tile.onClose = { [weak self] in self?.closePanel() }
             tile.onOpenExternally = { [weak self] in self?.closePanel() }
             container.addSubview(tile)
             tiles = [tile]
@@ -949,6 +991,8 @@ class PreviewPanel: NSPanel {
 
     private func updateSplitView() {
         switch currentMode {
+        case .imageGrid:
+            break
         case .splitView:
             updateSplitViewLayout()
         case .contentOnly:
@@ -1029,7 +1073,8 @@ class PreviewPanel: NSPanel {
         bar.addSubview(closeBtn)
         singleCloseBtn = closeBtn
 
-        let titleLbl = NSTextField(labelWithString: "Glance".localized)
+        let title = currentInfos.count == 1 ? currentInfos[0].filename : String(format: "%d files".localized, currentInfos.count)
+        let titleLbl = NSTextField(labelWithString: title)
         titleLbl.textColor = Self.textDark
         titleLbl.font = NSFont.systemFont(ofSize: 15, weight: .bold)
         titleLbl.alignment = .center
@@ -1040,13 +1085,6 @@ class PreviewPanel: NSPanel {
         titleLbl.tag = 3
         bar.addSubview(titleLbl)
         singleHeaderTitle = titleLbl
-
-        let loginBtn = makeIconButton(symbol: "person.circle", action: #selector(loginButtonTapped), tint: Self.textDark)
-        loginBtn.frame = NSRect(x: width - 44, y: (headerHeight - 28) / 2, width: 28, height: 28)
-        loginBtn.autoresizingMask = [.minXMargin]
-        bar.addSubview(loginBtn)
-        loginButton = loginBtn
-        updateLoginButtonState()
 
         return bar
     }
@@ -1101,7 +1139,7 @@ class PreviewPanel: NSPanel {
     }
 
     private func makeIconButton(symbol: String, action: Selector, tint: NSColor) -> NSButton {
-        let btn = NSButton(frame: .zero)
+        let btn = FirstMouseButton(frame: .zero)
         btn.bezelStyle = .recessed
         btn.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         btn.imagePosition = .imageOnly
@@ -1320,7 +1358,7 @@ class PreviewPanel: NSPanel {
     }
 
     @objc private func closeButtonTapped() {
-        forceHidePanel(dismissContent: !contentPanelOpenedByTileClick)
+        closePanel()
     }
 
     @objc private func actionButtonTapped() {
@@ -1386,7 +1424,12 @@ class PreviewPanel: NSPanel {
         case failed
     }
 
-    private func openInViewer(info: MediaInfo) {
+    private func openInViewer(info: MediaInfo, index: Int) {
+        if info.kind == .image {
+            let loaded = currentInfos.indices.map { loadedMediaByIndex[$0] }
+            onInspectImages?(currentInfos, loaded, index)
+            return
+        }
         contentPanelOpenedByTileClick = true
         let panel = ContentPanel.shared
         panel.load(info: info)
@@ -1467,6 +1510,8 @@ class PreviewPanel: NSPanel {
         // Default placement is centered on the cursor's screen (clamped fully
         // on-screen). A position the user deliberately dragged to is honored
         // instead — still clamped so it can't end up off a smaller display.
+        isApplyingProgrammaticFrame = true
+        defer { isApplyingProgrammaticFrame = false }
         if hasUserResized, let savedSize = userSetSize {
             if let saved = savedPosition {
                 var frame = saved
@@ -1691,6 +1736,10 @@ final class PassthroughView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? {
         return nil
     }
+}
+
+final class FirstMouseButton: NSButton {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 // MARK: - Tile view

@@ -117,6 +117,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
             queue: .main
         ) { [weak self] _ in
             self?.stopWebMedia()
+            NotificationCenter.default.post(name: .init("ContentPanelDidClose"), object: self)
         }
     }
 

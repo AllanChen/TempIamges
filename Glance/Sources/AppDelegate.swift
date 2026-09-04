@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var preferencesWindow: PreferencesWindow?
     private var historyWindow: HistoryWindow?
     private var fileNameResolver: FileNameResolver?
+    private var imageInspectWindow: ImageInspectWindow?
     /// Strong refs to viewer windows opened from a single-hit shortcut so
     /// they outlive the activation that created them.
     private var viewerWindows: [ContentViewerWindow] = []
@@ -29,6 +30,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     /// some apps clear the selection on focus loss.
     private var lastSelectedText: String?
     private var hasShownFDAAlertThisSession = false
+    private var activeRequestID: UInt64 = 0
+    private var activeSelectionText: String?
+    private var activeSourceAppName: String?
+    private var isCheckingVisibleSelection = false
+    private var activeRequestStartedAt = Date()
+    private var successfulRequestID: UInt64?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
@@ -61,7 +68,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         )
     }
 
+    func application(_ application: NSApplication, open urls: [URL]) {
+        if pathDetector == nil || imageLoader == nil {
+            setupComponents()
+        }
+        let detector = pathDetector ?? PathDetector()
+        let paths = urls.map { detector.localKind(for: $0.path) }
+        let infos = paths.compactMap { MediaInfo.from($0) }.filter { $0.kind == .image }
+        guard !infos.isEmpty else { return }
+        let loaded = Array<LoadedMedia?>(repeating: nil, count: infos.count)
+        let preferredMode: ImageInspectSession.Mode = infos.count == 2 ? .compare : (infos.count > 2 ? .browse : .focus)
+        let restoreApp = NSWorkspace.shared.frontmostApplication
+        let window = imageInspectWindow ?? ImageInspectWindow(imageLoader: imageLoader ?? ImageLoader())
+        imageInspectWindow = window
+        window.onClose = { [weak self, weak restoreApp] in
+            self?.imageInspectWindow = nil
+            if restoreApp?.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+                Self.restoreApplication(restoreApp)
+            }
+        }
+        window.show(infos: infos, loaded: loaded, focusedIndex: 0, preferredMode: preferredMode)
+    }
+
     private func setupComponents() {
+        guard statusBarController == nil else { return }
         statusBarController = StatusBarController()
         statusBarController?.delegate = self
 
@@ -70,6 +100,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         pathDetector = PathDetector()
         imageLoader = ImageLoader()
         previewPanel = PreviewPanel()
+        previewPanel?.onInspectImages = { [weak self] infos, loaded, focusedIndex in
+            self?.openImageInspect(infos: infos, loaded: loaded, focusedIndex: focusedIndex)
+        }
+        previewPanel?.onDismiss = { [weak self] in self?.invalidateActiveRequest() }
         errorTooltip = ErrorTooltip()
         fileNameResolver = FileNameResolver()
 
@@ -144,7 +178,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
         let needsOnboarding = !permissionManager.isInputMonitoringGranted
             || !permissionManager.isAccessibilityGranted
-            || !permissionManager.isFullDiskAccessGranted
         
         if needsOnboarding {
             showOnboardingWindow()
@@ -178,11 +211,41 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     @objc private func previewModeActivated() {
         let previewVisible = previewPanel?.isVisible ?? false
-        let contentVisible = ContentPanel.shared.isVisible
-        if previewVisible || contentVisible {
+        if previewVisible {
+            if isCheckingVisibleSelection {
+                isCheckingVisibleSelection = false
+                invalidateActiveRequest()
+                previewPanel?.closePanel()
+                return
+            }
+            if isLoadingImage {
+                invalidateActiveRequest()
+                previewPanel?.closePanel()
+                return
+            }
+            isCheckingVisibleSelection = true
+            selectedTextExtractor?.extractSelectionFast { [weak self] result in
+                guard let self = self, self.isCheckingVisibleSelection else { return }
+                self.isCheckingVisibleSelection = false
+                guard self.previewPanel?.isVisible == true else { return }
+                guard let text = result?.text, !text.isEmpty else {
+                    self.invalidateActiveRequest()
+                    self.previewPanel?.closePanel()
+                    return
+                }
+                let normalized = self.normalizedSelection(text)
+                if normalized == self.activeSelectionText {
+                    self.invalidateActiveRequest()
+                    self.previewPanel?.closePanel()
+                } else {
+                    self.activatePreview(injectedText: text)
+                }
+            }
+            return
+        }
+        if ContentPanel.shared.isVisible {
             previewPanel?.closePanel()
             ContentPanel.shared.dismiss()
-            previewModeDeactivated()
             return
         }
         activatePreview(injectedText: nil)
@@ -199,6 +262,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
 
         let mousePos = currentCursorAXPoint()
+        activeSourceAppName = NSWorkspace.shared.frontmostApplication?.localizedName
+        activeRequestID &+= 1
+        let requestID = activeRequestID
+        activeRequestStartedAt = Date()
+        successfulRequestID = nil
+        PeekDiagnostics.recordTrigger()
+        isLoadingImage = true
 
         if let text = injectedText {
             let anchor: CGPoint
@@ -208,22 +278,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             } else {
                 anchor = mousePos
             }
-            proceedWithPreview(text: text, anchor: anchor)
+            proceedWithPreview(text: text, anchor: anchor, requestID: requestID)
             return
         }
 
         let permissionManager = PermissionManager.shared
         guard permissionManager.isInputMonitoringGranted else {
+            isLoadingImage = false
             Logger.info("AppDelegate: Cannot activate preview - Input Monitoring permission not granted")
             return
         }
         guard permissionManager.isAccessibilityGranted else {
+            isLoadingImage = false
             Logger.info("AppDelegate: Cannot activate preview - Accessibility permission not granted")
             return
         }
 
         selectedTextExtractor?.extractSelection { [weak self] result in
-            guard let self = self else { return }
+            guard let self = self, requestID == self.activeRequestID else { return }
 
             let selected: String
             let anchor = mousePos
@@ -241,15 +313,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 self.lastSelectedText = clipboardResult.text
             } else {
                 Logger.info("AppDelegate: No selected text to preview")
+                self.isLoadingImage = false
+                PeekDiagnostics.recordUnrecognizedSelection()
                 self.showErrorTooltip(message: "No text selected".localized, at: mousePos)
                 return
             }
 
-            self.proceedWithPreview(text: selected, anchor: anchor)
+            self.proceedWithPreview(text: selected, anchor: anchor, requestID: requestID)
         }
     }
 
-    private func proceedWithPreview(text selected: String, anchor: CGPoint) {
+    private func proceedWithPreview(text selected: String, anchor: CGPoint, requestID: UInt64) {
+        guard requestID == activeRequestID else { return }
+        activeSelectionText = normalizedSelection(selected)
         let allHits = pathDetector?.detectAll(selected) ?? []
         let resolved = allHits.filter { $0.url != nil }
         let unresolvedTokens = allHits.compactMap { $0.unresolvedToken }
@@ -257,6 +333,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
         if resolved.isEmpty && unresolvedTokens.isEmpty {
             Logger.info("AppDelegate: No media path in selected text")
+            isLoadingImage = false
+            PeekDiagnostics.recordUnrecognizedSelection()
             currentPath = selected
             showErrorTooltip(message: "No image or video found in selection".localized, at: anchor)
             return
@@ -270,18 +348,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                 directOpen(resolved[0])
                 return
             }
-            loadAndShowMedia(paths: resolved, at: anchor)
+            loadAndShowMedia(paths: resolved, at: anchor, requestID: requestID)
             return
         }
 
         currentPath = (resolved.compactMap { $0.url?.absoluteString } + unresolvedTokens).joined(separator: "|")
-        resolveAndShow(selectedText: selected, resolved: resolved, tokens: unresolvedTokens, at: anchor)
+        resolveAndShow(selectedText: selected, resolved: resolved, tokens: unresolvedTokens,
+                       at: anchor, requestID: requestID)
     }
 
     private func resolveAndShow(selectedText: String,
                                  resolved: [DetectedPath],
                                  tokens: [String],
-                                 at anchor: CGPoint) {
+                                 at anchor: CGPoint,
+                                 requestID: UInt64) {
+        guard requestID == activeRequestID else { return }
         let uniqueTokens = NSOrderedSet(array: tokens).array as? [String] ?? tokens
         
         // 先显示 loading 面板，让用户知道搜索正在进行
@@ -295,6 +376,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         // alpha = 0，用户就只能等到搜索结束后才看到面板弹出。
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            guard requestID == self.activeRequestID else { return }
 
             let group = DispatchGroup()
             var resultsByToken: [String: [FileNameResolver.Match]] = [:]
@@ -307,6 +389,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             }
             group.notify(queue: .main) { [weak self] in
                 guard let self = self else { return }
+                guard requestID == self.activeRequestID else { return }
                 // Round-robin pick from each token's match list.
                 let maxFromSpotlight = max(0, 24 - resolved.count)
                 var spotlight: [FileNameResolver.Match] = []
@@ -335,6 +418,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                     let label = uniqueTokens.first ?? ""
                     let failMessage = String(format: "No file found matching '%@'".localized, label)
                     self.previewPanel?.updateTile(at: 0, with: nil, failedMessage: failMessage)
+                    self.isLoadingImage = false
+                    PeekDiagnostics.recordMissingFile()
                     self.promptForFullDiskAccessIfNeeded()
                     return
                 }
@@ -347,7 +432,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                     self.directOpen(combined[0])
                     return
                 }
-                self.loadAndShowMedia(paths: combined, at: anchor)
+                self.loadAndShowMedia(paths: combined, at: anchor, requestID: requestID)
                 // Apply per-tile hints for Spotlight matches — they sit AFTER the
                 // pre-resolved ones in the combined list.
                 for (offset, match) in spotlight.enumerated() {
@@ -387,16 +472,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     @objc private func previewModeDeactivated() {
         Logger.info("AppDelegate: Preview mode deactivated")
-        // With the pin button removed the panel stays visible after the
-        // hotkey is released.  It is only dismissed by clicking the X
-        // button or by re-pressing the hotkey (toggle).
-        errorTooltip?.hide()
-        // 不要取消正在进行的文件搜索 —— 用户释放热键后面板应保持可见，
-        // 搜索完成后应自动显示结果。取消搜索会导致文件已找到但无法显示。
-        // fileNameResolver?.cancelAll()
-        currentPath = nil
-        isLoadingImage = false
-        lastSelectedText = nil
+        // Releasing a combo hotkey ends the keyboard gesture, not the Peek.
+        // Request and selection state must remain available for the next toggle.
     }
 
     @objc private func systemDidWake() {
@@ -405,13 +482,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         previewModeDeactivated()
     }
 
-    private func loadAndShowMedia(paths: [DetectedPath], at position: CGPoint) {
-        guard !isLoadingImage else { return }
+    private func loadAndShowMedia(paths: [DetectedPath], at position: CGPoint, requestID: UInt64) {
+        guard requestID == activeRequestID else { return }
         isLoadingImage = true
 
         errorTooltip?.hide()
 
-        let infos = paths.compactMap { MediaInfo.from($0) }
+        let infos = paths.compactMap { path -> MediaInfo? in
+            guard var info = MediaInfo.from(path) else { return nil }
+            info.sourceAppName = activeSourceAppName
+            return info
+        }
         guard !infos.isEmpty else {
             isLoadingImage = false
             showErrorTooltip(message: "No media to preview".localized, at: position)
@@ -425,20 +506,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         var loadedCount = 0
         imageLoader?.loadMedia(from: paths,
             onProgress: { [weak self] index, media in
-                self?.previewPanel?.updateTile(at: index, with: media)
-                if media != nil { loadedCount += 1 }
+                guard let self = self, requestID == self.activeRequestID else { return }
+                self.previewPanel?.updateTile(at: index, with: media)
+                if media != nil {
+                    loadedCount += 1
+                    if self.successfulRequestID != requestID {
+                        self.successfulRequestID = requestID
+                        PeekDiagnostics.recordSuccess(latency: Date().timeIntervalSince(self.activeRequestStartedAt))
+                    }
+                }
             },
             onComplete: { [weak self] in
-                self?.isLoadingImage = false
+                guard let self = self, requestID == self.activeRequestID else { return }
+                self.isLoadingImage = false
                 Logger.info("AppDelegate: Loaded \(loadedCount)/\(paths.count) media")
                 if loadedCount == 0 {
                     Logger.info("AppDelegate: All media failed to load, keeping panel visible with error state")
+                    PeekDiagnostics.recordLoadFailure()
                     let needsFDA = paths.contains { path in
                         guard let url = path.url, url.isFileURL else { return false }
-                        return self?.isUnderProtectedDirectory(url) ?? false
+                        return self.isUnderProtectedDirectory(url)
                     }
                     if needsFDA && !PermissionManager.shared.isFullDiskAccessGranted {
-                        self?.promptForFullDiskAccessIfNeeded()
+                        self.promptForFullDiskAccessIfNeeded()
                     }
                     return
                 }
@@ -451,8 +541,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     /// or open them from a tile.
     private func shouldDirectOpen(_ path: DetectedPath) -> Bool {
         switch path {
-        case .localImage,  .remoteImage,
-             .localMarkdown, .remoteMarkdown,
+        case .localMarkdown, .remoteMarkdown,
              .localText,     .remoteText,
              .localPDF,      .remotePDF,
              .webPage:
@@ -502,6 +591,44 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         panel.load(info: info)
         panel.orderFrontRegardless()
         panel.makeKey()
+    }
+
+    private func openImageInspect(infos: [MediaInfo], loaded: [LoadedMedia?], focusedIndex: Int) {
+        guard !infos.isEmpty else { return }
+        PeekDiagnostics.recordInspectTransition()
+        let restoreApp = NSWorkspace.shared.frontmostApplication
+        let window = imageInspectWindow ?? ImageInspectWindow(imageLoader: imageLoader ?? ImageLoader())
+        imageInspectWindow = window
+        window.onClose = { [weak self, weak restoreApp] in
+            self?.imageInspectWindow = nil
+            Self.restoreApplication(restoreApp)
+        }
+        invalidateActiveRequest()
+        previewPanel?.closeWithoutAffectingContent()
+        window.show(infos: infos, loaded: loaded, focusedIndex: focusedIndex)
+    }
+
+    private func normalizedSelection(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func restoreApplication(_ application: NSRunningApplication?) {
+        guard let application else { return }
+        if #available(macOS 14.0, *) {
+            application.activate()
+        } else {
+            application.activate(options: [.activateIgnoringOtherApps])
+        }
+    }
+
+    private func invalidateActiveRequest() {
+        activeRequestID &+= 1
+        isLoadingImage = false
+        currentPath = nil
+        activeSelectionText = nil
+        activeSourceAppName = nil
+        isCheckingVisibleSelection = false
+        lastSelectedText = nil
     }
 
     /// Spawn a ContentViewerWindow and own it until the user closes it.

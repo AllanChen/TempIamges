@@ -38,11 +38,13 @@ class Preferences {
     }
 
     enum ActivationMode: String, CaseIterable {
+        case optionSpace = "optionSpace"
         case option = "option"
         case custom = "custom"
 
         var displayName: String {
             switch self {
+            case .optionSpace: return "Option + Space (⌥␣)".localized
             case .option: return "Option (⌥)".localized
             case .custom: return "Custom".localized
             }
@@ -95,9 +97,9 @@ class Preferences {
             if raw.isEmpty {
                 let hadControl = defaults.bool(forKey: "\(suiteName).hotkeyRequiresControl")
                 let hadOption  = defaults.bool(forKey: "\(suiteName).hotkeyRequiresOption")
-                return (hadControl || hadOption) ? .option : .option
+                return (hadControl || hadOption) ? .option : .optionSpace
             }
-            return ActivationMode(rawValue: raw) ?? .option
+            return ActivationMode(rawValue: raw) ?? .optionSpace
         }
         set { defaults.set(newValue.rawValue, forKey: "\(suiteName).activationMode") }
     }
@@ -122,14 +124,22 @@ class Preferences {
 
     var effectiveModifiers: NSEvent.ModifierFlags {
         switch activationMode {
-        case .option: return .option
+        case .optionSpace, .option: return .option
         case .custom: return customHotkeyModifiers
+        }
+    }
+
+    var effectiveKeyCode: UInt16? {
+        switch activationMode {
+        case .optionSpace: return 49
+        case .option: return nil
+        case .custom: return customHotkeyKeyCode
         }
     }
 
     /// True when the custom hotkey uses a combo (modifiers + regular key).
     var usesComboHotkey: Bool {
-        activationMode == .custom && customHotkeyKeyCode != nil
+        effectiveKeyCode != nil
     }
 
     private init() {
@@ -142,7 +152,7 @@ class Preferences {
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
             "\(suiteName).theme": Theme.dark.rawValue,
-            "\(suiteName).activationMode": ActivationMode.option.rawValue,
+            "\(suiteName).activationMode": ActivationMode.optionSpace.rawValue,
             "\(suiteName).customHotkeyModifiers": 0,
             "\(suiteName).customHotkeyKeyCode": 0
         ]
@@ -155,7 +165,7 @@ class Preferences {
         readClipboard = true
         loginURL = nil
         theme = .dark
-        activationMode = .option
+        activationMode = .optionSpace
         customHotkeyModifiers = []
         customHotkeyKeyCode = nil
         appLanguage = .english

@@ -174,7 +174,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         container.addSubview(card3)
         container.addSubview(makeSectionHeader("Activation Hotkey".localized, at: NSRect(x: 36, y: 382, width: 408, height: 14)))
 
-        let hotkeyDesc = NSTextField(labelWithString: "Hold these keys while hovering to show previews:".localized)
+        let hotkeyDesc = NSTextField(labelWithString: "Select a path, then press the shortcut to show or hide Peek:".localized)
         hotkeyDesc.font = NSFont.systemFont(ofSize: 12)
         hotkeyDesc.textColor = NSColor(white: 1, alpha: 0.55)
         hotkeyDesc.lineBreakMode = .byWordWrapping
@@ -346,7 +346,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         let prefs = Preferences.shared
         let symbol = hotkeyDisplayString(
             modifiers: prefs.effectiveModifiers,
-            keyCode: prefs.customHotkeyKeyCode
+            keyCode: prefs.effectiveKeyCode
         )
         currentHotkeyLabel.stringValue = symbol.isEmpty
             ? "(no hotkey — preview disabled)".localized
@@ -451,22 +451,24 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         case 101: return "f9"
         case 103: return "f11"
         case 105: return "f13"
-        case 106: return "f14"
-        case 107: return "f10"
-        case 109: return "f12"
-        case 111: return "f15"
-        case 113: return "home"
-        case 114: return "pageup"
-        case 115: return "⌦"
-        case 116: return "f4"
-        case 117: return "end"
-        case 118: return "f2"
-        case 119: return "pagedown"
-        case 120: return "f1"
-        case 121: return "←"
-        case 122: return "→"
-        case 123: return "↓"
-        case 124: return "↑"
+        case 106: return "f16"
+        case 107: return "f14"
+        case 109: return "f10"
+        case 111: return "f12"
+        case 113: return "f15"
+        case 114: return "help"
+        case 115: return "home"
+        case 116: return "pageup"
+        case 117: return "⌦"
+        case 118: return "f4"
+        case 119: return "end"
+        case 120: return "f2"
+        case 121: return "pagedown"
+        case 122: return "f1"
+        case 123: return "←"
+        case 124: return "→"
+        case 125: return "↓"
+        case 126: return "↑"
         default:  return nil
         }
     }

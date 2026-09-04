@@ -47,6 +47,8 @@
 "Launch at Login" = "Launch at Login";
 "Activation Hotkey" = "Activation Hotkey";
 "Hold these keys while hovering to show previews:" = "Hold these keys while hovering to show previews:";
+"Select a path, then press the shortcut to show or hide Peek:" = "Select a path, then press the shortcut to show or hide Peek:";
+"Option + Space (⌥␣)" = "Option + Space (⌥␣)";
 "Option (⌥)" = "Option (⌥)";
 "Custom" = "Custom";
 "Click to record shortcut" = "Click to record shortcut";
@@ -76,10 +78,24 @@
 "Failed" = "Failed";
 "Folder" = "Folder";
 "Failed to load" = "Failed to load";
+"Searching…" = "Searching…";
+"File not found" = "File not found";
+"No matching file found" = "No matching file found";
 "Reveal in Finder" = "Reveal in Finder";
 "Download" = "Download";
 "Download failed" = "Download failed";
 "in %@" = "in %@";
+"%d files" = "%d files";
+
+// MARK: - Image Inspect
+"Image Inspect" = "Image Inspect";
+"Focus" = "Focus";
+"Side by side" = "Side by side";
+"Slider" = "Slider";
+"Image information" = "Image information";
+"Pixel alignment" = "Pixel alignment";
+"Relative alignment" = "Relative alignment";
+"%d differences" = "%d differences";
 
 // MARK: - Content Panel / Viewer
 "Save" = "Save";
@@ -123,6 +139,8 @@
 "No file found matching '%@'" = "No file found matching '%@'";
 "No media to preview" = "No media to preview";
 "Failed to load media" = "Failed to load media";
+"Full Disk Access Required" = "Full Disk Access Required";
+"Glance needs Full Disk Access to search files in protected locations (Desktop, Documents, Downloads). Enable it in System Settings to improve search results." = "Glance needs Full Disk Access to search files in protected locations (Desktop, Documents, Downloads). Enable it in System Settings to improve search results.";
 
 // MARK: - Language Change Alert
 "Language Changed" = "Language Changed";

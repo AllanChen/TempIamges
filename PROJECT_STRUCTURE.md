@@ -66,6 +66,8 @@ Glance/
 │   ├── FileNameResolver.swift
 │   ├── FilenameCache.swift
 │   ├── ImageLoader.swift
+│   ├── ImageInspectWindow.swift
+│   ├── PeekDiagnostics.swift
 │   ├── PreviewPanel.swift
 │   ├── ContentPanel.swift
 │   ├── ContentViewerWindow.swift
@@ -97,6 +99,8 @@ Glance/
 | 文件名解析 | `FileNameResolver.swift` | 使用 Spotlight 查询裸文件名/相对路径，必要时执行受限文件系统回退搜索。 |
 | 解析缓存 | `FilenameCache.swift` | 将裸文件名解析结果持久化到 Application Support，最多保留 500 条。 |
 | 媒体加载 | `ImageLoader.swift` | 异步加载图片、缓存缩略图、探测视频尺寸/时长，生成内容卡片信息。 |
+| 图片检查 | `ImageInspectWindow.swift` | 图片 Focus、同组 Browse、双图并排/滑杆 Compare、同步视口和技术属性差异。 |
+| 本地诊断 | `PeekDiagnostics.swift` | 仅在本机记录匿名聚合计数与首帧耗时，不保存文本、路径或 URL。 |
 | 预览面板 | `PreviewPanel.swift` | 浮动 `NSPanel`，负责单卡片、网格、视频播放器、文件卡片和点击行为。 |
 | 内容面板 | `ContentPanel.swift` | 非激活浮动内容面板，显示网页、Markdown、文本、PDF 和图片详情。 |
 | 独立查看器 | `ContentViewerWindow.swift` | 标准窗口查看 Markdown、文本、PDF、网页，并支持本地文本编辑保存。 |
@@ -115,14 +119,16 @@ Glance/
 App 启动
   -> AppDelegate 初始化菜单栏、热键、路径识别、加载器和面板
   -> PermissionManager 检查 Input Monitoring / Accessibility
-  -> KeyboardMonitor 开始监听 Control / Option
+  -> KeyboardMonitor 开始监听 Option + Space 或自定义快捷键
   -> 用户选中文本并按住热键
   -> SelectedTextExtractor 获取选中文本
   -> PathDetector 提取已解析路径和未解析 token
   -> FileNameResolver 解析裸文件名或相对路径
   -> HistoryManager 记录已解析条目
   -> ImageLoader 加载图片、视频或内容占位信息
-  -> PreviewPanel / ContentPanel / ContentViewerWindow 展示结果
+  -> PreviewPanel 展示 Peek
+  -> 单击图片时复用已加载内容进入 ImageInspectWindow
+  -> 其他内容由 ContentPanel / ContentViewerWindow 展示
 ```
 
 ## 构建相关文件

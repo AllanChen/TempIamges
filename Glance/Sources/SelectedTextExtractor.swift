@@ -8,6 +8,17 @@ struct SelectionResult {
 }
 
 class SelectedTextExtractor {
+    /// A bounded AX-only read used to decide whether a visible Peek should
+    /// close or be replaced. Clipboard fallback is intentionally excluded:
+    /// synthesizing Copy would make the toggle slow and disturb the source app.
+    func extractSelectionFast(timeout: TimeInterval = 0.05,
+                              completion: @escaping (SelectionResult?) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = self?.readViaAXWithTimeout(timeout: timeout)
+            DispatchQueue.main.async { completion(result) }
+        }
+    }
+
     func extractSelection(completion: @escaping (SelectionResult?) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else {

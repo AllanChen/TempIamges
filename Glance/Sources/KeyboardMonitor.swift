@@ -33,8 +33,14 @@ final class KeyboardMonitor: NSObject {
     private var controlHeld: Bool = false
     private var activeKeyCodes: Set<UInt16> = []
     private var wasPreviewModeActive: Bool = false
+    private var consumedComboKeyCode: UInt16?
+    private var requiredModifiers: NSEvent.ModifierFlags
+    private var requiredKeyCode: UInt16?
 
     override init() {
+        let prefs = Preferences.shared
+        requiredModifiers = prefs.effectiveModifiers
+        requiredKeyCode = prefs.effectiveKeyCode
         super.init()
         NotificationCenter.default.addObserver(
             self,
@@ -52,7 +58,11 @@ final class KeyboardMonitor: NSObject {
     }
 
     @objc private func preferencesChanged() {
+        let modifiers = Preferences.shared.effectiveModifiers
+        let keyCode = Preferences.shared.effectiveKeyCode
         stateLock.lock()
+        requiredModifiers = modifiers
+        requiredKeyCode = keyCode
         let change = stateChangeLocked()
         stateLock.unlock()
         postIfChanged(change)
@@ -65,6 +75,7 @@ final class KeyboardMonitor: NSObject {
         optionHeld  = false
         controlHeld = false
         activeKeyCodes.removeAll()
+        consumedComboKeyCode = nil
         let wasActive = wasPreviewModeActive
         wasPreviewModeActive = false
         stateLock.unlock()
@@ -83,15 +94,14 @@ final class KeyboardMonitor: NSObject {
 
     /// `stateLock` must be held by the caller.
     private func previewModeActiveLocked() -> Bool {
-        let prefs = Preferences.shared
-        let required = prefs.effectiveModifiers
+        let required = requiredModifiers
         guard !required.isEmpty else { return false }
         if required.contains(.option)  && !optionHeld  { return false }
         if required.contains(.control) && !controlHeld { return false }
         if required.contains(.command) && !cmdHeld     { return false }
         if required.contains(.shift)   && !shiftHeld   { return false }
         // Combo hotkey: also require the specific regular key to be held.
-        if let keyCode = prefs.customHotkeyKeyCode {
+        if let keyCode = requiredKeyCode {
             return activeKeyCodes.contains(keyCode)
         }
         return true
@@ -206,16 +216,22 @@ final class KeyboardMonitor: NSObject {
             change = stateChangeLocked()
 
         case .keyDown:
-            let previouslyActive = previewModeActiveLocked()
             activeKeyCodes.insert(keyCode)
             change = stateChangeLocked()
-            if !previouslyActive && previewModeActiveLocked() && Preferences.shared.usesComboHotkey {
+            if requiredKeyCode != nil,
+               keyCode == requiredKeyCode,
+               previewModeActiveLocked() {
+                consumedComboKeyCode = keyCode
                 discard = true
             }
 
         case .keyUp:
             activeKeyCodes.remove(keyCode)
             change = stateChangeLocked()
+            if consumedComboKeyCode == keyCode {
+                consumedComboKeyCode = nil
+                discard = true
+            }
 
         default:
             break

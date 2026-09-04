@@ -2,10 +2,9 @@ import Foundation
 
 /// Persisted record of a single hotkey-triggered preview event.
 ///
-/// We store the raw selected text plus the URLs / tokens that PathDetector
-/// surfaced, so the History window can render them later without re-running
-/// detection (and without depending on the source app or selection still
-/// being live).
+/// We store resolved URLs without surrounding selected text. Selections may
+/// include unrelated terminal, code, or chat content that history should not
+/// retain.
 struct HistoryRecord: Codable {
     let timestamp: Date
     let selectedText: String
@@ -84,7 +83,7 @@ final class HistoryManager {
         load()
     }
 
-    func record(selectedText: String, detectedPaths: [DetectedPath]) {
+    func record(selectedText _: String, detectedPaths: [DetectedPath]) {
         // Only persist items that resolved to a real URL. Unresolved bare
         // filename / relative-path tokens are dropped — they're not useful as
         // history entries once their lookup attempt is over.
@@ -93,7 +92,7 @@ final class HistoryManager {
             .compactMap { HistoryRecord.Item.from($0) }
         guard !items.isEmpty else { return }
         let record = HistoryRecord(timestamp: Date(),
-                                    selectedText: selectedText,
+                                    selectedText: "",
                                     items: items)
         records.insert(record, at: 0)
         if records.count > maxRecords {
@@ -127,7 +126,11 @@ final class HistoryManager {
         guard let decoded = try? decoder.decode([HistoryRecord].self, from: data) else {
             return
         }
-        records = decoded
+        let containedSelectionText = decoded.contains { !$0.selectedText.isEmpty }
+        records = decoded.map {
+            HistoryRecord(timestamp: $0.timestamp, selectedText: "", items: $0.items)
+        }
+        if containedSelectionText { save() }
     }
 
     private func save() {

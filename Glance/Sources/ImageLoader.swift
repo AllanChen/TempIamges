@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import ImageIO
 
 struct MediaInfo {
     let url: URL
@@ -16,6 +17,7 @@ struct MediaInfo {
     /// Used by the loading/failure UI so the user knows what is being
     /// searched for.
     var searchToken: String? = nil
+    var sourceAppName: String? = nil
 
     enum Kind { case image, video, markdown, text, pdf, webPage, other, folder }
 
@@ -58,6 +60,12 @@ struct MediaInfo {
     }
 }
 
+struct ImageTechnicalMetadata {
+    var colorSpace: String?
+    var bitDepth: Int?
+    var hasAlpha: Bool?
+}
+
 enum LoadedMedia {
     case image(NSImage, MediaInfo)
     case video(URL, naturalSize: CGSize, MediaInfo)
@@ -84,11 +92,24 @@ enum LoadedMedia {
 
 class ImageLoader {
     private let imageCache = NSCache<NSString, NSImage>()
+    private let originalImageCache = NSCache<NSString, NSImage>()
     private let maxCacheSize: Int = 50 * 1024 * 1024
+    private let maxOriginalCacheSize: Int = 300 * 1024 * 1024
     private let loadSemaphore = DispatchSemaphore(value: 2)
+    private let remoteLoadLock = NSLock()
+    private var remoteLoads: [String: [(NSImage?) -> Void]] = [:]
+    private lazy var remoteSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 10
+        config.httpCookieAcceptPolicy = .never
+        config.httpShouldSetCookies = false
+        return URLSession(configuration: config)
+    }()
 
     init() {
         imageCache.totalCostLimit = maxCacheSize
+        originalImageCache.totalCostLimit = maxOriginalCacheSize
     }
 
     /// Streams results back as each item finishes. `onProgress(i, nil)` means
@@ -106,15 +127,12 @@ class ImageLoader {
 
         for (i, path) in paths.enumerated() {
             guard var info = MediaInfo.from(path) else { continue }
-            let url = info.url
-            if info.isLocal {
-                info.fileSize = fileSize(at: url.path)
-            }
-
             group.enter()
+            let url = info.url
+            let beginLoad: (MediaInfo) -> Void = { info in
             switch path {
             case .localImage, .remoteImage:
-                loadImage(from: url) { image in
+                self.loadImage(from: url) { image in
                     guard let img = image else {
                         DispatchQueue.main.async {
                             onProgress(i, nil); group.leave()
@@ -122,13 +140,13 @@ class ImageLoader {
                         return
                     }
                     var i2 = info
-                    i2.dimensions = img.size
+                    i2.dimensions = self.originalImageCache.object(forKey: url.absoluteString as NSString)?.size ?? img.size
                     DispatchQueue.main.async {
                         onProgress(i, .image(img, i2)); group.leave()
                     }
                 }
             case .localVideo, .remoteVideo:
-                probeVideo(url: url) { size, duration in
+                self.probeVideo(url: url) { size, duration in
                     guard let s = size else {
                         DispatchQueue.main.async {
                             onProgress(i, nil); group.leave()
@@ -159,6 +177,15 @@ class ImageLoader {
                 // the loader (unresolved cases go through FileNameResolver
                 // first, and .invalid never has a usable URL).
                 group.leave()
+            }
+            }
+            if info.isLocal {
+                DispatchQueue.global(qos: .utility).async { [weak self] in
+                    info.fileSize = self?.fileSize(at: url.path)
+                    beginLoad(info)
+                }
+            } else {
+                beginLoad(info)
             }
         }
         group.notify(queue: .main) { onComplete() }
@@ -204,6 +231,67 @@ class ImageLoader {
         }
     }
 
+    /// Returns the original decoded image used to create Peek's thumbnail.
+    /// A Peek-to-Inspect transition normally hits `originalImageCache`, so it
+    /// does not fetch or decode the image a second time.
+    func loadFullResolutionImage(from url: URL, completion: @escaping (NSImage?) -> Void) {
+        let cacheKey = url.absoluteString as NSString
+        if let cached = originalImageCache.object(forKey: cacheKey) {
+            completion(cached)
+            return
+        }
+
+        if url.isFileURL {
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                guard let self = self, let image = NSImage(contentsOf: url) else {
+                    DispatchQueue.main.async { completion(nil) }
+                    return
+                }
+                DispatchQueue.main.async {
+                    self.cacheOriginal(image, key: cacheKey)
+                    completion(image)
+                }
+            }
+        } else {
+            loadRemoteOriginal(from: url, cacheKey: cacheKey) { [weak self] image in
+                guard let self = self, let image = image else {
+                    completion(nil)
+                    return
+                }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let preview = self.resizeImage(image, maxDimension: 800)
+                    self.imageCache.setObject(preview, forKey: cacheKey, cost: self.cost(of: preview))
+                    DispatchQueue.main.async { completion(image) }
+                }
+            }
+        }
+    }
+
+    func loadTechnicalMetadata(from url: URL,
+                               completion: @escaping (ImageTechnicalMetadata) -> Void) {
+        DispatchQueue.global(qos: .utility).async {
+            var metadata = ImageTechnicalMetadata()
+            if let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+               let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] {
+                metadata.colorSpace = props[kCGImagePropertyColorModel] as? String
+                metadata.bitDepth = props[kCGImagePropertyDepth] as? Int
+                metadata.hasAlpha = props[kCGImagePropertyHasAlpha] as? Bool
+            }
+            DispatchQueue.main.async { completion(metadata) }
+        }
+    }
+
+    func loadFileSize(from url: URL, completion: @escaping (Int64?) -> Void) {
+        guard url.isFileURL else {
+            completion(nil)
+            return
+        }
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let size = self?.fileSize(at: url.path)
+            DispatchQueue.main.async { completion(size) }
+        }
+    }
+
     private func loadLocalImage(from url: URL, cacheKey: NSString, completion: @escaping (NSImage?) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else {
@@ -217,44 +305,77 @@ class ImageLoader {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { completion(nil); return }
-                let resized = self.resizeImage(image, maxDimension: 800)
-                let cost = Int(resized.size.width * resized.size.height * 4)
-                self.imageCache.setObject(resized, forKey: cacheKey, cost: cost)
+            self.cacheOriginal(image, key: cacheKey)
+            let resized = self.resizeImage(image, maxDimension: 800)
+            self.imageCache.setObject(resized, forKey: cacheKey, cost: self.cost(of: resized))
+            DispatchQueue.main.async {
                 completion(resized)
             }
         }
     }
 
     private func loadRemoteImage(from url: URL, cacheKey: NSString, completion: @escaping (NSImage?) -> Void) {
+        loadRemoteOriginal(from: url, cacheKey: cacheKey) { [weak self] image in
+            guard let self = self, let image = image else {
+                completion(nil)
+                return
+            }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let resized = self.resizeImage(image, maxDimension: 800)
+                self.imageCache.setObject(resized, forKey: cacheKey, cost: self.cost(of: resized))
+                DispatchQueue.main.async { completion(resized) }
+            }
+        }
+    }
+
+    private func loadRemoteOriginal(from url: URL, cacheKey: NSString,
+                                    completion: @escaping (NSImage?) -> Void) {
+        if let cached = originalImageCache.object(forKey: cacheKey) {
+            completion(cached)
+            return
+        }
+
+        let key = url.absoluteString
+        remoteLoadLock.lock()
+        if remoteLoads[key] != nil {
+            remoteLoads[key]?.append(completion)
+            remoteLoadLock.unlock()
+            return
+        }
+        remoteLoads[key] = [completion]
+        remoteLoadLock.unlock()
+
+        func finish(_ image: NSImage?) {
+            self.remoteLoadLock.lock()
+            let callbacks = self.remoteLoads.removeValue(forKey: key) ?? []
+            self.remoteLoadLock.unlock()
+            DispatchQueue.main.async {
+                callbacks.forEach { $0(image) }
+            }
+        }
+
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
 
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 10
-        config.timeoutIntervalForResource = 10
-        let session = URLSession(configuration: config)
-
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
+        let task = remoteSession.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self, let data = data, error == nil else {
-                DispatchQueue.main.async { completion(nil) }
+                finish(nil)
                 return
             }
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode >= 400 {
-                DispatchQueue.main.async { completion(nil) }
+                finish(nil)
+                return
+            }
+            guard data.count <= 50 * 1024 * 1024 else {
+                finish(nil)
                 return
             }
             guard let image = NSImage(data: data) else {
-                DispatchQueue.main.async { completion(nil) }
+                finish(nil)
                 return
             }
-            DispatchQueue.main.async {
-                let resized = self.resizeImage(image, maxDimension: 800)
-                let cost = Int(resized.size.width * resized.size.height * 4)
-                self.imageCache.setObject(resized, forKey: cacheKey, cost: cost)
-                completion(resized)
-            }
+            self.cacheOriginal(image, key: cacheKey)
+            finish(image)
         }
         task.resume()
     }
@@ -280,8 +401,17 @@ class ImageLoader {
         return newImage
     }
 
+    private func cacheOriginal(_ image: NSImage, key: NSString) {
+        originalImageCache.setObject(image, forKey: key, cost: cost(of: image))
+    }
+
+    private func cost(of image: NSImage) -> Int {
+        Int(image.size.width * image.size.height * 4)
+    }
+
     func clearCache() {
         imageCache.removeAllObjects()
+        originalImageCache.removeAllObjects()
         URLCache.shared.removeAllCachedResponses()
     }
 }
