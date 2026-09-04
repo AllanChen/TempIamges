@@ -72,6 +72,27 @@ DEST_APP="$(cd .. && pwd)/Glance.app"
 
 cp -R "$BUILT_APP" "$DEST_APP"
 
+# Re-sign with a STABLE self-signed identity so macOS keeps the Accessibility /
+# Input Monitoring grants across rebuilds. Without this the app is ad-hoc signed
+# and TCC forces re-authorization every single build.
+# Run ./scripts/create-signing-cert.sh once to create the identity.
+SIGN_IDENTITY="Glance Self-Signed"
+ENTITLEMENTS="$(dirname "$0")/Glance.entitlements"
+if security find-identity -v -p codesigning | grep -q "$SIGN_IDENTITY"; then
+    echo "Signing with stable identity: $SIGN_IDENTITY"
+    codesign --force --deep \
+        --sign "$SIGN_IDENTITY" \
+        --entitlements "$ENTITLEMENTS" \
+        --options runtime \
+        "$DEST_APP"
+    codesign --verify --deep --strict "$DEST_APP" \
+        && echo "  Signature verified." \
+        || echo "  Warning: signature verification reported issues."
+else
+    echo "Warning: '$SIGN_IDENTITY' not found — leaving ad-hoc signature."
+    echo "         Run ./scripts/create-signing-cert.sh once to stop re-authorizing every build."
+fi
+
 echo ""
 echo "Build complete!"
 echo "  Released: $DEST_APP"
