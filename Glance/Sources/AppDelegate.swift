@@ -45,6 +45,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         setupNotifications()
         setupDeepLinkHandler()
         checkPermissions()
+        // As a regular (Dock/Cmd-Tab) app, a fresh launch with no window would
+        // otherwise start in the background. Bring it to the front so `run.sh`
+        // visibly focuses the app.
+        NSApp.activate(ignoringOtherApps: true)
         // Close any stale preview when the system wakes from sleep.
         NotificationCenter.default.addObserver(
             self,

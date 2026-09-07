@@ -13,7 +13,9 @@ let osLog = OSLog(subsystem: "com.glance", category: "Startup")
 os_log("Application starting up", log: osLog, type: .info)
 
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory)
+// Regular activation so Glance appears in the Dock and Cmd+Tab. The menu-bar
+// item still works; this only adds the Dock presence the user asked for.
+app.setActivationPolicy(.regular)
 let delegate = AppDelegate()
 app.delegate = delegate
 app.run()

@@ -22,6 +22,16 @@ class OnboardingWindow: NSWindow {
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.hidesOnDeactivate = false
 
+        // Commit to the frosted dark-glass chrome like every other panel, so the
+        // window never falls back to the system light background.
+        self.appearance = NSAppearance(named: .darkAqua)
+        self.titlebarAppearsTransparent = true
+        self.isOpaque = false
+        self.backgroundColor = .clear
+        // Restore dragging: a clear-background titled window otherwise loses the
+        // ability to be moved by its title bar / body.
+        self.isMovableByWindowBackground = true
+
         setupUI()
         updatePermissionStatus()
     }
@@ -29,7 +39,21 @@ class OnboardingWindow: NSWindow {
     private func setupUI() {
         guard let contentView = self.contentView else { return }
         contentView.wantsLayer = true
-        contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+
+        // Frosted dark base fills the whole window, biased dark by a black tint.
+        let frost = NSVisualEffectView(frame: contentView.bounds)
+        frost.material = .hudWindow
+        frost.blendingMode = .behindWindow
+        frost.state = .active
+        frost.appearance = NSAppearance(named: .vibrantDark)
+        frost.autoresizingMask = [.width, .height]
+        contentView.addSubview(frost)
+
+        let tint = NSView(frame: contentView.bounds)
+        tint.wantsLayer = true
+        tint.layer?.backgroundColor = NSColor(white: 0, alpha: 0.34).cgColor
+        tint.autoresizingMask = [.width, .height]
+        contentView.addSubview(tint)
 
         let iconSize: CGFloat = 72
         let iconView = NSImageView(frame: NSRect(
@@ -44,13 +68,14 @@ class OnboardingWindow: NSWindow {
 
         let titleLabel = NSTextField(labelWithString: "Welcome to Glance".localized)
         titleLabel.font = NSFont.boldSystemFont(ofSize: 26)
+        titleLabel.textColor = .white
         titleLabel.alignment = .center
         titleLabel.frame = NSRect(x: 20, y: contentView.bounds.height - 152, width: contentView.bounds.width - 40, height: 34)
         contentView.addSubview(titleLabel)
 
         let subtitleLabel = NSTextField(labelWithString: "Before you can start previewing, we need to ask you for a few permissions.".localized)
         subtitleLabel.font = NSFont.systemFont(ofSize: 14)
-        subtitleLabel.textColor = .secondaryLabelColor
+        subtitleLabel.textColor = NSColor(white: 1, alpha: 0.6)
         subtitleLabel.alignment = .center
         subtitleLabel.frame = NSRect(x: 40, y: contentView.bounds.height - 186, width: contentView.bounds.width - 80, height: 22)
         contentView.addSubview(subtitleLabel)
@@ -192,6 +217,7 @@ class PermissionStatusView: NSView {
         titleLabel.isBordered = false
         titleLabel.backgroundColor = .clear
         titleLabel.font = NSFont.boldSystemFont(ofSize: 15)
+        titleLabel.textColor = .white
         titleLabel.stringValue = title
         titleLabel.frame = NSRect(x: 0, y: 42, width: 340, height: 22)
         addSubview(titleLabel)
@@ -200,7 +226,7 @@ class PermissionStatusView: NSView {
         descLabel.isBordered = false
         descLabel.backgroundColor = .clear
         descLabel.font = NSFont.systemFont(ofSize: 12)
-        descLabel.textColor = .secondaryLabelColor
+        descLabel.textColor = NSColor(white: 1, alpha: 0.6)
         descLabel.stringValue = description
         descLabel.lineBreakMode = .byWordWrapping
         descLabel.maximumNumberOfLines = 2

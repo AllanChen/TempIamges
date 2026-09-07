@@ -10,6 +10,8 @@ final class ImageInspectSession {
     var mode: Mode
     var compareIndices: (Int, Int)?
     var comparisonStyle: ComparisonStyle = .sideBySide
+    /// Which compare slot a filmstrip tap replaces: 0 = left (A), 1 = right (B).
+    var activeCompareSlot = 1
     var metadata: [ImageTechnicalMetadata?]
 
     init(infos: [MediaInfo], images: [NSImage?], focusedIndex: Int, mode: Mode? = nil) {
@@ -31,20 +33,29 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private var session: ImageInspectSession?
     private var loadGeneration = UUID()
 
-    private let toolbarBar = PanelStyle.makeBarBlur()
-    private let titleLabel = NSTextField(labelWithString: "")
-    private let subtitleLabel = NSTextField(labelWithString: "")
-    private let modeControl = NSSegmentedControl(labels: ["Focus".localized, "Side by side".localized, "Slider".localized], trackingMode: .selectOne,
-                                                  target: nil, action: nil)
-    private let infoButton = NSButton()
+    private let focusButton = InspectToolbarButton(symbol: "photo", tooltip: "Focus".localized)
+    private let sideBySideButton = InspectToolbarButton(symbol: "rectangle.split.2x1", tooltip: "Side by side".localized)
+    private let sliderButton = InspectToolbarButton(symbol: "slider.horizontal.3", tooltip: "Slider".localized)
+    private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Image information".localized)
     private let canvasContainer = NSView()
     private let primaryViewport = InspectImageViewport()
     private let secondaryViewport = InspectImageViewport()
     private let sliderViewport = ImageRevealView()
     private let filmstrip = ImageFilmstripView()
     private let infoPanel = ImageDifferencePanel()
-    private var filmstripHideWorkItem: DispatchWorkItem?
+    private let identityBar = InspectIdentityBar()
+    private let identityNameLabel = NSTextField(labelWithString: "")
+    private let identityMetaLabel = NSTextField(labelWithString: "")
+    private let toolbarBar = InspectIdentityBar()
+    private var toolbarHideWorkItem: DispatchWorkItem?
     private var isClosingProgrammatically = false
+    private let toolbarHeight: CGFloat = 34
+    private var imageHoverFrame = NSRect.zero
+    /// Independent floating window that hosts the info panel, separate from the
+    /// main image window so it can be moved freely.
+    private lazy var infoWindow = ImageInfoPanelWindow(panel: infoPanel)
+    private var infoVisible = false
+    private let identityBarHeight: CGFloat = 54
 
     init(imageLoader: ImageLoader) {
         self.imageLoader = imageLoader
@@ -53,7 +64,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                    styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                    backing: .buffered, defer: false)
         title = "Image Inspect".localized
-        titleVisibility = .hidden
+        titleVisibility = .visible
         titlebarAppearsTransparent = true
         appearance = NSAppearance(named: .darkAqua)
         backgroundColor = PanelStyle.imageCanvas
@@ -74,6 +85,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
         session = ImageInspectSession(infos: infos, images: images, focusedIndex: focusedIndex,
                                       mode: preferredMode)
+        toolbarHideWorkItem?.cancel()
+        toolbarHideWorkItem = nil
+        toolbarBar.alphaValue = 0
+        toolbarBar.isHidden = true
+        identityBar.alphaValue = 0
+        identityBar.isHidden = true
+        filmstrip.alphaValue = 0
+        filmstrip.isHidden = true
         loadGeneration = UUID()
         renderSession()
         loadSessionImages(generation: loadGeneration)
@@ -82,7 +101,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        filmstripHideWorkItem?.cancel()
+        toolbarHideWorkItem?.cancel()
+        infoWindow.orderOut(nil)
+        infoVisible = false
         session = nil
         loadGeneration = UUID()
         guard !isClosingProgrammatically else { return }
@@ -121,12 +142,102 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     override func sendEvent(_ event: NSEvent) {
-        if event.type == .mouseMoved,
-           session?.infos.count ?? 0 > 1,
-           event.locationInWindow.y < 120 {
-            scheduleFilmstripHide()
+        if event.type == .leftMouseDown,
+           let session,
+           session.mode == .compare,
+           session.comparisonStyle == .sideBySide,
+           let root = contentView {
+            let point = root.convert(event.locationInWindow, from: nil)
+            let hitView = root.hitTest(point)
+            // Resolve the active slot at the window level. This avoids losing
+            // the selection when other views overlap the image canvas, while
+            // deliberately ignoring clicks on the filmstrip and toolbar.
+            if hitView === primaryViewport || hitView?.isDescendant(of: primaryViewport) == true {
+                selectCompareSlot(0)
+            } else if hitView === secondaryViewport || hitView?.isDescendant(of: secondaryViewport) == true {
+                selectCompareSlot(1)
+            }
+        }
+        if event.type == .mouseMoved {
+            let point = canvasContainer.convert(event.locationInWindow, from: nil)
+            if imageHoverFrame.contains(point) {
+                showToolbar()
+            } else {
+                hideToolbar()
+            }
+            updateInfoHighlight(atWindowPoint: event.locationInWindow)
         }
         super.sendEvent(event)
+    }
+
+    /// Highlight the info block for whichever on-screen image the cursor is over.
+    private func updateInfoHighlight(atWindowPoint windowPoint: NSPoint) {
+        guard let session, infoVisible else { return }
+        let p = canvasContainer.convert(windowPoint, from: nil)
+
+        var hovered: Int?
+        if session.mode == .compare, let (a, b) = session.compareIndices,
+           session.comparisonStyle == .sideBySide {
+            if primaryViewport.frame.contains(p) { hovered = a }
+            else if secondaryViewport.frame.contains(p) { hovered = b }
+        } else if session.mode == .compare, let (a, _) = session.compareIndices {
+            // Slider shows A underneath B; treat the whole canvas as image A.
+            if sliderViewport.frame.contains(p) { hovered = a }
+        } else if primaryViewport.frame.contains(p) {
+            hovered = session.focusedIndex
+        }
+        // No image under the cursor: fall back to the default (active compare
+        // slot in compare mode), instead of clearing the glow entirely.
+        if hovered == nil {
+            if session.mode == .compare, let (a, b) = session.compareIndices {
+                hovered = session.activeCompareSlot == 0 ? a : b
+            } else {
+                hovered = session.focusedIndex
+            }
+        }
+        infoPanel.highlight(index: hovered)
+    }
+
+    private func showToolbar() {
+        toolbarHideWorkItem?.cancel()
+        toolbarHideWorkItem = nil
+        if !toolbarBar.isHidden, toolbarBar.alphaValue > 0.99 { return }
+        toolbarBar.isHidden = false
+        identityBar.isHidden = false
+        filmstrip.isHidden = !showsFilmstrip
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.22
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            toolbarBar.animator().alphaValue = 1
+            identityBar.animator().alphaValue = 1
+            if showsFilmstrip { filmstrip.animator().alphaValue = 1 }
+        }
+    }
+
+    private func hideToolbar() {
+        if (toolbarBar.isHidden && toolbarHideWorkItem == nil)
+            || (toolbarBar.alphaValue < 0.01 && toolbarHideWorkItem == nil) {
+            return
+        }
+        toolbarHideWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.toolbarHideWorkItem = nil
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                self.toolbarBar.animator().alphaValue = 0
+                self.identityBar.animator().alphaValue = 0
+                self.filmstrip.animator().alphaValue = 0
+            }, completionHandler: { [weak self] in
+                guard let self, self.toolbarBar.alphaValue < 0.05 else { return }
+                self.toolbarBar.isHidden = true
+                self.identityBar.isHidden = true
+                self.filmstrip.isHidden = true
+            })
+        }
+        toolbarHideWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: item)
     }
 
     private var activeViewports: [InspectImageViewport] {
@@ -143,34 +254,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         root.wantsLayer = true
         root.layer?.backgroundColor = PanelStyle.imageCanvas.cgColor
 
-        toolbarBar.frame = NSRect(x: 0, y: root.bounds.height - 58, width: root.bounds.width, height: 58)
-        toolbarBar.autoresizingMask = [.width, .minYMargin]
-        PanelStyle.addHairline(to: toolbarBar, edge: .minY)
-        root.addSubview(toolbarBar)
-
-        titleLabel.font = PanelStyle.title
-        titleLabel.textColor = PanelStyle.textPrimary
-        titleLabel.lineBreakMode = .byTruncatingMiddle
-        toolbarBar.addSubview(titleLabel)
-
-        subtitleLabel.font = PanelStyle.caption
-        subtitleLabel.textColor = PanelStyle.textSecondary
-        subtitleLabel.lineBreakMode = .byTruncatingMiddle
-        toolbarBar.addSubview(subtitleLabel)
-
-        modeControl.target = self
-        modeControl.action = #selector(modeChanged)
-        modeControl.selectedSegment = 0
-        toolbarBar.addSubview(modeControl)
-
-        infoButton.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "Image information".localized)
-        infoButton.isBordered = false
-        infoButton.contentTintColor = PanelStyle.textPrimary
-        infoButton.target = self
-        infoButton.action = #selector(infoTapped)
-        toolbarBar.addSubview(infoButton)
-
-        canvasContainer.frame = NSRect(x: 0, y: 0, width: root.bounds.width, height: root.bounds.height - 58)
+        canvasContainer.frame = root.bounds
         canvasContainer.autoresizingMask = [.width, .height]
         canvasContainer.wantsLayer = true
         canvasContainer.layer?.backgroundColor = PanelStyle.imageCanvas.cgColor
@@ -182,14 +266,43 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
         primaryViewport.onViewportChange = { [weak self] state in self?.syncViewport(state, source: self?.primaryViewport) }
         secondaryViewport.onViewportChange = { [weak self] state in self?.syncViewport(state, source: self?.secondaryViewport) }
-
         filmstrip.onSelect = { [weak self] index in self?.focus(index: index) }
         filmstrip.onCompare = { [weak self] index in self?.compare(focusedWith: index) }
         canvasContainer.addSubview(filmstrip)
 
-        infoPanel.isHidden = true
-        canvasContainer.addSubview(infoPanel)
+        configureIdentityLabel(identityNameLabel, font: PanelStyle.headline, color: PanelStyle.textPrimary)
+        configureIdentityLabel(identityMetaLabel, font: PanelStyle.caption, color: PanelStyle.textSecondary)
+        for label in [identityNameLabel, identityMetaLabel] {
+            identityBar.addSubview(label)
+        }
+        identityBar.alphaValue = 0
+        identityBar.isHidden = true
+        canvasContainer.addSubview(identityBar, positioned: .above, relativeTo: nil)
+
+        focusButton.target = self
+        focusButton.action = #selector(focusModeTapped)
+        sideBySideButton.target = self
+        sideBySideButton.action = #selector(sideBySideTapped)
+        sliderButton.target = self
+        sliderButton.action = #selector(sliderTapped)
+        infoButton.target = self
+        infoButton.action = #selector(infoTapped)
+        for button in [focusButton, sideBySideButton, sliderButton, infoButton] {
+            button.autoresizingMask = [.minXMargin]
+            toolbarBar.addSubview(button)
+        }
+        toolbarBar.alphaValue = 0
+        toolbarBar.isHidden = true
+        canvasContainer.addSubview(toolbarBar, positioned: .above, relativeTo: nil)
         layoutContent()
+    }
+
+    private func configureIdentityLabel(_ label: NSTextField, font: NSFont, color: NSColor) {
+        label.font = font
+        label.textColor = color
+        label.lineBreakMode = .byTruncatingMiddle
+        label.maximumNumberOfLines = 1
+        label.isSelectable = true
     }
 
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
@@ -199,18 +312,34 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     private func layoutContent() {
         guard let root = contentView else { return }
-        let toolbarH: CGFloat = 58
-        toolbarBar.frame = NSRect(x: 0, y: root.bounds.height - toolbarH, width: root.bounds.width, height: toolbarH)
-        titleLabel.frame = NSRect(x: 20, y: 30, width: max(120, root.bounds.width - 440), height: 20)
-        subtitleLabel.frame = NSRect(x: 20, y: 10, width: max(120, root.bounds.width - 440), height: 16)
-        modeControl.frame = NSRect(x: root.bounds.width - 390, y: 15, width: 270, height: 28)
-        infoButton.frame = NSRect(x: root.bounds.width - 92, y: 15, width: 30, height: 28)
-        canvasContainer.frame = NSRect(x: 0, y: 0, width: root.bounds.width, height: root.bounds.height - toolbarH)
+        canvasContainer.frame = root.bounds
 
-        let infoW: CGFloat = infoPanel.isHidden ? 0 : min(340, canvasContainer.bounds.width * 0.34)
-        let contentFrame = NSRect(x: 0, y: 0, width: canvasContainer.bounds.width - infoW,
+        // The info panel is now a separate floating window, so the image always
+        // uses the full content width.
+        let contentFrame = NSRect(x: 0, y: 0, width: canvasContainer.bounds.width,
                                   height: canvasContainer.bounds.height)
-        infoPanel.frame = NSRect(x: contentFrame.maxX, y: 0, width: infoW, height: contentFrame.height)
+
+        identityBar.frame = NSRect(x: 0, y: 0, width: contentFrame.width, height: identityBarHeight)
+        let labelX: CGFloat = 18
+        let labelWidth = max(80, identityBar.bounds.width - labelX * 2)
+        identityNameLabel.frame = NSRect(x: labelX, y: 30, width: labelWidth, height: 17)
+        identityMetaLabel.frame = NSRect(x: labelX, y: 10, width: labelWidth, height: 15)
+
+        // Floating hover toolbar: a full-width bar across the top of the image,
+        // with the icons right-aligned.
+        toolbarBar.frame = NSRect(x: 0, y: contentFrame.height - toolbarHeight,
+                                  width: contentFrame.width, height: toolbarHeight)
+        let buttonSize: CGFloat = 26
+        let buttonGap: CGFloat = 4
+        let rightMargin: CGFloat = 12
+        let buttons = [focusButton, sideBySideButton, sliderButton, infoButton]
+        var bx = toolbarBar.bounds.width - rightMargin - buttonSize
+        for button in buttons.reversed() {
+            button.frame = NSRect(x: bx, y: (toolbarHeight - buttonSize) / 2,
+                                  width: buttonSize, height: buttonSize)
+            bx -= buttonSize + buttonGap
+        }
+        imageHoverFrame = contentFrame
 
         guard let session else {
             primaryViewport.frame = contentFrame
@@ -226,23 +355,31 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             sliderViewport.frame = contentFrame
         }
 
-        filmstrip.frame = NSRect(x: max(16, (contentFrame.width - min(600, contentFrame.width - 32)) / 2),
-                                 y: 16, width: min(600, contentFrame.width - 32), height: 86)
+        filmstrip.frame = NSRect(x: 0, y: identityBarHeight + 12,
+                                 width: contentFrame.width, height: 86)
     }
 
     private func renderSession() {
         guard let session, session.infos.indices.contains(session.focusedIndex) else { return }
         let info = session.infos[session.focusedIndex]
-        titleLabel.stringValue = info.filename
-        subtitleLabel.stringValue = identityLine(for: info, index: session.focusedIndex)
-        modeControl.isEnabled = session.infos.count >= 2
-        modeControl.selectedSegment = session.mode == .compare
-            ? (session.comparisonStyle == .sideBySide ? 1 : 2)
-            : 0
+        updateWindowTitle(for: info, index: session.focusedIndex)
+        updateIdentityBar(for: info, index: session.focusedIndex)
+        let hasMultipleImages = session.infos.count >= 2
+        // Keep the compare buttons visible but disabled for a single image, so
+        // the titlebar icon row never collapses to just one button.
+        focusButton.isEnabled = hasMultipleImages
+        sideBySideButton.isEnabled = hasMultipleImages
+        sliderButton.isEnabled = hasMultipleImages
+        focusButton.isActive = session.mode != .compare
+        sideBySideButton.isActive = session.mode == .compare && session.comparisonStyle == .sideBySide
+        sliderButton.isActive = session.mode == .compare && session.comparisonStyle == .slider
+        infoButton.isActive = infoVisible
 
         primaryViewport.isHidden = false
         secondaryViewport.isHidden = true
         sliderViewport.isHidden = true
+        primaryViewport.isActiveSlot = false
+        secondaryViewport.isActiveSlot = false
         primaryViewport.image = session.images[safe: session.focusedIndex] ?? nil
 
         if session.mode == .compare, let (a, b) = session.compareIndices,
@@ -251,27 +388,39 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 secondaryViewport.isHidden = false
                 primaryViewport.image = session.images[safe: a] ?? nil
                 secondaryViewport.image = session.images[safe: b] ?? nil
+                // Show which side a filmstrip tap will replace.
+                primaryViewport.isActiveSlot = session.activeCompareSlot == 0
+                secondaryViewport.isActiveSlot = session.activeCompareSlot == 1
             } else {
                 primaryViewport.isHidden = true
                 sliderViewport.isHidden = false
                 sliderViewport.setImages(a: session.images[safe: a] ?? nil,
                                          b: session.images[safe: b] ?? nil)
             }
-            titleLabel.stringValue = "\(session.infos[a].filename)  ↔  \(session.infos[b].filename)"
-            subtitleLabel.stringValue = comparisonSubtitle(a: session.infos[a], b: session.infos[b])
-            infoPanel.showComparison(a: session.infos[a], metadataA: session.metadata[safe: a] ?? nil,
-                                     b: session.infos[b], metadataB: session.metadata[safe: b] ?? nil)
+            infoPanel.show(items: [
+                (a, session.infos[a], session.metadata[safe: a] ?? nil),
+                (b, session.infos[b], session.metadata[safe: b] ?? nil),
+            ])
         } else {
-            infoPanel.showSingle(info: info,
-                                 metadata: session.metadata[safe: session.focusedIndex] ?? nil)
+            infoPanel.show(items: [
+                (session.focusedIndex, info, session.metadata[safe: session.focusedIndex] ?? nil),
+            ])
         }
 
         filmstrip.configure(infos: session.infos, images: session.images,
                             selectedIndex: session.focusedIndex, compareIndices: session.compareIndices)
-        filmstrip.isHidden = session.infos.count < 2
-        if !filmstrip.isHidden { scheduleFilmstripHide() }
+
+        // Default glow marks the active compare slot so the user sees which
+        // side a filmstrip tap will replace; hover overrides this.
+        if session.mode == .compare, let (a, b) = session.compareIndices {
+            infoPanel.highlight(index: session.activeCompareSlot == 0 ? a : b)
+        } else {
+            infoPanel.highlight(index: nil)
+        }
         layoutContent()
     }
+
+    private var showsFilmstrip: Bool { (session?.infos.count ?? 0) >= 2 }
 
     private func loadSessionImages(generation: UUID) {
         guard let session else { return }
@@ -326,43 +475,100 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
     }
 
-    @objc private func modeChanged() {
+    @objc private func focusModeTapped() {
         guard let session else { return }
-        if modeControl.selectedSegment > 0 {
-            session.comparisonStyle = modeControl.selectedSegment == 2 ? .slider : .sideBySide
-            if session.mode != .compare || session.compareIndices == nil {
-                let other = session.focusedIndex == 0 ? 1 : 0
-                compare(focusedWith: other)
-            } else {
-                renderSession()
-            }
-            loadFullResolutionForActiveItems(generation: loadGeneration)
-        } else {
-            session.mode = session.infos.count > 1 ? .browse : .focus
-            session.compareIndices = nil
-            renderSession()
+        session.mode = session.infos.count > 1 ? .browse : .focus
+        session.compareIndices = nil
+        renderSession()
+    }
+
+    @objc private func sideBySideTapped() {
+        activateCompare(style: .sideBySide)
+    }
+
+    @objc private func sliderTapped() {
+        activateCompare(style: .slider)
+    }
+
+    private func activateCompare(style: ImageInspectSession.ComparisonStyle) {
+        guard let session, session.infos.count > 1 else { return }
+        session.comparisonStyle = style
+        if session.compareIndices == nil {
+            let other = session.focusedIndex == 0 ? 1 : 0
+            session.compareIndices = (session.focusedIndex, other)
+            session.activeCompareSlot = 1
         }
+        session.mode = .compare
+        renderSession()
+        loadFullResolutionForActiveItems(generation: loadGeneration)
     }
 
     @objc private func infoTapped() { toggleInfo() }
 
     private func toggleInfo() {
-        infoPanel.isHidden.toggle()
+        infoVisible.toggle()
+        infoButton.isActive = infoVisible
+        if infoVisible {
+            positionInfoWindowBesideMain()
+            infoWindow.orderFront(nil)
+        } else {
+            infoWindow.orderOut(nil)
+        }
         renderSession()
+    }
+
+    /// Dock the floating info window just to the right of the main window,
+    /// clamped on-screen. The user can then drag it anywhere.
+    private func positionInfoWindowBesideMain() {
+        let width: CGFloat = 320
+        let gap: CGFloat = 2
+        let mainFrame = frame
+        var origin = NSPoint(x: mainFrame.maxX + gap, y: mainFrame.minY)
+        let size = NSSize(width: width, height: mainFrame.height)
+        if let visible = (screen ?? NSScreen.main)?.visibleFrame {
+            if origin.x + width > visible.maxX {
+                origin.x = max(visible.minX, mainFrame.minX - width - gap)
+            }
+            origin.y = min(max(visible.minY, origin.y), visible.maxY - size.height)
+        }
+        infoWindow.setFrame(NSRect(origin: origin, size: size), display: true)
+    }
+
+    private func updateIdentityBar(for info: MediaInfo, index: Int) {
+        identityNameLabel.stringValue = info.filename
+        var parts: [String] = []
+        if let session, session.infos.count > 1 { parts.append("\(index + 1) / \(session.infos.count)") }
+        if let size = info.dimensions { parts.append("\(Int(size.width)) × \(Int(size.height))") }
+        if !info.formatName.isEmpty { parts.append(info.formatName) }
+        if let bytes = info.fileSize { parts.append(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) }
+        identityMetaLabel.stringValue = parts.joined(separator: "  ·  ")
     }
 
     private func focus(index: Int) {
         guard let session, session.infos.indices.contains(index) else { return }
-        if session.mode == .compare {
-            let a = session.compareIndices?.0 ?? session.focusedIndex
-            guard index != a else { return }
-            session.compareIndices = (a, index)
+        if session.mode == .compare, let pair = session.compareIndices {
+            // Replace whichever slot is active (left or right), so both sides
+            // can be changed. Avoid pointing both slots at the same image.
+            if session.activeCompareSlot == 0 {
+                guard index != pair.1 else { return }
+                session.compareIndices = (index, pair.1)
+            } else {
+                guard index != pair.0 else { return }
+                session.compareIndices = (pair.0, index)
+            }
         } else {
             session.focusedIndex = index
         }
-        filmstrip.isHidden = false
         renderSession()
         loadFullResolutionForActiveItems(generation: loadGeneration)
+    }
+
+    /// Choose which compare slot subsequent filmstrip taps replace, by clicking
+    /// the left or right image in side-by-side mode.
+    private func selectCompareSlot(_ slot: Int) {
+        guard let session, session.mode == .compare else { return }
+        session.activeCompareSlot = slot
+        renderSession()
     }
 
     private func navigate(by delta: Int) {
@@ -377,7 +583,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         } else {
             session.focusedIndex = (session.focusedIndex + delta + session.infos.count) % session.infos.count
         }
-        filmstrip.isHidden = false
         renderSession()
         loadFullResolutionForActiveItems(generation: loadGeneration)
     }
@@ -397,14 +602,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
     }
 
-    private func scheduleFilmstripHide() {
-        filmstripHideWorkItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in self?.filmstrip.animator().alphaValue = 0 }
-        filmstripHideWorkItem = item
-        filmstrip.alphaValue = 1
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: item)
-    }
-
     private func closeAndRestore() {
         isClosingProgrammatically = true
         orderOut(nil)
@@ -412,21 +609,94 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         onClose?()
     }
 
-    private func identityLine(for info: MediaInfo, index: Int) -> String {
-        var parts: [String] = []
-        if let session, session.infos.count > 1 { parts.append("\(index + 1) / \(session.infos.count)") }
-        if let size = info.dimensions { parts.append("\(Int(size.width)) × \(Int(size.height))") }
-        if !info.formatName.isEmpty { parts.append(info.formatName) }
-        if let bytes = info.fileSize { parts.append(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) }
-        let location = info.isLocal ? info.url.deletingLastPathComponent().path : (info.url.host ?? info.url.absoluteString)
-        if let source = info.sourceAppName { parts.append(source + " · " + location) }
-        else { parts.append(location) }
-        return parts.joined(separator: "  ·  ")
+    private func updateWindowTitle(for info: MediaInfo, index: Int) {
+        // The window title stays generic; the filename shows in the bottom bar.
+        title = "Image Inspect".localized
+        representedURL = nil
+    }
+}
+
+/// Standalone floating window that hosts the image info panel, independent of
+/// the main image window so the user can move it around freely.
+final class ImageInfoPanelWindow: NSPanel {
+    init(panel: ImageDifferencePanel) {
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 320, height: 480),
+                   styleMask: [.titled, .closable, .resizable, .utilityWindow, .nonactivatingPanel],
+                   backing: .buffered, defer: false)
+        contentMinSize = NSSize(width: 320, height: 240)
+        contentMaxSize = NSSize(width: 320, height: 10000)
+        title = "Image information".localized
+        isFloatingPanel = true
+        becomesKeyOnlyIfNeeded = true
+        hidesOnDeactivate = false
+        isReleasedWhenClosed = false
+        appearance = NSAppearance(named: .darkAqua)
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.frame = contentView?.bounds ?? .zero
+        panel.autoresizingMask = [.width, .height]
+        contentView?.addSubview(panel)
+    }
+}
+
+private final class InspectIdentityBar: NSVisualEffectView {
+    private let tintLayer = CALayer()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        material = .hudWindow
+        blendingMode = .withinWindow
+        state = .active
+        appearance = NSAppearance(named: .vibrantDark)
+        wantsLayer = true
+        layer?.masksToBounds = true
+        // Frosted translucency comes from the effect view; the sublayer only
+        // biases it darker. Square corners.
+        tintLayer.backgroundColor = NSColor(white: 0, alpha: 0.32).cgColor
+        layer?.addSublayer(tintLayer)
     }
 
-    private func comparisonSubtitle(a: MediaInfo, b: MediaInfo) -> String {
-        guard let sa = a.dimensions, let sb = b.dimensions else { return "Relative alignment".localized }
-        return sa == sb ? "Pixel alignment".localized : "Relative alignment".localized
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        tintLayer.frame = bounds
+        CATransaction.commit()
+    }
+}
+
+private final class InspectToolbarButton: NSButton {
+    var isActive = false { didSet { updateAppearance() } }
+
+    init(symbol: String, tooltip: String) {
+        super.init(frame: .zero)
+        image = NSImage(systemSymbolName: symbol, accessibilityDescription: tooltip)
+        imagePosition = .imageOnly
+        toolTip = tooltip
+        isBordered = false
+        bezelStyle = .recessed
+        contentTintColor = .white
+        wantsLayer = true
+        layer?.cornerRadius = 7
+        updateAppearance()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override var isEnabled: Bool {
+        didSet { updateAppearance() }
+    }
+
+    private func updateAppearance() {
+        layer?.backgroundColor = isActive
+            ? NSColor(white: 1, alpha: 0.20).cgColor
+            : NSColor.clear.cgColor
+        // Dim disabled compare buttons so the user can see they are inactive
+        // for a single image, instead of looking tappable but doing nothing.
+        contentTintColor = isEnabled ? .white : NSColor(white: 1, alpha: 0.35)
+        alphaValue = isEnabled ? 1 : 0.5
     }
 }
 
@@ -439,11 +709,18 @@ final class InspectImageViewport: NSView {
     var image: NSImage? { didSet { imageLayer.contents = image; fitToView() } }
     var onViewportChange: ((InspectViewportState) -> Void)?
     var isInteractionEnabled = true
+    /// Marks which compare slot is active — the side a filmstrip tap replaces.
+    var isActiveSlot = false {
+        didSet {
+            activeIndicator.isHidden = !isActiveSlot
+        }
+    }
     var viewportState: InspectViewportState {
         InspectViewportState(zoomRelativeToFit: zoom, normalizedCenter: normalizedCenter)
     }
 
     private let imageLayer = CALayer()
+    private let activeIndicator = CALayer()
     private var zoom: CGFloat = 1
     private var normalizedCenter = CGPoint(x: 0.5, y: 0.5)
     private var lastDragPoint = CGPoint.zero
@@ -456,6 +733,14 @@ final class InspectImageViewport: NSView {
         layer?.masksToBounds = true
         imageLayer.contentsGravity = .resizeAspect
         layer?.addSublayer(imageLayer)
+        activeIndicator.backgroundColor = NSColor(white: 1, alpha: 0.55).cgColor
+        activeIndicator.cornerRadius = 1.5
+        activeIndicator.shadowColor = NSColor.white.cgColor
+        activeIndicator.shadowOpacity = 0.22
+        activeIndicator.shadowRadius = 4
+        activeIndicator.shadowOffset = .zero
+        activeIndicator.isHidden = true
+        layer?.addSublayer(activeIndicator)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -467,6 +752,9 @@ final class InspectImageViewport: NSView {
     override func layout() {
         super.layout()
         updateLayerGeometry()
+        let inset: CGFloat = 10
+        activeIndicator.frame = CGRect(x: inset, y: 3,
+                                       width: max(0, bounds.width - inset * 2), height: 3)
     }
 
     func fitToView() {
@@ -669,23 +957,17 @@ final class ImageFilmstripView: NSView {
     var onSelect: ((Int) -> Void)?
     var onCompare: ((Int) -> Void)?
     private var itemViews: [ImageFilmstripItem] = []
-    private let scrollView = NSScrollView()
-    private let documentView = NSView()
+    private var infos: [MediaInfo] = []
+    private var images: [NSImage?] = []
+    private var selectedIndex = 0
+    private var compareIndices: (Int, Int)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
+        // No background container and no scroll bar: just the thumbnails,
+        // centered as a row over the image.
         wantsLayer = true
-        layer?.cornerRadius = 14
-        layer?.backgroundColor = NSColor(white: 0.05, alpha: 0.88).cgColor
-        layer?.borderColor = PanelStyle.hairline.cgColor
-        layer?.borderWidth = 1
-        scrollView.drawsBackground = false
-        scrollView.borderType = .noBorder
-        scrollView.hasHorizontalScroller = true
-        scrollView.hasVerticalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.documentView = documentView
-        addSubview(scrollView)
+        layer?.backgroundColor = NSColor.clear.cgColor
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -696,16 +978,31 @@ final class ImageFilmstripView: NSView {
 
     func configure(infos: [MediaInfo], images: [NSImage?], selectedIndex: Int,
                    compareIndices: (Int, Int)?) {
+        self.infos = infos
+        self.images = images
+        self.selectedIndex = selectedIndex
+        self.compareIndices = compareIndices
+        rebuild()
+    }
+
+    private func rebuild() {
         itemViews.forEach { $0.removeFromSuperview() }
         itemViews.removeAll()
         let count = infos.count
+        guard count > 0 else { return }
         let gap: CGFloat = 8
-        let width: CGFloat = 76
-        let documentWidth = max(bounds.width, 24 + CGFloat(count) * width + CGFloat(max(0, count - 1)) * gap)
-        documentView.frame = NSRect(x: 0, y: 0, width: documentWidth, height: 78)
-        var x: CGFloat = 12
+        let itemWidth: CGFloat = 72
+        // Fit the row within the available width so no scroll bar is needed.
+        let maxRowWidth = bounds.width - 24
+        let naturalWidth = CGFloat(count) * itemWidth + CGFloat(count - 1) * gap
+        let rowWidth = min(naturalWidth, maxRowWidth)
+        let cellWidth = count > 1
+            ? (rowWidth - CGFloat(count - 1) * gap) / CGFloat(count)
+            : itemWidth
+        var x = (bounds.width - rowWidth) / 2
+        let itemHeight = bounds.height - 12
         for index in 0..<count {
-            let item = ImageFilmstripItem(frame: NSRect(x: x, y: 9, width: width, height: 68))
+            let item = ImageFilmstripItem(frame: NSRect(x: x, y: 6, width: cellWidth, height: itemHeight))
             item.configure(image: images[safe: index] ?? nil, title: infos[index].filename,
                            selected: index == selectedIndex,
                            compared: compareIndices.map { $0.0 == index || $0.1 == index } ?? false)
@@ -713,35 +1010,29 @@ final class ImageFilmstripView: NSView {
                 if modifiers.contains(.option) { self?.onCompare?(index) }
                 else { self?.onSelect?(index) }
             }
-            documentView.addSubview(item)
+            addSubview(item)
             itemViews.append(item)
-            x += width + gap
+            x += cellWidth + gap
         }
     }
 
     override func layout() {
         super.layout()
-        scrollView.frame = bounds.insetBy(dx: 2, dy: 2)
-        documentView.frame.size.height = max(1, scrollView.contentSize.height)
+        rebuild()
     }
 }
 
 private final class ImageFilmstripItem: NSView {
     var onClick: ((NSEvent.ModifierFlags) -> Void)?
     private let imageView = NSImageView()
-    private let label = NSTextField(labelWithString: "")
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.cornerRadius = 8
+        layer?.masksToBounds = true
         imageView.imageScaling = .scaleProportionallyUpOrDown
         addSubview(imageView)
-        label.font = PanelStyle.caption
-        label.textColor = PanelStyle.textSecondary
-        label.alignment = .center
-        label.lineBreakMode = .byTruncatingMiddle
-        addSubview(label)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -750,82 +1041,147 @@ private final class ImageFilmstripItem: NSView {
 
     func configure(image: NSImage?, title: String, selected: Bool, compared: Bool) {
         imageView.image = image
-        label.stringValue = title
         layer?.borderWidth = selected || compared ? 2 : 0
         layer?.borderColor = (compared ? NSColor.systemOrange : PanelStyle.accent).cgColor
     }
 
     override func layout() {
         super.layout()
-        imageView.frame = NSRect(x: 4, y: 18, width: bounds.width - 8, height: bounds.height - 22)
-        label.frame = NSRect(x: 2, y: 2, width: bounds.width - 4, height: 14)
+        imageView.frame = NSRect(x: 3, y: 3, width: bounds.width - 6, height: bounds.height - 6)
     }
 }
 
-final class ImageDifferencePanel: NSView {
-    private let scroll = NSScrollView()
-    private let stack = NSStackView()
+/// One image's full metadata as a self-contained block. A soft glowing border
+/// can be toggled so the user sees which on-screen image this block describes.
+final class ImageInfoBlock: NSView {
+    let index: Int
+    private let container = NSView()
 
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
+    init(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?) {
+        self.index = index
+        super.init(frame: .zero)
         wantsLayer = true
-        layer?.backgroundColor = NSColor(white: 0.08, alpha: 1).cgColor
-        scroll.drawsBackground = false
-        scroll.hasVerticalScroller = true
+        translatesAutoresizingMaskIntoConstraints = false
+
+        container.wantsLayer = true
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.layer?.cornerRadius = 12
+        container.layer?.backgroundColor = NSColor(white: 1, alpha: 0.045).cgColor
+        container.layer?.borderWidth = 1.5
+        container.layer?.borderColor = NSColor.clear.cgColor
+        addSubview(container)
+
+        let inset: CGFloat = 12
+        let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 10
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 18, bottom: 20, right: 18)
-        scroll.documentView = stack
-        addSubview(scroll)
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.edgeInsets = NSEdgeInsets(top: inset, left: inset, bottom: inset, right: inset)
+        container.addSubview(stack)
+
+        // Filename: wraps to as many lines as needed instead of truncating.
+        let name = NSTextField(wrappingLabelWithString: info.filename)
+        name.font = PanelStyle.headline
+        name.textColor = PanelStyle.textPrimary
+        name.maximumNumberOfLines = 0
+        name.lineBreakMode = .byCharWrapping
+        name.isSelectable = true
+        name.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        stack.addArrangedSubview(name)
+        name.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -inset * 2).isActive = true
+
+        // Thin divider between the name and the metadata grid.
+        let divider = NSView()
+        divider.wantsLayer = true
+        divider.layer?.backgroundColor = PanelStyle.hairline.cgColor
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(divider)
+        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        divider.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -inset * 2).isActive = true
+
+        // Metadata laid out in a TWO-COLUMN grid so the card grows wide and
+        // short (landscape) rather than tall and narrow.
+        let rows = Self.metadataRows(info, metadata: metadata)
+        let mid = Int(ceil(Double(rows.count) / 2.0))
+        let leftRows = Array(rows[0..<mid])
+        let rightRows = Array(rows[mid...])
+        var gridRows: [[NSView]] = []
+        for i in 0..<max(leftRows.count, rightRows.count) {
+            let left = leftRows[safe: i].map { Self.makePair(key: $0.0, value: $0.1) } ?? NSView()
+            let right = rightRows[safe: i].map { Self.makePair(key: $0.0, value: $0.1) } ?? NSView()
+            gridRows.append([left, right])
+        }
+        let grid = NSGridView(views: gridRows)
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        grid.rowSpacing = 8
+        grid.columnSpacing = 14
+        if grid.numberOfColumns >= 2 {
+            grid.column(at: 0).xPlacement = .fill
+            grid.column(at: 1).xPlacement = .fill
+        }
+        stack.addArrangedSubview(grid)
+        grid.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -inset * 2).isActive = true
+
+        NSLayoutConstraint.activate([
+            container.leadingAnchor.constraint(equalTo: leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: trailingAnchor),
+            container.topAnchor.constraint(equalTo: topAnchor),
+            container.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        // Landscape by default: at least 16:9 wide, but allowed to grow taller
+        // so all metadata is shown in full when two columns aren't enough.
+        let minRatio = container.heightAnchor.constraint(
+            greaterThanOrEqualTo: container.widthAnchor, multiplier: 9.0 / 16.0)
+        minRatio.priority = .defaultHigh
+        minRatio.isActive = true
+    }
+
+    /// A muted uppercase key over a bright value, used as one grid cell.
+    private static func makePair(key: String, value: String) -> NSView {
+        let pair = NSStackView()
+        pair.orientation = .vertical
+        pair.alignment = .leading
+        pair.spacing = 1
+        pair.translatesAutoresizingMaskIntoConstraints = false
+
+        let keyLabel = NSTextField(labelWithString: key.uppercased())
+        keyLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        keyLabel.textColor = PanelStyle.textTertiary
+        pair.addArrangedSubview(keyLabel)
+
+        let valueLabel = NSTextField(labelWithString: value)
+        valueLabel.font = PanelStyle.body
+        valueLabel.textColor = PanelStyle.textPrimary
+        valueLabel.lineBreakMode = .byTruncatingTail
+        valueLabel.isSelectable = true
+        pair.addArrangedSubview(valueLabel)
+        return pair
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    override func layout() {
-        super.layout()
-        scroll.frame = bounds
-        stack.frame = NSRect(x: 0, y: 0, width: max(1, bounds.width), height: max(bounds.height, stack.fittingSize.height))
+    func setHighlighted(_ highlighted: Bool) {
+        // Soft, neutral highlight — a subtly brighter fill and faint white
+        // hairline border, no blue accent, no glow.
+        let layer = container.layer
+        layer?.backgroundColor = (highlighted ? NSColor(white: 1, alpha: 0.10)
+                                              : NSColor(white: 1, alpha: 0.045)).cgColor
+        layer?.borderColor = (highlighted ? NSColor(white: 1, alpha: 0.22)
+                                          : NSColor.clear).cgColor
+        layer?.removeAnimation(forKey: "glow")
+        layer?.shadowOpacity = 0
     }
 
-    func showSingle(info: MediaInfo, metadata: ImageTechnicalMetadata?) {
-        setRows(title: "Image information".localized, rows: metadataRows(info, metadata: metadata))
-    }
-
-    func showComparison(a: MediaInfo, metadataA: ImageTechnicalMetadata?,
-                        b: MediaInfo, metadataB: ImageTechnicalMetadata?) {
-        let aRows = Dictionary(uniqueKeysWithValues: metadataRows(a, metadata: metadataA))
-        let bRows = Dictionary(uniqueKeysWithValues: metadataRows(b, metadata: metadataB))
-        let keys = ["Dimensions", "Aspect ratio", "File size", "Format", "Color space", "Bit depth", "Alpha"]
-        let differences = keys.compactMap { key -> (String, String)? in
-            let av = aRows[key] ?? "—"
-            let bv = bRows[key] ?? "—"
-            return av == bv ? nil : (key, "A  \(av)\nB  \(bv)")
-        }
-        setRows(title: String(format: "%d differences".localized, differences.count), rows: differences)
-    }
-
-    private func setRows(title: String, rows: [(String, String)]) {
-        stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
-        let heading = NSTextField(labelWithString: title)
-        heading.font = PanelStyle.title
-        heading.textColor = PanelStyle.textPrimary
-        stack.addArrangedSubview(heading)
-        for (key, value) in rows {
-            let label = NSTextField(wrappingLabelWithString: "\(key)\n\(value)")
-            label.font = PanelStyle.body
-            label.textColor = PanelStyle.textSecondary
-            label.maximumNumberOfLines = 3
-            label.preferredMaxLayoutWidth = max(100, bounds.width - 36)
-            stack.addArrangedSubview(label)
-        }
-        needsLayout = true
-    }
-
-    private func metadataRows(_ info: MediaInfo, metadata: ImageTechnicalMetadata?) -> [(String, String)] {
+    static func metadataRows(_ info: MediaInfo, metadata: ImageTechnicalMetadata?) -> [(String, String)] {
         var rows: [(String, String)] = []
         if let size = info.dimensions, size.height > 0 {
-            rows.append(("Dimensions", "\(Int(size.width)) × \(Int(size.height))"))
+            rows.append(("Dimensions", "\(Int(size.width)) × \(Int(size.height)) px"))
             rows.append(("Aspect ratio", String(format: "%.3f", size.width / size.height)))
         }
         if let bytes = info.fileSize {
@@ -836,6 +1192,76 @@ final class ImageDifferencePanel: NSView {
         if let depth = metadata?.bitDepth { rows.append(("Bit depth", "\(depth)-bit")) }
         if let alpha = metadata?.hasAlpha { rows.append(("Alpha", alpha ? "Yes" : "No")) }
         return rows
+    }
+}
+
+/// Scrolling column of per-image info blocks (one block per on-screen image).
+final class ImageDifferencePanel: NSView {
+    private let scroll = NSScrollView()
+    private let stack = NSStackView()
+    private(set) var blocks: [ImageInfoBlock] = []
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor(white: 0.08, alpha: 1).cgColor
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        // Only show the scroller when content overflows, and overlay it so it
+        // never steals width from the info blocks.
+        scroll.autohidesScrollers = true
+        scroll.scrollerStyle = .overlay
+        // Flipped document view so its origin is at the TOP-LEFT — content
+        // stacks downward from the top instead of sitting at the bottom.
+        let doc = FlippedView()
+        doc.translatesAutoresizingMaskIntoConstraints = false
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        // 10pt padding on all sides; blocks then fill the remaining width.
+        stack.edgeInsets = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        doc.addSubview(stack)
+        scroll.documentView = doc
+        addSubview(scroll)
+
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: doc.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: doc.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: doc.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: doc.bottomAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+        super.layout()
+        scroll.frame = bounds
+        if let doc = scroll.documentView {
+            doc.frame.size.width = bounds.width
+        }
+    }
+
+    /// `items` is the ordered list of (image index, info, metadata) currently on
+    /// screen. Rebuilds one block per image.
+    func show(items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)]) {
+        stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
+        blocks.removeAll()
+
+        for item in items {
+            let block = ImageInfoBlock(index: item.index, info: item.info, metadata: item.metadata)
+            stack.addArrangedSubview(block)
+            block.widthAnchor.constraint(equalToConstant: 300).isActive = true
+            blocks.append(block)
+        }
+        needsLayout = true
+    }
+
+    func highlight(index: Int?) {
+        for block in blocks {
+            block.setHighlighted(block.index == index)
+        }
     }
 }
 

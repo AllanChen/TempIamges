@@ -4,10 +4,29 @@ set -e
 # Optional first arg picks the build configuration. Defaults to Release;
 # pass "Debug" to enable #if DEBUG paths (debug input window, etc).
 CONFIG="${1:-Release}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "Building Glance ($CONFIG)..."
 
-cd "$(dirname "$0")"
+cd "$SCRIPT_DIR"
+
+# TCC grants are tied to the app's designated code requirement, not only its
+# bundle identifier. Never publish an ad-hoc build: its CDHash changes whenever
+# the binary changes, so Accessibility and Input Monitoring are revoked.
+REQUESTED_SIGN_IDENTITY="${GLANCE_SIGN_IDENTITY:-Glance Self-Signed}"
+# Sign by the certificate SHA-1 hash, not the name. The keychain can hold two
+# entries with the same friendly name (e.g. cert created twice), which makes
+# `codesign --sign "<name>"` fail with "ambiguous". The hash is unique.
+SIGN_IDENTITY="$(security find-identity -v -p codesigning \
+    | grep -F "\"$REQUESTED_SIGN_IDENTITY\"" \
+    | head -n 1 \
+    | sed -E 's/^[[:space:]]*[0-9]+\)[[:space:]]+([0-9A-F]+).*/\1/')"
+if [ -z "$SIGN_IDENTITY" ]; then
+    echo "Error: Glance signing identity '$REQUESTED_SIGN_IDENTITY' is not available."
+    echo "Run $PROJECT_ROOT/scripts/create-signing-cert.sh once, then rebuild."
+    exit 1
+fi
 
 if command -v xcodegen > /dev/null 2>&1; then
     xcodegen generate
@@ -66,32 +85,32 @@ if [ -d "./Resources/Assets.xcassets" ]; then
     fi
 fi
 
-DEST_APP="$(cd .. && pwd)/Glance.app"
+DEST_APP="$PROJECT_ROOT/Glance.app"
 
 [ -d "$DEST_APP" ] && rm -rf "$DEST_APP"
 
 cp -R "$BUILT_APP" "$DEST_APP"
 
-# Re-sign with a STABLE self-signed identity so macOS keeps the Accessibility /
-# Input Monitoring grants across rebuilds. Without this the app is ad-hoc signed
-# and TCC forces re-authorization every single build.
-# Run ./scripts/create-signing-cert.sh once to create the identity.
-SIGN_IDENTITY="Glance Self-Signed"
-ENTITLEMENTS="$(dirname "$0")/Glance.entitlements"
-if security find-identity -v -p codesigning | grep -q "$SIGN_IDENTITY"; then
-    echo "Signing with stable identity: $SIGN_IDENTITY"
-    codesign --force --deep \
-        --sign "$SIGN_IDENTITY" \
-        --entitlements "$ENTITLEMENTS" \
-        --options runtime \
-        "$DEST_APP"
-    codesign --verify --deep --strict "$DEST_APP" \
-        && echo "  Signature verified." \
-        || echo "  Warning: signature verification reported issues."
-else
-    echo "Warning: '$SIGN_IDENTITY' not found — leaving ad-hoc signature."
-    echo "         Run ./scripts/create-signing-cert.sh once to stop re-authorizing every build."
+# Re-sign the final copied bundle because resource post-processing above
+# invalidates the signature produced by xcodebuild.
+echo "Signing with stable identity: $REQUESTED_SIGN_IDENTITY ($SIGN_IDENTITY)"
+codesign --force --deep \
+    --sign "$SIGN_IDENTITY" \
+    --entitlements "$SCRIPT_DIR/Glance.entitlements" \
+    --options runtime \
+    "$DEST_APP"
+codesign --verify --deep --strict "$DEST_APP"
+
+SIGNATURE_INFO="$(codesign -dvv "$DEST_APP" 2>&1)"
+if printf '%s\n' "$SIGNATURE_INFO" | grep -q '^Signature=adhoc$'; then
+    echo "Error: final Glance.app is not signed with a persistent identity."
+    exit 1
 fi
+if ! printf '%s\n' "$SIGNATURE_INFO" | grep -q '^Authority='; then
+    echo "Error: final Glance.app has no certificate authority in its signature."
+    exit 1
+fi
+echo "  Signature verified with: $REQUESTED_SIGN_IDENTITY"
 
 echo ""
 echo "Build complete!"
