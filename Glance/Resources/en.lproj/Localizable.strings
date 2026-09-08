@@ -172,6 +172,10 @@
 "No file found matching '%@'" = "No file found matching '%@'";
 "No media to preview" = "No media to preview";
 "Failed to load media" = "Failed to load media";
+"Video comparison" = "Video comparison";
+"Compare videos" = "Compare videos";
+"Play" = "Play";
+"Pause" = "Pause";
 "Full Disk Access Required" = "Full Disk Access Required";
 "Glance needs Full Disk Access to search files in protected locations (Desktop, Documents, Downloads). Enable it in System Settings to improve search results." = "Glance needs Full Disk Access to search files in protected locations (Desktop, Documents, Downloads). Enable it in System Settings to improve search results.";
 

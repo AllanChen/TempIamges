@@ -14,6 +14,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var historyWindow: HistoryWindow?
     private var fileNameResolver: FileNameResolver?
     private var imageInspectWindow: ImageInspectWindow?
+    private var videoCompareWindow: VideoCompareWindow?
     /// Strong refs to viewer windows opened from a single-hit shortcut so
     /// they outlive the activation that created them.
     private var viewerWindows: [ContentViewerWindow] = []
@@ -78,11 +79,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
         let detector = pathDetector ?? PathDetector()
         let paths = urls.map { detector.localKind(for: $0.path) }
-        let infos = paths.compactMap { MediaInfo.from($0) }.filter { $0.kind == .image }
-        guard !infos.isEmpty else { return }
-        let loaded = Array<LoadedMedia?>(repeating: nil, count: infos.count)
-        openImageInspect(infos: infos, loaded: loaded, focusedIndex: 0,
-                         preferredMode: Self.preferredInspectMode(for: infos.count))
+            .filter {
+                guard let info = MediaInfo.from($0) else { return false }
+                return info.kind == .image || info.kind == .video
+            }
+        guard !paths.isEmpty else { return }
+
+        activeRequestID &+= 1
+        activeRequestStartedAt = Date()
+        activeSourceAppName = nil
+        loadAndShowMedia(paths: paths, at: NSEvent.mouseLocation, requestID: activeRequestID)
     }
 
     private func setupComponents() {
@@ -97,6 +103,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         previewPanel = PreviewPanel()
         previewPanel?.onInspectImages = { [weak self] infos, loaded, focusedIndex in
             self?.openImageInspect(infos: infos, loaded: loaded, focusedIndex: focusedIndex)
+        }
+        previewPanel?.onInspectVideos = { [weak self] infos, _ in
+            self?.openVideoCompare(infos: infos)
         }
         previewPanel?.onDismiss = { [weak self] in self?.invalidateActiveRequest() }
         errorTooltip = ErrorTooltip()
@@ -617,6 +626,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         previewPanel?.closeWithoutAffectingContent()
         window.show(infos: infos, loaded: loaded, focusedIndex: focusedIndex,
                     preferredMode: preferredMode)
+    }
+
+    private func openVideoCompare(infos: [MediaInfo]) {
+        guard infos.count == 2, infos.allSatisfy({ $0.kind == .video }) else { return }
+        previewPanel?.closeWithoutAffectingContent()
+        videoCompareWindow?.close()
+        let window = VideoCompareWindow(infos: infos)
+        videoCompareWindow = window
+        NSApp.activate(ignoringOtherApps: true)
+        window?.center()
+        window?.makeKeyAndOrderFront(nil)
     }
 
     private static func preferredInspectMode(for imageCount: Int) -> ImageInspectSession.Mode {

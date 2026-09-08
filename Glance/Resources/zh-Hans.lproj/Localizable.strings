@@ -172,6 +172,10 @@
 "No file found matching '%@'" = "未找到匹配 '%@' 的文件";
 "No media to preview" = "没有可预览的媒体";
 "Failed to load media" = "加载媒体失败";
+"Video comparison" = "视频对比";
+"Compare videos" = "对比视频";
+"Play" = "播放";
+"Pause" = "暂停";
 "Full Disk Access Required" = "需要完全磁盘访问权限";
 "Glance needs Full Disk Access to search files in protected locations (Desktop, Documents, Downloads). Enable it in System Settings to improve search results." = "Glance 需要完全磁盘访问权限才能搜索受保护位置中的文件。你可以在系统设置中启用它以改善搜索结果。";
 

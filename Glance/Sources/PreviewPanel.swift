@@ -5,6 +5,7 @@ import WebKit
 
 class PreviewPanel: NSPanel {
     var onInspectImages: (([MediaInfo], [LoadedMedia?], Int) -> Void)?
+    var onInspectVideos: (([MediaInfo], Int) -> Void)?
     var onDismiss: (() -> Void)?
     // MARK: - Layout constants
     private let panelCornerRadius: CGFloat = 20
@@ -175,6 +176,7 @@ class PreviewPanel: NSPanel {
     /// Folder button in the split-view toolbar. Reveals the currently-selected
     /// file in Finder.
     private weak var splitFolderBtn: NSButton?
+    private weak var splitCompareBtn: NSButton?
 
     /// When pinned, hidePanel() is ignored and the close (X) button shows.
     /// New previews via showLoading() reset this to false.
@@ -731,6 +733,14 @@ class PreviewPanel: NSPanel {
         toolbar.addSubview(folderBtn)
         splitFolderBtn = folderBtn
 
+        let compareBtn = PanelStyle.makeIconButton(symbol: "rectangle.split.2x1",
+                                                   tooltip: "Compare videos".localized,
+                                                   target: self, action: #selector(splitCompareTapped))
+        compareBtn.autoresizingMask = [.minXMargin]
+        compareBtn.isHidden = infos.count != 2 || !infos.allSatisfy({ $0.kind == .video })
+        toolbar.addSubview(compareBtn)
+        splitCompareBtn = compareBtn
+
         contentView.addSubview(toolbar)
         splitToolbar = toolbar
 
@@ -893,7 +903,19 @@ class PreviewPanel: NSPanel {
         splitFolderBtn?.frame = NSRect(x: folderX, y: (barH - folderSize) / 2,
                                        width: folderSize, height: folderSize)
 
-        let identityRight = folderHidden ? (barW - rightMargin) : (folderX - labelGap)
+        let compareHidden = splitCompareBtn?.isHidden ?? true
+        let compareX = folderX - (compareHidden ? 0 : folderSize + 6)
+        splitCompareBtn?.frame = NSRect(x: compareX, y: (barH - folderSize) / 2,
+                                        width: folderSize, height: folderSize)
+
+        let identityRight: CGFloat
+        if !compareHidden {
+            identityRight = compareX - labelGap
+        } else if !folderHidden {
+            identityRight = folderX - labelGap
+        } else {
+            identityRight = barW - rightMargin
+        }
         let identityWidth = max(60, identityRight - leftMargin)
         splitToolbarTitle?.frame    = NSRect(x: leftMargin, y: barH - 29, width: identityWidth, height: 18)
         splitToolbarSubtitle?.frame = NSRect(x: leftMargin, y: 9, width: identityWidth, height: 15)
@@ -904,6 +926,12 @@ class PreviewPanel: NSPanel {
         let info = currentInfos[selectedIndex]
         guard info.isLocal else { return }
         NSWorkspace.shared.activateFileViewerSelecting([info.url])
+    }
+
+    @objc private func splitCompareTapped() {
+        guard currentInfos.count == 2,
+              currentInfos.allSatisfy({ $0.kind == .video }) else { return }
+        onInspectVideos?(currentInfos, selectedIndex)
     }
 
     private func loadContent(for info: MediaInfo, into container: NSView) {
