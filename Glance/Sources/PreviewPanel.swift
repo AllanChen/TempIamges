@@ -45,33 +45,28 @@ class PreviewPanel: NSPanel {
         }
     }
 
-    // Colors. The semantic ones (windowBackgroundColor, labelColor, etc.)
-    // are dynamic NSColors that resolve against NSApp.effectiveAppearance,
-    // so flipping the Theme menu updates the panel on next rebuild.
-    // The panel now floats on a translucent dark-frosted base (NSVisualEffectView
-    // + black tint), so the whole chrome commits to an on-glass dark palette
-    // regardless of system theme. Fills are translucent white so the frost reads
-    // through them; text is white / dimmed-white.
+    // Local aliases keep the layout code readable while all actual colour
+    // decisions live in PanelStyle's Quiet Darkroom palette.
     fileprivate static let panelBackground   = NSColor.clear
     fileprivate static let middleBackground  = NSColor.clear
     /// Always-dark image canvas — the image needs a neutral dark frame to read
     /// against, even on the frosted base.
-    fileprivate static let darkInset         = NSColor(white: 0.03, alpha: 1)
-    fileprivate static let bottomBar         = NSColor(white: 1, alpha: 0.06)
-    fileprivate static let separator         = NSColor(white: 1, alpha: 0.08)
-    fileprivate static let pillBackground    = NSColor(white: 1, alpha: 0.12)
-    fileprivate static let pillBackgroundLight = NSColor(white: 1, alpha: 0.18)
-    fileprivate static let textDark          = NSColor.white
-    fileprivate static let textSecondary     = NSColor(white: 1, alpha: 0.55)
-    fileprivate static let textOnDark        = NSColor.white
-    fileprivate static let textOnDarkSecondary = NSColor(white: 1, alpha: 0.65)
-    fileprivate static let thumbPlaceholder  = NSColor(white: 1, alpha: 0.10)
-    fileprivate static let filmstripBorder   = NSColor.systemBlue
-    fileprivate static let accentBlue        = NSColor.systemBlue
+    fileprivate static let darkInset         = PanelStyle.canvas
+    fileprivate static let bottomBar         = PanelStyle.barFill
+    fileprivate static let separator         = PanelStyle.hairline
+    fileprivate static let pillBackground    = PanelStyle.controlFill
+    fileprivate static let pillBackgroundLight = PanelStyle.controlFillHi
+    fileprivate static let textDark          = PanelStyle.textPrimary
+    fileprivate static let textSecondary     = PanelStyle.textSecondary
+    fileprivate static let textOnDark        = PanelStyle.textPrimary
+    fileprivate static let textOnDarkSecondary = PanelStyle.textSecondary
+    fileprivate static let thumbPlaceholder  = PanelStyle.overlay
+    fileprivate static let filmstripBorder   = PanelStyle.warmCue
+    fileprivate static let accentBlue        = PanelStyle.warmCue
     /// Hairline that defines the panel edge against any wallpaper.
-    fileprivate static let hairline          = NSColor(white: 1, alpha: 0.10)
+    fileprivate static let hairline          = PanelStyle.hairline
     /// Translucent card fill for tiles / grouped controls on the frost.
-    fileprivate static let glassCard         = NSColor(white: 1, alpha: 0.07)
+    fileprivate static let glassCard         = PanelStyle.glassCard
 
     /// Resolve a (possibly dynamic) NSColor to a CGColor against the app's
     /// current effective appearance. We need this because `layer.background`
@@ -110,7 +105,7 @@ class PreviewPanel: NSPanel {
         blur.layer?.masksToBounds = true
 
         let tint = CALayer()
-        tint.backgroundColor = NSColor(white: 0, alpha: 0.30).cgColor
+        tint.backgroundColor = PanelStyle.canvas.withAlphaComponent(0.58).cgColor
         tint.cornerRadius = cornerRadius
         tint.frame = blur.bounds
         tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
@@ -1257,8 +1252,8 @@ class PreviewPanel: NSPanel {
             dot.wantsLayer = true
             dot.layer?.cornerRadius = dotSize / 2
             dot.layer?.backgroundColor = (i == selected
-                ? NSColor.white
-                : NSColor(white: 1, alpha: 0.35)).cgColor
+                ? PanelStyle.warmCue
+                : PanelStyle.textTertiary).cgColor
             dotsView.addSubview(dot)
             x += dotSize + gap
         }
@@ -1377,7 +1372,7 @@ class PreviewPanel: NSPanel {
         let signedIn = AuthManager.shared.isSignedIn
         let symbol = signedIn ? "person.crop.circle.fill" : "person.circle"
         button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: signedIn ? "Account".localized : "Sign In".localized)
-        button.contentTintColor = signedIn ? NSColor.systemBlue : Self.textDark
+        button.contentTintColor = signedIn ? PanelStyle.warmCue : Self.textDark
         button.toolTip = signedIn ? "Account".localized : "Sign In".localized
     }
 
@@ -1628,7 +1623,7 @@ final class SplitSidebarItem: NSView {
         layer?.masksToBounds = true
 
         selectionIndicator.wantsLayer = true
-        selectionIndicator.layer?.backgroundColor = NSColor.systemBlue.cgColor
+        selectionIndicator.layer?.backgroundColor = PanelStyle.warmCue.cgColor
         selectionIndicator.layer?.cornerRadius = 1.5
         selectionIndicator.isHidden = true
         addSubview(selectionIndicator)
@@ -1653,7 +1648,7 @@ final class SplitSidebarItem: NSView {
         nameLabel.backgroundColor = .clear
         addSubview(nameLabel)
 
-        metaLabel.textColor = NSColor(white: 1, alpha: 0.55)
+        metaLabel.textColor = PanelStyle.textSecondary
         metaLabel.font = NSFont.systemFont(ofSize: 10)
         metaLabel.lineBreakMode = .byTruncatingTail
         metaLabel.maximumNumberOfLines = 1
@@ -1694,7 +1689,7 @@ final class SplitSidebarItem: NSView {
 
     private func updateAppearance() {
         if isSelected {
-            layer?.backgroundColor = NSColor(white: 1, alpha: 0.12).cgColor
+            layer?.backgroundColor = PanelStyle.controlFill.cgColor
             selectionIndicator.isHidden = false
         } else {
             layer?.backgroundColor = NSColor.clear.cgColor
@@ -1752,11 +1747,10 @@ final class MediaTileView: NSView {
 
     private var mediaContainer: NSView!
     private let imageLayer = CALayer()
-    private let spinner = NSProgressIndicator()
+    private let loadingIndicator = ModularImageLoadingView(frame: .zero)
     private let loadingLabel = NSTextField(labelWithString: "Searching…".localized)
-    private let shimmerLayer = CAGradientLayer()
     private var downloadBtn: NSButton?
-    private let downloadSpinner = NSProgressIndicator()
+    private let downloadLoadingIndicator = ModularImageLoadingView(frame: .zero)
     private var downloadState: DownloadState = .idle
     private var downloadedFileURL: URL?
 
@@ -1800,34 +1794,23 @@ final class MediaTileView: NSView {
 
         switch style {
         case .singleCard:
-            layer?.backgroundColor = NSColor(white: 0.03, alpha: 1).cgColor
+            layer?.backgroundColor = PanelStyle.canvas.cgColor
 
             mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
-            mediaContainer.layer?.backgroundColor = NSColor(white: 0.03, alpha: 1).cgColor
+            mediaContainer.layer?.backgroundColor = PanelStyle.canvas.cgColor
             addSubview(mediaContainer)
 
             let ambientGradient = CAGradientLayer()
             ambientGradient.colors = [
-                NSColor(white: 0.08, alpha: 1).cgColor,
-                NSColor(white: 0.03, alpha: 1).cgColor
+                PanelStyle.overlay.cgColor,
+                PanelStyle.canvas.cgColor
             ]
             ambientGradient.locations = [0.0, 1.0]
             ambientGradient.startPoint = CGPoint(x: 0.5, y: 0)
             ambientGradient.endPoint = CGPoint(x: 0.5, y: 1)
             mediaContainer.layer?.addSublayer(ambientGradient)
-
-            shimmerLayer.colors = [
-                NSColor(white: 1, alpha: 0).cgColor,
-                NSColor(white: 1, alpha: 0.04).cgColor,
-                NSColor(white: 1, alpha: 0).cgColor
-            ]
-            shimmerLayer.locations = [0.0, 0.5, 1.0]
-            shimmerLayer.startPoint = CGPoint(x: 0, y: 0.5)
-            shimmerLayer.endPoint = CGPoint(x: 1, y: 0.5)
-            mediaContainer.layer?.addSublayer(shimmerLayer)
-            startShimmer()
 
             imageLayer.contentsGravity = .resizeAspect
             imageLayer.masksToBounds = true
@@ -1845,7 +1828,7 @@ final class MediaTileView: NSView {
             mediaContainer.layer?.addSublayer(overlayGradient)
 
             let nameLbl = NSTextField(labelWithString: info.filename)
-            nameLbl.textColor = .white
+            nameLbl.textColor = PanelStyle.textPrimary
             nameLbl.font = NSFont.systemFont(ofSize: 17, weight: .bold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
@@ -1854,7 +1837,7 @@ final class MediaTileView: NSView {
             filenameLabel = nameLbl
 
             let dimsLbl = NSTextField(labelWithString: "")
-            dimsLbl.textColor = NSColor(white: 1, alpha: 0.75)
+            dimsLbl.textColor = PanelStyle.textSecondary
             dimsLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 3
@@ -1873,26 +1856,15 @@ final class MediaTileView: NSView {
             // hairline edge; the image itself rests on a dark canvas.
             layer?.cornerRadius = 14
             layer?.masksToBounds = true
-            layer?.backgroundColor = NSColor(white: 1, alpha: 0.07).cgColor
-            layer?.borderColor = NSColor(white: 1, alpha: 0.10).cgColor
+            layer?.backgroundColor = PanelStyle.glassCard.cgColor
+            layer?.borderColor = PanelStyle.hairline.cgColor
             layer?.borderWidth = 1
 
             mediaContainer = PassthroughView()
             mediaContainer.wantsLayer = true
             mediaContainer.layer?.masksToBounds = true
-            mediaContainer.layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
+            mediaContainer.layer?.backgroundColor = PanelStyle.canvas.cgColor
             addSubview(mediaContainer)
-
-            shimmerLayer.colors = [
-                NSColor(white: 1, alpha: 0).cgColor,
-                NSColor(white: 1, alpha: 0.06).cgColor,
-                NSColor(white: 1, alpha: 0).cgColor
-            ]
-            shimmerLayer.locations = [0.0, 0.5, 1.0]
-            shimmerLayer.startPoint = CGPoint(x: 0, y: 0.5)
-            shimmerLayer.endPoint = CGPoint(x: 1, y: 0.5)
-            mediaContainer.layer?.addSublayer(shimmerLayer)
-            startShimmer()
 
             imageLayer.contentsGravity = .resizeAspectFill
             imageLayer.masksToBounds = true
@@ -1910,7 +1882,7 @@ final class MediaTileView: NSView {
             mediaContainer.layer?.addSublayer(overlayGradient)
 
             let nameLbl = NSTextField(labelWithString: info.filename)
-            nameLbl.textColor = .white
+            nameLbl.textColor = PanelStyle.textPrimary
             nameLbl.font = NSFont.systemFont(ofSize: 14, weight: .bold)
             nameLbl.lineBreakMode = .byTruncatingMiddle
             nameLbl.maximumNumberOfLines = 1
@@ -1919,7 +1891,7 @@ final class MediaTileView: NSView {
             filenameLabel = nameLbl
 
             let dimsLbl = NSTextField(labelWithString: "")
-            dimsLbl.textColor = NSColor(white: 1, alpha: 0.85)
+            dimsLbl.textColor = PanelStyle.textPrimary.withAlphaComponent(0.85)
             dimsLbl.font = NSFont.systemFont(ofSize: 12, weight: .medium)
             dimsLbl.lineBreakMode = .byTruncatingTail
             dimsLbl.maximumNumberOfLines = 3
@@ -1934,7 +1906,7 @@ final class MediaTileView: NSView {
             sizeLabel = sizeLbl
 
             let pathLbl = NSTextField(labelWithString: "")
-            pathLbl.textColor = NSColor(white: 1, alpha: 0.55)
+            pathLbl.textColor = PanelStyle.textSecondary
             pathLbl.font = NSFont.systemFont(ofSize: 10, weight: .medium)
             pathLbl.lineBreakMode = .byTruncatingMiddle
             pathLbl.maximumNumberOfLines = 1
@@ -1943,15 +1915,10 @@ final class MediaTileView: NSView {
             pathLabel = pathLbl
         }
 
-        spinner.style = .spinning
-        spinner.controlSize = .regular
-        spinner.isIndeterminate = true
-        spinner.usesThreadedAnimation = true
-        spinner.appearance = NSAppearance(named: .vibrantDark)
-        spinner.startAnimation(nil)
-        addSubview(spinner)
+        loadingIndicator.setLoading(true)
+        addSubview(loadingIndicator)
 
-        loadingLabel.textColor = NSColor(white: 1, alpha: 0.85)
+        loadingLabel.textColor = PanelStyle.textPrimary.withAlphaComponent(0.85)
         loadingLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
         loadingLabel.alignment = .center
         loadingLabel.maximumNumberOfLines = 1
@@ -1969,23 +1936,19 @@ final class MediaTileView: NSView {
         addSubview(btn)
         downloadBtn = btn
 
-        downloadSpinner.style = .spinning
-        downloadSpinner.controlSize = .small
-        downloadSpinner.isIndeterminate = true
-        downloadSpinner.usesThreadedAnimation = true
-        downloadSpinner.appearance = NSAppearance(named: .vibrantDark)
-        downloadSpinner.isHidden = true
-        addSubview(downloadSpinner)
+        downloadLoadingIndicator.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.26, y: 0.26))
+        downloadLoadingIndicator.setLoading(false)
+        addSubview(downloadLoadingIndicator)
 
         if info.hasIconContent {
             // Tile body is the action target — no download/open button.
             // Covers markdown/text/webpage (open in viewer) and .other
             // (reveal in Finder).
             downloadBtn?.isHidden = true
-            downloadSpinner.isHidden = true
+            downloadLoadingIndicator.setLoading(false)
         } else if info.kind == .image || info.kind == .video {
             downloadBtn?.isHidden = true
-            downloadSpinner.isHidden = true
+            downloadLoadingIndicator.setLoading(false)
         } else if info.isLocal {
             setDownloadState(.downloaded, fileURL: info.url)
         } else {
@@ -2063,12 +2026,10 @@ final class MediaTileView: NSView {
                                           accessibilityDescription: "Download".localized)
             downloadBtn?.contentTintColor = .white
             downloadBtn?.isHidden = false
-            downloadSpinner.stopAnimation(nil)
-            downloadSpinner.isHidden = true
+            downloadLoadingIndicator.setLoading(false)
         case .downloading:
             downloadBtn?.isHidden = true
-            downloadSpinner.isHidden = false
-            downloadSpinner.startAnimation(nil)
+            downloadLoadingIndicator.setLoading(true)
         case .downloaded:
             // Folder badge — clicking reveals the file in Finder.
             downloadBtn?.image = NSImage(systemSymbolName: "folder.fill",
@@ -2076,36 +2037,19 @@ final class MediaTileView: NSView {
             downloadBtn?.contentTintColor = .white
             downloadBtn?.toolTip = "Reveal in Finder".localized
             downloadBtn?.isHidden = false
-            downloadSpinner.stopAnimation(nil)
-            downloadSpinner.isHidden = true
+            downloadLoadingIndicator.setLoading(false)
         case .failed:
             downloadBtn?.image = NSImage(systemSymbolName: "exclamationmark.circle.fill",
                                           accessibilityDescription: "Download failed".localized)
             downloadBtn?.contentTintColor = .systemRed
             downloadBtn?.isHidden = false
-            downloadSpinner.stopAnimation(nil)
-            downloadSpinner.isHidden = true
+            downloadLoadingIndicator.setLoading(false)
         }
-    }
-
-    private func startShimmer() {
-        let anim = CABasicAnimation(keyPath: "locations")
-        anim.fromValue = [-0.5, 0.0, 0.5]
-        anim.toValue   = [0.5, 1.0, 1.5]
-        anim.duration = 1.2
-        anim.repeatCount = .infinity
-        shimmerLayer.add(anim, forKey: "shimmer")
-    }
-
-    private func stopShimmer() {
-        shimmerLayer.removeAnimation(forKey: "shimmer")
-        shimmerLayer.isHidden = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func relayoutChildren() {
-        let spinnerSize: CGFloat = 20
         if let placeholder = placeholderIconView {
             let side = min(bounds.width, bounds.height) * 0.42
             placeholder.frame = NSRect(
@@ -2132,12 +2076,12 @@ final class MediaTileView: NSView {
             CATransaction.setDisableActions(true)
             let gradH: CGFloat = hasHint ? 120 : 96
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradH)
-            shimmerLayer.frame = mediaContainer.bounds
             CATransaction.commit()
-            spinner.frame = NSRect(
-                x: bounds.midX - spinnerSize / 2,
-                y: bounds.midY - spinnerSize / 2 + 8,
-                width: spinnerSize, height: spinnerSize
+            loadingIndicator.frame = NSRect(
+                x: bounds.midX - ModularImageLoadingView.preferredSize.width / 2,
+                y: bounds.midY - ModularImageLoadingView.preferredSize.height / 2 + 8,
+                width: ModularImageLoadingView.preferredSize.width,
+                height: ModularImageLoadingView.preferredSize.height
             )
             loadingLabel.frame = NSRect(x: 0, y: bounds.midY - 18,
                                          width: bounds.width, height: 14)
@@ -2156,10 +2100,12 @@ final class MediaTileView: NSView {
                 y: 22,
                 width: dlBtnSize, height: dlBtnSize
             )
-            downloadSpinner.frame = NSRect(
-                x: bounds.width - dlBtnSize - 10 + (dlBtnSize - 20) / 2,
-                y: 22 + (dlBtnSize - 20) / 2,
-                width: 20, height: 20
+            let downloadCenter = CGPoint(x: bounds.width - dlBtnSize / 2 - 10, y: 22 + dlBtnSize / 2)
+            downloadLoadingIndicator.frame = NSRect(
+                x: downloadCenter.x - ModularImageLoadingView.preferredSize.width / 2,
+                y: downloadCenter.y - ModularImageLoadingView.preferredSize.height / 2,
+                width: ModularImageLoadingView.preferredSize.width,
+                height: ModularImageLoadingView.preferredSize.height
             )
             locateBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSize - 10,
@@ -2175,12 +2121,12 @@ final class MediaTileView: NSView {
             CATransaction.setDisableActions(true)
             let gradientH: CGFloat = hasHint ? 100 : 76
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradientH)
-            shimmerLayer.frame = mediaContainer.bounds
             CATransaction.commit()
-            spinner.frame = NSRect(
-                x: bounds.midX - spinnerSize / 2,
-                y: bounds.midY - spinnerSize / 2 + 6,
-                width: spinnerSize, height: spinnerSize
+            loadingIndicator.frame = NSRect(
+                x: bounds.midX - ModularImageLoadingView.preferredSize.width / 2,
+                y: bounds.midY - ModularImageLoadingView.preferredSize.height / 2 + 6,
+                width: ModularImageLoadingView.preferredSize.width,
+                height: ModularImageLoadingView.preferredSize.height
             )
             loadingLabel.frame = NSRect(x: 0, y: bounds.midY - 18,
                                          width: bounds.width, height: 14)
@@ -2201,10 +2147,12 @@ final class MediaTileView: NSView {
                 y: 14,
                 width: dlBtnSizeM, height: dlBtnSizeM
             )
-            downloadSpinner.frame = NSRect(
-                x: bounds.width - dlBtnSizeM - 6 + (dlBtnSizeM - 18) / 2,
-                y: 14 + (dlBtnSizeM - 18) / 2,
-                width: 18, height: 18
+            let downloadCenter = CGPoint(x: bounds.width - dlBtnSizeM / 2 - 6, y: 14 + dlBtnSizeM / 2)
+            downloadLoadingIndicator.frame = NSRect(
+                x: downloadCenter.x - ModularImageLoadingView.preferredSize.width / 2,
+                y: downloadCenter.y - ModularImageLoadingView.preferredSize.height / 2,
+                width: ModularImageLoadingView.preferredSize.width,
+                height: ModularImageLoadingView.preferredSize.height
             )
             locateBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSizeM - 6,
@@ -2215,10 +2163,8 @@ final class MediaTileView: NSView {
     }
 
     func setLoaded(_ media: LoadedMedia) {
-        spinner.stopAnimation(nil)
-        spinner.isHidden = true
+        loadingIndicator.setLoading(false)
         loadingLabel.isHidden = true
-        stopShimmer()
         overlayGradient.isHidden = false
         filenameLabel?.isHidden = false
         dimsLabel?.isHidden = false
@@ -2244,9 +2190,7 @@ final class MediaTileView: NSView {
     }
 
     func setFailed(message: String? = nil) {
-        spinner.stopAnimation(nil)
-        spinner.isHidden = true
-        stopShimmer()
+        loadingIndicator.setLoading(false)
         overlayGradient.isHidden = false
         placeholderIconView?.alphaValue = 0.35
 

@@ -37,6 +37,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let sideBySideButton = InspectToolbarButton(symbol: "rectangle.split.2x1", tooltip: "Side by side".localized)
     private let sliderButton = InspectToolbarButton(symbol: "slider.horizontal.3", tooltip: "Slider".localized)
     private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Image information".localized)
+    private let revealButton = InspectToolbarButton(symbol: "folder", tooltip: "Reveal in Finder".localized)
     private let canvasContainer = NSView()
     private let primaryViewport = InspectImageViewport()
     private let secondaryViewport = InspectImageViewport()
@@ -64,7 +65,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                    styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                    backing: .buffered, defer: false)
         title = "Image Inspect".localized
-        titleVisibility = .visible
+        titleVisibility = .hidden
         titlebarAppearsTransparent = true
         appearance = NSAppearance(named: .darkAqua)
         backgroundColor = PanelStyle.imageCanvas
@@ -74,6 +75,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         acceptsMouseMovedEvents = true
         delegate = self
         buildUI()
+        NotificationCenter.default.addObserver(self, selector: #selector(localizationDidChange),
+                                               name: .languageDidChange, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     func show(infos: [MediaInfo], loaded: [LoadedMedia?], focusedIndex: Int,
@@ -145,17 +152,18 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         if event.type == .leftMouseDown,
            let session,
            session.mode == .compare,
-           session.comparisonStyle == .sideBySide,
-           let root = contentView {
-            let point = root.convert(event.locationInWindow, from: nil)
-            let hitView = root.hitTest(point)
-            // Resolve the active slot at the window level. This avoids losing
-            // the selection when other views overlap the image canvas, while
-            // deliberately ignoring clicks on the filmstrip and toolbar.
-            if hitView === primaryViewport || hitView?.isDescendant(of: primaryViewport) == true {
-                selectCompareSlot(0)
-            } else if hitView === secondaryViewport || hitView?.isDescendant(of: secondaryViewport) == true {
-                selectCompareSlot(1)
+           session.comparisonStyle == .sideBySide {
+            let point = canvasContainer.convert(event.locationInWindow, from: nil)
+            let overlays = [toolbarBar, identityBar, filmstrip]
+            let hitsVisibleOverlay = overlays.contains { view in
+                !view.isHidden && view.alphaValue >= 0.05 && view.frame.contains(point)
+            }
+            if !hitsVisibleOverlay {
+                if primaryViewport.frame.contains(point) {
+                    selectCompareSlot(0)
+                } else if secondaryViewport.frame.contains(point) {
+                    selectCompareSlot(1)
+                }
             }
         }
         if event.type == .mouseMoved {
@@ -205,6 +213,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         toolbarBar.isHidden = false
         identityBar.isHidden = false
         filmstrip.isHidden = !showsFilmstrip
+        [primaryViewport, secondaryViewport].forEach {
+            $0.setActiveIndicatorVisible(true, animated: true, duration: 0.22)
+        }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.22
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -223,6 +234,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.toolbarHideWorkItem = nil
+            [self.primaryViewport, self.secondaryViewport].forEach {
+                $0.setActiveIndicatorVisible(false, animated: true, duration: 0.2)
+            }
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.2
                 context.timingFunction = CAMediaTimingFunction(name: .easeIn)
@@ -287,7 +301,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         sliderButton.action = #selector(sliderTapped)
         infoButton.target = self
         infoButton.action = #selector(infoTapped)
-        for button in [focusButton, sideBySideButton, sliderButton, infoButton] {
+        revealButton.target = self
+        revealButton.action = #selector(revealInFinderTapped)
+        for button in [focusButton, sideBySideButton, sliderButton, infoButton, revealButton] {
             button.autoresizingMask = [.minXMargin]
             toolbarBar.addSubview(button)
         }
@@ -331,8 +347,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                                   width: contentFrame.width, height: toolbarHeight)
         let buttonSize: CGFloat = 26
         let buttonGap: CGFloat = 4
+        let buttons = [focusButton, sideBySideButton, sliderButton, infoButton, revealButton]
         let rightMargin: CGFloat = 12
-        let buttons = [focusButton, sideBySideButton, sliderButton, infoButton]
         var bx = toolbarBar.bounds.width - rightMargin - buttonSize
         for button in buttons.reversed() {
             button.frame = NSRect(x: bx, y: (toolbarHeight - buttonSize) / 2,
@@ -374,6 +390,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         sideBySideButton.isActive = session.mode == .compare && session.comparisonStyle == .sideBySide
         sliderButton.isActive = session.mode == .compare && session.comparisonStyle == .slider
         infoButton.isActive = infoVisible
+        updateRevealButtonState()
 
         primaryViewport.isHidden = false
         secondaryViewport.isHidden = true
@@ -505,6 +522,38 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     @objc private func infoTapped() { toggleInfo() }
 
+    @objc private func localizationDidChange() {
+        title = "Image Inspect".localized
+        focusButton.updateTooltip("Focus".localized)
+        sideBySideButton.updateTooltip("Side by side".localized)
+        sliderButton.updateTooltip("Slider".localized)
+        infoButton.updateTooltip("Image information".localized)
+        revealButton.updateTooltip("Reveal in Finder".localized)
+        if infoVisible { infoWindow.title = "Image information".localized }
+        renderSession()
+    }
+
+    @objc private func revealInFinderTapped() {
+        guard let info = currentRevealInfo, info.isLocal else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([info.url])
+    }
+
+    private var currentRevealInfo: MediaInfo? {
+        guard let session else { return nil }
+        let index: Int
+        if session.mode == .compare, let pair = session.compareIndices {
+            index = session.activeCompareSlot == 0 ? pair.0 : pair.1
+        } else {
+            index = session.focusedIndex
+        }
+        guard session.infos.indices.contains(index) else { return nil }
+        return session.infos[index]
+    }
+
+    private func updateRevealButtonState() {
+        revealButton.isEnabled = currentRevealInfo?.isLocal == true
+    }
+
     private func toggleInfo() {
         infoVisible.toggle()
         infoButton.isActive = infoVisible
@@ -566,9 +615,18 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// Choose which compare slot subsequent filmstrip taps replace, by clicking
     /// the left or right image in side-by-side mode.
     private func selectCompareSlot(_ slot: Int) {
-        guard let session, session.mode == .compare else { return }
+        guard let session,
+              session.mode == .compare,
+              session.comparisonStyle == .sideBySide,
+              session.activeCompareSlot != slot else { return }
         session.activeCompareSlot = slot
-        renderSession()
+        Logger.debug("ImageInspectWindow: active compare slot = \(slot == 0 ? "left" : "right")")
+        primaryViewport.isActiveSlot = slot == 0
+        secondaryViewport.isActiveSlot = slot == 1
+        updateRevealButtonState()
+        if let pair = session.compareIndices {
+            infoPanel.highlight(index: slot == 0 ? pair.0 : pair.1)
+        }
     }
 
     private func navigate(by delta: Int) {
@@ -651,7 +709,7 @@ private final class InspectIdentityBar: NSVisualEffectView {
         layer?.masksToBounds = true
         // Frosted translucency comes from the effect view; the sublayer only
         // biases it darker. Square corners.
-        tintLayer.backgroundColor = NSColor(white: 0, alpha: 0.32).cgColor
+        tintLayer.backgroundColor = PanelStyle.canvas.withAlphaComponent(0.62).cgColor
         layer?.addSublayer(tintLayer)
     }
 
@@ -676,7 +734,7 @@ private final class InspectToolbarButton: NSButton {
         toolTip = tooltip
         isBordered = false
         bezelStyle = .recessed
-        contentTintColor = .white
+        contentTintColor = PanelStyle.textPrimary
         wantsLayer = true
         layer?.cornerRadius = 7
         updateAppearance()
@@ -685,17 +743,22 @@ private final class InspectToolbarButton: NSButton {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    func updateTooltip(_ tooltip: String) {
+        toolTip = tooltip
+        setAccessibilityLabel(tooltip)
+    }
+
     override var isEnabled: Bool {
         didSet { updateAppearance() }
     }
 
     private func updateAppearance() {
         layer?.backgroundColor = isActive
-            ? NSColor(white: 1, alpha: 0.20).cgColor
+            ? PanelStyle.controlFillHi.cgColor
             : NSColor.clear.cgColor
         // Dim disabled compare buttons so the user can see they are inactive
         // for a single image, instead of looking tappable but doing nothing.
-        contentTintColor = isEnabled ? .white : NSColor(white: 1, alpha: 0.35)
+        contentTintColor = isEnabled ? PanelStyle.textPrimary : PanelStyle.textTertiary
         alphaValue = isEnabled ? 1 : 0.5
     }
 }
@@ -706,13 +769,22 @@ struct InspectViewportState {
 }
 
 final class InspectImageViewport: NSView {
-    var image: NSImage? { didSet { imageLayer.contents = image; fitToView() } }
+    var image: NSImage? {
+        didSet {
+            imageLayer.contents = image
+            loadingView.setLoading(image == nil && loadingIndicatorEnabled)
+            fitToView()
+        }
+    }
     var onViewportChange: ((InspectViewportState) -> Void)?
     var isInteractionEnabled = true
+    var loadingIndicatorEnabled = true {
+        didSet { loadingView.setLoading(image == nil && loadingIndicatorEnabled) }
+    }
     /// Marks which compare slot is active — the side a filmstrip tap replaces.
     var isActiveSlot = false {
         didSet {
-            activeIndicator.isHidden = !isActiveSlot
+            updateActiveIndicator()
         }
     }
     var viewportState: InspectViewportState {
@@ -721,10 +793,12 @@ final class InspectImageViewport: NSView {
 
     private let imageLayer = CALayer()
     private let activeIndicator = CALayer()
+    private let loadingView = ModularImageLoadingView(frame: .zero)
     private var zoom: CGFloat = 1
     private var normalizedCenter = CGPoint(x: 0.5, y: 0.5)
     private var lastDragPoint = CGPoint.zero
     private var dragging = false
+    private var activeIndicatorVisible = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -733,14 +807,17 @@ final class InspectImageViewport: NSView {
         layer?.masksToBounds = true
         imageLayer.contentsGravity = .resizeAspect
         layer?.addSublayer(imageLayer)
-        activeIndicator.backgroundColor = NSColor(white: 1, alpha: 0.55).cgColor
+        activeIndicator.backgroundColor = NSColor.clear.cgColor
+        activeIndicator.borderColor = PanelStyle.warmCue.withAlphaComponent(0.62).cgColor
+        activeIndicator.borderWidth = 2
         activeIndicator.cornerRadius = 1.5
-        activeIndicator.shadowColor = NSColor.white.cgColor
+        activeIndicator.shadowColor = PanelStyle.warmCue.cgColor
         activeIndicator.shadowOpacity = 0.22
         activeIndicator.shadowRadius = 4
         activeIndicator.shadowOffset = .zero
-        activeIndicator.isHidden = true
+        activeIndicator.opacity = 0
         layer?.addSublayer(activeIndicator)
+        addSubview(loadingView)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -752,9 +829,29 @@ final class InspectImageViewport: NSView {
     override func layout() {
         super.layout()
         updateLayerGeometry()
-        let inset: CGFloat = 10
-        activeIndicator.frame = CGRect(x: inset, y: 3,
-                                       width: max(0, bounds.width - inset * 2), height: 3)
+        let indicatorRect = bounds.insetBy(dx: 3, dy: 3)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        activeIndicator.frame = indicatorRect
+        CATransaction.commit()
+        let loaderSize = ModularImageLoadingView.preferredSize
+        loadingView.frame = NSRect(x: bounds.midX - loaderSize.width / 2,
+                                   y: bounds.midY - loaderSize.height / 2,
+                                   width: loaderSize.width,
+                                   height: loaderSize.height)
+    }
+
+    func setActiveIndicatorVisible(_ visible: Bool, animated _: Bool, duration _: CFTimeInterval) {
+        activeIndicatorVisible = visible
+        updateActiveIndicator()
+    }
+
+    private func updateActiveIndicator() {
+        let isVisible = activeIndicatorVisible && isActiveSlot
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        activeIndicator.opacity = isVisible ? 1 : 0
+        CATransaction.commit()
     }
 
     func fitToView() {
@@ -880,6 +977,7 @@ final class InspectImageViewport: NSView {
 final class ImageRevealView: NSView {
     let viewport = InspectImageViewport()
     private let overlayViewport = InspectImageViewport()
+    private let loadingView = ModularImageLoadingView(frame: .zero)
     private let maskLayer = CALayer()
     private let divider = NSView()
     private var fraction: CGFloat = 0.5
@@ -887,8 +985,11 @@ final class ImageRevealView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
+        viewport.loadingIndicatorEnabled = false
+        overlayViewport.loadingIndicatorEnabled = false
         addSubview(viewport)
         addSubview(overlayViewport)
+        addSubview(loadingView)
         overlayViewport.isInteractionEnabled = false
         viewport.onViewportChange = { [weak overlayViewport] state in
             overlayViewport?.apply(state: state, notify: false)
@@ -896,7 +997,7 @@ final class ImageRevealView: NSView {
         overlayViewport.wantsLayer = true
         overlayViewport.layer?.mask = maskLayer
         divider.wantsLayer = true
-        divider.layer?.backgroundColor = NSColor.white.cgColor
+        divider.layer?.backgroundColor = PanelStyle.textPrimary.withAlphaComponent(0.82).cgColor
         addSubview(divider)
     }
 
@@ -909,12 +1010,22 @@ final class ImageRevealView: NSView {
     func setImages(a: NSImage?, b: NSImage?) {
         viewport.image = a
         overlayViewport.image = b
+        let isWaitingForPair = a == nil || b == nil
+        viewport.isHidden = isWaitingForPair
+        overlayViewport.isHidden = isWaitingForPair
+        divider.isHidden = isWaitingForPair
+        loadingView.setLoading(isWaitingForPair)
     }
 
     override func layout() {
         super.layout()
         viewport.frame = bounds
         overlayViewport.frame = bounds
+        let loaderSize = ModularImageLoadingView.preferredSize
+        loadingView.frame = NSRect(x: bounds.midX - loaderSize.width / 2,
+                                   y: bounds.midY - loaderSize.height / 2,
+                                   width: loaderSize.width,
+                                   height: loaderSize.height)
         updateMask()
     }
 
@@ -954,6 +1065,11 @@ final class ImageRevealView: NSView {
 }
 
 final class ImageFilmstripView: NSView {
+    private static let itemWidth: CGFloat = 48
+    private static let itemHeight: CGFloat = 50
+    private static let itemGap: CGFloat = 8
+    private static let horizontalPadding: CGFloat = 16
+
     var onSelect: ((Int) -> Void)?
     var onCompare: ((Int) -> Void)?
     private var itemViews: [ImageFilmstripItem] = []
@@ -964,8 +1080,6 @@ final class ImageFilmstripView: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        // No background container and no scroll bar: just the thumbnails,
-        // centered as a row over the image.
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
     }
@@ -990,22 +1104,29 @@ final class ImageFilmstripView: NSView {
         itemViews.removeAll()
         let count = infos.count
         guard count > 0 else { return }
-        let gap: CGFloat = 8
-        let itemWidth: CGFloat = 72
+        let gap = Self.itemGap
+        let itemWidth = Self.itemWidth
+        let itemHeight = Self.itemHeight
         // Fit the row within the available width so no scroll bar is needed.
-        let maxRowWidth = bounds.width - 24
+        let maxRowWidth = bounds.width - Self.horizontalPadding * 2
         let naturalWidth = CGFloat(count) * itemWidth + CGFloat(count - 1) * gap
         let rowWidth = min(naturalWidth, maxRowWidth)
         let cellWidth = count > 1
             ? (rowWidth - CGFloat(count - 1) * gap) / CGFloat(count)
             : itemWidth
         var x = (bounds.width - rowWidth) / 2
-        let itemHeight = bounds.height - 12
+        let cellHeight = itemHeight * min(1, cellWidth / itemWidth)
+        let itemY = (bounds.height - cellHeight) / 2
         for index in 0..<count {
-            let item = ImageFilmstripItem(frame: NSRect(x: x, y: 6, width: cellWidth, height: itemHeight))
+            let item = ImageFilmstripItem(frame: NSRect(x: x, y: itemY, width: cellWidth, height: cellHeight))
+            let isCompared = compareIndices.map { $0.0 == index || $0.1 == index } ?? false
+            // In compare mode the border means pair membership only. The
+            // browse/focus selection is intentionally ignored so a stale
+            // focusedIndex can never create a third highlighted thumbnail.
+            let isSelected = compareIndices == nil && index == selectedIndex
             item.configure(image: images[safe: index] ?? nil, title: infos[index].filename,
-                           selected: index == selectedIndex,
-                           compared: compareIndices.map { $0.0 == index || $0.1 == index } ?? false)
+                           selected: isSelected,
+                           compared: isCompared)
             item.onClick = { [weak self] modifiers in
                 if modifiers.contains(.option) { self?.onCompare?(index) }
                 else { self?.onSelect?(index) }
@@ -1022,9 +1143,13 @@ final class ImageFilmstripView: NSView {
     }
 }
 
+private final class NonHitTestingImageView: NSImageView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
 private final class ImageFilmstripItem: NSView {
     var onClick: ((NSEvent.ModifierFlags) -> Void)?
-    private let imageView = NSImageView()
+    private let imageView = NonHitTestingImageView()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -1038,11 +1163,18 @@ private final class ImageFilmstripItem: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { onClick?(event.modifierFlags) }
-
+    override func accessibilityPerformPress() -> Bool {
+        onClick?([])
+        return true
+    }
     func configure(image: NSImage?, title: String, selected: Bool, compared: Bool) {
         imageView.image = image
+        toolTip = title
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(title)
         layer?.borderWidth = selected || compared ? 2 : 0
-        layer?.borderColor = (compared ? NSColor.systemOrange : PanelStyle.accent).cgColor
+        layer?.borderColor = PanelStyle.warmCue.cgColor
     }
 
     override func layout() {
@@ -1066,7 +1198,7 @@ final class ImageInfoBlock: NSView {
         container.wantsLayer = true
         container.translatesAutoresizingMaskIntoConstraints = false
         container.layer?.cornerRadius = 12
-        container.layer?.backgroundColor = NSColor(white: 1, alpha: 0.045).cgColor
+        container.layer?.backgroundColor = PanelStyle.overlay.withAlphaComponent(0.62).cgColor
         container.layer?.borderWidth = 1.5
         container.layer?.borderColor = NSColor.clear.cgColor
         addSubview(container)
@@ -1170,9 +1302,9 @@ final class ImageInfoBlock: NSView {
         // Soft, neutral highlight — a subtly brighter fill and faint white
         // hairline border, no blue accent, no glow.
         let layer = container.layer
-        layer?.backgroundColor = (highlighted ? NSColor(white: 1, alpha: 0.10)
-                                              : NSColor(white: 1, alpha: 0.045)).cgColor
-        layer?.borderColor = (highlighted ? NSColor(white: 1, alpha: 0.22)
+        layer?.backgroundColor = (highlighted ? PanelStyle.overlay
+                                              : PanelStyle.overlay.withAlphaComponent(0.62)).cgColor
+        layer?.borderColor = (highlighted ? PanelStyle.warmCue.withAlphaComponent(0.34)
                                           : NSColor.clear).cgColor
         layer?.removeAnimation(forKey: "glow")
         layer?.shadowOpacity = 0
@@ -1181,16 +1313,18 @@ final class ImageInfoBlock: NSView {
     static func metadataRows(_ info: MediaInfo, metadata: ImageTechnicalMetadata?) -> [(String, String)] {
         var rows: [(String, String)] = []
         if let size = info.dimensions, size.height > 0 {
-            rows.append(("Dimensions", "\(Int(size.width)) × \(Int(size.height)) px"))
-            rows.append(("Aspect ratio", String(format: "%.3f", size.width / size.height)))
+            rows.append(("Dimensions".localized, "\(Int(size.width)) × \(Int(size.height)) px"))
+            rows.append(("Aspect ratio".localized, String(format: "%.3f", size.width / size.height)))
         }
         if let bytes = info.fileSize {
-            rows.append(("File size", ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)))
+            rows.append(("File size".localized, ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)))
         }
-        rows.append(("Format", info.formatName.isEmpty ? "—" : info.formatName))
-        if let color = metadata?.colorSpace { rows.append(("Color space", color)) }
-        if let depth = metadata?.bitDepth { rows.append(("Bit depth", "\(depth)-bit")) }
-        if let alpha = metadata?.hasAlpha { rows.append(("Alpha", alpha ? "Yes" : "No")) }
+        rows.append(("Format".localized, info.formatName.isEmpty ? "—" : info.formatName))
+        if let color = metadata?.colorSpace { rows.append(("Color space".localized, color)) }
+        if let depth = metadata?.bitDepth { rows.append(("Bit depth".localized, "\(depth)-bit")) }
+        if let alpha = metadata?.hasAlpha {
+            rows.append(("Alpha".localized, alpha ? "Yes".localized : "No".localized))
+        }
         return rows
     }
 }
@@ -1204,7 +1338,7 @@ final class ImageDifferencePanel: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = NSColor(white: 0.08, alpha: 1).cgColor
+        layer?.backgroundColor = PanelStyle.surface.cgColor
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = true
         // Only show the scroller when content overflows, and overlay it so it

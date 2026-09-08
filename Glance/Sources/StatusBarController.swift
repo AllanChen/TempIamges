@@ -26,10 +26,25 @@ class StatusBarController: NSObject, NSMenuDelegate {
             name: .preferencesDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(languageDidChange),
+            name: .languageDidChange,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     @objc private func preferencesDidChange() {
         enableMenuItem?.state = Preferences.shared.enabled ? .on : .off
+        updateMenuBarIcon()
+    }
+
+    @objc private func languageDidChange() {
+        statusItem.menu = createMenu()
         updateMenuBarIcon()
     }
 
@@ -51,7 +66,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
         button.attributedTitle = NSAttributedString(string: "")
         button.image = image
         button.imagePosition = .imageOnly
-        button.contentTintColor = enabled ? .controlAccentColor : nil
+        button.contentTintColor = enabled ? PanelStyle.warmCue : PanelStyle.textSecondary
     }
 
     private func createMenu() -> NSMenu {

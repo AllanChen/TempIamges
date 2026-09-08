@@ -41,6 +41,9 @@
 "Glance Preferences" = "Glance Preferences";
 "Appearance" = "Appearance";
 "Language" = "Language";
+"System" = "System";
+"Light" = "Light";
+"Dark" = "Dark";
 "General" = "General";
 "Enable Image Hover Preview" = "Enable Image Hover Preview";
 "Read clipboard when no text is selected" = "Read clipboard when no text is selected";
@@ -96,6 +99,15 @@
 "Pixel alignment" = "Pixel alignment";
 "Relative alignment" = "Relative alignment";
 "%d differences" = "%d differences";
+"Dimensions" = "Dimensions";
+"Aspect ratio" = "Aspect ratio";
+"File size" = "File size";
+"Format" = "Format";
+"Color space" = "Color space";
+"Bit depth" = "Bit depth";
+"Alpha" = "Alpha";
+"Yes" = "Yes";
+"No" = "No";
 
 // MARK: - Content Panel / Viewer
 "Save" = "Save";
@@ -132,6 +144,27 @@
 
 // MARK: - Login Panel
 "Sign In" = "Sign In";
+"Sign in with mcreator to connect this Mac." = "Sign in with mcreator to connect this Mac.";
+"Continue with Google" = "Continue with Google";
+"or" = "or";
+"Email address" = "Email address";
+"Send code" = "Send code";
+"6 digit code" = "6 digit code";
+"Verify and sign in" = "Verify and sign in";
+"Opening Google sign-in in your browser." = "Opening Google sign-in in your browser.";
+"Continue in your browser to finish Google sign-in." = "Continue in your browser to finish Google sign-in.";
+"Enter your email address." = "Enter your email address.";
+"Sending code..." = "Sending code...";
+"Enter the 6 digit code from your email." = "Enter the 6 digit code from your email.";
+"Enter your email and 6 digit code." = "Enter your email and 6 digit code.";
+"Verifying code..." = "Verifying code...";
+"Code sent. Check your email and enter the 6 digit code." = "Code sent. Check your email and enter the 6 digit code.";
+"Provider" = "Provider";
+"User ID" = "User ID";
+"Status" = "Status";
+"Session expires" = "Session expires";
+"Sign out" = "Sign out";
+"Active" = "Active";
 
 // MARK: - Error Messages / Tooltips
 "No text selected" = "No text selected";

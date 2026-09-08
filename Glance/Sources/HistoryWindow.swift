@@ -91,11 +91,11 @@ final class HistoryWindow: NSWindow {
                                    width: bounds.width, height: Self.toolbarHeight)
         toolbarBar.autoresizingMask = [.width, .minYMargin]
         toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        toolbarBar.layer?.backgroundColor = PanelStyle.surface.cgColor
 
         let sep = NSView(frame: NSRect(x: 0, y: 0, width: bounds.width, height: 1))
         sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        sep.layer?.backgroundColor = PanelStyle.hairline.cgColor
         sep.autoresizingMask = [.width]
         toolbarBar.addSubview(sep)
 
@@ -119,14 +119,14 @@ final class HistoryWindow: NSWindow {
         scrollView.hasHorizontalScroller = false
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = true
-        scrollView.backgroundColor = NSColor.windowBackgroundColor
+        scrollView.backgroundColor = PanelStyle.canvas
 
         docView.frame = NSRect(x: 0, y: 0, width: bounds.width,
                                 height: bounds.height - Self.toolbarHeight)
         scrollView.documentView = docView
 
         // Empty state
-        emptyLabel.textColor = .secondaryLabelColor
+        emptyLabel.textColor = PanelStyle.textSecondary
         emptyLabel.font = NSFont.systemFont(ofSize: 14)
         emptyLabel.alignment = .center
         emptyLabel.frame = NSRect(x: 0, y: (bounds.height - 40) / 2,
@@ -288,9 +288,9 @@ final class HistoryWindow: NSWindow {
     }
 
     @objc private func updateToolbarAppearance() {
-        toolbarBar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        toolbarBar.layer?.backgroundColor = PanelStyle.surface.cgColor
         if let sep = toolbarBar.subviews.first(where: { $0.frame.height == 1 }) {
-            sep.layer?.backgroundColor = NSColor.separatorColor.cgColor
+            sep.layer?.backgroundColor = PanelStyle.hairline.cgColor
         }
     }
 }
@@ -386,14 +386,14 @@ private final class HistorySectionView: NSView {
     private func makeHeader(width: CGFloat, height: CGFloat) -> NSView {
         let header = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         header.wantsLayer = true
-        header.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        header.layer?.backgroundColor = PanelStyle.overlay.cgColor
         header.layer?.cornerRadius = 8
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd  EEEE"
         let dateLabel = NSTextField(labelWithString: formatter.string(from: date))
         dateLabel.font = NSFont.systemFont(ofSize: 15, weight: .bold)
-        dateLabel.textColor = .labelColor
+        dateLabel.textColor = PanelStyle.textPrimary
         dateLabel.frame = NSRect(x: 14, y: (height - 22) / 2, width: width - 28, height: 22)
         dateLabel.lineBreakMode = .byTruncatingTail
         header.addSubview(dateLabel)

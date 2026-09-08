@@ -41,6 +41,9 @@
 "Glance Preferences" = "Glance 偏好设置";
 "Appearance" = "外观";
 "Language" = "语言";
+"System" = "跟随系统";
+"Light" = "浅色";
+"Dark" = "深色";
 "General" = "通用";
 "Enable Image Hover Preview" = "启用悬停图片预览";
 "Read clipboard when no text is selected" = "未选中文本时读取剪贴板";
@@ -96,6 +99,15 @@
 "Pixel alignment" = "像素对齐";
 "Relative alignment" = "相对对齐";
 "%d differences" = "%d 项差异";
+"Dimensions" = "尺寸";
+"Aspect ratio" = "宽高比";
+"File size" = "文件大小";
+"Format" = "格式";
+"Color space" = "色彩空间";
+"Bit depth" = "位深度";
+"Alpha" = "透明通道";
+"Yes" = "是";
+"No" = "否";
 
 // MARK: - Content Panel / Viewer
 "Save" = "保存";
@@ -132,6 +144,27 @@
 
 // MARK: - Login Panel
 "Sign In" = "登录";
+"Sign in with mcreator to connect this Mac." = "登录 mcreator，将这台 Mac 连接到你的账户。";
+"Continue with Google" = "使用 Google 继续";
+"or" = "或";
+"Email address" = "邮箱地址";
+"Send code" = "发送验证码";
+"6 digit code" = "6 位验证码";
+"Verify and sign in" = "验证并登录";
+"Opening Google sign-in in your browser." = "正在浏览器中打开 Google 登录…";
+"Continue in your browser to finish Google sign-in." = "请在浏览器中继续完成 Google 登录。";
+"Enter your email address." = "请输入邮箱地址。";
+"Sending code..." = "正在发送验证码…";
+"Enter the 6 digit code from your email." = "请输入邮件中的 6 位验证码。";
+"Enter your email and 6 digit code." = "请输入邮箱和 6 位验证码。";
+"Verifying code..." = "正在验证验证码…";
+"Code sent. Check your email and enter the 6 digit code." = "验证码已发送，请查看邮件并输入 6 位验证码。";
+"Provider" = "登录方式";
+"User ID" = "用户 ID";
+"Status" = "状态";
+"Session expires" = "会话到期";
+"Sign out" = "退出登录";
+"Active" = "正常";
 
 // MARK: - Error Messages / Tooltips
 "No text selected" = "未选中文本";

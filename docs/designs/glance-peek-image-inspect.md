@@ -243,6 +243,79 @@ Blink, opacity overlay, pixel heat maps, and comparison of more than two simulta
 
 Normalized synchronization stores zoom relative to each image's Fit scale and stores center coordinates as percentages of image width and height. Switching between side-by-side and slider preserves A/B identity, zoom, and center.
 
+### Active Replacement Target Feedback
+
+In side-by-side Compare, clicking an image does not select an editable object. It chooses the viewport that the next filmstrip click will replace. The interface must therefore communicate a **replacement target**, not draw an object-selection boundary.
+
+The current full-perimeter white border and orbiting border animation must be removed. They are visually stronger than the action they represent, resemble crop or transform handles, and compete with the images being compared.
+
+#### Visual Model
+
+- The active replacement target remains visually unchanged. Its brightness, scale, position, and color must not move.
+- The inactive viewport receives a uniform black overlay at 10% opacity while interaction chrome is visible.
+- The active viewport briefly shows a compact `Replace target` label after the target changes or interaction chrome reappears.
+- The label sits 12pt inside the active viewport's upper-leading corner and below the toolbar's occupied area. It must never cover the center divider or resize the viewport.
+- The label uses an 11pt semibold system font, white text, 8pt horizontal padding, 4pt vertical padding, a dark translucent material, and a capsule radius equal to half its height.
+- No blue accent, full-perimeter stroke, glow, pulse, moving path, scale change, or particle effect is used.
+- The one-pixel center divider remains unchanged. It identifies the two viewports but does not carry selection state.
+
+The brightness difference is intentionally small. It should be obvious when attention is directed to Compare controls, but should disappear when the user returns to evaluating the image content.
+
+#### State and Motion
+
+| Event | Active viewport | Inactive viewport | Target label |
+| --- | --- | --- | --- |
+| Enter side-by-side Compare | B/right by default | A/left gains 10% black overlay | Show on B for 800ms |
+| Click the inactive viewport | Becomes the replacement target | Previous target gains the overlay | Move and show for 800ms |
+| Click the active viewport | No state change | No state change | Replay once for 600ms as confirmation |
+| Interaction chrome reappears | Remains unchanged | Overlay fades in | Show for 600ms |
+| Pointer leaves and chrome hides | Target state is retained internally | Overlay fades out | Fade out with chrome |
+| Click a filmstrip item | Only this viewport replaces its image | No change | New image crossfades in |
+| Leave side-by-side Compare | Clear all target presentation | Clear overlay | Hide immediately |
+
+Motion timing:
+
+- Target switch: 180ms ease-out crossfade between inactive overlays.
+- Label entrance: 140ms opacity fade with no translation or scale.
+- Label exit: 180ms opacity fade after its hold duration.
+- Image replacement: 160ms content crossfade limited to the active viewport.
+- Chrome dismissal: use the toolbar's existing fade duration so all interaction feedback disappears as one system.
+- No animation repeats indefinitely.
+
+When macOS Reduce Motion is enabled, retain the static brightness difference and target label but apply state changes without animated interpolation. The label timing remains available because it communicates state rather than decoration.
+
+#### Interaction Rules
+
+- The replacement target changes only from a direct click inside the left or right image viewport.
+- Clicks on the toolbar, identity bar, filmstrip, info panel, or center divider do not change the target.
+- Zooming, panning, resizing, synchronized viewport updates, and switching metadata panels do not change the target.
+- Replacing an image does not switch the target. This permits several filmstrip choices to be tried on the same side.
+- The active target remains stored while chrome is hidden, even though its visual treatment is removed.
+- Returning from Slider to side-by-side restores the last valid replacement target.
+
+#### Accessibility
+
+- VoiceOver identifies the active viewport as `Left image, replacement target` or `Right image, replacement target`.
+- The target state is not communicated by color alone: the transient text label and accessibility value provide redundant confirmation.
+- The inactive overlay must not reduce image brightness by more than 14%, including Increase Contrast adjustments, because comparison accuracy remains the primary task.
+- The label must remain legible over both near-black and near-white images without adding a large opaque panel.
+
+#### Acceptance Criteria
+
+1. After clicking either viewport, a user can identify which image the next filmstrip click will replace within one second.
+2. No complete border is drawn around either viewport in any Compare state.
+3. The active image's rendered pixels, scale, and viewport geometry do not change when the target changes.
+4. Switching targets completes visually within 250ms and does not flash both viewports as inactive.
+5. Hiding interaction chrome removes the overlay and label while retaining the internal target.
+6. A filmstrip click replaces only the active target, including repeated replacements on the left side.
+7. Focus and Slider modes show no replacement-target overlay or label.
+8. Reduce Motion produces the same understandable state without interpolated or repeating animation.
+9. Existing synchronized zoom, pan, Fit scale, filmstrip sizing, toolbar layout, and metadata behavior do not regress.
+
+#### Implementation Boundary
+
+The existing compare-slot state and hit routing remain the source of truth. Implementation replaces only the current active border and orbit presentation with an inactive-viewport overlay and a transient target label. Filmstrip comparison membership, currently expressed separately, is not redesigned as part of this change.
+
 ### Difference Summary
 
 Show differing fields first and collapse equal fields. Initial deterministic fields are:

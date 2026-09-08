@@ -108,10 +108,10 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         frost.wantsLayer = true
         contentView.addSubview(frost)
 
-        // Black tint biases the frost toward black for the "磨砂黑" look.
+        // Darkroom tint keeps the material inside the app palette.
         let tint = NSView(frame: contentView.bounds)
         tint.wantsLayer = true
-        tint.layer?.backgroundColor = NSColor(white: 0, alpha: 0.32).cgColor
+        tint.layer?.backgroundColor = PanelStyle.canvas.withAlphaComponent(0.62).cgColor
         tint.autoresizingMask = [.width, .height]
         contentView.addSubview(tint)
 
@@ -123,7 +123,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         // Title
         let titleLabel = NSTextField(labelWithString: "Glance Preferences".localized)
         titleLabel.font = NSFont.systemFont(ofSize: 22, weight: .bold)
-        titleLabel.textColor = .white
+        titleLabel.textColor = PanelStyle.textPrimary
         titleLabel.frame = NSRect(x: 24, y: 24, width: 432, height: 30)
         container.addSubview(titleLabel)
 
@@ -176,7 +176,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
         let hotkeyDesc = NSTextField(labelWithString: "Select a path, then press the shortcut to show or hide Peek:".localized)
         hotkeyDesc.font = NSFont.systemFont(ofSize: 12)
-        hotkeyDesc.textColor = NSColor(white: 1, alpha: 0.55)
+        hotkeyDesc.textColor = PanelStyle.textSecondary
         hotkeyDesc.lineBreakMode = .byWordWrapping
         hotkeyDesc.maximumNumberOfLines = 2
         hotkeyDesc.frame = NSRect(x: 36, y: 404, width: 408, height: 32)
@@ -197,8 +197,8 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         customShortcutField.alignment = .center
         customShortcutField.isBordered = false
         customShortcutField.drawsBackground = true
-        customShortcutField.backgroundColor = NSColor(white: 1, alpha: 0.10)
-        customShortcutField.textColor = .white
+        customShortcutField.backgroundColor = PanelStyle.overlay
+        customShortcutField.textColor = PanelStyle.textPrimary
         customShortcutField.wantsLayer = true
         customShortcutField.layer?.cornerRadius = 6
         customShortcutField.layer?.masksToBounds = true
@@ -209,7 +209,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
         currentHotkeyLabel = NSTextField(labelWithString: "")
         currentHotkeyLabel.font = NSFont.systemFont(ofSize: 11)
-        currentHotkeyLabel.textColor = NSColor(white: 1, alpha: 0.50)
+        currentHotkeyLabel.textColor = PanelStyle.textTertiary
         currentHotkeyLabel.frame = NSRect(x: 36, y: 478, width: 408, height: 18)
         container.addSubview(currentHotkeyLabel)
 
@@ -225,9 +225,9 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private func makeCard(_ frame: NSRect) -> NSView {
         let card = NSView(frame: frame)
         card.wantsLayer = true
-        card.layer?.backgroundColor = NSColor(white: 1, alpha: 0.06).cgColor
+        card.layer?.backgroundColor = PanelStyle.glassCard.cgColor
         card.layer?.cornerRadius = 12
-        card.layer?.borderColor = NSColor(white: 1, alpha: 0.09).cgColor
+        card.layer?.borderColor = PanelStyle.hairline.cgColor
         card.layer?.borderWidth = 1
         return card
     }
@@ -235,7 +235,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private func makeSectionHeader(_ text: String, at frame: NSRect) -> NSTextField {
         let lbl = NSTextField(labelWithString: text.uppercased())
         lbl.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
-        lbl.textColor = NSColor(white: 1, alpha: 0.40)
+        lbl.textColor = PanelStyle.textTertiary
         lbl.frame = frame
         return lbl
     }
@@ -243,7 +243,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private func makeFieldLabel(_ text: String, at frame: NSRect) -> NSTextField {
         let lbl = NSTextField(labelWithString: text)
         lbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        lbl.textColor = .white
+        lbl.textColor = PanelStyle.textPrimary
         lbl.frame = frame
         return lbl
     }
@@ -253,7 +253,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         btn.attributedTitle = NSAttributedString(
             string: title,
             attributes: [
-                .foregroundColor: NSColor.white,
+                .foregroundColor: PanelStyle.textPrimary,
                 .font: NSFont.systemFont(ofSize: 13)
             ]
         )
@@ -486,11 +486,11 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         recordedKeyCode = nil
         customShortcutField.stringValue = ""
         customShortcutField.placeholderString = "Press shortcut...".localized
-        customShortcutField.textColor = .systemBlue
+        customShortcutField.textColor = PanelStyle.warmCue
     }
 
     func shortcutRecorderDidCancelRecording(_ recorder: ShortcutRecorderField) {
-        customShortcutField.textColor = .labelColor
+        customShortcutField.textColor = PanelStyle.textPrimary
         updateHotkeyUI()
     }
 
@@ -529,7 +529,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     func shortcutRecorderDidEndRecording(_ recorder: ShortcutRecorderField) {
         Preferences.shared.customHotkeyModifiers = recordedModifiers
         Preferences.shared.customHotkeyKeyCode = recordedKeyCode
-        customShortcutField.textColor = .labelColor
+        customShortcutField.textColor = PanelStyle.textPrimary
         updateHotkeyUI()
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }

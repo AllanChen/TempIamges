@@ -1,10 +1,11 @@
 import AppKit
 import WebKit
 
-final class LoginPanel: NSPanel, WKScriptMessageHandler {
+final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
     static let shared = LoginPanel()
 
     private let webView: WKWebView
+    private let loadingIndicator = ModularImageLoadingView(frame: .zero)
     private let headerHeight: CGFloat = 48
     private weak var titleLabel: NSTextField?
 
@@ -20,6 +21,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
             backing: .buffered,
             defer: false
         )
+        webView.navigationDelegate = self
 
         contentController.add(self, name: "loginHandler")
 
@@ -40,7 +42,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
         root.wantsLayer = true
         root.layer?.cornerRadius = 12
         root.layer?.masksToBounds = true
-        root.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        root.layer?.backgroundColor = PanelStyle.surface.cgColor
 
         let navBar = buildNavBar(width: 400)
         navBar.frame = NSRect(x: 0, y: 500 - headerHeight, width: 400, height: headerHeight)
@@ -52,17 +54,26 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
         webView.autoresizingMask = [.width, .height]
         root.addSubview(webView)
 
+        loadingIndicator.frame = NSRect(
+            x: webFrame.midX - ModularImageLoadingView.preferredSize.width / 2,
+            y: webFrame.midY - ModularImageLoadingView.preferredSize.height / 2,
+            width: ModularImageLoadingView.preferredSize.width,
+            height: ModularImageLoadingView.preferredSize.height
+        )
+        loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
+        root.addSubview(loadingIndicator)
+
         contentView = root
     }
 
     private func buildNavBar(width: CGFloat) -> NSView {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
         bar.wantsLayer = true
-        bar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        bar.layer?.backgroundColor = PanelStyle.overlay.cgColor
 
         let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
         sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        sep.layer?.backgroundColor = PanelStyle.hairline.cgColor
         sep.autoresizingMask = [.width]
         bar.addSubview(sep)
 
@@ -71,14 +82,14 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
         closeBtn.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: nil)
         closeBtn.imagePosition = .imageOnly
         closeBtn.isBordered = false
-        closeBtn.contentTintColor = .labelColor
+        closeBtn.contentTintColor = PanelStyle.textPrimary
         closeBtn.target = self
         closeBtn.action = #selector(closeTapped)
         closeBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
         bar.addSubview(closeBtn)
 
         let titleLbl = NSTextField(labelWithString: "Sign In".localized)
-        titleLbl.textColor = .labelColor
+        titleLbl.textColor = PanelStyle.textPrimary
         titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titleLbl.alignment = .center
         titleLbl.frame = NSRect(x: 48, y: (headerHeight - 18) / 2, width: width - 96, height: 18)
@@ -126,6 +137,30 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
         orderFrontRegardless()
     }
 
+    private func showLoading() {
+        loadingIndicator.setLoading(true)
+    }
+
+    private func hideLoading() {
+        loadingIndicator.setLoading(false)
+    }
+
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        showLoading()
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        hideLoading()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        hideLoading()
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        hideLoading()
+    }
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "loginHandler",
               let body = message.body as? [String: Any],
@@ -135,14 +170,14 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
 
         switch type {
         case "google":
-            evaluate("window.GlanceAuth.setStatus('Continue in your browser to finish Google sign-in.', 'info')")
+            evaluate("window.GlanceAuth.setStatus(\(Self.jsString("Continue in your browser to finish Google sign-in.".localized)), 'info')")
             AuthManager.shared.openGoogleSignIn()
             orderOut(nil)
 
         case "sendEmailCode":
             guard let email = (body["email"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !email.isEmpty else {
-                evaluate("window.GlanceAuth.setStatus('Enter your email address.', 'error')")
+                evaluate("window.GlanceAuth.setStatus(\(Self.jsString("Enter your email address.".localized)), 'error')")
                 return
             }
             AuthManager.shared.sendEmailCode(email: email) { [weak self] result in
@@ -159,7 +194,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
             let email = (body["email"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let code = (body["code"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             guard !email.isEmpty, !code.isEmpty else {
-                evaluate("window.GlanceAuth.setStatus('Enter your email and 6 digit code.', 'error')")
+                evaluate("window.GlanceAuth.setStatus(\(Self.jsString("Enter your email and 6 digit code.".localized)), 'error')")
                 return
             }
             AuthManager.shared.verifyEmailCode(email: email, code: code) { [weak self] result in
@@ -190,6 +225,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
     }
 
     private func loadAuthPage(status: String? = nil) {
+        showLoading()
         titleLabel?.stringValue = "Sign In".localized
         let statusScript = status.map { "window.addEventListener('load', function() { window.GlanceAuth.setStatus(\(Self.jsString($0)), 'error'); });" } ?? ""
         let html = """
@@ -202,8 +238,8 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    background: #f6f7f8;
-                    color: #1f2328;
+                    background: #101113;
+                    color: #f2f0eb;
                     min-height: 100vh;
                     padding: 28px;
                     display: flex;
@@ -212,14 +248,14 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                 }
                 .container { width: 100%; max-width: 320px; }
                 h1 { font-size: 22px; line-height: 1.2; font-weight: 650; text-align: center; margin-bottom: 8px; }
-                p { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 22px; }
+                p { font-size: 13px; color: #a7a8aa; text-align: center; margin-bottom: 22px; }
                 .btn {
                     width: 100%;
                     min-height: 42px;
                     border-radius: 8px;
-                    border: 1px solid #d7dce2;
-                    background: #fff;
-                    color: #1f2328;
+                    border: 1px solid rgba(242,240,235,0.10);
+                    background: #202329;
+                    color: #f2f0eb;
                     font-size: 14px;
                     font-weight: 560;
                     cursor: pointer;
@@ -229,31 +265,32 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                     gap: 9px;
                     margin-bottom: 12px;
                 }
-                .btn:hover { background: #f9fafb; }
+                .btn:hover { background: #292d34; }
                 .btn:disabled { opacity: 0.55; cursor: default; }
-                .btn-primary { background: #14181f; color: #fff; border-color: #14181f; }
-                .btn-primary:hover { background: #202631; }
+                .btn-primary { background: #e1b982; color: #101113; border-color: #e1b982; }
+                .btn-primary:hover { background: #edc995; }
                 .divider {
                     display: flex;
                     align-items: center;
-                    color: #8a939f;
+                    color: #777a7e;
                     font-size: 12px;
                     margin: 17px 0;
                 }
-                .divider:before, .divider:after { content: ""; flex: 1; height: 1px; background: #dfe3e8; }
+                .divider:before, .divider:after { content: ""; flex: 1; height: 1px; background: rgba(242,240,235,0.10); }
                 .divider span { padding: 0 12px; }
                 input {
                     width: 100%;
                     height: 40px;
                     padding: 9px 11px;
-                    border: 1px solid #d7dce2;
+                    border: 1px solid rgba(242,240,235,0.10);
                     border-radius: 8px;
-                    background: #fff;
+                    background: #17191c;
+                    color: #f2f0eb;
                     font-size: 14px;
                     margin-bottom: 10px;
                     outline: none;
                 }
-                input:focus { border-color: #2f6fed; box-shadow: 0 0 0 3px rgba(47,111,237,0.14); }
+                input:focus { border-color: #e1b982; box-shadow: 0 0 0 3px rgba(225,185,130,0.14); }
                 #codeWrap { display: none; }
                 #status {
                     min-height: 36px;
@@ -261,19 +298,19 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                     padding: 10px 11px;
                     font-size: 12px;
                     line-height: 1.35;
-                    color: #6b7280;
+                    color: #a7a8aa;
                     text-align: center;
                 }
-                #status.info { background: #eef5ff; color: #2356a3; }
-                #status.ok { background: #edf8f0; color: #1d7136; }
-                #status.error { background: #fff1f0; color: #b42318; }
+                #status.info { background: rgba(225,185,130,0.12); color: #e1b982; }
+                #status.ok { background: rgba(46,160,67,0.14); color: #79c98b; }
+                #status.error { background: rgba(218,54,51,0.14); color: #ff8b87; }
                 .google-mark { width: 18px; height: 18px; flex: 0 0 auto; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>Welcome to Glance</h1>
-                <p>Sign in with mcreator to connect this Mac.</p>
+                <h1>\(htmlEscape("Welcome to Glance".localized))</h1>
+                <p>\(htmlEscape("Sign in with mcreator to connect this Mac.".localized))</p>
 
                 <button class="btn" onclick="GlanceAuth.google()">
                     <svg class="google-mark" viewBox="0 0 24 24">
@@ -282,17 +319,17 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    Continue with Google
+                    \(htmlEscape("Continue with Google".localized))
                 </button>
 
-                <div class="divider"><span>or</span></div>
+                <div class="divider"><span>\(htmlEscape("or".localized))</span></div>
 
-                <input type="email" id="email" autocomplete="email" placeholder="Email address">
-                <button id="sendBtn" class="btn btn-primary" onclick="GlanceAuth.sendCode()">Send code</button>
+                <input type="email" id="email" autocomplete="email" placeholder="\(htmlEscape("Email address".localized))">
+                <button id="sendBtn" class="btn btn-primary" onclick="GlanceAuth.sendCode()">\(htmlEscape("Send code".localized))</button>
 
                 <div id="codeWrap">
-                    <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="6 digit code">
-                    <button id="verifyBtn" class="btn btn-primary" onclick="GlanceAuth.verifyCode()">Verify and sign in</button>
+                    <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="\(htmlEscape("6 digit code".localized))">
+                    <button id="verifyBtn" class="btn btn-primary" onclick="GlanceAuth.verifyCode()">\(htmlEscape("Verify and sign in".localized))</button>
                 </div>
 
                 <div id="status"></div>
@@ -304,28 +341,28 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                         window.webkit.messageHandlers.loginHandler.postMessage(payload);
                     },
                     google() {
-                        this.setStatus('Opening Google sign-in in your browser.', 'info');
+                        this.setStatus(\(Self.jsString("Opening Google sign-in in your browser.".localized)), 'info');
                         this.post({ type: 'google' });
                     },
                     sendCode() {
                         const email = document.getElementById('email').value.trim();
                         if (!email) {
-                            this.setStatus('Enter your email address.', 'error');
+                            this.setStatus(\(Self.jsString("Enter your email address.".localized)), 'error');
                             return;
                         }
                         this.setBusy(true);
-                        this.setStatus('Sending code...', 'info');
+                        this.setStatus(\(Self.jsString("Sending code...".localized)), 'info');
                         this.post({ type: 'sendEmailCode', email });
                     },
                     verifyCode() {
                         const email = document.getElementById('email').value.trim();
                         const code = document.getElementById('code').value.trim();
                         if (!email || !/^\\d{6}$/.test(code)) {
-                            this.setStatus('Enter the 6 digit code from your email.', 'error');
+                            this.setStatus(\(Self.jsString("Enter the 6 digit code from your email.".localized)), 'error');
                             return;
                         }
                         this.setBusy(true);
-                        this.setStatus('Verifying code...', 'info');
+                        this.setStatus(\(Self.jsString("Verifying code...".localized)), 'info');
                         this.post({ type: 'verifyEmailCode', email, code });
                     },
                     emailCodeSent(email) {
@@ -333,7 +370,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                         document.getElementById('codeWrap').style.display = 'block';
                         document.getElementById('code').focus();
                         this.setBusy(false);
-                        this.setStatus('Code sent. Check your email and enter the 6 digit code.', 'ok');
+                        this.setStatus(\(Self.jsString("Code sent. Check your email and enter the 6 digit code.".localized)), 'ok');
                     },
                     setBusy(isBusy) {
                         document.getElementById('sendBtn').disabled = isBusy;
@@ -363,6 +400,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
     }
 
     private func loadAccountPage(session: AuthSession) {
+        showLoading()
         titleLabel?.stringValue = "Account".localized
         let displayName = session.user.name?.isEmpty == false ? session.user.name! : session.user.email
         let email = session.user.email
@@ -380,8 +418,8 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    background: #f6f7f8;
-                    color: #1f2328;
+                    background: #101113;
+                    color: #f2f0eb;
                     min-height: 100vh;
                     padding: 28px;
                     display: flex;
@@ -393,8 +431,8 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                     width: 56px;
                     height: 56px;
                     border-radius: 50%;
-                    background: #14181f;
-                    color: #fff;
+                    background: #e1b982;
+                    color: #101113;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
@@ -412,16 +450,16 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                 }
                 .email {
                     font-size: 13px;
-                    color: #6b7280;
+                    color: #a7a8aa;
                     text-align: center;
                     line-height: 1.4;
                     margin-bottom: 22px;
                     overflow-wrap: anywhere;
                 }
                 .info {
-                    border: 1px solid #dfe3e8;
+                    border: 1px solid rgba(242,240,235,0.10);
                     border-radius: 8px;
-                    background: #fff;
+                    background: #17191c;
                     margin-bottom: 18px;
                     overflow: hidden;
                 }
@@ -431,24 +469,24 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                     justify-content: space-between;
                     gap: 12px;
                     padding: 11px 12px;
-                    border-bottom: 1px solid #edf0f3;
+                    border-bottom: 1px solid rgba(242,240,235,0.10);
                     font-size: 13px;
                 }
                 .row:last-child { border-bottom: 0; }
-                .label { color: #6b7280; flex: 0 0 auto; }
-                .value { color: #1f2328; text-align: right; overflow-wrap: anywhere; min-width: 0; }
+                .label { color: #a7a8aa; flex: 0 0 auto; }
+                .value { color: #f2f0eb; text-align: right; overflow-wrap: anywhere; min-width: 0; }
                 .btn {
                     width: 100%;
                     min-height: 42px;
                     border-radius: 8px;
-                    border: 1px solid #d7dce2;
-                    background: #fff;
-                    color: #1f2328;
+                    border: 1px solid rgba(242,240,235,0.10);
+                    background: #202329;
+                    color: #f2f0eb;
                     font-size: 14px;
                     font-weight: 560;
                     cursor: pointer;
                 }
-                .btn:hover { background: #f9fafb; }
+                .btn:hover { background: #292d34; }
             </style>
         </head>
         <body>
@@ -457,12 +495,12 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
                 <h1>\(htmlEscape(displayName))</h1>
                 <div class="email">\(htmlEscape(email))</div>
                 <div class="info">
-                    <div class="row"><span class="label">Provider</span><span class="value">\(htmlEscape(provider))</span></div>
-                    <div class="row"><span class="label">User ID</span><span class="value">\(htmlEscape(userID))</span></div>
-                    <div class="row"><span class="label">Status</span><span class="value">\(htmlEscape(session.user.status.capitalized))</span></div>
-                    <div class="row"><span class="label">Session expires</span><span class="value">\(htmlEscape(expires))</span></div>
+                    <div class="row"><span class="label">\(htmlEscape("Provider".localized))</span><span class="value">\(htmlEscape(provider))</span></div>
+                    <div class="row"><span class="label">\(htmlEscape("User ID".localized))</span><span class="value">\(htmlEscape(userID))</span></div>
+                    <div class="row"><span class="label">\(htmlEscape("Status".localized))</span><span class="value">\(htmlEscape(session.user.status.capitalized.localized))</span></div>
+                    <div class="row"><span class="label">\(htmlEscape("Session expires".localized))</span><span class="value">\(htmlEscape(expires))</span></div>
                 </div>
-                <button class="btn" onclick="window.webkit.messageHandlers.loginHandler.postMessage({type:'logout'})">Sign out</button>
+                <button class="btn" onclick="window.webkit.messageHandlers.loginHandler.postMessage({type:'logout'})">\(htmlEscape("Sign out".localized))</button>
             </div>
         </body>
         </html>
@@ -484,6 +522,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler {
             return value
         }
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: Preferences.shared.appLanguage == .chinese ? "zh_CN" : "en_US")
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)

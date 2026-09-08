@@ -12,7 +12,7 @@ import Highlightr
 ///   swaps to the raw source in NSTextView.
 /// - For local files a Save button writes the buffer back to disk. Remote
 ///   files are editable in-memory but the Save button is disabled.
-final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelegate {
+final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKNavigationDelegate {
     private let webView: WKWebView
     private let textView: NSTextView
     private let textScroll: NSScrollView
@@ -23,6 +23,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     private var locateButton = NSButton()   // Reveal in Finder, local-only
     private let modifiedLabel = NSTextField(labelWithString: "")  // identity subtitle: path · modified
     private let addressBar = NSTextField()
+    private let loadingIndicator = ModularImageLoadingView(frame: .zero)
 
     // WebView find UI
     private let webFindBar = PanelStyle.makeBarBlur()
@@ -78,6 +79,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
             backing: .buffered,
             defer: false
         )
+        webView.navigationDelegate = self
         self.isReleasedWhenClosed = false
         self.title = "Glance".localized
         // Match ContentPanel's dark-glass chrome regardless of system theme.
@@ -106,6 +108,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         showAddressBarIdentity(for: url)
         refreshSaveButton()
         layoutToolbarButtons()
+        showLoading()
         showWebView()
         resizeToDocumentSize()
     }
@@ -121,6 +124,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         showFileIdentity(for: url)
         refreshSaveButton()
         layoutToolbarButtons()
+        showLoading()
         resizeToDocumentSize()
         renderMarkdownView(url: url)
     }
@@ -135,6 +139,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         locateButton.isHidden = !url.isFileURL
         showFileIdentity(for: url)
         layoutToolbarButtons()
+        showLoading()
         loadEditableText(url: url)
         resizeToDocumentSize()
     }
@@ -150,6 +155,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         showFileIdentity(for: url)
         refreshSaveButton()
         layoutToolbarButtons()
+        showLoading()
         resizeToDocumentSize()
         if url.isFileURL {
             // Sandbox-friendly: explicit grant for the parent directory so
@@ -275,6 +281,15 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         )
         textView.textContainer?.widthTracksTextView = true
         content.addSubview(textScroll)
+
+        loadingIndicator.frame = NSRect(
+            x: bodyFrame.midX - ModularImageLoadingView.preferredSize.width / 2,
+            y: bodyFrame.midY - ModularImageLoadingView.preferredSize.height / 2,
+            width: ModularImageLoadingView.preferredSize.width,
+            height: ModularImageLoadingView.preferredSize.height
+        )
+        loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
+        content.addSubview(loadingIndicator)
 
         // ─── Web find bar (overlays the top edge of the web view) ───────
         let findBarH: CGFloat = 36
@@ -451,9 +466,34 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
                 self.textView.string = raw
                 self.isDirty = false
                 self.showTextView()
+                self.hideLoading()
                 self.refreshSaveButton()
             }
         }
+    }
+
+    private func showLoading() {
+        loadingIndicator.setLoading(true)
+    }
+
+    private func hideLoading() {
+        loadingIndicator.setLoading(false)
+    }
+
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        showLoading()
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        hideLoading()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        hideLoading()
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        hideLoading()
     }
 
     // MARK: - Actions
@@ -879,7 +919,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
       }
       function refresh(self){
         for (let i = 0; i < self.marks.length; i++) {
-          self.marks[i].style.background = (i === self.current) ? '#ff9800' : '#ffe066';
+          self.marks[i].style.background = (i === self.current) ? '#e1b982' : '#cda873';
           self.marks[i].style.color = '#000';
         }
         if (self.current >= 0 && self.current < self.marks.length) {
@@ -919,7 +959,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
               if (i > last) frag.appendChild(document.createTextNode(text.slice(last, i)));
               const mk = document.createElement('mark');
               mk.className = 'tdfind';
-              mk.style.background = '#ffe066';
+              mk.style.background = '#cda873';
               mk.style.color = '#000';
               mk.textContent = text.slice(i, i + q.length);
               frag.appendChild(mk);
@@ -1038,21 +1078,21 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
               line-height: 1.6;
               margin: 0;
               padding: 16px 22px 40px;
-              background: #1b1d21;
-              color: #d6d9dd;
+              background: #101113;
+              color: #f2f0eb;
               -webkit-font-smoothing: antialiased;
             }
-            ::selection { background: rgba(108,182,255,0.30); }
+            ::selection { background: rgba(225,185,130,0.26); }
             .file-header {
               font-family: -apple-system, BlinkMacSystemFont, sans-serif;
               font-size: 11px;
               font-weight: 600;
               letter-spacing: 0.02em;
-              color: #9aa0a6;
+              color: #a7a8aa;
               margin: -4px -6px 14px;
               padding: 6px 10px;
               border-radius: 7px;
-              background: rgba(255,255,255,0.05);
+              background: #202329;
               display: flex;
               justify-content: space-between;
             }
@@ -1076,7 +1116,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
               text-shadow: none !important;
             }
             :not(pre) > code[class*="language-"] {
-              background: rgba(255,255,255,0.08) !important;
+              background: #202329 !important;
               padding: 2px 5px !important;
               border-radius: 4px;
             }
@@ -1111,13 +1151,15 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
                cohesively inside Glance's dark-glass panel regardless of the
                system appearance. */
             :root {
-              --bg: #1b1d21;
-              --fg: #e7e9ec;
-              --muted: #9aa0a6;
-              --hairline: rgba(255,255,255,0.10);
-              --fill: rgba(255,255,255,0.06);
-              --fill-strong: rgba(255,255,255,0.09);
-              --accent: #6cb6ff;
+              --bg: #101113;
+              --surface: #17191c;
+              --overlay: #202329;
+              --fg: #f2f0eb;
+              --muted: #a7a8aa;
+              --hairline: rgba(242,240,235,0.10);
+              --fill: #17191c;
+              --fill-strong: #202329;
+              --accent: #e1b982;
             }
             * { box-sizing: border-box; }
             html { -webkit-text-size-adjust: 100%; }
@@ -1133,10 +1175,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
               padding: 40px 28px 64px;
               -webkit-font-smoothing: antialiased;
             }
-            ::selection { background: rgba(108,182,255,0.30); }
+            ::selection { background: rgba(225,185,130,0.26); }
             h1, h2, h3, h4, h5, h6 {
               line-height: 1.3; margin: 1.6em 0 0.6em; font-weight: 600;
-              letter-spacing: -0.01em; color: #f3f5f8;
+              letter-spacing: -0.01em; color: var(--fg);
             }
             h1 { font-size: 1.9em; border-bottom: 1px solid var(--hairline); padding-bottom: 0.3em; }
             h2 { font-size: 1.5em; border-bottom: 1px solid var(--hairline); padding-bottom: 0.25em; }
@@ -1157,7 +1199,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
               border-radius: 5px; font-size: 0.88em;
             }
             pre {
-              background: #111317; border: 1px solid var(--hairline);
+              background: var(--surface); border: 1px solid var(--hairline);
               padding: 14px 16px; border-radius: 10px;
               white-space: pre-wrap; word-wrap: break-word;
               overflow-x: auto; line-height: 1.55;
@@ -1169,7 +1211,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
             table { border-collapse: collapse; width: 100%; font-size: 0.92em; }
             th, td { border: 1px solid var(--hairline); padding: 7px 12px; text-align: left; }
             th { background: var(--fill); font-weight: 600; }
-            tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+            tr:nth-child(even) td { background: rgba(32,35,41,0.52); }
           </style>
         </head>
         <body>

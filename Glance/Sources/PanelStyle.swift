@@ -1,42 +1,136 @@
 import AppKit
 import Highlightr
 
+/// Shared loading indicator used by image, document, and web previews.
+/// The three wireframe modules follow the same calm 2.04-second cycle as the
+/// reference animation, while staying resolution-independent in Core Animation.
+final class ModularImageLoadingView: NSView {
+    static let preferredSize = NSSize(width: 104, height: 128)
+
+    private let moduleLayers = (0..<3).map { _ in CAShapeLayer() }
+    private var isLoading = false
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        for moduleLayer in moduleLayers {
+            moduleLayer.fillColor = NSColor.clear.cgColor
+            moduleLayer.strokeColor = PanelStyle.resolvedCG(PanelStyle.textPrimary.withAlphaComponent(0.58))
+            moduleLayer.lineWidth = 1
+            moduleLayer.lineCap = .round
+            moduleLayer.lineJoin = .round
+            moduleLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+            layer?.addSublayer(moduleLayer)
+        }
+        configureGeometry()
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    func setLoading(_ loading: Bool) {
+        guard loading != isLoading else { return }
+        isLoading = loading
+        isHidden = !loading
+        loading ? startAnimating() : stopAnimating()
+    }
+
+    private func configureGeometry() {
+        let path = CGMutablePath()
+        let top = CGPoint(x: 19, y: 0)
+        let upperRight = CGPoint(x: 38, y: 11)
+        let lowerRight = CGPoint(x: 38, y: 33)
+        let bottom = CGPoint(x: 19, y: 44)
+        let lowerLeft = CGPoint(x: 0, y: 33)
+        let upperLeft = CGPoint(x: 0, y: 11)
+        let center = CGPoint(x: 19, y: 22)
+        path.move(to: top)
+        path.addLines(between: [upperRight, lowerRight, bottom, lowerLeft, upperLeft, top])
+        path.move(to: top)
+        path.addLines(between: [center, bottom])
+        path.move(to: upperLeft)
+        path.addLines(between: [center, upperRight])
+
+        let restingPositions = [CGPoint(x: 52, y: 22), CGPoint(x: 52, y: 64), CGPoint(x: 62, y: 106)]
+        for (moduleLayer, position) in zip(moduleLayers, restingPositions) {
+            moduleLayer.bounds = CGRect(x: 0, y: 0, width: 38, height: 44)
+            moduleLayer.position = position
+            moduleLayer.path = path
+        }
+    }
+
+    private func startAnimating() {
+        stopAnimating()
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        let positions: [[CGPoint]] = [
+            [CGPoint(x: 52, y: 22), CGPoint(x: 52, y: 64), CGPoint(x: 62, y: 106)],
+            [CGPoint(x: 34, y: 50), CGPoint(x: 70, y: 50), CGPoint(x: 52, y: 82)],
+            [CGPoint(x: 52, y: 22), CGPoint(x: 34, y: 78), CGPoint(x: 70, y: 78)],
+            [CGPoint(x: 34, y: 22), CGPoint(x: 70, y: 50), CGPoint(x: 52, y: 92)],
+            [CGPoint(x: 52, y: 22), CGPoint(x: 52, y: 64), CGPoint(x: 62, y: 106)],
+        ]
+        let keyTimes: [NSNumber] = [0, 0.25, 0.5, 0.75, 1]
+        let timing = CAMediaTimingFunction(name: .easeInEaseOut)
+        for (index, moduleLayer) in moduleLayers.enumerated() {
+            let movement = CAKeyframeAnimation(keyPath: "position")
+            movement.values = positions.map { NSValue(point: $0[index]) }
+            movement.keyTimes = keyTimes
+            movement.timingFunctions = Array(repeating: timing, count: keyTimes.count - 1)
+            movement.duration = 2.04
+            movement.repeatCount = .infinity
+            movement.isRemovedOnCompletion = false
+            moduleLayer.add(movement, forKey: "glance.modularLoading")
+        }
+    }
+
+    private func stopAnimating() {
+        moduleLayers.forEach { $0.removeAnimation(forKey: "glance.modularLoading") }
+    }
+}
+
 /// Shared visual design tokens for Glance's floating panels and content
 /// windows. Centralises the frosted-dark-glass palette, type scale, and
 /// frosted-base builder so PreviewPanel, ContentPanel and ContentViewerWindow
 /// speak one design language instead of each rolling their own colours and
-/// fonts.
-///
-/// The whole chrome commits to an on-glass dark palette regardless of the
-/// system theme — fills are translucent white so the frost reads through them,
-/// text is white / dimmed-white.
+/// fonts. Neutral darkroom surfaces frame the content, while warm gold is
+/// reserved for small, meaningful interaction cues.
 enum PanelStyle {
 
     // MARK: - Palette
 
-    /// Primary text on the dark frost.
-    static let textPrimary    = NSColor.white
-    /// Secondary / supporting text (paths, metadata).
-    static let textSecondary  = NSColor(white: 1, alpha: 0.62)
+    /// Deepest image/background plane — Quiet Darkroom `#101113`.
+    static let canvas = NSColor(srgbRed: 16 / 255, green: 17 / 255, blue: 19 / 255, alpha: 1)
+    /// Primary chrome plane — `#17191C`.
+    static let surface = NSColor(srgbRed: 23 / 255, green: 25 / 255, blue: 28 / 255, alpha: 1)
+    /// Raised controls and cards — `#202329`.
+    static let overlay = NSColor(srgbRed: 32 / 255, green: 35 / 255, blue: 41 / 255, alpha: 1)
+
+    /// Warm off-white primary text — `#F2F0EB`.
+    static let textPrimary = NSColor(srgbRed: 242 / 255, green: 240 / 255, blue: 235 / 255, alpha: 1)
+    /// Secondary / supporting text — `#A7A8AA`.
+    static let textSecondary = NSColor(srgbRed: 167 / 255, green: 168 / 255, blue: 170 / 255, alpha: 1)
     /// Tertiary text (timestamps, counts, hints).
-    static let textTertiary   = NSColor(white: 1, alpha: 0.42)
+    static let textTertiary = NSColor(srgbRed: 119 / 255, green: 122 / 255, blue: 126 / 255, alpha: 1)
+    /// Sparse focus/interaction cue — `#E1B982`.
+    static let warmCue = NSColor(srgbRed: 225 / 255, green: 185 / 255, blue: 130 / 255, alpha: 1)
 
     /// Hairline that defines a bar edge / separator on the frost.
-    static let hairline       = NSColor(white: 1, alpha: 0.10)
+    static let hairline       = textPrimary.withAlphaComponent(0.10)
     /// Translucent fill for a top/bottom bar sitting on the frost.
-    static let barFill        = NSColor(white: 1, alpha: 0.05)
+    static let barFill        = overlay.withAlphaComponent(0.72)
     /// Translucent fill for an inline control (button, field) on the frost.
-    static let controlFill    = NSColor(white: 1, alpha: 0.10)
+    static let controlFill    = textPrimary.withAlphaComponent(0.09)
     /// Hover/active state of `controlFill`.
-    static let controlFillHi  = NSColor(white: 1, alpha: 0.18)
+    static let controlFillHi  = textPrimary.withAlphaComponent(0.16)
     /// Translucent card fill for grouped controls / overlays.
-    static let glassCard      = NSColor(white: 1, alpha: 0.07)
+    static let glassCard      = overlay.withAlphaComponent(0.76)
 
     /// Always-dark neutral canvas behind images — the image needs a dark frame
     /// to read against, even on the frosted base.
-    static let imageCanvas    = NSColor(white: 0.03, alpha: 1)
+    static let imageCanvas    = canvas
 
-    static let accent         = NSColor.systemBlue
+    static let accent         = warmCue
 
     // MARK: - Type scale
 
@@ -80,7 +174,7 @@ enum PanelStyle {
 
     /// A dark, semi-transparent frosted base for a borderless panel.
     /// `.hudWindow` + vibrant-dark gives the translucent black "磨砂" material;
-    /// a black tint sublayer biases the frost toward black so it reads
+    /// a canvas tint sublayer biases the frost toward the palette so it reads
     /// consistently over bright wallpapers.
     static func makeFrostedBase(cornerRadius: CGFloat) -> NSVisualEffectView {
         let blur = NSVisualEffectView()
@@ -93,7 +187,7 @@ enum PanelStyle {
         blur.layer?.masksToBounds = true
 
         let tint = CALayer()
-        tint.backgroundColor = NSColor(white: 0, alpha: 0.30).cgColor
+        tint.backgroundColor = canvas.withAlphaComponent(0.58).cgColor
         tint.cornerRadius = cornerRadius
         tint.frame = blur.bounds
         tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]

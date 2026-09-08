@@ -30,16 +30,16 @@ struct PreviewPanelPreviewWrapper: NSViewRepresentable {
         content.frame = NSRect(origin: .zero, size: content.frame.size)
         windowChrome.addSubview(content)
 
-        // A colorful gradient "wallpaper" behind the panel so the translucent
-        // frost actually has something to blur — a flat gray would hide it.
+        // A low-contrast Quiet Darkroom wallpaper keeps the preview honest
+        // while still giving the translucent material something to blur.
         let desktop = NSView(frame: NSRect(x: 0, y: 0, width: 900, height: 760))
         desktop.wantsLayer = true
         let wallpaper = CAGradientLayer()
         wallpaper.frame = desktop.bounds
         wallpaper.colors = [
-            NSColor(calibratedRed: 0.18, green: 0.10, blue: 0.42, alpha: 1).cgColor,
-            NSColor(calibratedRed: 0.62, green: 0.20, blue: 0.45, alpha: 1).cgColor,
-            NSColor(calibratedRed: 0.95, green: 0.55, blue: 0.30, alpha: 1).cgColor
+            PanelStyle.canvas.cgColor,
+            PanelStyle.surface.cgColor,
+            PanelStyle.warmCue.withAlphaComponent(0.42).cgColor
         ]
         wallpaper.locations = [0.0, 0.55, 1.0]
         wallpaper.startPoint = CGPoint(x: 0, y: 1)

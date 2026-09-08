@@ -81,17 +81,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let infos = paths.compactMap { MediaInfo.from($0) }.filter { $0.kind == .image }
         guard !infos.isEmpty else { return }
         let loaded = Array<LoadedMedia?>(repeating: nil, count: infos.count)
-        let preferredMode: ImageInspectSession.Mode = infos.count == 2 ? .compare : (infos.count > 2 ? .browse : .focus)
-        let restoreApp = NSWorkspace.shared.frontmostApplication
-        let window = imageInspectWindow ?? ImageInspectWindow(imageLoader: imageLoader ?? ImageLoader())
-        imageInspectWindow = window
-        window.onClose = { [weak self, weak restoreApp] in
-            self?.imageInspectWindow = nil
-            if restoreApp?.processIdentifier != ProcessInfo.processInfo.processIdentifier {
-                Self.restoreApplication(restoreApp)
-            }
-        }
-        window.show(infos: infos, loaded: loaded, focusedIndex: 0, preferredMode: preferredMode)
+        openImageInspect(infos: infos, loaded: loaded, focusedIndex: 0,
+                         preferredMode: Self.preferredInspectMode(for: infos.count))
     }
 
     private func setupComponents() {
@@ -503,6 +494,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             return
         }
 
+        // Pure image selections use the same full Image Inspect experience as
+        // opening image files from Finder. ImageInspectWindow owns its loading
+        // pipeline, so it can be shown immediately with empty image slots.
+        if infos.allSatisfy({ $0.kind == .image }) {
+            let loaded = Array<LoadedMedia?>(repeating: nil, count: infos.count)
+            successfulRequestID = requestID
+            PeekDiagnostics.recordSuccess(latency: Date().timeIntervalSince(activeRequestStartedAt))
+            openImageInspect(infos: infos, loaded: loaded, focusedIndex: 0,
+                             preferredMode: Self.preferredInspectMode(for: infos.count))
+            return
+        }
+
         // Show panel immediately with loading skeletons; populate per-item as
         // the loader streams results back.
         previewPanel?.showLoading(infos: infos, at: position)
@@ -597,7 +600,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         panel.makeKey()
     }
 
-    private func openImageInspect(infos: [MediaInfo], loaded: [LoadedMedia?], focusedIndex: Int) {
+    private func openImageInspect(infos: [MediaInfo], loaded: [LoadedMedia?], focusedIndex: Int,
+                                  preferredMode: ImageInspectSession.Mode? = nil) {
         guard !infos.isEmpty else { return }
         PeekDiagnostics.recordInspectTransition()
         let restoreApp = NSWorkspace.shared.frontmostApplication
@@ -605,11 +609,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         imageInspectWindow = window
         window.onClose = { [weak self, weak restoreApp] in
             self?.imageInspectWindow = nil
-            Self.restoreApplication(restoreApp)
+            if restoreApp?.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+                Self.restoreApplication(restoreApp)
+            }
         }
         invalidateActiveRequest()
         previewPanel?.closeWithoutAffectingContent()
-        window.show(infos: infos, loaded: loaded, focusedIndex: focusedIndex)
+        window.show(infos: infos, loaded: loaded, focusedIndex: focusedIndex,
+                    preferredMode: preferredMode)
+    }
+
+    private static func preferredInspectMode(for imageCount: Int) -> ImageInspectSession.Mode {
+        imageCount == 2 ? .compare : (imageCount > 2 ? .browse : .focus)
     }
 
     private func normalizedSelection(_ text: String) -> String {

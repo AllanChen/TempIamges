@@ -39,7 +39,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     private let imageInfoBarH: CGFloat = 56
 
     private weak var loadingOverlay: NSView?
-    private weak var loadingSpinner: NSProgressIndicator?
+    private weak var loadingIndicator: ModularImageLoadingView?
 
     private let imageInfoBar = PanelStyle.makeBarBlur()
     private let imageInfoNameLabel = NSTextField(labelWithString: "")
@@ -269,7 +269,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         root.wantsLayer = true
         // Solid dark base. The bars on top are translucent vibrant-dark frost,
         // so this only shows in the gaps / during transitions.
-        root.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
+        root.layer?.backgroundColor = PanelStyle.surface.cgColor
 
         let bodyFrame = NSRect(x: 0, y: 0, width: 652.0, height: 962.0)
 
@@ -410,44 +410,31 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
 
         let overlay = NSView(frame: contentFrame)
         overlay.wantsLayer = true
-        overlay.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
+        overlay.layer?.backgroundColor = PanelStyle.surface.cgColor
         overlay.autoresizingMask = [.width, .height]
         overlay.isHidden = true
 
-        let spinnerContainer = NSView(frame: NSRect(
-            x: (contentFrame.width - 40) / 2,
-            y: (contentFrame.height - 40) / 2,
-            width: 40, height: 40
+        let loadingIndicator = ModularImageLoadingView(frame: NSRect(
+            x: (contentFrame.width - ModularImageLoadingView.preferredSize.width) / 2,
+            y: (contentFrame.height - ModularImageLoadingView.preferredSize.height) / 2 + 10,
+            width: ModularImageLoadingView.preferredSize.width,
+            height: ModularImageLoadingView.preferredSize.height
         ))
-        spinnerContainer.wantsLayer = true
-        spinnerContainer.layer?.cornerRadius = 10
-        spinnerContainer.layer?.backgroundColor = PanelStyle.glassCard.cgColor
-        spinnerContainer.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
-        overlay.addSubview(spinnerContainer)
-
-        let spinner = NSProgressIndicator(frame: NSRect(
-            x: 10, y: 10, width: 20, height: 20
-        ))
-        spinner.style = .spinning
-        spinner.controlSize = .small
-        spinner.isIndeterminate = true
-        spinner.usesThreadedAnimation = true
-        spinner.appearance = NSAppearance(named: .vibrantDark)
-        spinner.startAnimation(nil)
-        spinnerContainer.addSubview(spinner)
+        loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
+        overlay.addSubview(loadingIndicator)
 
         let loadingLbl = NSTextField(labelWithString: "Loading…".localized)
         loadingLbl.textColor = PanelStyle.textSecondary
         loadingLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         loadingLbl.alignment = .center
-        loadingLbl.frame = NSRect(x: 0, y: spinnerContainer.frame.minY - 32,
+        loadingLbl.frame = NSRect(x: 0, y: loadingIndicator.frame.minY - 24,
                                    width: contentFrame.width, height: 18)
         loadingLbl.autoresizingMask = [.width, .minXMargin, .maxXMargin]
         overlay.addSubview(loadingLbl)
 
         root.addSubview(overlay)
         loadingOverlay = overlay
-        loadingSpinner = spinner
+        self.loadingIndicator = loadingIndicator
 
         imageInfoBar.frame = NSRect(x: 0, y: 0,
                                      width: bodyFrame.width, height: imageInfoBarH)
@@ -678,23 +665,28 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
             let html = """
             <html><head><style>
             body { margin: 0; display: flex; align-items: center; justify-content: center;
-                   background: #0a0a0a; height: 100vh; overflow: hidden; }
+                   background: #101113; height: 100vh; overflow: hidden; }
             img { max-width: 100%; max-height: 100%; object-fit: contain; }
             </style></head><body><img src="\(url.absoluteString)"></body></html>
             """
             let baseURL = url.isFileURL ? url.deletingLastPathComponent() : nil
             webView.loadHTMLString(html, baseURL: baseURL)
             showWebView()
+            // Keep the shared loader visible until WebKit reports that the
+            // fallback remote image document has finished.
+            return
         }
         hideLoading()
     }
 
     private func showLoading() {
         loadingOverlay?.isHidden = false
+        loadingIndicator?.setLoading(true)
     }
 
     private func hideLoading() {
         loadingOverlay?.isHidden = true
+        loadingIndicator?.setLoading(false)
     }
 
     private func renderMarkdownView(url: URL) {
@@ -1042,8 +1034,8 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         // we need to do on a preferences change is re-assert the dark base and
         // re-tint the hairline separators.
         guard let root = contentView else { return }
-        root.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
-        loadingOverlay?.layer?.backgroundColor = NSColor(white: 0.12, alpha: 1).cgColor
+        root.layer?.backgroundColor = PanelStyle.surface.cgColor
+        loadingOverlay?.layer?.backgroundColor = PanelStyle.surface.cgColor
         for bar in [toolbarBar, webFindBar, imageInfoBar] {
             for sub in bar.subviews where sub.frame.height == 1 {
                 sub.layer?.backgroundColor = PanelStyle.hairline.cgColor
@@ -1080,7 +1072,7 @@ private final class ImageFillView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = NSColor(white: 0.04, alpha: 1).cgColor
+        layer?.backgroundColor = PanelStyle.canvas.cgColor
         layer?.masksToBounds = true
 
         imageLayer.contentsGravity = .resizeAspect
@@ -1394,13 +1386,13 @@ private final class GitDiffWindow: NSWindow {
     private func buildLayout(snapshot: GitDiffService.Snapshot) {
         let root = NSView()
         root.wantsLayer = true
-        root.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        root.layer?.backgroundColor = PanelStyle.canvas.cgColor
         contentView = root
 
         let header = NSView()
         header.translatesAutoresizingMaskIntoConstraints = false
         header.wantsLayer = true
-        header.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        header.layer?.backgroundColor = PanelStyle.surface.cgColor
         root.addSubview(header)
 
         let pathLabel = NSTextField(labelWithString: snapshot.fileURL.path)
@@ -1414,7 +1406,7 @@ private final class GitDiffWindow: NSWindow {
         let summaryLabel = NSTextField(labelWithString: "\(snapshot.summary)  •  \(snapshot.relativePath)")
         summaryLabel.translatesAutoresizingMaskIntoConstraints = false
         summaryLabel.font = NSFont.systemFont(ofSize: 11)
-        summaryLabel.textColor = .secondaryLabelColor
+        summaryLabel.textColor = PanelStyle.textSecondary
         summaryLabel.lineBreakMode = .byTruncatingMiddle
         summaryLabel.maximumNumberOfLines = 1
         header.addSubview(summaryLabel)
@@ -1461,7 +1453,7 @@ private final class GitDiffWindow: NSWindow {
         titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         titleLabel.alignment = .center
         titleLabel.wantsLayer = true
-        titleLabel.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        titleLabel.layer?.backgroundColor = PanelStyle.surface.cgColor
         column.addSubview(titleLabel)
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -1732,7 +1724,7 @@ private final class GitDiffWindow: NSWindow {
             let attributed = NSMutableAttributedString(string: line, attributes: attributes)
             if cell.kind != .placeholder {
                 attributed.addAttributes(
-                    [.foregroundColor: NSColor.secondaryLabelColor],
+                    [.foregroundColor: PanelStyle.textSecondary],
                     range: NSRange(location: 0, length: min(5, attributed.length))
                 )
                 if cell.kind == .deleted {
