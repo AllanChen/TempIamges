@@ -40,6 +40,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
 
     private weak var loadingOverlay: NSView?
     private weak var loadingIndicator: ModularImageLoadingView?
+    private weak var loadFailedView: LoadFailedAnimationView?
 
     private let imageInfoBar = PanelStyle.makeBarBlur()
     private let imageInfoNameLabel = NSTextField(labelWithString: "")
@@ -423,6 +424,16 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         overlay.addSubview(loadingIndicator)
 
+        let loadFailedView = LoadFailedAnimationView(frame: NSRect(
+            x: (contentFrame.width - LoadFailedAnimationView.preferredSize.width) / 2,
+            y: (contentFrame.height - LoadFailedAnimationView.preferredSize.height) / 2 + 12,
+            width: LoadFailedAnimationView.preferredSize.width,
+            height: LoadFailedAnimationView.preferredSize.height
+        ))
+        loadFailedView.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
+        loadFailedView.isHidden = true
+        overlay.addSubview(loadFailedView)
+
         let loadingLbl = NSTextField(labelWithString: "Loading…".localized)
         loadingLbl.textColor = PanelStyle.textSecondary
         loadingLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
@@ -435,6 +446,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         root.addSubview(overlay)
         loadingOverlay = overlay
         self.loadingIndicator = loadingIndicator
+        self.loadFailedView = loadFailedView
 
         imageInfoBar.frame = NSRect(x: 0, y: 0,
                                      width: bodyFrame.width, height: imageInfoBarH)
@@ -681,12 +693,20 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
 
     private func showLoading() {
         loadingOverlay?.isHidden = false
+        loadFailedView?.isHidden = true
         loadingIndicator?.setLoading(true)
     }
 
     private func hideLoading() {
         loadingOverlay?.isHidden = true
         loadingIndicator?.setLoading(false)
+        loadFailedView?.isHidden = true
+    }
+
+    private func showLoadFailed() {
+        loadingOverlay?.isHidden = false
+        loadingIndicator?.setLoading(false)
+        loadFailedView?.isHidden = false
     }
 
     private func renderMarkdownView(url: URL) {
@@ -883,7 +903,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         imageInfoNameLabel.stringValue = info.filename
 
         var parts: [String] = []
-        if !info.formatName.isEmpty {
+        if info.formatName.isDisplayableValue {
             parts.append(info.formatName)
         }
         if let bytes = info.fileSize {
@@ -1052,7 +1072,11 @@ extension ContentPanel {
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        hideLoading()
+        showLoadFailed()
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        showLoadFailed()
     }
 }
 

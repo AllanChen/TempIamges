@@ -149,6 +149,43 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     override func sendEvent(_ event: NSEvent) {
+        // AppKit may deliver trackpad magnify events to the window's responder
+        // instead of the image view under the cursor. Route them explicitly so
+        // Focus, side-by-side, and slider all use the same viewport gesture.
+        if event.type == .magnify, let session {
+            let point = canvasContainer.convert(event.locationInWindow, from: nil)
+            if session.mode == .compare, session.comparisonStyle == .sideBySide {
+                if primaryViewport.frame.contains(point) {
+                    primaryViewport.magnify(with: event)
+                } else if secondaryViewport.frame.contains(point) {
+                    secondaryViewport.magnify(with: event)
+                }
+            } else if session.mode == .compare, session.comparisonStyle == .slider {
+                sliderViewport.magnify(with: event)
+            } else {
+                primaryViewport.magnify(with: event)
+            }
+            return
+        }
+        if event.type == .scrollWheel, let session {
+            let point = canvasContainer.convert(event.locationInWindow, from: nil)
+            if session.mode == .compare, session.comparisonStyle == .sideBySide {
+                if primaryViewport.frame.contains(point) {
+                    primaryViewport.scrollWheel(with: event)
+                    return
+                } else if secondaryViewport.frame.contains(point) {
+                    secondaryViewport.scrollWheel(with: event)
+                    return
+                }
+            } else if session.mode == .compare, session.comparisonStyle == .slider,
+                      sliderViewport.frame.contains(point) {
+                sliderViewport.scrollWheel(with: event)
+                return
+            } else if primaryViewport.frame.contains(point) {
+                primaryViewport.scrollWheel(with: event)
+                return
+            }
+        }
         if event.type == .leftMouseDown,
            let session,
            session.mode == .compare,
@@ -588,7 +625,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         var parts: [String] = []
         if let session, session.infos.count > 1 { parts.append("\(index + 1) / \(session.infos.count)") }
         if let size = info.dimensions { parts.append("\(Int(size.width)) × \(Int(size.height))") }
-        if !info.formatName.isEmpty { parts.append(info.formatName) }
+        if info.formatName.isDisplayableValue { parts.append(info.formatName) }
         if let bytes = info.fileSize { parts.append(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) }
         identityMetaLabel.stringValue = parts.joined(separator: "  ·  ")
     }
@@ -796,7 +833,8 @@ final class InspectImageViewport: NSView {
     private let loadingView = ModularImageLoadingView(frame: .zero)
     private var zoom: CGFloat = 1
     private var normalizedCenter = CGPoint(x: 0.5, y: 0.5)
-    private var lastDragPoint = CGPoint.zero
+    private var panOffset = CGPoint.zero
+    private var lastMouseLocation = CGPoint.zero
     private var dragging = false
     private var activeIndicatorVisible = false
 
@@ -822,6 +860,7 @@ final class InspectImageViewport: NSView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? {
         isInteractionEnabled ? super.hitTest(point) : nil
     }
@@ -856,6 +895,7 @@ final class InspectImageViewport: NSView {
 
     func fitToView() {
         zoom = 1
+        panOffset = .zero
         normalizedCenter = CGPoint(x: 0.5, y: 0.5)
         updateLayerGeometry()
         notify()
@@ -865,66 +905,78 @@ final class InspectImageViewport: NSView {
         guard let image, bounds.width > 0, bounds.height > 0 else { return }
         let fit = min(bounds.width / image.size.width, bounds.height / image.size.height)
         zoom = max(1, min(20, 1 / max(fit, 0.0001)))
+        panOffset = .zero
+        normalizedCenter = CGPoint(x: 0.5, y: 0.5)
         updateLayerGeometry()
         notify()
     }
 
     func apply(state: InspectViewportState, notify shouldNotify: Bool) {
+        guard let image else { return }
         zoom = max(1, min(20, state.zoomRelativeToFit))
         normalizedCenter = state.normalizedCenter
+        let rendered = renderedSize(for: image)
+        panOffset = CGPoint(x: (0.5 - normalizedCenter.x) * rendered.width,
+                            y: (0.5 - normalizedCenter.y) * rendered.height)
+        constrainPan(rendered: rendered)
         updateLayerGeometry()
         if shouldNotify { notify() }
     }
 
     override func scrollWheel(with event: NSEvent) {
         guard let image else { return }
-        if event.modifierFlags.contains(.command) || abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX) {
+        // Once zoomed, trackpad two-finger scrolling is panning (matching the
+        // Preview image viewer), not another zoom gesture.
+        if zoom > 1.0 {
+            panOffset.x -= event.scrollingDeltaX
+            panOffset.y -= event.scrollingDeltaY
+            constrainPan(rendered: renderedSize(for: image))
+        } else if event.modifierFlags.contains(.command) || abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX) {
             let point = convert(event.locationInWindow, from: nil)
             let before = imagePoint(at: point, image: image)
             let factor = pow(1.08, event.scrollingDeltaY)
             zoom = max(1, min(20, zoom * factor))
             setCenter(so: before, remainsAt: point, image: image)
-        } else {
-            pan(dx: -event.scrollingDeltaX, dy: event.scrollingDeltaY)
         }
         updateLayerGeometry()
         notify()
     }
 
     override func magnify(with event: NSEvent) {
+        window?.makeFirstResponder(self)
         zoom = max(1, min(20, zoom * (1 + event.magnification)))
         updateLayerGeometry()
         notify()
     }
 
     override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
         if event.clickCount == 2 {
             zoom > 1.01 ? fitToView() : setActualSize()
             return
         }
+        guard zoom > 1 else { return }
         dragging = true
-        lastDragPoint = convert(event.locationInWindow, from: nil)
+        lastMouseLocation = event.locationInWindow
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard dragging else { return }
-        let point = convert(event.locationInWindow, from: nil)
-        pan(dx: point.x - lastDragPoint.x, dy: point.y - lastDragPoint.y)
-        lastDragPoint = point
+        let location = event.locationInWindow
+        let delta = CGPoint(x: location.x - lastMouseLocation.x,
+                            y: location.y - lastMouseLocation.y)
+        panOffset.x += delta.x
+        panOffset.y += delta.y
+        lastMouseLocation = location
+        let rendered = renderedSize(for: image!)
+        constrainPan(rendered: rendered)
+        normalizedCenter = CGPoint(x: 0.5 - panOffset.x / max(rendered.width, 1),
+                                   y: 0.5 - panOffset.y / max(rendered.height, 1))
         updateLayerGeometry()
         notify()
     }
 
     override func mouseUp(with event: NSEvent) { dragging = false }
-
-    private func pan(dx: CGFloat, dy: CGFloat) {
-        guard let image else { return }
-        let rendered = renderedSize(for: image)
-        guard rendered.width > 0, rendered.height > 0 else { return }
-        normalizedCenter.x -= dx / rendered.width
-        normalizedCenter.y -= dy / rendered.height
-        clampCenter(rendered: rendered)
-    }
 
     private func updateLayerGeometry() {
         guard let image, bounds.width > 0, bounds.height > 0 else {
@@ -932,9 +984,9 @@ final class InspectImageViewport: NSView {
             return
         }
         let rendered = renderedSize(for: image)
-        clampCenter(rendered: rendered)
-        let centerX = bounds.midX + (0.5 - normalizedCenter.x) * rendered.width
-        let centerY = bounds.midY + (0.5 - normalizedCenter.y) * rendered.height
+        constrainPan(rendered: rendered)
+        let centerX = bounds.midX + panOffset.x
+        let centerY = bounds.midY + panOffset.y
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         imageLayer.bounds = NSRect(origin: .zero, size: rendered)
@@ -959,14 +1011,18 @@ final class InspectImageViewport: NSView {
         let rendered = renderedSize(for: image)
         normalizedCenter.x = 0.5 - (viewPoint.x - bounds.midX - (imagePoint.x - 0.5) * rendered.width) / rendered.width
         normalizedCenter.y = 0.5 - (viewPoint.y - bounds.midY - (imagePoint.y - 0.5) * rendered.height) / rendered.height
-        clampCenter(rendered: rendered)
+        panOffset = CGPoint(x: (0.5 - normalizedCenter.x) * rendered.width,
+                            y: (0.5 - normalizedCenter.y) * rendered.height)
+        constrainPan(rendered: rendered)
     }
 
-    private func clampCenter(rendered: CGSize) {
-        let xMargin = min(0.5, bounds.width / max(rendered.width, 1) / 2)
-        let yMargin = min(0.5, bounds.height / max(rendered.height, 1) / 2)
-        normalizedCenter.x = max(xMargin, min(1 - xMargin, normalizedCenter.x))
-        normalizedCenter.y = max(yMargin, min(1 - yMargin, normalizedCenter.y))
+    private func constrainPan(rendered: CGSize) {
+        let maxPanX = max(0, (rendered.width - bounds.width) / 2)
+        let maxPanY = max(0, (rendered.height - bounds.height) / 2)
+        panOffset.x = max(-maxPanX, min(maxPanX, panOffset.x))
+        panOffset.y = max(-maxPanY, min(maxPanY, panOffset.y))
+        normalizedCenter = CGPoint(x: 0.5 - panOffset.x / max(rendered.width, 1),
+                                   y: 0.5 - panOffset.y / max(rendered.height, 1))
     }
 
     private func notify() {
@@ -1319,8 +1375,10 @@ final class ImageInfoBlock: NSView {
         if let bytes = info.fileSize {
             rows.append(("File size".localized, ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)))
         }
-        rows.append(("Format".localized, info.formatName.isEmpty ? "—" : info.formatName))
-        if let color = metadata?.colorSpace { rows.append(("Color space".localized, color)) }
+        if info.formatName.isDisplayableValue { rows.append(("Format".localized, info.formatName)) }
+        if let color = metadata?.colorSpace, color.isDisplayableValue {
+            rows.append(("Color space".localized, color))
+        }
         if let depth = metadata?.bitDepth { rows.append(("Bit depth".localized, "\(depth)-bit")) }
         if let alpha = metadata?.hasAlpha {
             rows.append(("Alpha".localized, alpha ? "Yes".localized : "No".localized))

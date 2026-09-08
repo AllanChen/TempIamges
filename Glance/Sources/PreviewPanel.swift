@@ -1326,7 +1326,7 @@ class PreviewPanel: NSPanel {
             f.countStyle = .file
             parts.append(f.string(fromByteCount: bytes))
         }
-        if !info.formatName.isEmpty {
+        if info.formatName.isDisplayableValue {
             parts.append(info.formatName)
         }
         if info.isVideo, let dur = info.duration {
@@ -1346,7 +1346,7 @@ class PreviewPanel: NSPanel {
             f.countStyle = .file
             parts.append(f.string(fromByteCount: bytes))
         }
-        if !info.formatName.isEmpty {
+        if info.formatName.isDisplayableValue {
             parts.append(info.formatName)
         }
         return parts.joined(separator: " • ")
@@ -1748,6 +1748,7 @@ final class MediaTileView: NSView {
     private var mediaContainer: NSView!
     private let imageLayer = CALayer()
     private let loadingIndicator = ModularImageLoadingView(frame: .zero)
+    private let loadFailedView = LoadFailedAnimationView(frame: .zero)
     private let loadingLabel = NSTextField(labelWithString: "Searching…".localized)
     private var downloadBtn: NSButton?
     private let downloadLoadingIndicator = ModularImageLoadingView(frame: .zero)
@@ -1915,6 +1916,8 @@ final class MediaTileView: NSView {
             pathLabel = pathLbl
         }
 
+        loadFailedView.isHidden = true
+        mediaContainer.addSubview(loadFailedView)
         loadingIndicator.setLoading(true)
         addSubview(loadingIndicator)
 
@@ -2066,12 +2069,13 @@ final class MediaTileView: NSView {
                 width: side, height: side
             )
         }
-        let hasHint = info.disambiguationHint != nil && !info.disambiguationHint!.isEmpty
+        let hasHint = info.disambiguationHint?.isDisplayableValue == true
         switch style {
         case .singleCard:
             mediaContainer.frame = bounds
             imageLayer.frame = mediaContainer.bounds
             playerView?.frame = mediaContainer.bounds
+            loadFailedView.frame = centeredFailureFrame(in: mediaContainer.bounds)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             let gradH: CGFloat = hasHint ? 120 : 96
@@ -2117,6 +2121,7 @@ final class MediaTileView: NSView {
             mediaContainer.frame = NSRect(x: 0, y: 14, width: bounds.width, height: bounds.height - 14)
             imageLayer.frame = mediaContainer.bounds
             playerView?.frame = mediaContainer.bounds
+            loadFailedView.frame = centeredFailureFrame(in: mediaContainer.bounds)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             let gradientH: CGFloat = hasHint ? 100 : 76
@@ -2164,6 +2169,7 @@ final class MediaTileView: NSView {
 
     func setLoaded(_ media: LoadedMedia) {
         loadingIndicator.setLoading(false)
+        loadFailedView.isHidden = true
         loadingLabel.isHidden = true
         overlayGradient.isHidden = false
         filenameLabel?.isHidden = false
@@ -2191,6 +2197,10 @@ final class MediaTileView: NSView {
 
     func setFailed(message: String? = nil) {
         loadingIndicator.setLoading(false)
+        loadFailedView.isHidden = false
+        placeholderIconView?.isHidden = true
+        imageLayer.contents = nil
+        loadingLabel.isHidden = true
         overlayGradient.isHidden = false
         placeholderIconView?.alphaValue = 0.35
 
@@ -2220,6 +2230,14 @@ final class MediaTileView: NSView {
                 pathLabel?.isHidden = false
             }
         }
+    }
+
+    private func centeredFailureFrame(in bounds: NSRect) -> NSRect {
+        let side = min(LoadFailedAnimationView.preferredSize.width,
+                       max(96, min(bounds.width, bounds.height) * 0.72))
+        return NSRect(x: bounds.midX - side / 2,
+                      y: bounds.midY - side / 2 + 8,
+                      width: side, height: side)
     }
 
     func updateInfo(_ newInfo: MediaInfo) {
@@ -2321,14 +2339,14 @@ final class MediaTileView: NSView {
         case .markdown, .text, .pdf:
             filenameLabel?.stringValue = info.filename
             var pieces: [String] = []
-            if !info.formatName.isEmpty { pieces.append(info.formatName) }
+            if info.formatName.isDisplayableValue { pieces.append(info.formatName) }
             if let bytes = info.fileSize {
                 let f = ByteCountFormatter()
                 f.countStyle = .file
                 pieces.append(f.string(fromByteCount: bytes))
             }
             let metaLine = pieces.joined(separator: " · ")
-            if let hint = info.disambiguationHint, !hint.isEmpty {
+            if let hint = info.disambiguationHint, hint.isDisplayableValue {
                 let hintText = String(format: "in %@".localized, hint)
                 dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
             } else {
@@ -2350,14 +2368,14 @@ final class MediaTileView: NSView {
         case .other:
             filenameLabel?.stringValue = info.filename
             var pieces: [String] = []
-            if !info.formatName.isEmpty { pieces.append(info.formatName) }
+            if info.formatName.isDisplayableValue { pieces.append(info.formatName) }
             if let bytes = info.fileSize {
                 let f = ByteCountFormatter()
                 f.countStyle = .file
                 pieces.append(f.string(fromByteCount: bytes))
             }
             let metaLine = pieces.joined(separator: " · ")
-            if let hint = info.disambiguationHint, !hint.isEmpty {
+            if let hint = info.disambiguationHint, hint.isDisplayableValue {
                 let hintText = String(format: "in %@".localized, hint)
                 dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
             } else {
@@ -2377,7 +2395,7 @@ final class MediaTileView: NSView {
                 pieces.append(f.string(fromByteCount: bytes))
             }
             let metaLine = pieces.joined(separator: " · ")
-            if let hint = info.disambiguationHint, !hint.isEmpty {
+            if let hint = info.disambiguationHint, hint.isDisplayableValue {
                 let hintText = String(format: "in %@".localized, hint)
                 dimsLabel?.stringValue = pieces.isEmpty ? hintText : "\(metaLine)\n\(hintText)"
             } else {
@@ -2403,10 +2421,10 @@ final class MediaTileView: NSView {
             f.countStyle = .file
             pieces.append(f.string(fromByteCount: bytes))
         }
-        if !info.formatName.isEmpty { pieces.append(info.formatName) }
+        if info.formatName.isDisplayableValue { pieces.append(info.formatName) }
 
         let metaLine = pieces.joined(separator: " · ")
-        if let hint = info.disambiguationHint, !hint.isEmpty {
+        if let hint = info.disambiguationHint, hint.isDisplayableValue {
             let hintText = String(format: "in %@".localized, hint)
             dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
         } else {

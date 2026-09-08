@@ -1,6 +1,14 @@
 import Foundation
 
 extension String {
+    /// Values coming from metadata/API payloads sometimes arrive as literal
+    /// strings such as "null" instead of a JSON null. They are not useful UI
+    /// content and should be omitted rather than rendered to the user.
+    var isDisplayableValue: Bool {
+        let value = trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return !value.isEmpty && value != "null" && value != "nil" && value != "<null>"
+    }
+
     var localized: String {
         LanguageService.translation(for: self)
     }

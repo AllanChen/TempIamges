@@ -6,6 +6,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
 
     private let webView: WKWebView
     private let loadingIndicator = ModularImageLoadingView(frame: .zero)
+    private let loadFailedView = LoadFailedAnimationView(frame: .zero)
     private let headerHeight: CGFloat = 48
     private weak var titleLabel: NSTextField?
 
@@ -62,6 +63,16 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
         )
         loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         root.addSubview(loadingIndicator)
+
+        loadFailedView.frame = NSRect(
+            x: webFrame.midX - LoadFailedAnimationView.preferredSize.width / 2,
+            y: webFrame.midY - LoadFailedAnimationView.preferredSize.height / 2,
+            width: LoadFailedAnimationView.preferredSize.width,
+            height: LoadFailedAnimationView.preferredSize.height
+        )
+        loadFailedView.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
+        loadFailedView.isHidden = true
+        root.addSubview(loadFailedView)
 
         contentView = root
     }
@@ -138,11 +149,17 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
     }
 
     private func showLoading() {
+        loadFailedView.isHidden = true
         loadingIndicator.setLoading(true)
     }
 
     private func hideLoading() {
         loadingIndicator.setLoading(false)
+    }
+
+    private func showLoadFailed() {
+        loadingIndicator.setLoading(false)
+        loadFailedView.isHidden = false
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -154,11 +171,11 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        hideLoading()
+        showLoadFailed()
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        hideLoading()
+        showLoadFailed()
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -408,6 +425,16 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
         let userID = String(session.user.id)
         let expires = formattedDate(session.expiresAt)
         let initial = accountInitial(from: displayName)
+        let statusLabel = htmlEscape("Status".localized)
+        let statusValue = htmlEscape(session.user.status.capitalized.localized)
+        let expiresLabel = htmlEscape("Session expires".localized)
+        let expiresValue = htmlEscape(expires)
+        let statusRow = session.user.status.isDisplayableValue
+            ? "<div class=\"row\"><span class=\"label\">\(statusLabel)</span><span class=\"value\">\(statusValue)</span></div>"
+            : ""
+        let expiresRow = expires.isDisplayableValue
+            ? "<div class=\"row\"><span class=\"label\">\(expiresLabel)</span><span class=\"value\">\(expiresValue)</span></div>"
+            : ""
         let html = """
         <!DOCTYPE html>
         <html>
@@ -497,8 +524,8 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
                 <div class="info">
                     <div class="row"><span class="label">\(htmlEscape("Provider".localized))</span><span class="value">\(htmlEscape(provider))</span></div>
                     <div class="row"><span class="label">\(htmlEscape("User ID".localized))</span><span class="value">\(htmlEscape(userID))</span></div>
-                    <div class="row"><span class="label">\(htmlEscape("Status".localized))</span><span class="value">\(htmlEscape(session.user.status.capitalized.localized))</span></div>
-                    <div class="row"><span class="label">\(htmlEscape("Session expires".localized))</span><span class="value">\(htmlEscape(expires))</span></div>
+                    \(statusRow)
+                    \(expiresRow)
                 </div>
                 <button class="btn" onclick="window.webkit.messageHandlers.loginHandler.postMessage({type:'logout'})">\(htmlEscape("Sign out".localized))</button>
             </div>

@@ -89,6 +89,33 @@ final class ModularImageLoadingView: NSView {
     }
 }
 
+/// Shared animated failure artwork used wherever a preview cannot be loaded.
+/// The GIF is bundled so AppKit can advance only the airplane and skull layers
+/// while the rest of the frosted-black composition remains static.
+final class LoadFailedAnimationView: NSImageView {
+    static let preferredSize = NSSize(width: 170, height: 170)
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        imageScaling = .scaleProportionallyUpOrDown
+        animates = true
+        imageAlignment = .alignCenter
+        isEditable = false
+        image = Self.loadImage()
+        setAccessibilityLabel("Load failed".localized)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private static func loadImage() -> NSImage? {
+        guard let url = Bundle.main.url(forResource: "LoadFailed", withExtension: "gif") else {
+            Logger.error("LoadFailed.gif is missing from the app bundle")
+            return nil
+        }
+        return NSImage(contentsOf: url)
+    }
+}
+
 /// Shared visual design tokens for Glance's floating panels and content
 /// windows. Centralises the frosted-dark-glass palette, type scale, and
 /// frosted-base builder so PreviewPanel, ContentPanel and ContentViewerWindow
