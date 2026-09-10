@@ -72,6 +72,9 @@ class StatusBarController: NSObject, NSMenuDelegate {
     private func createMenu() -> NSMenu {
         menu = NSMenu()
         menu.delegate = self
+        // Keep the menu on the app's darkroom chrome even when the system is
+        // in light mode: dark frosted material instead of a light menu.
+        menu.appearance = NSAppearance(named: .darkAqua)
 
         let preferencesItem = NSMenuItem(title: "Preferences...".localized, action: #selector(openPreferences), keyEquivalent: ",")
         preferencesItem.target = self

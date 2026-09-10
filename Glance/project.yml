@@ -26,9 +26,13 @@ targets:
     type: application
     platform: macOS
     sources:
-      - Sources
-    resources:
-      - Resources
+      - path: Sources
+        excludes:
+          - "*.bak"
+      - path: Resources
+        buildPhase: resources
+      - path: LoadFailed.gif
+        buildPhase: resources
     dependencies:
       - package: Highlightr
     settings:

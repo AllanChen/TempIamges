@@ -20,13 +20,21 @@ class SelectedTextExtractor {
     }
 
     func extractSelection(completion: @escaping (SelectionResult?) -> Void) {
+        extractSelection(fromPID: nil, completion: completion)
+    }
+
+    /// `fromPID` scopes the AX read to a specific source application. This is
+    /// required on repeat activations: after our own windows take focus, the
+    /// system-wide focused element no longer holds the user's selection, but
+    /// the source app's focused element still does.
+    func extractSelection(fromPID pid: pid_t?, completion: @escaping (SelectionResult?) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
 
-            if let axResult = self.readViaAXWithTimeout(timeout: 1.0) {
+            if let axResult = self.readViaAXWithTimeout(timeout: 1.0, fromPID: pid) {
                 DispatchQueue.main.async { completion(axResult) }
                 return
             }
@@ -68,11 +76,11 @@ class SelectedTextExtractor {
 
     // MARK: - AX path (native Cocoa apps)
 
-    private func readViaAXWithTimeout(timeout: TimeInterval) -> SelectionResult? {
+    private func readViaAXWithTimeout(timeout: TimeInterval, fromPID: pid_t? = nil) -> SelectionResult? {
         let semaphore = DispatchSemaphore(value: 0)
         var result: SelectionResult?
         DispatchQueue.global(qos: .userInitiated).async {
-            result = self.readViaAX()
+            result = self.readViaAX(fromPID: fromPID)
             semaphore.signal()
         }
         let waitResult = semaphore.wait(timeout: .now() + timeout)
@@ -83,8 +91,13 @@ class SelectedTextExtractor {
         return result
     }
 
-    private func readViaAX() -> SelectionResult? {
-        let systemWide = AXUIElementCreateSystemWide()
+    private func readViaAX(fromPID: pid_t? = nil) -> SelectionResult? {
+        let systemWide: AXUIElement
+        if let fromPID {
+            systemWide = AXUIElementCreateApplication(fromPID)
+        } else {
+            systemWide = AXUIElementCreateSystemWide()
+        }
 
         var focusedElement: CFTypeRef?
         let focusResult = AXUIElementCopyAttributeValue(

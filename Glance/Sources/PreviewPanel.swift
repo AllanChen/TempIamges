@@ -1453,6 +1453,12 @@ class PreviewPanel: NSPanel {
             onInspectImages?(currentInfos, loaded, index)
             return
         }
+        if info.kind == .video {
+            let videos = currentInfos.filter { $0.kind == .video }
+            let selectedVideoIndex = videos.firstIndex { $0.url == info.url } ?? 0
+            onInspectVideos?(videos.isEmpty ? [info] : videos, selectedVideoIndex)
+            return
+        }
         contentPanelOpenedByTileClick = true
         let panel = ContentPanel.shared
         panel.load(info: info)

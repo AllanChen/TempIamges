@@ -410,7 +410,7 @@ class PathDetector {
 
     private func resolveCandidate(_ rawCandidate: String) -> DetectedPath? {
         var candidate = rawCandidate.trimmingCharacters(in: .whitespacesAndNewlines)
-        while let last = candidate.last, ",.;!?\"')]}\\".contains(last) {
+        while let last = candidate.last, ",.;!?\"')]}\\，。；：！？、".contains(last) {
             candidate.removeLast()
         }
         guard !candidate.isEmpty else { return nil }
@@ -551,13 +551,46 @@ class PathDetector {
     }
 
     private func mediaExtension(of candidate: String) -> String {
-        // Strip query string before pathExtension lookup, since the http
-        // regex captures `?...` for remote URLs.
+        // Prefer the path extension when present.
         var withoutQuery = candidate.split(separator: "?", maxSplits: 1).first.map(String.init) ?? candidate
         while withoutQuery.hasSuffix("\\") {
             withoutQuery.removeLast()
         }
-        return (withoutQuery as NSString).pathExtension.lowercased()
+        let pathExtension = (withoutQuery as NSString).pathExtension.lowercased()
+        if !pathExtension.isEmpty { return pathExtension }
+
+        // CDNs frequently serve extensionless paths and put the output format
+        // in the query. Support both standard `format=jpg` (pbs.twimg.com) and
+        // path-like transforms such as `/format/webp|...` (xhscdn.com).
+        if let queryStart = candidate.firstIndex(of: "?") {
+            let query = String(candidate[candidate.index(after: queryStart)...]).lowercased()
+            let patterns = [
+                #"(?:^|[&/])(?:format|fm|ext)[=/]([a-z0-9]+)"#,
+                #"(?:^|[&/])(?:format|fm|ext)=([a-z0-9]+)"#,
+            ]
+            for pattern in patterns {
+                guard let regex = try? NSRegularExpression(pattern: pattern),
+                      let match = regex.firstMatch(in: query, range: NSRange(query.startIndex..., in: query)),
+                      let range = Range(match.range(at: 1), in: query) else { continue }
+                return String(query[range])
+            }
+        }
+        return Self.extensionFromBangSuffix(of: withoutQuery)
+    }
+
+    /// Xiaohongshu-style CDN marker: the basename ends with a `!` section
+    /// carrying the real format, e.g. `...!nc_n_webp_mw_1`, `...!nd_jpg_2`.
+    /// Only the `!` tail is scanned so ordinary webpage slugs containing a
+    /// format word (e.g. "my-png-collection") are not misclassified.
+    static func extensionFromBangSuffix(of path: String) -> String {
+        guard let bang = path.lastIndex(of: "!") else { return "" }
+        let tail = path[path.index(after: bang)...].lowercased()
+        // Longer tokens first so "jpeg" wins over "jpg".
+        for token in ["jpeg", "webp", "heic", "heif", "tiff", "webm", "png",
+                      "jpg", "gif", "bmp", "mp4", "mov", "m4v", "mkv", "avi"] {
+            if tail.contains(token) { return token }
+        }
+        return ""
     }
 
     private func unwrapLines(_ text: String) -> String {

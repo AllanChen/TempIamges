@@ -15,6 +15,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var fileNameResolver: FileNameResolver?
     private var imageInspectWindow: ImageInspectWindow?
     private var videoCompareWindow: VideoCompareWindow?
+    /// Finder/LaunchServices can split one multi-selection into several open
+    /// callbacks (notably when extensions/UTIs differ). Coalesce the burst so
+    /// later batches cannot replace the earlier images with a two-item Compare.
+    private var pendingOpenURLs: [URL] = []
+    private var pendingOpenWorkItem: DispatchWorkItem?
     /// Strong refs to viewer windows opened from a single-hit shortcut so
     /// they outlive the activation that created them.
     private var viewerWindows: [ContentViewerWindow] = []
@@ -30,6 +35,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     /// stole focus) and pressed Control again on the original selection,
     /// some apps clear the selection on focus loss.
     private var lastSelectedText: String?
+    /// The app that owned the selection before any Glance window took focus.
+    /// Repeat hotkey presses re-read the selection from THIS app via scoped AX,
+    /// instead of falling through to whatever happens to be on the clipboard.
+    private var lastSourceApp: NSRunningApplication?
     private var hasShownFDAAlertThisSession = false
     private var activeRequestID: UInt64 = 0
     private var activeSelectionText: String?
@@ -77,6 +86,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         if pathDetector == nil || imageLoader == nil {
             setupComponents()
         }
+        pendingOpenURLs.append(contentsOf: urls)
+        pendingOpenWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.flushPendingOpenURLs() }
+        pendingOpenWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: item)
+    }
+
+    private func flushPendingOpenURLs() {
+        pendingOpenWorkItem = nil
+        var seen = Set<String>()
+        let urls = pendingOpenURLs.filter { url in
+            let key = url.isFileURL ? url.standardizedFileURL.path : url.absoluteString
+            return seen.insert(key).inserted
+        }
+        pendingOpenURLs.removeAll()
+
         let detector = pathDetector ?? PathDetector()
         let paths = urls.map { detector.localKind(for: $0.path) }
             .filter {
@@ -85,6 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             }
         guard !paths.isEmpty else { return }
 
+        Logger.info("AppDelegate: opening \(paths.count) Finder media item(s) as one batch")
         activeRequestID &+= 1
         activeRequestStartedAt = Date()
         activeSourceAppName = nil
@@ -104,8 +130,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         previewPanel?.onInspectImages = { [weak self] infos, loaded, focusedIndex in
             self?.openImageInspect(infos: infos, loaded: loaded, focusedIndex: focusedIndex)
         }
-        previewPanel?.onInspectVideos = { [weak self] infos, _ in
-            self?.openVideoCompare(infos: infos)
+        previewPanel?.onInspectVideos = { [weak self] infos, focusedIndex in
+            self?.openVideoCompare(infos: infos, focusedIndex: focusedIndex)
         }
         previewPanel?.onDismiss = { [weak self] in self?.invalidateActiveRequest() }
         errorTooltip = ErrorTooltip()
@@ -298,7 +324,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             return
         }
 
-        selectedTextExtractor?.extractSelection { [weak self] result in
+        selectedTextExtractor?.extractSelection(fromPID: sourceAppPIDForSelection()) { [weak self] result in
             guard let self = self, requestID == self.activeRequestID else { return }
 
             let selected: String
@@ -515,6 +541,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             return
         }
 
+        // Video selections use the dedicated Inspect window directly: one
+        // video opens Focus, while a pair opens Side by Side immediately.
+        if infos.allSatisfy({ $0.kind == .video }) {
+            successfulRequestID = requestID
+            PeekDiagnostics.recordSuccess(latency: Date().timeIntervalSince(activeRequestStartedAt))
+            openVideoCompare(infos: infos, focusedIndex: 0)
+            return
+        }
+
+        // Mixed selections that include any media open in the large Inspect
+        // window directly (it previews files inline too); only pure document
+        // sets keep the small Preview peek.
+        if infos.contains(where: { $0.kind == .image || $0.kind == .video }) {
+            let loaded = Array<LoadedMedia?>(repeating: nil, count: infos.count)
+            successfulRequestID = requestID
+            PeekDiagnostics.recordSuccess(latency: Date().timeIntervalSince(activeRequestStartedAt))
+            openImageInspect(infos: infos, loaded: loaded, focusedIndex: 0,
+                             preferredMode: infos.count > 1 ? .browse : .focus)
+            return
+        }
+
         // Show panel immediately with loading skeletons; populate per-item as
         // the loader streams results back.
         previewPanel?.showLoading(infos: infos, at: position)
@@ -628,19 +675,47 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                     preferredMode: preferredMode)
     }
 
-    private func openVideoCompare(infos: [MediaInfo]) {
-        guard infos.count == 2, infos.allSatisfy({ $0.kind == .video }) else { return }
+    private func openVideoCompare(infos: [MediaInfo], focusedIndex: Int = 0) {
+        guard !infos.isEmpty, infos.allSatisfy({ $0.kind == .video }) else { return }
         previewPanel?.closeWithoutAffectingContent()
         videoCompareWindow?.close()
-        let window = VideoCompareWindow(infos: infos)
+        let window = VideoCompareWindow(infos: infos, focusedIndex: focusedIndex, startsInCompare: infos.count == 2)
+        // Frame captures hand off to the image inspect window: first capture
+        // opens it, subsequent ones append to its filmstrip.
+        window?.onCaptureFrame = { [weak self] url in
+            self?.openCapturedFrame(url: url)
+        }
         videoCompareWindow = window
         NSApp.activate(ignoringOtherApps: true)
         window?.center()
         window?.makeKeyAndOrderFront(nil)
     }
 
+    /// Route a captured video frame into Image Inspect: append to the filmstrip
+    /// when a session is open, otherwise open a fresh window.
+    private func openCapturedFrame(url: URL) {
+        let info = MediaInfo(url: url, isLocal: true, kind: .image)
+        if let window = imageInspectWindow, window.isVisible {
+            window.appendImage(info: info)
+        } else {
+            openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
+        }
+        // Capture is initiated by a click in Video Inspect. Reorder once now
+        // and once on the next run-loop turn, after AppKit finishes the source
+        // button event, so Video Inspect cannot reclaim the front position.
+        NSApp.activate(ignoringOtherApps: true)
+        imageInspectWindow?.orderFrontRegardless()
+        imageInspectWindow?.makeKey()
+        DispatchQueue.main.async { [weak self] in
+            self?.imageInspectWindow?.orderFrontRegardless()
+            self?.imageInspectWindow?.makeKey()
+        }
+    }
+
     private static func preferredInspectMode(for imageCount: Int) -> ImageInspectSession.Mode {
-        imageCount == 2 ? .compare : (imageCount > 2 ? .browse : .focus)
+        // Only an exact pair starts in Compare. Larger selections open one
+        // focused image with the filmstrip; users choose the pair themselves.
+        imageCount == 2 ? .compare : .focus
     }
 
     private func normalizedSelection(_ text: String) -> String {
@@ -663,7 +738,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         activeSelectionText = nil
         activeSourceAppName = nil
         isCheckingVisibleSelection = false
-        lastSelectedText = nil
+        // Keep lastSelectedText/lastSourceApp: closing a window does not mean
+        // the user's selection in the source app disappeared.
+    }
+
+    /// PID of the app whose selection should be read. When one of our windows
+    /// is frontmost, the remembered source app still owns the selection.
+    private func sourceAppPIDForSelection() -> pid_t? {
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        let isGlanceFrontmost = frontmost?.bundleIdentifier == Bundle.main.bundleIdentifier
+        if !isGlanceFrontmost, let frontmost {
+            lastSourceApp = frontmost
+        }
+        let pid = isGlanceFrontmost ? lastSourceApp?.processIdentifier : frontmost?.processIdentifier
+        return pid.map { pid_t($0) }
     }
 
     /// Spawn a ContentViewerWindow and own it until the user closes it.

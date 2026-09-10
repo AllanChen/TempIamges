@@ -1,6 +1,104 @@
 import AppKit
 import AVFoundation
+import CryptoKit
 import ImageIO
+
+/// Persistent cache shared by remote images and videos. All filesystem and
+/// download work stays off the main thread.
+final class RemoteMediaDiskCache {
+    static let shared = RemoteMediaDiskCache()
+
+    private let queue = DispatchQueue(label: "com.glance.remote-media-cache", qos: .utility)
+    private let directory: URL
+    private let session: URLSession
+
+    private init() {
+        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        directory = base.appendingPathComponent("Glance/RemoteMedia", isDirectory: true)
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 120
+        session = URLSession(configuration: config)
+    }
+
+    func cachedURL(for remoteURL: URL, completion: @escaping (URL?) -> Void) {
+        queue.async {
+            let url = self.cacheURL(for: remoteURL)
+            let exists = FileManager.default.fileExists(atPath: url.path)
+            DispatchQueue.main.async { completion(exists ? url : nil) }
+        }
+    }
+
+    func store(_ data: Data, for remoteURL: URL) {
+        queue.async {
+            do {
+                try FileManager.default.createDirectory(at: self.directory,
+                                                        withIntermediateDirectories: true)
+                try data.write(to: self.cacheURL(for: remoteURL), options: .atomic)
+            } catch {
+                Logger.warning("Remote cache write failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func downloadIfNeeded(_ remoteURL: URL, completion: ((URL?) -> Void)? = nil) {
+        cachedURL(for: remoteURL) { [weak self] cached in
+            if let cached {
+                completion?(cached)
+                return
+            }
+            guard let self else { completion?(nil); return }
+            // Stream large videos to a temporary file instead of holding the
+            // entire response in memory.
+            self.session.downloadTask(with: remoteURL) { temporaryURL, response, error in
+                guard let temporaryURL, error == nil,
+                      (response as? HTTPURLResponse).map({ $0.statusCode < 400 }) ?? true else {
+                    DispatchQueue.main.async { completion?(nil) }
+                    return
+                }
+                do {
+                    try FileManager.default.createDirectory(at: self.directory,
+                                                            withIntermediateDirectories: true)
+                    let target = self.cacheURL(for: remoteURL)
+                    try? FileManager.default.removeItem(at: target)
+                    try FileManager.default.moveItem(at: temporaryURL, to: target)
+                    DispatchQueue.main.async { completion?(target) }
+                } catch {
+                    Logger.warning("Remote download cache failed: \(error.localizedDescription)")
+                    DispatchQueue.main.async { completion?(nil) }
+                }
+            }.resume()
+        }
+    }
+
+    func clear() {
+        queue.async { try? FileManager.default.removeItem(at: self.directory) }
+    }
+
+    private func cacheURL(for remoteURL: URL) -> URL {
+        let digest = SHA256.hash(data: Data(remoteURL.absoluteString.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+        let ext = Self.inferredExtension(for: remoteURL)
+        return directory.appendingPathComponent(ext.isEmpty ? digest : "\(digest).\(ext)")
+    }
+
+    private static func inferredExtension(for url: URL) -> String {
+        let pathExtension = url.pathExtension.lowercased()
+        if !pathExtension.isEmpty { return pathExtension }
+        let query = url.query?.lowercased() ?? ""
+        let patterns = [
+            #"(?:^|[&/])(?:format|fm|ext)[=/]([a-z0-9]+)"#,
+            #"(?:^|[&/])(?:format|fm|ext)=([a-z0-9]+)"#,
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: query, range: NSRange(query.startIndex..., in: query)),
+                  let range = Range(match.range(at: 1), in: query) else { continue }
+            return String(query[range])
+        }
+        return PathDetector.extensionFromBangSuffix(of: url.path)
+    }
+}
 
 struct MediaInfo {
     let url: URL
@@ -227,7 +325,8 @@ class ImageLoader {
         if url.isFileURL {
             loadLocalImage(from: url, cacheKey: cacheKey, completion: completion)
         } else {
-            loadRemoteImage(from: url, cacheKey: cacheKey, completion: completion)
+            loadRemoteCachedImage(from: url, cacheKey: cacheKey, fullResolution: false,
+                                  completion: completion)
         }
     }
 
@@ -253,7 +352,7 @@ class ImageLoader {
                 }
             }
         } else {
-            loadRemoteOriginal(from: url, cacheKey: cacheKey) { [weak self] image in
+            loadRemoteCachedImage(from: url, cacheKey: cacheKey, fullResolution: true) { [weak self] image in
                 guard let self = self, let image = image else {
                     completion(nil)
                     return
@@ -328,6 +427,39 @@ class ImageLoader {
         }
     }
 
+    /// Prefer persistent cache. On first use, fetch from the network and show
+    /// immediately; loadRemoteOriginal stores the bytes asynchronously for
+    /// future sessions.
+    private func loadRemoteCachedImage(from url: URL, cacheKey: NSString,
+                                       fullResolution: Bool,
+                                       completion: @escaping (NSImage?) -> Void) {
+        RemoteMediaDiskCache.shared.cachedURL(for: url) { [weak self] cachedURL in
+            guard let self else { completion(nil); return }
+            if let cachedURL {
+                DispatchQueue.global(qos: .userInitiated).async {
+                    guard let image = NSImage(contentsOf: cachedURL) else {
+                        DispatchQueue.main.async {
+                            fullResolution
+                                ? self.loadRemoteOriginal(from: url, cacheKey: cacheKey, completion: completion)
+                                : self.loadRemoteImage(from: url, cacheKey: cacheKey, completion: completion)
+                        }
+                        return
+                    }
+                    self.cacheOriginal(image, key: cacheKey)
+                    let output = fullResolution ? image : self.resizeImage(image, maxDimension: 800)
+                    if !fullResolution {
+                        self.imageCache.setObject(output, forKey: cacheKey, cost: self.cost(of: output))
+                    }
+                    DispatchQueue.main.async { completion(output) }
+                }
+            } else if fullResolution {
+                self.loadRemoteOriginal(from: url, cacheKey: cacheKey, completion: completion)
+            } else {
+                self.loadRemoteImage(from: url, cacheKey: cacheKey, completion: completion)
+            }
+        }
+    }
+
     private func loadRemoteOriginal(from url: URL, cacheKey: NSString,
                                     completion: @escaping (NSImage?) -> Void) {
         if let cached = originalImageCache.object(forKey: cacheKey) {
@@ -374,6 +506,7 @@ class ImageLoader {
                 finish(nil)
                 return
             }
+            RemoteMediaDiskCache.shared.store(data, for: url)
             self.cacheOriginal(image, key: cacheKey)
             finish(image)
         }
@@ -413,5 +546,6 @@ class ImageLoader {
         imageCache.removeAllObjects()
         originalImageCache.removeAllObjects()
         URLCache.shared.removeAllCachedResponses()
+        RemoteMediaDiskCache.shared.clear()
     }
 }

@@ -99,7 +99,7 @@ Glance/
 | 文件名解析 | `FileNameResolver.swift` | 使用 Spotlight 查询裸文件名/相对路径，必要时执行受限文件系统回退搜索。 |
 | 解析缓存 | `FilenameCache.swift` | 将裸文件名解析结果持久化到 Application Support，最多保留 500 条。 |
 | 媒体加载 | `ImageLoader.swift` | 异步加载图片、缓存缩略图、探测视频尺寸/时长，生成内容卡片信息。 |
-| 图片检查 | `ImageInspectWindow.swift` | 图片 Focus、同组 Browse、双图并排/滑杆 Compare、同步视口和技术属性差异。 |
+| 图片检查 | `ImageInspectWindow.swift` | 混合内容 Focus/Browse（图片 + 行内预览 txt/Markdown/PDF/网页）、双图并排/滑杆 Compare、同步视口、技术属性差异、拖入追加/替换、旋转/复制/快速保存/导出 PNG/JPG/WebP 和 OCR 文字识别。 |
 | 本地诊断 | `PeekDiagnostics.swift` | 仅在本机记录匿名聚合计数与首帧耗时，不保存文本、路径或 URL。 |
 | 预览面板 | `PreviewPanel.swift` | 浮动 `NSPanel`，负责单卡片、网格、视频播放器、文件卡片和点击行为。 |
 | 内容面板 | `ContentPanel.swift` | 非激活浮动内容面板，显示网页、Markdown、文本、PDF 和图片详情。 |
