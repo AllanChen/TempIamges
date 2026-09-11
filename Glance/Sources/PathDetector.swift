@@ -1,4 +1,52 @@
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
+
+/// Image formats Glance can route into its image pipeline. The explicit
+/// aliases cover common web, design, scientific, icon, texture, and camera
+/// RAW extensions; ImageIO's runtime type list automatically adds formats
+/// introduced by newer macOS releases without requiring an app update.
+enum ImageFormatSupport {
+    private static let explicitExtensions: Set<String> = [
+        // Web and general-purpose raster
+        "jpg", "jpeg", "jpe", "jfif", "png", "apng", "gif", "webp",
+        "heic", "heif", "heics", "avif", "avifs", "jxl",
+        "bmp", "dib", "tif", "tiff",
+        // JPEG 2000 and multi-picture
+        "jp2", "j2k", "jpf", "jpx", "jpm", "mj2", "mpo",
+        // Vector, design, HDR, and legacy workstation formats
+        "svg", "svgz", "psd", "psb", "ai", "eps", "exr", "hdr", "rgbe",
+        "tga", "targa", "sgi", "rgb", "rgba", "bw", "pict", "pct", "pic",
+        // Icons and GPU textures
+        "ico", "cur", "icns", "dds", "ktx", "ktx2", "astc", "pvr",
+        // Portable anymap family
+        "pbm", "pgm", "ppm", "pnm",
+        // Camera RAW families
+        "3fr", "ari", "arw", "bay", "bmq", "cap", "cr2", "cr3", "crw",
+        "cs1", "dc2", "dcr", "dng", "drf", "eip", "erf", "fff", "iiq",
+        "k25", "kdc", "mdc", "mef", "mos", "mrw", "nef", "nrw", "obm",
+        "orf", "pef", "ptx", "pxn", "qtk", "raf", "raw", "rdc", "rw2",
+        "rwl", "rwz", "sr2", "srf", "srw", "x3f",
+    ]
+
+    private static let runtimeExtensions: Set<String> = {
+        let identifiers = CGImageSourceCopyTypeIdentifiers() as? [String] ?? []
+        return Set(identifiers.compactMap { UTType($0)?.preferredFilenameExtension?.lowercased() })
+    }()
+
+    static let extensions = explicitExtensions.union(runtimeExtensions)
+
+    static func supports(extension pathExtension: String) -> Bool {
+        let ext = pathExtension.lowercased()
+        guard !ext.isEmpty else { return false }
+        if extensions.contains(ext) { return true }
+        guard let type = UTType(filenameExtension: ext), type.conforms(to: .image) else {
+            return false
+        }
+        let decoders = CGImageSourceCopyTypeIdentifiers() as? [String] ?? []
+        return decoders.contains(type.identifier)
+    }
+}
 
 enum DetectedPath {
     case localImage(URL)
@@ -12,8 +60,8 @@ enum DetectedPath {
     case localPDF(URL)
     case remotePDF(URL)
     case webPage(URL)
-    /// "Other" file types — known files we can't preview inline (doc, psd,
-    /// zip, mp3, …). They show as a generic icon tile and click reveals
+    /// "Other" file types — known files we can't preview inline (doc, zip,
+    /// mp3, …). They show as a generic icon tile and click reveals
     /// them in Finder (local) or opens the URL in the browser (remote).
     case localOther(URL)
     case remoteOther(URL)
@@ -83,11 +131,13 @@ enum DetectedPath {
 }
 
 class PathDetector {
-    private let imageExtensions: Set<String> = [
-        "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"
-    ]
+    private let imageExtensions = ImageFormatSupport.extensions
     private let videoExtensions: Set<String> = [
-        "mp4", "mov", "m4v", "webm", "mkv", "avi"
+        // AVPlayer-native containers
+        "mp4", "mov", "m4v", "mpg", "mpeg", "mpe", "m2v",
+        "ts", "m2ts", "mts", "3gp", "3gpp", "3g2",
+        // Accepted for drop/paste; playback may fail (failed state shows)
+        "webm", "mkv", "avi"
     ]
     private let markdownExtensions: Set<String> = ["md", "markdown"]
     /// Plain-text-ish formats the viewer can render as text. Includes the
@@ -99,7 +149,7 @@ class PathDetector {
         "txt", "json", "xml", "yaml", "yml", "toml", "ini", "conf", "env",
         "properties", "cfg", "csv", "tsv", "sql", "log",
         // Markup / web
-        "html", "htm", "css", "scss", "sass", "less", "styl", "svg",
+        "html", "htm", "css", "scss", "sass", "less", "styl",
         "tex", "rst", "adoc", "asciidoc", "org",
         // Programming languages
         "py", "js", "mjs", "cjs", "ts", "tsx", "jsx",
@@ -121,16 +171,14 @@ class PathDetector {
         "doc", "docx", "xls", "xlsx", "ppt", "pptx",
         "pages", "numbers", "key", "odt", "ods", "odp", "rtf",
         "epub", "mobi",
-        // Design
-        "psd", "ai", "sketch", "fig", "xd", "eps", "indd", "afdesign",
+        // Design project formats that aren't directly image-decodable
+        "sketch", "fig", "xd", "indd", "afdesign",
         // Audio
         "mp3", "m4a", "wav", "flac", "aac", "ogg", "opus", "aiff",
         // Archives / disk images
         "zip", "tar", "gz", "tgz", "bz2", "7z", "rar", "dmg", "iso",
         // Binaries / installers
         "exe", "app", "deb", "rpm", "pkg", "msi", "appimage",
-        // Camera raw
-        "raw", "dng", "cr2", "nef", "arw",
         // Fonts
         "ttf", "otf", "woff", "woff2",
     ]
@@ -542,11 +590,11 @@ class PathDetector {
             if !isPackage { return .localFolder(url) }
         }
         if videoExtensions.contains(ext)    { return .localVideo(url) }
+        if ImageFormatSupport.supports(extension: ext) { return .localImage(url) }
         if markdownExtensions.contains(ext) { return .localMarkdown(url) }
         if textExtensions.contains(ext)     { return .localText(url) }
         if pdfExtensions.contains(ext)      { return .localPDF(url) }
         if otherExtensions.contains(ext)    { return .localOther(url) }
-        if imageExtensions.contains(ext)    { return .localImage(url) }
         return .localOther(url)
     }
 
@@ -586,8 +634,9 @@ class PathDetector {
         guard let bang = path.lastIndex(of: "!") else { return "" }
         let tail = path[path.index(after: bang)...].lowercased()
         // Longer tokens first so "jpeg" wins over "jpg".
-        for token in ["jpeg", "webp", "heic", "heif", "tiff", "webm", "png",
-                      "jpg", "gif", "bmp", "mp4", "mov", "m4v", "mkv", "avi"] {
+        for token in ["jpeg", "webp", "heic", "heif", "tiff", "avif", "jxl",
+                      "svg", "jp2", "webm", "png", "jpg", "gif", "bmp",
+                      "mp4", "mov", "m4v", "mkv", "avi"] {
             if tail.contains(token) { return token }
         }
         return ""

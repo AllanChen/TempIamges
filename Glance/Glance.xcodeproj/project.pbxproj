@@ -25,8 +25,10 @@
 		59E94B3294CB2E062A068A55 /* PreviewPanelPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A683F6DB94CE572022B5AA0 /* PreviewPanelPreview.swift */; };
 		5C57991C681CC89FE3AA2E07 /* FileNameResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945E891D8DC06977A9604F98 /* FileNameResolver.swift */; };
 		6517E9498999A7FDDDDD7727 /* PathDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94DBC9997333D10A429AA36 /* PathDetector.swift */; };
+		658F3924B4A5D228C2B2CC90 /* WidgetTaskCenterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 332A43C95D49B704CAD48FCC /* WidgetTaskCenterWindow.swift */; };
 		6CDFBE0A9C72E5FF9D433488 /* PeekDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C2064EDFFD2CC7D536C6DDA /* PeekDiagnostics.swift */; };
 		711669664890100154B6D2A9 /* WidgetMarketPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9416C486847F99F54B9ACC6 /* WidgetMarketPanel.swift */; };
+		73CCE1618C03F0513470401A /* WidgetTaskManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 772E7081C1D15212B9C596E4 /* WidgetTaskManager.swift */; };
 		81B07FCD73C2A6AE26314B90 /* HistoryWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1FEF81F349C3468DF46A45 /* HistoryWindow.swift */; };
 		860DD2F54F60A1504CB60E50 /* PreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1433E6467F5201FE5A730FEC /* PreviewPanel.swift */; };
 		867A48659D53F502F7AF234E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1338215DA649C2E61029E245 /* Assets.xcassets */; };
@@ -46,8 +48,6 @@
 		E8A68919EBCFE158D8918BDB /* FilenameCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82487A06B07A2503B6D2FAC1 /* FilenameCache.swift */; };
 		EEDBCB39C263989AF783FAE6 /* String+Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1226FC2E8B5B461B9BE59026 /* String+Localization.swift */; };
 		FFF5D1228AA1650743EDF0F4 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3520FACC62177E559702CE /* ImageLoader.swift */; };
-		F10000000000000000000001 /* WidgetTaskManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* WidgetTaskManager.swift */; };
-		F10000000000000000000003 /* WidgetTaskCenterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000004 /* WidgetTaskCenterWindow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +57,7 @@
 		1433E6467F5201FE5A730FEC /* PreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanel.swift; sourceTree = "<group>"; };
 		1D1FEF81F349C3468DF46A45 /* HistoryWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryWindow.swift; sourceTree = "<group>"; };
 		2A683F6DB94CE572022B5AA0 /* PreviewPanelPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanelPreview.swift; sourceTree = "<group>"; };
+		332A43C95D49B704CAD48FCC /* WidgetTaskCenterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTaskCenterWindow.swift; sourceTree = "<group>"; };
 		39E9F1A079DAD3F9EB65919E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3AC684C2865F0513FABF2A2E /* WidgetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetModels.swift; sourceTree = "<group>"; };
 		3C2064EDFFD2CC7D536C6DDA /* PeekDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeekDiagnostics.swift; sourceTree = "<group>"; };
@@ -72,6 +73,7 @@
 		62349DD01962E616B4255F48 /* DebugInputWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugInputWindow.swift; sourceTree = "<group>"; };
 		658FDB8BCED20C2ECE359B84 /* ScreenManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenManager.swift; sourceTree = "<group>"; };
 		6B64B424505C01A08B5DFF29 /* FileTypeIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTypeIcon.swift; sourceTree = "<group>"; };
+		772E7081C1D15212B9C596E4 /* WidgetTaskManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTaskManager.swift; sourceTree = "<group>"; };
 		790B6D57380E5760E9CEA752 /* LoadFailed.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = LoadFailed.gif; sourceTree = "<group>"; };
 		82487A06B07A2503B6D2FAC1 /* FilenameCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilenameCache.swift; sourceTree = "<group>"; };
 		8883A25E4A148B14EAAA2A18 /* ErrorTooltip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorTooltip.swift; sourceTree = "<group>"; };
@@ -91,8 +93,6 @@
 		EB0B876EC3A74C500D1246A6 /* WidgetTaskClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTaskClient.swift; sourceTree = "<group>"; };
 		FE55BDC72E73C79AA2510706 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		FEF6EE7C0B59774DEC290C5D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		F10000000000000000000002 /* WidgetTaskManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTaskManager.swift; sourceTree = "<group>"; };
-		F10000000000000000000004 /* WidgetTaskCenterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTaskCenterWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -143,9 +143,9 @@
 				43C26EE249858E0FF034FEFB /* VideoCompareWindow.swift */,
 				D9416C486847F99F54B9ACC6 /* WidgetMarketPanel.swift */,
 				3AC684C2865F0513FABF2A2E /* WidgetModels.swift */,
+				332A43C95D49B704CAD48FCC /* WidgetTaskCenterWindow.swift */,
 				EB0B876EC3A74C500D1246A6 /* WidgetTaskClient.swift */,
-				F10000000000000000000002 /* WidgetTaskManager.swift */,
-				F10000000000000000000004 /* WidgetTaskCenterWindow.swift */,
+				772E7081C1D15212B9C596E4 /* WidgetTaskManager.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -289,9 +289,9 @@
 				DA16731AF957758F1AB545E7 /* VideoCompareWindow.swift in Sources */,
 				711669664890100154B6D2A9 /* WidgetMarketPanel.swift in Sources */,
 				A951F5B48F61E5B78E433F24 /* WidgetModels.swift in Sources */,
+				658F3924B4A5D228C2B2CC90 /* WidgetTaskCenterWindow.swift in Sources */,
 				56F3AFEBB92382001DEBF25B /* WidgetTaskClient.swift in Sources */,
-				F10000000000000000000001 /* WidgetTaskManager.swift in Sources */,
-				F10000000000000000000003 /* WidgetTaskCenterWindow.swift in Sources */,
+				73CCE1618C03F0513470401A /* WidgetTaskManager.swift in Sources */,
 				E2E05277AA71ABA7538D1E89 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

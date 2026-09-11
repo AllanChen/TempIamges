@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import CryptoKit
 import ImageIO
+import QuickLookThumbnailing
 
 /// Persistent cache shared by remote images and videos. All filesystem and
 /// download work stays off the main thread.
@@ -29,14 +30,17 @@ final class RemoteMediaDiskCache {
         }
     }
 
-    func store(_ data: Data, for remoteURL: URL) {
+    func store(_ data: Data, for remoteURL: URL, completion: ((URL?) -> Void)? = nil) {
         queue.async {
             do {
                 try FileManager.default.createDirectory(at: self.directory,
                                                         withIntermediateDirectories: true)
-                try data.write(to: self.cacheURL(for: remoteURL), options: .atomic)
+                let target = self.cacheURL(for: remoteURL)
+                try data.write(to: target, options: .atomic)
+                completion?(target)
             } catch {
                 Logger.warning("Remote cache write failed: \(error.localizedDescription)")
+                completion?(nil)
             }
         }
     }
@@ -341,15 +345,13 @@ class ImageLoader {
         }
 
         if url.isFileURL {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self, let image = NSImage(contentsOf: url) else {
+            decodeLocalImage(from: url, quickLookMaxDimension: 4096) { [weak self] image in
+                guard let self, let image else {
                     DispatchQueue.main.async { completion(nil) }
                     return
                 }
-                DispatchQueue.main.async {
-                    self.cacheOriginal(image, key: cacheKey)
-                    completion(image)
-                }
+                self.cacheOriginal(image, key: cacheKey)
+                DispatchQueue.main.async { completion(image) }
             }
         } else {
             loadRemoteCachedImage(from: url, cacheKey: cacheKey, fullResolution: true) { [weak self] image in
@@ -392,15 +394,8 @@ class ImageLoader {
     }
 
     private func loadLocalImage(from url: URL, cacheKey: NSString, completion: @escaping (NSImage?) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else {
-                DispatchQueue.main.async { completion(nil) }
-                return
-            }
-            self.loadSemaphore.wait()
-            defer { self.loadSemaphore.signal() }
-
-            guard let image = NSImage(contentsOf: url) else {
+        decodeLocalImage(from: url, quickLookMaxDimension: 1600) { [weak self] image in
+            guard let self, let image else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
@@ -409,6 +404,39 @@ class ImageLoader {
             self.imageCache.setObject(resized, forKey: cacheKey, cost: self.cost(of: resized))
             DispatchQueue.main.async {
                 completion(resized)
+            }
+        }
+    }
+
+    /// Decode with NSImage first (ImageIO plus native SVG support), then ask
+    /// Quick Look for a bitmap representation. The fallback covers formats
+    /// whose decoders live in macOS or an installed Quick Look extension,
+    /// including many camera RAW and design formats.
+    private func decodeLocalImage(from url: URL, quickLookMaxDimension: CGFloat,
+                                  completion: @escaping (NSImage?) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { completion(nil); return }
+            self.loadSemaphore.wait()
+            let image = NSImage(contentsOf: url)
+            self.loadSemaphore.signal()
+            if let image {
+                completion(image)
+                return
+            }
+
+            let request = QLThumbnailGenerator.Request(
+                fileAt: url,
+                size: CGSize(width: quickLookMaxDimension, height: quickLookMaxDimension),
+                scale: 1,
+                // Never accept the generic file icon as a successful image
+                // preview when no decoder is available.
+                representationTypes: .thumbnail
+            )
+            QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { thumbnail, error in
+                if let error {
+                    Logger.info("Quick Look image fallback failed for \(url.lastPathComponent): \(error.localizedDescription)")
+                }
+                completion(thumbnail?.nsImage)
             }
         }
     }
@@ -503,7 +531,16 @@ class ImageLoader {
                 return
             }
             guard let image = NSImage(data: data) else {
-                finish(nil)
+                // Some decoders are exposed through Quick Look rather than
+                // NSImage. Materialize the response in the persistent cache
+                // and let the same local fallback pipeline try it.
+                RemoteMediaDiskCache.shared.store(data, for: url) { cachedURL in
+                    guard let cachedURL else { finish(nil); return }
+                    self.decodeLocalImage(from: cachedURL, quickLookMaxDimension: 4096) { image in
+                        if let image { self.cacheOriginal(image, key: cacheKey) }
+                        finish(image)
+                    }
+                }
                 return
             }
             RemoteMediaDiskCache.shared.store(data, for: url)
