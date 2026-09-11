@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var onboardingWindow: OnboardingWindow?
     private var preferencesWindow: PreferencesWindow?
     private var historyWindow: HistoryWindow?
+    private var widgetTaskCenterWindow: WidgetTaskCenterWindow?
     private var fileNameResolver: FileNameResolver?
     private var imageInspectWindow: ImageInspectWindow?
     private var videoCompareWindow: VideoCompareWindow?
@@ -663,6 +664,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let restoreApp = NSWorkspace.shared.frontmostApplication
         let window = imageInspectWindow ?? ImageInspectWindow(imageLoader: imageLoader ?? ImageLoader())
         imageInspectWindow = window
+        window.onOpenVideo = { [weak self, weak window] info in
+            window?.closeForViewerHandoff()
+            self?.openVideoCompare(infos: [info], focusedIndex: 0)
+        }
+        window.onOpenContent = { [weak self, weak window] info in
+            window?.closeForViewerHandoff()
+            self?.openInContentPanel(info: info)
+        }
         window.onClose = { [weak self, weak restoreApp] in
             self?.imageInspectWindow = nil
             if restoreApp?.processIdentifier != ProcessInfo.processInfo.processIdentifier {
@@ -844,6 +853,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
         historyWindow?.refresh()
         historyWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func openTasks() {
+        if widgetTaskCenterWindow == nil { widgetTaskCenterWindow = WidgetTaskCenterWindow() }
+        widgetTaskCenterWindow?.refresh()
+        widgetTaskCenterWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

@@ -5,6 +5,7 @@ protocol StatusBarControllerDelegate: AnyObject {
     func checkAndRequestPermissions()
     func clearImageCache()
     func openHistory()
+    func openTasks()
     func openLogin(at point: NSPoint)
 }
 
@@ -16,6 +17,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
     private var enableMenuItem: NSMenuItem!
     private var permissionMenuItem: NSMenuItem!
     private var loginMenuItem: NSMenuItem!
+    private var tasksMenuItem: NSMenuItem!
 
     override init() {
         super.init()
@@ -26,6 +28,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
             name: .preferencesDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(self, selector: #selector(tasksDidChange), name: WidgetTaskManager.didChange, object: nil)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(languageDidChange),
@@ -99,6 +102,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
         historyItem.target = self
         menu.addItem(historyItem)
 
+        tasksMenuItem = NSMenuItem(title: tasksTitle, action: #selector(openTasks), keyEquivalent: "")
+        tasksMenuItem.target = self
+        menu.addItem(tasksMenuItem)
+
         let clearCacheItem = NSMenuItem(title: "Clear Cache".localized, action: #selector(clearCache), keyEquivalent: "")
         clearCacheItem.target = self
         menu.addItem(clearCacheItem)
@@ -138,6 +145,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
     @objc private func openHistory() {
         delegate?.openHistory()
     }
+
+    @objc private func openTasks() { delegate?.openTasks() }
+    @objc private func tasksDidChange() { tasksMenuItem?.title = tasksTitle }
+    private var tasksTitle: String { let count = WidgetTaskManager.shared.activeCount; return count > 0 ? "\("Tasks".localized) (\(count))" : "Tasks".localized }
 
     @objc private func clearCache() {
         delegate?.clearImageCache()

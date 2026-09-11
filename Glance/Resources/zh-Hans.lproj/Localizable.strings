@@ -128,6 +128,7 @@
 "To PNG" = "转 PNG";
 "To JPG" = "转 JPG";
 "To WebP" = "转 WebP";
+"To Icon" = "转 Icon (.icns)";
 "Format Conversion" = "格式转换";
 "Export failed" = "导出失败";
 "Exported ✓" = "导出成功 ✓";
@@ -136,6 +137,12 @@
 "No text found" = "未识别到文字";
 "Copy All" = "全部复制";
 "Copied ✓" = "已复制 ✓";
+"Open image URL" = "打开图片链接";
+"Paste an image URL or local path" = "粘贴图片链接或本地路径";
+"Open" = "打开";
+"No image URL found" = "未找到图片链接";
+"Pin on Top" = "置顶";
+"Unpin" = "取消置顶";
 "Color space" = "色彩空间";
 "Bit depth" = "位深度";
 "Alpha" = "透明通道";
@@ -220,6 +227,25 @@
 "Allow Glance to access your files" = "允许 Glance 访问你的文件";
 "fda_alert_body" = "要查找 Spotlight 尚未索引的文件，Glance 需要完全磁盘访问权限。在此处授权意味着我们不会再针对每个文件夹（文稿、桌面、下载）重复请求。\n\n点击「打开设置」在系统设置 → 隐私与安全性 → 完全磁盘访问中启用，然后将 Glance（或 Glance）开关打开。你可能需要重启应用才能生效。";
 "Not Now" = "稍后";
+"Widget Market" = "Widget 市场";
+"Widgets" = "Widget";
+"Tasks" = "任务";
+"All" = "全部";
+"Running" = "进行中";
+"Completed" = "已完成";
+"Interrupted" = "已中断";
+"Missing File" = "文件不存在";
+"Task" = "任务";
+"Retry" = "重试";
+"Remove Record" = "删除记录";
+"Processing Widget…" = "Widget 处理中…";
+"Processing…" = "处理中…";
+"Uploading…" = "上传中…";
+"Submitting…" = "提交中…";
+"Downloading result…" = "正在下载结果…";
+"Widget completed" = "Widget 已完成";
+"Clear finished task history?" = "清除已结束的任务记录？";
+"Downloaded files will not be deleted." = "已下载的文件不会被删除。";
 
 // MARK: - Debug Window
 "Glance Debug" = "Glance 调试";

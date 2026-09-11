@@ -35,6 +35,8 @@ final class ImageInspectSession {
 
 final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     var onClose: (() -> Void)?
+    var onOpenVideo: ((MediaInfo) -> Void)?
+    var onOpenContent: ((MediaInfo) -> Void)?
 
     private let imageLoader: ImageLoader
     private let pathDetector = PathDetector()
@@ -46,7 +48,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let sliderButton = InspectToolbarButton(symbol: "slider.horizontal.3", tooltip: "Slider".localized)
     private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Image information".localized)
     private let revealButton = InspectToolbarButton(symbol: "folder", tooltip: "Reveal in Finder".localized)
+    private let openURLButton = InspectToolbarButton(symbol: "globe", tooltip: "Open image URL".localized)
     private let actionsButton = InspectToolbarButton(symbol: "ellipsis", tooltip: "Actions".localized)
+    private let widgetMarketButton = InspectToolbarButton(symbol: "square.grid.2x2", tooltip: "Widget Market".localized)
+    private let widgetTasksButton = InspectToolbarButton(symbol: "tray.full", tooltip: "Tasks".localized)
+    private let pinButton = InspectToolbarButton(symbol: "pin", tooltip: "Pin on Top".localized)
+    private var isPinned = false
     /// Themed action menu panel (frosted dark, warm-cue selection); rebuilt
     /// per presentation so enabled states and titles are always fresh.
     private var actionsPanel: ActionMenuPanel?
@@ -80,6 +87,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private lazy var ocrWindow = OCRResultWindow()
     private var ocrVisible = false
     private var ocrGeneration = UUID()
+    private var handledWidgetTaskIDs = Set<UUID>()
     private let identityBarHeight: CGFloat = 54
 
     init(imageLoader: ImageLoader) {
@@ -99,8 +107,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         acceptsMouseMovedEvents = true
         delegate = self
         buildUI()
+        handledWidgetTaskIDs = Set(WidgetTaskManager.shared.records.filter { $0.phase == .completed }.map(\.id))
         NotificationCenter.default.addObserver(self, selector: #selector(localizationDidChange),
                                                name: .languageDidChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(widgetTasksDidChange),
+                                               name: WidgetTaskManager.didChange, object: nil)
     }
 
     deinit {
@@ -151,6 +162,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         onClose?()
     }
 
+    /// Close without restoring the app that was active before Image Inspect.
+    /// Used when a drop hands the user directly to another Glance viewer.
+    func closeForViewerHandoff() {
+        isClosingProgrammatically = true
+        close()
+        isClosingProgrammatically = false
+    }
+
     override func cancelOperation(_ sender: Any?) {
         guard let session else { return }
         if session.mode == .compare {
@@ -163,6 +182,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // A presented sheet owns its keyboard input. In particular, do not
+        // let the image window's global ⌘V shortcut consume paste intended
+        // for the URL field in the Open sheet.
+        guard attachedSheet == nil else { return super.performKeyEquivalent(with: event) }
         guard session != nil else { return super.performKeyEquivalent(with: event) }
         let key = event.charactersIgnoringModifiers ?? ""
         if event.modifierFlags.contains(.command) {
@@ -354,12 +377,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         root.wantsLayer = true
         root.layer?.backgroundColor = PanelStyle.imageCanvas.cgColor
 
-        canvasContainer.acceptsExtension = { ext in
-            MediaDropCanvasView.imageExtensions.contains(ext)
-        }
+        // Image Inspect is the general mixed-content window: accept any file
+        // or URL, then classify it after drop. Images stay here; videos route
+        // to Video Inspect; documents replace the canvas content inline.
+        canvasContainer.acceptsExtension = { _ in true }
         canvasContainer.acceptsImageData = true
         canvasContainer.onDrop = { [weak self] url, point in
-            self?.handleDroppedImage(url: url, at: point)
+            self?.handleDroppedResource(url: url, at: point)
         }
         primaryViewport.dropTarget = canvasContainer
         secondaryViewport.dropTarget = canvasContainer
@@ -398,12 +422,24 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         infoButton.action = #selector(infoTapped)
         revealButton.target = self
         revealButton.action = #selector(revealInFinderTapped)
+        openURLButton.target = self
+        openURLButton.action = #selector(openURLTapped)
         actionsButton.target = self
         actionsButton.action = #selector(actionsTapped)
-        for button in [focusButton, sideBySideButton, sliderButton, infoButton, revealButton, actionsButton] {
+        widgetMarketButton.target = self
+        widgetMarketButton.action = #selector(widgetMarketTapped)
+        widgetTasksButton.target = self
+        widgetTasksButton.action = #selector(widgetTasksTapped)
+        pinButton.target = self
+        pinButton.action = #selector(pinTapped)
+        pinButton.isActive = isPinned
+        for button in [focusButton, sideBySideButton, sliderButton, infoButton,
+                       revealButton, openURLButton, actionsButton, widgetMarketButton, widgetTasksButton] {
             button.autoresizingMask = [.minXMargin]
             toolbarBar.addSubview(button)
         }
+        pinButton.autoresizingMask = [.minXMargin]
+        toolbarBar.addSubview(pinButton)
         // The same themed action menu serves the toolbar ⋯ button and
         // right-clicks on every image surface.
         let menuHandler: (NSEvent) -> Void = { [weak self] event in
@@ -447,15 +483,15 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         identityNameLabel.frame = NSRect(x: labelX, y: 30, width: labelWidth, height: 17)
         identityMetaLabel.frame = NSRect(x: labelX, y: 10, width: labelWidth, height: 15)
 
-        // Floating hover toolbar: a full-width bar across the top of the image,
-        // with the icons right-aligned.
+        // Floating hover toolbar: restore the original vertically-centered,
+        // right-aligned icon group. Pin remains the rightmost action.
         toolbarBar.frame = NSRect(x: 0, y: contentFrame.height - toolbarHeight,
                                   width: contentFrame.width, height: toolbarHeight)
         let buttonSize: CGFloat = 24
         let buttonGap: CGFloat = 8
-        let buttons = [focusButton, sideBySideButton, sliderButton, infoButton, revealButton, actionsButton]
-        let rightMargin: CGFloat = 12
-        var bx = toolbarBar.bounds.width - rightMargin - buttonSize
+        let buttons = [focusButton, sideBySideButton, sliderButton, infoButton,
+                       revealButton, openURLButton, actionsButton, widgetMarketButton, widgetTasksButton, pinButton]
+        var bx = toolbarBar.bounds.width - 12 - buttonSize
         for button in buttons.reversed() {
             button.frame = NSRect(x: bx, y: (toolbarHeight - buttonSize) / 2,
                                   width: buttonSize, height: buttonSize)
@@ -509,6 +545,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         secondaryViewport.isActiveSlot = false
         primaryViewport.setCompareDimmed(false)
         secondaryViewport.setCompareDimmed(false)
+        primaryViewport.setWidgetProcessing(nil)
+        secondaryViewport.setWidgetProcessing(nil)
+        sliderViewport.viewport.setWidgetProcessing(nil)
 
         if session.mode == .compare, let (a, b) = session.compareIndices,
            session.infos.indices.contains(a), session.infos.indices.contains(b),
@@ -520,6 +559,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 secondaryViewport.setLoadFailed(session.failedIndices.contains(b))
                 primaryViewport.image = session.images[safe: a] ?? nil
                 secondaryViewport.image = session.images[safe: b] ?? nil
+                primaryViewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: session.infos[a].url).first)
+                secondaryViewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: session.infos[b].url).first)
                 // Show which side a filmstrip tap will replace.
                 primaryViewport.isActiveSlot = session.activeCompareSlot == 0
                 secondaryViewport.isActiveSlot = session.activeCompareSlot == 1
@@ -531,6 +572,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                                          b: session.images[safe: b] ?? nil,
                                          failed: session.failedIndices.contains(a)
                                              || session.failedIndices.contains(b))
+                let activeIndex = session.activeCompareSlot == 0 ? a : b
+                sliderViewport.viewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: session.infos[activeIndex].url).first)
             }
             infoPanel.show(items: [
                 (a, session.infos[a], session.metadata[safe: a] ?? nil),
@@ -545,6 +588,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 primaryViewport.isHidden = false
                 primaryViewport.setLoadFailed(session.failedIndices.contains(session.focusedIndex))
                 primaryViewport.image = session.images[safe: session.focusedIndex] ?? nil
+                primaryViewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: info.url).first)
             case .text, .markdown, .pdf, .webPage:
                 fileWebView.isHidden = false
                 loadFileContent(for: info)
@@ -711,7 +755,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         sliderButton.updateTooltip("Slider".localized)
         infoButton.updateTooltip("Image information".localized)
         revealButton.updateTooltip("Reveal in Finder".localized)
+        openURLButton.updateTooltip("Open image URL".localized)
         actionsButton.updateTooltip("Actions".localized)
+        pinButton.updateTooltip((isPinned ? "Unpin" : "Pin on Top").localized)
         if infoVisible { infoWindow.title = "Image information".localized }
         ocrWindow.reloadLocalization()
         renderSession()
@@ -722,18 +768,26 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         NSWorkspace.shared.activateFileViewerSelecting([info.url])
     }
 
+    @objc private func pinTapped() {
+        isPinned.toggle()
+        pinButton.isActive = isPinned
+        pinButton.updateTooltip((isPinned ? "Unpin" : "Pin on Top").localized)
+        level = isPinned ? .floating : .normal
+    }
+
     // MARK: - Image actions (rotate / export)
 
     /// Menu entries for the ⋯ button and right-click menu. Rebuilt per
     /// presentation so enablement and localized titles are always current.
     private func buildActionEntries() -> [ActionMenuEntry] {
+        let hasActiveWidgetTask = currentRevealInfo.map { !WidgetTaskManager.shared.activeRecords(for: $0.url).isEmpty } ?? false
         let hasImage: Bool = {
             guard let session, let index = currentActionIndex,
                   session.infos.indices.contains(index),
                   session.infos[index].kind == .image else { return false }
-            return (session.images[safe: index] ?? nil) != nil
+            return (session.images[safe: index] ?? nil) != nil && !hasActiveWidgetTask
         }()
-        return [
+        var entries: [ActionMenuEntry] = [
             ActionMenuEntry(title: "Copy Image".localized, shortcut: "⌘C", enabled: hasImage,
                             action: { [weak self] in self?.copyActiveImage() }),
             .separator(),
@@ -749,11 +803,28 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                                 action: { [weak self] in self?.exportActive(as: .jpeg) }),
                 ActionMenuEntry(title: "To WebP".localized,
                                 action: { [weak self] in self?.exportActive(as: .webP) }),
+                ActionMenuEntry(title: "To Icon".localized,
+                                action: { [weak self] in self?.exportActive(as: .icns) }),
             ]),
             .separator(),
             ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage,
                             action: { [weak self] in self?.recognizeTextTapped() }),
         ]
+        let widgets = WidgetRegistry.shared.compatible(with: "image")
+        if !widgets.isEmpty {
+            entries.insert(.separator(), at: 0)
+            entries.insert(ActionMenuEntry(title: "Widgets".localized, submenu: widgets.map { widget in
+                ActionMenuEntry(title: widget.name, submenu: widget.commands.filter { $0.inputTypes.contains("image") }.map { command in
+                    let duplicate = currentRevealInfo.map { info in
+                        WidgetTaskManager.shared.activeRecords(for: info.url).contains { $0.widgetID == widget.id && $0.commandID == command.id }
+                    } ?? false
+                    return ActionMenuEntry(title: command.name, enabled: hasImage && !duplicate, action: { [weak self] in
+                        self?.runWidget(widgetID: widget.id, commandID: command.id)
+                    })
+                })
+            }), at: 0)
+        }
+        return entries
     }
 
     private func presentActionsMenu(atScreenPoint point: NSPoint) {
@@ -766,6 +837,36 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     @objc private func actionsTapped() {
         let point = actionsButton.convert(NSPoint(x: 0, y: -4), to: nil)
         presentActionsMenu(atScreenPoint: convertToScreen(NSRect(origin: point, size: .zero)).origin)
+    }
+
+    @objc private func widgetMarketTapped() {
+        WidgetMarketPanel.shared.toggle(from: self)
+    }
+
+    @objc private func widgetTasksTapped() {
+        (NSApp.delegate as? AppDelegate)?.openTasks()
+    }
+
+    private func runWidget(widgetID: String, commandID: String) {
+        guard let info = currentRevealInfo, info.kind == .image,
+              let widget = WidgetRegistry.shared.installed.first(where: { $0.id == widgetID }),
+              let command = widget.commands.first(where: { $0.id == commandID }) else { return }
+        if WidgetTaskManager.shared.start(widget: widget, command: command, media: info) != nil {
+            toastWindow.show(message: "Processing Widget…".localized, over: self)
+        }
+    }
+
+    @objc private func widgetTasksDidChange() {
+        let completed = WidgetTaskManager.shared.records.filter { $0.phase == .completed && !handledWidgetTaskIDs.contains($0.id) }
+        completed.forEach { handledWidgetTaskIDs.insert($0.id) }
+        guard let session else { return }
+        renderSession()
+        for task in completed {
+            guard let output = task.output, let source = task.source,
+                  currentRevealInfo?.url.absoluteString == source.absoluteString,
+                  !session.infos.contains(where: { $0.url.standardizedFileURL == output.standardizedFileURL }) else { continue }
+            appendImage(info: MediaInfo(url: output, isLocal: true, kind: .image))
+        }
     }
 
     /// The viewport the actions menu acts on: focused image in Focus/Browse,
@@ -1191,12 +1292,85 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// selection-hotkey pipeline, then display a remote image URL directly.
     private func pasteRemoteImageFromClipboard() -> Bool {
         guard let text = Self.clipboardText() else { return false }
-        guard let info = pathDetector.detectAll(text)
-            .compactMap(MediaInfo.from)
-            .first(where: { $0.kind == .image && !$0.isLocal }) else { return false }
+        guard let info = imageInfo(from: text, allowExtensionlessRemoteURL: true),
+              !info.isLocal else { return false }
+        appendOrFocusImage(info: info)
+        return true
+    }
+
+    /// Toolbar "globe" button: a sheet accepting an image URL OR a local
+    /// path. Local files display immediately; remote URLs show the loading
+    /// animation while downloading into the persistent cache.
+    @objc private func openURLTapped() {
+        let alert = NSAlert()
+        alert.messageText = "Open image URL".localized
+        alert.informativeText = "Paste an image URL or local path".localized
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
+        field.placeholderString = "https://…"
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Open".localized)
+        alert.addButton(withTitle: "Cancel".localized)
+        alert.window.initialFirstResponder = field
+        var pasteMonitor: Any?
+        pasteMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if event.window === alert.window,
+               event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers?.lowercased() == "v" {
+                if let editor = field.currentEditor() as? NSTextView {
+                    editor.paste(nil)
+                } else if let text = Self.clipboardText() {
+                    field.stringValue = text
+                }
+                return nil
+            }
+            return event
+        }
+        alert.beginSheetModal(for: self) { [weak self, weak field] response in
+            if let pasteMonitor { NSEvent.removeMonitor(pasteMonitor) }
+            guard response == .alertFirstButtonReturn,
+                  let text = field?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !text.isEmpty else { return }
+            self?.openImageFromInput(text)
+        }
+        // NSAlert creates its field editor only after the sheet is attached.
+        // Make the accessory field first responder on the next run-loop turn
+        // so native typing and ⌘V both target it reliably.
+        DispatchQueue.main.async { [weak self, weak alert, weak field] in
+            guard let self, let alert, let field,
+                  self.attachedSheet === alert.window else { return }
+            alert.window.makeFirstResponder(field)
+        }
+    }
+
+    private func openImageFromInput(_ text: String) {
+        guard let info = imageInfo(from: text, allowExtensionlessRemoteURL: true) else {
+            errorTooltip.show(message: "No image URL found".localized, at: NSEvent.mouseLocation)
+            return
+        }
+        appendOrFocusImage(info: info)
+    }
+
+    /// Return a normal detected image, or let the image-specific URL entry
+    /// point probe an extensionless HTTP URL by sending it to the decoder.
+    /// Generic selection detection still treats unknown URLs as webpages.
+    private func imageInfo(from text: String, allowExtensionlessRemoteURL: Bool) -> MediaInfo? {
+        for path in pathDetector.detectAll(text) {
+            guard let info = MediaInfo.from(path) else { continue }
+            if info.kind == .image { return info }
+            if allowExtensionlessRemoteURL, info.kind == .webPage, !info.isLocal {
+                return MediaInfo(url: info.url, isLocal: false, kind: .image)
+            }
+        }
+        return nil
+    }
+
+    /// Shared append-or-focus path for URL input, ⌘V, and remote drops:
+    /// duplicates focus the existing item; new items append to the filmstrip
+    /// end and take focus.
+    private func appendOrFocusImage(info: MediaInfo) {
         guard let session else {
             show(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
-            return true
+            return
         }
         let identity = mediaIdentity(for: info.url)
         if let index = session.infos.firstIndex(where: { mediaIdentity(for: $0.url) == identity }) {
@@ -1205,7 +1379,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             session.focusedIndex = index
             renderSession()
             loadFullResolutionForActiveItems(generation: loadGeneration)
-            return true
+            return
         }
         session.infos.append(info)
         session.images.append(nil)
@@ -1216,8 +1390,33 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session.focusedIndex = index
         renderSession()
         loadDroppedItem(at: index, generation: loadGeneration)
-        Logger.info("ImageInspectWindow: pasted remote image")
-        return true
+        if !info.isLocal { Logger.info("ImageInspectWindow: pasted remote image") }
+    }
+
+    private func handleDroppedResource(url: URL, at point: NSPoint) {
+        let info: MediaInfo?
+        if url.isFileURL {
+            info = MediaInfo.from(pathDetector.localKind(for: url.path))
+        } else {
+            info = pathDetector.detectAll(url.absoluteString)
+                .compactMap(MediaInfo.from).first
+        }
+        guard let info else { return }
+        switch info.kind {
+        case .image:
+            handleDroppedImage(url: info.url, at: point)
+        case .video:
+            onOpenVideo?(info)
+        case .markdown, .text, .pdf, .webPage:
+            onOpenContent?(info)
+        case .other, .folder:
+            closeForViewerHandoff()
+            if info.isLocal {
+                NSWorkspace.shared.activateFileViewerSelecting([info.url])
+            } else {
+                NSWorkspace.shared.open(info.url)
+            }
+        }
     }
 
     /// Load only the newly appended item — the rest of the session is already
@@ -1856,11 +2055,11 @@ private final class InspectFileWebView: WKWebView {
 /// Shared by the image and video inspect windows.
 final class MediaDropCanvasView: NSView {
     /// Kept in sync with PathDetector's media extension lists.
-    static let imageExtensions: Set<String> = [
-        "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"
-    ]
+    static let imageExtensions = ImageFormatSupport.extensions
     static let videoExtensions: Set<String> = [
-        "mp4", "mov", "m4v", "webm", "mkv", "avi"
+        "mp4", "mov", "m4v", "mpg", "mpeg", "mpe", "m2v",
+        "ts", "m2ts", "mts", "3gp", "3gpp", "3g2",
+        "webm", "mkv", "avi"
     ]
 
     /// Return true when the dragged file extension is a kind this canvas accepts.
@@ -2060,6 +2259,23 @@ final class InspectIdentityBar: NSVisualEffectView {
         tintLayer.frame = bounds
         CATransaction.commit()
     }
+
+    /// Double-click on the toolbar/identity bar zooms the window in and out,
+    /// matching the standard macOS title-bar double-click behavior that the
+    /// hidden title bar cannot provide.
+    override func mouseDown(with event: NSEvent) {
+        let now = event.timestamp
+        let isDoubleClick = event.clickCount == 2
+            || (now - lastMouseDownTimestamp) < NSEvent.doubleClickInterval
+        lastMouseDownTimestamp = isDoubleClick ? -.infinity : now
+        if isDoubleClick {
+            window?.zoom(nil)
+            return
+        }
+        super.mouseDown(with: event)
+    }
+
+    private var lastMouseDownTimestamp: TimeInterval = -.infinity
 }
 
 final class InspectToolbarButton: NSButton {
@@ -2106,14 +2322,14 @@ final class InspectToolbarButton: NSButton {
     }
 
     private func updateAppearance() {
-        // Active state uses the theme's warm-cue accent (same cue as the
-        // filmstrip selection border and video timeline), not a neutral gray.
+        // Native-style selected tile: a filled rounded square, using Glance's
+        // warm theme accent instead of the system blue selection color.
         layer?.backgroundColor = isActive
-            ? PanelStyle.warmCue.withAlphaComponent(0.22).cgColor
+            ? PanelStyle.warmCue.withAlphaComponent(0.90).cgColor
             : NSColor.clear.cgColor
         // Dim disabled compare buttons so the user can see they are inactive
         // for a single image, instead of looking tappable but doing nothing.
-        let activeTint = isActive ? PanelStyle.warmCue : PanelStyle.textPrimary
+        let activeTint = isActive ? PanelStyle.canvas : PanelStyle.textPrimary
         contentTintColor = isEnabled ? activeTint : PanelStyle.textTertiary
         alphaValue = isEnabled ? 1 : 0.5
     }
@@ -2161,6 +2377,9 @@ final class InspectImageViewport: NSView {
     private let activeIndicator = CALayer()
     private let loadingView = ModularImageLoadingView(frame: .zero)
     private let failureView = LoadFailedAnimationView(frame: .zero)
+    private let widgetOverlay = NSVisualEffectView()
+    private let widgetLoadingView = ModularImageLoadingView(frame: .zero)
+    private let widgetStatusLabel = NSTextField(labelWithString: "")
     private var loadFailed = false
     private var zoom: CGFloat = 1
     private var normalizedCenter = CGPoint(x: 0.5, y: 0.5)
@@ -2188,6 +2407,18 @@ final class InspectImageViewport: NSView {
         addSubview(loadingView)
         addSubview(failureView)
         failureView.isHidden = true
+        widgetOverlay.material = .underWindowBackground
+        widgetOverlay.blendingMode = .withinWindow
+        widgetOverlay.state = .active
+        widgetOverlay.wantsLayer = true
+        widgetOverlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.55).cgColor
+        widgetOverlay.isHidden = true
+        widgetStatusLabel.textColor = PanelStyle.textPrimary
+        widgetStatusLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        widgetStatusLabel.alignment = .center
+        widgetOverlay.addSubview(widgetLoadingView)
+        widgetOverlay.addSubview(widgetStatusLabel)
+        addSubview(widgetOverlay)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -2203,7 +2434,8 @@ final class InspectImageViewport: NSView {
         dropTarget?.performDrop(sender) == true
     }
     override func hitTest(_ point: NSPoint) -> NSView? {
-        isInteractionEnabled ? super.hitTest(point) : nil
+        if !widgetOverlay.isHidden { return widgetOverlay.hitTest(point) ?? widgetOverlay }
+        return isInteractionEnabled ? super.hitTest(point) : nil
     }
 
     override func layout() {
@@ -2224,6 +2456,12 @@ final class InspectImageViewport: NSView {
                                    y: bounds.midY - failureSize.height / 2,
                                    width: failureSize.width,
                                    height: failureSize.height)
+        widgetOverlay.frame = bounds
+        let widgetLoaderSize = ModularImageLoadingView.preferredSize
+        widgetLoadingView.frame = NSRect(x: bounds.midX - widgetLoaderSize.width / 2,
+                                         y: bounds.midY - widgetLoaderSize.height / 2 + 14,
+                                         width: widgetLoaderSize.width, height: widgetLoaderSize.height)
+        widgetStatusLabel.frame = NSRect(x: 20, y: bounds.midY - 42, width: bounds.width - 40, height: 22)
     }
 
     func setLoadFailed(_ failed: Bool) {
@@ -2245,6 +2483,22 @@ final class InspectImageViewport: NSView {
     func setCompareDimmed(_ dimmed: Bool) {
         compareDimmed = dimmed
         updateActiveIndicator()
+    }
+
+    func setWidgetProcessing(_ task: WidgetTaskRecord?) {
+        widgetOverlay.isHidden = task == nil
+        widgetLoadingView.setLoading(task != nil)
+        isInteractionEnabled = task == nil
+        guard let task else { widgetStatusLabel.stringValue = ""; return }
+        switch task.phase {
+        case .uploading: widgetStatusLabel.stringValue = "Uploading…".localized
+        case .submitting: widgetStatusLabel.stringValue = "Submitting…".localized
+        case .processing: widgetStatusLabel.stringValue = task.progress > 0 ? "Processing \(task.progress)%" : "Processing…".localized
+        case .downloading: widgetStatusLabel.stringValue = "Downloading result…".localized
+        default: widgetStatusLabel.stringValue = "Processing…".localized
+        }
+        setAccessibilityElement(true)
+        setAccessibilityLabel(widgetStatusLabel.stringValue)
     }
 
     private func updateActiveIndicator() {
@@ -2629,9 +2883,12 @@ final class ImageFilmstripView: NSView {
             // browse/focus selection is intentionally ignored so a stale
             // focusedIndex can never create a third highlighted thumbnail.
             let isSelected = compareIndices == nil && index == selectedIndex
+            let task = WidgetTaskManager.shared.latestRecord(for: infos[index].url)
             item.configure(image: thumbnail(for: index), title: infos[index].filename,
                            selected: isSelected,
-                           compared: isCompared)
+                           compared: isCompared,
+                           taskPhase: task?.phase,
+                           activeTaskCount: WidgetTaskManager.shared.activeRecords(for: infos[index].url).count)
             item.onClick = { [weak self] modifiers in
                 if modifiers.contains(.option) { self?.onCompare?(index) }
                 else { self?.onSelect?(index) }
@@ -2655,6 +2912,7 @@ private final class NonHitTestingImageView: NSImageView {
 private final class ImageFilmstripItem: NSView {
     var onClick: ((NSEvent.ModifierFlags) -> Void)?
     private let imageView = NonHitTestingImageView()
+    private let taskBadge = CALayer()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -2663,6 +2921,9 @@ private final class ImageFilmstripItem: NSView {
         layer?.masksToBounds = true
         imageView.imageScaling = .scaleProportionallyUpOrDown
         addSubview(imageView)
+        taskBadge.cornerRadius = 3.5
+        taskBadge.isHidden = true
+        layer?.addSublayer(taskBadge)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -2672,19 +2933,38 @@ private final class ImageFilmstripItem: NSView {
         onClick?([])
         return true
     }
-    func configure(image: NSImage?, title: String, selected: Bool, compared: Bool) {
+    func configure(image: NSImage?, title: String, selected: Bool, compared: Bool,
+                   taskPhase: WidgetTaskPhase?, activeTaskCount: Int) {
         imageView.image = image
         toolTip = title
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
         setAccessibilityLabel(title)
-        layer?.borderWidth = selected || compared ? 2 : 0
+        let processing = taskPhase?.isActive == true
+        let failed = taskPhase == .failed || taskPhase == .interrupted
+        layer?.borderWidth = selected || compared || processing ? 2 : 0
         layer?.borderColor = PanelStyle.warmCue.cgColor
+        taskBadge.isHidden = !processing && !failed
+        taskBadge.backgroundColor = (failed ? NSColor.systemRed : PanelStyle.warmCue).cgColor
+        layer?.removeAnimation(forKey: "widgetBreathing")
+        if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            let animation = CABasicAnimation(keyPath: "borderColor")
+            animation.fromValue = PanelStyle.warmCue.withAlphaComponent(0.30).cgColor
+            animation.toValue = PanelStyle.warmCue.cgColor
+            animation.duration = 0.75
+            animation.autoreverses = true
+            animation.repeatCount = .infinity
+            animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            layer?.add(animation, forKey: "widgetBreathing")
+        }
+        if processing { setAccessibilityLabel("\(title), \(activeTaskCount) Widget task running") }
+        else if failed { setAccessibilityLabel("\(title), Widget task failed") }
     }
 
     override func layout() {
         super.layout()
         imageView.frame = NSRect(x: 3, y: 3, width: bounds.width - 6, height: bounds.height - 6)
+        taskBadge.frame = NSRect(x: bounds.maxX - 9, y: bounds.maxY - 9, width: 7, height: 7)
     }
 }
 
@@ -2959,13 +3239,14 @@ private enum QuickSaveSource {
 }
 
 private enum ImageExportFormat {
-    case png, jpeg, webP
+    case png, jpeg, webP, icns
 
     var utType: UTType {
         switch self {
         case .png: return .png
         case .jpeg: return .jpeg
         case .webP: return UTType("org.webmproject.webp") ?? .png
+        case .icns: return UTType("com.apple.icns")!
         }
     }
 
@@ -2974,6 +3255,7 @@ private enum ImageExportFormat {
         case .png: return "png"
         case .jpeg: return "jpg"
         case .webP: return "webp"
+        case .icns: return "icns"
         }
     }
 }
@@ -2997,12 +3279,56 @@ private enum ImageExporter {
     }
 
     static func write(cgImage: CGImage, to url: URL, format: ImageExportFormat) -> Bool {
+        if format == .icns {
+            return writeIcon(cgImage: cgImage, to: url)
+        }
         guard let destination = CGImageDestinationCreateWithURL(url as CFURL, format.utType.identifier as CFString, 1, nil) else { return false }
         var properties: [CFString: Any] = [:]
         if format == .jpeg {
             properties[kCGImageDestinationLossyCompressionQuality] = 0.9
         }
         CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
+        return CGImageDestinationFinalize(destination)
+    }
+
+    /// Build a multi-resolution macOS icon. Every representation is square;
+    /// non-square sources are aspect-fitted on a transparent canvas so the
+    /// artwork is never stretched or cropped.
+    private static func writeIcon(cgImage: CGImage, to url: URL) -> Bool {
+        // The duplicate pixel sizes are distinct 1x/2x icon representations.
+        // ImageIO uses 144 DPI to identify Retina entries; without it, the
+        // 64px and 1024px representations are silently omitted from the ICNS.
+        let representations = [
+            (side: 16, dpi: 72),
+            (side: 32, dpi: 144), (side: 32, dpi: 72),
+            (side: 64, dpi: 144),
+            (side: 128, dpi: 72),
+            (side: 256, dpi: 144), (side: 256, dpi: 72),
+            (side: 512, dpi: 144), (side: 512, dpi: 72),
+            (side: 1024, dpi: 144),
+        ]
+        guard let destination = CGImageDestinationCreateWithURL(
+            url as CFURL,
+            ImageExportFormat.icns.utType.identifier as CFString,
+            representations.count,
+            nil
+        ) else { return false }
+
+        for representation in representations {
+            let side = representation.side
+            guard let context = makeContext(width: side, height: side) else { return false }
+            context.clear(CGRect(x: 0, y: 0, width: side, height: side))
+            context.interpolationQuality = .high
+            drawAspectFit(cgImage,
+                          in: CGRect(x: 0, y: 0, width: side, height: side),
+                          context: context)
+            guard let outputImage = context.makeImage() else { return false }
+            let properties: [CFString: Any] = [
+                kCGImagePropertyDPIWidth: representation.dpi,
+                kCGImagePropertyDPIHeight: representation.dpi,
+            ]
+            CGImageDestinationAddImage(destination, outputImage, properties as CFDictionary)
+        }
         return CGImageDestinationFinalize(destination)
     }
 

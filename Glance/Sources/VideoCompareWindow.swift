@@ -43,6 +43,9 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Video information".localized)
     private let captureButton = InspectToolbarButton(symbol: "camera", tooltip: "Capture frame".localized)
     private let replayButton = InspectToolbarButton(symbol: "arrow.counterclockwise", tooltip: "Replay".localized)
+    private let pinButton = InspectToolbarButton(symbol: "pin", tooltip: "Pin on Top".localized)
+    private let widgetMarketButton = InspectToolbarButton(symbol: "square.grid.2x2", tooltip: "Widget Market".localized)
+    private var isPinned = false
     private let playbackBar = VideoPlaybackBar()
     private let captureFeedback = CaptureFeedbackView()
     private lazy var infoWindow = VideoInfoPanelWindow()
@@ -147,7 +150,10 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         infoButton.target = self; infoButton.action = #selector(infoTapped)
         captureButton.target = self; captureButton.action = #selector(captureTapped)
         replayButton.target = self; replayButton.action = #selector(replayTapped)
-        [focusButton, compareButton, captureButton, replayButton, infoButton, revealButton].forEach { inspectToolbar.addSubview($0) }; canvas.addSubview(inspectToolbar)
+        pinButton.target = self; pinButton.action = #selector(pinTapped)
+        widgetMarketButton.target = self; widgetMarketButton.action = #selector(widgetMarketTapped)
+        pinButton.isActive = isPinned
+        [focusButton, compareButton, captureButton, replayButton, infoButton, revealButton, widgetMarketButton, pinButton].forEach { inspectToolbar.addSubview($0) }; canvas.addSubview(inspectToolbar)
         playButton.target = self; playButton.action = #selector(playTapped)
         timeline.onChange = { [weak self] value in self?.seek(to: value) }
         for label in [currentLabel, durationLabel] { label.font = PanelStyle.caption; label.textColor = PanelStyle.textSecondary; label.alignment = .center }
@@ -171,10 +177,14 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         let b = canvas.bounds; let top: CGFloat = 44; let identityH: CGFloat = 54
         identityBar.frame = NSRect(x: 0, y: b.height - identityH, width: b.width, height: identityH)
         titleLabel.frame = NSRect(x: 18, y: 29, width: b.width - 36, height: 17); metaLabel.frame = NSRect(x: 18, y: 9, width: b.width - 36, height: 15)
-        // Keep the compact toolbar geometry shared by image and video inspect.
+        // Restore the original vertically-centered, right-aligned icon group.
+        // Pin remains the rightmost action.
         inspectToolbar.frame = NSRect(x: 0, y: b.height - top, width: b.width, height: top)
-        let buttonSize: CGFloat = 24; var x = b.width - 12 - buttonSize
-        [revealButton, infoButton, replayButton, captureButton, compareButton, focusButton].forEach {
+        let buttonSize: CGFloat = 24
+        let buttons = [focusButton, compareButton, captureButton, replayButton,
+                       infoButton, revealButton, widgetMarketButton, pinButton]
+        var x = b.width - 12 - buttonSize
+        buttons.reversed().forEach {
             // Square bounds preserve a 1:1 icon hit area and center it in the bar.
             $0.frame = NSRect(x: x, y: (top - buttonSize) / 2,
                               width: buttonSize, height: buttonSize)
@@ -322,6 +332,13 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     @objc private func focusTapped() { mode = .focus; pausePlayback(); render() }
     @objc private func compareTapped() { guard infos.count > 1 else { return }; if compareIndices == nil { compareIndices = (focusedIndex, focusedIndex == 0 ? 1 : 0) }; mode = .compare; pausePlayback(); render() }
     @objc private func revealTapped() { for index in activeIndices where infos[index].isLocal { NSWorkspace.shared.activateFileViewerSelecting([infos[index].url]); break } }
+    @objc private func pinTapped() {
+        isPinned.toggle()
+        pinButton.isActive = isPinned
+        pinButton.updateTooltip((isPinned ? "Unpin" : "Pin on Top").localized)
+        level = isPinned ? .floating : .normal
+    }
+    @objc private func widgetMarketTapped() { WidgetMarketPanel.shared.toggle(from: self) }
     @objc private func infoTapped() {
         infoVisible.toggle(); infoButton.isActive = infoVisible
         if infoVisible {
@@ -429,7 +446,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     /// offers independent mute control for the left and right videos.
     private func presentMuteMenu(atScreenPoint point: NSPoint) {
         actionsPanel?.dismissChain()
-        let entries: [ActionMenuEntry]
+        var entries: [ActionMenuEntry]
         if mode == .compare, viewports.count == 2 {
             let leftMuted = viewports[0].isMuted
             let rightMuted = viewports[1].isMuted
@@ -449,6 +466,15 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             ]
         } else {
             return
+        }
+        let widgets = WidgetRegistry.shared.compatible(with: "video")
+        if !widgets.isEmpty {
+            entries.append(.separator())
+            entries.append(ActionMenuEntry(title: "Widgets".localized, submenu: widgets.map { widget in
+                ActionMenuEntry(title: widget.name, submenu: widget.commands.filter { $0.inputTypes.contains("video") }.map { command in
+                    ActionMenuEntry(title: command.name, action: { WidgetMarketPanel.shared.orderFront(nil) })
+                })
+            }))
         }
         let panel = ActionMenuPanel(entries: entries)
         actionsPanel = panel
@@ -578,7 +604,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
 private final class VideoInspectViewport: NSView {
     let index: Int; let player: AVPlayer; private let playerView: AVPlayerView; private let muteButton = InspectToolbarButton(symbol: "speaker.slash.fill", tooltip: "Mute".localized); private let compareDimmer = CALayer(); private let loadingView = ModularImageLoadingView(frame: .zero); private let failureView = LoadFailedAnimationView(frame: .zero); private var statusObservation: NSKeyValueObservation?; var onActivate: (() -> Void)?
     weak var dropTarget: MediaDropCanvasView?
-    init(index: Int, player: AVPlayer) { self.index = index; self.player = player; playerView = PassthroughVideoPlayerView(frame: .zero); super.init(frame: .zero); registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes); wantsLayer = true; layer?.backgroundColor = PanelStyle.imageCanvas.cgColor; playerView.controlsStyle = .none; playerView.videoGravity = .resizeAspect; playerView.player = player; addSubview(playerView); addSubview(loadingView); addSubview(failureView); failureView.isHidden = true; compareDimmer.backgroundColor = NSColor.black.withAlphaComponent(0.10).cgColor; compareDimmer.opacity = 0; layer?.addSublayer(compareDimmer); muteButton.target = self; muteButton.action = #selector(toggleMute); addSubview(muteButton); observePlayerItem() }
+    init(index: Int, player: AVPlayer) { self.index = index; self.player = player; playerView = PassthroughVideoPlayerView(frame: .zero); super.init(frame: .zero); registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes); wantsLayer = true; layer?.masksToBounds = true; layer?.backgroundColor = PanelStyle.imageCanvas.cgColor; playerView.controlsStyle = .none; playerView.videoGravity = .resizeAspect; playerView.player = player; addSubview(playerView); addSubview(loadingView); addSubview(failureView); failureView.isHidden = true; compareDimmer.backgroundColor = NSColor.black.withAlphaComponent(0.10).cgColor; compareDimmer.opacity = 0; layer?.addSublayer(compareDimmer); muteButton.target = self; muteButton.action = #selector(toggleMute); addSubview(muteButton); observePlayerItem() }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func layout() { playerView.frame = bounds; compareDimmer.frame = bounds; muteButton.frame = NSRect(x: bounds.maxX - 40, y: bounds.maxY - 40 - 44, width: 24, height: 24); let loader = ModularImageLoadingView.preferredSize; loadingView.frame = NSRect(x: bounds.midX - loader.width / 2, y: bounds.midY - loader.height / 2, width: loader.width, height: loader.height); let failed = LoadFailedAnimationView.preferredSize; failureView.frame = NSRect(x: bounds.midX - failed.width / 2, y: bounds.midY - failed.height / 2, width: failed.width, height: failed.height) }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { dropTarget?.acceptsDragging(sender) == true ? .copy : [] }
@@ -623,7 +649,23 @@ private final class VideoInspectViewport: NSView {
     var onActionMenu: ((NSEvent) -> Void)?
     @objc private func toggleMute() { player.isMuted.toggle(); updateMuteButton() }
     private func updateMuteButton() { muteButton.setSymbol(player.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"); muteButton.toolTip = player.isMuted ? "Mute".localized : "Unmute".localized; muteButton.isActive = !player.isMuted }
-    override func mouseDown(with event: NSEvent) { onActivate?(); super.mouseDown(with: event) }
+    override func mouseDown(with event: NSEvent) {
+        // Double-click toggles between aspect-fit and a 2× zoom, mirroring the
+        // image viewer's double-click-to-zoom gesture.
+        if event.clickCount == 2 {
+            zoomScale = zoomScale > 1.01 ? 1 : 2
+            applyZoom()
+            return
+        }
+        onActivate?(); super.mouseDown(with: event)
+    }
+    private var zoomScale: CGFloat = 1
+    private func applyZoom() {
+        let transform = zoomScale > 1.01
+            ? CGAffineTransform(scaleX: zoomScale, y: zoomScale)
+            : CGAffineTransform.identity
+        playerView.layer?.setAffineTransform(transform)
+    }
     override func rightMouseDown(with event: NSEvent) {
         if let onActionMenu { onActionMenu(event) } else { super.rightMouseDown(with: event) }
     }

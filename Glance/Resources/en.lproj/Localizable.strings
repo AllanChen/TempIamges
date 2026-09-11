@@ -128,6 +128,7 @@
 "To PNG" = "To PNG";
 "To JPG" = "To JPG";
 "To WebP" = "To WebP";
+"To Icon" = "To Icon (.icns)";
 "Format Conversion" = "Format Conversion";
 "Export failed" = "Export failed";
 "Exported ✓" = "Exported ✓";
@@ -136,6 +137,12 @@
 "No text found" = "No text found";
 "Copy All" = "Copy All";
 "Copied ✓" = "Copied ✓";
+"Open image URL" = "Open image URL";
+"Paste an image URL or local path" = "Paste an image URL or local path";
+"Open" = "Open";
+"No image URL found" = "No image URL found";
+"Pin on Top" = "Pin on Top";
+"Unpin" = "Unpin";
 "Color space" = "Color space";
 "Bit depth" = "Bit depth";
 "Alpha" = "Alpha";
@@ -220,6 +227,25 @@
 "Allow Glance to access your files" = "Allow Glance to access your files";
 "fda_alert_body" = "To find files Spotlight hasn't indexed yet, Glance needs Full Disk Access. Granting it here means we won't ask again for each folder (Documents, Desktop, Downloads).\n\nClick \"Open Settings\" to enable it in System Settings → Privacy & Security → Full Disk Access, then toggle Glance (or Glance) on. You may need to restart the app for it to take effect.";
 "Not Now" = "Not Now";
+"Widget Market" = "Widget Market";
+"Widgets" = "Widgets";
+"Tasks" = "Tasks";
+"All" = "All";
+"Running" = "Running";
+"Completed" = "Completed";
+"Interrupted" = "Interrupted";
+"Missing File" = "Missing File";
+"Task" = "Task";
+"Retry" = "Retry";
+"Remove Record" = "Remove Record";
+"Processing Widget…" = "Processing Widget…";
+"Processing…" = "Processing…";
+"Uploading…" = "Uploading…";
+"Submitting…" = "Submitting…";
+"Downloading result…" = "Downloading result…";
+"Widget completed" = "Widget completed";
+"Clear finished task history?" = "Clear finished task history?";
+"Downloaded files will not be deleted." = "Downloaded files will not be deleted.";
 
 // MARK: - Debug Window
 "Glance Debug" = "Glance Debug";
