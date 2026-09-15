@@ -8,8 +8,16 @@ enum WidgetTaskPhase: String, Codable {
 
 final class WidgetTaskClient {
     static let shared = WidgetTaskClient()
-    private let apiBase = URL(string: "https://api.mcreator.ai/api/glance/v2")!
+    private let apiBase = URL(string: "https://glance-service.allanchanni.workers.dev/api/v2")!
     private let session = URLSession(configuration: .ephemeral)
+
+    private func authorizedRequest(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        if let token = AuthManager.shared.session?.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        return request
+    }
 
     func run(widgetID: String, commandID: String, mediaURL: URL,
              progress: @escaping (WidgetTaskPhase, Int) -> Void,
@@ -45,7 +53,7 @@ final class WidgetTaskClient {
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 let data = try Data(contentsOf: url)
-                var request = URLRequest(url: self.apiBase.appendingPathComponent("uploads")); request.httpMethod = "POST"
+                var request = self.authorizedRequest(self.apiBase.appendingPathComponent("uploads")); request.httpMethod = "POST"
                 let boundary = "Boundary-\(UUID().uuidString)"
                 request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
                 let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
@@ -65,7 +73,7 @@ final class WidgetTaskClient {
 
     private func submit(widgetID: String, commandID: String, mediaURL: String,
                         completion: @escaping (Result<String, Error>) -> Void) {
-        var request = URLRequest(url: apiBase.appendingPathComponent("tasks")); request.httpMethod = "POST"
+        var request = authorizedRequest(apiBase.appendingPathComponent("tasks")); request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: ["widgetID": widgetID, "commandID": commandID, "taskParams": ["url": mediaURL]])
         session.dataTask(with: request) { data, response, error in
@@ -82,14 +90,14 @@ final class WidgetTaskClient {
                       progress: @escaping (WidgetTaskPhase, Int) -> Void,
                       completion: @escaping (Result<URL, Error>) -> Void) {
         guard Date().timeIntervalSince(started) <= 1800 else { completion(.failure(WidgetError.unavailable)); return }
-        let request = URLRequest(url: apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
+        let request = authorizedRequest(apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
         session.dataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
             do {
                 if let error { throw error }
                 let envelope: TaskEnvelope = try Self.decode(data, response)
                 guard envelope.success, let result = envelope.result else { throw WidgetError.unavailable }
-                if result.status == "completed", let raw = result.resultURL, let url = URL(string: raw) { completion(.success(url)); return }
+                if (result.status == "completed" || result.status == "succeeded"), let raw = result.resultURL, let url = URL(string: raw) { completion(.success(url)); return }
                 if result.status == "failed" { completion(.failure(WidgetError.unavailable)); return }
                 progress(.processing, result.processCount ?? 0)
             } catch { /* transient query errors retry until the overall timeout */ }

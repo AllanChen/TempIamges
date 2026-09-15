@@ -4,6 +4,8 @@
 版本：2.0
 更新时间：2026-09-10
 
+开发者发布、后台审核和灰度上线的操作流程见：[Widget 发布、审核与执行流程](./glance-widget-publishing-review-flow.md)。
+
 ## 1. 产品定位
 
 Glance 2.0 是一个图片、视频快速查看和处理入口。用户可以在 Widget Market 中发现需要的媒体处理能力，点击加载后将 Widget 挂载到 Glance，再从当前图片或视频窗口的右键菜单、主菜单中直接调用。

@@ -184,13 +184,13 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     private static func windowSize(for kind: Kind) -> NSSize {
         switch kind {
         case .webpage:
-            return NSSize(width: 970.0, height: 990.0)
+            return NSSize(width: 720.0, height: 960.0)
         case .text:
-            return NSSize(width: 970.0, height: 990.0)
+            return NSSize(width: 720.0, height: 960.0)
         case .markdown:
-            return NSSize(width: 863.0, height: 919.0)
+            return NSSize(width: 720.0, height: 960.0)
         case .pdf:
-            return NSSize(width: 863.0, height: 919.0)
+            return NSSize(width: 720.0, height: 960.0)
         case .image:
             return NSSize(width: 652.0, height: 962.0)
         }
@@ -198,9 +198,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
 
     private static func windowSize(for mediaKind: MediaInfo.Kind) -> NSSize {
         switch mediaKind {
-        case .text:     return NSSize(width: 970.0, height: 990.0)
-        case .markdown: return NSSize(width: 863.0, height: 919.0)
-        case .pdf:      return NSSize(width: 863.0, height: 919.0)
+        case .text:     return NSSize(width: 720.0, height: 960.0)
+        case .markdown: return NSSize(width: 720.0, height: 960.0)
+        case .pdf:      return NSSize(width: 720.0, height: 960.0)
         default:        return NSSize(width: 970.0, height: 990.0)
         }
     }

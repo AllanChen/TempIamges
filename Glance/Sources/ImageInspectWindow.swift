@@ -131,12 +131,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         Logger.info("ImageInspectWindow: opened \(infos.count) item(s) in \(session?.mode == .compare ? "compare" : "focus") mode")
         toolbarHideWorkItem?.cancel()
         toolbarHideWorkItem = nil
-        toolbarBar.alphaValue = 0
-        toolbarBar.isHidden = true
-        identityBar.alphaValue = 0
-        identityBar.isHidden = true
-        filmstrip.alphaValue = 0
-        filmstrip.isHidden = true
+        // Chrome stays available while inspecting; it no longer depends on
+        // cursor hover to remain visible.
+        toolbarBar.alphaValue = 1
+        toolbarBar.isHidden = false
+        identityBar.alphaValue = 1
+        identityBar.isHidden = false
+        filmstrip.alphaValue = 1
+        filmstrip.isHidden = infos.count < 2
         loadGeneration = UUID()
         renderSession()
         loadSessionImages(generation: loadGeneration)
@@ -274,11 +276,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
         if event.type == .mouseMoved {
             let point = canvasContainer.convert(event.locationInWindow, from: nil)
-            if imageHoverFrame.contains(point) {
-                showToolbar()
-            } else {
-                hideToolbar()
-            }
             updateInfoHighlight(atWindowPoint: event.locationInWindow)
         }
         super.sendEvent(event)
@@ -530,6 +527,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func renderSession() {
         guard let session, session.infos.indices.contains(session.focusedIndex) else { return }
         let info = session.infos[session.focusedIndex]
+        // The window can start with a single item (the filmstrip is hidden in
+        // `show`) and gain more items later through drag-and-drop. Keep the
+        // visibility in sync with the current session instead of only
+        // deciding it during the initial presentation.
+        filmstrip.isHidden = !showsFilmstrip
+        filmstrip.alphaValue = 1
         updateMediaToolbarVisibility(for: info, session: session)
         updateWindowTitle(for: info, index: session.focusedIndex)
         updateIdentityBar(for: info, index: session.focusedIndex)
@@ -1461,6 +1464,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func loadDroppedItem(at index: Int, generation: UUID) {
         guard let session, session.infos.indices.contains(index) else { return }
         let info = session.infos[index]
+        // Populate the filmstrip immediately for local drops. The full
+        // decoder below can take a moment (especially for large RAW/PNG
+        // files), and waiting for it leaves a blank thumbnail in the meantime.
+        if info.isLocal, session.images[index] == nil,
+           let quickThumbnail = NSImage(contentsOf: info.url) {
+            session.images[index] = quickThumbnail
+            renderSession()
+        }
         imageLoader.loadFullResolutionImage(from: info.url) { [weak self] image in
             guard let self, generation == self.loadGeneration,
                   let session = self.session, session.images.indices.contains(index) else { return }

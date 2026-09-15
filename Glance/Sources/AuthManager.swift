@@ -4,7 +4,7 @@ import Foundation
 final class AuthManager {
     static let shared = AuthManager()
 
-    private let apiBase = URL(string: "https://api.mcreator.ai")!
+    private let apiBase = URL(string: "https://glance-service.allanchanni.workers.dev")!
     private let nativeCallback = "glance://auth/callback"
     private let sessionKey = "glance.auth.session"
     private let decoder = JSONDecoder()
