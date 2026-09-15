@@ -52,6 +52,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let actionsButton = InspectToolbarButton(symbol: "ellipsis", tooltip: "Actions".localized)
     private let widgetMarketButton = InspectToolbarButton(symbol: "square.grid.2x2", tooltip: "Widget Market".localized)
     private let widgetTasksButton = InspectToolbarButton(symbol: "tray.full", tooltip: "Tasks".localized)
+    private let taskBadge = NSTextField(labelWithString: "")
     private let pinButton = InspectToolbarButton(symbol: "pin", tooltip: "Pin on Top".localized)
     private var isPinned = false
     /// Themed action menu panel (frosted dark, warm-cue selection); rebuilt
@@ -438,6 +439,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             button.autoresizingMask = [.minXMargin]
             toolbarBar.addSubview(button)
         }
+        taskBadge.wantsLayer = true
+        taskBadge.layer?.backgroundColor = NSColor.systemRed.cgColor
+        taskBadge.layer?.cornerRadius = 5
+        taskBadge.isHidden = WidgetTaskManager.shared.activeCount == 0
+        toolbarBar.addSubview(taskBadge)
         pinButton.autoresizingMask = [.minXMargin]
         toolbarBar.addSubview(pinButton)
         // The same themed action menu serves the toolbar ⋯ button and
@@ -490,13 +496,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let buttonSize: CGFloat = 24
         let buttonGap: CGFloat = 8
         let buttons = [focusButton, sideBySideButton, sliderButton, infoButton,
-                       revealButton, openURLButton, actionsButton, widgetMarketButton, widgetTasksButton, pinButton]
+                       revealButton, openURLButton, actionsButton, widgetMarketButton, widgetTasksButton, pinButton].filter { !$0.isHidden }
         var bx = toolbarBar.bounds.width - 12 - buttonSize
         for button in buttons.reversed() {
             button.frame = NSRect(x: bx, y: (toolbarHeight - buttonSize) / 2,
                                   width: buttonSize, height: buttonSize)
             bx -= buttonSize + buttonGap
         }
+        taskBadge.frame = NSRect(x: widgetTasksButton.frame.maxX - 4, y: widgetTasksButton.frame.maxY - 4, width: 10, height: 10)
         imageHoverFrame = contentFrame
 
         guard let session else {
@@ -523,6 +530,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func renderSession() {
         guard let session, session.infos.indices.contains(session.focusedIndex) else { return }
         let info = session.infos[session.focusedIndex]
+        updateMediaToolbarVisibility(for: info, session: session)
         updateWindowTitle(for: info, index: session.focusedIndex)
         updateIdentityBar(for: info, index: session.focusedIndex)
         // Compare needs two IMAGES; focus/browse only needs multiple items.
@@ -612,6 +620,15 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             infoPanel.highlight(index: nil)
         }
         layoutContent()
+    }
+
+    private func updateMediaToolbarVisibility(for info: MediaInfo, session: ImageInspectSession) {
+        let showingImage = info.kind == .image ||
+            (session.mode == .compare && session.compareIndices.map { session.infos.indices.contains($0.0) && session.infos.indices.contains($0.1) && session.infos[$0.0].kind == .image && session.infos[$0.1].kind == .image } == true)
+        let mediaButtons = [focusButton, sideBySideButton, sliderButton, infoButton,
+                            revealButton, openURLButton, actionsButton, widgetMarketButton, widgetTasksButton]
+        mediaButtons.forEach { $0.isHidden = !showingImage }
+        if !showingImage { taskBadge.isHidden = true }
     }
 
     private var showsFilmstrip: Bool { (session?.infos.count ?? 0) >= 2 }
@@ -791,10 +808,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             ActionMenuEntry(title: "Copy Image".localized, shortcut: "⌘C", enabled: hasImage,
                             action: { [weak self] in self?.copyActiveImage() }),
             .separator(),
-            ActionMenuEntry(title: "Rotate Left".localized, shortcut: "⌘L", enabled: hasImage,
-                            action: { [weak self] in self?.rotateActive(byQuarters: -1) }),
-            ActionMenuEntry(title: "Rotate Right".localized, shortcut: "⌘R", enabled: hasImage,
-                            action: { [weak self] in self?.rotateActive(byQuarters: 1) }),
+            ActionMenuEntry(title: "Direction".localized, enabled: hasImage, submenu: [
+                ActionMenuEntry(title: "Rotate Left".localized, shortcut: "⌘L", action: { [weak self] in self?.rotateActive(byQuarters: -1) }),
+                ActionMenuEntry(title: "Rotate Right".localized, shortcut: "⌘R", action: { [weak self] in self?.rotateActive(byQuarters: 1) }),
+                ActionMenuEntry(title: "Flip Horizontally".localized, action: { [weak self] in self?.flipActive(horizontal: true) }),
+                ActionMenuEntry(title: "Flip Vertically".localized, action: { [weak self] in self?.flipActive(horizontal: false) })
+            ]),
             .separator(),
             ActionMenuEntry(title: "Format Conversion".localized, enabled: hasImage, submenu: [
                 ActionMenuEntry(title: "To PNG".localized,
@@ -813,15 +832,21 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let widgets = WidgetRegistry.shared.compatible(with: "image")
         if !widgets.isEmpty {
             entries.insert(.separator(), at: 0)
-            entries.insert(ActionMenuEntry(title: "Widgets".localized, submenu: widgets.map { widget in
-                ActionMenuEntry(title: widget.name, submenu: widget.commands.filter { $0.inputTypes.contains("image") }.map { command in
+            entries.insert(ActionMenuEntry(title: "Widgets".localized, submenu: widgets.compactMap { widget in
+                let commands = widget.commands.filter { $0.inputTypes.contains("image") }
+                guard !commands.isEmpty else { return nil }
+                func commandEntry(_ command: WidgetCommand) -> ActionMenuEntry {
                     let duplicate = currentRevealInfo.map { info in
                         WidgetTaskManager.shared.activeRecords(for: info.url).contains { $0.widgetID == widget.id && $0.commandID == command.id }
                     } ?? false
                     return ActionMenuEntry(title: command.name, enabled: hasImage && !duplicate, action: { [weak self] in
                         self?.runWidget(widgetID: widget.id, commandID: command.id)
                     })
-                })
+                }
+                // A single-command widget does not need a redundant widget
+                // grouping row: Widgets → Remove BG instead of three levels.
+                if commands.count == 1 { return commandEntry(commands[0]) }
+                return ActionMenuEntry(title: widget.name, submenu: commands.map(commandEntry))
             }), at: 0)
         }
         return entries
@@ -857,6 +882,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     @objc private func widgetTasksDidChange() {
+        taskBadge.isHidden = WidgetTaskManager.shared.activeCount == 0
         let completed = WidgetTaskManager.shared.records.filter { $0.phase == .completed && !handledWidgetTaskIDs.contains($0.id) }
         completed.forEach { handledWidgetTaskIDs.insert($0.id) }
         guard let session else { return }
@@ -900,6 +926,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         } else {
             currentActionViewport.rotate(byQuarters: delta)
         }
+    }
+
+    private func flipActive(horizontal: Bool) {
+        if session?.mode == .compare, session?.comparisonStyle == .slider { sliderViewport.flip(horizontal: horizontal) }
+        else { currentActionViewport.flip(horizontal: horizontal) }
     }
 
     /// The active image as a CGImage with the current view rotation applied
@@ -1305,8 +1336,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let alert = NSAlert()
         alert.messageText = "Open image URL".localized
         alert.informativeText = "Paste an image URL or local path".localized
-        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
-        field.placeholderString = "https://…"
+        let field = NSTextView(frame: NSRect(x: 0, y: 0, width: 380, height: 88))
+        field.font = PanelStyle.body
+        field.textColor = PanelStyle.textPrimary
+        field.backgroundColor = PanelStyle.controlFill
+        field.drawsBackground = true
+        field.isRichText = false
+        field.string = ""
+        field.textContainerInset = NSSize(width: 8, height: 8)
         alert.accessoryView = field
         alert.addButton(withTitle: "Open".localized)
         alert.addButton(withTitle: "Cancel".localized)
@@ -1316,10 +1353,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             if event.window === alert.window,
                event.modifierFlags.contains(.command),
                event.charactersIgnoringModifiers?.lowercased() == "v" {
-                if let editor = field.currentEditor() as? NSTextView {
-                    editor.paste(nil)
+                if field.window?.firstResponder === field {
+                    field.paste(nil)
                 } else if let text = Self.clipboardText() {
-                    field.stringValue = text
+                    field.string = text
                 }
                 return nil
             }
@@ -1328,7 +1365,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         alert.beginSheetModal(for: self) { [weak self, weak field] response in
             if let pasteMonitor { NSEvent.removeMonitor(pasteMonitor) }
             guard response == .alertFirstButtonReturn,
-                  let text = field?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let text = field?.string.trimmingCharacters(in: .whitespacesAndNewlines),
                   !text.isEmpty else { return }
             self?.openImageFromInput(text)
         }
@@ -1723,10 +1760,14 @@ final class ActionMenuPanel: NSPanel {
         appearance = NSAppearance(named: .darkAqua)
         collectionBehavior = [.canJoinAllSpaces]
         guard let content = contentView else { return }
-        let frost = PanelStyle.makeFrostedBase(cornerRadius: 10)
-        frost.frame = content.bounds
-        frost.autoresizingMask = [.width, .height]
-        content.addSubview(frost)
+        // Keep menu text in a normal compositing layer. Rendering labels on
+        // top of NSVisualEffectView vibrancy makes them look soft/gray on
+        // Retina displays, especially while the panel is animating.
+        content.wantsLayer = true
+        content.layer?.backgroundColor = PanelStyle.surface.cgColor
+        content.layer?.cornerRadius = 10
+        content.layer?.borderWidth = 1
+        content.layer?.borderColor = PanelStyle.hairline.cgColor
 
         var y = height - Self.padding
         for entry in entries {
@@ -1907,17 +1948,17 @@ final class ActionMenuRow: NSView {
         wantsLayer = true
         layer?.cornerRadius = 5
         titleLabel.stringValue = entry.title
-        titleLabel.font = PanelStyle.label
+        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         titleLabel.lineBreakMode = .byTruncatingTail
         addSubview(titleLabel)
         if let shortcut = entry.shortcut {
             shortcutLabel.stringValue = shortcut
-            shortcutLabel.font = PanelStyle.label
+            shortcutLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
             shortcutLabel.alignment = .right
             addSubview(shortcutLabel)
         }
         if entry.submenu != nil {
-            chevronLabel.font = PanelStyle.label
+            chevronLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
             addSubview(chevronLabel)
         }
         updateColors()
@@ -1964,7 +2005,7 @@ final class ActionMenuRow: NSView {
             ? PanelStyle.canvas.withAlphaComponent(0.72)
             : PanelStyle.textTertiary
         chevronLabel.textColor = color
-        alphaValue = entry.enabled ? 1 : 0.55
+        alphaValue = 1
     }
 
     override func mouseEntered(with event: NSEvent) { onHover?(self) }
@@ -2155,8 +2196,11 @@ final class MediaDropCanvasView: NSView {
     func performDrop(_ sender: NSDraggingInfo) -> Bool {
         let pasteboard = sender.draggingPasteboard
         let point = convert(sender.draggingLocation, from: nil)
-        if let url = acceptedFileURL(from: pasteboard) ?? acceptedRemoteURL(from: pasteboard) {
-            onDrop?(url, point)
+        let localURLs = (pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+        let remoteURLs = (pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL])?.filter { !$0.isFileURL } ?? []
+        let urls = localURLs + remoteURLs.filter { accepts($0) }
+        if !urls.isEmpty {
+            urls.forEach { onDrop?($0, point) }
             return true
         }
         if handlePromises(from: pasteboard, at: point) { return true }
@@ -2341,6 +2385,8 @@ struct InspectViewportState {
 }
 
 final class InspectImageViewport: NSView {
+    private var flipX: CGFloat = 1
+    private var flipY: CGFloat = 1
     var image: NSImage? {
         didSet {
             // Only reset rotation when a DIFFERENT image is assigned — session
@@ -2547,6 +2593,12 @@ final class InspectImageViewport: NSView {
         notify()
     }
 
+    func flip(horizontal: Bool) {
+        if horizontal { flipX *= -1 } else { flipY *= -1 }
+        updateLayerGeometry()
+        notify()
+    }
+
     override func rightMouseDown(with event: NSEvent) {
         if let onActionMenu {
             onActionMenu(event)
@@ -2626,7 +2678,9 @@ final class InspectImageViewport: NSView {
         // view-space width/height swap happens in renderedSize(for:).
         imageLayer.bounds = NSRect(origin: .zero, size: contentSize(for: image))
         imageLayer.position = CGPoint(x: centerX, y: centerY)
-        imageLayer.transform = CATransform3DMakeRotation(-CGFloat(rotationQuarters) * .pi / 2, 0, 0, 1)
+        var transform = CATransform3DMakeRotation(-CGFloat(rotationQuarters) * .pi / 2, 0, 0, 1)
+        transform = CATransform3DScale(transform, flipX, flipY, 1)
+        imageLayer.transform = transform
         CATransaction.commit()
     }
 
@@ -2738,6 +2792,11 @@ final class ImageRevealView: NSView {
     func rotate(byQuarters delta: Int) {
         viewport.rotate(byQuarters: delta)
         overlayViewport.rotate(byQuarters: delta)
+    }
+
+    func flip(horizontal: Bool) {
+        viewport.flip(horizontal: horizontal)
+        overlayViewport.flip(horizontal: horizontal)
     }
 
     override func rightMouseDown(with event: NSEvent) {

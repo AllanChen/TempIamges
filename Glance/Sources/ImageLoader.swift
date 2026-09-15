@@ -54,7 +54,10 @@ final class RemoteMediaDiskCache {
             guard let self else { completion?(nil); return }
             // Stream large videos to a temporary file instead of holding the
             // entire response in memory.
-            self.session.downloadTask(with: remoteURL) { temporaryURL, response, error in
+                var request = URLRequest(url: remoteURL)
+                request.setValue("Glance/1.0", forHTTPHeaderField: "User-Agent")
+                request.setValue("image/avif,image/webp,image/apng,image/png,image/*;q=0.8,*/*;q=0.5", forHTTPHeaderField: "Accept")
+                self.session.downloadTask(with: request) { temporaryURL, response, error in
                 guard let temporaryURL, error == nil,
                       (response as? HTTPURLResponse).map({ $0.statusCode < 400 }) ?? true else {
                     DispatchQueue.main.async { completion?(nil) }
@@ -516,13 +519,21 @@ class ImageLoader {
 
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
+        // A number of image hosts reject the default URLSession client or
+        // return an HTML challenge page without an Accept header. Use a
+        // normal browser-like request so terminal/clipboard image URLs load
+        // consistently with dragged files.
+        request.setValue("Glance/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("image/avif,image/webp,image/apng,image/png,image/*;q=0.8,*/*;q=0.5", forHTTPHeaderField: "Accept")
 
         let task = remoteSession.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self, let data = data, error == nil else {
+                Logger.warning("Remote image request failed: \(url.absoluteString) — \(error?.localizedDescription ?? "no data")")
                 finish(nil)
                 return
             }
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode >= 400 {
+                Logger.warning("Remote image HTTP \(httpResponse.statusCode): \(url.absoluteString)")
                 finish(nil)
                 return
             }

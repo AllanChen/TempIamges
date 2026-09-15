@@ -230,7 +230,12 @@ class PathDetector {
         // only when it is NOT followed by whitespace/bracket and NOT followed by
         // another "https?://" — i.e. it's clearly mid-URL, not a separator.
         self.httpRegex = try! NSRegularExpression(
-            pattern: "https?:?//(?:[^\\s\"'<>()\\[\\]{},\\\\]|,(?![\\s\"'<>()\\[\\]{}])(?!https?:?//))+",
+            // URL candidates are deliberately broad here. URL syntax allows
+            // underscores, repeated hyphens, query punctuation and CDN
+            // delimiters; resolveCandidate() performs the final trim and
+            // media classification. The previous character-class expression
+            // could prematurely stop on valid CDN URL characters.
+            pattern: "https?:?//[^\\s\"'<>]+",
             options: []
         )
         // Bare domain without scheme — `www.foo.com[/...]` or `something.com[/...]`.
@@ -458,7 +463,12 @@ class PathDetector {
 
     private func resolveCandidate(_ rawCandidate: String) -> DetectedPath? {
         var candidate = rawCandidate.trimmingCharacters(in: .whitespacesAndNewlines)
-        while let last = candidate.last, ",.;!?\"')]}\\，。；：！？、".contains(last) {
+        // Terminal/window-monitor diagnostics often append Python-style
+        // metadata immediately after the URL, e.g. `image.png[' bounds=...`.
+        // Treat the opening bracket as trailing annotation punctuation too;
+        // otherwise the extension becomes `png[` and image classification
+        // fails even though the URL itself is valid.
+        while let last = candidate.last, ",.;!?\"'()[{]}\\，。；：！？、".contains(last) {
             candidate.removeLast()
         }
         guard !candidate.isEmpty else { return nil }

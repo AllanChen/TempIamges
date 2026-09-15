@@ -121,10 +121,13 @@
 "Audio codec" = "音频编码";
 "Video bitrate" = "视频码率";
 "Actions" = "操作";
+"Direction" = "方向";
 "Copy Image" = "复制图片";
 "Save to Documents" = "存储到 Documents";
 "Rotate Left" = "向左旋转";
 "Rotate Right" = "向右旋转";
+"Flip Horizontally" = "左右翻转";
+"Flip Vertically" = "上下翻转";
 "To PNG" = "转 PNG";
 "To JPG" = "转 JPG";
 "To WebP" = "转 WebP";

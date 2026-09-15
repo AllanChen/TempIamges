@@ -89,6 +89,12 @@ final class WidgetRegistry {
         NotificationCenter.default.post(name: Self.didChange, object: nil)
     }
 
+    func uninstall(id: String) {
+        installed.removeAll { $0.id == id }
+        if let data = try? encoder.encode(installed) { UserDefaults.standard.set(data, forKey: storageKey) }
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
+    }
+
     func compatible(with inputType: String) -> [WidgetManifest] { installed.filter { $0.isCompatible(with: inputType) } }
 }
 

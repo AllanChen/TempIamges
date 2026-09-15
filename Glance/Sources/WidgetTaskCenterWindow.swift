@@ -14,7 +14,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     init() {
         super.init(contentRect: ScreenManager.shared.contentFrame(for: NSSize(width: 760, height: 560)), styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
         title = "Tasks".localized; minSize = NSSize(width: 560, height: 380); isReleasedWhenClosed = false
-        appearance = NSAppearance(named: .darkAqua); backgroundColor = PanelStyle.canvas
+        appearance = NSAppearance(named: .darkAqua); isOpaque = false; backgroundColor = .clear
         buildUI(); refresh()
         NotificationCenter.default.addObserver(self, selector: #selector(tasksChanged), name: WidgetTaskManager.didChange, object: nil)
     }
@@ -23,19 +23,25 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
 
     private func buildUI() {
         guard let content = contentView else { return }
-        filter.selectedSegment = 0; filter.target = self; filter.action = #selector(filterChanged)
+        let frost = PanelStyle.makeFrostedBase(cornerRadius: 14)
+        frost.frame = content.bounds; frost.autoresizingMask = [.width, .height]
+        content.addSubview(frost, positioned: .below, relativeTo: nil)
+        content.wantsLayer = true
+        content.layer?.backgroundColor = PanelStyle.canvas.withAlphaComponent(0.22).cgColor
+        filter.selectedSegment = 0; filter.target = self; filter.action = #selector(filterChanged); filter.segmentStyle = .texturedRounded
         filter.frame = NSRect(x: 18, y: content.bounds.height - 46, width: 360, height: 26); filter.autoresizingMask = [.maxXMargin, .minYMargin]
         content.addSubview(filter)
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("task")); column.title = "Task".localized; column.width = 700
-        table.addTableColumn(column); table.headerView = nil; table.rowHeight = 58; table.delegate = self; table.dataSource = self
+        table.addTableColumn(column); table.headerView = nil; table.rowHeight = 82; table.intercellSpacing = NSSize(width: 0, height: 8); table.delegate = self; table.dataSource = self
         table.doubleAction = #selector(openSelected); table.target = self
-        scroll.documentView = table; scroll.hasVerticalScroller = true; scroll.drawsBackground = true; scroll.backgroundColor = PanelStyle.canvas
+        scroll.documentView = table; scroll.hasVerticalScroller = true; scroll.drawsBackground = false; scroll.backgroundColor = .clear; scroll.contentView.backgroundColor = .clear
+        table.backgroundColor = .clear
         scroll.frame = NSRect(x: 0, y: 52, width: content.bounds.width, height: content.bounds.height - 104); scroll.autoresizingMask = [.width, .height]
         content.addSubview(scroll)
         let buttons = [openButton, revealButton, retryButton, removeButton, clearButton]
         let actions: [Selector] = [#selector(openSelected), #selector(revealSelected), #selector(retrySelected), #selector(removeSelected), #selector(clearAll)]
         var x: CGFloat = 18
-        for (button, action) in zip(buttons, actions) { button.target = self; button.action = action; button.bezelStyle = .rounded; button.sizeToFit(); button.frame.origin = NSPoint(x: x, y: 14); content.addSubview(button); x += button.frame.width + 10 }
+        for (button, action) in zip(buttons, actions) { button.target = self; button.action = action; button.bezelStyle = .rounded; button.contentTintColor = PanelStyle.textPrimary; button.sizeToFit(); button.frame.origin = NSPoint(x: x, y: 14); content.addSubview(button); x += button.frame.width + 10 }
         table.action = #selector(selectionChanged)
     }
 
@@ -53,15 +59,22 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     func numberOfRows(in tableView: NSTableView) -> Int { visibleRecords.count }
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let record = visibleRecords[row]
-        let cell = NSTableCellView()
-        let preview = NSImageView(frame: NSRect(x: 10, y: 8, width: 42, height: 42)); preview.imageScaling = .scaleProportionallyUpOrDown
+        let cell = NSTableCellView(); cell.wantsLayer = true; cell.layer?.backgroundColor = PanelStyle.glassCard.cgColor; cell.layer?.cornerRadius = 10
+        let preview = NSImageView(frame: NSRect(x: 12, y: 17, width: 44, height: 44)); preview.imageScaling = .scaleProportionallyUpOrDown
+        preview.wantsLayer = true; preview.layer?.cornerRadius = 8; preview.layer?.masksToBounds = true
         let previewURL = record.output.flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil } ?? record.source
         preview.image = previewURL.flatMap { $0.isFileURL ? NSImage(contentsOf: $0) : nil }
             ?? NSImage(systemSymbolName: record.phase.isActive ? "hourglass" : "photo", accessibilityDescription: nil)
         cell.addSubview(preview)
-        let label = NSTextField(labelWithString: summary(record)); label.frame = NSRect(x: 64, y: 7, width: max(100, table.bounds.width - 78), height: 44); label.autoresizingMask = [.width]; label.maximumNumberOfLines = 2; label.lineBreakMode = .byTruncatingTail; label.textColor = PanelStyle.textPrimary; cell.addSubview(label); cell.textField = label
+        let label = NSTextField(labelWithString: "\(record.widgetName)  ·  \(record.commandName)"); label.font = PanelStyle.headline; label.frame = NSRect(x: 72, y: 45, width: max(100, table.bounds.width - 180), height: 18); label.autoresizingMask = [.width]; label.textColor = PanelStyle.textPrimary; cell.addSubview(label); cell.textField = label
+        let detail = NSTextField(labelWithString: detailText(record)); detail.font = PanelStyle.caption; detail.frame = NSRect(x: 72, y: 22, width: max(100, table.bounds.width - 180), height: 16); detail.autoresizingMask = [.width]; detail.textColor = PanelStyle.textSecondary; detail.lineBreakMode = .byTruncatingTail; cell.addSubview(detail)
+        let pill = NSTextField(labelWithString: stateText(record)); pill.font = NSFont.systemFont(ofSize: 10, weight: .semibold); pill.alignment = .center; pill.textColor = stateColor(record); pill.frame = NSRect(x: table.bounds.width - 102, y: 35, width: 86, height: 20); pill.autoresizingMask = [.minXMargin]; pill.wantsLayer = true; pill.layer?.cornerRadius = 10; pill.layer?.backgroundColor = stateColor(record).withAlphaComponent(0.14).cgColor; cell.addSubview(pill)
         cell.setAccessibilityLabel(summary(record)); return cell
     }
+
+    private func detailText(_ record: WidgetTaskRecord) -> String { "\(record.source?.lastPathComponent ?? "Media")  ·  \(DateFormatter.localizedString(from: record.createdAt, dateStyle: .short, timeStyle: .short))" }
+    private func stateText(_ record: WidgetTaskRecord) -> String { switch record.phase { case .processing: return record.progress > 0 ? "\(record.progress)%" : "Processing".localized; case .uploading: return "Uploading".localized; case .submitting: return "Submitting".localized; case .downloading: return "Downloading".localized; case .completed: return "Completed".localized; case .failed: return "Failed".localized; case .interrupted: return "Interrupted".localized } }
+    private func stateColor(_ record: WidgetTaskRecord) -> NSColor { record.phase.isActive ? PanelStyle.warmCue : (record.phase == .failed || record.phase == .interrupted ? .systemRed : .systemGreen) }
 
     private func summary(_ record: WidgetTaskRecord) -> String {
         let source = record.source?.lastPathComponent ?? "Media"
