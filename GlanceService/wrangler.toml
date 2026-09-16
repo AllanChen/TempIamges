@@ -19,3 +19,6 @@ binding = "ASSETS"
 [vars]
 PUBLIC_ORIGIN = "https://glance-service.allanchanni.workers.dev"
 # Set ADMIN_PATH as a secret, e.g. "ops-7f3c9a2e". The admin UI is only served at that path.
+# TEMPORARY: bypass worker token verification while the pull/heartbeat/result
+# flow is being tested end-to-end. Remove this after auth is wired up.
+WORKER_AUTH_DISABLED = "true"

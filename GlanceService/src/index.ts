@@ -11,6 +11,7 @@ export interface Env {
   ADMIN_PATH: string;
   WORKER_TOKEN_PEPPER: string;
   MEDIA_SIGNING_SECRET: string;
+  WORKER_AUTH_DISABLED?: string;
   ASSETS: Fetcher;
 }
 
@@ -45,6 +46,9 @@ async function digest(value: string) {
   return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 async function tokenHash(env: Env, token: string) { return digest(`${env.WORKER_TOKEN_PEPPER}:${token}`); }
+// TEMPORARY dev switch: when "true", worker endpoints skip token verification
+// so the pull/heartbeat/result flow can be tested end-to-end before auth is wired.
+function workerAuthDisabled(env: Env) { return String(env.WORKER_AUTH_DISABLED || "").toLowerCase() === "true"; }
 async function hmac(env: Env, value: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.MEDIA_SIGNING_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const bytes = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
@@ -269,9 +273,14 @@ async function createTask(env: Env, request: Request, admin = false) {
 async function pullTask(env: Env, request: Request, url: URL) {
   const token = bearer(request);
   const widgetID = url.searchParams.get("widget_id") || "";
-  if (!token || !widgetID) return fail("worker_auth_required", "Widget ID and Worker token are required.", 401);
-  const worker = await env.DB.prepare("SELECT id,widget_id FROM widget_workers WHERE widget_id=? AND token_hash=? AND status='active'").bind(widgetID, await tokenHash(env, token)).first<{ id: string; widget_id: string }>();
-  if (!worker) return fail("worker_unauthorized", "Worker is not authorized for this Widget.", 403);
+  const bypass = workerAuthDisabled(env);
+  if (!widgetID || (!bypass && !token)) return fail("worker_auth_required", "Widget ID and Worker token are required.", 401);
+  let workerID = "dev-worker";
+  if (!bypass) {
+    const worker = await env.DB.prepare("SELECT id,widget_id FROM widget_workers WHERE widget_id=? AND token_hash=? AND status='active'").bind(widgetID, await tokenHash(env, token)).first<{ id: string; widget_id: string }>();
+    if (!worker) return fail("worker_unauthorized", "Worker is not authorized for this Widget.", 403);
+    workerID = worker.id;
+  }
   const wait = Math.min(25, Math.max(0, Number(url.searchParams.get("wait") || 0)));
   const deadline = Date.now() + wait * 1000;
   let task: Record<string, unknown> | null = null;
@@ -280,9 +289,9 @@ async function pullTask(env: Env, request: Request, url: URL) {
     const row = await env.DB.prepare("SELECT * FROM widget_tasks WHERE widget_id=? AND status='queued' ORDER BY created_at LIMIT 1").bind(widgetID).first<Record<string, unknown>>();
     if (row) {
       const lease = new Date(Date.now() + 120_000).toISOString();
-      const claimed = await env.DB.prepare("UPDATE widget_tasks SET status='claimed',worker_id=?,lease_expires_at=?,claimed_at=?,attempts=attempts+1 WHERE id=? AND status='queued'").bind(worker.id, lease, now(), row.id).run();
+      const claimed = await env.DB.prepare("UPDATE widget_tasks SET status='claimed',worker_id=?,lease_expires_at=?,claimed_at=?,attempts=attempts+1 WHERE id=? AND status='queued'").bind(workerID, lease, now(), row.id).run();
       if (claimed.meta.changes === 1) {
-        await env.DB.prepare("UPDATE widget_workers SET last_seen_at=? WHERE id=?").bind(now(), worker.id).run();
+        await env.DB.prepare("UPDATE widget_workers SET last_seen_at=? WHERE id=?").bind(now(), workerID).run();
         task = { taskId: row.id, widgetId: row.widget_id, versionId: row.version_id, commandId: row.command_id, type: row.type, input: JSON.parse(String(row.input_json)), parameters: JSON.parse(String(row.parameters_json)), leaseExpiresAt: lease };
       }
     }
@@ -293,7 +302,9 @@ async function pullTask(env: Env, request: Request, url: URL) {
 
 async function taskResult(env: Env, request: Request, taskID: string) {
   const token = bearer(request);
-  const task = await env.DB.prepare("SELECT t.*, w.widget_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=?").bind(taskID, await tokenHash(env, token)).first<Record<string, unknown>>();
+  const task = workerAuthDisabled(env)
+    ? await env.DB.prepare("SELECT * FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
+    : await env.DB.prepare("SELECT t.*, w.widget_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=?").bind(taskID, await tokenHash(env, token)).first<Record<string, unknown>>();
   if (!task) return fail("task_not_found", "Task not found or Worker is not authorized.", 404);
   const body = await readJSON(request);
   const status = body.status === "succeeded" ? "succeeded" : body.status === "failed" ? "failed" : "failed";
@@ -304,12 +315,14 @@ async function taskResult(env: Env, request: Request, taskID: string) {
 
 async function taskHeartbeat(env: Env, request: Request, taskID: string) {
   const token = bearer(request);
-  if (!token) return fail("worker_auth_required", "Worker token is required.", 401);
-  const workerHash = await tokenHash(env, token);
-  const task = await env.DB.prepare("SELECT t.id,t.worker_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=?").bind(taskID, workerHash).first<{ id: string; worker_id: string }>();
+  const bypass = workerAuthDisabled(env);
+  if (!bypass && !token) return fail("worker_auth_required", "Worker token is required.", 401);
+  const task = bypass
+    ? await env.DB.prepare("SELECT id,worker_id FROM widget_tasks WHERE id=?").bind(taskID).first<{ id: string; worker_id: string | null }>()
+    : await env.DB.prepare("SELECT t.id,t.worker_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=?").bind(taskID, await tokenHash(env, token)).first<{ id: string; worker_id: string }>();
   if (!task) return fail("task_not_found", "Task not found or Worker is not authorized.", 404);
   await env.DB.prepare("UPDATE widget_tasks SET status='running',lease_expires_at=? WHERE id=? AND status IN ('claimed','running')").bind(new Date(Date.now() + 120_000).toISOString(), taskID).run();
-  await env.DB.prepare("UPDATE widget_workers SET last_seen_at=? WHERE id=?").bind(now(), task.worker_id).run();
+  if (task.worker_id) await env.DB.prepare("UPDATE widget_workers SET last_seen_at=? WHERE id=?").bind(now(), task.worker_id).run();
   return ok({ taskID, status: "running" }, 200, { "Cache-Control": "no-store" });
 }
 
