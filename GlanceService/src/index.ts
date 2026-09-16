@@ -250,8 +250,8 @@ async function assetDownload(env: Env, request: Request, assetID: string) {
 }
 
 async function createTask(env: Env, request: Request, admin = false) {
-  await ensureOfficialWidgets(env);
   const actor = admin ? "admin" : await requireUser(request);
+  await ensureOfficialWidgets(env);
   const body = await readJSON(request);
   const widgetID = typeof body.widgetID === "string" ? body.widgetID : typeof body.widget_id === "string" ? body.widget_id : "";
   const commandID = typeof body.commandID === "string" ? body.commandID : typeof body.command_id === "string" ? body.command_id : "";
