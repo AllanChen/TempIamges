@@ -113,10 +113,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             isPlaying ? pausePlayback() : playPlayback()
             return
         }
-        if event.type == .mouseMoved, !isInLiveResize {
-            let point = canvas.convert(event.locationInWindow, from: nil)
-            if activeVideoFrame.contains(point) { showToolbar() } else { hideToolbar() }
-        }
+        // Video chrome stays persistent, matching the Image Inspect workbench.
+        // Hover can change button emphasis but must not hide playback controls.
         super.sendEvent(event)
     }
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -133,7 +131,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         // layered player surfaces cannot prevent drag-destination discovery.
         contentView = canvas
         let root = canvas
-        root.wantsLayer = true; root.layer?.backgroundColor = PanelStyle.imageCanvas.cgColor
+        root.wantsLayer = true; root.layer?.backgroundColor = PanelStyle.surface.cgColor
         canvas.acceptsExtension = { ext in
             MediaDropCanvasView.videoExtensions.contains(ext)
         }
@@ -161,7 +159,13 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         playbackBar.autoresizingMask = [.width, .minYMargin]
         canvas.addSubview(playbackBar)
         filmstrip.onSelect = { [weak self] index in self?.selectVideo(index) }; canvas.addSubview(filmstrip)
-        inspectToolbar.isHidden = true; inspectToolbar.alphaValue = 0; identityBar.isHidden = true; identityBar.alphaValue = 0; filmstrip.isHidden = true; filmstrip.alphaValue = 0; playbackBar.isHidden = true; playbackBar.alphaValue = 0
+        // Keep the media chrome visible in the first frame. Video Inspect uses
+        // the same persistent workbench hierarchy as Image Inspect; hover only
+        // changes emphasis, it does not remove playback controls.
+        inspectToolbar.isHidden = false; inspectToolbar.alphaValue = 1
+        identityBar.isHidden = false; identityBar.alphaValue = 1
+        filmstrip.isHidden = infos.count < 2; filmstrip.alphaValue = 1
+        playbackBar.isHidden = false; playbackBar.alphaValue = 1
         captureFeedback.isHidden = true
         canvas.addSubview(captureFeedback, positioned: .above, relativeTo: nil)
         render()
@@ -604,9 +608,9 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
 private final class VideoInspectViewport: NSView {
     let index: Int; let player: AVPlayer; private let playerView: AVPlayerView; private let muteButton = InspectToolbarButton(symbol: "speaker.slash.fill", tooltip: "Mute".localized); private let compareDimmer = CALayer(); private let loadingView = ModularImageLoadingView(frame: .zero); private let failureView = LoadFailedAnimationView(frame: .zero); private var statusObservation: NSKeyValueObservation?; var onActivate: (() -> Void)?
     weak var dropTarget: MediaDropCanvasView?
-    init(index: Int, player: AVPlayer) { self.index = index; self.player = player; playerView = PassthroughVideoPlayerView(frame: .zero); super.init(frame: .zero); registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes); wantsLayer = true; layer?.masksToBounds = true; layer?.backgroundColor = PanelStyle.imageCanvas.cgColor; playerView.controlsStyle = .none; playerView.videoGravity = .resizeAspect; playerView.player = player; addSubview(playerView); addSubview(loadingView); addSubview(failureView); failureView.isHidden = true; compareDimmer.backgroundColor = NSColor.black.withAlphaComponent(0.10).cgColor; compareDimmer.opacity = 0; layer?.addSublayer(compareDimmer); muteButton.target = self; muteButton.action = #selector(toggleMute); addSubview(muteButton); observePlayerItem() }
+    init(index: Int, player: AVPlayer) { self.index = index; self.player = player; playerView = PassthroughVideoPlayerView(frame: .zero); super.init(frame: .zero); registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes); wantsLayer = true; layer?.masksToBounds = true; layer?.backgroundColor = PanelStyle.surface.cgColor; playerView.controlsStyle = .none; playerView.videoGravity = .resizeAspect; playerView.player = player; addSubview(playerView); addSubview(loadingView); addSubview(failureView); failureView.isHidden = true; compareDimmer.backgroundColor = NSColor.black.withAlphaComponent(0.10).cgColor; compareDimmer.opacity = 0; layer?.addSublayer(compareDimmer); muteButton.target = self; muteButton.action = #selector(toggleMute); addSubview(muteButton); observePlayerItem() }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layout() { playerView.frame = bounds; compareDimmer.frame = bounds; muteButton.frame = NSRect(x: bounds.maxX - 40, y: bounds.maxY - 40 - 44, width: 24, height: 24); let loader = ModularImageLoadingView.preferredSize; loadingView.frame = NSRect(x: bounds.midX - loader.width / 2, y: bounds.midY - loader.height / 2, width: loader.width, height: loader.height); let failed = LoadFailedAnimationView.preferredSize; failureView.frame = NSRect(x: bounds.midX - failed.width / 2, y: bounds.midY - failed.height / 2, width: failed.width, height: failed.height) }
+    override func layout() { let mediaFrame = bounds.insetBy(dx: 26, dy: 26); playerView.frame = mediaFrame; compareDimmer.frame = bounds; muteButton.frame = NSRect(x: mediaFrame.maxX - 30, y: mediaFrame.maxY - 30, width: 24, height: 24); let loader = ModularImageLoadingView.preferredSize; loadingView.frame = NSRect(x: bounds.midX - loader.width / 2, y: bounds.midY - loader.height / 2, width: loader.width, height: loader.height); let failed = LoadFailedAnimationView.preferredSize; failureView.frame = NSRect(x: bounds.midX - failed.width / 2, y: bounds.midY - failed.height / 2, width: failed.width, height: failed.height) }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { dropTarget?.acceptsDragging(sender) == true ? .copy : [] }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { dropTarget?.acceptsDragging(sender) == true ? .copy : [] }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool { dropTarget?.performDrop(sender) == true }

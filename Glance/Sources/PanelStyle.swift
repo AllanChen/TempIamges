@@ -127,20 +127,20 @@ enum PanelStyle {
     // MARK: - Palette
 
     /// Deepest image/background plane — Quiet Darkroom `#101113`.
-    static let canvas = NSColor(srgbRed: 16 / 255, green: 17 / 255, blue: 19 / 255, alpha: 1)
+    static let canvas = NSColor(srgbRed: 9 / 255, green: 9 / 255, blue: 11 / 255, alpha: 1)
     /// Primary chrome plane — `#17191C`.
-    static let surface = NSColor(srgbRed: 23 / 255, green: 25 / 255, blue: 28 / 255, alpha: 1)
+    static let surface = NSColor(srgbRed: 17 / 255, green: 17 / 255, blue: 20 / 255, alpha: 1)
     /// Raised controls and cards — `#202329`.
-    static let overlay = NSColor(srgbRed: 32 / 255, green: 35 / 255, blue: 41 / 255, alpha: 1)
+    static let overlay = NSColor(srgbRed: 23 / 255, green: 23 / 255, blue: 28 / 255, alpha: 1)
 
     /// Warm off-white primary text — `#F2F0EB`.
-    static let textPrimary = NSColor(srgbRed: 242 / 255, green: 240 / 255, blue: 235 / 255, alpha: 1)
+    static let textPrimary = NSColor(srgbRed: 243 / 255, green: 238 / 255, blue: 232 / 255, alpha: 1)
     /// Secondary / supporting text — `#A7A8AA`.
-    static let textSecondary = NSColor(srgbRed: 167 / 255, green: 168 / 255, blue: 170 / 255, alpha: 1)
+    static let textSecondary = NSColor(srgbRed: 170 / 255, green: 164 / 255, blue: 160 / 255, alpha: 1)
     /// Tertiary text (timestamps, counts, hints).
-    static let textTertiary = NSColor(srgbRed: 119 / 255, green: 122 / 255, blue: 126 / 255, alpha: 1)
+    static let textTertiary = NSColor(srgbRed: 114 / 255, green: 109 / 255, blue: 105 / 255, alpha: 1)
     /// Sparse focus/interaction cue — `#E1B982`.
-    static let warmCue = NSColor(srgbRed: 225 / 255, green: 185 / 255, blue: 130 / 255, alpha: 1)
+    static let warmCue = NSColor(srgbRed: 232 / 255, green: 168 / 255, blue: 124 / 255, alpha: 1)
 
     /// Hairline that defines a bar edge / separator on the frost.
     static let hairline       = textPrimary.withAlphaComponent(0.10)
@@ -158,6 +158,14 @@ enum PanelStyle {
     static let imageCanvas    = canvas
 
     static let accent         = warmCue
+    /// Semantic colours shared by task, Widget, and validation states.
+    static let success        = NSColor(srgbRed: 143 / 255, green: 208 / 255, blue: 175 / 255, alpha: 1)
+    static let failure        = NSColor(srgbRed: 241 / 255, green: 139 / 255, blue: 134 / 255, alpha: 1)
+    static let info           = NSColor(srgbRed: 169 / 255, green: 197 / 255, blue: 239 / 255, alpha: 1)
+    static let cornerSmall: CGFloat = 8
+    static let cornerMedium: CGFloat = 12
+    static let cornerLarge: CGFloat = 16
+    static let spacing: CGFloat = 8
 
     // MARK: - Type scale
 

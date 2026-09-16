@@ -71,8 +71,9 @@ async function validAssetSignature(env: Env, assetID: string, exp: string, sig: 
   const expected = await hmac(env, `${assetID}.${exp}`);
   return expected === sig;
 }
-async function requireUser(request: Request) {
+async function requireUser(request: Request, env?: Env) {
   const token = bearer(request);
+  if (!token && env && workerAuthDisabled(env)) return "user_anonymous";
   if (!token) throw new Error("Unauthorized");
   return `user_${await digest(token)}`;
 }
@@ -121,8 +122,8 @@ async function adminOverview(env: Env, request: Request) {
 }
 async function adminTasks(env: Env, request: Request) {
   await requireAdmin(env, request);
-  const rows = await env.DB.prepare("SELECT t.id,t.widget_id,t.version_id,t.command_id,t.owner_id,t.type,t.status,t.worker_id,t.attempts,t.error_code,t.result_json,t.created_at,t.claimed_at,t.completed_at,w.name AS widget_name,v.version FROM widget_tasks t LEFT JOIN widgets w ON w.id=t.widget_id LEFT JOIN widget_versions v ON v.id=t.version_id ORDER BY t.created_at DESC LIMIT 100").all<Record<string, unknown>>();
-  return ok(rows.results.map((row) => ({ ...row, result: row.result_json ? JSON.parse(String(row.result_json)) : null, result_json: undefined })), 200, { "Cache-Control": "no-store" });
+  const rows = await env.DB.prepare("SELECT t.id,t.widget_id,t.version_id,t.command_id,t.owner_id,t.type,t.status,t.worker_id,t.attempts,t.error_code,t.input_json,t.result_json,t.created_at,t.claimed_at,t.completed_at,w.name AS widget_name,v.version FROM widget_tasks t LEFT JOIN widgets w ON w.id=t.widget_id LEFT JOIN widget_versions v ON v.id=t.version_id ORDER BY t.created_at DESC LIMIT 100").all<Record<string, unknown>>();
+  return ok(rows.results.map((row) => ({ ...row, input: row.input_json ? JSON.parse(String(row.input_json)) : null, result: row.result_json ? JSON.parse(String(row.result_json)) : null, input_json: undefined, result_json: undefined })), 200, { "Cache-Control": "no-store" });
 }
 async function adminWidgets(env: Env, request: Request) {
   await requireAdmin(env, request);
@@ -162,7 +163,13 @@ async function ensureOfficialWidgets(env: Env) {
   const timestamp = now();
   for (const manifest of OFFICIAL_MANIFESTS) {
     const exists = await env.DB.prepare("SELECT id FROM widget_versions WHERE widget_id=? AND version=?").bind(manifest.id, manifest.version).first();
-    if (exists) continue;
+    if (exists) {
+      // Keep the catalog manifest in sync when a widget row was migrated from
+      // a legacy string ID to its immutable UUID.
+      await env.DB.prepare("UPDATE widget_versions SET manifest_json=?,updated_at=? WHERE widget_id=? AND version=?")
+        .bind(JSON.stringify(manifest), timestamp, manifest.id, manifest.version).run();
+      continue;
+    }
     const versionID = id("version");
     await env.DB.batch([
       env.DB.prepare("INSERT OR IGNORE INTO widgets (id,owner_id,name,summary,author,icon_url,current_version,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(manifest.id, "glance-official", manifest.name, manifest.summary, manifest.author, manifest.iconURL, manifest.version, "published", timestamp, timestamp),
@@ -172,7 +179,7 @@ async function ensureOfficialWidgets(env: Env) {
 }
 
 async function createSubmission(env: Env, request: Request) {
-  const owner = await requireUser(request);
+  const owner = await requireUser(request, env);
   const body = await readJSON(request);
   const manifest = body.manifest as Manifest;
   const issues = validationIssues(manifest || {});
@@ -210,8 +217,10 @@ async function widgetDetail(env: Env, widgetID: string) {
 }
 
 async function taskStatus(env: Env, request: Request, taskID: string) {
-  const actor = await requireUser(request);
-  const row = await env.DB.prepare("SELECT id,owner_id,status,result_json,error_code,attempts FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
+  const actor = await requireUser(request, env);
+  const row = workerAuthDisabled(env)
+    ? await env.DB.prepare("SELECT id,owner_id,status,result_json,error_code,attempts FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
+    : await env.DB.prepare("SELECT id,owner_id,status,result_json,error_code,attempts FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
   if (!row) return fail("task_not_found", "Task not found.", 404);
   const result: Record<string, unknown> = { taskID: row.id, status: row.status === "succeeded" ? "completed" : row.status, processCount: row.status === "succeeded" ? 100 : 0, attempts: row.attempts };
   if (row.result_json) {
@@ -224,7 +233,7 @@ async function taskStatus(env: Env, request: Request, taskID: string) {
 }
 
 async function uploadAsset(env: Env, request: Request) {
-  const owner = await requireUser(request);
+  const owner = await requireUser(request, env);
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return fail("file_required", "A media file is required.", 400);
@@ -239,7 +248,7 @@ async function uploadAsset(env: Env, request: Request) {
 
 async function assetDownload(env: Env, request: Request, assetID: string) {
   const signed = await validAssetSignature(env, assetID, new URL(request.url).searchParams.get("exp") || "", new URL(request.url).searchParams.get("sig") || "");
-  const owner = signed ? null : await requireUser(request);
+  const owner = signed ? null : await requireUser(request, env);
   const row = owner
     ? await env.DB.prepare("SELECT object_key,mime_type FROM widget_assets WHERE id=? AND owner_id=?").bind(assetID, owner).first<{ object_key: string; mime_type: string }>()
     : await env.DB.prepare("SELECT object_key,mime_type FROM widget_assets WHERE id=?").bind(assetID).first<{ object_key: string; mime_type: string }>();
@@ -250,7 +259,7 @@ async function assetDownload(env: Env, request: Request, assetID: string) {
 }
 
 async function createTask(env: Env, request: Request, admin = false) {
-  const actor = admin ? "admin" : await requireUser(request);
+  const actor = admin ? "admin" : await requireUser(request, env);
   await ensureOfficialWidgets(env);
   const body = await readJSON(request);
   const widgetID = typeof body.widgetID === "string" ? body.widgetID : typeof body.widget_id === "string" ? body.widget_id : "";
@@ -327,7 +336,7 @@ async function taskHeartbeat(env: Env, request: Request, taskID: string) {
 }
 
 async function submissionDetail(env: Env, request: Request, submissionID: string) {
-  const actor = await requireUser(request);
+  const actor = await requireUser(request, env);
   const row = await env.DB.prepare("SELECT v.id,v.widget_id,v.version,v.manifest_json,v.status,v.created_at,v.updated_at,w.owner_id FROM widget_versions v JOIN widgets w ON w.id=v.widget_id WHERE v.id=? AND w.owner_id=?").bind(submissionID, actor).first<Record<string, unknown>>();
   if (!row) return fail("submission_not_found", "Submission not found.", 404);
   return ok({ submissionId: row.id, widgetId: row.widget_id, version: row.version, status: row.status, manifest: JSON.parse(String(row.manifest_json)), createdAt: row.created_at, updatedAt: row.updated_at }, 200, { "Cache-Control": "no-store" });
@@ -384,7 +393,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/v2/tasks") return createTask(env, request);
       if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) return taskStatus(env, request, parts[3]);
       if (request.method === "DELETE" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) {
-        const actor = await requireUser(request);
+        const actor = await requireUser(request, env);
         const cancelled = await env.DB.prepare("UPDATE widget_tasks SET status='cancelled',completed_at=? WHERE id=? AND owner_id=? AND status IN ('queued','claimed','running')").bind(now(), parts[3], actor).run();
         return cancelled.meta.changes ? ok({ taskID: parts[3], status: "cancelled" }) : fail("task_not_found", "Task not found or cannot be cancelled.", 404);
       }

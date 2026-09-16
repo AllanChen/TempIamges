@@ -34,10 +34,24 @@ final class WidgetTaskManager {
     var activeCount: Int { records.filter { $0.phase.isActive }.count }
     func activeRecords(for source: URL) -> [WidgetTaskRecord] { records.filter { $0.phase.isActive && $0.source?.taskKey == source.taskKey } }
     func latestRecord(for source: URL) -> WidgetTaskRecord? { records.first { $0.source?.taskKey == source.taskKey } }
+    func completedRecord(for output: URL) -> WidgetTaskRecord? {
+        records.first { record in
+            guard record.phase == .completed, let result = record.output else { return false }
+            return result.standardizedFileURL.path == output.standardizedFileURL.path
+        }
+    }
 
     @discardableResult
     func start(widget: WidgetManifest, command: WidgetCommand, media: MediaInfo) -> UUID? {
-        guard !records.contains(where: { $0.phase.isActive && $0.source?.taskKey == media.url.taskKey && $0.widgetID == widget.id && $0.commandID == command.id }) else { return nil }
+        let matching = records.filter { $0.phase.isActive && $0.source?.taskKey == media.url.taskKey && $0.widgetID == widget.id && $0.commandID == command.id }
+        if !matching.isEmpty {
+            // A task that never received a remote ID cannot be running. Older
+            // clients could also leave a stale active record after a backend
+            // migration; release the guard after a bounded recovery window.
+            let stale = matching.filter { $0.remoteTaskID == nil || Date().timeIntervalSince($0.updatedAt) > 15 * 60 }
+            for record in stale { update(record.id, phase: .interrupted, progress: 0, error: "Task was reset and can be submitted again.") }
+            if stale.count < matching.count { return nil }
+        }
         let id = UUID()
         requestNotificationPermissionIfNeeded()
         records.insert(WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.name,

@@ -100,6 +100,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         title = "Image Inspect".localized
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
+        // The window contains several high-resolution CALayer viewports. The
+        // default NSWindow.zoom animation repeatedly lays out and redraws
+        // those layers, which appears as a stutter on zoom in/out.
+        animationBehavior = .none
         appearance = NSAppearance(named: .darkAqua)
         backgroundColor = PanelStyle.imageCanvas
         minSize = NSSize(width: 640, height: 440)
@@ -129,6 +133,15 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session = ImageInspectSession(infos: infos, images: images, focusedIndex: focusedIndex,
                                       mode: preferredMode)
         Logger.info("ImageInspectWindow: opened \(infos.count) item(s) in \(session?.mode == .compare ? "compare" : "focus") mode")
+        // The 01 workbench treats image information as a persistent right-side
+        // surface. Open it with the inspect window so the first frame already
+        // matches the approved layout instead of hiding the metadata behind a
+        // second click.
+        if !infoVisible {
+            infoVisible = true
+            positionInfoWindowBesideMain()
+            addChildWindow(infoWindow, ordered: .above)
+        }
         toolbarHideWorkItem?.cancel()
         toolbarHideWorkItem = nil
         // Chrome stays available while inspecting; it no longer depends on
@@ -406,8 +419,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         for label in [identityNameLabel, identityMetaLabel] {
             identityBar.addSubview(label)
         }
-        identityBar.alphaValue = 0
-        identityBar.isHidden = true
+        identityBar.alphaValue = 1
+        identityBar.isHidden = false
         canvasContainer.addSubview(identityBar, positioned: .above, relativeTo: nil)
 
         focusButton.target = self
@@ -437,7 +450,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             toolbarBar.addSubview(button)
         }
         taskBadge.wantsLayer = true
-        taskBadge.layer?.backgroundColor = NSColor.systemRed.cgColor
+        taskBadge.layer?.backgroundColor = PanelStyle.failure.cgColor
         taskBadge.layer?.cornerRadius = 5
         taskBadge.isHidden = WidgetTaskManager.shared.activeCount == 0
         toolbarBar.addSubview(taskBadge)
@@ -453,8 +466,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         primaryViewport.onActionMenu = menuHandler
         secondaryViewport.onActionMenu = menuHandler
         sliderViewport.onActionMenu = menuHandler
-        toolbarBar.alphaValue = 0
-        toolbarBar.isHidden = true
+        toolbarBar.alphaValue = 1
+        toolbarBar.isHidden = false
         canvasContainer.addSubview(toolbarBar, positioned: .above, relativeTo: nil)
         layoutContent()
     }
@@ -828,6 +841,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 ActionMenuEntry(title: "To Icon".localized,
                                 action: { [weak self] in self?.exportActive(as: .icns) }),
             ]),
+            ActionMenuEntry(title: "Base64".localized, submenu: [
+                ActionMenuEntry(title: "Image to Base64".localized, enabled: hasImage,
+                                action: { [weak self] in self?.copyActiveImageAsBase64() }),
+                ActionMenuEntry(title: "Base64 to Image".localized,
+                                action: { [weak self] in self?.presentBase64ImageInput() })
+            ]),
             .separator(),
             ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage,
                             action: { [weak self] in self?.recognizeTextTapped() }),
@@ -961,6 +980,61 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         pasteboard.writeObjects([NSImage(cgImage: cgImage,
                                          size: NSSize(width: cgImage.width, height: cgImage.height))])
         toastWindow.show(message: "Copied ✓".localized, over: self)
+    }
+
+    private func copyActiveImageAsBase64() {
+        guard let cgImage = currentActionCGImage(),
+              let png = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(png.base64EncodedString(), forType: .string)
+        toastWindow.show(message: "Base64 copied ✓".localized, over: self)
+    }
+
+    private func presentBase64ImageInput() {
+        let alert = NSAlert()
+        alert.messageText = "Base64 to Image".localized
+        alert.informativeText = "Paste a Base64 image string below".localized
+        let area = NSTextView(frame: NSRect(x: 0, y: 0, width: 520, height: 180))
+        area.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        area.textColor = PanelStyle.textPrimary
+        area.backgroundColor = PanelStyle.controlFill
+        area.drawsBackground = true
+        area.isRichText = false
+        area.isEditable = true
+        area.textContainerInset = NSSize(width: 10, height: 10)
+        alert.accessoryView = area
+        alert.addButton(withTitle: "Convert".localized)
+        alert.addButton(withTitle: "Cancel".localized)
+        alert.window.initialFirstResponder = area
+        alert.beginSheetModal(for: self) { [weak self, weak area] response in
+            guard response == .alertFirstButtonReturn,
+                  let raw = area?.string.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return }
+            self?.decodeBase64Image(raw)
+        }
+        DispatchQueue.main.async { alert.window.makeFirstResponder(area) }
+    }
+
+    private func decodeBase64Image(_ raw: String) {
+        // Accept both plain Base64 and data URLs such as data:image/png;base64,...
+        let payload: String = {
+            if let comma = raw.range(of: ","), raw[..<comma.lowerBound].lowercased().contains("base64") {
+                return String(raw[comma.upperBound...])
+            }
+            return raw
+        }()
+        let compact = payload.filter { !$0.isWhitespace }
+        guard let data = Data(base64Encoded: compact, options: [.ignoreUnknownCharacters]),
+              let image = NSImage(data: data), image.isValid,
+              let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:]) else {
+            errorTooltip.show(message: "Invalid Base64 image".localized, at: NSEvent.mouseLocation); return
+        }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("GlanceBase64", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("base64-\(UUID().uuidString).png")
+        guard (try? png.write(to: url, options: .atomic)) != nil else { return }
+        appendOrFocusImage(info: MediaInfo(url: url, isLocal: true, kind: .image))
     }
 
     /// ⌘S — silently save the current view as PNG into ~/Documents/Glance/.
@@ -1324,12 +1398,39 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     /// ⌘V: classify clipboard text through the same PathDetector used by the
     /// selection-hotkey pipeline, then display a remote image URL directly.
+    /// Browsers also place the decoded image itself on the pasteboard; handle
+    /// that representation before looking for text/URL data.
     private func pasteRemoteImageFromClipboard() -> Bool {
+        if let imageURL = Self.materializeClipboardImage() {
+            appendOrFocusImage(info: MediaInfo(url: imageURL, isLocal: true, kind: .image))
+            return true
+        }
         guard let text = Self.clipboardText() else { return false }
         guard let info = imageInfo(from: text, allowExtensionlessRemoteURL: true),
               !info.isLocal else { return false }
         appendOrFocusImage(info: info)
         return true
+    }
+
+    private static func materializeClipboardImage() -> URL? {
+        let pasteboard = NSPasteboard.general
+        let types: [NSPasteboard.PasteboardType] = [
+            .png, .tiff,
+            NSPasteboard.PasteboardType(rawValue: UTType.jpeg.identifier),
+            NSPasteboard.PasteboardType(rawValue: "public.heic"),
+            NSPasteboard.PasteboardType(rawValue: "org.webmproject.webp")
+        ]
+        guard let type = pasteboard.availableType(from: types),
+              let data = pasteboard.data(forType: type),
+              let image = NSImage(data: data),
+              let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:]) else { return nil }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("GlanceClipboard", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("clipboard-\(UUID().uuidString).png")
+        guard (try? png.write(to: url, options: .atomic)) != nil else { return nil }
+        return url
     }
 
     /// Toolbar "globe" button: a sheet accepting an image URL OR a local
@@ -2439,6 +2540,10 @@ final class InspectImageViewport: NSView {
     private let widgetStatusLabel = NSTextField(labelWithString: "")
     private var loadFailed = false
     private var zoom: CGFloat = 1
+    /// Quiet darkroom margin around the media card from the approved 01
+    /// workbench. Keeping the image inset makes the canvas read as a surface,
+    /// rather than a borderless image glued to the window edges.
+    private let canvasInset: CGFloat = 26
     private var normalizedCenter = CGPoint(x: 0.5, y: 0.5)
     private var panOffset = CGPoint.zero
     private var lastMouseLocation = CGPoint.zero
@@ -2449,9 +2554,13 @@ final class InspectImageViewport: NSView {
         super.init(frame: frameRect)
         registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.imageCanvas.cgColor
+        layer?.backgroundColor = PanelStyle.surface.cgColor
         layer?.masksToBounds = true
         imageLayer.contentsGravity = .resizeAspect
+        imageLayer.cornerRadius = PanelStyle.cornerLarge
+        imageLayer.masksToBounds = true
+        imageLayer.borderWidth = 1
+        imageLayer.borderColor = PanelStyle.hairline.cgColor
         layer?.addSublayer(imageLayer)
         // Compare selection is communicated by gently dimming the inactive
         // side. Keep the selected side completely free of a border/glow.
@@ -2543,9 +2652,13 @@ final class InspectImageViewport: NSView {
     }
 
     func setWidgetProcessing(_ task: WidgetTaskRecord?) {
-        widgetOverlay.isHidden = task == nil
-        widgetLoadingView.setLoading(task != nil)
-        isInteractionEnabled = task == nil
+        // Keep the main image available while a Widget runs. The task state is
+        // intentionally represented by the filmstrip breathing border and the
+        // toolbar badge; a full-canvas overlay would hide the image the user
+        // may still need to inspect or compare.
+        widgetOverlay.isHidden = true
+        widgetLoadingView.setLoading(false)
+        isInteractionEnabled = true
         guard let task else { widgetStatusLabel.stringValue = ""; return }
         switch task.phase {
         case .uploading: widgetStatusLabel.stringValue = "Uploading…".localized
@@ -2700,7 +2813,8 @@ final class InspectImageViewport: NSView {
         let size = rotationQuarters % 2 == 1
             ? CGSize(width: image.size.height, height: image.size.width)
             : image.size
-        return min(bounds.width / size.width, bounds.height / size.height)
+        let canvas = bounds.insetBy(dx: canvasInset, dy: canvasInset)
+        return min(canvas.width / size.width, canvas.height / size.height)
     }
 
     /// Layer bounds — the rendered size BEFORE rotation.
@@ -2900,7 +3014,7 @@ final class ImageFilmstripView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.backgroundColor = PanelStyle.surface.withAlphaComponent(0.82).cgColor
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -2954,10 +3068,12 @@ final class ImageFilmstripView: NSView {
             // focusedIndex can never create a third highlighted thumbnail.
             let isSelected = compareIndices == nil && index == selectedIndex
             let task = WidgetTaskManager.shared.latestRecord(for: infos[index].url)
+            let resultTask = task == nil ? WidgetTaskManager.shared.completedRecord(for: infos[index].url) : nil
             item.configure(image: thumbnail(for: index), title: infos[index].filename,
                            selected: isSelected,
                            compared: isCompared,
-                           taskPhase: task?.phase,
+                           taskPhase: (task ?? resultTask)?.phase,
+                           isResult: resultTask != nil,
                            activeTaskCount: WidgetTaskManager.shared.activeRecords(for: infos[index].url).count)
             item.onClick = { [weak self] modifiers in
                 if modifiers.contains(.option) { self?.onCompare?(index) }
@@ -3004,7 +3120,8 @@ private final class ImageFilmstripItem: NSView {
         return true
     }
     func configure(image: NSImage?, title: String, selected: Bool, compared: Bool,
-                   taskPhase: WidgetTaskPhase?, activeTaskCount: Int) {
+                   taskPhase: WidgetTaskPhase?, isResult: Bool = false,
+                   activeTaskCount: Int) {
         imageView.image = image
         toolTip = title
         setAccessibilityElement(true)
@@ -3012,10 +3129,11 @@ private final class ImageFilmstripItem: NSView {
         setAccessibilityLabel(title)
         let processing = taskPhase?.isActive == true
         let failed = taskPhase == .failed || taskPhase == .interrupted
-        layer?.borderWidth = selected || compared || processing ? 2 : 0
-        layer?.borderColor = PanelStyle.warmCue.cgColor
-        taskBadge.isHidden = !processing && !failed
-        taskBadge.backgroundColor = (failed ? NSColor.systemRed : PanelStyle.warmCue).cgColor
+        let completedResult = isResult && taskPhase == .completed
+        layer?.borderWidth = selected || compared || processing || completedResult ? 2 : 0
+        layer?.borderColor = completedResult ? PanelStyle.success.cgColor : PanelStyle.warmCue.cgColor
+        taskBadge.isHidden = !processing && !failed && !completedResult
+        taskBadge.backgroundColor = (failed ? PanelStyle.failure : (completedResult ? PanelStyle.success : PanelStyle.warmCue)).cgColor
         layer?.removeAnimation(forKey: "widgetBreathing")
         if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             let animation = CABasicAnimation(keyPath: "borderColor")
@@ -3029,6 +3147,7 @@ private final class ImageFilmstripItem: NSView {
         }
         if processing { setAccessibilityLabel("\(title), \(activeTaskCount) Widget task running") }
         else if failed { setAccessibilityLabel("\(title), Widget task failed") }
+        else if completedResult { setAccessibilityLabel("\(title), Widget result just completed") }
     }
 
     override func layout() {

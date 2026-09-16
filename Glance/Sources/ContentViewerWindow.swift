@@ -80,6 +80,8 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
             defer: false
         )
         webView.navigationDelegate = self
+        webView.setValue(false, forKey: "drawsBackground")
+        webView.underPageBackgroundColor = .clear
         self.isReleasedWhenClosed = false
         self.title = "Glance".localized
         // Match ContentPanel's dark-glass chrome regardless of system theme.

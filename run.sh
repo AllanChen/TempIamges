@@ -24,7 +24,16 @@ if ! security find-identity -v -p codesigning | grep -Fq "\"$SIGN_IDENTITY\""; t
     fi
     echo "Signing identity '$SIGN_IDENTITY' is missing."
     echo "Running one-time Glance signing setup..."
-    "$SIGNING_SETUP_SCRIPT"
+    if ! "$SIGNING_SETUP_SCRIPT"; then
+        echo "Warning: signing setup failed; continuing with a local Debug ad-hoc build."
+        echo "Stable Accessibility/Input Monitoring permissions require fixing the Keychain later."
+        export GLANCE_ALLOW_ADHOC=1
+    fi
+fi
+
+if [ "${GLANCE_ALLOW_ADHOC:-0}" = "1" ] && [ "${1:-Release}" != "Debug" ]; then
+    echo "Using Debug configuration for the ad-hoc fallback."
+    set -- Debug
 fi
 
 echo "Building $APP_NAME..."
@@ -39,10 +48,11 @@ mkdir -p "$(dirname "$LOG_FILE")"
 touch "$LOG_FILE"
 
 echo "Launching $APP_PATH ..."
-# -n forces a NEW instance of THIS bundle path (there are copies in DerivedData
-# and the repo root; without -n, LaunchServices may reuse/registration-match the
-# wrong one and nothing appears). -a targets the exact app we just built.
-open -n -a "$APP_PATH"
+# Pass the bundle path directly to LaunchServices. Using `open -a <path>` can
+# resolve through the app registry and reuse another Glance.app copy (for
+# example one in DerivedData or /Applications), which makes a successful build
+# appear to have no UI changes. `-n <path>` always launches this exact bundle.
+open -n "$APP_PATH"
 
 echo "Tailing $LOG_FILE (Ctrl+C to stop)"
 echo "---"

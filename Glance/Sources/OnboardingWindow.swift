@@ -266,7 +266,7 @@ class PermissionStatusView: NSView {
 
             let fullText = "✓  \(enabledText)"
             let attrString = NSMutableAttributedString(string: fullText)
-            let checkColor = NSColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 1.0)
+            let checkColor = PanelStyle.success
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.alignment = .center
             paragraphStyle.lineBreakMode = .byWordWrapping
@@ -282,8 +282,8 @@ class PermissionStatusView: NSView {
             statusLabel.frame = NSRect(x: 4, y: labelY, width: 112, height: labelHeight)
 
             statusLabel.attributedStringValue = attrString
-            statusContainer.layer?.backgroundColor = NSColor(red: 0.15, green: 0.35, blue: 0.2, alpha: 0.3).cgColor
-            statusContainer.layer?.borderColor = NSColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 0.5).cgColor
+            statusContainer.layer?.backgroundColor = PanelStyle.success.withAlphaComponent(0.18).cgColor
+            statusContainer.layer?.borderColor = PanelStyle.success.withAlphaComponent(0.5).cgColor
         } else {
             statusContainer.isHidden = true
             statusLabel.isHidden = true

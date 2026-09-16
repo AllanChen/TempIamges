@@ -90,6 +90,8 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         )
 
         webView.navigationDelegate = self
+        webView.setValue(false, forKey: "drawsBackground")
+        webView.underPageBackgroundColor = .clear
         webView.allowsMagnification = false
 
         title = "Glance".localized
@@ -1505,7 +1507,10 @@ private final class GitDiffWindow: NSWindow {
         textView.isSelectable = true
         textView.isRichText = true
         textView.drawsBackground = true
-        textView.backgroundColor = NSColor.textBackgroundColor
+        // Keep editable code and Markdown surfaces in the same dark glass
+        // workbench as Image Inspect. The system textBackgroundColor falls
+        // back to white on macOS even when the window uses vibrantDark.
+        textView.backgroundColor = PanelStyle.canvas
         textView.textColor = NSColor.textColor
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = true

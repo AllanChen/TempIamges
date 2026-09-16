@@ -15,6 +15,7 @@ cd "$SCRIPT_DIR"
 # bundle identifier. Never publish an ad-hoc build: its CDHash changes whenever
 # the binary changes, so Accessibility and Input Monitoring are revoked.
 REQUESTED_SIGN_IDENTITY="${GLANCE_SIGN_IDENTITY:-Glance Self-Signed}"
+ALLOW_ADHOC="${GLANCE_ALLOW_ADHOC:-0}"
 # Sign by the certificate SHA-1 hash, not the name. The keychain can hold two
 # entries with the same friendly name (e.g. cert created twice), which makes
 # `codesign --sign "<name>"` fail with "ambiguous". The hash is unique.
@@ -23,9 +24,14 @@ SIGN_IDENTITY="$(security find-identity -v -p codesigning \
     | head -n 1 \
     | sed -E 's/^[[:space:]]*[0-9]+\)[[:space:]]+([0-9A-F]+).*/\1/')"
 if [ -z "$SIGN_IDENTITY" ]; then
-    echo "Error: Glance signing identity '$REQUESTED_SIGN_IDENTITY' is not available."
-    echo "Run $PROJECT_ROOT/scripts/create-signing-cert.sh once, then rebuild."
-    exit 1
+    if [ "$ALLOW_ADHOC" = "1" ] && [ "$CONFIG" = "Debug" ]; then
+        SIGN_IDENTITY="-"
+        echo "Warning: '$REQUESTED_SIGN_IDENTITY' is unavailable; using ad-hoc Debug signing."
+    else
+        echo "Error: Glance signing identity '$REQUESTED_SIGN_IDENTITY' is not available."
+        echo "Run $PROJECT_ROOT/scripts/create-signing-cert.sh once, then rebuild."
+        exit 1
+    fi
 fi
 
 if command -v xcodegen > /dev/null 2>&1; then
@@ -102,15 +108,19 @@ codesign --force --deep \
 codesign --verify --deep --strict "$DEST_APP"
 
 SIGNATURE_INFO="$(codesign -dvv "$DEST_APP" 2>&1)"
-if printf '%s\n' "$SIGNATURE_INFO" | grep -q '^Signature=adhoc$'; then
+if [ "$ALLOW_ADHOC" != "1" ] && printf '%s\n' "$SIGNATURE_INFO" | grep -q '^Signature=adhoc$'; then
     echo "Error: final Glance.app is not signed with a persistent identity."
     exit 1
 fi
-if ! printf '%s\n' "$SIGNATURE_INFO" | grep -q '^Authority='; then
+if [ "$ALLOW_ADHOC" != "1" ] && ! printf '%s\n' "$SIGNATURE_INFO" | grep -q '^Authority='; then
     echo "Error: final Glance.app has no certificate authority in its signature."
     exit 1
 fi
-echo "  Signature verified with: $REQUESTED_SIGN_IDENTITY"
+if [ "$ALLOW_ADHOC" = "1" ]; then
+    echo "  Debug ad-hoc signature verified (permissions may need re-authorization)."
+else
+    echo "  Signature verified with: $REQUESTED_SIGN_IDENTITY"
+fi
 
 echo ""
 echo "Build complete!"

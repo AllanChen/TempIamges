@@ -124,13 +124,13 @@ Content-Type: multipart/form-data
 Worker 使用提交 Widget 时获得的 Worker Token 调用：
 
 ```http
-GET https://glance-service.allanchanni.workers.dev/api/v2/widget-tasks/pull?widget_id=official-remove-background&wait=25
+GET https://glance-service.allanchanni.workers.dev/api/v2/widget-tasks/pull?widget_id=7cc3967a-60ac-4677-9817-72f57f5ef5fa&wait=25
 Authorization: Bearer <worker_token>
 ```
 
 查询参数：
 
-- `widget_id`：必须与 Worker Token 所属 Widget 一致。
+- `widget_id`：唯一的任务拉取条件，必须与 Worker 所属 Widget ID 一致。它始终来自对应 Widget Manifest 的 `id`。当前 Widget ID 为：超分 `ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f`、Remove Background `a0d3311a-b952-4831-8ee4-69f72c381a88`、RemoveBG 高级 `7cc3967a-60ac-4677-9817-72f57f5ef5fa`。
 - `wait`：长轮询等待秒数，范围 `0` 到 `25`，推荐使用 `25`。
 
 有任务时返回：
@@ -156,7 +156,11 @@ Authorization: Bearer <worker_token>
 }
 ```
 
-没有任务时，`task` 为 `null`。Worker 应在请求返回后继续发起下一次长轮询，不要使用 Widget name 作为拉取参数。
+没有任务时，`task` 为 `null`。Worker 应在请求返回后继续发起下一次长轮询。每次请求最多返回并领取一个任务。后续新增 Widget 也必须使用自己的 Manifest `id` 作为 `widget_id`，服务端不会根据 Widget name 做任务匹配：
+
+```text
+GET /api/v2/widget-tasks/pull?widget_id=7cc3967a-60ac-4677-9817-72f57f5ef5fa&wait=25
+```
 
 ### 3. Worker 处理中的心跳
 

@@ -133,6 +133,14 @@
 "Export failed" = "Export failed";
 "Exported ✓" = "Exported ✓";
 "Recognize Text" = "Recognize Text";
+"Base64" = "Base64";
+"Image to Base64" = "Image to Base64";
+"Base64 to Image" = "Base64 to Image";
+"Paste a Base64 image string below" = "Paste a Base64 image string below";
+"Convert" = "Convert";
+"Base64 copied ✓" = "Base64 copied ✓";
+"No Base64 image found" = "No Base64 image found";
+"Invalid Base64 image" = "Invalid Base64 image";
 "Recognizing…" = "Recognizing…";
 "No text found" = "No text found";
 "Copy All" = "Copy All";

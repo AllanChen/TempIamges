@@ -49,26 +49,76 @@ final class WidgetTaskClient {
     }
 
     private func uploadIfNeeded(_ url: URL, completion: @escaping (Result<String, Error>) -> Void) {
-        guard url.isFileURL else { completion(.success(url.absoluteString)); return }
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                let data = try Data(contentsOf: url)
-                var request = self.authorizedRequest(self.apiBase.appendingPathComponent("uploads")); request.httpMethod = "POST"
-                let boundary = "Boundary-\(UUID().uuidString)"
-                request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-                let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-                var body = Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(url.lastPathComponent)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8)
-                body.append(data); body.append(Data("\r\n--\(boundary)--\r\n".utf8)); request.httpBody = body
-                self.session.dataTask(with: request) { data, response, error in
+        prepareLocalInput(url) { prepared in
+            switch prepared {
+            case .failure(let error): completion(.failure(error))
+            case .success(let localURL):
+                DispatchQueue.global(qos: .userInitiated).async {
                     do {
-                        if let error { throw error }
-                        let envelope: UploadEnvelope = try Self.decode(data, response)
-                        guard envelope.success, let value = envelope.result?.url else { throw WidgetError.unavailable }
-                        completion(.success(value))
+                        let data = try Data(contentsOf: localURL)
+                        var request = self.authorizedRequest(self.apiBase.appendingPathComponent("uploads")); request.httpMethod = "POST"
+                        let boundary = "Boundary-\(UUID().uuidString)"
+                        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+                        let mime = UTType(filenameExtension: localURL.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+                        var body = Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(localURL.lastPathComponent)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8)
+                        body.append(data); body.append(Data("\r\n--\(boundary)--\r\n".utf8)); request.httpBody = body
+                        self.session.dataTask(with: request) { data, response, error in
+                            do {
+                                if let error { throw error }
+                                let envelope: UploadEnvelope = try Self.decode(data, response)
+                                guard envelope.success, let value = envelope.result?.url else { throw WidgetError.unavailable }
+                                completion(.success(value))
+                            } catch { completion(.failure(error)) }
+                        }.resume()
                     } catch { completion(.failure(error)) }
-                }.resume()
-            } catch { completion(.failure(error)) }
+                }
+            }
         }
+    }
+
+    /// Materialize clipboard images and remote image URLs in the user's local
+    /// Glance folder before uploading them to the Worker. URLSession keeps both
+    /// the remote download and the subsequent upload off the main thread.
+    private func prepareLocalInput(_ url: URL, completion: @escaping (Result<URL, Error>) -> Void) {
+        if url.isFileURL {
+            let clipboardPrefix = FileManager.default.temporaryDirectory
+                .appendingPathComponent("GlanceClipboard", isDirectory: true).standardizedFileURL.path
+            if url.standardizedFileURL.path.hasPrefix(clipboardPrefix + "/") {
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let destination = try self.localInputURL(for: url)
+                        try FileManager.default.copyItem(at: url, to: destination)
+                        completion(.success(destination))
+                    } catch { completion(.failure(error)) }
+                }
+            } else {
+                completion(.success(url))
+            }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Glance/2.0", forHTTPHeaderField: "User-Agent")
+        session.downloadTask(with: request) { [weak self] temporary, response, error in
+            guard let self else { return }
+            do {
+                if let error { throw error }
+                guard let temporary else { throw WidgetError.unavailable }
+                let destination = try self.localInputURL(for: url, response: response)
+                try FileManager.default.moveItem(at: temporary, to: destination)
+                completion(.success(destination))
+            } catch { completion(.failure(error)) }
+        }.resume()
+    }
+
+    private func localInputURL(for source: URL, response: URLResponse? = nil) throws -> URL {
+        let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Glance", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let responseExtension = response?.suggestedFilename.map { URL(fileURLWithPath: $0).pathExtension }
+        let ext = (responseExtension?.isEmpty == false ? responseExtension! : source.pathExtension)
+        let safeExtension = ext.isEmpty ? "bin" : ext
+        return folder.appendingPathComponent("input-\(UUID().uuidString).\(safeExtension)")
     }
 
     private func submit(widgetID: String, commandID: String, mediaURL: String,

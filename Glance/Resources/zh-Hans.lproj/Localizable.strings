@@ -137,6 +137,14 @@
 "Export failed" = "导出失败";
 "Exported ✓" = "导出成功 ✓";
 "Recognize Text" = "识别文字";
+"Base64" = "Base64";
+"Image to Base64" = "图片转 Base64";
+"Base64 to Image" = "Base64 转图片";
+"Paste a Base64 image string below" = "请在下方粘贴 Base64 图片字符串";
+"Convert" = "转换";
+"Base64 copied ✓" = "Base64 已复制 ✓";
+"No Base64 image found" = "剪贴板中没有 Base64 图片";
+"Invalid Base64 image" = "无效的 Base64 图片";
 "Recognizing…" = "正在识别…";
 "No text found" = "未识别到文字";
 "Copy All" = "全部复制";

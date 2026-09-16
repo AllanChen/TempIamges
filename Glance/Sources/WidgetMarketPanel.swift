@@ -20,6 +20,10 @@ final class WidgetMarketPanel: NSPanel, WKNavigationDelegate, WKScriptMessageHan
         (() => { const show = (card) => { if (document.querySelector('[data-glance-widget-detail]')) return; const shade=document.createElement('div'); shade.dataset.glanceWidgetDetail='1'; shade.style='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:24px'; const box=document.createElement('div'); box.style='max-width:520px;width:100%;max-height:80vh;overflow:auto;border-radius:20px;padding:24px;background:#18181c;color:#f3eee8;box-shadow:0 20px 60px rgba(0,0,0,.5)'; box.innerHTML=card.innerHTML+'<div style="margin-top:18px;text-align:right"><button style="border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:8px 16px;background:transparent;color:inherit">Close</button></div>'; shade.appendChild(box); shade.onclick=e=>{if(e.target===shade||e.target.tagName==='BUTTON')shade.remove()}; document.body.appendChild(shade); }; document.addEventListener('click',e=>{ const card=e.target.closest('article'); if(card && !e.target.closest('button')) show(card); }); })();
         """
         controller.addUserScript(WKUserScript(source: detailScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        let detailStyleScript = """
+        (() => { const style = () => { const shade=document.querySelector('[data-glance-widget-detail]'); if (!shade) return; shade.style.alignItems='stretch'; shade.style.justifyContent='flex-end'; shade.style.padding='0'; shade.style.background='rgba(0,0,0,.56)'; const box=shade.firstElementChild; if (!box) return; box.style.width='min(380px,92vw)'; box.style.height='100%'; box.style.maxHeight='none'; box.style.borderRadius='20px 0 0 20px'; box.style.padding='28px 24px'; box.style.background='rgba(17,17,20,.94)'; box.style.backdropFilter='blur(22px)'; box.style.borderLeft='1px solid rgba(232,168,124,.35)'; }; new MutationObserver(style).observe(document.body,{childList:true,subtree:true}); })();
+        """
+        controller.addUserScript(WKUserScript(source: detailStyleScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         let configuration = WKWebViewConfiguration()
         configuration.userContentController = controller
         webView = WKWebView(frame: .zero, configuration: configuration)
@@ -117,7 +121,12 @@ final class WidgetMarketPanel: NSPanel, WKNavigationDelegate, WKScriptMessageHan
             case .success(let manifest):
                 WidgetRegistry.shared.install(manifest)
                 self.syncInstalledState()
-            case .failure(let error): Logger.info("WidgetMarketPanel: install failed: \(error.localizedDescription)")
+            case .failure(let error):
+                // Keep the last known-good local manifest. A transient market
+                // or TLS failure must never remove an installed Widget or make
+                // task submission disappear from the actions menu.
+                self.syncInstalledState()
+                Logger.info("WidgetMarketPanel: install failed: \(error.localizedDescription)")
             }
         }
     }
