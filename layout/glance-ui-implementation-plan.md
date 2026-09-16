@@ -105,3 +105,20 @@ git switch -c feat/glance-ui-refresh
 - 不把首次启动权限流程改成新的产品逻辑，只做当前实现的视觉统一。
 - 不强制主图自动切换到 Widget 结果。
 - 不在当前分支提前合并或 push 新 UI。
+
+## 当前落地状态与后续执行说明
+
+设计稿不会被 `run.sh` 自动加载。Glance 主体是 Swift/AppKit 原生窗口，HTML 文件只作为视觉和交互规格；要看到完整新版 UI，必须把设计稿逐页转换为原生 `NSWindow`、`NSView`、约束和交互，而不是简单把 HTML 放进 WebView。
+
+当前分支已经完成视觉 token、部分 Image Inspect / Video Inspect、任务详情面板、Widget Market 深色样式、共享 loading/error 基础组件，以及构建启动脚本修复。但目前仍是旧原生布局叠加局部新版样式，尚未完成所有页面的结构替换。
+
+后续按以下顺序继续，每完成一页就通过 `./run.sh` 实机检查再进入下一页：
+
+1. Image Inspect：顶部 toolbar、中央主图、右侧 Information、底部 filmstrip、任务状态和结果插入。
+2. Video Inspect：视频画布、比较模式、播放控制、信息面板和 loading/error 状态。
+3. Task Center：筛选分段、任务列表、右侧时间线详情、重试/取消和空态。
+4. Widget Market / Widget Web：右侧详情、安装状态、单 command 展示、reload、loading/success/error。
+5. Preferences、Base64、History：统一磨砂容器、表单层级、多行输入和状态反馈。
+6. 全局收尾：中文/英文文案、空态/错误态统一、键盘与 VoiceOver、Reduce Motion、最小窗口尺寸和回归测试。
+
+推荐保留原生 AppKit 实现。这样可以继续复用现有拖拽、快捷键、图片加载、Widget 任务和权限逻辑，避免维护一套与原生窗口脱节的 WebView UI。
