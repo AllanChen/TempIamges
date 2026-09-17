@@ -1,0 +1,30 @@
+name: GlanceNativeLayout
+options:
+  bundleIdPrefix: com.glance.layout
+  deploymentTarget:
+    macOS: "12.3"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "12.3"
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"
+
+targets:
+  GlanceNativeLayout:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.glance.layout.prototype
+        PRODUCT_NAME: Glance Layout
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Glance Layout
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.graphics-design
+        INFOPLIST_KEY_NSHumanReadableCopyright: Glance native layout prototype
+        CODE_SIGNING_ALLOWED: NO
