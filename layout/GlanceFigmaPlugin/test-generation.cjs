@@ -104,7 +104,7 @@ const names = [
   assert.equal(viewer.fills[0].type, 'IMAGE');
   const viewerToolbar = viewer.findOne(child => child.name === '01 / Floating Toolbar');
   assert.ok(viewerToolbar, 'Simple Image Viewer needs a floating toolbar');
-  assert.equal(viewerToolbar.x, 845, 'Toolbar must remain centered at the image native width');
+  assert.equal(viewerToolbar.x, 823, 'Toolbar must remain centered at the image native width');
   assert.deepEqual(viewerToolbar.children.map(child => child.name),
     ['Focus', 'Compare', 'Slider', 'Widget', 'Information']);
   await figma.ui.onmessage({ type: 'generate-simple-image-viewer', bytes: [1, 2, 3] });
@@ -169,5 +169,64 @@ const names = [
   assert.ok(study.findOne(child => child.name === 'System / Transparent Drag Region'));
   await figma.ui.onmessage({ type: 'generate-viewer-chrome-study' });
   assert.equal(page.children.length, beforeStudy + 1, 'Viewer Chrome Study must be idempotent');
-  console.log('Production screens, Simple Image Viewer, Widget Market, 13-screen Dark Refresh, and Viewer Chrome Study generate idempotently');
+
+  const beforePreview = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-preview-chrome-study' });
+  const preview = page.children.find(child => child.name === 'Dark Refresh v3 / Image Viewer / Preview Chrome');
+  assert.ok(preview, 'Preview Chrome Study must be generated');
+  assert.equal(page.children.length, beforePreview + 1);
+  const previewBar = preview.findOne(child => child.name === '01 / Preview Top Bar');
+  assert.ok(previewBar, 'Preview Chrome needs a single top bar');
+  assert.ok(previewBar.findOne(child => child.name === 'Close'), 'Preview bar needs a close control');
+  assert.ok(previewBar.findOne(child => child.name === 'Filename'), 'Preview bar needs the filename');
+  assert.ok(previewBar.findOne(child => child.name === 'Open with Preview'), 'Preview bar needs the open-with pill');
+  await figma.ui.onmessage({ type: 'generate-preview-chrome-study' });
+  assert.equal(page.children.length, beforePreview + 1, 'Preview Chrome Study must be idempotent');
+
+  const beforeCompare = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-compare-chrome-study' });
+  const compare = page.children.find(child => child.name === 'Dark Refresh v3 / Image Viewer / Compare Mode');
+  assert.ok(compare, 'Compare Mode Study must be generated');
+  assert.equal(page.children.length, beforeCompare + 1);
+  assert.equal(compare.strokeWeight, 2, 'Compare Mode window must have a visible border');
+  assert.ok(compare.findOne(child => child.name === 'Compare / A'), 'Compare needs pane A');
+  assert.ok(compare.findOne(child => child.name === 'Compare / B'), 'Compare needs pane B');
+  assert.ok(compare.findOne(child => child.name === 'Compare / Divider'), 'Compare needs a center divider');
+  const compareToolbar = compare.findOne(child => child.name === '01 / Floating Toolbar');
+  assert.ok(compareToolbar, 'Compare needs the floating toolbar');
+  const compareTile = compareToolbar.findOne(child => child.name === 'Compare');
+  assert.ok(compareTile, 'Compare tile must exist');
+  assert.equal(Math.round(compareTile.fills[0].opacity * 100), 96, 'Compare tile must render active (96% fill)');
+  await figma.ui.onmessage({ type: 'generate-compare-chrome-study' });
+  assert.equal(page.children.length, beforeCompare + 1, 'Compare Mode Study must be idempotent');
+
+  // Non-destructive image replace: swaps fills only, never removes layers.
+  const focusFrame = page.children.find(child =>
+    child.name === 'Dark Refresh v3 / Image Viewer / Simple Operation' ||
+    child.name === 'Dark Refresh v3 / Image Viewer / fouce Mode' ||
+    child.name === 'Dark Refresh v3 / Image Viewer / Focus Mode');
+  const focusChildrenBefore = focusFrame.children.length;
+  const compareChildrenBefore = compare.children.length;
+  const pageCountBeforeReplace = page.children.length;
+  await figma.ui.onmessage({ type: 'replace-study-images', bytes: [1, 2, 3] });
+  assert.equal(page.children.length, pageCountBeforeReplace, 'Replace must not add/remove frames');
+  assert.equal(focusFrame.children.length, focusChildrenBefore, 'Replace must not remove Focus layers');
+  assert.equal(compare.children.length, compareChildrenBefore, 'Replace must not remove Compare layers');
+  assert.equal(focusFrame.fills[0].type, 'IMAGE', 'Focus board must now carry the image');
+  assert.equal(compare.findOne(c => c.name === 'Compare / A').fills[0].type, 'IMAGE', 'Compare A must carry the image');
+  assert.equal(compare.findOne(c => c.name === 'Compare / B').fills[0].type, 'IMAGE', 'Compare B must carry the image');
+
+  const beforeInspectStudy = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-image-inspect-chrome-study' });
+  const inspectStudy = page.children.find(child => child.name === 'Dark Refresh v3 / Image Inspect / Clean Editable');
+  assert.ok(inspectStudy, 'Image Inspect Chrome Study must be generated');
+  assert.equal(page.children.length, beforeInspectStudy + 1);
+  assert.ok(inspectStudy.findOne(child => child.name === 'System / Window Controls / Bare'));
+  assert.ok(inspectStudy.findOne(child => child.name === '04 / Image Information / active preview'));
+  const inspectToolbar = inspectStudy.findOne(child => child.name === '01 / Floating Toolbar');
+  assert.deepEqual(inspectToolbar.children.map(child => child.name),
+    ['Focus', 'Compare', 'Slider', 'Widget', 'Information']);
+  await figma.ui.onmessage({ type: 'generate-image-inspect-chrome-study' });
+  assert.equal(page.children.length, beforeInspectStudy + 1, 'Image Inspect Chrome Study must be idempotent');
+  console.log('Production screens, Simple Image Viewer, Widget Market, 13-screen Dark Refresh, v3 Chrome Studies, Preview Chrome, and bordered Compare Mode generate idempotently');
 })().catch(error => { console.error(error); process.exitCode = 1; });

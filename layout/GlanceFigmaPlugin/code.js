@@ -50,6 +50,11 @@ const ICONS = {
   warning: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2 16 15H2L9 2Z" stroke="CURRENT" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 7v3.5M9 13v.2" stroke="CURRENT" stroke-width="1.4" stroke-linecap="round"/></svg>'
   ,close: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m4 4 10 10M14 4 4 14" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round"/></svg>'
   ,back: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m11 4-5 5 5 5" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  ,sidebar: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="3.5" width="13" height="11" rx="2" stroke="CURRENT" stroke-width="1.5"/><path d="M7 3.5v11" stroke="CURRENT" stroke-width="1.5"/></svg>'
+  ,share: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 11.5V3M6 5.5 9 2.5l3 3" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 8.5H3.5v6.5h11V8.5H13" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  ,markup: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.5 3.5 14.5 6.5 6.5 14.5 3 15l.5-3.5 8-8Z" stroke="CURRENT" stroke-width="1.4" stroke-linejoin="round"/></svg>'
+  ,zoomout: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="4.5" stroke="CURRENT" stroke-width="1.5"/><path d="M6 8h4M11.5 11.5l3 3" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round"/></svg>'
+  ,zoomin: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="4.5" stroke="CURRENT" stroke-width="1.5"/><path d="M8 6v4M6 8h4M11.5 11.5l3 3" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round"/></svg>'
 };
 
 function rgb(hex) {
@@ -1065,8 +1070,8 @@ function createBareSystemControls(parent) {
   return controls;
 }
 
-function createFloatingInspectToolbar(parent, width) {
-  const toolbar = frame('01 / Floating Toolbar', Math.round((width - 230) / 2), 24, 230, 54, null, 15);
+function createFloatingInspectToolbar(parent, width, activeName = 'Focus') {
+  const toolbar = frame('01 / Floating Toolbar', Math.round((width - 274) / 2), 24, 274, 54, null, 15);
   toolbar.fills = [fill('#161719', .90)];
   toolbar.strokes = [fill('#FFFFFF', .12)];
   toolbar.strokeWeight = 1;
@@ -1084,11 +1089,11 @@ function createFloatingInspectToolbar(parent, width) {
     blendMode: 'NORMAL'
   }];
   parent.appendChild(toolbar);
-  lightIconButton(toolbar, 'Focus', 'focus', 8, true);
-  lightIconButton(toolbar, 'Compare', 'compare', 52);
-  lightIconButton(toolbar, 'Slider', 'slider', 96);
-  lightIconButton(toolbar, 'Widget', 'grid', 140);
-  lightIconButton(toolbar, 'Information', 'info', 184);
+  lightIconButton(toolbar, 'Focus', 'focus', 14, activeName === 'Focus');
+  lightIconButton(toolbar, 'Compare', 'compare', 66, activeName === 'Compare');
+  lightIconButton(toolbar, 'Slider', 'slider', 118, activeName === 'Slider');
+  lightIconButton(toolbar, 'Widget', 'grid', 170, activeName === 'Widget');
+  lightIconButton(toolbar, 'Information', 'info', 222, activeName === 'Information');
   return toolbar;
 }
 
@@ -1161,21 +1166,406 @@ function createViewerChromeStudyScreen(x, imageHash = null, imageSize = null) {
   return board;
 }
 
-async function generateViewerChromeStudy() {
+// Compare-mode study: same v3 chrome as Simple Operation (bare traffic controls
+// + floating toolbar, Compare active), two images side by side split by a thin
+// divider, and — unlike Simple Operation — a VISIBLE window border/frame.
+function createCompareChromeStudyScreen(x, imageHash = null, imageSize = null) {
+  const width = imageSize && imageSize.width ? imageSize.width : 1554;
+  const height = imageSize && imageSize.height ? imageSize.height : 1012;
+  const board = frame('Dark Refresh v3 / Image Viewer / Compare Mode', x, 0, width, height, null, 16);
+  // The requested window border: a clearly visible 2px framed edge (vs. the
+  // borderless Simple Operation), plus a soft outer shadow to read as a window.
+  board.fills = [fill('#060709', 1)];
+  board.strokes = [fill('#5A5B62', 1)];
+  board.strokeWeight = 2;
+  board.effects = [{
+    type: 'DROP_SHADOW',
+    color: { r: 0, g: 0, b: 0, a: .45 },
+    offset: { x: 0, y: 18 },
+    radius: 48,
+    spread: 0,
+    visible: true,
+    blendMode: 'NORMAL'
+  }];
+  figma.currentPage.appendChild(board);
+
+  const gap = 2;
+  const halfW = (width - gap) / 2;
+  const leftImg = rect('Compare / A', board, 0, 0, halfW, height, null, 0);
+  const rightImg = rect('Compare / B', board, halfW + gap, 0, halfW, height, null, 0);
+  if (imageHash) {
+    leftImg.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+    rightImg.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  } else {
+    leftImg.fills = [{ type: 'GRADIENT_LINEAR',
+      gradientTransform: [[1, 0, 0], [0, 1, 0]],
+      gradientStops: [
+        { position: 0, color: { ...rgb('#D9E2E4'), a: 1 } },
+        { position: 1, color: { ...rgb('#48685C'), a: 1 } }
+      ] }];
+    rightImg.fills = [{ type: 'GRADIENT_LINEAR',
+      gradientTransform: [[1, 0, 0], [0, 1, 0]],
+      gradientStops: [
+        { position: 0, color: { ...rgb('#E7C9A6'), a: 1 } },
+        { position: 1, color: { ...rgb('#8A5F4E'), a: 1 } }
+      ] }];
+  }
+  // Center divider between the two panes.
+  rect('Compare / Divider', board, halfW, 0, gap, height, '#0B0C0E');
+
+  // A / B corner chips so the two-up read is unmistakable.
+  const chipA = frame('Chip / A', 20, height - 52, 32, 32, null, 8);
+  chipA.fills = [fill('#161719', .82)];
+  chipA.strokes = [fill('#FFFFFF', .14)]; chipA.strokeWeight = 1;
+  chipA.effects = [{ type: 'BACKGROUND_BLUR', radius: 12, visible: true }];
+  board.appendChild(chipA);
+  text('A', chipA, 'A', 0, 8, 14, '#F3F3F3', 'semibold', 32, 'CENTER');
+  const chipB = frame('Chip / B', halfW + gap + 20, height - 52, 32, 32, null, 8);
+  chipB.fills = [fill('#161719', .82)];
+  chipB.strokes = [fill('#FFFFFF', .14)]; chipB.strokeWeight = 1;
+  chipB.effects = [{ type: 'BACKGROUND_BLUR', radius: 12, visible: true }];
+  board.appendChild(chipB);
+  text('B', chipB, 'B', 0, 8, 14, '#F3F3F3', 'semibold', 32, 'CENTER');
+
+  createBareSystemControls(board);
+  createFloatingInspectToolbar(board, width, 'Compare');
+  return board;
+}
+
+// A single round icon button used in the Preview-style top chrome bar.
+function previewRoundButton(parent, name, iconName, x, y, tint = '#F3F3F3', fillHex = '#2A2B2F') {
+  const node = frame(name, x, y, 28, 28, null, 14);
+  node.fills = [fill(fillHex, 0.9)];
+  node.strokes = [fill('#FFFFFF', 0.1)];
+  node.strokeWeight = 1;
+  parent.appendChild(node);
+  const svg = figma.createNodeFromSvg(ICONS[iconName].replaceAll('CURRENT', tint));
+  svg.name = 'Icon / ' + iconName;
+  svg.resize(15, 15);
+  svg.x = 6.5;
+  svg.y = 6.5;
+  node.appendChild(svg);
+  return node;
+}
+
+// A borderless icon slot (no chip), for the flat action icons in the top bar.
+function previewFlatIcon(parent, name, iconName, x, y, size = 18, tint = '#C7C7CC') {
+  const svg = figma.createNodeFromSvg(ICONS[iconName].replaceAll('CURRENT', tint));
+  svg.name = name;
+  svg.resize(size, size);
+  svg.x = x;
+  svg.y = y;
+  parent.appendChild(svg);
+  return svg;
+}
+
+// Preview-style build: a single compact top chrome bar (traffic-adjacent round
+// controls on the left, filename in the middle, action icons + "Open with"
+// pill on the right), with the image flush to every edge underneath it.
+function createPreviewChromeStudyScreen(x, imageHash = null, imageSize = null) {
+  const width = imageSize && imageSize.width ? imageSize.width : 654;
+  const height = imageSize && imageSize.height ? imageSize.height : 1012;
+  const board = frame('Dark Refresh v3 / Image Viewer / Preview Chrome', x, 0, width, height, null, 12);
+  board.strokes = [fill('#000000', 0.55)];
+  board.strokeWeight = 1;
+  if (imageHash) {
+    board.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  } else {
+    artworkFill(board, ['#C9B39C', '#8C7A66', '#4A4036']);
+  }
+  figma.currentPage.appendChild(board);
+
+  const barH = 52;
+  const bar = frame('01 / Preview Top Bar', 0, 0, width, barH, null, 0);
+  bar.fills = [fill('#1B1C1E', 0.94)];
+  bar.effects = [{ type: 'BACKGROUND_BLUR', radius: 24, visible: true }];
+  board.appendChild(bar);
+  // Hairline separating the bar from the image.
+  rect('Bar Divider', bar, 0, barH - 1, width, 1, '#000000').opacity = 0.5;
+
+  // Left cluster: close + markup round buttons.
+  previewRoundButton(bar, 'Close', 'close', 14, 12, '#F3F3F3', '#3A3B3F');
+  previewRoundButton(bar, 'Markup', 'markup', 48, 12, '#F3F3F3', '#2A2B2F');
+
+  // Center-left: info + check status icons, then the filename.
+  previewFlatIcon(bar, 'Icon / info', 'info', 92, 17, 18, '#8E8E93');
+  previewFlatIcon(bar, 'Icon / check', 'check', 116, 17, 18, '#8E8E93');
+  text('Filename', bar, 'input-09672AEE-FC4D-4116-B8F9-20E27300A34F.jpg',
+    142, 18, 13, '#F3F3F3', 'semibold');
+
+  // Right cluster (anchored to the right edge): "Open with" pill, share, sidebar.
+  const pill = frame('Open with Preview', width - 148, 12, 132, 28, null, 8);
+  pill.fills = [fill('#2A2B2F', 0.9)];
+  pill.strokes = [fill('#FFFFFF', 0.1)];
+  pill.strokeWeight = 1;
+  bar.appendChild(pill);
+  text('Pill Label', pill, 'Open with Preview', 0, 7, 12, '#F3F3F3', 'medium', 132, 'CENTER');
+  previewFlatIcon(bar, 'Icon / share', 'share', width - 182, 17, 18, '#C7C7CC');
+  previewFlatIcon(bar, 'Icon / sidebar', 'sidebar', width - 214, 17, 18, '#C7C7CC');
+
+  return board;
+}
+
+function createImageInspectChromeStudyScreen(x, imageHash = null) {
+  const width = 1554;
+  const height = 1012;
+  const board = frame('Dark Refresh v3 / Image Inspect / Clean Editable', x, 0, width, height, null, 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  if (imageHash) {
+    board.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  } else {
+    artworkFill(board, ['#24313B', '#A77B72', '#26352D']);
+  }
+  figma.currentPage.appendChild(board);
+
+  const imageShade = rect('Image / readability shade', board, 0, 0, width, height, '#07080A', 16);
+  imageShade.opacity = .08;
+  createBareSystemControls(board);
+  createFloatingInspectToolbar(board, width, 'Information');
+
+  const info = frame('04 / Image Information / active preview', width - 412, 112, 372, 684, null, 16);
+  info.fills = [fill('#161719', .92)];
+  info.strokes = [fill('#FFFFFF', .12)];
+  info.strokeWeight = 1;
+  info.effects = [
+    { type: 'BACKGROUND_BLUR', radius: 22, visible: true },
+    {
+      type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .32 },
+      offset: { x: 0, y: 12 }, radius: 28, spread: 0, visible: true, blendMode: 'NORMAL'
+    }
+  ];
+  board.appendChild(info);
+  text('Heading', info, 'Image information', 24, 24, 17, '#F3F3F3', 'semibold');
+  text('Hint', info, 'Visible when Information is selected', 24, 52, 11, '#B8B8BD', 'regular');
+  rect('Header Divider', info, 24, 82, 324, 1, '#FFFFFF').opacity = .12;
+  metadataRow(info, 'Name', 'alpine-lake.jpg', 112);
+  metadataRow(info, 'Dimensions', '3840 × 2560', 158);
+  metadataRow(info, 'Format', 'JPEG', 204);
+  metadataRow(info, 'File size', '6.8 MB', 250);
+  metadataRow(info, 'Color profile', 'sRGB', 296);
+  metadataRow(info, 'Created', 'Mar 14, 2024', 342);
+  text('Quick Actions', info, 'QUICK ACTIONS', 24, 414, 10, '#B8B8BD', 'semibold');
+  const remove = frame('Remove Background', 24, 442, 324, 42, '#1D1E22', 10);
+  remove.strokes = [fill('#FFFFFF', .12)]; remove.strokeWeight = 1; info.appendChild(remove);
+  text('Label', remove, 'Remove Background', 16, 13, 12, '#F3F3F3', 'medium');
+  const upscale = frame('Upscale 2×', 24, 494, 324, 42, '#1D1E22', 10);
+  upscale.strokes = [fill('#FFFFFF', .12)]; upscale.strokeWeight = 1; info.appendChild(upscale);
+  text('Label', upscale, 'Upscale 2×', 16, 13, 12, '#F3F3F3', 'medium');
+
+  const task = frame('05 / Processing Toast', 40, height - 112, 404, 64, null, 14);
+  task.fills = [fill('#161719', .90)];
+  task.strokes = [fill('#FFFFFF', .12)]; task.strokeWeight = 1;
+  task.effects = [{ type: 'BACKGROUND_BLUR', radius: 18, visible: true }];
+  board.appendChild(task);
+  ellipse('Status', task, 18, 27, 10, COLORS.accent);
+  text('Task', task, 'Remove Background', 44, 15, 13, '#F3F3F3', 'semibold');
+  text('Progress', task, 'Processing · 64%', 44, 35, 11, '#B8B8BD', 'regular');
+  return board;
+}
+
+// Resolve the photo to fill a study with. Prefer freshly-uploaded bytes (so the
+// user can drop in a real picture), otherwise reuse an IMAGE fill already on one
+// of the named source frames. Returns { imageHash, imageSize } or nulls.
+async function resolveStudyImage(bytes, sourceNames) {
+  if (bytes && bytes.length) {
+    const image = figma.createImage(new Uint8Array(bytes));
+    let imageSize = null;
+    if (image.getSizeAsync) {
+      try { imageSize = await image.getSizeAsync(); } catch (e) { imageSize = null; }
+    }
+    return { imageHash: image.hash, imageSize };
+  }
+  const source = sourceNames
+    .map(sourceName => figma.currentPage.children.find(child => child.name === sourceName))
+    .find(Boolean);
+  const sourceFill = source && Array.isArray(source.fills)
+    ? source.fills.find(paint => paint.type === 'IMAGE')
+    : null;
+  return {
+    imageHash: sourceFill ? sourceFill.imageHash : null,
+    imageSize: source ? { width: source.width, height: source.height } : null
+  };
+}
+
+// Match the Focus/Simple-Operation frame under any of the names it may carry.
+// The user renamed it to "fouce Mode" and added their own layers, so we match
+// on both spellings and NEVER rebuild children.
+const FOCUS_FRAME_NAMES = [
+  'Dark Refresh v3 / Image Viewer / fouce Mode',
+  'Dark Refresh v3 / Image Viewer / Focus Mode',
+  'Dark Refresh v3 / Image Viewer / Simple Operation'
+];
+const COMPARE_FRAME_NAMES = [
+  'Dark Refresh v3 / Image Viewer / Compare Mode'
+];
+
+function findFrameByNames(names) {
+  return names
+    .map(n => figma.currentPage.children.find(child => child.name === n))
+    .find(Boolean) || null;
+}
+
+// Replace ONLY the color-block fill(s) with a real image, preserving every
+// other layer and style the user has edited. Non-destructive: no child is
+// removed, moved, or restyled.
+async function replaceStudyImages(bytes) {
   await loadFonts();
   await createStyles();
-  const name = 'Dark Refresh v3 / Image Viewer / Simple Operation';
-  const existing = figma.currentPage.children.find(child => child.name === name);
-  if (existing) {
-    figma.currentPage.selection = [existing];
-    figma.viewport.scrollAndZoomIntoView([existing]);
-    figma.ui.postMessage({ message: 'Viewer Chrome Study already exists — nothing changed.' });
+
+  const focus = findFrameByNames(FOCUS_FRAME_NAMES);
+  const compare = findFrameByNames(COMPARE_FRAME_NAMES);
+  if (!focus && !compare) {
+    figma.ui.postMessage({ message: 'Neither the Focus/fouce Mode nor Compare Mode frame was found on this page.' });
+    figma.notify('Nothing to update', { error: true });
     return;
   }
 
+  // Determine the image hash. Prefer uploaded bytes; else reuse whatever image
+  // one of the frames already carries so the other can be synced to it.
+  let imageHash = null;
+  if (bytes && bytes.length) {
+    imageHash = figma.createImage(new Uint8Array(bytes)).hash;
+  } else {
+    const carrier = [focus, compare].filter(Boolean);
+    for (const frameNode of carrier) {
+      const boardFill = Array.isArray(frameNode.fills)
+        ? frameNode.fills.find(p => p.type === 'IMAGE') : null;
+      if (boardFill) { imageHash = boardFill.imageHash; break; }
+      const paneWithImage = frameNode.findOne(n =>
+        Array.isArray(n.fills) && n.fills.some(p => p.type === 'IMAGE'));
+      if (paneWithImage) {
+        imageHash = paneWithImage.fills.find(p => p.type === 'IMAGE').imageHash;
+        break;
+      }
+    }
+  }
+  if (!imageHash) {
+    figma.ui.postMessage({ message: 'No image provided. Choose a Reference image first, then click again.' });
+    figma.notify('Pick a reference image', { error: true });
+    return;
+  }
+
+  const updated = [];
+  // Focus frame: the color block is the board's own fill.
+  if (focus) {
+    focus.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+    updated.push(focus);
+  }
+  // Compare frame: the color blocks are the A / B panes (fall back to the board
+  // fill if the panes aren't present because of user restructuring).
+  if (compare) {
+    const paneA = compare.findOne(n => n.name === 'Compare / A');
+    const paneB = compare.findOne(n => n.name === 'Compare / B');
+    if (paneA || paneB) {
+      if (paneA) paneA.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+      if (paneB) paneB.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+    } else {
+      compare.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+    }
+    updated.push(compare);
+  }
+
+  figma.currentPage.selection = updated;
+  figma.viewport.scrollAndZoomIntoView(updated);
+  figma.ui.postMessage({ message: 'Replaced the color blocks with your image (styles untouched): ' +
+    updated.map(f => f.name).join(', ') });
+  figma.notify('Image applied to ' + updated.length + ' frame(s)');
+}
+
+async function generateViewerChromeStudy(bytes) {
+  await loadFonts();
+  await createStyles();
+  const name = 'Dark Refresh v3 / Image Viewer / Simple Operation';
   const sourceNames = [
     'Dark Refresh v2 / Image Viewer / Simple Operation',
     'Dark Refresh / Image Viewer / Simple Operation',
+    'Image Viewer / Simple Operation'
+  ];
+  const { imageHash, imageSize } = await resolveStudyImage(bytes, sourceNames);
+
+  const existing = findFrameByNames(FOCUS_FRAME_NAMES);
+  if (existing) {
+    // NON-DESTRUCTIVE: only swap the board's color-block fill. Do not rebuild
+    // the toolbar/controls or touch any layer the user added or restyled.
+    if (imageHash) {
+      existing.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+    }
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: imageHash
+      ? 'Replaced the color block with your image (' + existing.name + '); styles untouched.'
+      : 'Frame already exists — pick a Reference image to replace the color block.' });
+    figma.notify('Focus frame updated');
+    return;
+  }
+
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const study = createViewerChromeStudyScreen(maxX + 196, imageHash, imageSize);
+  figma.currentPage.selection = [study];
+  figma.viewport.scrollAndZoomIntoView([study]);
+  figma.ui.postMessage({ message: imageHash
+    ? 'Created Simple Operation with your image.'
+    : 'Created Viewer Chrome Study with bare macOS window controls.' });
+  figma.notify('Viewer Chrome Study created');
+}
+
+async function generateCompareChromeStudy(bytes) {
+  await loadFonts();
+  await createStyles();
+  const name = 'Dark Refresh v3 / Image Viewer / Compare Mode';
+
+  // Prefer an uploaded image; else reuse the Simple Operation study's image.
+  const sourceNames = [
+    'Dark Refresh v3 / Image Viewer / Simple Operation',
+    'Dark Refresh v2 / Image Viewer / Simple Operation',
+    'Image Viewer / Simple Operation'
+  ];
+  const { imageHash, imageSize } = await resolveStudyImage(bytes, sourceNames);
+
+  const existing = findFrameByNames(COMPARE_FRAME_NAMES);
+  if (existing) {
+    // NON-DESTRUCTIVE: only swap the A / B pane color blocks. Never remove or
+    // rebuild the frame, so the user's style edits are preserved.
+    if (imageHash) {
+      const paneA = existing.findOne(n => n.name === 'Compare / A');
+      const paneB = existing.findOne(n => n.name === 'Compare / B');
+      if (paneA) paneA.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+      if (paneB) paneB.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+      if (!paneA && !paneB) {
+        existing.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+      }
+    }
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: imageHash
+      ? 'Replaced the Compare color blocks with your image; styles untouched.'
+      : 'Compare Mode exists — pick a Reference image to replace the color blocks.' });
+    figma.notify('Compare Mode updated');
+    return;
+  }
+
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const study = createCompareChromeStudyScreen(maxX + 196, imageHash, imageSize);
+  figma.currentPage.selection = [study];
+  figma.viewport.scrollAndZoomIntoView([study]);
+  figma.ui.postMessage({ message: 'Created Compare Mode study (bordered window, side-by-side).' });
+  figma.notify('Compare Mode study created');
+}
+
+async function generatePreviewChromeStudy() {
+  await loadFonts();
+  await createStyles();
+  const name = 'Dark Refresh v3 / Image Viewer / Preview Chrome';
+  const existing = figma.currentPage.children.find(child => child.name === name);
+
+  // Reuse whatever image the other viewers already carry so the study renders
+  // over a real photo at its native aspect ratio.
+  const sourceNames = [
+    'Dark Refresh v3 / Image Viewer / Simple Operation',
+    'Dark Refresh v2 / Image Viewer / Simple Operation',
     'Image Viewer / Simple Operation'
   ];
   const source = sourceNames
@@ -1184,14 +1574,77 @@ async function generateViewerChromeStudy() {
   const sourceFill = source && Array.isArray(source.fills)
     ? source.fills.find(paint => paint.type === 'IMAGE')
     : null;
+  const imageHash = sourceFill ? sourceFill.imageHash : null;
   const imageSize = source ? { width: source.width, height: source.height } : null;
+
+  if (existing) {
+    // Rebuild the top bar in place so re-running reflects the latest spec.
+    for (const child of existing.children.slice()) {
+      if (child.name === '01 / Preview Top Bar') child.remove();
+    }
+    const barH = 52;
+    const width = existing.width;
+    const bar = frame('01 / Preview Top Bar', 0, 0, width, barH, null, 0);
+    bar.fills = [fill('#1B1C1E', 0.94)];
+    bar.effects = [{ type: 'BACKGROUND_BLUR', radius: 24, visible: true }];
+    existing.appendChild(bar);
+    rect('Bar Divider', bar, 0, barH - 1, width, 1, '#000000').opacity = 0.5;
+    previewRoundButton(bar, 'Close', 'close', 14, 12, '#F3F3F3', '#3A3B3F');
+    previewRoundButton(bar, 'Markup', 'markup', 48, 12, '#F3F3F3', '#2A2B2F');
+    previewFlatIcon(bar, 'Icon / info', 'info', 92, 17, 18, '#8E8E93');
+    previewFlatIcon(bar, 'Icon / check', 'check', 116, 17, 18, '#8E8E93');
+    text('Filename', bar, 'input-09672AEE-FC4D-4116-B8F9-20E27300A34F.jpg',
+      142, 18, 13, '#F3F3F3', 'semibold');
+    const pill = frame('Open with Preview', width - 148, 12, 132, 28, null, 8);
+    pill.fills = [fill('#2A2B2F', 0.9)];
+    pill.strokes = [fill('#FFFFFF', 0.1)]; pill.strokeWeight = 1;
+    bar.appendChild(pill);
+    text('Pill Label', pill, 'Open with Preview', 0, 7, 12, '#F3F3F3', 'medium', 132, 'CENTER');
+    previewFlatIcon(bar, 'Icon / share', 'share', width - 182, 17, 18, '#C7C7CC');
+    previewFlatIcon(bar, 'Icon / sidebar', 'sidebar', width - 214, 17, 18, '#C7C7CC');
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Refreshed the Preview Chrome top bar.' });
+    figma.notify('Preview Chrome refreshed');
+    return;
+  }
+
   let maxX = 0;
   for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
-  const study = createViewerChromeStudyScreen(maxX + 196, sourceFill ? sourceFill.imageHash : null, imageSize);
+  const study = createPreviewChromeStudyScreen(maxX + 196, imageHash, imageSize);
   figma.currentPage.selection = [study];
   figma.viewport.scrollAndZoomIntoView([study]);
-  figma.ui.postMessage({ message: 'Created Viewer Chrome Study with bare macOS window controls.' });
-  figma.notify('Viewer Chrome Study created');
+  figma.ui.postMessage({ message: 'Created Preview Chrome study (macOS Preview-style top bar, tight padding).' });
+  figma.notify('Preview Chrome study created');
+}
+
+async function generateImageInspectChromeStudy() {
+  await loadFonts();
+  await createStyles();
+  const name = 'Dark Refresh v3 / Image Inspect / Clean Editable';
+  const existing = figma.currentPage.children.find(child => child.name === name);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Image Inspect Chrome Study already exists — nothing changed.' });
+    return;
+  }
+  const sources = [
+    'Dark Refresh v3 / Image Viewer / Simple Operation',
+    'Dark Refresh v2 / Image Viewer / Simple Operation',
+    'Image Viewer / Simple Operation'
+  ];
+  const source = sources.map(sourceName => figma.currentPage.children.find(child => child.name === sourceName)).find(Boolean);
+  const imageFill = source && Array.isArray(source.fills)
+    ? source.fills.find(paint => paint.type === 'IMAGE')
+    : null;
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const study = createImageInspectChromeStudyScreen(maxX + 196, imageFill ? imageFill.imageHash : null);
+  figma.currentPage.selection = [study];
+  figma.viewport.scrollAndZoomIntoView([study]);
+  figma.ui.postMessage({ message: 'Created v3 Image Inspect with bare window controls and floating information.' });
+  figma.notify('Image Inspect Chrome Study created');
 }
 
 function applyDarkRefreshTreatment(screen, sourceName) {
@@ -1681,11 +2134,47 @@ figma.ui.onmessage = async message => {
   }
   if (message.type === 'generate-viewer-chrome-study') {
     try {
-      await generateViewerChromeStudy();
+      await generateViewerChromeStudy(message.bytes);
     } catch (error) {
       console.error(error);
       figma.ui.postMessage({ message: 'Viewer Chrome Study failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Viewer Chrome Study failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-preview-chrome-study') {
+    try {
+      await generatePreviewChromeStudy();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Preview Chrome Study failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Preview Chrome Study failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-compare-chrome-study') {
+    try {
+      await generateCompareChromeStudy(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Compare Mode Study failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Compare Mode Study failed', { error: true });
+    }
+  }
+  if (message.type === 'replace-study-images') {
+    try {
+      await replaceStudyImages(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Image replace failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Image replace failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-image-inspect-chrome-study') {
+    try {
+      await generateImageInspectChromeStudy();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Image Inspect Chrome Study failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Image Inspect Chrome Study failed', { error: true });
     }
   }
   if (message.type === 'generate-production-screens') {

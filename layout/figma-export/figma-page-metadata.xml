@@ -2862,4 +2862,61 @@
       </frame>
     </frame>
   </frame>
+  <frame id="26:3146" name="Dark Refresh v3 / Image Inspect / Clean Editable" x="28000" y="0" width="1554" height="1012">
+    <rounded-rectangle id="26:3147" name="Image / readability shade" x="0" y="0" width="1554" height="1012" />
+    <frame id="26:3148" name="System / Transparent Drag Region" x="0" y="0" width="1554" height="44" />
+    <frame id="26:3149" name="System / Window Controls / Bare" x="20" y="16" width="64" height="16" />
+    <frame id="26:3153" name="01 / Floating Toolbar" x="662" y="24" width="230" height="54">
+      <frame id="26:3154" name="Focus" x="8" y="8" width="38" height="38">
+        <frame id="26:3155" name="Icon / focus" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:3159" name="Compare" x="52" y="8" width="38" height="38">
+        <frame id="26:3160" name="Icon / compare" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:3163" name="Slider" x="96" y="8" width="38" height="38">
+        <frame id="26:3164" name="Icon / slider" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:3169" name="Widget" x="140" y="8" width="38" height="38">
+        <frame id="26:3170" name="Icon / grid" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:3175" name="Information" x="184" y="8" width="38" height="38">
+        <frame id="26:3176" name="Icon / info" x="10" y="10" width="18" height="18" />
+      </frame>
+    </frame>
+    <frame id="26:3180" name="04 / Image Information / active preview" x="1142" y="112" width="372" height="684">
+      <text id="26:3181" name="Heading" x="24" y="24" width="150" height="21" />
+      <text id="26:3182" name="Hint" x="24" y="52" width="187" height="13" />
+      <rounded-rectangle id="26:3183" name="Header Divider" x="24" y="82" width="324" height="1" />
+      <text id="26:3184" name="Key / Name" x="36" y="112" width="37" height="16" />
+      <text id="26:3185" name="Value / Name" x="174" y="112" width="220" height="16" />
+      <rounded-rectangle id="26:3186" name="Divider" x="36" y="142" width="362" height="1" />
+      <text id="26:3187" name="Key / Dimensions" x="36" y="158" width="73" height="16" />
+      <text id="26:3188" name="Value / Dimensions" x="174" y="158" width="220" height="16" />
+      <rounded-rectangle id="26:3189" name="Divider" x="36" y="188" width="362" height="1" />
+      <text id="26:3190" name="Key / Format" x="36" y="204" width="44" height="16" />
+      <text id="26:3191" name="Value / Format" x="174" y="204" width="220" height="16" />
+      <rounded-rectangle id="26:3192" name="Divider" x="36" y="234" width="362" height="1" />
+      <text id="26:3193" name="Key / File size" x="36" y="250" width="50" height="16" />
+      <text id="26:3194" name="Value / File size" x="174" y="250" width="220" height="16" />
+      <rounded-rectangle id="26:3195" name="Divider" x="36" y="280" width="362" height="1" />
+      <text id="26:3196" name="Key / Color profile" x="36" y="296" width="77" height="16" />
+      <text id="26:3197" name="Value / Color profile" x="174" y="296" width="220" height="16" />
+      <rounded-rectangle id="26:3198" name="Divider" x="36" y="326" width="362" height="1" />
+      <text id="26:3199" name="Key / Created" x="36" y="342" width="50" height="16" />
+      <text id="26:3200" name="Value / Created" x="174" y="342" width="220" height="16" />
+      <rounded-rectangle id="26:3201" name="Divider" x="36" y="372" width="362" height="1" />
+      <text id="26:3202" name="Quick Actions" x="24" y="414" width="80" height="12" />
+      <frame id="26:3203" name="Remove Background" x="24" y="442" width="324" height="42">
+        <text id="26:3204" name="Label" x="16" y="13" width="118" height="15" />
+      </frame>
+      <frame id="26:3205" name="Upscale 2×" x="24" y="494" width="324" height="42">
+        <text id="26:3206" name="Label" x="16" y="13" width="65" height="15" />
+      </frame>
+    </frame>
+    <frame id="26:3207" name="05 / Processing Toast" x="40" y="900" width="404" height="64">
+      <ellipse id="26:3208" name="Status" x="18" y="27" width="10" height="10" />
+      <text id="26:3209" name="Task" x="44" y="15" width="130" height="16" />
+      <text id="26:3210" name="Progress" x="44" y="35" width="90" height="13" />
+    </frame>
+  </frame>
 </canvas>

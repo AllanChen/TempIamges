@@ -33,6 +33,10 @@
   <button id="generate-simple-viewer" class="generate-screens">Generate Simple Image Viewer</button>
   <button id="generate-dark-refresh" class="generate-screens">Generate Dark Refresh v2 (13 Screens)</button>
   <button id="generate-viewer-study" class="generate-screens">Generate Viewer Chrome Study</button>
+  <button id="generate-preview-study" class="generate-screens">Generate Preview Chrome Study</button>
+  <button id="generate-compare-study" class="generate-screens">Generate Compare Mode (bordered)</button>
+  <button id="replace-study-images" class="generate-screens">Replace color blocks with image (Focus + Compare)</button>
+  <button id="generate-image-inspect-study" class="generate-screens">Generate Image Inspect Chrome Study</button>
   <button id="generate-screens" class="generate-screens">Generate Video + Tasks + Widget Market</button>
   <button id="redesign-market" class="generate-screens">Redesign Widget Market (keep previous)</button>
     <button id="generate-home" class="generate-screens">Generate Home / Launcher</button>
@@ -63,9 +67,34 @@
       if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
       parent.postMessage({ pluginMessage: { type: 'generate-dark-refresh-screens', bytes } }, '*');
     };
-    document.getElementById('generate-viewer-study').onclick = () => {
+    document.getElementById('generate-viewer-study').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
       status.textContent = 'Building the borderless window-control study...';
-      parent.postMessage({ pluginMessage: { type: 'generate-viewer-chrome-study' } }, '*');
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate-viewer-chrome-study', bytes } }, '*');
+    };
+    document.getElementById('generate-preview-study').onclick = () => {
+      status.textContent = 'Building the macOS Preview-style chrome study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-preview-chrome-study' } }, '*');
+    };
+    document.getElementById('generate-compare-study').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the bordered Compare Mode study...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate-compare-chrome-study', bytes } }, '*');
+    };
+    document.getElementById('replace-study-images').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      if (!file) { status.textContent = 'Pick a Reference image first, then click again.'; return; }
+      status.textContent = 'Replacing color blocks with your image...';
+      const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'replace-study-images', bytes } }, '*');
+    };
+    document.getElementById('generate-image-inspect-study').onclick = () => {
+      status.textContent = 'Building v3 Image Inspect...';
+      parent.postMessage({ pluginMessage: { type: 'generate-image-inspect-chrome-study' } }, '*');
     };
     document.getElementById('export').onclick = () => {
       status.textContent = 'Exporting selected frame...';

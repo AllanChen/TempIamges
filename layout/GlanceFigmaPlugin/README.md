@@ -91,6 +91,13 @@ capsule around the macOS controls, and places bare Close, Minimize, and
 Fullscreen dots at the top-left with only a subtle per-dot shadow. The centered
 five-button product toolbar is unchanged. Existing frames are preserved.
 
+Click **Generate Image Inspect Chrome Study** to add
+`Dark Refresh v3 / Image Inspect / Clean Editable`. It applies the same bare
+window controls and transparent drag region to Image Inspect, keeps the image
+as the full canvas, and demonstrates the Information state as a dark floating
+panel instead of a permanently attached inspector. The five-button toolbar and
+the processing toast remain above the image as separate glass layers.
+
 ## Generate the remaining production screens
 
 Run `Glance UI Builder v2` and click:

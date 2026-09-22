@@ -75,8 +75,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private lazy var closeTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTrafficTapped))
     private lazy var minimizeTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTrafficTapped))
     private lazy var zoomTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTrafficTapped))
-    /// 48pt solid-chrome toolbar (spec `--chrome`), replaces the frosted
-    /// floating icon bar.
+    /// The v3 operation chrome is deliberately a single floating five-action
+    /// toolbar, leaving the image itself as the entire window surface.
     private let toolbarBar = NSView()
     private let modeSwitcher = CanvasModeSwitcher()
     private let statusbar = NSView()
@@ -129,9 +129,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // those layers, which appears as a stutter on zoom in/out.
         animationBehavior = .none
         appearance = NSAppearance(named: .darkAqua)
-        backgroundColor = PanelStyle.inspectBackground
-        minSize = NSSize(width: 900, height: 586)
-        contentAspectRatio = Self.designSize
+        // The window is the image: it takes the focused image's aspect ratio and
+        // the media fills every point, so no dark plate should ever show through.
+        // A clear background also prevents a one-frame black flash on open/resize.
+        backgroundColor = .clear
+        isOpaque = false
+        minSize = NSSize(width: 240, height: 160)
         isMovableByWindowBackground = true
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -150,6 +153,16 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     private static let designSize = NSSize(width: 1554, height: 1012)
 
+    /// Aspect ratio (w/h) the window has been sized to. Nil until the first
+    /// image resolves, at which point the window is resized to match it so the
+    /// image fills the window with no letterbox plate. The chrome (toolbar,
+    /// traffic lights) scales uniformly from `designSize` regardless of this,
+    /// so icons keep their designed proportions at any window shape.
+    private var windowImageAspect: CGFloat?
+    /// The last image size the window was fitted to, so we don't re-fit on every
+    /// re-render of the same image.
+    private var fittedImageSize: CGSize?
+
     private static func initialDesignFrame() -> NSRect {
         let location = NSEvent.mouseLocation
         guard let screen = ScreenManager.shared.screenForMouseLocation(location) ?? NSScreen.main else {
@@ -161,6 +174,45 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             for: NSSize(width: designSize.width * scale, height: designSize.height * scale),
             on: screen
         )
+    }
+
+    /// Resize the window so its content exactly matches the focused image's
+    /// aspect ratio, keeping the window centered on its current position and
+    /// clamped fully on-screen (CLAUDE.md rule #7). The image then fills the
+    /// window edge to edge — no black background is ever visible.
+    private func fitWindowToImage(_ imageSize: CGSize) {
+        guard imageSize.width > 0, imageSize.height > 0 else { return }
+        if let fitted = fittedImageSize, fitted == imageSize { return }
+        fittedImageSize = imageSize
+
+        let aspect = imageSize.width / imageSize.height
+        windowImageAspect = aspect
+        contentAspectRatio = NSSize(width: aspect, height: 1)
+
+        let center = CGPoint(x: frame.midX, y: frame.midY)
+        let screen = ScreenManager.shared.screenForMouseLocation(center)
+            ?? NSScreen.main ?? NSScreen.screens.first
+        guard let screen else { return }
+        let visible = screen.visibleFrame
+
+        // Prefer the image's native pixel size; shrink to fit the screen while
+        // preserving aspect. Never upscale past the display.
+        let maxW = visible.width * 0.96
+        let maxH = visible.height * 0.96
+        var contentW = imageSize.width
+        var contentH = imageSize.height
+        let downscale = min(1, maxW / contentW, maxH / contentH)
+        contentW *= downscale
+        contentH *= downscale
+
+        let newContentSize = NSSize(width: contentW.rounded(), height: contentH.rounded())
+        let newFrameSize = frameRect(forContentRect: NSRect(origin: .zero, size: newContentSize)).size
+        // Keep the window centered on where it currently sits, then clamp.
+        var origin = NSPoint(x: center.x - newFrameSize.width / 2,
+                             y: center.y - newFrameSize.height / 2)
+        origin.x = max(visible.minX, min(origin.x, visible.maxX - newFrameSize.width))
+        origin.y = max(visible.minY, min(origin.y, visible.maxY - newFrameSize.height))
+        setFrame(NSRect(origin: origin, size: newFrameSize), display: true, animate: false)
     }
 
     deinit {
@@ -177,20 +229,32 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session = ImageInspectSession(infos: infos, images: images, focusedIndex: focusedIndex,
                                       mode: preferredMode)
         Logger.info("ImageInspectWindow: opened \(infos.count) item(s) in \(session?.mode == .compare ? "compare" : "focus") mode")
-        // Image-first contract: open with the largest possible canvas. Metadata
-        // is intentionally opt-in through the toolbar info button or Command-I.
+        // V3 opens directly into the Figma Simple Operation state: image first,
+        // no persistent inspector, status bar, toast, or filmstrip.
         infoVisible = false
         infoButton.isActive = false
-        // Chrome stays available while inspecting; it no longer depends on
-        // cursor hover to remain visible.
+        // Re-fit the window to the next image that resolves.
+        fittedImageSize = nil
+        // If the focused image is already loaded (e.g. reopened), fit now so the
+        // window opens at the right shape instead of the 3:2 design default.
+        if session?.mode != .compare,
+           let focused = session?.focusedIndex,
+           let preloaded = images[safe: focused] ?? nil {
+            fitWindowToImage(preloaded.size)
+        }
         titlebar.alphaValue = 1
         titlebar.isHidden = false
         toolbarBar.alphaValue = 1
         toolbarBar.isHidden = false
-        statusbar.alphaValue = 1
-        statusbar.isHidden = false
+        statusbar.isHidden = true
         filmstrip.alphaValue = 1
+        // Multi-image sessions show the thumbnail strip for quick switching;
+        // renderSession() re-applies this from the live session too.
         filmstrip.isHidden = infos.count < 2
+        taskOverlayShade.isHidden = filmstrip.isHidden
+        taskSummaryLabel.isHidden = true
+        taskSummaryDot.isHidden = true
+        taskToast.isHidden = true
         loadGeneration = UUID()
         renderSession()
         loadSessionImages(generation: loadGeneration)
@@ -375,10 +439,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         contentView = canvasContainer
         let root = canvasContainer
         root.wantsLayer = true
-        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
-        root.layer?.cornerRadius = 16
-        root.layer?.borderWidth = 1
-        root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        // The window IS the image: no plate, no border, no rounded corners.
+        // The media fills every pixel to the window edge, so any border or
+        // corner radius would read as a dark frame around the picture.
+        root.layer?.backgroundColor = NSColor.clear.cgColor
+        root.layer?.cornerRadius = 0
+        root.layer?.borderWidth = 0
         root.layer?.masksToBounds = true
 
         // Image Inspect is the general mixed-content window: accept any file
@@ -415,28 +481,40 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         filmstrip.onAdd = { [weak self] in self?.presentAddImagesPanel() }
         canvasContainer.addSubview(filmstrip)
 
-        // MARK: Titlebar (44pt) — drag surface, centered title, inspector toggle.
+        // MARK: V3 transparent drag region — only the bare traffic controls are visible.
         windowTitleLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
         windowTitleLabel.textColor = PanelStyle.textPrimary
         windowTitleLabel.alignment = .center
         windowTitleLabel.lineBreakMode = .byTruncatingTail
         windowTitleLabel.stringValue = "Image Inspect".localized
+        windowTitleLabel.isHidden = true
         titlebar.addSubview(windowTitleLabel)
         windowFilenameLabel.font = PanelStyle.inspectFont(ofSize: 11)
         windowFilenameLabel.textColor = PanelStyle.textTertiary
         windowFilenameLabel.alignment = .center
         windowFilenameLabel.lineBreakMode = .byTruncatingMiddle
+        windowFilenameLabel.isHidden = true
         titlebar.addSubview(windowFilenameLabel)
         titlebar.addSubview(closeTrafficButton)
         titlebar.addSubview(minimizeTrafficButton)
         titlebar.addSubview(zoomTrafficButton)
         canvasContainer.addSubview(titlebar, positioned: .above, relativeTo: nil)
 
-        // MARK: Toolbar (48pt) — solid chrome, three groups.
+        // MARK: V3 Floating Toolbar — exact five-action operation cluster.
         toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = PanelStyle.inspectToolbar.cgColor
+        toolbarBar.layer?.backgroundColor = NSColor(
+            srgbRed: 22 / 255, green: 23 / 255, blue: 25 / 255, alpha: 0.90
+        ).cgColor
         toolbarBar.layer?.borderWidth = 1
-        toolbarBar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        toolbarBar.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        toolbarBar.layer?.cornerRadius = 15
+        toolbarBar.layer?.shadowColor = NSColor(
+            srgbRed: 20 / 255, green: 23 / 255, blue: 26 / 255, alpha: 0.24
+        ).cgColor
+        toolbarBar.layer?.shadowOpacity = 1
+        toolbarBar.layer?.shadowOffset = CGSize(width: 0, height: -8)
+        toolbarBar.layer?.shadowRadius = 12
+        toolbarBar.layer?.masksToBounds = false
 
         directionButton.target = self
         directionButton.action = #selector(directionTapped)
@@ -487,10 +565,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                        zoomOutButton, zoomInButton,
                        widgetTasksButton, widgetMarketButton, infoButton] {
             button.usesFigmaStyle = true
-            button.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-            button.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-            button.layer?.borderWidth = 1
-            button.layer?.cornerRadius = 8
         }
         taskBadge.wantsLayer = true
         taskBadge.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
@@ -501,11 +575,18 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         toolbarBar.isHidden = false
         canvasContainer.addSubview(toolbarBar, positioned: .above, relativeTo: nil)
 
-        // MARK: Inspector (280pt, collapsible) — hosts the info panel in-window.
+        // MARK: On-demand information panel — floats over the image rather than
+        // reserving a permanent right rail in the v3 operation state.
         inspectorContainer.wantsLayer = true
-        inspectorContainer.layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
+        inspectorContainer.layer?.backgroundColor = PanelStyle.inspectChrome.withAlphaComponent(0.94).cgColor
         inspectorContainer.layer?.borderWidth = 1
-        inspectorContainer.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        inspectorContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        inspectorContainer.layer?.cornerRadius = 16
+        inspectorContainer.layer?.shadowColor = NSColor.black.withAlphaComponent(0.30).cgColor
+        inspectorContainer.layer?.shadowOpacity = 1
+        inspectorContainer.layer?.shadowOffset = CGSize(width: 0, height: -8)
+        inspectorContainer.layer?.shadowRadius = 16
+        inspectorContainer.layer?.masksToBounds = true
         infoPanel.autoresizingMask = [.width, .height]
         infoPanel.onRunDefaultWidget = { [weak self] in self?.runDefaultWidgetTapped() }
         infoPanel.onUpscale = { [weak self] in self?.runUpscaleWidget() }
@@ -530,6 +611,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         statusbar.addSubview(statusDot)
         statusDot.isHidden = true
         statusRightLabel.isHidden = true
+        statusbar.isHidden = true
         canvasContainer.addSubview(statusbar, positioned: .above, relativeTo: nil)
 
         // MARK: Canvas overlays — task summary, filmstrip, and processing toast.
@@ -587,51 +669,57 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let height = canvasContainer.bounds.height
         guard width > 0, height > 0 else { return }
 
-        // Scale the 1554×1012 Figma frame uniformly into the current window.
-        let sx = width / Self.designSize.width
-        let sy = height / Self.designSize.height
-        let titlebarH = 58 * sy
-        let toolbarH = 70 * sy
-        let statusbarH = 37 * sy
-        let inspectorW: CGFloat = infoVisible ? 434 * sx : 0
-        let scale = min(sx, sy)
-        canvasContainer.layer?.cornerRadius = 16 * scale
-        canvasContainer.layer?.borderWidth = max(1, scale)
+        // The window now takes the focused image's aspect ratio, so the media
+        // fills every point and the chrome (traffic lights + floating toolbar)
+        // merely floats over it. Chrome must scale UNIFORMLY — never by the
+        // window's independent x/y ratios — or the round dots and icon tiles
+        // would stretch into ovals. Derive one scale from the shorter design
+        // dimension and clamp it so controls stay usable on tiny/huge images.
+        let scale = min(max(min(width / Self.designSize.width,
+                                height / Self.designSize.height), 0.62), 1.25)
+        // The window matches the image exactly — keep the content plane flush
+        // (no radius, no border) so no dark frame appears around the picture.
+        canvasContainer.layer?.cornerRadius = 0
+        canvasContainer.layer?.borderWidth = 0
         toolbarBar.layer?.borderWidth = max(1, scale)
+        toolbarBar.layer?.cornerRadius = 15 * scale
         inspectorContainer.layer?.borderWidth = max(1, scale)
-        statusbar.layer?.borderWidth = max(1, scale)
+        inspectorContainer.layer?.cornerRadius = 16 * scale
 
-        titlebar.frame = NSRect(x: 0, y: height - titlebarH, width: width, height: titlebarH)
-        windowTitleLabel.font = PanelStyle.inspectFont(ofSize: 15 * sy, weight: .semibold)
-        windowFilenameLabel.font = PanelStyle.inspectFont(ofSize: 11 * sy)
-        windowTitleLabel.frame = NSRect(x: 0, y: 26 * sy, width: width, height: 18 * sy)
-        windowFilenameLabel.frame = NSRect(x: 0, y: 7 * sy, width: width, height: 13 * sy)
-        let trafficY = 23 * sy
-        closeTrafficButton.frame = NSRect(x: 24 * sx, y: trafficY, width: 12 * sx, height: 12 * sy)
-        minimizeTrafficButton.frame = NSRect(x: 44 * sx, y: trafficY, width: 12 * sx, height: 12 * sy)
-        zoomTrafficButton.frame = NSRect(x: 64 * sx, y: trafficY, width: 12 * sx, height: 12 * sy)
+        // Transparent 44pt drag region at the top (scaled uniformly).
+        let dragHeight = 44 * scale
+        titlebar.frame = NSRect(x: 0, y: height - dragHeight, width: width, height: dragHeight)
+        // Three bare traffic dots, 12pt, anchored to the top-left corner.
+        let dot = 12 * scale
+        let dotY = height - (16 * scale) - dot
+        closeTrafficButton.frame = NSRect(x: 20 * scale, y: dotY, width: dot, height: dot)
+        minimizeTrafficButton.frame = NSRect(x: 20 * scale + 26 * scale, y: dotY, width: dot, height: dot)
+        zoomTrafficButton.frame = NSRect(x: 20 * scale + 52 * scale, y: dotY, width: dot, height: dot)
         for button in [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton] {
-            button.layer?.cornerRadius = 6 * scale
+            button.layer?.cornerRadius = dot / 2
         }
 
-        toolbarBar.frame = NSRect(x: 0, y: height - titlebarH - toolbarH, width: width, height: toolbarH)
-        layoutToolbar(width: width)
+        // 274×54 floating toolbar, centered horizontally, 23pt from the top.
+        // Wider than the old 230 so the five 38pt tiles get 14pt of breathing
+        // room between them instead of a cramped 6pt.
+        let toolbarW = 274 * scale
+        let toolbarH = 54 * scale
+        toolbarBar.frame = NSRect(x: (width - toolbarW) / 2,
+                                  y: height - (23 * scale) - toolbarH,
+                                  width: toolbarW, height: toolbarH)
+        layoutToolbar(width: toolbarW)
 
-        statusbar.frame = NSRect(x: 0, y: 0, width: width, height: statusbarH)
-        statusLeftLabel.font = PanelStyle.inspectFont(ofSize: 12 * sy)
-        statusCenterLabel.font = PanelStyle.inspectFont(ofSize: 12 * sy)
-        statusRightLabel.font = PanelStyle.inspectFont(ofSize: 12 * sy, weight: .medium)
-        statusLeftLabel.frame = NSRect(x: 38 * sx, y: 11 * sy, width: 430 * sx, height: 15 * sy)
-        statusCenterLabel.frame = NSRect(x: 0, y: 11 * sy, width: width, height: 15 * sy)
-        statusRightLabel.frame = NSRect(x: 1414 * sx, y: 11 * sy, width: 120 * sx, height: 15 * sy)
-        statusDot.frame = NSRect(x: 1394 * sx, y: 14 * sy, width: 8 * sx, height: 8 * sy)
+        // No bottom bar or strip in the Simple Operation default state.
+        statusbar.frame = .zero
+        let canvasRect = canvasContainer.bounds
 
-        let canvasY = statusbarH
-        let canvasH = max(0, height - titlebarH - toolbarH - canvasY)
-        let canvasW = max(0, width - inspectorW)
-        let canvasRect = NSRect(x: 0, y: canvasY, width: canvasW, height: canvasH)
-        inspectorContainer.frame = NSRect(x: width - inspectorW, y: canvasY,
-                                          width: 434 * sx, height: canvasH)
+        // Information is an opt-in floating card. It overlays rather than
+        // changes the canvas dimensions, preserving the v3 image-first layout.
+        let inspectorW = min(434 * scale, max(280 * scale, width - 32 * scale))
+        let inspectorH = min(808 * scale, max(320 * scale, height - 112 * scale))
+        inspectorContainer.frame = NSRect(x: width - inspectorW - 20 * scale,
+                                          y: max(20 * scale, height - inspectorH - 96 * scale),
+                                          width: inspectorW, height: inspectorH)
         // Unhide immediately when opening; hiding is deferred to toggleInfo's
         // fade-out completion so the 160ms animation stays visible.
         if infoVisible { inspectorContainer.isHidden = false }
@@ -656,16 +744,26 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         fileWebView.frame = canvasRect
         filePlaceholder.frame = canvasRect
 
-        // The latest Figma frame uses only a compact, centered 117pt filmstrip
-        // overlay. Task progress lives in the status bar, not over the image.
-        taskOverlayShade.frame = NSRect(x: 16 * sx, y: canvasRect.minY,
-                                        width: max(0, canvasRect.width - 32 * sx), height: 117 * sy)
-        let itemCount = max(1, session.infos.count)
-        let stripWidth = min(CGFloat(itemCount) * 96 * sx + CGFloat(max(0, itemCount - 1)) * 10 * sx,
-                             max(96 * sx, canvasRect.width - 64 * sx))
-        filmstrip.frame = NSRect(x: canvasRect.midX - stripWidth / 2,
-                                 y: canvasRect.minY + 10 * sy,
-                                 width: stripWidth, height: 96 * sy)
+        // Floating thumbnail strip for quick image switching in multi-image
+        // sessions. It sits centered near the bottom, floating over the media
+        // (never resizing it), and scales uniformly with the chrome.
+        if filmstrip.isHidden {
+            filmstrip.frame = .zero
+        } else {
+            // The filmstrip sizes its own 96pt tiles from its width; give it the
+            // natural row width (one extra slot for the trailing "+" add tile),
+            // capped to the canvas so it never runs off-screen.
+            let slotCount = max(1, session.infos.count) + 1
+            let tile = 96 * scale
+            let gap = 10 * scale
+            let stripH = tile
+            let naturalW = CGFloat(slotCount) * tile + CGFloat(slotCount - 1) * gap
+            let stripW = min(naturalW, canvasRect.width - 48 * scale)
+            filmstrip.frame = NSRect(x: canvasRect.midX - stripW / 2,
+                                     y: canvasRect.minY + 20 * scale,
+                                     width: stripW, height: stripH)
+        }
+        taskOverlayShade.frame = .zero
         taskSummaryDot.isHidden = true
         taskSummaryLabel.isHidden = true
         taskToast.isHidden = true
@@ -674,47 +772,46 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// Image-first icon toolbar. Text remains available through tooltips and
     /// VoiceOver labels, while the canvas stays visually quiet.
     private func layoutToolbar(width: CGFloat) {
-        let sx = width / Self.designSize.width
-        let h = toolbarBar.bounds.height
-        let sy = h / 70
-        func place(_ view: NSView, x: CGFloat, width: CGFloat) {
-            view.frame = NSRect(x: x * sx, y: 18 * sy, width: width * sx, height: 38 * sy)
+        // The toolbar frame is scaled uniformly, so a single scale drives the
+        // tiles and keeps every icon square (no oval/stretched glyphs).
+        // Base design width is 274 (5×38pt tiles at a 52pt pitch, 14pt insets).
+        let scale = width / 274
+        func place(_ view: NSView, x: CGFloat) {
+            // 38pt tiles, y=8 from top, 52pt horizontal pitch.
+            view.frame = NSRect(x: x * scale, y: 8 * scale, width: 38 * scale, height: 38 * scale)
         }
-        let iconButtons = [directionButton, flipIconButton, focusIconButton,
-                           compareIconButton, sliderIconButton, fitIconButton,
-                           zoomOutButton, zoomInButton, widgetTasksButton,
-                           widgetMarketButton, infoButton]
-        for button in iconButtons {
-            button.layer?.cornerRadius = 8 * sy
-            button.layer?.borderWidth = max(1, sy)
+        let v3Buttons = [focusIconButton, compareIconButton, sliderIconButton,
+                         widgetMarketButton, infoButton]
+        for button in v3Buttons {
+            button.layer?.cornerRadius = 9 * scale
+            button.layer?.borderWidth = max(1, scale)
+            // Match the Figma reference: an 18pt glyph centered in the 38pt tile.
+            button.setSymbolPointSize(18 * scale)
         }
-        place(directionButton, x: 40, width: 38)
-        place(flipIconButton, x: 88, width: 38)
-        place(fitIconButton, x: 136, width: 38)
+        place(focusIconButton, x: 14)
+        place(compareIconButton, x: 66)
+        place(sliderIconButton, x: 118)
+        place(widgetMarketButton, x: 170)
+        place(infoButton, x: 222)
 
-        let centerStart: CGFloat = 662
-        place(focusIconButton, x: centerStart, width: 38)
-        place(compareIconButton, x: centerStart + 48, width: 38)
-        place(sliderIconButton, x: centerStart + 96, width: 38)
-        place(zoomOutButton, x: centerStart + 144, width: 38)
-        place(zoomInButton, x: centerStart + 192, width: 38)
-
-        place(widgetTasksButton, x: 1378, width: 38)
-        place(widgetMarketButton, x: 1426, width: 38)
-        place(infoButton, x: 1474, width: 38)
-        taskBadge.frame = NSRect(x: widgetTasksButton.frame.maxX - 7 * sx,
-                                 y: widgetTasksButton.frame.maxY - 7 * sy,
-                                 width: 8 * sx, height: 8 * sy)
-        taskBadge.layer?.cornerRadius = 4 * min(sx, sy)
+        // Retained actions still exist in the controller and keyboard paths,
+        // but are intentionally absent from the v3 five-action toolbar.
+        for button in [directionButton, flipIconButton, fitIconButton,
+                       zoomOutButton, zoomInButton, widgetTasksButton] {
+            button.frame = .zero
+            button.isHidden = true
+        }
+        taskBadge.frame = .zero
+        taskBadge.isHidden = true
     }
 
     private func renderSession() {
         guard let session, session.infos.indices.contains(session.focusedIndex) else { return }
         let info = session.infos[session.focusedIndex]
         windowFilenameLabel.stringValue = info.filename
-        // Single-image Focus stays image-only. Group context appears only once
-        // there is something to browse or compare.
-        filmstrip.alphaValue = 1
+        // Multi-image sessions keep a floating thumbnail strip along the bottom
+        // so the user can flip between images quickly. Single images stay
+        // image-only. The strip floats over the media; it never shrinks it.
         filmstrip.isHidden = session.infos.count < 2
         taskOverlayShade.isHidden = filmstrip.isHidden
         updateMediaToolbarVisibility(for: info, session: session)
@@ -814,17 +911,18 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func updateMediaToolbarVisibility(for info: MediaInfo, session: ImageInspectSession) {
         let showingImage = info.kind == .image ||
             (session.mode == .compare && session.compareIndices.map { session.infos.indices.contains($0.0) && session.infos.indices.contains($0.1) && session.infos[$0.0].kind == .image && session.infos[$0.1].kind == .image } == true)
-        // Non-media content never shows zoom/direction/compare controls
-        // (V2 spec: 非媒体内容不创建媒体按钮).
-        directionButton.isHidden = !showingImage
-        flipIconButton.isHidden = !showingImage
-        fitIconButton.isHidden = !showingImage
-        zoomOutButton.isHidden = !showingImage
-        zoomInButton.isHidden = !showingImage
+        // The v3 frame exposes precisely Focus, Compare, Slider, Widget and
+        // Information. Legacy image actions remain available via gestures and
+        // menus, never as additional toolbar tiles.
+        directionButton.isHidden = true
+        flipIconButton.isHidden = true
+        fitIconButton.isHidden = true
+        zoomOutButton.isHidden = true
+        zoomInButton.isHidden = true
         focusIconButton.isHidden = !showingImage
         compareIconButton.isHidden = !showingImage
         sliderIconButton.isHidden = !showingImage
-        widgetTasksButton.isHidden = !showingImage
+        widgetTasksButton.isHidden = true
         widgetMarketButton.isHidden = !showingImage
         infoButton.isHidden = !showingImage
     }
@@ -885,6 +983,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                     session.failedIndices.remove(index)
                     session.images[index] = image
                     session.infos[index].dimensions = image.size
+                    // In the single-image Simple Operation state, the window
+                    // takes the image's exact aspect ratio so the media fills
+                    // it with no black plate.
+                    if session.mode != .compare, index == session.focusedIndex {
+                        self.fitWindowToImage(image.size)
+                    }
                 } else {
                     session.failedIndices.insert(index)
                 }
@@ -1106,30 +1210,16 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         guard let info = currentRevealInfo, info.kind == .image,
               let widget = WidgetRegistry.shared.installed.first(where: { $0.id == widgetID }),
               let command = widget.commands.first(where: { $0.id == commandID }) else { return }
-        if WidgetTaskManager.shared.start(widget: widget, command: command, media: info) != nil {
-            // Non-blocking: the task toast sits at the canvas' bottom-left;
-            // the main image stays fully usable while the task runs.
-            taskToast.show(title: String(format: "%@ · %@", widget.name, command.name),
-                           subtitle: "You can keep inspecting; the result appears in the filmstrip.".localized)
-        }
+        _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info)
     }
 
     @objc private func widgetTasksDidChange() {
-        let activeCount = WidgetTaskManager.shared.activeCount
-        taskBadge.isHidden = activeCount == 0
-        // Statusbar right: semantic dot + text (spec: 状态必须有文本).
-        statusDot.isHidden = activeCount == 0
-        statusRightLabel.isHidden = activeCount == 0
-        if activeCount > 0 {
-            statusRightLabel.stringValue = activeCount == 1 ? "1 task running" : "\(activeCount) tasks running"
-        }
-        // Task toast mirrors the polling state; it auto-dismisses on completion.
-        if activeCount > 0, let latest = WidgetTaskManager.shared.records.first(where: { $0.phase.isActive }) {
-            taskToast.show(title: "\(latest.widgetName) · \(latest.commandName)",
-                           subtitle: "You can keep inspecting; the result appears in the filmstrip.".localized)
-        } else {
-            taskToast.hide()
-        }
+        // Task state remains available from Widget Market / the tasks window;
+        // it never grows extra chrome inside the v3 Simple Operation canvas.
+        taskBadge.isHidden = true
+        statusDot.isHidden = true
+        statusRightLabel.isHidden = true
+        taskToast.hide()
         let completed = WidgetTaskManager.shared.records.filter { $0.phase == .completed && !handledWidgetTaskIDs.contains($0.id) }
         completed.forEach { handledWidgetTaskIDs.insert($0.id) }
         guard let session else { return }
@@ -1637,8 +1727,19 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         } else {
             session.focusedIndex = index
         }
+        refitFocusedImageIfNeeded()
         renderSession()
         loadFullResolutionForActiveItems(generation: loadGeneration)
+    }
+
+    /// When the focused image changes, re-fit the window to it. If the image is
+    /// already loaded, fit immediately; otherwise the load completion fits it.
+    private func refitFocusedImageIfNeeded() {
+        guard let session, session.mode != .compare else { return }
+        fittedImageSize = nil
+        if let image = session.images[safe: session.focusedIndex] ?? nil {
+            fitWindowToImage(image.size)
+        }
     }
 
     /// Choose which compare slot subsequent filmstrip taps replace, by clicking
@@ -1673,6 +1774,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         } else {
             session.focusedIndex = (session.focusedIndex + delta + session.infos.count) % session.infos.count
         }
+        refitFocusedImageIfNeeded()
         renderSession()
         loadFullResolutionForActiveItems(generation: loadGeneration)
     }
@@ -2894,12 +2996,13 @@ private final class InspectNonHitTestingView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
-/// Solid Figma titlebar surface with native window dragging and zooming.
+/// Figma V3's transparent drag region keeps native dragging without drawing a
+/// second chrome band above the image.
 private final class FigmaInspectTitlebar: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        layer?.backgroundColor = NSColor.clear.cgColor
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -2921,6 +3024,10 @@ private final class FigmaTrafficLightButton: NSButton {
         wantsLayer = true
         layer?.backgroundColor = PanelStyle.resolvedCG(color)
         layer?.cornerRadius = 6
+        layer?.shadowColor = NSColor.black.withAlphaComponent(0.18).cgColor
+        layer?.shadowOpacity = 1
+        layer?.shadowOffset = CGSize(width: 0, height: -1)
+        layer?.shadowRadius = 1.5
         self.target = target
         self.action = action
     }
@@ -2977,11 +3084,15 @@ final class InspectToolbarButton: NSButton {
     var isActive = false { didSet { updateAppearance() } }
     var usesFigmaStyle = false { didSet { updateAppearance() } }
 
-    /// Symbols render at their native 16pt size, centered in the 24pt button.
-    /// (Previously a 9pt symbol was upscaled ~2.5× via scaleProportionally
-    /// UpOrDown, which made tall symbols like arrow.counterclockwise clip at
-    /// the button's bottom edge.)
-    private static let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 16, weight: .light)
+    /// The glyph point size. The toolbar drives this from the tile size so the
+    /// icon always fills the same proportion of its 38pt tile (18/38) as the
+    /// Figma reference, at any window/image size. Centered via `.imageOnly`.
+    private var symbolPointSize: CGFloat = 18
+    private var currentSymbolName: String = ""
+
+    private var glyphConfiguration: NSImage.SymbolConfiguration {
+        NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .light)
+    }
 
     init(symbol: String, tooltip: String) {
         super.init(frame: .zero)
@@ -2993,6 +3104,7 @@ final class InspectToolbarButton: NSButton {
         contentTintColor = PanelStyle.textPrimary
         wantsLayer = true
         layer?.cornerRadius = 5
+        currentSymbolName = symbol
         setSymbol(symbol)
         updateAppearance()
     }
@@ -3004,8 +3116,18 @@ final class InspectToolbarButton: NSButton {
     /// instead of assigning `image` directly so dynamically swapped icons
     /// (play/pause, mute) match the rest of the toolbar.
     func setSymbol(_ name: String) {
+        currentSymbolName = name
         let raw = NSImage(systemSymbolName: name, accessibilityDescription: toolTip)
-        image = raw?.withSymbolConfiguration(Self.symbolConfiguration)
+        image = raw?.withSymbolConfiguration(glyphConfiguration)
+    }
+
+    /// Resize the glyph so it scales with its tile. No-op if unchanged, so it's
+    /// cheap to call from every layout pass.
+    func setSymbolPointSize(_ size: CGFloat) {
+        let clamped = max(8, size)
+        guard abs(clamped - symbolPointSize) > 0.5 else { return }
+        symbolPointSize = clamped
+        setSymbol(currentSymbolName)
     }
 
     func updateTooltip(_ tooltip: String) {
@@ -3019,12 +3141,14 @@ final class InspectToolbarButton: NSButton {
 
     private func updateAppearance() {
         if usesFigmaStyle {
+            let idleFill = NSColor(srgbRed: 29 / 255, green: 30 / 255, blue: 34 / 255, alpha: 0.72)
+            let activeFill = NSColor(srgbRed: 52 / 255, green: 37 / 255, blue: 31 / 255, alpha: 0.96)
             layer?.backgroundColor = PanelStyle.resolvedCG(
-                isActive ? PanelStyle.accentSubtleFill : PanelStyle.inspectToolbar
+                isActive ? activeFill : idleFill
             )
             layer?.borderWidth = 1
             layer?.borderColor = PanelStyle.resolvedCG(
-                isActive ? PanelStyle.accent.withAlphaComponent(0.58) : PanelStyle.inspectLine
+                isActive ? PanelStyle.accent.withAlphaComponent(0.78) : NSColor.white.withAlphaComponent(0.12)
             )
             contentTintColor = isEnabled
                 ? (isActive ? PanelStyle.accent : PanelStyle.textPrimary)
@@ -3094,17 +3218,16 @@ final class InspectImageViewport: NSView {
     private let widgetStatusLabel = NSTextField(labelWithString: "")
     private var loadFailed = false
     private var zoom: CGFloat = 1
-    /// Quiet darkroom margin around the media card from the approved 01
-    /// workbench. Keeping the image inset makes the canvas read as a surface,
-    /// rather than a borderless image glued to the window edges.
-    private let canvasInset: CGFloat = 16
+    /// V3 Simple Operation has no inner canvas/card margin: the media is the
+    /// window's content plane and chrome merely floats over it.
+    private let canvasInset: CGFloat = 0
     private var normalizedCenter = CGPoint(x: 0.5, y: 0.5)
     private var panOffset = CGPoint.zero
     private var lastMouseLocation = CGPoint.zero
     private var dragging = false
     private var compareDimmed = false
 
-    /// Latest Figma canvas: 16pt horizontal margin, image flush to top/bottom.
+    /// The media viewport is flush to every edge of the operation canvas.
     private var mediaRect: NSRect {
         NSRect(x: canvasInset,
                y: 0,
@@ -3116,13 +3239,12 @@ final class InspectImageViewport: NSView {
         super.init(frame: frameRect)
         registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.inspectCanvas.cgColor
+        layer?.backgroundColor = NSColor.clear.cgColor
         layer?.masksToBounds = true
         imageLayer.contentsGravity = .resizeAspect
-        imageLayer.cornerRadius = 4
-        imageLayer.masksToBounds = true
-        imageLayer.borderWidth = 1
-        imageLayer.borderColor = PanelStyle.inspectLine.cgColor
+        imageLayer.cornerRadius = 0
+        imageLayer.masksToBounds = false
+        imageLayer.borderWidth = 0
         layer?.addSublayer(imageLayer)
         // Compare selection is communicated by gently dimming the inactive
         // side. Keep the selected side completely free of a border/glow.
