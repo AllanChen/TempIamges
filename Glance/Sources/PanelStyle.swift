@@ -126,21 +126,43 @@ enum PanelStyle {
 
     // MARK: - Palette
 
-    /// Deepest image/background plane — Quiet Darkroom `#101113`.
+    /// Deepest image/background plane — Quiet Darkroom `#09090B`.
     static let canvas = NSColor(srgbRed: 9 / 255, green: 9 / 255, blue: 11 / 255, alpha: 1)
-    /// Primary chrome plane — `#17191C`.
+    /// Primary chrome plane — `#111114`.
     static let surface = NSColor(srgbRed: 17 / 255, green: 17 / 255, blue: 20 / 255, alpha: 1)
-    /// Raised controls and cards — `#202329`.
+    /// Raised controls and cards — `#17171C`.
     static let overlay = NSColor(srgbRed: 23 / 255, green: 23 / 255, blue: 28 / 255, alpha: 1)
+    /// Toolbar chrome plane, one step below `surface` — `#0D0D10`.
+    static let chrome = NSColor(srgbRed: 13 / 255, green: 13 / 255, blue: 16 / 255, alpha: 1)
+    /// Elevated surface for floating menus and cards — `#201F25`.
+    static let surfaceElevated = NSColor(srgbRed: 32 / 255, green: 31 / 255, blue: 37 / 255, alpha: 1)
+    /// Image Inspect Figma palette. Kept separate so other Glance windows can
+    /// migrate independently without inheriting the denser inspector chrome.
+    static let inspectBackground = NSColor(srgbRed: 6 / 255, green: 7 / 255, blue: 10 / 255, alpha: 1)
+    static let inspectChrome = NSColor(srgbRed: 23 / 255, green: 24 / 255, blue: 29 / 255, alpha: 1)
+    static let inspectToolbar = NSColor(srgbRed: 44 / 255, green: 45 / 255, blue: 49 / 255, alpha: 1)
+    static let inspectCanvas = NSColor(srgbRed: 9 / 255, green: 10 / 255, blue: 13 / 255, alpha: 1)
+    static let inspectStatus = NSColor(srgbRed: 26 / 255, green: 27 / 255, blue: 32 / 255, alpha: 1)
+    static let inspectLine = NSColor(srgbRed: 52 / 255, green: 53 / 255, blue: 58 / 255, alpha: 1)
+    /// Semantic alias matching the V2 spec: raised surface (`overlay`).
+    static var surfaceRaised: NSColor { overlay }
 
-    /// Warm off-white primary text — `#F2F0EB`.
+    /// Warm off-white primary text — `#F3EEE8`.
     static let textPrimary = NSColor(srgbRed: 243 / 255, green: 238 / 255, blue: 232 / 255, alpha: 1)
-    /// Secondary / supporting text — `#A7A8AA`.
+    /// Secondary / supporting text — `#AAA4A0`.
     static let textSecondary = NSColor(srgbRed: 170 / 255, green: 164 / 255, blue: 160 / 255, alpha: 1)
     /// Tertiary text (timestamps, counts, hints).
     static let textTertiary = NSColor(srgbRed: 114 / 255, green: 109 / 255, blue: 105 / 255, alpha: 1)
-    /// Sparse focus/interaction cue — `#E1B982`.
+    /// Warm apricot interaction cue, the only brand accent — `#E8A87C`.
     static let warmCue = NSColor(srgbRed: 232 / 255, green: 168 / 255, blue: 124 / 255, alpha: 1)
+    /// Dark ink drawn on top of `accent` fills (primary buttons) — `#21130D`.
+    static let accentInk = NSColor(srgbRed: 33 / 255, green: 19 / 255, blue: 13 / 255, alpha: 1)
+    /// Accent hover fill — `#F0B58E`.
+    static let accentHover = NSColor(srgbRed: 240 / 255, green: 181 / 255, blue: 142 / 255, alpha: 1)
+    /// Subtle accent tint for selected/active backgrounds.
+    static let accentSubtleFill = warmCue.withAlphaComponent(0.12)
+    /// Subtle accent tint for selected/active borders.
+    static let accentSubtleBorder = warmCue.withAlphaComponent(0.35)
 
     /// Hairline that defines a bar edge / separator on the frost.
     static let hairline       = textPrimary.withAlphaComponent(0.10)
@@ -162,10 +184,27 @@ enum PanelStyle {
     static let success        = NSColor(srgbRed: 143 / 255, green: 208 / 255, blue: 175 / 255, alpha: 1)
     static let failure        = NSColor(srgbRed: 241 / 255, green: 139 / 255, blue: 134 / 255, alpha: 1)
     static let info           = NSColor(srgbRed: 169 / 255, green: 197 / 255, blue: 239 / 255, alpha: 1)
+    /// Alias matching the V2 spec vocabulary.
+    static var danger: NSColor { failure }
     static let cornerSmall: CGFloat = 8
     static let cornerMedium: CGFloat = 12
     static let cornerLarge: CGFloat = 16
     static let spacing: CGFloat = 8
+
+    // MARK: - Workbench geometry (V2 spec)
+
+    /// Height of a content window's custom title bar.
+    static let titlebarHeight: CGFloat = 44
+    /// Height of the workbench toolbar below the title bar.
+    static let toolbarHeight: CGFloat = 48
+    /// Width of the collapsible right inspector.
+    static let inspectorWidth: CGFloat = 280
+    /// Height of the bottom filmstrip.
+    static let filmstripHeight: CGFloat = 92
+    /// Height of the bottom status bar.
+    static let statusbarHeight: CGFloat = 26
+    /// Minimum hit-target height for ordinary controls.
+    static let controlHeight: CGFloat = 32
 
     // MARK: - Type scale
 
@@ -179,6 +218,16 @@ enum PanelStyle {
     static var label: NSFont    { .systemFont(ofSize: 12, weight: .medium) }
     /// Secondary metadata, captions, counts.
     static var caption: NSFont  { .systemFont(ofSize: 11, weight: .regular) }
+
+    /// Fonts used by the Figma-authored Image Inspect frame. Inter is bundled
+    /// under Resources/Fonts so AppKit and Figma use the same glyph metrics.
+    static func inspectFont(ofSize size: CGFloat, weight: NSFont.Weight = .regular) -> NSFont {
+        let name: String
+        if weight >= .semibold { name = "Inter-SemiBold" }
+        else if weight >= .medium { name = "Inter-Medium" }
+        else { name = "Inter-Regular" }
+        return NSFont(name: name, size: size) ?? .systemFont(ofSize: size, weight: weight)
+    }
 
     // MARK: - Appearance helpers
 
@@ -296,6 +345,80 @@ enum PanelStyle {
         return btn
     }
 
+    // MARK: - V2 control factories
+
+    /// Primary call-to-action: warm apricot fill, dark ink label, 8pt corner,
+    /// 32pt minimum height. Mirrors the HTML spec's `.primary-btn`.
+    static func makePrimaryButton(title: String, target: AnyObject?, action: Selector?) -> PanelButton {
+        let btn = PanelButton(title: title, target: target, action: action)
+        btn.normalBackground = accent
+        btn.hoverBackground = accentHover
+        btn.titleColor = accentInk
+        btn.titleFont = .systemFont(ofSize: 13, weight: .semibold)
+        btn.setAccessibilityLabel(title)
+        return btn
+    }
+
+    /// Quiet secondary action: hairline border over a faint control fill.
+    /// Mirrors the HTML spec's `.quiet-btn`.
+    static func makeQuietButton(title: String, target: AnyObject?, action: Selector?) -> PanelButton {
+        let btn = PanelButton(title: title, target: target, action: action)
+        btn.normalBackground = controlFill
+        btn.hoverBackground = controlFillHi
+        btn.titleColor = textPrimary
+        btn.titleFont = label
+        btn.setAccessibilityLabel(title)
+        return btn
+    }
+
+    /// Destructive action: same chrome as quiet, but the label reads danger.
+    static func makeDangerButton(title: String, target: AnyObject?, action: Selector?) -> PanelButton {
+        let btn = makeQuietButton(title: title, target: target, action: action)
+        btn.titleColor = danger
+        return btn
+    }
+
+    /// A small text segment for the floating mode switcher (专注/并排/滑杆).
+    /// Toggle its selected look with `setSegmentActive(_:active:)`.
+    static func makeSegmentButton(title: String, target: AnyObject?, action: Selector?) -> PanelButton {
+        let btn = PanelButton(title: title, target: target, action: action)
+        btn.normalBackground = .clear
+        btn.hoverBackground = controlFill
+        btn.titleColor = textSecondary
+        btn.titleFont = caption
+        btn.heightAnchor.constraint(greaterThanOrEqualToConstant: 26).isActive = true
+        btn.setAccessibilityLabel(title)
+        return btn
+    }
+
+    /// Apply/remove the active look of a segment button (accent tint + text).
+    static func setSegmentActive(_ button: NSButton, active: Bool) {
+        guard let btn = button as? PanelButton else { return }
+        btn.normalBackground = inspectToolbar
+        btn.titleColor = active ? accent : textSecondary
+        btn.layer?.borderWidth = 1
+        btn.layer?.borderColor = resolvedCG(active ? accent.withAlphaComponent(0.58) : inspectLine)
+        btn.setAccessibilitySelected(active)
+    }
+
+    /// A 6pt semantic status dot (task polling, live states).
+    static func makeStatusDot(color: NSColor) -> NSView {
+        let dot = NSView(frame: NSRect(x: 0, y: 0, width: 6, height: 6))
+        dot.wantsLayer = true
+        dot.layer?.cornerRadius = 3
+        dot.layer?.backgroundColor = resolvedCG(color)
+        return dot
+    }
+
+    /// A 36×20 toggle switch in the V2 style (warm apricot when on).
+    static func makeSwitch(target: AnyObject?, action: Selector?, on: Bool = false) -> GlanceSwitch {
+        let sw = GlanceSwitch()
+        sw.isOn = on
+        sw.target = target
+        sw.action = action
+        return sw
+    }
+
     /// Add a 1px hairline separator along one edge of `bar`. Returns the
     /// separator view so callers can re-tint it on theme change.
     @discardableResult
@@ -310,11 +433,139 @@ enum PanelStyle {
         case .maxY:
             sep.frame = NSRect(x: 0, y: bar.bounds.height - 1, width: bar.bounds.width, height: 1)
             sep.autoresizingMask = [.width, .minYMargin]
+        case .minX:
+            sep.frame = NSRect(x: 0, y: 0, width: 1, height: bar.bounds.height)
+            sep.autoresizingMask = [.height]
+        case .maxX:
+            sep.frame = NSRect(x: bar.bounds.width - 1, y: 0, width: 1, height: bar.bounds.height)
+            sep.autoresizingMask = [.height, .minXMargin]
         default:
             sep.frame = NSRect(x: 0, y: 0, width: bar.bounds.width, height: 1)
             sep.autoresizingMask = [.width]
         }
         bar.addSubview(sep)
         return sep
+    }
+}
+
+/// Layer-backed text button used by the V2 control factories. Draws its own
+/// rounded background so normal/hover/disabled states stay on the darkroom
+/// palette instead of AppKit's system button face.
+final class PanelButton: NSButton {
+    var normalBackground: NSColor = PanelStyle.controlFill { didSet { refresh() } }
+    var hoverBackground: NSColor = PanelStyle.controlFillHi
+    var titleColor: NSColor = PanelStyle.textPrimary { didSet { refresh() } }
+    var titleFont: NSFont = PanelStyle.label { didSet { refresh() } }
+
+    private var hovering = false
+    private var tracking: NSTrackingArea?
+
+    init(title: String, target: AnyObject?, action: Selector?) {
+        super.init(frame: .zero)
+        self.target = target
+        self.action = action
+        bezelStyle = .recessed
+        isBordered = false
+        wantsLayer = true
+        layer?.cornerRadius = PanelStyle.cornerSmall
+        layer?.borderWidth = 1
+        layer?.borderColor = PanelStyle.hairline.cgColor
+        attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [.font: PanelStyle.label, .foregroundColor: PanelStyle.textPrimary]
+        )
+        refresh()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var intrinsicContentSize: NSSize {
+        var size = super.intrinsicContentSize
+        size.width += 24
+        size.height = max(size.height, PanelStyle.controlHeight)
+        return size
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let area = NSTrackingArea(rect: bounds,
+                                  options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true; refresh() }
+    override func mouseExited(with event: NSEvent) { hovering = false; refresh() }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        refresh()
+    }
+
+    private func refresh() {
+        let base = (hovering && isEnabled) ? hoverBackground : normalBackground
+        layer?.backgroundColor = PanelStyle.resolvedCG(isEnabled ? base : base.withAlphaComponent(0.5))
+        let color = isEnabled ? titleColor : titleColor.withAlphaComponent(0.45)
+        attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [.font: titleFont, .foregroundColor: color]
+        )
+    }
+}
+
+/// 36×20 toggle switch in the V2 style: warm apricot track with a dark knob
+/// when on, raised-surface track with a secondary-text knob when off.
+final class GlanceSwitch: NSControl {
+    var isOn = false {
+        didSet {
+            guard isOn != oldValue else { return }
+            animateKnob()
+        }
+    }
+
+    private let knob = NSView()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.cornerRadius = 10
+        knob.wantsLayer = true
+        knob.layer?.cornerRadius = 8
+        addSubview(knob)
+        setAccessibilityRole(.checkBox)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var intrinsicContentSize: NSSize { NSSize(width: 36, height: 20) }
+
+    override func layout() {
+        super.layout()
+        let knobX: CGFloat = isOn ? 18 : 2
+        knob.frame = NSRect(x: knobX, y: 2, width: 16, height: 16)
+        layer?.backgroundColor = PanelStyle.resolvedCG(isOn ? PanelStyle.accent : PanelStyle.surfaceElevated)
+        knob.layer?.backgroundColor = PanelStyle.resolvedCG(isOn ? PanelStyle.accentInk : PanelStyle.textSecondary)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard isEnabled, bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+        isOn.toggle()
+        sendAction(action, to: target)
+    }
+
+    override func setAccessibilityValue(_ value: Any?) {
+        if let on = value as? Bool { isOn = on }
+    }
+
+    override func accessibilityValue() -> Any? { isOn }
+
+    private func animateKnob() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            context.allowsImplicitAnimation = true
+            self.layout()
+        }
     }
 }

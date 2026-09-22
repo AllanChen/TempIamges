@@ -1,0 +1,285 @@
+const imgClose = "http://localhost:3845/assets/c70b77b184ff07a21c9a5422fd26ad32ea67bb5f.svg";
+const imgMinimize = "http://localhost:3845/assets/2d5091b247d68e1ecc339888fd7fc1372b927eec.svg";
+const imgZoom = "http://localhost:3845/assets/3a71a8016bab58414d9e4b7f7b195e4fc3498869.svg";
+const imgIconRefresh = "http://localhost:3845/assets/6518456ce0dc279e31361ee738deb22e8b93ec10.svg";
+const imgIconSearch = "http://localhost:3845/assets/cc4982314f71767f1ec6b722c062e8c87e0ff41e.svg";
+const imgIconFocus = "http://localhost:3845/assets/11de3578fb197e47a959adc2348b77a2fca06647.svg";
+const imgIconClear = "http://localhost:3845/assets/038296c7decf6ca6102e276efea4a1d1cd2e002c.svg";
+const imgIconInfo = "http://localhost:3845/assets/db7f3a50330e128a2b133bc2b11c3c20c4358c54.svg";
+const imgIconUninstall = "http://localhost:3845/assets/a09a448dfd2aefe3b6577360afe957174132ecd4.svg";
+const imgWaitingIndicator = "http://localhost:3845/assets/64f472c319fb4031a708c525d25186179ec4675b.svg";
+const imgTimelineMark = "http://localhost:3845/assets/0d237dc18b77dc8bc6336037e02544f23ad0260a.svg";
+const imgTimelineMark1 = "http://localhost:3845/assets/e00ae2479874a6d55e6a4071f618a70c7f99f26e.svg";
+const imgCurrentHalo = "http://localhost:3845/assets/af35ce75f88e1445bf29e7a7fa349c93ba41251f.svg";
+const imgTimelineMark2 = "http://localhost:3845/assets/024ec401de6c5ce658de1db5d7578178b9c497d3.svg";
+const imgStatusDot = "http://localhost:3845/assets/90402bdfd3c2512d86ff6b250a0bc6eeff335195.svg";
+
+export default function TaskCenterCleanEditable() {
+  return (
+    <div className="bg-[#06070a] border border-[#34353a] border-solid overflow-clip relative rounded-[16px] size-full" data-node-id="10:76" data-name="Task Center / Clean Editable">
+      <div className="absolute h-[1012px] left-[-1px] overflow-clip top-[-1px] w-[1554px]" data-node-id="10:77" data-name="Editable Content">
+        <div className="absolute bg-[#17181d] h-[58px] left-0 overflow-clip top-0 w-[1554px]" data-node-id="10:78" data-name="01 / Titlebar">
+          <div className="absolute left-[24px] size-[12px] top-[23px]" data-node-id="10:79" data-name="Close">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgClose} />
+          </div>
+          <div className="absolute left-[44px] size-[12px] top-[23px]" data-node-id="10:80" data-name="Minimize">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgMinimize} />
+          </div>
+          <div className="absolute left-[64px] size-[12px] top-[23px]" data-node-id="10:81" data-name="Zoom">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgZoom} />
+          </div>
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[777px] not-italic text-[#f3eee8] text-[15px] text-center top-[14px] w-[1554px]" data-node-id="10:82">
+            Task Center
+          </p>
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[777px] not-italic text-[#726d69] text-[11px] text-center top-[38px] w-[1554px]" data-node-id="10:83">
+            3 tasks
+          </p>
+        </div>
+        <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[70px] left-0 overflow-clip top-[58px] w-[1554px]" data-node-id="10:84" data-name="02 / Icon Toolbar">
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[39px] overflow-clip rounded-[8px] size-[38px] top-[13px]" data-node-id="10:85" data-name="Refresh">
+            <div className="absolute left-[9px] size-[18px] top-[9px]" data-node-id="10:86" data-name="Icon / refresh">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconRefresh} />
+            </div>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[87px] overflow-clip rounded-[8px] size-[38px] top-[13px]" data-node-id="10:89" data-name="Search">
+            <div className="absolute left-[9px] size-[18px] top-[9px]" data-node-id="10:90" data-name="Icon / search">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconSearch} />
+            </div>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[1377px] overflow-clip rounded-[8px] size-[38px] top-[13px]" data-node-id="10:93" data-name="Open in Inspect">
+            <div className="absolute left-[9px] size-[18px] top-[9px]" data-node-id="10:94" data-name="Icon / focus">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconFocus} />
+            </div>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[1425px] overflow-clip rounded-[8px] size-[38px] top-[13px]" data-node-id="10:98" data-name="Clear Finished">
+            <div className="absolute left-[9px] size-[18px] top-[9px]" data-node-id="10:99" data-name="Icon / clear">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconClear} />
+            </div>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[1473px] overflow-clip rounded-[8px] size-[38px] top-[13px]" data-node-id="10:101" data-name="Task Information">
+            <div className="absolute left-[9px] size-[18px] top-[9px]" data-node-id="10:102" data-name="Icon / info">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconInfo} />
+            </div>
+          </div>
+        </div>
+        <div className="absolute bg-[#111217] border border-[#34353a] border-solid h-[847px] left-0 overflow-clip top-[128px] w-[360px]" data-node-id="10:106" data-name="03 / Task List">
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#f3eee8] text-[17px] top-[21px] whitespace-nowrap" data-node-id="10:107">
+            Tasks
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[23px] not-italic text-[#726d69] text-[11px] top-[48px] whitespace-nowrap" data-node-id="10:108">
+            Local and polling Widget tasks
+          </p>
+          <div className="absolute bg-[#2c2d31] border border-[rgba(232,168,124,0.58)] border-solid h-[38px] left-[19px] overflow-clip rounded-[8px] top-[81px] w-[72px]" data-node-id="10:109" data-name="All Filter">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[35px] not-italic text-[#e8a87c] text-[12px] text-center top-[9px] w-[72px]" data-node-id="10:110">
+              All
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[99px] overflow-clip rounded-[8px] top-[81px] w-[80px]" data-node-id="10:111" data-name="Running Filter">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[39px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[80px]" data-node-id="10:112">
+              Running
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[187px] overflow-clip rounded-[8px] top-[81px] w-[72px]" data-node-id="10:113" data-name="Completed Filter">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[72px]" data-node-id="10:114">
+              Done
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[267px] overflow-clip rounded-[8px] top-[81px] w-[72px]" data-node-id="10:115" data-name="Failed Filter">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[72px]" data-node-id="10:116">
+              Failed
+            </p>
+          </div>
+          <div className="absolute bg-[#242229] border border-[rgba(232,168,124,0.42)] border-solid h-[82px] left-[13px] overflow-clip rounded-[9px] top-[139px] w-[332px]" data-node-id="10:117" data-name="Task / Remove Background">
+            <div className="absolute border border-[#34353a] border-solid left-[11px] rounded-[7px] size-[56px] top-[12px]" data-node-id="10:118" style={{ backgroundImage: "linear-gradient(111.25050482045205deg, rgb(36, 49, 59) 0%, rgb(138, 95, 78) 52%, rgb(38, 53, 45) 100%)" }} data-name="Thumbnail" />
+            <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[81px] not-italic text-[#f3eee8] text-[13px] top-[16px] w-[170px]" data-node-id="10:119">
+              Remove Background
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[81px] not-italic text-[#726d69] text-[11px] top-[42px] w-[190px]" data-node-id="10:120">
+              Just now · input.png
+            </p>
+            <div className="absolute bg-[#e8a87c] h-[26px] left-[249px] opacity-16 rounded-[6px] top-[27px] w-[70px]" data-node-id="10:121" data-name="State" />
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[284px] not-italic text-[#e8a87c] text-[11px] text-center top-[33px] w-[70px]" data-node-id="10:122">
+              Running
+            </p>
+          </div>
+          <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[82px] left-[13px] overflow-clip rounded-[9px] top-[231px] w-[332px]" data-node-id="10:123" data-name="Task / Upscale 2×">
+            <div className="absolute border border-[#34353a] border-solid left-[11px] rounded-[7px] size-[56px] top-[12px]" data-node-id="10:124" style={{ backgroundImage: "linear-gradient(111.25050482045205deg, rgb(36, 49, 59) 0%, rgb(138, 95, 78) 52%, rgb(38, 53, 45) 100%)" }} data-name="Thumbnail" />
+            <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[81px] not-italic text-[#f3eee8] text-[13px] top-[16px] w-[170px]" data-node-id="10:125">
+              Upscale 2×
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[81px] not-italic text-[#726d69] text-[11px] top-[42px] w-[190px]" data-node-id="10:126">
+              12 min ago · portrait.jpg
+            </p>
+            <div className="absolute bg-[#8fd0af] h-[26px] left-[249px] opacity-16 rounded-[6px] top-[27px] w-[70px]" data-node-id="10:127" data-name="State" />
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[284px] not-italic text-[#8fd0af] text-[11px] text-center top-[33px] w-[70px]" data-node-id="10:128">
+              Done
+            </p>
+          </div>
+          <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[82px] left-[13px] overflow-clip rounded-[9px] top-[323px] w-[332px]" data-node-id="10:129" data-name="Task / Image Caption">
+            <div className="absolute border border-[#34353a] border-solid left-[11px] rounded-[7px] size-[56px] top-[12px]" data-node-id="10:130" style={{ backgroundImage: "linear-gradient(111.25050482045205deg, rgb(36, 49, 59) 0%, rgb(138, 95, 78) 52%, rgb(38, 53, 45) 100%)" }} data-name="Thumbnail" />
+            <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[81px] not-italic text-[#f3eee8] text-[13px] top-[16px] w-[170px]" data-node-id="10:131">
+              Image Caption
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[81px] not-italic text-[#726d69] text-[11px] top-[42px] w-[190px]" data-node-id="10:132">
+              Yesterday · product.webp
+            </p>
+            <div className="absolute bg-[#f18b86] h-[26px] left-[249px] opacity-16 rounded-[6px] top-[27px] w-[70px]" data-node-id="10:133" data-name="State" />
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[284px] not-italic text-[#f18b86] text-[11px] text-center top-[33px] w-[70px]" data-node-id="10:134">
+              Failed
+            </p>
+          </div>
+        </div>
+        <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[847px] left-[360px] overflow-clip top-[128px] w-[1194px]" data-node-id="10:135" data-name="04 / Task Detail">
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[31px] not-italic text-[#f3eee8] text-[18px] top-[24px] whitespace-nowrap" data-node-id="10:136">
+            Remove Background
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[31px] not-italic text-[#e8a87c] text-[12px] top-[52px] whitespace-pre" data-node-id="10:137">{`Task 81C4  •  Running`}</p>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[1083px] overflow-clip rounded-[8px] size-[38px] top-[21px]" data-node-id="10:138" data-name="Show in Inspect">
+            <div className="absolute left-[9px] size-[18px] top-[9px]" data-node-id="10:139" data-name="Icon / focus">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconFocus} />
+            </div>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[1131px] overflow-clip rounded-[8px] size-[38px] top-[21px]" data-node-id="10:143" data-name="Cancel Task">
+            <div className="absolute left-[9px] size-[18px] top-[9px]" data-node-id="10:144" data-name="Icon / uninstall">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconUninstall} />
+            </div>
+          </div>
+          <div className="absolute bg-[#090a0d] border border-[#34353a] border-solid h-[304px] left-[31px] overflow-clip rounded-[10px] top-[103px] w-[528px]" data-node-id="10:146" data-name="Source Preview">
+            <div className="absolute h-[280px] left-[11px] rounded-[7px] top-[11px] w-[504px]" data-node-id="10:147" style={{ backgroundImage: "linear-gradient(124.99201924355461deg, rgb(36, 49, 59) 0%, rgb(138, 95, 78) 52%, rgb(38, 53, 45) 100%)" }} data-name="Source Image" />
+          </div>
+          <div className="absolute bg-[#090a0d] border border-[#34353a] border-solid h-[304px] left-[577px] overflow-clip rounded-[10px] top-[103px] w-[528px]" data-node-id="10:148" data-name="Result Preview">
+            <div className="absolute left-[239px] size-[48px] top-[117px]" data-node-id="10:149" data-name="Waiting Indicator">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgWaitingIndicator} />
+            </div>
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[263px] not-italic text-[#726d69] text-[12px] text-center top-[177px] w-[528px]" data-node-id="10:150">
+              Waiting for result
+            </p>
+          </div>
+          <div className="absolute bg-[#141519] border border-[#34353a] border-solid h-[330px] left-[31px] overflow-clip rounded-[10px] top-[439px] w-[560px]" data-node-id="10:151" data-name="Timeline">
+            <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#f3eee8] text-[13px] top-[19px] whitespace-nowrap" data-node-id="10:152">
+              Timeline
+            </p>
+            <div className="absolute left-[27px] size-[14px] top-[62px]" data-node-id="10:153" data-name="Timeline Mark">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgTimelineMark} />
+            </div>
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[57px] not-italic text-[#f3eee8] text-[13px] top-[59px] whitespace-nowrap" data-node-id="10:154">
+              Task submitted
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[57px] not-italic text-[#726d69] text-[11px] top-[81px] whitespace-nowrap" data-node-id="10:155">
+              Client uploaded the source image
+            </p>
+            <p className="-translate-x-full [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[539px] not-italic text-[#726d69] text-[11px] text-right top-[62px] w-[110px]" data-node-id="10:156">
+              14:32:06
+            </p>
+            <div className="absolute bg-[#34353a] h-[52px] left-[33px] top-[77px] w-px" data-node-id="10:157" data-name="Connector" />
+            <div className="absolute left-[27px] size-[14px] top-[134px]" data-node-id="10:158" data-name="Timeline Mark">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgTimelineMark} />
+            </div>
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[57px] not-italic text-[#f3eee8] text-[13px] top-[131px] whitespace-nowrap" data-node-id="10:159">
+              Worker claimed
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[57px] not-italic text-[#726d69] text-[11px] top-[153px] whitespace-nowrap" data-node-id="10:160">
+              GPU worker eu-02
+            </p>
+            <p className="-translate-x-full [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[539px] not-italic text-[#726d69] text-[11px] text-right top-[134px] w-[110px]" data-node-id="10:161">
+              14:32:08
+            </p>
+            <div className="absolute bg-[#34353a] h-[52px] left-[33px] top-[149px] w-px" data-node-id="10:162" data-name="Connector" />
+            <div className="absolute left-[27px] size-[14px] top-[206px]" data-node-id="10:163" data-name="Timeline Mark">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgTimelineMark1} />
+            </div>
+            <div className="absolute left-[22px] size-[24px] top-[201px]" data-node-id="10:164" data-name="Current Halo">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgCurrentHalo} />
+            </div>
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[57px] not-italic text-[#f3eee8] text-[13px] top-[203px] whitespace-nowrap" data-node-id="10:165">
+              Processing
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[57px] not-italic text-[#726d69] text-[11px] top-[225px] whitespace-nowrap" data-node-id="10:166">
+              Polling every 2 seconds
+            </p>
+            <p className="-translate-x-full [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[539px] not-italic text-[#726d69] text-[11px] text-right top-[206px] w-[110px]" data-node-id="10:167">
+              Now
+            </p>
+            <div className="absolute bg-[#34353a] h-[52px] left-[33px] top-[221px] w-px" data-node-id="10:168" data-name="Connector" />
+            <div className="absolute left-[27px] size-[14px] top-[278px]" data-node-id="10:169" data-name="Timeline Mark">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgTimelineMark2} />
+            </div>
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[57px] not-italic text-[#f3eee8] text-[13px] top-[275px] whitespace-nowrap" data-node-id="10:170">
+              Download result
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[57px] not-italic text-[#726d69] text-[11px] top-[297px] whitespace-nowrap" data-node-id="10:171">
+              Waiting for output file
+            </p>
+            <p className="-translate-x-full [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[539px] not-italic text-[#726d69] text-[11px] text-right top-[278px] w-[110px]" data-node-id="10:172">
+              Pending
+            </p>
+          </div>
+          <div className="absolute bg-[#141519] border border-[#34353a] border-solid h-[330px] left-[611px] overflow-clip rounded-[10px] top-[439px] w-[494px]" data-node-id="10:173" data-name="Task Details">
+            <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#f3eee8] text-[13px] top-[19px] whitespace-nowrap" data-node-id="10:174">
+              Task Details
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[59px] whitespace-nowrap" data-node-id="10:175">
+              Widget
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[59px] w-[220px]" data-node-id="10:176">
+              Remove Background
+            </p>
+            <div className="absolute bg-[#34353a] h-px left-[35px] top-[89px] w-[362px]" data-node-id="10:177" data-name="Divider" />
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[97px] whitespace-nowrap" data-node-id="10:178">
+              Input
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[97px] w-[220px]" data-node-id="10:179">
+              input.png
+            </p>
+            <div className="absolute bg-[#34353a] h-px left-[35px] top-[127px] w-[362px]" data-node-id="10:180" data-name="Divider" />
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[135px] whitespace-nowrap" data-node-id="10:181">
+              Worker
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[135px] w-[220px]" data-node-id="10:182">
+              eu-02
+            </p>
+            <div className="absolute bg-[#34353a] h-px left-[35px] top-[165px] w-[362px]" data-node-id="10:183" data-name="Divider" />
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[173px] whitespace-nowrap" data-node-id="10:184">
+              Progress
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[173px] w-[220px]" data-node-id="10:185">
+              64%
+            </p>
+            <div className="absolute bg-[#34353a] h-px left-[35px] top-[203px] w-[362px]" data-node-id="10:186" data-name="Divider" />
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[211px] whitespace-nowrap" data-node-id="10:187">
+              Polling
+            </p>
+            <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[211px] w-[220px]" data-node-id="10:188">
+              2 seconds
+            </p>
+            <div className="absolute bg-[#34353a] h-px left-[35px] top-[241px] w-[362px]" data-node-id="10:189" data-name="Divider" />
+          </div>
+        </div>
+        <div className="absolute bg-[#1a1b20] border border-[#34353a] border-solid h-[37px] left-0 overflow-clip top-[975px] w-[1554px]" data-node-id="10:190" data-name="06 / Statusbar">
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[37px] not-italic text-[#aaa4a0] text-[12px] top-[10px] w-[480px] whitespace-pre-wrap" data-node-id="10:191">{`3 tasks  •  1 running`}</p>
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[776px] not-italic text-[#aaa4a0] text-[12px] text-center top-[10px] w-[1554px]" data-node-id="10:192">
+            Select a task to inspect details
+          </p>
+          <div className="absolute left-[1393px] size-[8px] top-[14px]" data-node-id="10:193" data-name="Status Dot">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgStatusDot} />
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[1413px] not-italic text-[#e8a87c] text-[12px] top-[10px] whitespace-nowrap" data-node-id="10:194">
+            1 task running
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+
+Image assets are stored on a localhost server. Clients can use these images directly in code as a way to view the image assets the same way they would other remote servers. Images and SVGs will be stored as constants, e.g. const image = 'http://localhost:3845/assets/10c13ac1a228a365cb98a0064b1d5afbc84887b2.png' These constants will be used in the code as the source for the image, e.g. <img src={image} /> This is true for both images and SVGs, so you can use the same approach for both types of assets.

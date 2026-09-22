@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root { color-scheme: dark; font-family: Inter, -apple-system, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 18px; background: #111114; color: #f3eee8; font-size: 12px; }
+    h1 { margin: 0 0 6px; font-size: 16px; }
+    p { margin: 0 0 16px; color: #aaa4a0; line-height: 1.5; }
+    label { display: block; margin-bottom: 7px; color: #aaa4a0; font-weight: 600; }
+    input { width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: #17171c; color: #f3eee8; }
+    .hint { margin: 7px 0 16px; color: #726d69; font-size: 11px; }
+    .actions { display: flex; gap: 8px; margin-bottom: 8px; }
+    button { min-height: 34px; padding: 0 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: #201f25; color: #f3eee8; cursor: pointer; }
+    button.primary { flex: 1; border: 0; background: #e8a87c; color: #21130d; font-weight: 700; }
+    button.export, button.generate-screens { width: 100%; border-color: rgba(232,168,124,.35); color: #e8a87c; }
+    button.generate-screens { margin-top: 8px; background: rgba(232,168,124,.10); font-weight: 700; }
+    #status { min-height: 18px; margin-top: 14px; color: #8fd0af; }
+  </style>
+</head>
+<body>
+  <h1>Glance Image Inspect <span style="color:#e8a87c">v2</span></h1>
+  <p>Creates a fully editable Image Inspect screen and reusable components. The reference PNG is optional but recommended.</p>
+  <label for="reference">Reference image</label>
+  <input id="reference" type="file" accept="image/png,image/jpeg">
+  <div class="hint">Choose <code>layout/image-inspect-ui.png</code> to place a locked reference beside the editable design.</div>
+  <div class="actions">
+    <button id="close">Cancel</button>
+    <button id="generate" class="primary">Create editable design</button>
+  </div>
+  <button id="generate-screens" class="generate-screens">Generate Video + Tasks + Widget Market</button>
+  <button id="redesign-market" class="generate-screens">Redesign Widget Market (keep previous)</button>
+    <button id="generate-home" class="generate-screens">Generate Home / Launcher</button>
+    <button id="generate-tray" class="generate-screens">Generate Tray Popover</button>
+  <button id="generate-remaining" class="generate-screens">Generate Remaining Screens (Home + 6)</button>
+  <button id="export" class="export">Export selected frame (JSON + PNG)</button>
+  <div id="status"></div>
+  <script>
+    const status = document.getElementById('status');
+    document.getElementById('close').onclick = () => parent.postMessage({ pluginMessage: { type: 'close' } }, '*');
+    document.getElementById('generate').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building Figma layers...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate', bytes } }, '*');
+    };
+    document.getElementById('export').onclick = () => {
+      status.textContent = 'Exporting selected frame...';
+      parent.postMessage({ pluginMessage: { type: 'export-selection' } }, '*');
+    };
+    document.getElementById('generate-screens').onclick = () => {
+      status.textContent = 'Building three production screens...';
+      parent.postMessage({ pluginMessage: { type: 'generate-production-screens' } }, '*');
+    };
+    document.getElementById('generate-remaining').onclick = () => {
+      status.textContent = 'Building the remaining seven screens...';
+      parent.postMessage({ pluginMessage: { type: 'generate-remaining-screens' } }, '*');
+    };
+    document.getElementById('redesign-market').onclick = () => {
+      status.textContent = 'Redesigning the existing Widget Market frame...';
+      parent.postMessage({ pluginMessage: { type: 'redesign-widget-market' } }, '*');
+    };
+    document.getElementById('generate-home').onclick = () => {
+      status.textContent = 'Building the Home / Launcher screen...';
+      parent.postMessage({ pluginMessage: { type: 'generate-home' } }, '*');
+    };
+    document.getElementById('generate-tray').onclick = () => {
+      status.textContent = 'Building the Tray Popover screen...';
+      parent.postMessage({ pluginMessage: { type: 'generate-tray' } }, '*');
+    };
+
+    function download(filename, blob) {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    onmessage = event => {
+      const message = event.data.pluginMessage;
+      if (!message) return;
+      if (message.type === 'export-ready') {
+        download(message.basename + '.json', new Blob([message.json], { type: 'application/json' }));
+        download(message.basename + '.png', new Blob([new Uint8Array(message.png)], { type: 'image/png' }));
+        status.textContent = 'Downloaded JSON and PNG.';
+        return;
+      }
+      status.textContent = message.message || '';
+    };
+  </script>
+</body>
+</html>

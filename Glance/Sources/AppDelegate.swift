@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var onboardingWindow: OnboardingWindow?
     private var preferencesWindow: PreferencesWindow?
     private var historyWindow: HistoryWindow?
+    private var homeWindow: HomeWindow?
     private var widgetTaskCenterWindow: WidgetTaskCenterWindow?
     private var fileNameResolver: FileNameResolver?
     private var imageInspectWindow: ImageInspectWindow?
@@ -47,6 +48,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private var isCheckingVisibleSelection = false
     private var activeRequestStartedAt = Date()
     private var successfulRequestID: UInt64?
+    /// True once launch has settled, so activation (Cmd-Tab / Dock click) may
+    /// surface the Home window when nothing else is on screen. Suppressed
+    /// briefly while a hotkey request is loading so we don't race the preview.
+    private var didFinishInitialLaunch = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
@@ -68,11 +73,61 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             object: nil
         )
 
+        // Allow activation-triggered Home only after launch has settled, so the
+        // initial NSApp.activate above doesn't immediately pop Home on top of a
+        // fresh launch that may be opening a file.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.didFinishInitialLaunch = true
+        }
+
         #if DEBUG
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.showDebugInputWindow()
         }
         #endif
+    }
+
+    /// Cmd-Tab / app switch. If Glance becomes active with no content window
+    /// on screen, surface the Home launcher — Glance has no document to show
+    /// otherwise, so the user would face an empty app.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        surfaceHomeIfIdle()
+    }
+
+    /// Dock icon click / reopen with no windows.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        surfaceHomeIfIdle()
+        return true
+    }
+
+    /// Open Home only when the app is truly idle: launch settled, no hotkey
+    /// request in flight, and no Glance content window already visible.
+    private func surfaceHomeIfIdle() {
+        guard didFinishInitialLaunch else { return }
+        guard !isLoadingImage, !isCheckingVisibleSelection else { return }
+        guard !hasVisibleContentWindow() else { return }
+        // Defer one turn so any window that is mid-presentation (and briefly
+        // not yet `isVisible`) has settled before we decide it's empty.
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            guard !self.hasVisibleContentWindow() else { return }
+            self.openHome()
+        }
+    }
+
+    /// Whether any Glance-owned content / tool window is currently on screen.
+    private func hasVisibleContentWindow() -> Bool {
+        if previewPanel?.isVisible == true { return true }
+        if ContentPanel.shared.isVisible { return true }
+        if imageInspectWindow?.isVisible == true { return true }
+        if videoCompareWindow?.isVisible == true { return true }
+        if widgetTaskCenterWindow?.isVisible == true { return true }
+        if historyWindow?.isVisible == true { return true }
+        if preferencesWindow?.isVisible == true { return true }
+        if onboardingWindow?.isVisible == true { return true }
+        if homeWindow?.isVisible == true { return true }
+        if viewerWindows.contains(where: { $0.isVisible }) { return true }
+        return false
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -696,7 +751,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
         videoCompareWindow = window
         NSApp.activate(ignoringOtherApps: true)
-        window?.center()
         window?.makeKeyAndOrderFront(nil)
     }
 
@@ -861,6 +915,99 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         widgetTaskCenterWindow?.refresh()
         widgetTaskCenterWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func openHome() {
+        if pathDetector == nil || imageLoader == nil { setupComponents() }
+        let window = homeWindow ?? makeHomeWindow()
+        homeWindow = window
+        window.refresh()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func makeHomeWindow() -> HomeWindow {
+        let window = HomeWindow(imageLoader: imageLoader ?? ImageLoader())
+        window.onOpenImages = { [weak self] urls in self?.openImages(urls) }
+        window.onOpenFolder = { [weak self] folder in self?.openFolder(folder) }
+        window.onOpenRecent = { [weak self] info in self?.openRecent(info) }
+        window.onOpenTasks = { [weak self] in self?.openTasks() }
+        window.onOpenPreferences = { [weak self] in self?.openPreferences() }
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: window, queue: .main
+        ) { [weak self] _ in self?.homeWindow = nil }
+        return window
+    }
+
+    /// Open a concrete list of local image URLs in Image Inspect.
+    private func openImages(_ urls: [URL]) {
+        let infos = urls.map { MediaInfo(url: $0, isLocal: $0.isFileURL, kind: .image) }
+        guard !infos.isEmpty else { return }
+        recordImagesInHistory(urls)
+        let loaded = [LoadedMedia?](repeating: nil, count: infos.count)
+        let mode = Self.preferredInspectMode(for: infos.count)
+        openImageInspect(infos: infos, loaded: loaded, focusedIndex: 0, preferredMode: mode)
+    }
+
+    /// Persist images opened from Home / paste / drop / folder into history so
+    /// they show up in Recent and Preview History (the hotkey preview pipeline
+    /// records itself; these entry points did not).
+    private func recordImagesInHistory(_ urls: [URL]) {
+        let paths: [DetectedPath] = urls.map { url in
+            url.isFileURL ? .localImage(url.standardizedFileURL) : .remoteImage(url)
+        }
+        guard !paths.isEmpty else { return }
+        HistoryManager.shared.record(selectedText: "", detectedPaths: paths)
+    }
+
+    /// Reopen a single recent item, routing by kind the way the preview does.
+    private func openRecent(_ info: MediaInfo) {
+        switch info.kind {
+        case .image:
+            recordImagesInHistory([info.url])
+            openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
+        case .video:
+            openVideoCompare(infos: [info], focusedIndex: 0)
+        case .markdown, .text, .pdf, .webPage:
+            openInViewerWindow(info: info)
+        case .other:
+            if info.isLocal { NSWorkspace.shared.activateFileViewerSelecting([info.url]) }
+            else { NSWorkspace.shared.open(info.url) }
+        case .folder:
+            openFolder(info.url)
+        }
+    }
+
+    /// Read every image inside a folder (one level deep) and present them.
+    private func openFolder(_ folder: URL) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let urls = Self.imageURLs(inFolder: folder)
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                let window = self.homeWindow ?? self.makeHomeWindow()
+                self.homeWindow = window
+                window.showFolder(folder, imageURLs: urls)
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+    }
+
+    /// List image files directly inside `folder` (non-recursive), sorted by name.
+    private static func imageURLs(inFolder folder: URL) -> [URL] {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(
+            at: folder,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return [] }
+        return entries
+            .filter { ImageFormatSupport.supports(extension: $0.pathExtension) }
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+    }
+
+    func openTaskOutputInInspect(_ url: URL) {
+        let info = MediaInfo(url: url, isLocal: url.isFileURL, kind: .image)
+        openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
     }
 
     func openLogin(at point: NSPoint) {

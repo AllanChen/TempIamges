@@ -88,8 +88,11 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         self.titlebarAppearsTransparent = true
         self.titleVisibility = .hidden
         self.isMovableByWindowBackground = true
-        self.isOpaque = false
-        self.backgroundColor = .clear
+        // Solid darkroom background, matching the other Glance windows. A
+        // `.behindWindow` visual-effect blur here made first open stutter
+        // because it re-blurs the desktop wallpaper every frame.
+        self.isOpaque = true
+        self.backgroundColor = PanelStyle.inspectBackground
 
         setupUI()
         loadSettings()
@@ -98,22 +101,13 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private func setupUI() {
         guard let contentView = self.contentView else { return }
 
-        // Frosted base — fills the whole window, blurs the wallpaper behind it.
-        let frost = NSVisualEffectView(frame: contentView.bounds)
-        frost.material = .hudWindow
-        frost.blendingMode = .behindWindow
-        frost.state = .active
-        frost.appearance = NSAppearance(named: .vibrantDark)
-        frost.autoresizingMask = [.width, .height]
-        frost.wantsLayer = true
-        contentView.addSubview(frost)
-
-        // Darkroom tint keeps the material inside the app palette.
-        let tint = NSView(frame: contentView.bounds)
-        tint.wantsLayer = true
-        tint.layer?.backgroundColor = PanelStyle.canvas.withAlphaComponent(0.62).cgColor
-        tint.autoresizingMask = [.width, .height]
-        contentView.addSubview(tint)
+        // Solid darkroom base — no behind-window blur (kept the palette, dropped
+        // the per-frame wallpaper blur that caused the open-time stutter).
+        let base = NSView(frame: contentView.bounds)
+        base.wantsLayer = true
+        base.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
+        base.autoresizingMask = [.width, .height]
+        contentView.addSubview(base)
 
         // Flipped container so the layout reads top-down.
         let container = FlippedView(frame: contentView.bounds)

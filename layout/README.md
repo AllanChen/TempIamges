@@ -1,5 +1,12 @@
 # Glance UI/UX Layout Exploration
 
+## 最新可落地提案
+
+- `glance-production-ui-v2.html`：针对当前 AppKit 架构制作的全 App 可交互设计稿。
+- `GLANCE-PRODUCTION-UI-V2-SPEC.md`：窗口尺寸、状态、交互和现有 Swift 文件的落地映射。
+
+这一版不参与 `run.sh` 构建。先评审设计，确认后再逐页迁移到生产代码。
+
 这是基于 `ui-ux-pro-max` 生成的视觉方案草图，不包含生产代码。
 
 打开 `glance-ui-flows.html` 可以查看四个核心画面；打开 `glance-full-app.html` 可以查看全 App 流程布局板：

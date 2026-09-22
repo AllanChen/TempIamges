@@ -1,299 +1,336 @@
 import AppKit
 
-class OnboardingWindow: NSWindow {
-    private var inputMonitoringStatusView: PermissionStatusView!
-    private var accessibilityStatusView: PermissionStatusView!
-    private var fullDiskAccessStatusView: PermissionStatusView!
-    private var continueButton: NSButton!
+final class OnboardingWindow: NSWindow {
+    private static let designSize = NSSize(width: 580, height: 650)
+
+    private let root = NSView()
+    private let titlebar = OnboardingTitlebar()
+    private let windowTitle = NSTextField(labelWithString: "Welcome to Glance".localized)
+    private let body = NSView()
+    private let appMark = NSView()
+    private let markTile = NSView()
+    private let markIcon = NSImageView()
+    private let heading = NSTextField(labelWithString: "Set up essential permissions".localized)
+    private let explanation = NSTextField(wrappingLabelWithString:
+        "Glance needs permission to read the current selection and respond to your keyboard shortcut. You can change these settings later.".localized)
+    private let permissionList = NSView()
+    private let accessibilityRow = PermissionStatusView(
+        symbol: "A", title: "Accessibility".localized,
+        description: "Read the current selection".localized)
+    private let inputMonitoringRow = PermissionStatusView(
+        symbol: "I", title: "Input Monitoring".localized,
+        description: "Recognize the global shortcut".localized)
+    private let fullDiskAccessRow = PermissionStatusView(
+        symbol: "F", title: "Full Disk Access".localized,
+        description: "Preview files in protected locations".localized, optional: true)
+    private let continueButton = PanelStyle.makePrimaryButton(title: "Continue".localized, target: nil, action: nil)
+    private let footnote = NSTextField(labelWithString:
+        "Permissions stay under your control in macOS System Settings.".localized)
+    private var permissionCheckGeneration = UUID()
 
     init() {
-        let windowRect = NSRect(x: 0, y: 0, width: 580, height: 580)
-        super.init(
-            contentRect: windowRect,
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-
-        self.title = "Welcome to Glance".localized
-        self.center()
-        self.isReleasedWhenClosed = false
-        self.level = .floating
-        self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        self.hidesOnDeactivate = false
-
-        // Commit to the frosted dark-glass chrome like every other panel, so the
-        // window never falls back to the system light background.
-        self.appearance = NSAppearance(named: .darkAqua)
-        self.titlebarAppearsTransparent = true
-        self.isOpaque = false
-        self.backgroundColor = .clear
-        // Restore dragging: a clear-background titled window otherwise loses the
-        // ability to be moved by its title bar / body.
-        self.isMovableByWindowBackground = true
-
-        setupUI()
+        let initial = ScreenManager.shared.contentFrame(for: Self.designSize)
+        super.init(contentRect: initial,
+                   styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                   backing: .buffered, defer: false)
+        title = "Welcome to Glance".localized
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+        appearance = NSAppearance(named: .darkAqua)
+        backgroundColor = PanelStyle.inspectBackground
+        contentAspectRatio = Self.designSize
+        minSize = NSSize(width: min(480, initial.width), height: min(538, initial.height))
+        isReleasedWhenClosed = false
+        level = .floating
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        hidesOnDeactivate = false
+        buildUI()
+        standardWindowButton(.closeButton)?.isHidden = true
+        standardWindowButton(.miniaturizeButton)?.isHidden = true
+        standardWindowButton(.zoomButton)?.isHidden = true
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshPermissionStatus),
+                                               name: NSApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshPermissionStatus),
+                                               name: NSWindow.didBecomeKeyNotification, object: self)
         updatePermissionStatus()
     }
 
-    private func setupUI() {
-        guard let contentView = self.contentView else { return }
-        contentView.wantsLayer = true
+    deinit { NotificationCenter.default.removeObserver(self) }
 
-        // Frosted base biased toward the Quiet Darkroom canvas.
-        let frost = NSVisualEffectView(frame: contentView.bounds)
-        frost.material = .hudWindow
-        frost.blendingMode = .behindWindow
-        frost.state = .active
-        frost.appearance = NSAppearance(named: .vibrantDark)
-        frost.autoresizingMask = [.width, .height]
-        contentView.addSubview(frost)
+    private func buildUI() {
+        contentView = root
+        root.wantsLayer = true
+        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
+        root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        root.layer?.borderWidth = 1
+        root.layer?.cornerRadius = 16
+        root.layer?.masksToBounds = true
 
-        let tint = NSView(frame: contentView.bounds)
-        tint.wantsLayer = true
-        tint.layer?.backgroundColor = PanelStyle.canvas.withAlphaComponent(0.64).cgColor
-        tint.autoresizingMask = [.width, .height]
-        contentView.addSubview(tint)
+        configureLabel(windowTitle, size: 12, color: PanelStyle.textPrimary,
+                       weight: .semibold, alignment: .center)
+        titlebar.addSubview(windowTitle)
+        let traffic: [(String, NSColor, Selector)] = [
+            ("Close".localized, NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), #selector(closeTapped)),
+            ("Minimize".localized, NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), #selector(minimizeTapped)),
+            ("Zoom".localized, NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), #selector(zoomTapped))
+        ]
+        for (label, color, action) in traffic {
+            let control = NSButton()
+            control.isBordered = false
+            control.title = ""
+            control.toolTip = label
+            control.setAccessibilityLabel(label)
+            control.target = self
+            control.action = action
+            control.wantsLayer = true
+            control.layer?.backgroundColor = PanelStyle.resolvedCG(color)
+            titlebar.addSubview(control)
+        }
+        root.addSubview(titlebar)
 
-        let iconSize: CGFloat = 72
-        let iconView = NSImageView(frame: NSRect(
-            x: (contentView.bounds.width - iconSize) / 2,
-            y: contentView.bounds.height - 110,
-            width: iconSize,
-            height: iconSize
-        ))
-        iconView.image = NSImage(named: NSImage.applicationIconName)
-        iconView.imageScaling = .scaleProportionallyUpOrDown
-        contentView.addSubview(iconView)
+        body.wantsLayer = true
+        body.layer?.backgroundColor = PanelStyle.resolvedCG(
+            NSColor(srgbRed: 11 / 255, green: 12 / 255, blue: 15 / 255, alpha: 1))
+        root.addSubview(body)
 
-        let titleLabel = NSTextField(labelWithString: "Welcome to Glance".localized)
-        titleLabel.font = NSFont.boldSystemFont(ofSize: 26)
-        titleLabel.textColor = PanelStyle.textPrimary
-        titleLabel.alignment = .center
-        titleLabel.frame = NSRect(x: 20, y: contentView.bounds.height - 152, width: contentView.bounds.width - 40, height: 34)
-        contentView.addSubview(titleLabel)
+        appMark.wantsLayer = true
+        appMark.layer?.backgroundColor = PanelStyle.resolvedCG(
+            NSColor(srgbRed: 58 / 255, green: 44 / 255, blue: 38 / 255, alpha: 1))
+        appMark.layer?.cornerRadius = 16
+        body.addSubview(appMark)
+        markTile.wantsLayer = true
+        markTile.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
+        markTile.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.58))
+        markTile.layer?.borderWidth = 1
+        markTile.layer?.cornerRadius = 8
+        appMark.addSubview(markTile)
+        markIcon.image = NSImage(systemSymbolName: "photo", accessibilityDescription: "Glance")
+        markIcon.contentTintColor = PanelStyle.accent
+        markIcon.imageScaling = .scaleProportionallyUpOrDown
+        markTile.addSubview(markIcon)
 
-        let subtitleLabel = NSTextField(labelWithString: "Before you can start previewing, we need to ask you for a few permissions.".localized)
-        subtitleLabel.font = NSFont.systemFont(ofSize: 14)
-        subtitleLabel.textColor = PanelStyle.textSecondary
-        subtitleLabel.alignment = .center
-        subtitleLabel.frame = NSRect(x: 40, y: contentView.bounds.height - 186, width: contentView.bounds.width - 80, height: 22)
-        contentView.addSubview(subtitleLabel)
+        configureLabel(heading, size: 20, color: PanelStyle.textPrimary,
+                       weight: .semibold, alignment: .center)
+        configureLabel(explanation, size: 12, color: PanelStyle.textSecondary, alignment: .center)
+        explanation.maximumNumberOfLines = 0
+        explanation.lineBreakMode = .byWordWrapping
+        body.addSubview(heading)
+        body.addSubview(explanation)
 
-        let itemWidth: CGFloat = contentView.bounds.width - 80
-        let itemX: CGFloat = 40
-        var currentY = contentView.bounds.height - 230
+        permissionList.wantsLayer = true
+        permissionList.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        body.addSubview(permissionList)
+        accessibilityRow.onOpenSettings = { PermissionManager.shared.openAccessibilitySettings() }
+        inputMonitoringRow.onOpenSettings = { PermissionManager.shared.openInputMonitoringSettings() }
+        fullDiskAccessRow.onOpenSettings = { PermissionManager.shared.openFullDiskAccessSettings() }
+        [accessibilityRow, inputMonitoringRow, fullDiskAccessRow].forEach(permissionList.addSubview)
 
-        inputMonitoringStatusView = PermissionStatusView(
-            title: "Input Monitoring Permission".localized,
-            description: "Glance needs to detect when you hold the hotkey to activate preview mode.".localized,
-            enabledText: "Input Monitoring Enabled".localized
-        )
-        inputMonitoringStatusView.target = self
-        inputMonitoringStatusView.openSettingsAction = #selector(openInputMonitoringSettings)
-        inputMonitoringStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
-        contentView.addSubview(inputMonitoringStatusView)
-        currentY -= 90
-
-        accessibilityStatusView = PermissionStatusView(
-            title: "Accessibility Permission".localized,
-            description: "Glance needs to read the selected text in the active app so we know what to preview.".localized,
-            enabledText: "Accessibility access enabled".localized
-        )
-        accessibilityStatusView.target = self
-        accessibilityStatusView.openSettingsAction = #selector(openAccessibilitySettings)
-        accessibilityStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
-        contentView.addSubview(accessibilityStatusView)
-        currentY -= 90
-
-        fullDiskAccessStatusView = PermissionStatusView(
-            title: "Full Disk Access Permission".localized,
-            description: "Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts.".localized,
-            enabledText: "Full Disk Access enabled".localized
-        )
-        fullDiskAccessStatusView.target = self
-        fullDiskAccessStatusView.openSettingsAction = #selector(openFullDiskAccessSettings)
-        fullDiskAccessStatusView.frame = NSRect(x: itemX, y: currentY - 70, width: itemWidth, height: 70)
-        contentView.addSubview(fullDiskAccessStatusView)
-        currentY -= 90
-
-        continueButton = NSButton(title: "Continue".localized, target: self, action: #selector(continuePressed))
-        continueButton.bezelStyle = .rounded
-        continueButton.frame = NSRect(
-            x: (contentView.bounds.width - 120) / 2,
-            y: 44,
-            width: 120,
-            height: 32
-        )
+        continueButton.target = self
+        continueButton.action = #selector(continuePressed)
         continueButton.isEnabled = false
-        contentView.addSubview(continueButton)
+        continueButton.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
+        body.addSubview(continueButton)
+        configureLabel(footnote, size: 10, color: PanelStyle.textTertiary, alignment: .center)
+        body.addSubview(footnote)
+        layoutContent()
+    }
+
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        super.setFrame(frameRect, display: flag)
+        layoutContent()
+    }
+
+    private func layoutContent() {
+        let size = root.bounds.size
+        guard size.width > 0, size.height > 0 else { return }
+        let sx = size.width / Self.designSize.width
+        let sy = size.height / Self.designSize.height
+        let scale = min(sx, sy)
+        root.layer?.cornerRadius = 16 * scale
+        root.layer?.borderWidth = max(1, scale)
+        titlebar.frame = NSRect(x: 0, y: size.height - 44 * sy,
+                                width: size.width, height: 44 * sy)
+        windowTitle.font = PanelStyle.inspectFont(ofSize: 12 * scale, weight: .semibold)
+        windowTitle.frame = NSRect(x: 0, y: 16 * sy, width: size.width, height: 15 * sy)
+        for (index, button) in titlebar.subviews.compactMap({ $0 as? NSButton }).enumerated() {
+            button.frame = NSRect(x: CGFloat(16 + index * 18) * sx, y: 16 * sy,
+                                  width: 11 * sx, height: 11 * sy)
+            button.layer?.cornerRadius = 5.5 * scale
+        }
+        body.frame = NSRect(x: 0, y: 0, width: size.width, height: 606 * sy)
+        func fromTop(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+            NSRect(x: x * sx, y: body.bounds.height - (y + h) * sy,
+                   width: w * sx, height: h * sy)
+        }
+        appMark.frame = fromTop(256, 32, 68, 68)
+        appMark.layer?.cornerRadius = 16 * scale
+        markTile.frame = NSRect(x: 15 * sx, y: 15 * sy, width: 38 * sx, height: 38 * sy)
+        markTile.layer?.cornerRadius = 8 * scale
+        markIcon.frame = NSRect(x: 10 * sx, y: 10 * sy, width: 18 * sx, height: 18 * sy)
+        heading.font = PanelStyle.inspectFont(ofSize: 20 * scale, weight: .semibold)
+        heading.frame = fromTop(0, 125, 580, 27)
+        explanation.font = PanelStyle.inspectFont(ofSize: 12 * scale)
+        explanation.frame = fromTop(75, 164, 430, 58)
+        permissionList.frame = fromTop(56, 230, 468, 240)
+        accessibilityRow.frame = NSRect(x: 0, y: 170 * sy, width: 468 * sx, height: 70 * sy)
+        inputMonitoringRow.frame = NSRect(x: 0, y: 90 * sy, width: 468 * sx, height: 70 * sy)
+        fullDiskAccessRow.frame = NSRect(x: 0, y: 10 * sy, width: 468 * sx, height: 70 * sy)
+        continueButton.frame = fromTop(76, 512, 428, 38)
+        continueButton.layer?.cornerRadius = 8 * scale
+        footnote.font = PanelStyle.inspectFont(ofSize: 10 * scale)
+        footnote.frame = fromTop(0, 565, 580, 15)
+    }
+
+    private func configureLabel(_ label: NSTextField, size: CGFloat, color: NSColor,
+                                weight: NSFont.Weight = .regular,
+                                alignment: NSTextAlignment = .left) {
+        label.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
+        label.textColor = color
+        label.alignment = alignment
+        label.lineBreakMode = .byTruncatingTail
     }
 
     private func updatePermissionStatus() {
-        let permissionManager = PermissionManager.shared
+        let manager = PermissionManager.shared
+        let accessibility = manager.isAccessibilityGranted
+        let inputMonitoring = manager.isInputMonitoringGranted
+        accessibilityRow.updateStatus(granted: accessibility)
+        inputMonitoringRow.updateStatus(granted: inputMonitoring)
+        continueButton.isEnabled = accessibility && inputMonitoring
+        continueButton.alphaValue = continueButton.isEnabled ? 1 : 0.45
 
-        let inputMonitoringGranted = permissionManager.isInputMonitoringGranted
-        let accessibilityGranted = permissionManager.isAccessibilityGranted
-        let fullDiskAccessGranted = permissionManager.isFullDiskAccessGranted
-
-        inputMonitoringStatusView.updateStatus(granted: inputMonitoringGranted)
-        accessibilityStatusView.updateStatus(granted: accessibilityGranted)
-        fullDiskAccessStatusView.updateStatus(granted: fullDiskAccessGranted)
-
-        continueButton.isEnabled = inputMonitoringGranted && accessibilityGranted
-    }
-
-    @objc private func openInputMonitoringSettings() {
-        PermissionManager.shared.openInputMonitoringSettings()
-        startPermissionPolling()
-    }
-
-    @objc private func openAccessibilitySettings() {
-        PermissionManager.shared.openAccessibilitySettings()
-        startPermissionPolling()
-    }
-
-    @objc private func openFullDiskAccessSettings() {
-        PermissionManager.shared.openFullDiskAccessSettings()
-        startPermissionPolling()
-    }
-
-    private var permissionCheckTimer: Timer?
-
-    private func startPermissionPolling() {
-        permissionCheckTimer?.invalidate()
-        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updatePermissionStatus()
+        let generation = UUID()
+        permissionCheckGeneration = generation
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let granted = PermissionManager.shared.isFullDiskAccessGranted
+            DispatchQueue.main.async {
+                guard let self, self.permissionCheckGeneration == generation else { return }
+                self.fullDiskAccessRow.updateStatus(granted: granted)
+            }
         }
     }
 
-    private func stopPermissionPolling() {
-        permissionCheckTimer?.invalidate()
-        permissionCheckTimer = nil
-    }
-
-    deinit {
-        stopPermissionPolling()
-    }
-
-    @objc private func continuePressed() {
-        stopPermissionPolling()
-        self.close()
-    }
-
-    func refreshPermissionStatus() {
+    override func makeKeyAndOrderFront(_ sender: Any?) {
+        super.makeKeyAndOrderFront(sender)
         updatePermissionStatus()
     }
 
+    @objc func refreshPermissionStatus() {
+        guard isVisible else { return }
+        updatePermissionStatus()
+    }
+    @objc private func closeTapped() { close() }
+    @objc private func minimizeTapped() { miniaturize(nil) }
+    @objc private func zoomTapped() { zoom(nil) }
+    @objc private func continuePressed() { close() }
+
     override func close() {
-        stopPermissionPolling()
+        permissionCheckGeneration = UUID()
         super.close()
     }
 }
 
-class PermissionStatusView: NSView {
-    var openSettingsAction: Selector?
-    weak var target: AnyObject?
+private final class OnboardingTitlebar: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+    }
 
-    private let titleLabel = NSTextField()
-    private let descLabel = NSTextField()
-    private let statusContainer = NSView()
-    private let statusLabel = NSTextField()
-    private let openSettingsButton = NSButton()
-    private var enabledText: String
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    init(title: String, description: String, enabledText: String) {
-        self.enabledText = enabledText
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 { window?.zoom(nil) }
+        else { window?.performDrag(with: event) }
+    }
+}
+
+final class PermissionStatusView: NSView {
+    var onOpenSettings: (() -> Void)?
+
+    private let symbol: String
+    private let optional: Bool
+    private let symbolBackground = NSView()
+    private let symbolLabel = NSTextField(labelWithString: "")
+    private let titleLabel: NSTextField
+    private let detailLabel: NSTextField
+    private let statusButton = PanelStyle.makeQuietButton(title: "", target: nil, action: nil)
+    private let separator = NSView()
+    private var granted = false
+
+    init(symbol: String, title: String, description: String, optional: Bool = false) {
+        self.symbol = symbol
+        self.optional = optional
+        titleLabel = NSTextField(labelWithString: title)
+        detailLabel = NSTextField(labelWithString: description)
         super.init(frame: .zero)
-        setupViews(title: title, description: description)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    private func setupViews(title: String, description: String) {
-        titleLabel.isEditable = false
-        titleLabel.isBordered = false
-        titleLabel.backgroundColor = .clear
-        titleLabel.font = NSFont.boldSystemFont(ofSize: 15)
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        symbolBackground.wantsLayer = true
+        symbolBackground.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
+        symbolBackground.layer?.cornerRadius = 10
+        addSubview(symbolBackground)
+        symbolLabel.stringValue = symbol
+        symbolLabel.alignment = .center
+        symbolLabel.textColor = PanelStyle.textSecondary
+        symbolBackground.addSubview(symbolLabel)
         titleLabel.textColor = PanelStyle.textPrimary
-        titleLabel.stringValue = title
-        titleLabel.frame = NSRect(x: 0, y: 42, width: 340, height: 22)
+        detailLabel.textColor = PanelStyle.textTertiary
+        titleLabel.lineBreakMode = .byTruncatingTail
+        detailLabel.lineBreakMode = .byTruncatingTail
         addSubview(titleLabel)
+        addSubview(detailLabel)
+        statusButton.target = self
+        statusButton.action = #selector(statusTapped)
+        statusButton.setAccessibilityLabel(title)
+        addSubview(statusButton)
+        separator.wantsLayer = true
+        separator.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        addSubview(separator)
+        updateStatus(granted: false)
+    }
 
-        descLabel.isEditable = false
-        descLabel.isBordered = false
-        descLabel.backgroundColor = .clear
-        descLabel.font = NSFont.systemFont(ofSize: 12)
-        descLabel.textColor = PanelStyle.textSecondary
-        descLabel.stringValue = description
-        descLabel.lineBreakMode = .byWordWrapping
-        descLabel.maximumNumberOfLines = 2
-        descLabel.frame = NSRect(x: 0, y: 0, width: 340, height: 38)
-        addSubview(descLabel)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-        statusContainer.wantsLayer = true
-        statusContainer.layer?.cornerRadius = 8
-        statusContainer.layer?.borderWidth = 1
-        statusContainer.frame = NSRect(x: 390, y: 10, width: 120, height: 48)
-        addSubview(statusContainer)
-
-        statusLabel.isEditable = false
-        statusLabel.isBordered = false
-        statusLabel.backgroundColor = .clear
-        statusLabel.font = NSFont.systemFont(ofSize: 12)
-        statusLabel.alignment = .center
-        statusLabel.lineBreakMode = .byWordWrapping
-        statusLabel.maximumNumberOfLines = 2
-        statusLabel.frame = NSRect(x: 4, y: 4, width: 112, height: 40)
-        statusContainer.addSubview(statusLabel)
-
-        openSettingsButton.title = "Open Settings".localized
-        openSettingsButton.bezelStyle = .rounded
-        openSettingsButton.font = NSFont.systemFont(ofSize: 12)
-        openSettingsButton.frame = NSRect(x: 390, y: 18, width: 120, height: 30)
-        openSettingsButton.target = self
-        openSettingsButton.action = #selector(settingsButtonClicked)
-        addSubview(openSettingsButton)
+    override func layout() {
+        super.layout()
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        let sx = bounds.width / 468
+        let sy = bounds.height / 70
+        let scale = min(sx, sy)
+        symbolBackground.frame = NSRect(x: 0, y: 15 * sy, width: 40 * sx, height: 40 * sy)
+        symbolBackground.layer?.cornerRadius = 10 * scale
+        symbolLabel.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
+        symbolLabel.frame = NSRect(x: 0, y: 12 * sy, width: 40 * sx, height: 16 * sy)
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
+        titleLabel.frame = NSRect(x: 54 * sx, y: 42 * sy, width: 284 * sx, height: 17 * sy)
+        detailLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale)
+        detailLabel.frame = NSRect(x: 54 * sx, y: 19 * sy, width: 284 * sx, height: 14 * sy)
+        statusButton.titleFont = PanelStyle.inspectFont(ofSize: 11 * scale, weight: .medium)
+        statusButton.frame = NSRect(x: 354 * sx, y: 18 * sy, width: 114 * sx, height: 34 * sy)
+        statusButton.layer?.cornerRadius = 8 * scale
+        separator.frame = NSRect(x: 0, y: 0, width: bounds.width, height: max(1, sy))
     }
 
     func updateStatus(granted: Bool) {
-        if granted {
-            statusContainer.isHidden = false
-            statusLabel.isHidden = false
-            openSettingsButton.isHidden = true
-
-            let fullText = "✓  \(enabledText)"
-            let attrString = NSMutableAttributedString(string: fullText)
-            let checkColor = PanelStyle.success
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.alignment = .center
-            paragraphStyle.lineBreakMode = .byWordWrapping
-            attrString.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attrString.length))
-            attrString.addAttribute(.foregroundColor, value: checkColor, range: NSRange(location: 0, length: attrString.length))
-            attrString.addAttribute(.font, value: NSFont.systemFont(ofSize: 12), range: NSRange(location: 0, length: attrString.length))
-
-            let maxSize = NSSize(width: 112, height: CGFloat.greatestFiniteMagnitude)
-            let textRect = attrString.boundingRect(with: maxSize, options: [.usesLineFragmentOrigin, .usesFontLeading])
-            let textHeight = ceil(textRect.height)
-            let labelHeight = min(textHeight, 44)
-            let labelY = (44 - labelHeight) / 2
-            statusLabel.frame = NSRect(x: 4, y: labelY, width: 112, height: labelHeight)
-
-            statusLabel.attributedStringValue = attrString
-            statusContainer.layer?.backgroundColor = PanelStyle.success.withAlphaComponent(0.18).cgColor
-            statusContainer.layer?.borderColor = PanelStyle.success.withAlphaComponent(0.5).cgColor
-        } else {
-            statusContainer.isHidden = true
-            statusLabel.isHidden = true
-            openSettingsButton.isHidden = false
-        }
+        self.granted = granted
+        let value = granted ? "Allowed".localized
+            : (optional ? "Optional".localized : "Open Settings".localized)
+        statusButton.title = value
+        statusButton.titleColor = granted ? PanelStyle.success : PanelStyle.accent
+        statusButton.normalBackground = granted
+            ? NSColor(srgbRed: 23 / 255, green: 48 / 255, blue: 39 / 255, alpha: 1)
+            : PanelStyle.inspectToolbar
+        statusButton.hoverBackground = granted
+            ? statusButton.normalBackground
+            : PanelStyle.surfaceElevated
+        statusButton.layer?.borderWidth = 0
+        statusButton.toolTip = granted ? "" : "Open Settings".localized
+        statusButton.setAccessibilityLabel("\(titleLabel.stringValue), \(value)")
     }
 
-    @objc private func settingsButtonClicked() {
-        if let target = target, let action = openSettingsAction {
-            _ = target.perform(action, with: nil)
-        }
+    @objc private func statusTapped() {
+        guard !granted else { return }
+        onOpenSettings?()
     }
 }

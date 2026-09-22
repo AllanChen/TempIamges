@@ -36,6 +36,17 @@
 "ℹ️ Optional" = "ℹ️ Optional";
 "✅ Granted" = "✅ Granted";
 
+// MARK: - Onboarding V2
+"Set up essential permissions" = "Set up essential permissions";
+"Glance needs permission to read the current selection and respond to your keyboard shortcut. You can change these settings later." = "Glance needs permission to read the current selection and respond to your keyboard shortcut. You can change these settings later.";
+"Read the current selection" = "Read the current selection";
+"Recognize the global shortcut" = "Recognize the global shortcut";
+"Full Disk Access" = "Full Disk Access";
+"Preview files in protected locations" = "Preview files in protected locations";
+"Allowed" = "Allowed";
+"Optional" = "Optional";
+"Permissions stay under your control in macOS System Settings." = "Permissions stay under your control in macOS System Settings.";
+
 // MARK: - Preferences Window
 "Preferences" = "Preferences";
 "Glance Preferences" = "Glance Preferences";
@@ -260,3 +271,62 @@
 "Run" = "Run";
 "Clean" = "Clean";
 "Paste any text — click Run (or press ⏎) to test detection." = "Paste any text — click Run (or press ⏎) to test detection.";
+
+// MARK: - Workbench V2
+"Fit to Window" = "Fit to Window";
+"Zoom Out" = "Zoom Out";
+"Zoom In" = "Zoom In";
+"Direction" = "Direction";
+"Run %@" = "Run %@";
+"%d task(s) polling" = "%d task(s) polling";
+"You can keep inspecting; the result appears in the filmstrip." = "You can keep inspecting; the result appears in the filmstrip.";
+"New" = "New";
+"Add" = "Add";
+
+// MARK: - Video Inspect workbench
+"Video Information" = "Video Information";
+"Codec" = "Codec";
+"Audio" = "Audio";
+"Bitrate" = "Bitrate";
+"Fit" = "Fit";
+"Compare" = "Compare";
+"Close" = "Close";
+"Minimize" = "Minimize";
+"Zoom" = "Zoom";
+"Space to play or pause" = "Space to play or pause";
+
+// MARK: - Home / Launcher
+"Open Home" = "Open Home";
+"Open images to inspect" = "Open images to inspect";
+"Open something to inspect" = "Open something to inspect";
+"Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder." = "Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder.";
+"Drag images or a folder here" = "Drag images or a folder here";
+"PNG · JPEG · HEIC · WebP · TIFF · RAW  and more" = "PNG · JPEG · HEIC · WebP · TIFF · RAW  and more";
+"Open Files…" = "Open Files…";
+"Open Folder…" = "Open Folder…";
+"FOLDER" = "FOLDER";
+"%d images found" = "%d images found";
+"%d images ready" = "%d images ready";
+"No images in that folder" = "No images in that folder";
+"Inspect all %d images" = "Inspect all %d images";
+"Recent" = "Recent";
+"Reopen what you inspected before." = "Reopen what you inspected before.";
+"Nothing here yet. Inspected files show up here." = "Nothing here yet. Inspected files show up here.";
+"Today" = "Today";
+"%d items" = "%d items";
+"%d items today" = "%d items today";
+"Search filename" = "Search filename";
+"Open in Inspect" = "Open in Inspect";
+"Search by filename, inspect again with one click" = "Search by filename, inspect again with one click";
+
+// MARK: - Tray popover
+"Preview is on" = "Preview is on";
+"Preview is off" = "Preview is off";
+"Open Glance Home" = "Open Glance Home";
+"Permissions" = "Permissions";
+"All set" = "All set";
+"Action needed" = "Action needed";
+"Sign in" = "Sign in";
+"Signed in" = "Signed in";
+"No file open  •  Open images to begin" = "No file open  •  Open images to begin";
+"Drop files anywhere  •  ⌘O to open  •  ⌘⇧O for a folder" = "Drop files anywhere  •  ⌘O to open  •  ⌘⇧O for a folder";

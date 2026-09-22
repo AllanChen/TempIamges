@@ -1,0 +1,965 @@
+Currently selected nodes:
+- 10:195: Widget Market / Install / Previous
+- 16:566: Base64 Toolkit / Clean Editable
+- 16:619: Preview History / Clean Editable
+- 16:778: Onboarding / Permissions / Clean Editable
+- 16:690: Preferences / Clean Editable
+
+
+
+<canvas id="0:1" name="Glance Production UI" x="0" y="0" width="0" height="0">
+  <frame id="2:270" name="Reference / image-inspect-ui.png" x="0" y="0" width="1554" height="1012" />
+  <frame id="2:271" name="Image Inspect / Pixel Match" x="1750" y="0" width="1554" height="1012">
+    <rounded-rectangle id="2:272" name="Pixel Reference / Base" x="0" y="0" width="1554" height="1012" />
+    <frame id="2:273" name="Editable Overlay / toggle visibility" x="0" y="0" width="1554" height="1012" hidden="true">
+      <frame id="2:274" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="2:275" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="2:276" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="2:277" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="2:278" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="2:279" name="Filename" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="2:280" name="02 / Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="2:281" name="Back" x="24" y="14" width="54" height="38">
+          <text id="2:282" name="Label" x="0" y="10" width="54" height="15" />
+        </frame>
+        <frame id="2:283" name="Rotate" x="172" y="14" width="88" height="38">
+          <text id="2:284" name="Label" x="0" y="10" width="88" height="15" />
+        </frame>
+        <frame id="2:285" name="Flip" x="286" y="14" width="128" height="38">
+          <text id="2:286" name="Label" x="0" y="10" width="128" height="15" />
+        </frame>
+        <frame id="2:287" name="Focus" x="578" y="14" width="96" height="38">
+          <text id="2:288" name="Label" x="0" y="10" width="96" height="15" />
+        </frame>
+        <frame id="2:289" name="Compare" x="682" y="14" width="112" height="38">
+          <text id="2:290" name="Label" x="0" y="10" width="112" height="15" />
+        </frame>
+        <frame id="2:291" name="Slider" x="802" y="14" width="94" height="38">
+          <text id="2:292" name="Label" x="0" y="10" width="94" height="15" />
+        </frame>
+        <frame id="2:293" name="Zoom Out" x="964" y="14" width="52" height="38">
+          <text id="2:294" name="Label" x="0" y="10" width="52" height="15" />
+        </frame>
+        <text id="2:295" name="Zoom Value" x="1018" y="24" width="76" height="15" />
+        <frame id="2:296" name="Zoom In" x="1092" y="14" width="52" height="38">
+          <text id="2:297" name="Label" x="0" y="10" width="52" height="15" />
+        </frame>
+        <frame id="2:298" name="Fit" x="1152" y="14" width="76" height="38">
+          <text id="2:299" name="Label" x="0" y="10" width="76" height="15" />
+        </frame>
+        <frame id="2:300" name="Tasks" x="1278" y="14" width="112" height="38">
+          <text id="2:301" name="Label" x="0" y="10" width="112" height="15" />
+        </frame>
+        <frame id="2:302" name="Widget" x="1400" y="14" width="126" height="38">
+          <text id="2:303" name="Label" x="0" y="10" width="126" height="15" />
+        </frame>
+      </frame>
+      <frame id="2:304" name="03 / Canvas" x="0" y="128" width="1120" height="808">
+        <rounded-rectangle id="2:305" name="Image / alpine-lake.jpg" x="16" y="0" width="1088" height="792" />
+        <rounded-rectangle id="2:306" name="Image Shade" x="16" y="526" width="1088" height="266" />
+        <frame id="2:338" name="05 / Task and Filmstrip Overlay" x="16" y="526" width="1088" height="266">
+          <text id="2:339" name="Task Summary" x="58" y="14" width="218" height="16" />
+          <ellipse id="2:340" name="Task Status" x="26" y="17" width="10" height="10" />
+          <frame id="2:341" name="Processing Toast" x="314" y="150" width="460" height="76">
+            <ellipse id="2:342" name="Spinner" x="20" y="22" width="30" height="30" />
+            <text id="2:343" name="Processing Title" x="66" y="18" width="88" height="17" />
+            <text id="2:344" name="Processing Subtitle" x="66" y="42" width="290" height="13" />
+          </frame>
+          <frame id="2:345" name="Source Thumbnail" x="54" y="40" width="96" height="96" />
+          <frame id="2:347" name="Result Thumbnail" x="160" y="40" width="96" height="96">
+            <rounded-rectangle id="2:348" name="Preview" x="5" y="5" width="86" height="86" />
+            <rounded-rectangle id="2:349" name="Tag" x="50" y="68" width="40" height="20" />
+            <text id="2:350" name="Tag Label" x="51" y="71" width="38" height="11" />
+          </frame>
+          <frame id="2:351" name="Thumbnail 3" x="266" y="40" width="96" height="96" />
+        </frame>
+      </frame>
+      <frame id="2:307" name="04 / Inspector" x="1120" y="128" width="434" height="808">
+        <text id="2:308" name="Inspector Title" x="36" y="24" width="150" height="21" />
+        <text id="2:309" name="Key / Name" x="36" y="84" width="37" height="16" />
+        <text id="2:310" name="Value / Name" x="174" y="84" width="220" height="16" />
+        <rounded-rectangle id="2:311" name="Divider" x="36" y="114" width="362" height="1" />
+        <text id="2:312" name="Key / Dimensions" x="36" y="122" width="73" height="16" />
+        <text id="2:313" name="Value / Dimensions" x="174" y="122" width="220" height="16" />
+        <rounded-rectangle id="2:314" name="Divider" x="36" y="152" width="362" height="1" />
+        <text id="2:315" name="Key / Format" x="36" y="160" width="44" height="16" />
+        <text id="2:316" name="Value / Format" x="174" y="160" width="220" height="16" />
+        <rounded-rectangle id="2:317" name="Divider" x="36" y="190" width="362" height="1" />
+        <text id="2:318" name="Key / File size" x="36" y="198" width="50" height="16" />
+        <text id="2:319" name="Value / File size" x="174" y="198" width="220" height="16" />
+        <rounded-rectangle id="2:320" name="Divider" x="36" y="228" width="362" height="1" />
+        <text id="2:321" name="Key / Color profile" x="36" y="236" width="77" height="16" />
+        <text id="2:322" name="Value / Color profile" x="174" y="236" width="220" height="16" />
+        <rounded-rectangle id="2:323" name="Divider" x="36" y="266" width="362" height="1" />
+        <text id="2:324" name="Key / Alpha" x="36" y="274" width="36" height="16" />
+        <text id="2:325" name="Value / Alpha" x="174" y="274" width="220" height="16" />
+        <rounded-rectangle id="2:326" name="Divider" x="36" y="304" width="362" height="1" />
+        <text id="2:327" name="Key / Created" x="36" y="312" width="50" height="16" />
+        <text id="2:328" name="Value / Created" x="174" y="312" width="220" height="16" />
+        <rounded-rectangle id="2:329" name="Divider" x="36" y="342" width="362" height="1" />
+        <text id="2:330" name="Quick Actions Title" x="36" y="386" width="88" height="13" />
+        <frame id="2:331" name="Remove Background" x="36" y="424" width="362" height="38">
+          <text id="2:332" name="Label" x="0" y="10" width="362" height="15" />
+        </frame>
+        <frame id="2:333" name="Upscale 2x" x="36" y="488" width="362" height="38">
+          <text id="2:334" name="Label" x="0" y="10" width="362" height="15" />
+        </frame>
+        <frame id="2:335" name="Add Image" x="282" y="650" width="112" height="112">
+          <text id="2:336" name="Plus" x="0" y="20" width="112" height="41" />
+          <text id="2:337" name="Add Label" x="0" y="70" width="112" height="15" />
+        </frame>
+      </frame>
+      <frame id="2:353" name="06 / Statusbar" x="0" y="936" width="1554" height="76">
+        <text id="2:354" name="File Summary" x="36" y="27" width="185" height="15" />
+        <text id="2:355" name="Interaction Hint" x="0" y="27" width="1554" height="15" />
+        <ellipse id="2:356" name="Running Dot" x="1394" y="31" width="8" height="8" />
+        <text id="2:357" name="Task Count" x="1414" y="27" width="81" height="15" />
+      </frame>
+    </frame>
+    <rounded-rectangle id="2:358" name="Calibration Overlay / toggle visibility" x="0" y="0" width="1554" height="1012" hidden="true" />
+  </frame>
+  <frame id="2:359" name="Image Inspect / Clean Editable" x="3500" y="0" width="1554" height="1012">
+    <frame id="2:360" name="Editable Overlay / toggle visibility" x="0" y="0" width="1554" height="1012">
+      <frame id="2:361" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="2:362" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="2:363" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="2:364" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="2:365" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="2:366" name="Filename" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="2:367" name="02 / Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="2:370" name="Rotate" x="41" y="14" width="88" height="38">
+          <text id="2:371" name="Label" x="0" y="10" width="88" height="15" />
+        </frame>
+        <frame id="2:372" name="Flip" x="144" y="14" width="128" height="38">
+          <text id="2:373" name="Label" x="0" y="10" width="128" height="15" />
+        </frame>
+        <frame id="2:374" name="Focus" x="578" y="14" width="96" height="38">
+          <text id="2:375" name="Label" x="0" y="10" width="96" height="15" />
+        </frame>
+        <frame id="2:376" name="Compare" x="682" y="14" width="112" height="38">
+          <text id="2:377" name="Label" x="0" y="10" width="112" height="15" />
+        </frame>
+        <frame id="2:378" name="Slider" x="802" y="14" width="94" height="38">
+          <text id="2:379" name="Label" x="0" y="10" width="94" height="15" />
+        </frame>
+        <frame id="2:385" name="Fit" x="286" y="14" width="76" height="38">
+          <text id="2:386" name="Label" x="0" y="10" width="76" height="15" />
+        </frame>
+        <frame id="2:387" name="Tasks" x="1278" y="14" width="112" height="38">
+          <text id="2:388" name="Label" x="0" y="10" width="112" height="15" />
+        </frame>
+        <frame id="2:389" name="Widget" x="1400" y="14" width="126" height="38">
+          <text id="2:390" name="Label" x="0" y="10" width="126" height="15" />
+        </frame>
+      </frame>
+      <frame id="2:391" name="03 / Canvas" x="0" y="128" width="1120" height="847">
+        <rounded-rectangle id="2:392" name="Image / alpine-lake.jpg" x="16" y="0" width="1088" height="847" />
+        <rounded-rectangle id="2:393" name="Image Shade" x="16" y="730" width="1088" height="117" />
+        <frame id="2:425" name="05 / Task and Filmstrip Overlay" x="16" y="730" width="1088" height="117">
+          <frame id="2:432" name="Source Thumbnail" x="390" y="11" width="96" height="96" />
+          <frame id="2:434" name="Result Thumbnail" x="496" y="11" width="96" height="96">
+            <rounded-rectangle id="2:435" name="Preview" x="5" y="5" width="86" height="86" />
+            <rounded-rectangle id="2:436" name="Tag" x="50" y="68" width="40" height="20" />
+            <text id="2:437" name="Tag Label" x="51" y="71" width="38" height="11" />
+          </frame>
+          <frame id="2:438" name="Thumbnail 3" x="602" y="11" width="96" height="96" />
+        </frame>
+      </frame>
+      <frame id="2:394" name="04 / Inspector" x="1120" y="128" width="434" height="847">
+        <text id="2:395" name="Inspector Title" x="36" y="24" width="150" height="21" />
+        <text id="2:396" name="Key / Name" x="36" y="84" width="37" height="16" />
+        <text id="2:397" name="Value / Name" x="174" y="84" width="220" height="16" />
+        <rounded-rectangle id="2:398" name="Divider" x="36" y="114" width="362" height="1" />
+        <text id="2:399" name="Key / Dimensions" x="36" y="122" width="73" height="16" />
+        <text id="2:400" name="Value / Dimensions" x="174" y="122" width="220" height="16" />
+        <rounded-rectangle id="2:401" name="Divider" x="36" y="152" width="362" height="1" />
+        <text id="2:402" name="Key / Format" x="36" y="160" width="44" height="16" />
+        <text id="2:403" name="Value / Format" x="174" y="160" width="220" height="16" />
+        <rounded-rectangle id="2:404" name="Divider" x="36" y="190" width="362" height="1" />
+        <text id="2:405" name="Key / File size" x="36" y="198" width="50" height="16" />
+        <text id="2:406" name="Value / File size" x="174" y="198" width="220" height="16" />
+        <rounded-rectangle id="2:407" name="Divider" x="36" y="228" width="362" height="1" />
+        <text id="2:408" name="Key / Color profile" x="36" y="236" width="77" height="16" />
+        <text id="2:409" name="Value / Color profile" x="174" y="236" width="220" height="16" />
+        <rounded-rectangle id="2:410" name="Divider" x="36" y="266" width="362" height="1" />
+        <text id="2:411" name="Key / Alpha" x="36" y="274" width="36" height="16" />
+        <text id="2:412" name="Value / Alpha" x="174" y="274" width="220" height="16" />
+        <rounded-rectangle id="2:413" name="Divider" x="36" y="304" width="362" height="1" />
+        <text id="2:414" name="Key / Created" x="36" y="312" width="50" height="16" />
+        <text id="2:415" name="Value / Created" x="174" y="312" width="220" height="16" />
+        <rounded-rectangle id="2:416" name="Divider" x="36" y="342" width="362" height="1" />
+        <text id="2:417" name="Quick Actions Title" x="36" y="386" width="88" height="13" />
+        <frame id="2:418" name="Remove Background" x="36" y="424" width="362" height="38">
+          <text id="2:419" name="Label" x="0" y="10" width="362" height="15" />
+        </frame>
+        <frame id="2:420" name="Upscale 2x" x="36" y="488" width="362" height="38">
+          <text id="2:421" name="Label" x="0" y="10" width="362" height="15" />
+        </frame>
+      </frame>
+      <frame id="2:440" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="2:441" name="File Summary" x="38" y="11" width="185" height="15" />
+        <text id="2:442" name="Interaction Hint" x="0" y="11" width="1554" height="15" />
+        <ellipse id="2:443" name="Running Dot" x="1394" y="15" width="8" height="8" />
+        <text id="2:444" name="Task Count" x="1414" y="11" width="81" height="15" />
+      </frame>
+    </frame>
+    <rounded-rectangle id="2:445" name="Calibration Overlay / toggle visibility" x="0" y="0" width="1554" height="1012" hidden="true" />
+  </frame>
+  <frame id="10:2" name="Video Inspect / Clean Editable" x="5250" y="0" width="1554" height="1012">
+    <frame id="10:3" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="10:4" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="10:5" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="10:6" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="10:7" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="10:8" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="10:9" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="10:10" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="10:11" name="Capture Frame" x="40" y="14" width="38" height="38">
+          <frame id="10:12" name="Icon / capture" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:15" name="Focus" x="686" y="14" width="38" height="38">
+          <frame id="10:16" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:20" name="Compare" x="734" y="14" width="38" height="38">
+          <frame id="10:21" name="Icon / compare" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:24" name="Fit" x="782" y="14" width="38" height="38">
+          <frame id="10:25" name="Icon / fit" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:27" name="Tasks" x="1378" y="14" width="38" height="38">
+          <frame id="10:28" name="Icon / tasks" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:31" name="Widget" x="1426" y="14" width="38" height="38">
+          <frame id="10:32" name="Icon / grid" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:37" name="Video Information" x="1474" y="14" width="38" height="38">
+          <frame id="10:38" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="10:42" name="03 / Video Canvas" x="0" y="128" width="1554" height="847">
+        <rounded-rectangle id="10:43" name="Video / clip.mov" x="48" y="20" width="1458" height="807" />
+        <frame id="10:44" name="Playback Controls" x="124" y="722" width="1306" height="64">
+          <frame id="10:45" name="Play" x="16" y="13" width="38" height="38">
+            <frame id="10:46" name="Icon / play" x="10" y="10" width="18" height="18" />
+          </frame>
+          <rounded-rectangle id="10:48" name="Timeline Track" x="76" y="30" width="1070" height="4" />
+          <rounded-rectangle id="10:49" name="Timeline Progress" x="76" y="30" width="416" height="4" />
+          <ellipse id="10:50" name="Timeline Knob" x="486" y="25" width="14" height="14" />
+          <text id="10:51" name="Current Time" x="1168" y="24" width="34" height="15" />
+          <text id="10:52" name="Duration" x="1224" y="24" width="32" height="15" />
+        </frame>
+      </frame>
+      <frame id="10:53" name="Video Information / hidden by default" x="1120" y="128" width="434" height="847" hidden="true">
+        <text id="10:54" name="Title" x="36" y="24" width="147" height="21" />
+        <text id="10:55" name="Key / Dimensions" x="36" y="84" width="73" height="16" />
+        <text id="10:56" name="Value / Dimensions" x="174" y="84" width="220" height="16" />
+        <rounded-rectangle id="10:57" name="Divider" x="36" y="114" width="362" height="1" />
+        <text id="10:58" name="Key / Duration" x="36" y="122" width="54" height="16" />
+        <text id="10:59" name="Value / Duration" x="174" y="122" width="220" height="16" />
+        <rounded-rectangle id="10:60" name="Divider" x="36" y="152" width="362" height="1" />
+        <text id="10:61" name="Key / Codec" x="36" y="160" width="41" height="16" />
+        <text id="10:62" name="Value / Codec" x="174" y="160" width="220" height="16" />
+        <rounded-rectangle id="10:63" name="Divider" x="36" y="190" width="362" height="1" />
+        <text id="10:64" name="Key / Frame rate" x="36" y="198" width="68" height="16" />
+        <text id="10:65" name="Value / Frame rate" x="174" y="198" width="220" height="16" />
+        <rounded-rectangle id="10:66" name="Divider" x="36" y="228" width="362" height="1" />
+        <text id="10:67" name="Key / Audio" x="36" y="236" width="37" height="16" />
+        <text id="10:68" name="Value / Audio" x="174" y="236" width="220" height="16" />
+        <rounded-rectangle id="10:69" name="Divider" x="36" y="266" width="362" height="1" />
+        <text id="10:70" name="Key / Bitrate" x="36" y="274" width="42" height="16" />
+        <text id="10:71" name="Value / Bitrate" x="174" y="274" width="220" height="16" />
+        <rounded-rectangle id="10:72" name="Divider" x="36" y="304" width="362" height="1" />
+      </frame>
+      <frame id="10:73" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="10:74" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="10:75" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="10:76" name="Task Center / Clean Editable" x="7000" y="0" width="1554" height="1012">
+    <frame id="10:77" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="10:78" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="10:79" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="10:80" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="10:81" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="10:82" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="10:83" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="10:84" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="10:85" name="Refresh" x="40" y="14" width="38" height="38">
+          <frame id="10:86" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:89" name="Search" x="88" y="14" width="38" height="38">
+          <frame id="10:90" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:93" name="Open in Inspect" x="1378" y="14" width="38" height="38">
+          <frame id="10:94" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:98" name="Clear Finished" x="1426" y="14" width="38" height="38">
+          <frame id="10:99" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:101" name="Task Information" x="1474" y="14" width="38" height="38">
+          <frame id="10:102" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="10:106" name="03 / Task List" x="0" y="128" width="360" height="847">
+        <text id="10:107" name="Heading" x="24" y="22" width="49" height="21" />
+        <text id="10:108" name="Caption" x="24" y="49" width="159" height="13" />
+        <frame id="10:109" name="All Filter" x="20" y="82" width="72" height="38">
+          <text id="10:110" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="10:111" name="Running Filter" x="100" y="82" width="80" height="38">
+          <text id="10:112" name="Label" x="0" y="10" width="80" height="15" />
+        </frame>
+        <frame id="10:113" name="Completed Filter" x="188" y="82" width="72" height="38">
+          <text id="10:114" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="10:115" name="Failed Filter" x="268" y="82" width="72" height="38">
+          <text id="10:116" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="10:117" name="Task / Remove Background" x="14" y="140" width="332" height="82">
+          <rounded-rectangle id="10:118" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="10:119" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="10:120" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="10:121" name="State" x="250" y="28" width="70" height="26" />
+          <text id="10:122" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+        <frame id="10:123" name="Task / Upscale 2×" x="14" y="232" width="332" height="82">
+          <rounded-rectangle id="10:124" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="10:125" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="10:126" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="10:127" name="State" x="250" y="28" width="70" height="26" />
+          <text id="10:128" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+        <frame id="10:129" name="Task / Image Caption" x="14" y="324" width="332" height="82">
+          <rounded-rectangle id="10:130" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="10:131" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="10:132" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="10:133" name="State" x="250" y="28" width="70" height="26" />
+          <text id="10:134" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+      </frame>
+      <frame id="10:135" name="04 / Task Detail" x="360" y="128" width="1194" height="847">
+        <text id="10:136" name="Task Title" x="32" y="25" width="179" height="22" />
+        <text id="10:137" name="Task Metadata" x="32" y="53" width="126" height="15" />
+        <frame id="10:138" name="Show in Inspect" x="1084" y="22" width="38" height="38">
+          <frame id="10:139" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:143" name="Cancel Task" x="1132" y="22" width="38" height="38">
+          <frame id="10:144" name="Icon / uninstall" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:146" name="Source Preview" x="32" y="104" width="528" height="304">
+          <rounded-rectangle id="10:147" name="Source Image" x="12" y="12" width="504" height="280" />
+        </frame>
+        <frame id="10:148" name="Result Preview" x="578" y="104" width="528" height="304">
+          <ellipse id="10:149" name="Waiting Indicator" x="240" y="118" width="48" height="48" />
+          <text id="10:150" name="Waiting Label" x="0" y="178" width="528" height="15" />
+        </frame>
+        <frame id="10:151" name="Timeline" x="32" y="440" width="560" height="330">
+          <text id="10:152" name="Timeline Heading" x="24" y="20" width="54" height="16" />
+          <ellipse id="10:153" name="Timeline Mark" x="28" y="63" width="14" height="14" />
+          <text id="10:154" name="Title" x="58" y="60" width="96" height="16" />
+          <text id="10:155" name="Detail" x="58" y="82" width="175" height="13" />
+          <text id="10:156" name="Time" x="430" y="63" width="110" height="13" />
+          <rounded-rectangle id="10:157" name="Connector" x="34" y="78" width="1" height="52" />
+          <ellipse id="10:158" name="Timeline Mark" x="28" y="135" width="14" height="14" />
+          <text id="10:159" name="Title" x="58" y="132" width="97" height="16" />
+          <text id="10:160" name="Detail" x="58" y="154" width="97" height="13" />
+          <text id="10:161" name="Time" x="430" y="135" width="110" height="13" />
+          <rounded-rectangle id="10:162" name="Connector" x="34" y="150" width="1" height="52" />
+          <ellipse id="10:163" name="Timeline Mark" x="28" y="207" width="14" height="14" />
+          <ellipse id="10:164" name="Current Halo" x="23" y="202" width="24" height="24" />
+          <text id="10:165" name="Title" x="58" y="204" width="69" height="16" />
+          <text id="10:166" name="Detail" x="58" y="226" width="124" height="13" />
+          <text id="10:167" name="Time" x="430" y="207" width="110" height="13" />
+          <rounded-rectangle id="10:168" name="Connector" x="34" y="222" width="1" height="52" />
+          <ellipse id="10:169" name="Timeline Mark" x="28" y="279" width="14" height="14" />
+          <text id="10:170" name="Title" x="58" y="276" width="101" height="16" />
+          <text id="10:171" name="Detail" x="58" y="298" width="112" height="13" />
+          <text id="10:172" name="Time" x="430" y="279" width="110" height="13" />
+        </frame>
+        <frame id="10:173" name="Task Details" x="612" y="440" width="494" height="330">
+          <text id="10:174" name="Heading" x="24" y="20" width="77" height="16" />
+          <text id="10:175" name="Key / Widget" x="36" y="60" width="45" height="16" />
+          <text id="10:176" name="Value / Widget" x="174" y="60" width="220" height="16" />
+          <rounded-rectangle id="10:177" name="Divider" x="36" y="90" width="362" height="1" />
+          <text id="10:178" name="Key / Input" x="36" y="98" width="32" height="16" />
+          <text id="10:179" name="Value / Input" x="174" y="98" width="220" height="16" />
+          <rounded-rectangle id="10:180" name="Divider" x="36" y="128" width="362" height="1" />
+          <text id="10:181" name="Key / Worker" x="36" y="136" width="45" height="16" />
+          <text id="10:182" name="Value / Worker" x="174" y="136" width="220" height="16" />
+          <rounded-rectangle id="10:183" name="Divider" x="36" y="166" width="362" height="1" />
+          <text id="10:184" name="Key / Progress" x="36" y="174" width="56" height="16" />
+          <text id="10:185" name="Value / Progress" x="174" y="174" width="220" height="16" />
+          <rounded-rectangle id="10:186" name="Divider" x="36" y="204" width="362" height="1" />
+          <text id="10:187" name="Key / Polling" x="36" y="212" width="42" height="16" />
+          <text id="10:188" name="Value / Polling" x="174" y="212" width="220" height="16" />
+          <rounded-rectangle id="10:189" name="Divider" x="36" y="242" width="362" height="1" />
+        </frame>
+      </frame>
+      <frame id="10:190" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="10:191" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="10:192" name="Center Hint" x="0" y="11" width="1554" height="15" />
+        <ellipse id="10:193" name="Status Dot" x="1394" y="15" width="8" height="8" />
+        <text id="10:194" name="Right Status" x="1414" y="11" width="81" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="10:195" name="Widget Market / Install / Previous" x="22750" y="0" width="1554" height="1012">
+    <frame id="10:196" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="10:197" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="10:198" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="10:199" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="10:200" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="10:201" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="10:202" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="10:203" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="10:204" name="Refresh Catalog" x="40" y="14" width="38" height="38">
+          <frame id="10:205" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:208" name="Search Widgets" x="88" y="14" width="38" height="38">
+          <frame id="10:209" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:212" name="Installed Widgets" x="1378" y="14" width="38" height="38">
+          <frame id="10:213" name="Icon / tasks" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="10:216" name="Widget Information" x="1474" y="14" width="38" height="38">
+          <frame id="10:217" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="10:221" name="03 / Widget Catalog" x="0" y="128" width="1120" height="847">
+        <text id="10:222" name="Heading" x="28" y="24" width="143" height="24" />
+        <text id="10:223" name="Subtitle" x="28" y="57" width="261" height="15" />
+        <frame id="10:224" name="Search Field" x="624" y="22" width="354" height="40">
+          <frame id="10:225" name="Search Icon" x="0" y="1" width="38" height="38">
+            <frame id="10:226" name="Icon / search" x="10" y="10" width="18" height="18" />
+          </frame>
+          <text id="10:229" name="Placeholder" x="56" y="12" width="90" height="15" />
+        </frame>
+        <frame id="10:230" name="Installed Count" x="992" y="29" width="100" height="26" />
+        <text id="10:231" name="Label" x="992" y="35" width="100" height="13" />
+        <frame id="10:232" name="Widget / Remove Background" x="28" y="104" width="484" height="174">
+          <frame id="10:233" name="Icon" x="18" y="18" width="46" height="46">
+            <text id="10:234" name="Icon Label" x="0" y="13" width="46" height="17" />
+          </frame>
+          <frame id="10:235" name="Installed" x="372" y="20" width="90" height="26" />
+          <text id="10:236" name="Label" x="372" y="26" width="90" height="13" />
+          <text id="10:237" name="Title" x="18" y="82" width="149" height="18" />
+          <text id="10:238" name="Description" x="18" y="110" width="440" height="13" />
+        </frame>
+        <frame id="10:239" name="Widget / Upscale 2×" x="530" y="104" width="484" height="174">
+          <frame id="10:240" name="Icon" x="18" y="18" width="46" height="46">
+            <text id="10:241" name="Icon Label" x="0" y="13" width="46" height="17" />
+          </frame>
+          <frame id="10:242" name="Cloud" x="372" y="20" width="90" height="26" />
+          <text id="10:243" name="Label" x="372" y="26" width="90" height="13" />
+          <text id="10:244" name="Title" x="18" y="82" width="82" height="18" />
+          <text id="10:245" name="Description" x="18" y="110" width="440" height="13" />
+        </frame>
+        <frame id="10:246" name="Widget / Image Caption" x="28" y="296" width="484" height="174">
+          <frame id="10:247" name="Icon" x="18" y="18" width="46" height="46">
+            <text id="10:248" name="Icon Label" x="0" y="13" width="46" height="17" />
+          </frame>
+          <frame id="10:249" name="Installed" x="372" y="20" width="90" height="26" />
+          <text id="10:250" name="Label" x="372" y="26" width="90" height="13" />
+          <text id="10:251" name="Title" x="18" y="82" width="106" height="18" />
+          <text id="10:252" name="Description" x="18" y="110" width="440" height="13" />
+        </frame>
+        <frame id="10:253" name="Widget / Base64 Toolkit" x="530" y="296" width="484" height="174">
+          <frame id="10:254" name="Icon" x="18" y="18" width="46" height="46">
+            <text id="10:255" name="Icon Label" x="0" y="13" width="46" height="17" />
+          </frame>
+          <frame id="10:256" name="Cloud" x="372" y="20" width="90" height="26" />
+          <text id="10:257" name="Label" x="372" y="26" width="90" height="13" />
+          <text id="10:258" name="Title" x="18" y="82" width="109" height="18" />
+          <text id="10:259" name="Description" x="18" y="110" width="440" height="13" />
+        </frame>
+        <frame id="10:260" name="Widget / OCR Extract" x="28" y="488" width="484" height="174">
+          <frame id="10:261" name="Icon" x="18" y="18" width="46" height="46">
+            <text id="10:262" name="Icon Label" x="0" y="13" width="46" height="17" />
+          </frame>
+          <frame id="10:263" name="Installed" x="372" y="20" width="90" height="26" />
+          <text id="10:264" name="Label" x="372" y="26" width="90" height="13" />
+          <text id="10:265" name="Title" x="18" y="82" width="89" height="18" />
+          <text id="10:266" name="Description" x="18" y="110" width="440" height="13" />
+        </frame>
+        <frame id="10:267" name="Widget / Palette" x="530" y="488" width="484" height="174">
+          <frame id="10:268" name="Icon" x="18" y="18" width="46" height="46">
+            <text id="10:269" name="Icon Label" x="0" y="13" width="46" height="17" />
+          </frame>
+          <frame id="10:270" name="Cloud" x="372" y="20" width="90" height="26" />
+          <text id="10:271" name="Label" x="372" y="26" width="90" height="13" />
+          <text id="10:272" name="Title" x="18" y="82" width="52" height="18" />
+          <text id="10:273" name="Description" x="18" y="110" width="440" height="13" />
+        </frame>
+      </frame>
+      <frame id="10:274" name="04 / Widget Install Detail" x="1120" y="128" width="434" height="847">
+        <frame id="10:275" name="Icon" x="36" y="30" width="54" height="54">
+          <text id="10:276" name="Icon Label" x="0" y="16" width="54" height="21" />
+        </frame>
+        <text id="10:277" name="Title" x="36" y="108" width="199" height="24" />
+        <frame id="10:278" name="Install Status" x="36" y="146" width="88" height="26" />
+        <text id="10:279" name="Label" x="36" y="152" width="88" height="13" />
+        <text id="10:280" name="Summary" x="36" y="198" width="362" height="30" />
+        <text id="10:281" name="Features Heading" x="36" y="286" width="57" height="13" />
+        <text id="10:282" name="Features" x="36" y="320" width="362" height="60" />
+        <text id="10:283" name="Privacy Heading" x="36" y="440" width="48" height="13" />
+        <text id="10:284" name="Privacy" x="36" y="474" width="362" height="30" />
+        <frame id="10:285" name="Uninstall Button" x="36" y="738" width="362" height="42">
+          <text id="10:289" name="Uninstall Label" x="133" y="13" width="95" height="15" />
+        </frame>
+      </frame>
+      <frame id="10:290" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="10:291" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="10:292" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="16:437" name="Content Viewer / Clean Editable" x="12250" y="0" width="1554" height="1012">
+    <frame id="16:438" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="16:439" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="16:440" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="16:441" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="16:442" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="16:443" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="16:444" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="16:445" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="16:446" name="Plain Text" x="40" y="14" width="38" height="38">
+          <frame id="16:447" name="Icon / file" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:449" name="Markdown Preview" x="88" y="14" width="38" height="38">
+          <frame id="16:450" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:454" name="Find" x="1366" y="14" width="38" height="38">
+          <frame id="16:455" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:458" name="Copy" x="1414" y="14" width="38" height="38">
+          <frame id="16:459" name="Icon / copy" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:462" name="Reveal in Finder" x="1462" y="14" width="38" height="38">
+          <frame id="16:463" name="Icon / folder" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="16:465" name="03 / Document Content" x="0" y="128" width="1090" height="847">
+        <text id="16:466" name="Content Type" x="32" y="26" width="118" height="13" />
+        <text id="16:467" name="Line Number 1" x="38" y="96" width="32" height="15" />
+        <text id="16:468" name="Line 1" x="92" y="96" width="930" height="19" />
+        <text id="16:469" name="Line Number 2" x="38" y="139" width="32" height="15" />
+        <text id="16:470" name="Line Number 3" x="38" y="182" width="32" height="15" />
+        <text id="16:471" name="Line 3" x="92" y="182" width="930" height="19" />
+        <text id="16:472" name="Line Number 4" x="38" y="225" width="32" height="15" />
+        <text id="16:473" name="Line 4" x="92" y="225" width="930" height="19" />
+        <text id="16:474" name="Line Number 5" x="38" y="268" width="32" height="15" />
+        <text id="16:475" name="Line Number 6" x="38" y="311" width="32" height="15" />
+        <text id="16:476" name="Line 6" x="92" y="311" width="930" height="19" />
+        <text id="16:477" name="Line Number 7" x="38" y="354" width="32" height="15" />
+        <text id="16:478" name="Line 7" x="92" y="354" width="930" height="19" />
+        <text id="16:479" name="Line Number 8" x="38" y="397" width="32" height="15" />
+        <text id="16:480" name="Line 8" x="92" y="397" width="930" height="19" />
+        <text id="16:481" name="Line Number 9" x="38" y="440" width="32" height="15" />
+        <text id="16:482" name="Line 9" x="92" y="440" width="930" height="19" />
+      </frame>
+      <frame id="16:483" name="04 / Document Information" x="1090" y="128" width="464" height="847">
+        <frame id="16:484" name="Content Information / 3:4" x="44" y="52" width="376" height="502">
+          <text id="16:485" name="Heading" x="22" y="23" width="166" height="21" />
+          <text id="16:486" name="Description" x="22" y="62" width="330" height="45" />
+          <text id="16:487" name="Key / Type" x="22" y="173" width="29" height="15" />
+          <text id="16:488" name="Value / Type" x="136" y="173" width="210" height="15" />
+          <rounded-rectangle id="16:489" name="Divider" x="22" y="207" width="332" height="1" />
+          <text id="16:490" name="Key / Encoding" x="22" y="227" width="54" height="15" />
+          <text id="16:491" name="Value / Encoding" x="136" y="227" width="210" height="15" />
+          <rounded-rectangle id="16:492" name="Divider" x="22" y="261" width="332" height="1" />
+          <text id="16:493" name="Key / Lines" x="22" y="281" width="31" height="15" />
+          <text id="16:494" name="Value / Lines" x="136" y="281" width="210" height="15" />
+          <rounded-rectangle id="16:495" name="Divider" x="22" y="315" width="332" height="1" />
+          <text id="16:496" name="Key / Source" x="22" y="335" width="41" height="15" />
+          <text id="16:497" name="Value / Source" x="136" y="335" width="210" height="15" />
+          <rounded-rectangle id="16:498" name="Divider" x="22" y="369" width="332" height="1" />
+          <text id="16:499" name="Key / Modified" x="22" y="389" width="51" height="15" />
+          <text id="16:500" name="Value / Modified" x="136" y="389" width="210" height="15" />
+          <rounded-rectangle id="16:501" name="Divider" x="22" y="423" width="332" height="1" />
+        </frame>
+      </frame>
+      <frame id="16:502" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="16:503" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="16:504" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="16:566" name="Base64 Toolkit / Clean Editable" x="15750" y="0" width="1554" height="1012">
+    <frame id="16:567" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="16:568" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="16:569" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="16:570" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="16:571" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="16:572" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="16:573" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="16:574" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="16:575" name="Paste Base64" x="40" y="14" width="38" height="38">
+          <frame id="16:576" name="Icon / copy" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:579" name="Clear Input" x="88" y="14" width="38" height="38">
+          <frame id="16:580" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:582" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="16:583" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="16:587" name="03 / Input Editor" x="0" y="128" width="1100" height="847">
+        <text id="16:588" name="Heading" x="36" y="28" width="163" height="24" />
+        <text id="16:589" name="Instructions" x="36" y="65" width="334" height="15" />
+        <text id="16:590" name="Field Label" x="36" y="115" width="101" height="13" />
+        <frame id="16:591" name="Multiline Base64 Field" x="36" y="147" width="1028" height="560">
+          <text id="16:592" name="Placeholder" x="22" y="22" width="962" height="16" />
+          <text id="16:593" name="Example Base64 1" x="22" y="79" width="962" height="15" />
+          <text id="16:594" name="Example Base64 2" x="22" y="108" width="962" height="15" />
+          <text id="16:595" name="Example Base64 3" x="22" y="137" width="962" height="15" />
+        </frame>
+        <text id="16:596" name="Accepted Formats" x="36" y="734" width="153" height="13" />
+        <frame id="16:597" name="Clear" x="746" y="720" width="92" height="38">
+          <text id="16:598" name="Label" x="0" y="10" width="92" height="15" />
+        </frame>
+        <frame id="16:599" name="Decode and Preview" x="852" y="720" width="212" height="38">
+          <text id="16:600" name="Label" x="0" y="10" width="212" height="15" />
+        </frame>
+      </frame>
+      <frame id="16:601" name="04 / Result Preview" x="1100" y="128" width="454" height="847">
+        <text id="16:602" name="Heading" x="28" y="30" width="122" height="21" />
+        <frame id="16:603" name="Image Frame / 3:4" x="42" y="100" width="370" height="494">
+          <frame id="16:604" name="Waiting Placeholder" x="131" y="178" width="108" height="108">
+            <frame id="16:605" name="Image Icon" x="35" y="35" width="38" height="38">
+              <frame id="16:606" name="Icon / focus" x="10" y="10" width="18" height="18" />
+            </frame>
+          </frame>
+        </frame>
+        <text id="16:610" name="Waiting Label" x="0" y="623" width="454" height="15" />
+        <text id="16:611" name="Detected Format" x="42" y="694" width="87" height="13" />
+        <text id="16:612" name="Detected Value" x="266" y="694" width="146" height="13" />
+        <rounded-rectangle id="16:613" name="Metadata Divider" x="42" y="720" width="370" height="1" />
+        <text id="16:614" name="Estimated Size" x="42" y="739" width="77" height="13" />
+        <text id="16:615" name="Size Value" x="266" y="739" width="146" height="13" />
+      </frame>
+      <frame id="16:616" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="16:617" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="16:618" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="16:619" name="Preview History / Clean Editable" x="17500" y="0" width="1554" height="1012">
+    <frame id="16:620" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="16:621" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="16:622" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="16:623" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="16:624" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="16:625" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="16:626" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="16:627" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="16:628" name="Search History" x="40" y="14" width="38" height="38">
+          <frame id="16:629" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:632" name="Open in Inspect" x="1378" y="14" width="38" height="38">
+          <frame id="16:633" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:637" name="Clear History" x="1426" y="14" width="38" height="38">
+          <frame id="16:638" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:640" name="History Information" x="1474" y="14" width="38" height="38">
+          <frame id="16:641" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="16:645" name="03 / History Grid" x="0" y="128" width="1554" height="847">
+        <text id="16:646" name="Section Title" x="32" y="26" width="57" height="23" />
+        <text id="16:647" name="Count" x="32" y="58" width="39" height="13" />
+        <frame id="16:648" name="Search Field" x="1196" y="24" width="322" height="40">
+          <frame id="16:649" name="Search Icon" x="4" y="1" width="38" height="38">
+            <frame id="16:650" name="Icon / search" x="10" y="10" width="18" height="18" />
+          </frame>
+          <text id="16:653" name="Placeholder" x="54" y="12" width="92" height="15" />
+        </frame>
+        <frame id="16:654" name="History / input.png" x="32" y="110" width="348" height="218">
+          <rounded-rectangle id="16:655" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="16:656" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="16:657" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="16:658" name="History / result-remove-bg.png" x="406" y="110" width="348" height="218">
+          <rounded-rectangle id="16:659" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="16:660" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="16:661" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="16:662" name="History / portrait.jpg" x="780" y="110" width="348" height="218">
+          <rounded-rectangle id="16:663" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="16:664" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="16:665" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="16:666" name="History / product.webp" x="1154" y="110" width="348" height="218">
+          <rounded-rectangle id="16:667" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="16:668" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="16:669" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="16:670" name="History / clip.mov" x="32" y="358" width="348" height="218">
+          <rounded-rectangle id="16:671" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="16:672" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="16:673" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="16:674" name="History / README.md" x="406" y="358" width="348" height="218">
+          <rounded-rectangle id="16:675" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="16:676" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="16:677" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="16:678" name="History / design.png" x="780" y="358" width="348" height="218">
+          <rounded-rectangle id="16:679" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="16:680" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="16:681" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="16:682" name="History / capture.jpg" x="1154" y="358" width="348" height="218">
+          <rounded-rectangle id="16:683" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="16:684" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="16:685" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <text id="16:686" name="Keyboard Hint" x="32" y="665" width="461" height="15" />
+      </frame>
+      <frame id="16:687" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="16:688" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="16:689" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="16:690" name="Preferences / Clean Editable" x="19250" y="0" width="1554" height="1012">
+    <frame id="16:691" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="16:692" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="16:693" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="16:694" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="16:695" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="16:696" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="16:697" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="16:698" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="16:699" name="General" x="40" y="14" width="38" height="38">
+          <frame id="16:700" name="Icon / settings" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:704" name="Appearance" x="88" y="14" width="38" height="38">
+          <frame id="16:705" name="Icon / grid" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:710" name="Privacy" x="1366" y="14" width="38" height="38">
+          <frame id="16:711" name="Icon / shield" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="16:714" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="16:715" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="16:719" name="03 / Settings Navigation" x="0" y="128" width="286" height="847">
+        <frame id="16:720" name="Tab / General" x="16" y="27" width="254" height="44">
+          <frame id="16:721" name="Icon / settings" x="13" y="13" width="18" height="18" />
+          <text id="16:725" name="Tab Label" x="43" y="13" width="46" height="15" />
+        </frame>
+        <frame id="16:726" name="Tab / Preview" x="16" y="85" width="254" height="44">
+          <frame id="16:727" name="Icon / focus" x="13" y="13" width="18" height="18" />
+          <text id="16:731" name="Tab Label" x="43" y="13" width="46" height="15" />
+        </frame>
+        <frame id="16:732" name="Tab / Widgets" x="16" y="143" width="254" height="44">
+          <frame id="16:733" name="Icon / grid" x="13" y="13" width="18" height="18" />
+          <text id="16:738" name="Tab Label" x="43" y="13" width="48" height="15" />
+        </frame>
+        <frame id="16:739" name="Tab / Privacy &amp; Permissions" x="16" y="201" width="254" height="44">
+          <frame id="16:740" name="Icon / shield" x="13" y="13" width="18" height="18" />
+          <text id="16:743" name="Tab Label" x="43" y="13" width="127" height="15" />
+        </frame>
+      </frame>
+      <frame id="16:744" name="04 / General Settings" x="286" y="128" width="1268" height="847">
+        <text id="16:745" name="Heading" x="80" y="51" width="83" height="27" />
+        <text id="16:746" name="Description" x="80" y="92" width="468" height="15" />
+        <text id="16:747" name="Startup Group" x="80" y="154" width="51" height="13" />
+        <text id="16:748" name="Setting / Launch Glance at login" x="80" y="192" width="142" height="16" />
+        <text id="16:749" name="Explanation" x="80" y="217" width="644" height="13" />
+        <frame id="16:750" name="Toggle / Launch Glance at login" x="758" y="199" width="38" height="21" />
+        <rounded-rectangle id="16:752" name="Row Divider" x="80" y="254" width="716" height="1" />
+        <text id="16:753" name="Setting / Remember window position" x="80" y="275" width="173" height="16" />
+        <text id="16:754" name="Explanation" x="80" y="300" width="644" height="13" />
+        <frame id="16:755" name="Toggle / Remember window position" x="758" y="282" width="38" height="21" />
+        <rounded-rectangle id="16:757" name="Row Divider" x="80" y="337" width="716" height="1" />
+        <text id="16:758" name="Language &amp; Appearance Group" x="80" y="372" width="150" height="13" />
+        <text id="16:759" name="Setting / Interface language" x="80" y="410" width="117" height="16" />
+        <text id="16:760" name="Explanation" x="80" y="435" width="644" height="13" />
+        <frame id="16:761" name="Selection / Interface language" x="661" y="411" width="135" height="32">
+          <text id="16:762" name="Value" x="12" y="9" width="108" height="13" />
+        </frame>
+        <rounded-rectangle id="16:763" name="Row Divider" x="80" y="472" width="716" height="1" />
+        <text id="16:764" name="Setting / Reduce motion" x="80" y="493" width="94" height="16" />
+        <text id="16:765" name="Explanation" x="80" y="518" width="644" height="13" />
+        <frame id="16:766" name="Toggle / Reduce motion" x="758" y="500" width="38" height="21" />
+        <rounded-rectangle id="16:768" name="Row Divider" x="80" y="555" width="716" height="1" />
+        <text id="16:769" name="Clipboard Group" x="80" y="590" width="63" height="13" />
+        <text id="16:770" name="Setting / Prefer copied images" x="80" y="628" width="132" height="16" />
+        <text id="16:771" name="Explanation" x="80" y="653" width="644" height="13" />
+        <frame id="16:772" name="Toggle / Prefer copied images" x="758" y="635" width="38" height="21" />
+        <rounded-rectangle id="16:774" name="Row Divider" x="80" y="690" width="716" height="1" />
+      </frame>
+      <frame id="16:775" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="16:776" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="16:777" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="16:778" name="Onboarding / Permissions / Clean Editable" x="21000" y="0" width="1554" height="1012">
+    <frame id="16:779" name="01 / Glance Window" x="487" y="181" width="580" height="650">
+      <frame id="16:780" name="Titlebar" x="0" y="0" width="580" height="44">
+        <ellipse id="16:781" name="Close" x="16" y="17" width="11" height="11" />
+        <ellipse id="16:782" name="Minimize" x="34" y="17" width="11" height="11" />
+        <ellipse id="16:783" name="Zoom" x="52" y="17" width="11" height="11" />
+        <text id="16:784" name="Window Title" x="0" y="13" width="580" height="15" />
+      </frame>
+      <frame id="16:785" name="02 / Permission Setup" x="0" y="44" width="580" height="606">
+        <frame id="16:786" name="Glance Mark" x="256" y="32" width="68" height="68">
+          <frame id="16:787" name="Product Icon" x="15" y="15" width="38" height="38">
+            <frame id="16:788" name="Icon / focus" x="10" y="10" width="18" height="18" />
+          </frame>
+        </frame>
+        <text id="16:792" name="Heading" x="0" y="125" width="580" height="24" />
+        <text id="16:793" name="Explanation" x="75" y="164" width="430" height="30" />
+        <frame id="16:794" name="Permission List" x="42" y="211" width="495" height="272">
+          <frame id="16:795" name="Permission / Accessibility" x="14" y="14" width="468" height="70">
+            <frame id="16:796" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="16:797" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="16:798" name="Permission" x="54" y="12" width="81" height="16" />
+            <text id="16:799" name="Description" x="54" y="37" width="137" height="13" />
+            <frame id="16:800" name="Status / Allowed" x="354" y="18" width="114" height="34">
+              <text id="16:801" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="16:802" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+          <frame id="16:803" name="Permission / Input Monitoring" x="14" y="84" width="468" height="70">
+            <frame id="16:804" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="16:805" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="16:806" name="Permission" x="54" y="12" width="105" height="16" />
+            <text id="16:807" name="Description" x="54" y="37" width="156" height="13" />
+            <frame id="16:808" name="Status / Open Settings" x="354" y="18" width="114" height="34">
+              <text id="16:809" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="16:810" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+          <frame id="16:811" name="Permission / Full Disk Access" x="14" y="164" width="468" height="70">
+            <frame id="16:812" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="16:813" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="16:814" name="Permission" x="54" y="12" width="102" height="16" />
+            <text id="16:815" name="Description" x="54" y="37" width="182" height="13" />
+            <frame id="16:816" name="Status / Optional" x="354" y="18" width="114" height="34">
+              <text id="16:817" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="16:818" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+        </frame>
+        <frame id="16:819" name="Continue" x="76" y="512" width="428" height="38">
+          <text id="16:820" name="Label" x="0" y="10" width="428" height="15" />
+        </frame>
+        <text id="16:821" name="Footnote" x="0" y="565" width="580" height="12" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="18:841" name="Widget Market / Install / Clean Editable" x="8750" y="0" width="1554" height="1012">
+    <text id="18:842" name="Review Heading" x="42" y="43" width="321" height="22" />
+    <text id="18:843" name="Review Note" x="42" y="75" width="423" height="13" />
+    <frame id="18:844" name="01 / Attached Market Catalog" x="337" y="196" width="380" height="620">
+      <rounded-rectangle id="18:845" name="Warm Glass Tint" x="0" y="0" width="380" height="620" />
+      <text id="18:846" name="Catalog Heading" x="22" y="20" width="150" height="25" />
+      <frame id="18:847" name="Close Market" x="294" y="16" width="38" height="38">
+        <frame id="18:848" name="Icon / close" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="18:850" name="Reload Catalog" x="334" y="16" width="38" height="38">
+        <frame id="18:851" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+      </frame>
+      <rounded-rectangle id="18:854" name="Header Divider" x="20" y="69" width="340" height="1" />
+      <frame id="18:855" name="Widget / Remove Background" x="16" y="84" width="348" height="132">
+        <frame id="18:856" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="18:857" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="18:858" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="18:859" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="18:860" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="18:861" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="18:862" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="18:863" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="18:864" name="Commands" x="14" y="103" width="218" height="12" />
+        <frame id="18:865" name="Installed / local registry" x="243" y="96" width="91" height="31">
+          <text id="18:866" name="Action Label" x="0" y="8" width="91" height="13" />
+        </frame>
+      </frame>
+      <frame id="18:867" name="Widget / 超分" x="16" y="226" width="348" height="132">
+        <frame id="18:868" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="18:869" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="18:870" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="18:871" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="18:872" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="18:873" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="18:874" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="18:875" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="18:876" name="Commands" x="14" y="103" width="234" height="12" />
+        <frame id="18:877" name="Install Widget" x="258" y="96" width="76" height="31">
+          <text id="18:878" name="Action Label" x="0" y="8" width="76" height="13" />
+        </frame>
+      </frame>
+      <frame id="18:879" name="Widget / RemoveBG 高级" x="16" y="368" width="348" height="132">
+        <frame id="18:880" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="18:881" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="18:882" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="18:883" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="18:884" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="18:885" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="18:886" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="18:887" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="18:888" name="Commands" x="14" y="103" width="234" height="12" />
+        <frame id="18:889" name="Install Widget" x="258" y="96" width="76" height="31">
+          <text id="18:890" name="Action Label" x="0" y="8" width="76" height="13" />
+        </frame>
+      </frame>
+      <text id="18:891" name="Catalog Footer" x="20" y="527" width="171" height="12" />
+      <text id="18:892" name="Offline Helper" x="20" y="552" width="338" height="13" />
+    </frame>
+    <frame id="18:893" name="02 / Selected Widget Detail Drawer" x="837" y="196" width="380" height="620">
+      <rounded-rectangle id="18:894" name="Warm Glass Tint" x="0" y="0" width="380" height="620" />
+      <frame id="18:895" name="Back to Catalog" x="20" y="17" width="38" height="38">
+        <frame id="18:896" name="Icon / back" x="10" y="10" width="18" height="18" />
+      </frame>
+      <text id="18:898" name="Detail Heading" x="74" y="26" width="90" height="16" />
+      <rounded-rectangle id="18:899" name="Detail Header Divider" x="20" y="69" width="340" height="1" />
+      <frame id="18:900" name="48px Widget Icon" x="22" y="93" width="48" height="48">
+        <text id="18:901" name="Icon Letter" x="0" y="14" width="48" height="18" />
+      </frame>
+      <text id="18:902" name="Widget Name" x="84" y="96" width="159" height="19" />
+      <text id="18:903" name="Version" x="84" y="123" width="122" height="13" />
+      <frame id="18:904" name="Cloud Badge" x="22" y="160" width="55" height="19">
+        <text id="18:905" name="Badge Label" x="0" y="4" width="55" height="11" />
+      </frame>
+      <frame id="18:906" name="Installed / local registry" x="269" y="154" width="91" height="31">
+        <text id="18:907" name="Action Label" x="0" y="8" width="91" height="13" />
+      </frame>
+      <rounded-rectangle id="18:908" name="Summary Divider" x="22" y="199" width="336" height="1" />
+      <text id="18:909" name="About Heading" x="22" y="219" width="36" height="12" />
+      <text id="18:910" name="Summary" x="22" y="243" width="334" height="30" />
+      <text id="18:911" name="Command Heading" x="22" y="312" width="56" height="12" />
+      <text id="18:912" name="Command" x="22" y="336" width="334" height="13" />
+      <text id="18:913" name="Privacy Heading" x="22" y="391" width="44" height="12" />
+      <text id="18:914" name="Privacy Notice" x="22" y="415" width="334" height="13" />
+      <rounded-rectangle id="18:915" name="Bottom Divider" x="22" y="517" width="336" height="1" />
+      <frame id="18:916" name="Uninstall / explicit action" x="22" y="538" width="336" height="38">
+        <text id="18:917" name="Uninstall Label" x="0" y="12" width="336" height="13" />
+      </frame>
+    </frame>
+  </frame>
+</canvas>
+
+IMPORTANT: After you call this tool, you MUST call get_design_context if trying to implement the design, since this tool only returns metadata. If you do not call get_design_context, the agent will not be able to implement the design.

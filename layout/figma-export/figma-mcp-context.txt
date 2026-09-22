@@ -1,0 +1,219 @@
+const imgClose = "http://localhost:3845/assets/c70b77b184ff07a21c9a5422fd26ad32ea67bb5f.svg";
+const imgMinimize = "http://localhost:3845/assets/2d5091b247d68e1ecc339888fd7fc1372b927eec.svg";
+const imgZoom = "http://localhost:3845/assets/3a71a8016bab58414d9e4b7f7b195e4fc3498869.svg";
+const imgTaskStatus = "http://localhost:3845/assets/955a935435f6b67f418ddc27c0a7f7b1f48b2ab2.svg";
+const imgSpinner = "http://localhost:3845/assets/95f04e306965414a5ff55a65144a8a04b2238bc9.svg";
+const imgRunningDot = "http://localhost:3845/assets/90402bdfd3c2512d86ff6b250a0bc6eeff335195.svg";
+
+export default function ImageInspectCleanEditable() {
+  return (
+    <div className="bg-[#06070a] border border-[#34353a] border-solid overflow-clip relative rounded-[16px] size-full" data-node-id="2:359" data-name="Image Inspect / Clean Editable">
+      <div className="absolute h-[1012px] left-[-1px] overflow-clip top-[-1px] w-[1554px]" data-node-id="2:360" data-name="Editable Overlay / toggle visibility">
+        <div className="absolute bg-[#17181d] h-[58px] left-0 overflow-clip top-0 w-[1554px]" data-node-id="2:361" data-name="01 / Titlebar">
+          <div className="absolute left-[24px] size-[12px] top-[23px]" data-node-id="2:362" data-name="Close">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgClose} />
+          </div>
+          <div className="absolute left-[44px] size-[12px] top-[23px]" data-node-id="2:363" data-name="Minimize">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgMinimize} />
+          </div>
+          <div className="absolute left-[64px] size-[12px] top-[23px]" data-node-id="2:364" data-name="Zoom">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgZoom} />
+          </div>
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[777px] not-italic text-[#f3eee8] text-[15px] text-center top-[14px] w-[1554px]" data-node-id="2:365">
+            Image Inspect
+          </p>
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[777px] not-italic text-[#726d69] text-[11px] text-center top-[38px] w-[1554px]" data-node-id="2:366">
+            alpine-lake.jpg
+          </p>
+        </div>
+        <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[70px] left-0 overflow-clip top-[58px] w-[1554px]" data-node-id="2:367" data-name="02 / Toolbar">
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[23px] overflow-clip rounded-[8px] top-[13px] w-[54px]" data-node-id="2:368" data-name="Back">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[26px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[54px]" data-node-id="2:369">
+              ‹
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[171px] overflow-clip rounded-[8px] top-[13px] w-[88px]" data-node-id="2:370" data-name="Rotate">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[43px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[88px]" data-node-id="2:371">
+              Rotate
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[285px] overflow-clip rounded-[8px] top-[13px] w-[128px]" data-node-id="2:372" data-name="Flip">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[63px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[128px] whitespace-pre-wrap" data-node-id="2:373">{`A  Flip ▾`}</p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[rgba(232,168,124,0.58)] border-solid h-[38px] left-[577px] overflow-clip rounded-[8px] top-[13px] w-[96px]" data-node-id="2:374" data-name="Focus">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[47px] not-italic text-[#e8a87c] text-[12px] text-center top-[9px] w-[96px]" data-node-id="2:375">
+              Focus
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[681px] overflow-clip rounded-[8px] top-[13px] w-[112px]" data-node-id="2:376" data-name="Compare">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[55px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[112px]" data-node-id="2:377">
+              Compare
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[801px] overflow-clip rounded-[8px] top-[13px] w-[94px]" data-node-id="2:378" data-name="Slider">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[46px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[94px]" data-node-id="2:379">
+              Slider
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[963px] overflow-clip rounded-[8px] top-[13px] w-[52px]" data-node-id="2:380" data-name="Zoom Out">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[25px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[52px]" data-node-id="2:381">
+              −
+            </p>
+          </div>
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[1055px] not-italic text-[#aaa4a0] text-[12px] text-center top-[23px] w-[76px]" data-node-id="2:382">
+            100%
+          </p>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[1091px] overflow-clip rounded-[8px] top-[13px] w-[52px]" data-node-id="2:383" data-name="Zoom In">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[25px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[52px]" data-node-id="2:384">
+              +
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[1151px] overflow-clip rounded-[8px] top-[13px] w-[76px]" data-node-id="2:385" data-name="Fit">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[37px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[76px]" data-node-id="2:386">
+              Fit
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[1277px] overflow-clip rounded-[8px] top-[13px] w-[112px]" data-node-id="2:387" data-name="Tasks">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[55px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[112px] whitespace-pre-wrap" data-node-id="2:388">{`•  Tasks`}</p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[1399px] overflow-clip rounded-[8px] top-[13px] w-[126px]" data-node-id="2:389" data-name="Widget">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[62px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[126px]" data-node-id="2:390">
+              Widget
+            </p>
+          </div>
+        </div>
+        <div className="absolute bg-[#090a0d] h-[808px] left-0 overflow-clip top-[128px] w-[1120px]" data-node-id="2:391" data-name="03 / Canvas">
+          <div className="absolute border border-[#34353a] border-solid h-[792px] left-[16px] rounded-[4px] top-0 w-[1088px]" data-node-id="2:392" style={{ backgroundImage: "linear-gradient(114.8846695710144deg, rgb(22, 33, 44) 0%, rgb(138, 99, 84) 43.689%, rgb(32, 54, 45) 97.087%)" }} data-name="Image / alpine-lake.jpg" />
+          <div className="absolute bg-[#07080a] h-[266px] left-[16px] opacity-34 top-[526px] w-[1088px]" data-node-id="2:393" data-name="Image Shade" />
+          <div className="absolute h-[266px] left-[16px] overflow-clip top-[526px] w-[1088px]" data-node-id="2:425" data-name="05 / Task and Filmstrip Overlay">
+            <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[58px] not-italic text-[#f3eee8] text-[13px] top-[14px] whitespace-pre" data-node-id="2:426">{`Remove Background  •  Processing`}</p>
+            <div className="absolute left-[26px] size-[10px] top-[17px]" data-node-id="2:427" data-name="Task Status">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgTaskStatus} />
+            </div>
+            <div className="absolute bg-[#1b1d20] border border-[#e8a87c] border-solid h-[76px] left-[314px] overflow-clip rounded-[12px] top-[150px] w-[460px]" data-node-id="2:428" data-name="Processing Toast">
+              <div className="absolute left-[19px] size-[30px] top-[21px]" data-node-id="2:429" data-name="Spinner">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSpinner} />
+              </div>
+              <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[65px] not-italic text-[#f3eee8] text-[14px] top-[17px] whitespace-nowrap" data-node-id="2:430">
+                Processing...
+              </p>
+              <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[65px] not-italic text-[#aaa4a0] text-[11px] top-[41px] whitespace-nowrap" data-node-id="2:431">
+                The source image remains available while the task runs.
+              </p>
+            </div>
+            <div className="absolute bg-[#2c2d31] border-2 border-[#e8a87c] border-solid left-[54px] overflow-clip rounded-[9px] size-[96px] top-[40px]" data-node-id="2:432" data-name="Source Thumbnail">
+              <div className="absolute left-[3px] rounded-[6px] size-[86px] top-[3px]" data-node-id="2:433" style={{ backgroundImage: "linear-gradient(111.25050482045205deg, rgb(36, 49, 59) 0%, rgb(138, 95, 78) 52%, rgb(38, 53, 45) 100%)" }} data-name="Preview" />
+            </div>
+            <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[160px] overflow-clip rounded-[9px] size-[96px] top-[40px]" data-node-id="2:434" data-name="Result Thumbnail">
+              <div className="absolute left-[4px] rounded-[6px] size-[86px] top-[4px]" data-node-id="2:435" style={{ backgroundImage: "linear-gradient(111.25050482045205deg, rgb(36, 49, 59) 0%, rgb(138, 95, 78) 52%, rgb(38, 53, 45) 100%)" }} data-name="Preview" />
+              <div className="absolute bg-[#102018] h-[20px] left-[49px] rounded-[5px] top-[67px] w-[40px]" data-node-id="2:436" data-name="Tag" />
+              <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[69px] not-italic text-[#8fd0af] text-[9px] text-center top-[70px] w-[38px]" data-node-id="2:437">
+                NEW
+              </p>
+            </div>
+            <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid left-[266px] overflow-clip rounded-[9px] size-[96px] top-[40px]" data-node-id="2:438" data-name="Thumbnail 3">
+              <div className="absolute left-[4px] rounded-[6px] size-[86px] top-[4px]" data-node-id="2:439" style={{ backgroundImage: "linear-gradient(111.25050482045205deg, rgb(36, 49, 59) 0%, rgb(138, 95, 78) 52%, rgb(38, 53, 45) 100%)" }} data-name="Preview" />
+            </div>
+          </div>
+        </div>
+        <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[808px] left-[1120px] overflow-clip top-[128px] w-[434px]" data-node-id="2:394" data-name="04 / Inspector">
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[35px] not-italic text-[#f3eee8] text-[17px] top-[23px] whitespace-nowrap" data-node-id="2:395">
+            Image Information
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[83px] whitespace-nowrap" data-node-id="2:396">
+            Name
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[83px] w-[220px]" data-node-id="2:397">
+            alpine-lake.jpg
+          </p>
+          <div className="absolute bg-[#34353a] h-px left-[35px] top-[113px] w-[362px]" data-node-id="2:398" data-name="Divider" />
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[121px] whitespace-nowrap" data-node-id="2:399">
+            Dimensions
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[121px] w-[220px]" data-node-id="2:400">
+            3840 × 2560
+          </p>
+          <div className="absolute bg-[#34353a] h-px left-[35px] top-[151px] w-[362px]" data-node-id="2:401" data-name="Divider" />
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[159px] whitespace-nowrap" data-node-id="2:402">
+            Format
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[159px] w-[220px]" data-node-id="2:403">
+            JPEG
+          </p>
+          <div className="absolute bg-[#34353a] h-px left-[35px] top-[189px] w-[362px]" data-node-id="2:404" data-name="Divider" />
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[197px] whitespace-nowrap" data-node-id="2:405">
+            File size
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[197px] w-[220px]" data-node-id="2:406">
+            6.8 MB
+          </p>
+          <div className="absolute bg-[#34353a] h-px left-[35px] top-[227px] w-[362px]" data-node-id="2:407" data-name="Divider" />
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[235px] whitespace-nowrap" data-node-id="2:408">
+            Color profile
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[235px] w-[220px]" data-node-id="2:409">
+            sRGB IEC61966-2.1
+          </p>
+          <div className="absolute bg-[#34353a] h-px left-[35px] top-[265px] w-[362px]" data-node-id="2:410" data-name="Divider" />
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[273px] whitespace-nowrap" data-node-id="2:411">
+            Alpha
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[273px] w-[220px]" data-node-id="2:412">
+            No
+          </p>
+          <div className="absolute bg-[#34353a] h-px left-[35px] top-[303px] w-[362px]" data-node-id="2:413" data-name="Divider" />
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[35px] not-italic text-[#726d69] text-[13px] top-[311px] whitespace-nowrap" data-node-id="2:414">
+            Created
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[173px] not-italic text-[#f3eee8] text-[13px] top-[311px] w-[220px]" data-node-id="2:415">
+            Mar 14, 2024 at 9:41 AM
+          </p>
+          <div className="absolute bg-[#34353a] h-px left-[35px] top-[341px] w-[362px]" data-node-id="2:416" data-name="Divider" />
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[35px] not-italic text-[#726d69] text-[11px] top-[385px] whitespace-nowrap" data-node-id="2:417">
+            QUICK ACTIONS
+          </p>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[35px] overflow-clip rounded-[8px] top-[423px] w-[362px]" data-node-id="2:418" data-name="Remove Background">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[180px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[362px]" data-node-id="2:419">
+              Remove Background
+            </p>
+          </div>
+          <div className="absolute bg-[#2c2d31] border border-[#34353a] border-solid h-[38px] left-[35px] overflow-clip rounded-[8px] top-[487px] w-[362px]" data-node-id="2:420" data-name="Upscale 2x">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[180px] not-italic text-[#f3eee8] text-[12px] text-center top-[9px] w-[362px]" data-node-id="2:421">
+              Upscale 2x
+            </p>
+          </div>
+          <div className="[word-break:break-word] absolute bg-[#2c2d31] border border-[#34353a] border-solid leading-[normal] left-[281px] not-italic overflow-clip rounded-[9px] size-[112px] text-center top-[649px]" data-node-id="2:422" data-name="Add Image">
+            <p className="-translate-x-1/2 absolute font-['Inter:Regular'] font-normal left-[55px] text-[#f3eee8] text-[34px] top-[19px] w-[112px]" data-node-id="2:423">
+              +
+            </p>
+            <p className="-translate-x-1/2 absolute font-['Inter:Medium'] font-medium left-[55px] text-[#aaa4a0] text-[12px] top-[69px] w-[112px]" data-node-id="2:424">
+              Add
+            </p>
+          </div>
+        </div>
+        <div className="absolute bg-[#1a1b20] border border-[#34353a] border-solid h-[76px] left-0 overflow-clip top-[936px] w-[1554px]" data-node-id="2:440" data-name="06 / Statusbar">
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[35px] not-italic text-[#aaa4a0] text-[12px] top-[26px] whitespace-pre" data-node-id="2:441">{`3840 × 2560  •  JPEG  •  6.8 MB`}</p>
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[776px] not-italic text-[#aaa4a0] text-[12px] text-center top-[26px] w-[1554px] whitespace-pre-wrap" data-node-id="2:442">{`Scroll to zoom  •  Drag to pan`}</p>
+          <div className="absolute left-[1393px] size-[8px] top-[30px]" data-node-id="2:443" data-name="Running Dot">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgRunningDot} />
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[1413px] not-italic text-[#e8a87c] text-[12px] top-[26px] whitespace-nowrap" data-node-id="2:444">
+            1 task running
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+
+Image assets are stored on a localhost server. Clients can use these images directly in code as a way to view the image assets the same way they would other remote servers. Images and SVGs will be stored as constants, e.g. const image = 'http://localhost:3845/assets/10c13ac1a228a365cb98a0064b1d5afbc84887b2.png' These constants will be used in the code as the source for the image, e.g. <img src={image} /> This is true for both images and SVGs, so you can use the same approach for both types of assets.

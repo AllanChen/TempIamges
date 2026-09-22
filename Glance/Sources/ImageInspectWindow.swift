@@ -43,9 +43,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private var session: ImageInspectSession?
     private var loadGeneration = UUID()
 
-    private let focusButton = InspectToolbarButton(symbol: "photo", tooltip: "Focus".localized)
-    private let sideBySideButton = InspectToolbarButton(symbol: "rectangle.split.2x1", tooltip: "Side by side".localized)
-    private let sliderButton = InspectToolbarButton(symbol: "slider.horizontal.3", tooltip: "Slider".localized)
     private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Image information".localized)
     private let revealButton = InspectToolbarButton(symbol: "folder", tooltip: "Reveal in Finder".localized)
     private let openURLButton = InspectToolbarButton(symbol: "globe", tooltip: "Open image URL".localized)
@@ -54,7 +51,44 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let widgetTasksButton = InspectToolbarButton(symbol: "tray.full", tooltip: "Tasks".localized)
     private let taskBadge = NSTextField(labelWithString: "")
     private let pinButton = InspectToolbarButton(symbol: "pin", tooltip: "Pin on Top".localized)
+    private let flipIconButton = InspectToolbarButton(symbol: "arrow.left.and.right", tooltip: "Flip".localized)
+    private let focusIconButton = InspectToolbarButton(symbol: "photo", tooltip: "Focus".localized)
+    private let compareIconButton = InspectToolbarButton(symbol: "rectangle.split.2x1", tooltip: "Compare".localized)
+    private let sliderIconButton = InspectToolbarButton(symbol: "slider.horizontal.3", tooltip: "Slider".localized)
+    private let fitIconButton = InspectToolbarButton(symbol: "arrow.up.left.and.arrow.down.right", tooltip: "Fit".localized)
     private var isPinned = false
+    // Figma workbench chrome: titlebar / toolbar / canvas+overlays / inspector / statusbar.
+    private lazy var backButton = PanelStyle.makeQuietButton(title: "‹", target: self, action: #selector(backTapped))
+    private lazy var rotateButton = PanelStyle.makeQuietButton(title: "Rotate".localized, target: self, action: #selector(directionTapped))
+    private lazy var flipButton = PanelStyle.makeQuietButton(title: "A  Flip ▾", target: self, action: #selector(flipMenuTapped))
+    private lazy var tasksTextButton = PanelStyle.makeQuietButton(title: "•  Tasks".localized, target: self, action: #selector(widgetTasksTapped))
+    private lazy var widgetTextButton = PanelStyle.makeQuietButton(title: "Widget".localized, target: self, action: #selector(widgetMarketTapped))
+    private let directionButton = InspectToolbarButton(symbol: "arrow.clockwise", tooltip: "Direction".localized)
+    private let zoomOutButton = InspectToolbarButton(symbol: "minus.magnifyingglass", tooltip: "Zoom Out".localized)
+    private let zoomInButton = InspectToolbarButton(symbol: "plus.magnifyingglass", tooltip: "Zoom In".localized)
+    private let zoomLabel = NSTextField(labelWithString: "100%")
+    private lazy var fitButton = PanelStyle.makeQuietButton(title: "Fit".localized, target: self, action: #selector(fitToWindowTapped))
+    private lazy var runWidgetButton = PanelStyle.makePrimaryButton(title: "", target: self, action: #selector(runDefaultWidgetTapped))
+    private let titlebar = FigmaInspectTitlebar()
+    private let windowTitleLabel = NSTextField(labelWithString: "")
+    private let windowFilenameLabel = NSTextField(labelWithString: "")
+    private lazy var closeTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTrafficTapped))
+    private lazy var minimizeTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTrafficTapped))
+    private lazy var zoomTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTrafficTapped))
+    /// 48pt solid-chrome toolbar (spec `--chrome`), replaces the frosted
+    /// floating icon bar.
+    private let toolbarBar = NSView()
+    private let modeSwitcher = CanvasModeSwitcher()
+    private let statusbar = NSView()
+    private let statusLeftLabel = NSTextField(labelWithString: "")
+    private let statusCenterLabel = NSTextField(labelWithString: "Scroll to zoom  •  Drag to pan")
+    private let statusDot = PanelStyle.makeStatusDot(color: PanelStyle.accent)
+    private let statusRightLabel = NSTextField(labelWithString: "")
+    private let taskSummaryDot = PanelStyle.makeStatusDot(color: PanelStyle.accent)
+    private let taskSummaryLabel = NSTextField(labelWithString: "")
+    private let taskToast = TaskToastView()
+    private let taskOverlayShade = InspectNonHitTestingView()
+    private let inspectorContainer = NSView()
     /// Themed action menu panel (frosted dark, warm-cue selection); rebuilt
     /// per presentation so enabled states and titles are always fresh.
     private var actionsPanel: ActionMenuPanel?
@@ -70,30 +104,20 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let filePlaceholder = FilePlaceholderView()
     private var fileContentGeneration = UUID()
     private let filmstrip = ImageFilmstripView()
-    private let infoPanel = ImageDifferencePanel()
-    private let identityBar = InspectIdentityBar()
-    private let identityNameLabel = NSTextField(labelWithString: "")
-    private let identityMetaLabel = NSTextField(labelWithString: "")
-    private let toolbarBar = InspectIdentityBar()
-    private var toolbarHideWorkItem: DispatchWorkItem?
+    private let infoPanel = FigmaImageInspectorView()
     private var isClosingProgrammatically = false
-    private let toolbarHeight: CGFloat = 44
-    private var imageHoverFrame = NSRect.zero
-    /// Separate window hosting the info panel so the user can move it freely.
-    /// It is attached as a CHILD window (not floating), so it stays above the
-    /// main window but is covered together with it by other windows.
-    private lazy var infoWindow = ImageInfoPanelWindow(panel: infoPanel)
+    /// In-window right inspector (280pt, collapsible) — V2 spec replaces the
+    /// separate floating info window.
     private var infoVisible = false
-    /// Slide-out OCR result panel — a child window like the info panel.
+    /// Slide-out OCR result panel — a child window.
     private lazy var ocrWindow = OCRResultWindow()
     private var ocrVisible = false
     private var ocrGeneration = UUID()
     private var handledWidgetTaskIDs = Set<UUID>()
-    private let identityBarHeight: CGFloat = 54
 
     init(imageLoader: ImageLoader) {
         self.imageLoader = imageLoader
-        let initialFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 1040, height: 760))
+        let initialFrame = Self.initialDesignFrame()
         super.init(contentRect: initialFrame,
                    styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                    backing: .buffered, defer: false)
@@ -105,18 +129,38 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // those layers, which appears as a stutter on zoom in/out.
         animationBehavior = .none
         appearance = NSAppearance(named: .darkAqua)
-        backgroundColor = PanelStyle.imageCanvas
-        minSize = NSSize(width: 640, height: 440)
+        backgroundColor = PanelStyle.inspectBackground
+        minSize = NSSize(width: 900, height: 586)
+        contentAspectRatio = Self.designSize
+        isMovableByWindowBackground = true
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         acceptsMouseMovedEvents = true
         delegate = self
         buildUI()
+        standardWindowButton(.closeButton)?.isHidden = true
+        standardWindowButton(.miniaturizeButton)?.isHidden = true
+        standardWindowButton(.zoomButton)?.isHidden = true
         handledWidgetTaskIDs = Set(WidgetTaskManager.shared.records.filter { $0.phase == .completed }.map(\.id))
         NotificationCenter.default.addObserver(self, selector: #selector(localizationDidChange),
                                                name: .languageDidChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(widgetTasksDidChange),
                                                name: WidgetTaskManager.didChange, object: nil)
+    }
+
+    private static let designSize = NSSize(width: 1554, height: 1012)
+
+    private static func initialDesignFrame() -> NSRect {
+        let location = NSEvent.mouseLocation
+        guard let screen = ScreenManager.shared.screenForMouseLocation(location) ?? NSScreen.main else {
+            return NSRect(origin: location, size: designSize)
+        }
+        let visible = screen.visibleFrame
+        let scale = min(1, visible.width / designSize.width, visible.height / designSize.height)
+        return ScreenManager.shared.centerFrame(
+            for: NSSize(width: designSize.width * scale, height: designSize.height * scale),
+            on: screen
+        )
     }
 
     deinit {
@@ -133,23 +177,18 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session = ImageInspectSession(infos: infos, images: images, focusedIndex: focusedIndex,
                                       mode: preferredMode)
         Logger.info("ImageInspectWindow: opened \(infos.count) item(s) in \(session?.mode == .compare ? "compare" : "focus") mode")
-        // The 01 workbench treats image information as a persistent right-side
-        // surface. Open it with the inspect window so the first frame already
-        // matches the approved layout instead of hiding the metadata behind a
-        // second click.
-        if !infoVisible {
-            infoVisible = true
-            positionInfoWindowBesideMain()
-            addChildWindow(infoWindow, ordered: .above)
-        }
-        toolbarHideWorkItem?.cancel()
-        toolbarHideWorkItem = nil
+        // Image-first contract: open with the largest possible canvas. Metadata
+        // is intentionally opt-in through the toolbar info button or Command-I.
+        infoVisible = false
+        infoButton.isActive = false
         // Chrome stays available while inspecting; it no longer depends on
         // cursor hover to remain visible.
+        titlebar.alphaValue = 1
+        titlebar.isHidden = false
         toolbarBar.alphaValue = 1
         toolbarBar.isHidden = false
-        identityBar.alphaValue = 1
-        identityBar.isHidden = false
+        statusbar.alphaValue = 1
+        statusbar.isHidden = false
         filmstrip.alphaValue = 1
         filmstrip.isHidden = infos.count < 2
         loadGeneration = UUID()
@@ -160,14 +199,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        toolbarHideWorkItem?.cancel()
         actionsPanel?.dismissChain()
         actionsPanel = nil
         removeChildWindow(toastWindow)
         toastWindow.orderOut(nil)
-        removeChildWindow(infoWindow)
-        infoWindow.orderOut(nil)
-        infoVisible = false
         removeChildWindow(ocrWindow)
         ocrWindow.orderOut(nil)
         ocrVisible = false
@@ -275,7 +310,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
            session.mode == .compare,
            session.comparisonStyle == .sideBySide {
             let point = canvasContainer.convert(event.locationInWindow, from: nil)
-            let overlays = [toolbarBar, identityBar, filmstrip]
+            let overlays: [NSView] = [titlebar, toolbarBar, filmstrip, statusbar,
+                                      inspectorContainer, modeSwitcher, taskToast,
+                                      taskSummaryLabel, taskSummaryDot]
             let hitsVisibleOverlay = overlays.contains { view in
                 !view.isHidden && view.alphaValue >= 0.05 && view.frame.contains(point)
             }
@@ -322,54 +359,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         infoPanel.highlight(index: hovered)
     }
 
-    private func showToolbar() {
-        toolbarHideWorkItem?.cancel()
-        toolbarHideWorkItem = nil
-        if !toolbarBar.isHidden, toolbarBar.alphaValue > 0.99 { return }
-        toolbarBar.isHidden = false
-        identityBar.isHidden = false
-        filmstrip.isHidden = !showsFilmstrip
-        [primaryViewport, secondaryViewport].forEach {
-            $0.setActiveIndicatorVisible(true, animated: true, duration: 0.22)
-        }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.22
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            toolbarBar.animator().alphaValue = 1
-            identityBar.animator().alphaValue = 1
-            if showsFilmstrip { filmstrip.animator().alphaValue = 1 }
-        }
-    }
-
-    private func hideToolbar() {
-        if (toolbarBar.isHidden && toolbarHideWorkItem == nil)
-            || (toolbarBar.alphaValue < 0.01 && toolbarHideWorkItem == nil) {
-            return
-        }
-        toolbarHideWorkItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            self.toolbarHideWorkItem = nil
-            [self.primaryViewport, self.secondaryViewport].forEach {
-                $0.setActiveIndicatorVisible(false, animated: true, duration: 0.2)
-            }
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.2
-                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                self.toolbarBar.animator().alphaValue = 0
-                self.identityBar.animator().alphaValue = 0
-                self.filmstrip.animator().alphaValue = 0
-            }, completionHandler: { [weak self] in
-                guard let self, self.toolbarBar.alphaValue < 0.05 else { return }
-                self.toolbarBar.isHidden = true
-                self.identityBar.isHidden = true
-                self.filmstrip.isHidden = true
-            })
-        }
-        toolbarHideWorkItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: item)
-    }
-
     private var activeViewports: [InspectImageViewport] {
         guard let session else { return [] }
         if session.mode == .compare, session.comparisonStyle == .sideBySide {
@@ -386,7 +375,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         contentView = canvasContainer
         let root = canvasContainer
         root.wantsLayer = true
-        root.layer?.backgroundColor = PanelStyle.imageCanvas.cgColor
+        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
+        root.layer?.cornerRadius = 16
+        root.layer?.borderWidth = 1
+        root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        root.layer?.masksToBounds = true
 
         // Image Inspect is the general mixed-content window: accept any file
         // or URL, then classify it after drop. Images stay here; videos route
@@ -408,29 +401,68 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
         fileWebView.isHidden = true
         filePlaceholder.isHidden = true
-        primaryViewport.onViewportChange = { [weak self] state in self?.syncViewport(state, source: self?.primaryViewport) }
-        secondaryViewport.onViewportChange = { [weak self] state in self?.syncViewport(state, source: self?.secondaryViewport) }
+        primaryViewport.onViewportChange = { [weak self] state in
+            self?.syncViewport(state, source: self?.primaryViewport)
+            self?.updateZoomLabel()
+        }
+        secondaryViewport.onViewportChange = { [weak self] state in
+            self?.syncViewport(state, source: self?.secondaryViewport)
+            self?.updateZoomLabel()
+        }
+        sliderViewport.viewport.onViewportChange = { [weak self] _ in self?.updateZoomLabel() }
         filmstrip.onSelect = { [weak self] index in self?.focus(index: index) }
         filmstrip.onCompare = { [weak self] index in self?.compare(focusedWith: index) }
+        filmstrip.onAdd = { [weak self] in self?.presentAddImagesPanel() }
         canvasContainer.addSubview(filmstrip)
 
-        configureIdentityLabel(identityNameLabel, font: PanelStyle.headline, color: PanelStyle.textPrimary)
-        configureIdentityLabel(identityMetaLabel, font: PanelStyle.caption, color: PanelStyle.textSecondary)
-        for label in [identityNameLabel, identityMetaLabel] {
-            identityBar.addSubview(label)
-        }
-        identityBar.alphaValue = 1
-        identityBar.isHidden = false
-        canvasContainer.addSubview(identityBar, positioned: .above, relativeTo: nil)
+        // MARK: Titlebar (44pt) — drag surface, centered title, inspector toggle.
+        windowTitleLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
+        windowTitleLabel.textColor = PanelStyle.textPrimary
+        windowTitleLabel.alignment = .center
+        windowTitleLabel.lineBreakMode = .byTruncatingTail
+        windowTitleLabel.stringValue = "Image Inspect".localized
+        titlebar.addSubview(windowTitleLabel)
+        windowFilenameLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        windowFilenameLabel.textColor = PanelStyle.textTertiary
+        windowFilenameLabel.alignment = .center
+        windowFilenameLabel.lineBreakMode = .byTruncatingMiddle
+        titlebar.addSubview(windowFilenameLabel)
+        titlebar.addSubview(closeTrafficButton)
+        titlebar.addSubview(minimizeTrafficButton)
+        titlebar.addSubview(zoomTrafficButton)
+        canvasContainer.addSubview(titlebar, positioned: .above, relativeTo: nil)
 
-        focusButton.target = self
-        focusButton.action = #selector(focusModeTapped)
-        sideBySideButton.target = self
-        sideBySideButton.action = #selector(sideBySideTapped)
-        sliderButton.target = self
-        sliderButton.action = #selector(sliderTapped)
+        // MARK: Toolbar (48pt) — solid chrome, three groups.
+        toolbarBar.wantsLayer = true
+        toolbarBar.layer?.backgroundColor = PanelStyle.inspectToolbar.cgColor
+        toolbarBar.layer?.borderWidth = 1
+        toolbarBar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+
+        directionButton.target = self
+        directionButton.action = #selector(directionTapped)
+        flipIconButton.target = self
+        flipIconButton.action = #selector(flipMenuTapped)
+        focusIconButton.target = self
+        focusIconButton.action = #selector(focusModeTapped)
+        compareIconButton.target = self
+        compareIconButton.action = #selector(sideBySideTapped)
+        sliderIconButton.target = self
+        sliderIconButton.action = #selector(sliderTapped)
+        fitIconButton.target = self
+        fitIconButton.action = #selector(fitToWindowTapped)
         infoButton.target = self
         infoButton.action = #selector(infoTapped)
+        zoomOutButton.target = self
+        zoomOutButton.action = #selector(zoomOutTapped)
+        zoomInButton.target = self
+        zoomInButton.action = #selector(zoomInTapped)
+        zoomOutButton.target = self
+        zoomOutButton.action = #selector(zoomOutTapped)
+        zoomInButton.target = self
+        zoomInButton.action = #selector(zoomInTapped)
+        zoomLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        zoomLabel.textColor = PanelStyle.textSecondary
+        zoomLabel.alignment = .center
         revealButton.target = self
         revealButton.action = #selector(revealInFinderTapped)
         openURLButton.target = self
@@ -444,18 +476,85 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         pinButton.target = self
         pinButton.action = #selector(pinTapped)
         pinButton.isActive = isPinned
-        for button in [focusButton, sideBySideButton, sliderButton, infoButton,
-                       revealButton, openURLButton, actionsButton, widgetMarketButton, widgetTasksButton] {
-            button.autoresizingMask = [.minXMargin]
-            toolbarBar.addSubview(button)
+        for view in [directionButton, flipIconButton, focusIconButton,
+                     compareIconButton, sliderIconButton, fitIconButton,
+                     zoomOutButton, zoomInButton,
+                     widgetTasksButton, widgetMarketButton, infoButton] {
+            toolbarBar.addSubview(view)
+        }
+        for button in [directionButton, flipIconButton, focusIconButton,
+                       compareIconButton, sliderIconButton, fitIconButton,
+                       zoomOutButton, zoomInButton,
+                       widgetTasksButton, widgetMarketButton, infoButton] {
+            button.usesFigmaStyle = true
+            button.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
+            button.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+            button.layer?.borderWidth = 1
+            button.layer?.cornerRadius = 8
         }
         taskBadge.wantsLayer = true
-        taskBadge.layer?.backgroundColor = PanelStyle.failure.cgColor
-        taskBadge.layer?.cornerRadius = 5
+        taskBadge.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
+        taskBadge.layer?.cornerRadius = 4
         taskBadge.isHidden = WidgetTaskManager.shared.activeCount == 0
         toolbarBar.addSubview(taskBadge)
-        pinButton.autoresizingMask = [.minXMargin]
-        toolbarBar.addSubview(pinButton)
+        toolbarBar.alphaValue = 1
+        toolbarBar.isHidden = false
+        canvasContainer.addSubview(toolbarBar, positioned: .above, relativeTo: nil)
+
+        // MARK: Inspector (280pt, collapsible) — hosts the info panel in-window.
+        inspectorContainer.wantsLayer = true
+        inspectorContainer.layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
+        inspectorContainer.layer?.borderWidth = 1
+        inspectorContainer.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        infoPanel.autoresizingMask = [.width, .height]
+        infoPanel.onRunDefaultWidget = { [weak self] in self?.runDefaultWidgetTapped() }
+        infoPanel.onUpscale = { [weak self] in self?.runUpscaleWidget() }
+        infoPanel.onAdd = { [weak self] in self?.presentAddImagesPanel() }
+        inspectorContainer.addSubview(infoPanel)
+        inspectorContainer.isHidden = !infoVisible
+        canvasContainer.addSubview(inspectorContainer, positioned: .above, relativeTo: nil)
+
+        // MARK: Statusbar (26pt) — file summary left, task polling right.
+        statusbar.wantsLayer = true
+        statusbar.layer?.backgroundColor = PanelStyle.inspectStatus.cgColor
+        statusbar.layer?.borderWidth = 1
+        statusbar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        configureIdentityLabel(statusLeftLabel, font: PanelStyle.inspectFont(ofSize: 12), color: PanelStyle.textSecondary)
+        configureIdentityLabel(statusCenterLabel, font: PanelStyle.inspectFont(ofSize: 12), color: PanelStyle.textSecondary)
+        configureIdentityLabel(statusRightLabel, font: PanelStyle.inspectFont(ofSize: 12, weight: .medium), color: PanelStyle.accent)
+        statusCenterLabel.alignment = .center
+        statusRightLabel.alignment = .left
+        statusbar.addSubview(statusLeftLabel)
+        statusbar.addSubview(statusCenterLabel)
+        statusbar.addSubview(statusRightLabel)
+        statusbar.addSubview(statusDot)
+        statusDot.isHidden = true
+        statusRightLabel.isHidden = true
+        canvasContainer.addSubview(statusbar, positioned: .above, relativeTo: nil)
+
+        // MARK: Canvas overlays — task summary, filmstrip, and processing toast.
+        modeSwitcher.onSelect = { [weak self] index in
+            switch index {
+            case 1: self?.sideBySideTapped()
+            case 2: self?.sliderTapped()
+            default: self?.focusModeTapped()
+            }
+        }
+        configureIdentityLabel(taskSummaryLabel, font: PanelStyle.inspectFont(ofSize: 13, weight: .medium), color: PanelStyle.textPrimary)
+        taskSummaryLabel.stringValue = ""
+        taskSummaryLabel.isHidden = true
+        taskSummaryDot.isHidden = true
+        taskOverlayShade.wantsLayer = true
+        taskOverlayShade.layer?.backgroundColor = NSColor(
+            srgbRed: 7 / 255, green: 8 / 255, blue: 10 / 255, alpha: 0.34
+        ).cgColor
+        taskOverlayShade.isHidden = true
+        canvasContainer.addSubview(taskOverlayShade, positioned: .below, relativeTo: filmstrip)
+        canvasContainer.addSubview(taskSummaryDot, positioned: .above, relativeTo: nil)
+        canvasContainer.addSubview(taskSummaryLabel, positioned: .above, relativeTo: nil)
+        taskToast.isHidden = true
+        canvasContainer.addSubview(taskToast, positioned: .above, relativeTo: nil)
+
         // The same themed action menu serves the toolbar ⋯ button and
         // right-clicks on every image surface.
         let menuHandler: (NSEvent) -> Void = { [weak self] event in
@@ -466,9 +565,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         primaryViewport.onActionMenu = menuHandler
         secondaryViewport.onActionMenu = menuHandler
         sliderViewport.onActionMenu = menuHandler
-        toolbarBar.alphaValue = 1
-        toolbarBar.isHidden = false
-        canvasContainer.addSubview(toolbarBar, positioned: .above, relativeTo: nil)
         layoutContent()
     }
 
@@ -487,78 +583,155 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     private func layoutContent() {
         guard contentView === canvasContainer else { return }
+        let width = canvasContainer.bounds.width
+        let height = canvasContainer.bounds.height
+        guard width > 0, height > 0 else { return }
 
-        // The info panel is now a separate floating window, so the image always
-        // uses the full content width.
-        let contentFrame = NSRect(x: 0, y: 0, width: canvasContainer.bounds.width,
-                                  height: canvasContainer.bounds.height)
+        // Scale the 1554×1012 Figma frame uniformly into the current window.
+        let sx = width / Self.designSize.width
+        let sy = height / Self.designSize.height
+        let titlebarH = 58 * sy
+        let toolbarH = 70 * sy
+        let statusbarH = 37 * sy
+        let inspectorW: CGFloat = infoVisible ? 434 * sx : 0
+        let scale = min(sx, sy)
+        canvasContainer.layer?.cornerRadius = 16 * scale
+        canvasContainer.layer?.borderWidth = max(1, scale)
+        toolbarBar.layer?.borderWidth = max(1, scale)
+        inspectorContainer.layer?.borderWidth = max(1, scale)
+        statusbar.layer?.borderWidth = max(1, scale)
 
-        identityBar.frame = NSRect(x: 0, y: 0, width: contentFrame.width, height: identityBarHeight)
-        let labelX: CGFloat = 18
-        let labelWidth = max(80, identityBar.bounds.width - labelX * 2)
-        identityNameLabel.frame = NSRect(x: labelX, y: 30, width: labelWidth, height: 17)
-        identityMetaLabel.frame = NSRect(x: labelX, y: 10, width: labelWidth, height: 15)
-
-        // Floating hover toolbar: restore the original vertically-centered,
-        // right-aligned icon group. Pin remains the rightmost action.
-        toolbarBar.frame = NSRect(x: 0, y: contentFrame.height - toolbarHeight,
-                                  width: contentFrame.width, height: toolbarHeight)
-        let buttonSize: CGFloat = 24
-        let buttonGap: CGFloat = 8
-        let buttons = [focusButton, sideBySideButton, sliderButton, infoButton,
-                       revealButton, openURLButton, actionsButton, widgetMarketButton, widgetTasksButton, pinButton].filter { !$0.isHidden }
-        var bx = toolbarBar.bounds.width - 12 - buttonSize
-        for button in buttons.reversed() {
-            button.frame = NSRect(x: bx, y: (toolbarHeight - buttonSize) / 2,
-                                  width: buttonSize, height: buttonSize)
-            bx -= buttonSize + buttonGap
+        titlebar.frame = NSRect(x: 0, y: height - titlebarH, width: width, height: titlebarH)
+        windowTitleLabel.font = PanelStyle.inspectFont(ofSize: 15 * sy, weight: .semibold)
+        windowFilenameLabel.font = PanelStyle.inspectFont(ofSize: 11 * sy)
+        windowTitleLabel.frame = NSRect(x: 0, y: 26 * sy, width: width, height: 18 * sy)
+        windowFilenameLabel.frame = NSRect(x: 0, y: 7 * sy, width: width, height: 13 * sy)
+        let trafficY = 23 * sy
+        closeTrafficButton.frame = NSRect(x: 24 * sx, y: trafficY, width: 12 * sx, height: 12 * sy)
+        minimizeTrafficButton.frame = NSRect(x: 44 * sx, y: trafficY, width: 12 * sx, height: 12 * sy)
+        zoomTrafficButton.frame = NSRect(x: 64 * sx, y: trafficY, width: 12 * sx, height: 12 * sy)
+        for button in [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton] {
+            button.layer?.cornerRadius = 6 * scale
         }
-        taskBadge.frame = NSRect(x: widgetTasksButton.frame.maxX - 4, y: widgetTasksButton.frame.maxY - 4, width: 10, height: 10)
-        imageHoverFrame = contentFrame
+
+        toolbarBar.frame = NSRect(x: 0, y: height - titlebarH - toolbarH, width: width, height: toolbarH)
+        layoutToolbar(width: width)
+
+        statusbar.frame = NSRect(x: 0, y: 0, width: width, height: statusbarH)
+        statusLeftLabel.font = PanelStyle.inspectFont(ofSize: 12 * sy)
+        statusCenterLabel.font = PanelStyle.inspectFont(ofSize: 12 * sy)
+        statusRightLabel.font = PanelStyle.inspectFont(ofSize: 12 * sy, weight: .medium)
+        statusLeftLabel.frame = NSRect(x: 38 * sx, y: 11 * sy, width: 430 * sx, height: 15 * sy)
+        statusCenterLabel.frame = NSRect(x: 0, y: 11 * sy, width: width, height: 15 * sy)
+        statusRightLabel.frame = NSRect(x: 1414 * sx, y: 11 * sy, width: 120 * sx, height: 15 * sy)
+        statusDot.frame = NSRect(x: 1394 * sx, y: 14 * sy, width: 8 * sx, height: 8 * sy)
+
+        let canvasY = statusbarH
+        let canvasH = max(0, height - titlebarH - toolbarH - canvasY)
+        let canvasW = max(0, width - inspectorW)
+        let canvasRect = NSRect(x: 0, y: canvasY, width: canvasW, height: canvasH)
+        inspectorContainer.frame = NSRect(x: width - inspectorW, y: canvasY,
+                                          width: 434 * sx, height: canvasH)
+        // Unhide immediately when opening; hiding is deferred to toggleInfo's
+        // fade-out completion so the 160ms animation stays visible.
+        if infoVisible { inspectorContainer.isHidden = false }
+        infoPanel.frame = inspectorContainer.bounds
 
         guard let session else {
-            primaryViewport.frame = contentFrame
+            primaryViewport.frame = canvasRect
             return
         }
         if session.mode == .compare, session.comparisonStyle == .sideBySide {
             let gap: CGFloat = 1
-            let half = (contentFrame.width - gap) / 2
-            primaryViewport.frame = NSRect(x: 0, y: 0, width: half, height: contentFrame.height)
-            secondaryViewport.frame = NSRect(x: half + gap, y: 0, width: half, height: contentFrame.height)
+            let half = (canvasRect.width - gap) / 2
+            primaryViewport.frame = NSRect(x: canvasRect.minX, y: canvasRect.minY,
+                                           width: half, height: canvasRect.height)
+            secondaryViewport.frame = NSRect(x: canvasRect.minX + half + gap, y: canvasRect.minY,
+                                             width: half, height: canvasRect.height)
         } else {
-            primaryViewport.frame = contentFrame
-            sliderViewport.frame = contentFrame
+            primaryViewport.frame = canvasRect
+            sliderViewport.frame = canvasRect
         }
         // File previews always fill the canvas; only visible in Focus/Browse.
-        fileWebView.frame = contentFrame
-        filePlaceholder.frame = contentFrame
+        fileWebView.frame = canvasRect
+        filePlaceholder.frame = canvasRect
 
-        filmstrip.frame = NSRect(x: 0, y: identityBarHeight + 12,
-                                 width: contentFrame.width, height: 86)
+        // The latest Figma frame uses only a compact, centered 117pt filmstrip
+        // overlay. Task progress lives in the status bar, not over the image.
+        taskOverlayShade.frame = NSRect(x: 16 * sx, y: canvasRect.minY,
+                                        width: max(0, canvasRect.width - 32 * sx), height: 117 * sy)
+        let itemCount = max(1, session.infos.count)
+        let stripWidth = min(CGFloat(itemCount) * 96 * sx + CGFloat(max(0, itemCount - 1)) * 10 * sx,
+                             max(96 * sx, canvasRect.width - 64 * sx))
+        filmstrip.frame = NSRect(x: canvasRect.midX - stripWidth / 2,
+                                 y: canvasRect.minY + 10 * sy,
+                                 width: stripWidth, height: 96 * sy)
+        taskSummaryDot.isHidden = true
+        taskSummaryLabel.isHidden = true
+        taskToast.isHidden = true
+    }
+
+    /// Image-first icon toolbar. Text remains available through tooltips and
+    /// VoiceOver labels, while the canvas stays visually quiet.
+    private func layoutToolbar(width: CGFloat) {
+        let sx = width / Self.designSize.width
+        let h = toolbarBar.bounds.height
+        let sy = h / 70
+        func place(_ view: NSView, x: CGFloat, width: CGFloat) {
+            view.frame = NSRect(x: x * sx, y: 18 * sy, width: width * sx, height: 38 * sy)
+        }
+        let iconButtons = [directionButton, flipIconButton, focusIconButton,
+                           compareIconButton, sliderIconButton, fitIconButton,
+                           zoomOutButton, zoomInButton, widgetTasksButton,
+                           widgetMarketButton, infoButton]
+        for button in iconButtons {
+            button.layer?.cornerRadius = 8 * sy
+            button.layer?.borderWidth = max(1, sy)
+        }
+        place(directionButton, x: 40, width: 38)
+        place(flipIconButton, x: 88, width: 38)
+        place(fitIconButton, x: 136, width: 38)
+
+        let centerStart: CGFloat = 662
+        place(focusIconButton, x: centerStart, width: 38)
+        place(compareIconButton, x: centerStart + 48, width: 38)
+        place(sliderIconButton, x: centerStart + 96, width: 38)
+        place(zoomOutButton, x: centerStart + 144, width: 38)
+        place(zoomInButton, x: centerStart + 192, width: 38)
+
+        place(widgetTasksButton, x: 1378, width: 38)
+        place(widgetMarketButton, x: 1426, width: 38)
+        place(infoButton, x: 1474, width: 38)
+        taskBadge.frame = NSRect(x: widgetTasksButton.frame.maxX - 7 * sx,
+                                 y: widgetTasksButton.frame.maxY - 7 * sy,
+                                 width: 8 * sx, height: 8 * sy)
+        taskBadge.layer?.cornerRadius = 4 * min(sx, sy)
     }
 
     private func renderSession() {
         guard let session, session.infos.indices.contains(session.focusedIndex) else { return }
         let info = session.infos[session.focusedIndex]
-        // The window can start with a single item (the filmstrip is hidden in
-        // `show`) and gain more items later through drag-and-drop. Keep the
-        // visibility in sync with the current session instead of only
-        // deciding it during the initial presentation.
-        filmstrip.isHidden = !showsFilmstrip
+        windowFilenameLabel.stringValue = info.filename
+        // Single-image Focus stays image-only. Group context appears only once
+        // there is something to browse or compare.
         filmstrip.alphaValue = 1
+        filmstrip.isHidden = session.infos.count < 2
+        taskOverlayShade.isHidden = filmstrip.isHidden
         updateMediaToolbarVisibility(for: info, session: session)
         updateWindowTitle(for: info, index: session.focusedIndex)
-        updateIdentityBar(for: info, index: session.focusedIndex)
+        updateStatusbar(for: info, index: session.focusedIndex)
         // Compare needs two IMAGES; focus/browse only needs multiple items.
         let imageCount = session.infos.filter { $0.kind == .image }.count
-        focusButton.isEnabled = session.infos.count >= 2
-        sideBySideButton.isEnabled = imageCount >= 2
-        sliderButton.isEnabled = imageCount >= 2
-        focusButton.isActive = session.mode != .compare
-        sideBySideButton.isActive = session.mode == .compare && session.comparisonStyle == .sideBySide
-        sliderButton.isActive = session.mode == .compare && session.comparisonStyle == .slider
+        focusIconButton.isEnabled = true
+        compareIconButton.isEnabled = imageCount >= 2
+        sliderIconButton.isEnabled = imageCount >= 2
+        focusIconButton.isActive = session.mode != .compare
+        compareIconButton.isActive = session.mode == .compare && session.comparisonStyle == .sideBySide
+        sliderIconButton.isActive = session.mode == .compare && session.comparisonStyle == .slider
         infoButton.isActive = infoVisible
+        updateZoomLabel()
         updateRevealButtonState()
+        updateTaskChrome()
 
         primaryViewport.isHidden = true
         secondaryViewport.isHidden = true
@@ -641,13 +814,20 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func updateMediaToolbarVisibility(for info: MediaInfo, session: ImageInspectSession) {
         let showingImage = info.kind == .image ||
             (session.mode == .compare && session.compareIndices.map { session.infos.indices.contains($0.0) && session.infos.indices.contains($0.1) && session.infos[$0.0].kind == .image && session.infos[$0.1].kind == .image } == true)
-        let mediaButtons = [focusButton, sideBySideButton, sliderButton, infoButton,
-                            revealButton, openURLButton, actionsButton, widgetMarketButton, widgetTasksButton]
-        mediaButtons.forEach { $0.isHidden = !showingImage }
-        if !showingImage { taskBadge.isHidden = true }
+        // Non-media content never shows zoom/direction/compare controls
+        // (V2 spec: 非媒体内容不创建媒体按钮).
+        directionButton.isHidden = !showingImage
+        flipIconButton.isHidden = !showingImage
+        fitIconButton.isHidden = !showingImage
+        zoomOutButton.isHidden = !showingImage
+        zoomInButton.isHidden = !showingImage
+        focusIconButton.isHidden = !showingImage
+        compareIconButton.isHidden = !showingImage
+        sliderIconButton.isHidden = !showingImage
+        widgetTasksButton.isHidden = !showingImage
+        widgetMarketButton.isHidden = !showingImage
+        infoButton.isHidden = !showingImage
     }
-
-    private var showsFilmstrip: Bool { (session?.infos.count ?? 0) >= 2 }
 
     private func loadSessionImages(generation: UUID) {
         guard let session else { return }
@@ -783,15 +963,43 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     @objc private func localizationDidChange() {
         title = "Image Inspect".localized
-        focusButton.updateTooltip("Focus".localized)
-        sideBySideButton.updateTooltip("Side by side".localized)
-        sliderButton.updateTooltip("Slider".localized)
+        windowTitleLabel.stringValue = "Image Inspect".localized
         infoButton.updateTooltip("Image information".localized)
+        directionButton.updateTooltip("Rotate".localized)
+        flipIconButton.updateTooltip("Flip".localized)
+        focusIconButton.updateTooltip("Focus".localized)
+        compareIconButton.updateTooltip("Compare".localized)
+        sliderIconButton.updateTooltip("Slider".localized)
+        fitIconButton.updateTooltip("Fit".localized)
+        zoomOutButton.updateTooltip("Zoom Out".localized)
+        zoomInButton.updateTooltip("Zoom In".localized)
+        widgetTasksButton.updateTooltip("Tasks".localized)
+        widgetMarketButton.updateTooltip("Widget Market".localized)
         revealButton.updateTooltip("Reveal in Finder".localized)
         openURLButton.updateTooltip("Open image URL".localized)
         actionsButton.updateTooltip("Actions".localized)
+        rotateButton.attributedTitle = NSAttributedString(
+            string: "Rotate".localized,
+            attributes: [.font: PanelStyle.inspectFont(ofSize: 12, weight: .medium),
+                         .foregroundColor: PanelStyle.textPrimary]
+        )
+        tasksTextButton.attributedTitle = NSAttributedString(
+            string: "•  " + "Tasks".localized,
+            attributes: [.font: PanelStyle.inspectFont(ofSize: 12, weight: .medium),
+                         .foregroundColor: PanelStyle.textPrimary]
+        )
+        widgetTextButton.attributedTitle = NSAttributedString(
+            string: "Widget".localized,
+            attributes: [.font: PanelStyle.inspectFont(ofSize: 12, weight: .medium),
+                         .foregroundColor: PanelStyle.textPrimary]
+        )
+        fitButton.attributedTitle = NSAttributedString(
+            string: "Fit".localized,
+            attributes: [.font: PanelStyle.inspectFont(ofSize: 12, weight: .medium),
+                         .foregroundColor: PanelStyle.textPrimary]
+        )
         pinButton.updateTooltip((isPinned ? "Unpin" : "Pin on Top").localized)
-        if infoVisible { infoWindow.title = "Image information".localized }
+        modeSwitcher.reloadTitles()
         ocrWindow.reloadLocalization()
         renderSession()
     }
@@ -899,22 +1107,84 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
               let widget = WidgetRegistry.shared.installed.first(where: { $0.id == widgetID }),
               let command = widget.commands.first(where: { $0.id == commandID }) else { return }
         if WidgetTaskManager.shared.start(widget: widget, command: command, media: info) != nil {
-            toastWindow.show(message: "Processing Widget…".localized, over: self)
+            // Non-blocking: the task toast sits at the canvas' bottom-left;
+            // the main image stays fully usable while the task runs.
+            taskToast.show(title: String(format: "%@ · %@", widget.name, command.name),
+                           subtitle: "You can keep inspecting; the result appears in the filmstrip.".localized)
         }
     }
 
     @objc private func widgetTasksDidChange() {
-        taskBadge.isHidden = WidgetTaskManager.shared.activeCount == 0
+        let activeCount = WidgetTaskManager.shared.activeCount
+        taskBadge.isHidden = activeCount == 0
+        // Statusbar right: semantic dot + text (spec: 状态必须有文本).
+        statusDot.isHidden = activeCount == 0
+        statusRightLabel.isHidden = activeCount == 0
+        if activeCount > 0 {
+            statusRightLabel.stringValue = activeCount == 1 ? "1 task running" : "\(activeCount) tasks running"
+        }
+        // Task toast mirrors the polling state; it auto-dismisses on completion.
+        if activeCount > 0, let latest = WidgetTaskManager.shared.records.first(where: { $0.phase.isActive }) {
+            taskToast.show(title: "\(latest.widgetName) · \(latest.commandName)",
+                           subtitle: "You can keep inspecting; the result appears in the filmstrip.".localized)
+        } else {
+            taskToast.hide()
+        }
         let completed = WidgetTaskManager.shared.records.filter { $0.phase == .completed && !handledWidgetTaskIDs.contains($0.id) }
         completed.forEach { handledWidgetTaskIDs.insert($0.id) }
         guard let session else { return }
         renderSession()
         for task in completed {
             guard let output = task.output, let source = task.source,
-                  currentRevealInfo?.url.absoluteString == source.absoluteString,
+                  session.infos.contains(where: { $0.url.absoluteString == source.absoluteString }),
                   !session.infos.contains(where: { $0.url.standardizedFileURL == output.standardizedFileURL }) else { continue }
-            appendImage(info: MediaInfo(url: output, isLocal: true, kind: .image))
+            // Spec: 结果紧随源图插入右侧，不自动切换当前主图.
+            insertWidgetResult(info: MediaInfo(url: output, isLocal: true, kind: .image),
+                               after: source)
         }
+    }
+
+    private func updateTaskChrome() {
+        guard let info = currentRevealInfo,
+              let task = WidgetTaskManager.shared.activeRecords(for: info.url).first else {
+            taskSummaryDot.isHidden = true
+            taskSummaryLabel.isHidden = true
+            taskToast.hide()
+            return
+        }
+        taskSummaryDot.isHidden = true
+        taskSummaryLabel.isHidden = true
+        let state: String
+        switch task.phase {
+        case .uploading: state = "Uploading"
+        case .submitting: state = "Submitting"
+        case .processing: state = "Processing"
+        case .downloading: state = "Downloading"
+        default: state = "Processing"
+        }
+        taskSummaryLabel.stringValue = "\(task.commandName)  •  \(state)"
+        taskToast.hide()
+    }
+
+    /// Insert a completed widget result immediately after its source image in
+    /// the filmstrip, WITHOUT moving focus or leaving compare mode.
+    private func insertWidgetResult(info: MediaInfo, after source: URL) {
+        guard let session,
+              let sourceIndex = session.infos.firstIndex(where: { $0.url.absoluteString == source.absoluteString }) else { return }
+        let insertionIndex = sourceIndex + 1
+        session.infos.insert(info, at: insertionIndex)
+        session.images.insert(nil, at: insertionIndex)
+        session.metadata.insert(nil, at: insertionIndex)
+        // Indices after the insertion point shift by one — keep focus and the
+        // compare pair pointing at the same images.
+        if session.focusedIndex >= insertionIndex { session.focusedIndex += 1 }
+        if var pair = session.compareIndices {
+            if pair.0 >= insertionIndex { pair.0 += 1 }
+            if pair.1 >= insertionIndex { pair.1 += 1 }
+            session.compareIndices = pair
+        }
+        renderSession()
+        loadDroppedItem(at: insertionIndex, generation: loadGeneration)
     }
 
     /// The viewport the actions menu acts on: focused image in Focus/Browse,
@@ -1120,12 +1390,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
     }
 
-    /// Dock the OCR panel beside the main window (right of the info panel when
-    /// that is also open), sliding in from the right on first presentation.
+    /// Dock the OCR panel beside the main window, sliding in from the right
+    /// on first presentation.
     private func presentOCRWindow() {
         let gap: CGFloat = 2
-        let anchor = (infoVisible && infoWindow.isVisible) ? infoWindow.frame : frame
-        var origin = NSPoint(x: anchor.maxX + gap, y: frame.minY)
+        var origin = NSPoint(x: frame.maxX + gap, y: frame.minY)
         let size = NSSize(width: 320, height: frame.height)
         if let visible = (screen ?? NSScreen.main)?.visibleFrame {
             if origin.x + size.width > visible.maxX {
@@ -1198,43 +1467,148 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func toggleInfo() {
         infoVisible.toggle()
         infoButton.isActive = infoVisible
-        if infoVisible {
-            positionInfoWindowBesideMain()
-            // Attach as a child window: ordered just above the main window, so
-            // a window covering the main window also covers the info panel.
-            addChildWindow(infoWindow, ordered: .above)
-        } else {
-            removeChildWindow(infoWindow)
-            infoWindow.orderOut(nil)
+        layoutContent()
+        // 160ms fade (spec: 侧栏开合 160ms，透明度变化，动画可中断).
+        if infoVisible { inspectorContainer.alphaValue = 0 }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            inspectorContainer.animator().alphaValue = infoVisible ? 1 : 0
+        } completionHandler: { [weak self] in
+            guard let self, !self.infoVisible else { return }
+            self.inspectorContainer.isHidden = true
         }
         renderSession()
     }
 
-    /// Dock the floating info window just to the right of the main window,
-    /// clamped on-screen. The user can then drag it anywhere.
-    private func positionInfoWindowBesideMain() {
-        let width: CGFloat = 320
-        let gap: CGFloat = 2
-        let mainFrame = frame
-        var origin = NSPoint(x: mainFrame.maxX + gap, y: mainFrame.minY)
-        let size = NSSize(width: width, height: mainFrame.height)
-        if let visible = (screen ?? NSScreen.main)?.visibleFrame {
-            if origin.x + width > visible.maxX {
-                origin.x = max(visible.minX, mainFrame.minX - width - gap)
-            }
-            origin.y = min(max(visible.minY, origin.y), visible.maxY - size.height)
-        }
-        infoWindow.setFrame(NSRect(origin: origin, size: size), display: true)
-    }
-
-    private func updateIdentityBar(for info: MediaInfo, index: Int) {
-        identityNameLabel.stringValue = info.filename
+    private func updateStatusbar(for info: MediaInfo, index: Int) {
         var parts: [String] = []
-        if let session, session.infos.count > 1 { parts.append("\(index + 1) / \(session.infos.count)") }
         if let size = info.dimensions { parts.append("\(Int(size.width)) × \(Int(size.height))") }
         if info.formatName.isDisplayableValue { parts.append(info.formatName) }
         if let bytes = info.fileSize { parts.append(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) }
-        identityMetaLabel.stringValue = parts.joined(separator: "  ·  ")
+        statusLeftLabel.stringValue = parts.joined(separator: "  •  ")
+    }
+
+    /// Zoom percentage readout between the − and + buttons.
+    private func updateZoomLabel() {
+        zoomLabel.stringValue = "\(currentActionViewport.zoomPercent)%"
+    }
+
+    @objc private func fitToWindowTapped() {
+        activeViewports.forEach { $0.fitToView() }
+        updateZoomLabel()
+    }
+
+    @objc private func backTapped() {
+        cancelOperation(nil)
+    }
+
+    @objc private func closeTrafficTapped() { closeAndRestore() }
+    @objc private func minimizeTrafficTapped() { miniaturize(nil) }
+    @objc private func zoomTrafficTapped() { zoom(nil) }
+
+    @objc private func zoomOutTapped() {
+        activeViewports.forEach { $0.zoomBy(1 / 1.25) }
+        updateZoomLabel()
+    }
+
+    @objc private func zoomInTapped() {
+        activeViewports.forEach { $0.zoomBy(1.25) }
+        updateZoomLabel()
+    }
+
+    /// Direction button: rotate/flip through the same themed menu used by the
+    /// actions panel (spec `.direction-control`).
+    @objc private func directionTapped() {
+        let entries: [ActionMenuEntry] = [
+            ActionMenuEntry(title: "Rotate Left".localized, shortcut: "⌘L", action: { [weak self] in self?.rotateActive(byQuarters: -1) }),
+            ActionMenuEntry(title: "Rotate Right".localized, shortcut: "⌘R", action: { [weak self] in self?.rotateActive(byQuarters: 1) }),
+            ActionMenuEntry(title: "Flip Horizontally".localized, action: { [weak self] in self?.flipActive(horizontal: true) }),
+            ActionMenuEntry(title: "Flip Vertically".localized, action: { [weak self] in self?.flipActive(horizontal: false) })
+        ]
+        actionsPanel?.dismissChain()
+        let panel = ActionMenuPanel(entries: entries)
+        actionsPanel = panel
+        let point = directionButton.convert(NSPoint(x: 0, y: -4), to: nil)
+        panel.present(at: convertToScreen(NSRect(origin: point, size: .zero)).origin)
+    }
+
+    @objc private func flipMenuTapped() {
+        actionsPanel?.dismissChain()
+        let panel = ActionMenuPanel(entries: [
+            ActionMenuEntry(title: "Flip Horizontally".localized,
+                            action: { [weak self] in self?.flipActive(horizontal: true) }),
+            ActionMenuEntry(title: "Flip Vertically".localized,
+                            action: { [weak self] in self?.flipActive(horizontal: false) })
+        ])
+        actionsPanel = panel
+        let point = flipIconButton.convert(NSPoint(x: 0, y: -4), to: nil)
+        panel.present(at: convertToScreen(NSRect(origin: point, size: .zero)).origin)
+    }
+
+    /// The first installed image widget's first image command runs directly
+    /// from the toolbar primary button (spec: 运行 Remove BG).
+    private var defaultWidgetCommand: (widget: WidgetManifest, command: WidgetCommand)? {
+        for widget in WidgetRegistry.shared.compatible(with: "image") {
+            if let command = widget.commands.first(where: { $0.inputTypes.contains("image") }) {
+                return (widget, command)
+            }
+        }
+        return nil
+    }
+
+    private func updateRunWidgetButton() {
+        guard let pair = defaultWidgetCommand, activeItemIsImage else {
+            runWidgetButton.isHidden = true
+            return
+        }
+        runWidgetButton.isHidden = false
+        let title = String(format: "Run %@".localized, pair.command.name)
+        runWidgetButton.attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+                         .foregroundColor: PanelStyle.accentInk]
+        )
+        runWidgetButton.setAccessibilityLabel(title)
+        let duplicate = currentRevealInfo.map { info in
+            WidgetTaskManager.shared.activeRecords(for: info.url)
+                .contains { $0.widgetID == pair.widget.id && $0.commandID == pair.command.id }
+        } ?? false
+        runWidgetButton.isEnabled = !duplicate
+        layoutToolbar(width: toolbarBar.bounds.width)
+    }
+
+    @objc private func runDefaultWidgetTapped() {
+        guard let pair = defaultWidgetCommand else { return }
+        runWidget(widgetID: pair.widget.id, commandID: pair.command.id)
+    }
+
+    private func runUpscaleWidget() {
+        for widget in WidgetRegistry.shared.compatible(with: "image") {
+            guard let command = widget.commands.first(where: {
+                $0.inputTypes.contains("image") &&
+                ($0.name.localizedCaseInsensitiveContains("upscale") ||
+                 $0.id.localizedCaseInsensitiveContains("upscale"))
+            }) else { continue }
+            runWidget(widgetID: widget.id, commandID: command.id)
+            return
+        }
+        widgetMarketTapped()
+    }
+
+    /// Filmstrip "+" tile: an explicit alternative to drag-and-drop
+    /// (spec: 拖放必须有“添加”按钮作为替代).
+    private func presentAddImagesPanel() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.beginSheetModal(for: self) { [weak self] response in
+            guard response == .OK, let self else { return }
+            for url in panel.urls {
+                self.handleDroppedResource(url: url, at: .zero)
+            }
+        }
     }
 
     private func focus(index: Int) {
@@ -2357,36 +2731,201 @@ final class MediaDropCanvasView: NSView {
     }
 }
 
-/// Standalone panel that hosts the image info panel. Attached to the main
-/// window as a child while visible; not floating, so it shares the main
-/// window's occlusion behavior.
-final class ImageInfoPanelWindow: NSPanel {
-    init(panel: ImageDifferencePanel) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 320, height: 480),
-                   styleMask: [.titled, .closable, .resizable, .utilityWindow, .nonactivatingPanel],
-                   backing: .buffered, defer: false)
-        contentMinSize = NSSize(width: 320, height: 240)
-        contentMaxSize = NSSize(width: 320, height: 10000)
-        title = "Image information".localized
-        isFloatingPanel = false
-        becomesKeyOnlyIfNeeded = true
-        hidesOnDeactivate = false
-        isReleasedWhenClosed = false
-        appearance = NSAppearance(named: .darkAqua)
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        // Frosted, translucent black chrome instead of a solid surface color.
-        isOpaque = false
-        backgroundColor = .clear
-        if let content = contentView {
-            let frost = PanelStyle.makeFrostedBase(cornerRadius: 0)
-            frost.frame = content.bounds
-            frost.autoresizingMask = [.width, .height]
-            content.addSubview(frost)
-        }
-        panel.frame = contentView?.bounds ?? .zero
-        panel.autoresizingMask = [.width, .height]
-        contentView?.addSubview(panel)
+/// Floating capsule with three text segments (Focus / Side by Side / Slider),
+/// anchored to the canvas' top-left corner (spec `.canvas-mode`).
+private final class CanvasModeSwitcher: NSView {
+    var onSelect: ((Int) -> Void)?
+
+    private let buttons: [NSButton]
+    private var activeIndex = 0
+    private static func titles() -> [String] {
+        ["Focus".localized, "Compare".localized, "Slider".localized]
     }
+
+    override init(frame frameRect: NSRect) {
+        buttons = Self.titles().enumerated().map { index, title in
+            PanelStyle.makeSegmentButton(title: title, target: nil, action: nil)
+        }
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.borderWidth = 0
+        for (index, button) in buttons.enumerated() {
+            if let button = button as? PanelButton {
+                button.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+            }
+            button.tag = index
+            button.target = self
+            button.action = #selector(segmentTapped(_:))
+            addSubview(button)
+        }
+        setActive(0)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var fittingSize: NSSize {
+        NSSize(width: 318, height: 38)
+    }
+
+    override func layout() {
+        super.layout()
+        let designWidths: [CGFloat] = [96, 112, 94]
+        let scale = bounds.width / 318
+        var x: CGFloat = 0
+        for (button, designWidth) in zip(buttons, designWidths) {
+            let width = designWidth * scale
+            if let button = button as? PanelButton {
+                button.titleFont = PanelStyle.inspectFont(ofSize: 12 * scale, weight: .medium)
+                button.layer?.cornerRadius = 8 * scale
+                button.layer?.borderWidth = max(1, scale)
+            }
+            button.frame = NSRect(x: x, y: 0, width: width, height: bounds.height)
+            x += width + 8 * scale
+        }
+    }
+
+    @objc private func segmentTapped(_ sender: NSButton) {
+        onSelect?(sender.tag)
+    }
+
+    func setActive(_ index: Int) {
+        activeIndex = index
+        for (i, button) in buttons.enumerated() {
+            PanelStyle.setSegmentActive(button, active: i == index)
+        }
+    }
+
+    func setFocusEnabled(_ enabled: Bool) { buttons[0].isEnabled = enabled }
+    func setCompareEnabled(_ enabled: Bool) {
+        buttons[1].isEnabled = enabled
+        buttons[2].isEnabled = enabled
+    }
+
+    func reloadTitles() {
+        for (button, title) in zip(buttons, Self.titles()) {
+            button.attributedTitle = NSAttributedString(
+                string: title,
+                attributes: [.font: PanelStyle.inspectFont(ofSize: 12, weight: .medium),
+                             .foregroundColor: PanelStyle.textSecondary]
+            )
+            button.setAccessibilityLabel(title)
+        }
+        // Reapply selected styling because attributedTitle resets the visible
+        // text color until the next mode transition.
+        setActive(activeIndex)
+        needsLayout = true
+    }
+}
+
+/// Non-blocking task toast pinned to the canvas' bottom-left corner
+/// (spec `.task-toast`): spinner + task name + reassurance copy.
+private final class TaskToastView: NSView {
+    private let spinner = NSView()
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let subtitleLabel = NSTextField(labelWithString: "")
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(NSColor(srgbRed: 27 / 255, green: 29 / 255, blue: 32 / 255, alpha: 1))
+        layer?.cornerRadius = PanelStyle.cornerMedium
+        layer?.masksToBounds = true
+        layer?.borderWidth = 1
+        layer?.borderColor = PanelStyle.accent.cgColor
+
+        spinner.wantsLayer = true
+        spinner.layer?.backgroundColor = PanelStyle.resolvedCG(
+            NSColor(srgbRed: 58 / 255, green: 44 / 255, blue: 38 / 255, alpha: 1)
+        )
+        spinner.layer?.cornerRadius = 15
+        addSubview(spinner)
+
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 14, weight: .semibold)
+        titleLabel.textColor = PanelStyle.textPrimary
+        titleLabel.lineBreakMode = .byTruncatingMiddle
+        subtitleLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        subtitleLabel.textColor = PanelStyle.textSecondary
+        subtitleLabel.lineBreakMode = .byTruncatingTail
+        addSubview(titleLabel)
+        addSubview(subtitleLabel)
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+        super.layout()
+        let scale = min(bounds.width / 460, bounds.height / 76)
+        layer?.cornerRadius = 12 * scale
+        layer?.borderWidth = max(1, scale)
+        spinner.layer?.cornerRadius = 15 * scale
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 14 * scale, weight: .semibold)
+        subtitleLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale)
+        spinner.frame = NSRect(x: 20 * scale, y: 23 * scale, width: 30 * scale, height: 30 * scale)
+        titleLabel.frame = NSRect(x: 66 * scale, y: 41 * scale,
+                                  width: bounds.width - 86 * scale, height: 17 * scale)
+        subtitleLabel.frame = NSRect(x: 66 * scale, y: 21 * scale,
+                                     width: bounds.width - 86 * scale, height: 13 * scale)
+    }
+
+    func show(title: String, subtitle: String) {
+        titleLabel.stringValue = title
+        subtitleLabel.stringValue = subtitle
+        if isHidden {
+            isHidden = false
+            alphaValue = 0
+            animator().alphaValue = 1
+        }
+    }
+
+    func hide() {
+        guard !isHidden else { return }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.18
+            animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            self?.isHidden = true
+        }
+    }
+}
+
+private final class InspectNonHitTestingView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// Solid Figma titlebar surface with native window dragging and zooming.
+private final class FigmaInspectTitlebar: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            window?.zoom(nil)
+        } else {
+            window?.performDrag(with: event)
+        }
+    }
+}
+
+private final class FigmaTrafficLightButton: NSButton {
+    init(color: NSColor, target: AnyObject?, action: Selector) {
+        super.init(frame: .zero)
+        isBordered = false
+        title = ""
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(color)
+        layer?.cornerRadius = 6
+        self.target = target
+        self.action = action
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
 final class InspectIdentityBar: NSVisualEffectView {
@@ -2436,6 +2975,7 @@ final class InspectIdentityBar: NSVisualEffectView {
 
 final class InspectToolbarButton: NSButton {
     var isActive = false { didSet { updateAppearance() } }
+    var usesFigmaStyle = false { didSet { updateAppearance() } }
 
     /// Symbols render at their native 16pt size, centered in the 24pt button.
     /// (Previously a 9pt symbol was upscaled ~2.5× via scaleProportionally
@@ -2478,6 +3018,20 @@ final class InspectToolbarButton: NSButton {
     }
 
     private func updateAppearance() {
+        if usesFigmaStyle {
+            layer?.backgroundColor = PanelStyle.resolvedCG(
+                isActive ? PanelStyle.accentSubtleFill : PanelStyle.inspectToolbar
+            )
+            layer?.borderWidth = 1
+            layer?.borderColor = PanelStyle.resolvedCG(
+                isActive ? PanelStyle.accent.withAlphaComponent(0.58) : PanelStyle.inspectLine
+            )
+            contentTintColor = isEnabled
+                ? (isActive ? PanelStyle.accent : PanelStyle.textPrimary)
+                : PanelStyle.textTertiary
+            alphaValue = isEnabled ? 1 : 0.45
+            return
+        }
         // Native-style selected tile: a filled rounded square, using Glance's
         // warm theme accent instead of the system blue selection color.
         layer?.backgroundColor = isActive
@@ -2543,24 +3097,32 @@ final class InspectImageViewport: NSView {
     /// Quiet darkroom margin around the media card from the approved 01
     /// workbench. Keeping the image inset makes the canvas read as a surface,
     /// rather than a borderless image glued to the window edges.
-    private let canvasInset: CGFloat = 26
+    private let canvasInset: CGFloat = 16
     private var normalizedCenter = CGPoint(x: 0.5, y: 0.5)
     private var panOffset = CGPoint.zero
     private var lastMouseLocation = CGPoint.zero
     private var dragging = false
     private var compareDimmed = false
 
+    /// Latest Figma canvas: 16pt horizontal margin, image flush to top/bottom.
+    private var mediaRect: NSRect {
+        NSRect(x: canvasInset,
+               y: 0,
+               width: max(0, bounds.width - canvasInset * 2),
+               height: bounds.height)
+    }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.surface.cgColor
+        layer?.backgroundColor = PanelStyle.inspectCanvas.cgColor
         layer?.masksToBounds = true
         imageLayer.contentsGravity = .resizeAspect
-        imageLayer.cornerRadius = PanelStyle.cornerLarge
+        imageLayer.cornerRadius = 4
         imageLayer.masksToBounds = true
         imageLayer.borderWidth = 1
-        imageLayer.borderColor = PanelStyle.hairline.cgColor
+        imageLayer.borderColor = PanelStyle.inspectLine.cgColor
         layer?.addSublayer(imageLayer)
         // Compare selection is communicated by gently dimming the inactive
         // side. Keep the selected side completely free of a border/glow.
@@ -2687,6 +3249,20 @@ final class InspectImageViewport: NSView {
         notify()
     }
 
+    /// Toolbar ± buttons: multiply the current zoom, clamped to 1–20.
+    func zoomBy(_ factor: CGFloat) {
+        guard image != nil else { return }
+        zoom = max(1, min(20, zoom * factor))
+        updateLayerGeometry()
+        notify()
+    }
+
+    /// On-screen scale as a percentage (fit = image's natural fit scale).
+    var zoomPercent: Int {
+        guard let image else { return 100 }
+        return Int((fitScale(for: image) * zoom * 100).rounded())
+    }
+
     func setActualSize() {
         guard let image, bounds.width > 0, bounds.height > 0 else { return }
         let fit = fitScale(for: image)
@@ -2793,8 +3369,8 @@ final class InspectImageViewport: NSView {
         }
         let rendered = renderedSize(for: image)
         constrainPan(rendered: rendered)
-        let centerX = bounds.midX + panOffset.x
-        let centerY = bounds.midY + panOffset.y
+        let centerX = mediaRect.midX + panOffset.x
+        let centerY = mediaRect.midY + panOffset.y
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         // The layer keeps the UNROTATED rendered size so resizeAspect fills it
@@ -2813,7 +3389,7 @@ final class InspectImageViewport: NSView {
         let size = rotationQuarters % 2 == 1
             ? CGSize(width: image.size.height, height: image.size.width)
             : image.size
-        let canvas = bounds.insetBy(dx: canvasInset, dy: canvasInset)
+        let canvas = mediaRect
         return min(canvas.width / size.width, canvas.height / size.height)
     }
 
@@ -2833,24 +3409,24 @@ final class InspectImageViewport: NSView {
 
     private func imagePoint(at viewPoint: CGPoint, image: NSImage) -> CGPoint {
         let rendered = renderedSize(for: image)
-        let centerX = bounds.midX + (0.5 - normalizedCenter.x) * rendered.width
-        let centerY = bounds.midY + (0.5 - normalizedCenter.y) * rendered.height
+        let centerX = mediaRect.midX + (0.5 - normalizedCenter.x) * rendered.width
+        let centerY = mediaRect.midY + (0.5 - normalizedCenter.y) * rendered.height
         return CGPoint(x: (viewPoint.x - centerX) / rendered.width + 0.5,
                        y: (viewPoint.y - centerY) / rendered.height + 0.5)
     }
 
     private func setCenter(so imagePoint: CGPoint, remainsAt viewPoint: CGPoint, image: NSImage) {
         let rendered = renderedSize(for: image)
-        normalizedCenter.x = 0.5 - (viewPoint.x - bounds.midX - (imagePoint.x - 0.5) * rendered.width) / rendered.width
-        normalizedCenter.y = 0.5 - (viewPoint.y - bounds.midY - (imagePoint.y - 0.5) * rendered.height) / rendered.height
+        normalizedCenter.x = 0.5 - (viewPoint.x - mediaRect.midX - (imagePoint.x - 0.5) * rendered.width) / rendered.width
+        normalizedCenter.y = 0.5 - (viewPoint.y - mediaRect.midY - (imagePoint.y - 0.5) * rendered.height) / rendered.height
         panOffset = CGPoint(x: (0.5 - normalizedCenter.x) * rendered.width,
                             y: (0.5 - normalizedCenter.y) * rendered.height)
         constrainPan(rendered: rendered)
     }
 
     private func constrainPan(rendered: CGSize) {
-        let maxPanX = max(0, (rendered.width - bounds.width) / 2)
-        let maxPanY = max(0, (rendered.height - bounds.height) / 2)
+        let maxPanX = max(0, (rendered.width - mediaRect.width) / 2)
+        let maxPanY = max(0, (rendered.height - mediaRect.height) / 2)
         panOffset.x = max(-maxPanX, min(maxPanX, panOffset.x))
         panOffset.y = max(-maxPanY, min(maxPanY, panOffset.y))
         normalizedCenter = CGPoint(x: 0.5 - panOffset.x / max(rendered.width, 1),
@@ -2912,6 +3488,11 @@ final class ImageRevealView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? {
         bounds.contains(point) ? self : nil
     }
+
+    /// A mousedown on the slider drags the reveal divider, never the window.
+    /// Without this, `isMovableByWindowBackground` steals the drag and the
+    /// whole window moves instead of the comparison handle.
+    override var mouseDownCanMoveWindow: Bool { false }
 
     /// Slider rotates both layers together (the pair shares one viewport state).
     func rotate(byQuarters delta: Int) {
@@ -2976,8 +3557,25 @@ final class ImageRevealView: NSView {
     }
 
     override func scrollWheel(with event: NSEvent) {
-        viewport.scrollWheel(with: event)
-        overlayViewport.apply(state: viewport.viewportState, notify: false)
+        // While zoomed in, every scroll pans/zooms the pair as usual. At fit
+        // scale, a horizontal two/three-finger swipe nudges the reveal divider.
+        let zoomedIn = viewport.viewportState.zoomRelativeToFit > 1.01
+        if zoomedIn || event.subtype == .mouseEvent
+            || abs(event.scrollingDeltaX) <= abs(event.scrollingDeltaY) {
+            viewport.scrollWheel(with: event)
+            overlayViewport.apply(state: viewport.viewportState, notify: false)
+            return
+        }
+        let step = event.scrollingDeltaX / max(bounds.width, 1)
+        fraction = max(0, min(1, fraction + step))
+        updateMask()
+    }
+
+    /// Three-finger swipe (System Settings → Trackpad → "Swipe between pages").
+    override func swipe(with event: NSEvent) {
+        guard event.deltaX != 0 else { return }
+        fraction = max(0, min(1, fraction - event.deltaX * 0.1))
+        updateMask()
     }
 
     override func magnify(with event: NSEvent) {
@@ -2996,14 +3594,17 @@ final class ImageRevealView: NSView {
 }
 
 final class ImageFilmstripView: NSView {
-    private static let itemWidth: CGFloat = 48
-    private static let itemHeight: CGFloat = 50
-    private static let itemGap: CGFloat = 8
-    private static let horizontalPadding: CGFloat = 16
+    private static let itemWidth: CGFloat = 96
+    private static let itemHeight: CGFloat = 96
+    private static let itemGap: CGFloat = 10
+    private static let horizontalPadding: CGFloat = 0
 
     var onSelect: ((Int) -> Void)?
     var onCompare: ((Int) -> Void)?
+    /// The trailing "+" tile — an explicit alternative to drag-and-drop.
+    var onAdd: (() -> Void)?
     private var itemViews: [ImageFilmstripItem] = []
+    private var addTile: ImageFilmstripItem?
     private var infos: [MediaInfo] = []
     private var images: [NSImage?] = []
     private var selectedIndex = 0
@@ -3014,10 +3615,19 @@ final class ImageFilmstripView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.surface.withAlphaComponent(0.82).cgColor
+        layer?.backgroundColor = NSColor.clear.cgColor
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+        super.layout()
+        // Only reposition existing tiles here. Rebuilding (removing/adding
+        // subviews) inside layout() dirties the window's layout on every
+        // pass — AppKit aborts with "more Layout Window passes than there
+        // are views in the window" once the loop exceeds the pass limit.
+        layoutItems()
+    }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         alphaValue < 0.05 ? nil : super.hitTest(point)
@@ -3042,26 +3652,43 @@ final class ImageFilmstripView: NSView {
         return icon
     }
 
-    private func rebuild() {
-        itemViews.forEach { $0.removeFromSuperview() }
-        itemViews.removeAll()
-        let count = infos.count
-        guard count > 0 else { return }
+    /// Cell geometry shared by rebuild() and layoutItems(): shrink-to-fit row,
+    /// one extra slot for the trailing "+" add tile.
+    private func cellMetrics() -> (cellWidth: CGFloat, cellHeight: CGFloat, startX: CGFloat, itemY: CGFloat) {
+        let slotCount = max(1, itemViews.count)
         let gap = Self.itemGap
         let itemWidth = Self.itemWidth
         let itemHeight = Self.itemHeight
-        // Fit the row within the available width so no scroll bar is needed.
         let maxRowWidth = bounds.width - Self.horizontalPadding * 2
-        let naturalWidth = CGFloat(count) * itemWidth + CGFloat(count - 1) * gap
+        let naturalWidth = CGFloat(slotCount) * itemWidth + CGFloat(slotCount - 1) * gap
         let rowWidth = min(naturalWidth, maxRowWidth)
-        let cellWidth = count > 1
-            ? (rowWidth - CGFloat(count - 1) * gap) / CGFloat(count)
+        let cellWidth = slotCount > 1
+            ? min(itemWidth, (rowWidth - CGFloat(slotCount - 1) * gap) / CGFloat(slotCount))
             : itemWidth
-        var x = (bounds.width - rowWidth) / 2
+        let startX = Self.horizontalPadding
         let cellHeight = itemHeight * min(1, cellWidth / itemWidth)
-        let itemY = (bounds.height - cellHeight) / 2
+        return (cellWidth, cellHeight, startX, (bounds.height - cellHeight) / 2)
+    }
+
+    /// Position the existing tiles without touching the view hierarchy.
+    private func layoutItems() {
+        guard !itemViews.isEmpty else { return }
+        let metrics = cellMetrics()
+        var x = metrics.startX
+        for item in itemViews {
+            item.frame = NSRect(x: x, y: metrics.itemY, width: metrics.cellWidth, height: metrics.cellHeight)
+            x += metrics.cellWidth + Self.itemGap
+        }
+    }
+
+    private func rebuild() {
+        itemViews.forEach { $0.removeFromSuperview() }
+        itemViews.removeAll()
+        addTile?.removeFromSuperview()
+        addTile = nil
+        let count = infos.count
         for index in 0..<count {
-            let item = ImageFilmstripItem(frame: NSRect(x: x, y: itemY, width: cellWidth, height: cellHeight))
+            let item = ImageFilmstripItem(frame: .zero)
             let isCompared = compareIndices.map { $0.0 == index || $0.1 == index } ?? false
             // In compare mode the border means pair membership only. The
             // browse/focus selection is intentionally ignored so a stale
@@ -3081,13 +3708,8 @@ final class ImageFilmstripView: NSView {
             }
             addSubview(item)
             itemViews.append(item)
-            x += cellWidth + gap
         }
-    }
-
-    override func layout() {
-        super.layout()
-        rebuild()
+        layoutItems()
     }
 }
 
@@ -3099,17 +3721,42 @@ private final class ImageFilmstripItem: NSView {
     var onClick: ((NSEvent.ModifierFlags) -> Void)?
     private let imageView = NonHitTestingImageView()
     private let taskBadge = CALayer()
+    private let tagBackground = CALayer()
+    private let tagLabel = CATextLayer()
+    private let plusLabel = CATextLayer()
+    private var previewInset: CGFloat = 4
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 8
+        layer?.cornerRadius = 9
         layer?.masksToBounds = true
+        layer?.backgroundColor = PanelStyle.inspectToolbar.cgColor
         imageView.imageScaling = .scaleProportionallyUpOrDown
         addSubview(imageView)
         taskBadge.cornerRadius = 3.5
         taskBadge.isHidden = true
         layer?.addSublayer(taskBadge)
+        // "New" tag (spec `.thumb-tag`): success text on a dark chip.
+        tagBackground.backgroundColor = NSColor(srgbRed: 12 / 255, green: 23 / 255, blue: 17 / 255, alpha: 1).cgColor
+        tagBackground.cornerRadius = 4
+        tagBackground.isHidden = true
+        layer?.addSublayer(tagBackground)
+        tagLabel.font = PanelStyle.inspectFont(ofSize: 9, weight: .semibold)
+        tagLabel.fontSize = 9
+        tagLabel.foregroundColor = PanelStyle.success.cgColor
+        tagLabel.alignmentMode = .center
+        tagLabel.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+        tagLabel.isHidden = true
+        layer?.addSublayer(tagLabel)
+        // "+" glyph for the add tile.
+        plusLabel.font = NSFont.systemFont(ofSize: 19, weight: .regular)
+        plusLabel.fontSize = 19
+        plusLabel.foregroundColor = PanelStyle.textTertiary.cgColor
+        plusLabel.alignmentMode = .center
+        plusLabel.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+        plusLabel.isHidden = true
+        layer?.addSublayer(plusLabel)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -3119,6 +3766,23 @@ private final class ImageFilmstripItem: NSView {
         onClick?([])
         return true
     }
+
+    /// The trailing "+" tile (spec `.thumb.add`).
+    func configureAddTile() {
+        imageView.image = nil
+        layer?.borderWidth = 1
+        layer?.borderColor = PanelStyle.hairline.cgColor
+        taskBadge.isHidden = true
+        tagBackground.isHidden = true
+        tagLabel.isHidden = true
+        plusLabel.isHidden = false
+        plusLabel.string = "+"
+        toolTip = "Add".localized
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("Add".localized)
+    }
+
     func configure(image: NSImage?, title: String, selected: Bool, compared: Bool,
                    taskPhase: WidgetTaskPhase?, isResult: Bool = false,
                    activeTaskCount: Int) {
@@ -3127,13 +3791,20 @@ private final class ImageFilmstripItem: NSView {
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
         setAccessibilityLabel(title)
+        plusLabel.isHidden = true
         let processing = taskPhase?.isActive == true
         let failed = taskPhase == .failed || taskPhase == .interrupted
         let completedResult = isResult && taskPhase == .completed
-        layer?.borderWidth = selected || compared || processing || completedResult ? 2 : 0
-        layer?.borderColor = completedResult ? PanelStyle.success.cgColor : PanelStyle.warmCue.cgColor
-        taskBadge.isHidden = !processing && !failed && !completedResult
-        taskBadge.backgroundColor = (failed ? PanelStyle.failure : (completedResult ? PanelStyle.success : PanelStyle.warmCue)).cgColor
+        let emphasized = selected || compared || processing
+        layer?.borderWidth = emphasized ? 2 : 1
+        previewInset = emphasized ? 3 : 4
+        layer?.borderColor = (failed ? PanelStyle.failure : (emphasized ? PanelStyle.warmCue : PanelStyle.inspectLine)).cgColor
+        taskBadge.isHidden = !failed
+        taskBadge.backgroundColor = PanelStyle.failure.cgColor
+        // Result chips get the "刚完成" tag instead of the plain dot.
+        tagBackground.isHidden = !completedResult
+        tagLabel.isHidden = !completedResult
+        if completedResult { tagLabel.string = "New".localized }
         layer?.removeAnimation(forKey: "widgetBreathing")
         if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             let animation = CABasicAnimation(keyPath: "borderColor")
@@ -3152,9 +3823,201 @@ private final class ImageFilmstripItem: NSView {
 
     override func layout() {
         super.layout()
-        imageView.frame = NSRect(x: 3, y: 3, width: bounds.width - 6, height: bounds.height - 6)
-        taskBadge.frame = NSRect(x: bounds.maxX - 9, y: bounds.maxY - 9, width: 7, height: 7)
+        let scale = min(bounds.width, bounds.height) / 96
+        layer?.cornerRadius = 9 * scale
+        tagBackground.cornerRadius = 5 * scale
+        tagLabel.fontSize = 9 * scale
+        taskBadge.cornerRadius = 3.5 * scale
+        imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
+        taskBadge.frame = NSRect(x: bounds.maxX - 9 * scale, y: bounds.maxY - 9 * scale,
+                                 width: 7 * scale, height: 7 * scale)
+        let tagSize = CGSize(width: 40 * scale, height: 20 * scale)
+        tagBackground.frame = CGRect(x: bounds.maxX - tagSize.width - 6 * scale, y: 8 * scale,
+                                     width: tagSize.width, height: tagSize.height)
+        tagLabel.frame = tagBackground.frame.insetBy(dx: 0, dy: 4 * scale)
+        plusLabel.frame = CGRect(x: 0, y: bounds.height / 2 - 14, width: bounds.width, height: 28)
     }
+}
+
+private final class FigmaAddButton: NSControl {
+    private let plusLabel = NSTextField(labelWithString: "+")
+    private let addLabel = NSTextField(labelWithString: "Add")
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
+        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        layer?.borderWidth = 1
+        layer?.cornerRadius = 9
+
+        plusLabel.font = PanelStyle.inspectFont(ofSize: 34)
+        plusLabel.textColor = PanelStyle.textPrimary
+        plusLabel.alignment = .center
+        addLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        addLabel.textColor = PanelStyle.textSecondary
+        addLabel.alignment = .center
+        addSubview(plusLabel)
+        addSubview(addLabel)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("Add".localized)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+        super.layout()
+        let scale = min(bounds.width, bounds.height) / 112
+        layer?.cornerRadius = 9 * scale
+        layer?.borderWidth = max(1, scale)
+        plusLabel.font = PanelStyle.inspectFont(ofSize: 34 * scale)
+        addLabel.font = PanelStyle.inspectFont(ofSize: 12 * scale, weight: .medium)
+        plusLabel.frame = NSRect(x: 0, y: bounds.height - 61 * scale,
+                                 width: bounds.width, height: 41 * scale)
+        addLabel.frame = NSRect(x: 0, y: bounds.height - 85 * scale,
+                                width: bounds.width, height: 15 * scale)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+        sendAction(action, to: target)
+    }
+}
+
+/// Image Inspect's Figma-defined right inspector. Unlike the legacy reusable
+/// difference cards, this is a stable 434×808 design surface with one-column
+/// metadata rows, quick actions, and a bottom-right Add affordance.
+private final class FigmaImageInspectorView: NSView {
+    var onRunDefaultWidget: (() -> Void)?
+    var onUpscale: (() -> Void)?
+    var onAdd: (() -> Void)?
+
+    private let titleLabel = NSTextField(labelWithString: "Image Information")
+    private let quickActionsLabel = NSTextField(labelWithString: "QUICK ACTIONS")
+    private let removeButton = PanelStyle.makeQuietButton(title: "Remove Background", target: nil, action: nil)
+    private let upscaleButton = PanelStyle.makeQuietButton(title: "Upscale 2x", target: nil, action: nil)
+    private let addButton = FigmaAddButton()
+    private let keys = ["Name", "Dimensions", "Format", "File size", "Color profile", "Alpha", "Created"]
+    private var keyLabels: [NSTextField] = []
+    private var valueLabels: [NSTextField] = []
+    private var dividers: [NSView] = []
+    private var items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)] = []
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 17, weight: .semibold)
+        titleLabel.textColor = PanelStyle.textPrimary
+        addSubview(titleLabel)
+
+        quickActionsLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
+        quickActionsLabel.textColor = PanelStyle.textTertiary
+        addSubview(quickActionsLabel)
+
+        for key in keys {
+            let keyLabel = NSTextField(labelWithString: key.localized)
+            keyLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
+            keyLabel.textColor = PanelStyle.textTertiary
+            addSubview(keyLabel)
+            keyLabels.append(keyLabel)
+
+            let valueLabel = NSTextField(labelWithString: "—")
+            valueLabel.font = PanelStyle.inspectFont(ofSize: 13)
+            valueLabel.textColor = PanelStyle.textPrimary
+            valueLabel.lineBreakMode = .byTruncatingMiddle
+            valueLabel.isSelectable = true
+            addSubview(valueLabel)
+            valueLabels.append(valueLabel)
+
+            let divider = NSView()
+            divider.wantsLayer = true
+            divider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+            addSubview(divider)
+            dividers.append(divider)
+        }
+
+        removeButton.target = self
+        removeButton.action = #selector(removeTapped)
+        upscaleButton.target = self
+        upscaleButton.action = #selector(upscaleTapped)
+        addButton.target = self
+        addButton.action = #selector(addTapped)
+        for button in [removeButton, upscaleButton, addButton] { addSubview(button) }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+        super.layout()
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        let sx = bounds.width / 434
+        let sy = bounds.height / 808
+        let scale = min(sx, sy)
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 17 * scale, weight: .semibold)
+        quickActionsLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale, weight: .semibold)
+        for label in keyLabels { label.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .medium) }
+        for label in valueLabels { label.font = PanelStyle.inspectFont(ofSize: 13 * scale) }
+        for button in [removeButton, upscaleButton] {
+            button.titleFont = PanelStyle.inspectFont(ofSize: 12 * scale, weight: .medium)
+            button.layer?.cornerRadius = 8 * scale
+            button.layer?.borderWidth = max(1, scale)
+        }
+        func topFrame(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+            NSRect(x: x * sx, y: bounds.height - (y + h) * sy, width: w * sx, height: h * sy)
+        }
+        titleLabel.frame = topFrame(36, 24, 300, 21)
+        let rowY: [CGFloat] = [84, 122, 160, 198, 236, 274, 312]
+        for index in keys.indices {
+            keyLabels[index].frame = topFrame(36, rowY[index], 124, 16)
+            valueLabels[index].frame = topFrame(174, rowY[index], 220, 16)
+            dividers[index].frame = topFrame(36, rowY[index] + 30, 362, 1)
+        }
+        quickActionsLabel.frame = topFrame(36, 386, 200, 13)
+        removeButton.frame = topFrame(36, 424, 362, 38)
+        upscaleButton.frame = topFrame(36, 488, 362, 38)
+        addButton.frame = topFrame(282, 650, 112, 112)
+    }
+
+    func show(items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)]) {
+        self.items = items
+        if let first = items.first { display(first) }
+    }
+
+    func highlight(index: Int?) {
+        guard let index, let item = items.first(where: { $0.index == index }) else { return }
+        display(item)
+    }
+
+    private func display(_ item: (index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)) {
+        let info = item.info
+        let dimensions = info.dimensions.map { "\(Int($0.width)) × \(Int($0.height))" } ?? "—"
+        let size = info.fileSize.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "—"
+        let created: String = {
+            guard info.isLocal,
+                  let attributes = try? FileManager.default.attributesOfItem(atPath: info.url.path),
+                  let date = attributes[.creationDate] as? Date else { return "—" }
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter.string(from: date)
+        }()
+        let values = [
+            info.filename,
+            dimensions,
+            info.formatName.isDisplayableValue ? info.formatName : "—",
+            size,
+            item.metadata?.colorSpace?.isDisplayableValue == true ? item.metadata!.colorSpace! : "—",
+            item.metadata?.hasAlpha.map { $0 ? "Yes".localized : "No".localized } ?? "—",
+            created
+        ]
+        for (label, value) in zip(valueLabels, values) { label.stringValue = value }
+    }
+
+    @objc private func removeTapped() { onRunDefaultWidget?() }
+    @objc private func upscaleTapped() { onUpscale?() }
+    @objc private func addTapped() { onAdd?() }
 }
 
 /// One image's full metadata as a self-contained block. A soft glowing border
@@ -3162,7 +4025,8 @@ private final class ImageFilmstripItem: NSView {
 final class ImageInfoBlock: NSView {
     /// Fixed card width, also used by ImageDifferencePanel for the width
     /// constraint, so column math here always matches the rendered width.
-    static let cardWidth: CGFloat = 300
+    /// 260 = 280pt inspector minus the panel's 10pt horizontal padding.
+    static let cardWidth: CGFloat = 260
 
     let index: Int
     private let container = NSView()

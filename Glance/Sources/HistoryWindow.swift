@@ -1,239 +1,328 @@
 import AppKit
 
-/// Resizable window that lists past preview events. Each event renders as a
-/// section: a header strip (timestamp + selected-text snippet) followed by a
-/// grid of MediaTileView cards — the same tile component the preview panel
-/// uses, so history entries look identical to live previews.
-final class HistoryWindow: NSWindow {
-    private let scrollView = NSScrollView()
-    private let docView = FlippedDocView()
-    private let emptyLabel = NSTextField(labelWithString: "No preview history yet.".localized)
-    private let toolbarBar = NSView()
-    private let clearButton = NSButton()
+/// Lists past preview events as a grid of thumbnail cards, styled to match the
+/// Figma "Preview History / Clean Editable" frame: a dark titlebar with custom
+/// traffic lights, an icon toolbar, a searchable content area, and a statusbar.
+///
+/// Cards are lightweight self-drawn views (not MediaTileView) so opening the
+/// window never blocks the main thread building AVPlayers / masonry tiles — the
+/// old cause of the open-time stutter.
+final class HistoryWindow: NSWindow, NSWindowDelegate {
+    private static let contentSize = NSSize(width: 1040, height: 720)
+
+    private enum Metric {
+        static let titlebarH: CGFloat = 52
+        static let toolbarH: CGFloat = 56
+        static let statusH: CGFloat = 30
+        static let pad: CGFloat = 32
+        static let card = NSSize(width: 232, height: 176)
+        static let spacing: CGFloat = 20
+    }
 
     private let imageLoader = ImageLoader()
-    private var sectionViews: [HistorySectionView] = []
-    /// Strong refs to viewer windows opened from a tile click.
     private var viewerWindows: [ContentViewerWindow] = []
 
-    // Layout constants shared with HistorySectionView.
-    fileprivate static let columns: Int = 4
-    fileprivate static let tileSize = NSSize(width: 180, height: 180)
-    fileprivate static let tileSpacing: CGFloat = 12
-    fileprivate static let sectionSpacing: CGFloat = 28
-    fileprivate static let headerHeight: CGFloat = 60
-    fileprivate static let contentInset: CGFloat = 20
-    fileprivate static let toolbarHeight: CGFloat = 44
+    // Chrome
+    private let contentContainer = NSView()
+    private let titlebar = HistoryTitlebar()
+    private let windowTitleLabel = NSTextField(labelWithString: "")
+    private let subtitleLabel = NSTextField(labelWithString: "")
+    private let toolbarBar = NSView()
+    private let bodyView = FlippedDocView()
+    private let statusbar = NSView()
+    private let leftStatusLabel = NSTextField(labelWithString: "")
+    private let centerHintLabel = NSTextField(labelWithString: "")
+
+    private lazy var closeTrafficButton = HistoryTrafficLightButton(
+        color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1),
+        target: self, action: #selector(closeTapped))
+    private lazy var minimizeTrafficButton = HistoryTrafficLightButton(
+        color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1),
+        target: self, action: #selector(minimizeTapped))
+    private lazy var zoomTrafficButton = HistoryTrafficLightButton(
+        color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1),
+        target: self, action: #selector(zoomTapped))
+
+    // Content
+    private let sectionTitle = NSTextField(labelWithString: "")
+    private let countLabel = NSTextField(labelWithString: "")
+    private let searchField = NSSearchField()
+    private let emptyLabel = NSTextField(labelWithString: "")
+    private let scrollView = NSScrollView()
+    private let gridDocView = FlippedDocView()
+
+    private var allInfos: [MediaInfo] = []
+    private var cards: [HistoryCardView] = []
+    private var toolbarTrailingButtons: [NSButton] = []
 
     init() {
-        let initialSize = NSSize(width: 860, height: 680)
-        super.init(
-            contentRect: NSRect(origin: .zero, size: initialSize),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
-        )
-        self.title = "Preview History".localized
-        self.isReleasedWhenClosed = false
-        self.center()
-        self.minSize = NSSize(width: 560, height: 400)
-        // Prevent blank flash on first open: start invisible and fade in once
-        // the section content has been built.
-        self.alphaValue = 0
+        super.init(contentRect: NSRect(origin: .zero, size: Self.contentSize),
+                   styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                   backing: .buffered, defer: false)
+        delegate = self
+        title = "Preview History".localized
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+        isReleasedWhenClosed = false
+        appearance = NSAppearance(named: .darkAqua)
+        backgroundColor = PanelStyle.inspectBackground
+        minSize = NSSize(width: 820, height: 520)
+        standardWindowButton(.closeButton)?.isHidden = true
+        standardWindowButton(.miniaturizeButton)?.isHidden = true
+        standardWindowButton(.zoomButton)?.isHidden = true
 
-        buildLayout()
+        buildUI()
+        setFrame(ScreenManager.shared.contentFrame(for: Self.contentSize), display: false)
+        layoutContent()
 
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(historyDidChange),
-            name: HistoryManager.didChange,
-            object: nil
-        )
-        // Theme switch rebuilds the section list so tiles re-resolve their
-        // semantic colours against the new appearance.
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(historyDidChange),
-            name: .preferencesDidChange,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(updateToolbarAppearance),
-            name: .preferencesDidChange,
-            object: nil
-        )
+        NotificationCenter.default.addObserver(self, selector: #selector(historyDidChange),
+                                               name: HistoryManager.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(languageChanged),
+                                               name: .languageDidChange, object: nil)
+        DispatchQueue.main.async { [weak self] in self?.layoutContent() }
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit { NotificationCenter.default.removeObserver(self) }
 
-    /// Pulls the latest records from HistoryManager and rebuilds the section
-    /// stack. Safe to call repeatedly.
-    func refresh() {
-        rebuildSections()
-    }
+    func refresh() { rebuildCards() }
 
-    @objc private func historyDidChange() {
-        DispatchQueue.main.async { [weak self] in
-            self?.rebuildSections()
-        }
-    }
+    // MARK: Build
 
-    // MARK: - Layout
+    private func buildUI() {
+        contentContainer.wantsLayer = true
+        contentContainer.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
+        contentView = contentContainer
 
-    private func buildLayout() {
-        guard let content = contentView else { return }
-        let bounds = content.bounds
+        titlebar.wantsLayer = true
+        titlebar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        contentContainer.addSubview(titlebar)
+        configureLabel(windowTitleLabel, size: 15, weight: .semibold, color: PanelStyle.textPrimary, align: .center)
+        windowTitleLabel.stringValue = "Preview History".localized
+        titlebar.addSubview(windowTitleLabel)
+        configureLabel(subtitleLabel, size: 11, color: PanelStyle.textTertiary, align: .center)
+        titlebar.addSubview(subtitleLabel)
+        titlebar.addSubview(closeTrafficButton)
+        titlebar.addSubview(minimizeTrafficButton)
+        titlebar.addSubview(zoomTrafficButton)
 
-        toolbarBar.frame = NSRect(x: 0, y: bounds.height - Self.toolbarHeight,
-                                   width: bounds.width, height: Self.toolbarHeight)
-        toolbarBar.autoresizingMask = [.width, .minYMargin]
         toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = PanelStyle.surface.cgColor
+        toolbarBar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
+        toolbarBar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        toolbarBar.layer?.borderWidth = 1
+        contentContainer.addSubview(toolbarBar)
+        addToolbarButton(symbol: "arrow.uturn.backward", tooltip: "Open in Inspect".localized, action: #selector(noop))
+        addToolbarButton(symbol: "trash", tooltip: "Clear History".localized, action: #selector(clearTapped), tint: PanelStyle.danger)
+        addToolbarButton(symbol: "info.circle", tooltip: "About Glance".localized, action: #selector(noop))
 
-        let sep = NSView(frame: NSRect(x: 0, y: 0, width: bounds.width, height: 1))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = PanelStyle.hairline.cgColor
-        sep.autoresizingMask = [.width]
-        toolbarBar.addSubview(sep)
+        bodyView.wantsLayer = true
+        bodyView.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
+        contentContainer.addSubview(bodyView)
 
-        clearButton.bezelStyle = .rounded
-        clearButton.title = "Clear History".localized
-        clearButton.target = self
-        clearButton.action = #selector(clearTapped)
-        clearButton.frame = NSRect(x: bounds.width - 136, y: 10,
-                                    width: 120, height: 26)
-        clearButton.autoresizingMask = [.minXMargin]
-        toolbarBar.addSubview(clearButton)
+        configureLabel(sectionTitle, size: 19, weight: .semibold, color: PanelStyle.textPrimary)
+        sectionTitle.stringValue = "Today".localized
+        bodyView.addSubview(sectionTitle)
+        configureLabel(countLabel, size: 11, color: PanelStyle.textTertiary)
+        bodyView.addSubview(countLabel)
 
-        content.addSubview(toolbarBar)
+        searchField.placeholderString = "Search filename".localized
+        searchField.font = PanelStyle.inspectFont(ofSize: 12)
+        searchField.target = self
+        searchField.action = #selector(searchChanged)
+        searchField.sendsSearchStringImmediately = true
+        searchField.sendsWholeSearchString = false
+        bodyView.addSubview(searchField)
 
-        // Scrollable content area
-        scrollView.frame = NSRect(x: 0, y: 0,
-                                   width: bounds.width,
-                                   height: bounds.height - Self.toolbarHeight)
-        scrollView.autoresizingMask = [.width, .height]
-        scrollView.hasVerticalScroller = true
+        configureLabel(emptyLabel, size: 13, color: PanelStyle.textTertiary, align: .center)
+        emptyLabel.stringValue = "No preview history yet.".localized
+        emptyLabel.isHidden = true
+        bodyView.addSubview(emptyLabel)
+
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
-        scrollView.borderType = .noBorder
-        scrollView.drawsBackground = true
-        scrollView.backgroundColor = PanelStyle.canvas
+        scrollView.autohidesScrollers = true
+        scrollView.documentView = gridDocView
+        bodyView.addSubview(scrollView)
 
-        docView.frame = NSRect(x: 0, y: 0, width: bounds.width,
-                                height: bounds.height - Self.toolbarHeight)
-        scrollView.documentView = docView
+        statusbar.wantsLayer = true
+        statusbar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectStatus)
+        statusbar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        statusbar.layer?.borderWidth = 1
+        contentContainer.addSubview(statusbar)
+        configureLabel(leftStatusLabel, size: 12, color: PanelStyle.textSecondary)
+        statusbar.addSubview(leftStatusLabel)
+        configureLabel(centerHintLabel, size: 12, color: PanelStyle.textSecondary, align: .center)
+        centerHintLabel.stringValue = "Search by filename, inspect again with one click".localized
+        statusbar.addSubview(centerHintLabel)
 
-        // Empty state
-        emptyLabel.textColor = PanelStyle.textSecondary
-        emptyLabel.font = NSFont.systemFont(ofSize: 14)
-        emptyLabel.alignment = .center
-        emptyLabel.frame = NSRect(x: 0, y: (bounds.height - 40) / 2,
-                                   width: bounds.width, height: 24)
-        emptyLabel.autoresizingMask = [.width]
-        docView.addSubview(emptyLabel)
-
-        content.addSubview(scrollView)
+        rebuildCards()
     }
 
-    private func rebuildSections() {
-        // Tear down previous sections so MediaTileView instances release
-        // their players / observers.
-        for section in sectionViews {
-            section.teardown()
-            section.removeFromSuperview()
+    private func configureLabel(_ label: NSTextField, size: CGFloat, weight: NSFont.Weight = .regular,
+                                color: NSColor, align: NSTextAlignment = .left) {
+        label.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
+        label.textColor = color
+        label.alignment = align
+        label.lineBreakMode = .byTruncatingTail
+        label.cell?.usesSingleLineMode = true
+    }
+
+    private func addToolbarButton(symbol: String, tooltip: String, action: Selector, tint: NSColor? = nil) {
+        let btn = PanelStyle.makeIconButton(symbol: symbol, tooltip: tooltip, target: self, action: action)
+        if let tint = tint { btn.contentTintColor = tint }
+        toolbarBar.addSubview(btn)
+        toolbarTrailingButtons.append(btn)
+    }
+
+    // MARK: Layout
+
+    private func layoutContent() {
+        let W = contentContainer.bounds.width
+        let H = contentContainer.bounds.height
+        guard W > 0, H > 0 else { return }
+        applyBackingScale()
+
+        titlebar.frame = NSRect(x: 0, y: H - Metric.titlebarH, width: W, height: Metric.titlebarH)
+        let dot: CGFloat = 12
+        let dotY = (Metric.titlebarH - dot) / 2
+        closeTrafficButton.frame = NSRect(x: 20, y: dotY, width: dot, height: dot)
+        minimizeTrafficButton.frame = NSRect(x: 40, y: dotY, width: dot, height: dot)
+        zoomTrafficButton.frame = NSRect(x: 60, y: dotY, width: dot, height: dot)
+        windowTitleLabel.frame = NSRect(x: 100, y: Metric.titlebarH / 2, width: W - 200, height: 20)
+        subtitleLabel.frame = NSRect(x: 100, y: Metric.titlebarH / 2 - 17, width: W - 200, height: 14)
+
+        toolbarBar.frame = NSRect(x: 0, y: H - Metric.titlebarH - Metric.toolbarH, width: W, height: Metric.toolbarH)
+        let btn: CGFloat = 36
+        let btnY = (Metric.toolbarH - btn) / 2
+        for (i, b) in toolbarTrailingButtons.enumerated() {
+            b.frame = NSRect(x: W - 20 - btn - CGFloat(i) * 44, y: btnY, width: btn, height: btn)
         }
-        sectionViews.removeAll()
 
-        // Dedup across the whole history: walk newest → oldest, keep each URL
-        // only on the first (most recent) record that contains it. Records
-        // left with no items after dedup are skipped entirely.
-        var seenURLs = Set<String>()
-        let deduped: [HistoryRecord] = HistoryManager.shared.records.compactMap { record in
-            let kept = record.items.filter { item in
-                seenURLs.insert(item.value).inserted
-            }
-            guard !kept.isEmpty else { return nil }
-            return HistoryRecord(timestamp: record.timestamp,
-                                  selectedText: record.selectedText,
-                                  items: kept)
+        statusbar.frame = NSRect(x: 0, y: 0, width: W, height: Metric.statusH)
+        leftStatusLabel.frame = NSRect(x: 20, y: (Metric.statusH - 15) / 2, width: 480, height: 15)
+        centerHintLabel.frame = NSRect(x: 0, y: (Metric.statusH - 15) / 2, width: W, height: 15)
+
+        let bodyTop = H - Metric.titlebarH - Metric.toolbarH
+        let bodyH = bodyTop - Metric.statusH
+        bodyView.frame = NSRect(x: 0, y: Metric.statusH, width: W, height: bodyH)
+        layoutBody()
+    }
+
+    private func layoutBody() {
+        // bodyView is flipped: y grows downward.
+        let w = bodyView.bounds.width
+        let h = bodyView.bounds.height
+        let p = Metric.pad
+        sectionTitle.frame = NSRect(x: p, y: 28, width: 300, height: 28)
+        countLabel.frame = NSRect(x: p, y: 62, width: 300, height: 15)
+        searchField.frame = NSRect(x: w - p - 320, y: 30, width: 320, height: 30)
+
+        let gridTop: CGFloat = 100
+        scrollView.frame = NSRect(x: p, y: gridTop, width: max(0, w - p * 2), height: max(0, h - gridTop - 16))
+        emptyLabel.frame = NSRect(x: 0, y: gridTop + 60, width: w, height: 20)
+        relayoutCards()
+    }
+
+    private func applyBackingScale() {
+        let scale = backingScaleFactor
+        func apply(_ view: NSView) {
+            if view.wantsLayer { view.layer?.contentsScale = scale }
+            for sub in view.subviews { apply(sub) }
         }
+        apply(contentContainer)
+    }
 
-        emptyLabel.isHidden = !deduped.isEmpty
+    // MARK: Cards
 
-        // Group deduped records by day (newest day first).
-        let calendar = Calendar.current
-        var dayGroups: [(date: Date, items: [HistoryRecord.Item])] = []
-        for record in deduped {
-            let dayStart = calendar.startOfDay(for: record.timestamp)
-            if let idx = dayGroups.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: dayStart) }) {
-                dayGroups[idx].items.append(contentsOf: record.items)
-            } else {
-                dayGroups.append((date: dayStart, items: record.items))
-            }
+    private func rebuildCards() {
+        for card in cards { card.removeFromSuperview() }
+        cards.removeAll()
+
+        var seen = Set<String>()
+        allInfos = HistoryManager.shared.records
+            .flatMap { $0.items }
+            .filter { seen.insert($0.value).inserted }
+            .compactMap { $0.detectedPath }
+            .compactMap { MediaInfo.from($0) }
+
+        applyFilter()
+    }
+
+    private func applyFilter() {
+        let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filtered = query.isEmpty ? allInfos
+            : allInfos.filter { $0.filename.lowercased().contains(query) }
+
+        for card in cards { card.removeFromSuperview() }
+        cards.removeAll()
+
+        emptyLabel.isHidden = !filtered.isEmpty
+        for info in filtered {
+            let card = HistoryCardView(info: info)
+            let captured = info
+            card.onTap = { [weak self] in self?.handleTileTap(info: captured) }
+            gridDocView.addSubview(card)
+            cards.append(card)
+            loadThumbnail(for: info, card: card)
         }
-        // Deduplicate items within each day as well.
-        dayGroups = dayGroups.map { group in
-            var seen = Set<String>()
-            let unique = group.items.filter { seen.insert($0.value).inserted }
-            return (date: group.date, items: unique)
-        }.filter { !$0.items.isEmpty }
+        countLabel.stringValue = String(format: "%d items".localized, filtered.count)
+        leftStatusLabel.stringValue = "Preview History".localized + "  •  " + String(format: "%d items".localized, allInfos.count)
+        subtitleLabel.stringValue = String(format: "%d items today".localized, allInfos.count)
+        relayoutCards()
+    }
 
-        let contentWidth = docView.bounds.width
-        let usableWidth = contentWidth - Self.contentInset * 2
-        var cursorY: CGFloat = Self.contentInset
+    private func relayoutCards() {
+        var contentW = scrollView.contentSize.width
+        if contentW <= 0 { contentW = scrollView.frame.width }
+        guard contentW > 0 else { return }
 
-        for group in dayGroups {
-            let section = HistorySectionView(
-                date: group.date,
-                items: group.items,
-                width: usableWidth,
-                imageLoader: imageLoader,
-                onTileTap: { [weak self] info in
-                    self?.handleTileTap(info: info)
+        let cardW = Metric.card.width
+        let cardH = Metric.card.height
+        let spacing = Metric.spacing
+        let cols = max(1, Int((contentW + spacing) / (cardW + spacing)))
+        var maxY: CGFloat = 0
+        for (idx, card) in cards.enumerated() {
+            let row = idx / cols
+            let col = idx % cols
+            let x = (CGFloat(col) * (cardW + spacing)).rounded()
+            let y = (CGFloat(row) * (cardH + spacing)).rounded()
+            card.frame = NSRect(x: x, y: y, width: cardW, height: cardH)
+            maxY = max(maxY, y + cardH)
+        }
+        let rows = (cards.count + cols - 1) / cols
+        let docH = max(CGFloat(rows) * (cardH + spacing), scrollView.contentSize.height)
+        gridDocView.frame = NSRect(x: 0, y: 0, width: contentW, height: docH)
+    }
+
+    private func loadThumbnail(for info: MediaInfo, card: HistoryCardView) {
+        switch info.kind {
+        case .image:
+            imageLoader.loadImage(from: info.url) { [weak card] image in
+                DispatchQueue.main.async {
+                    if let image = image { card?.setImage(image) } else { card?.setFailed() }
                 }
-            )
-            section.frame.origin = NSPoint(x: Self.contentInset, y: cursorY)
-            docView.addSubview(section)
-            sectionViews.append(section)
-            cursorY += section.frame.height + Self.sectionSpacing
-        }
-
-        // Resize the document view so the scroll bar reflects total content.
-        let totalHeight = max(cursorY + Self.contentInset,
-                              scrollView.contentSize.height)
-        docView.frame = NSRect(x: 0, y: 0,
-                                width: contentWidth, height: totalHeight)
-
-        // Centre empty label if there's no content.
-        if deduped.isEmpty {
-            emptyLabel.frame = NSRect(
-                x: 0,
-                y: scrollView.contentSize.height / 2 - 12,
-                width: contentWidth, height: 24
-            )
-        }
-        scrollView.documentView?.scroll(.zero)
-
-        // Fade in after content is ready to eliminate blank flash on open.
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.15
-            self.animator().alphaValue = 1
+            }
+        default:
+            card.setPlaceholder(for: info)
         }
     }
+
+    // MARK: Actions
+
+    @objc private func closeTapped() { close() }
+    @objc private func minimizeTapped() { miniaturize(nil) }
+    @objc private func zoomTapped() { zoom(nil) }
+    @objc private func noop() {}
+    @objc private func searchChanged() { applyFilter() }
 
     private func handleTileTap(info: MediaInfo) {
         switch info.kind {
         case .image, .video:
             NSWorkspace.shared.open(info.url)
         case .other, .folder:
-            if info.isLocal {
-                NSWorkspace.shared.activateFileViewerSelecting([info.url])
-            } else {
-                NSWorkspace.shared.open(info.url)
-            }
-            return
+            if info.isLocal { NSWorkspace.shared.activateFileViewerSelecting([info.url]) }
+            else { NSWorkspace.shared.open(info.url) }
         case .markdown, .text, .pdf, .webPage:
             let window = ContentViewerWindow()
             switch info.kind {
@@ -244,11 +333,8 @@ final class HistoryWindow: NSWindow {
             default: break
             }
             viewerWindows.append(window)
-            NotificationCenter.default.addObserver(
-                forName: NSWindow.willCloseNotification,
-                object: window,
-                queue: .main
-            ) { [weak self, weak window] _ in
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification,
+                                                   object: window, queue: .main) { [weak self, weak window] _ in
                 guard let self = self, let window = window else { return }
                 self.viewerWindows.removeAll { $0 === window }
             }
@@ -265,163 +351,137 @@ final class HistoryWindow: NSWindow {
         alert.addButton(withTitle: "Clear".localized)
         alert.addButton(withTitle: "Cancel".localized)
         alert.beginSheetModal(for: self) { response in
-            if response == .alertFirstButtonReturn {
-                HistoryManager.shared.clear()
-            }
+            if response == .alertFirstButtonReturn { HistoryManager.shared.clear() }
         }
     }
 
-    // The doc view needs to track the scroll-view's content width so tiles
-    // re-flow when the user resizes the window.
-    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
-        super.setFrame(frameRect, display: flag)
-        DispatchQueue.main.async { [weak self] in
-            self?.handleResize()
-        }
+    @objc private func historyDidChange() {
+        DispatchQueue.main.async { [weak self] in self?.rebuildCards() }
     }
 
-    private func handleResize() {
-        let newWidth = scrollView.contentSize.width
-        if abs(docView.frame.width - newWidth) < 0.5 { return }
-        docView.frame.size.width = newWidth
-        rebuildSections()
+    @objc private func languageChanged() {
+        windowTitleLabel.stringValue = "Preview History".localized
+        sectionTitle.stringValue = "Today".localized
+        searchField.placeholderString = "Search filename".localized
+        centerHintLabel.stringValue = "Search by filename, inspect again with one click".localized
+        applyFilter()
     }
 
-    @objc private func updateToolbarAppearance() {
-        toolbarBar.layer?.backgroundColor = PanelStyle.surface.cgColor
-        if let sep = toolbarBar.subviews.first(where: { $0.frame.height == 1 }) {
-            sep.layer?.backgroundColor = PanelStyle.hairline.cgColor
-        }
+    func windowDidResize(_ notification: Notification) { layoutContent() }
+
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
+// MARK: - Supporting views
+
+private final class HistoryTitlebar: NSView {
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 { window?.zoom(nil) } else { window?.performDrag(with: event) }
     }
 }
 
-// MARK: - Section view
+private final class HistoryTrafficLightButton: NSButton {
+    init(color: NSColor, target: AnyObject?, action: Selector) {
+        super.init(frame: .zero)
+        isBordered = false
+        title = ""
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(color)
+        self.target = target
+        self.action = action
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func layout() { super.layout(); layer?.cornerRadius = bounds.width / 2 }
+}
 
-/// One history record rendered as a header strip plus a fixed-column tile
-/// grid. Owns its MediaTileView instances and proxies thumbnail loading
-/// through the shared ImageLoader.
-/// One day's worth of history items rendered as a date header plus a
-/// fixed-column tile grid.  Owns its MediaTileView instances and proxies
-/// thumbnail loading through the shared ImageLoader.
-private final class HistorySectionView: NSView {
-    private let date: Date
-    private let items: [HistoryRecord.Item]
-    private let imageLoader: ImageLoader
-    private let onTileTap: (MediaInfo) -> Void
-    private var tiles: [MediaTileView] = []
+/// Self-drawn history card: thumbnail + filename/type overlay + load states.
+private final class HistoryCardView: NSView {
+    var onTap: (() -> Void)?
+    private let info: MediaInfo
+    private let imageView = NSImageView()
+    private let overlay = NSView()
+    private let nameLabel = NSTextField(labelWithString: "")
+    private let typeLabel = NSTextField(labelWithString: "")
+    private let stateLabel = NSTextField(labelWithString: "")
 
-    init(date: Date,
-         items: [HistoryRecord.Item],
-         width: CGFloat,
-         imageLoader: ImageLoader,
-         onTileTap: @escaping (MediaInfo) -> Void) {
-        self.date = date
-        self.items = items
-        self.imageLoader = imageLoader
-        self.onTileTap = onTileTap
+    init(info: MediaInfo) {
+        self.info = info
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.backgroundColor = NSColor(white: 1.0, alpha: 0.0).cgColor
+        layer?.cornerRadius = 12
+        layer?.masksToBounds = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surfaceRaised)
+        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        layer?.borderWidth = 1
 
-        buildSubviews(width: width)
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.wantsLayer = true
+        imageView.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
+        addSubview(imageView)
+
+        stateLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        stateLabel.textColor = PanelStyle.textTertiary
+        stateLabel.alignment = .center
+        stateLabel.stringValue = "Loading…".localized
+        stateLabel.backgroundColor = .clear
+        stateLabel.isBordered = false
+        stateLabel.isEditable = false
+        addSubview(stateLabel)
+
+        overlay.wantsLayer = true
+        overlay.layer?.backgroundColor = NSColor(white: 0, alpha: 0.55).cgColor
+        addSubview(overlay)
+
+        nameLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        nameLabel.textColor = PanelStyle.textPrimary
+        nameLabel.lineBreakMode = .byTruncatingMiddle
+        nameLabel.cell?.usesSingleLineMode = true
+        nameLabel.stringValue = info.filename
+        overlay.addSubview(nameLabel)
+
+        typeLabel.font = PanelStyle.inspectFont(ofSize: 10)
+        typeLabel.textColor = PanelStyle.textTertiary
+        typeLabel.alignment = .right
+        typeLabel.stringValue = info.formatName
+        overlay.addSubview(typeLabel)
     }
-
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func teardown() {
-        for tile in tiles { tile.teardown() }
-        tiles.removeAll()
+    func setImage(_ image: NSImage) { imageView.image = image; stateLabel.isHidden = true }
+
+    func setFailed() {
+        imageView.image = nil
+        stateLabel.stringValue = "Failed to load".localized
+        stateLabel.textColor = PanelStyle.danger
+        stateLabel.isHidden = false
     }
 
-    // MARK: - Builders
-
-    private func buildSubviews(width: CGFloat) {
-        let headerH = HistoryWindow.headerHeight
-        let tileW = HistoryWindow.tileSize.width
-        let tileH = HistoryWindow.tileSize.height
-        let spacing = HistoryWindow.tileSpacing
-
-        // Header: date only
-        let header = makeHeader(width: width, height: headerH)
-        header.frame.origin = NSPoint(x: 0, y: 0)
-        addSubview(header)
-
-        // Tile grid
-        let infos: [(info: MediaInfo, item: HistoryRecord.Item)] = items.compactMap { item in
-            guard let path = item.detectedPath, let info = MediaInfo.from(path) else { return nil }
-            return (info, item)
-        }
-        let tilesGridY = headerH + 8
-        var rowMaxY: CGFloat = tilesGridY
-
-        // Compute columns that actually fit at this width.
-        let availableForGrid = max(tileW, width)
-        let cols = max(1, Int((availableForGrid + spacing) / (tileW + spacing)))
-
-        for (idx, pair) in infos.enumerated() {
-            let row = idx / cols
-            let col = idx % cols
-            let x = CGFloat(col) * (tileW + spacing)
-            let y = tilesGridY + CGFloat(row) * (tileH + spacing)
-            let frame = NSRect(x: x, y: y, width: tileW, height: tileH)
-            let tile = MediaTileView(info: pair.info, style: .masonry, frame: frame)
-            let capturedInfo = pair.info
-            tile.onTileTap = { [weak self] in
-                self?.onTileTap(capturedInfo)
-            }
-            // MediaTileView's mouseDown opens image/video URLs directly via
-            // NSWorkspace, so no extra gesture recognizer is needed for
-            // those kinds — only openable tiles funnel through onTileTap.
-            addSubview(tile)
-            tiles.append(tile)
-            rowMaxY = max(rowMaxY, y + tileH)
-
-            kickOffLoad(for: pair.info, tile: tile)
-        }
-
-        let totalH = max(headerH, rowMaxY)
-        frame = NSRect(x: 0, y: 0, width: width, height: totalH)
-    }
-
-    private func makeHeader(width: CGFloat, height: CGFloat) -> NSView {
-        let header = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
-        header.wantsLayer = true
-        header.layer?.backgroundColor = PanelStyle.overlay.cgColor
-        header.layer?.cornerRadius = 8
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd  EEEE"
-        let dateLabel = NSTextField(labelWithString: formatter.string(from: date))
-        dateLabel.font = NSFont.systemFont(ofSize: 15, weight: .bold)
-        dateLabel.textColor = PanelStyle.textPrimary
-        dateLabel.frame = NSRect(x: 14, y: (height - 22) / 2, width: width - 28, height: 22)
-        dateLabel.lineBreakMode = .byTruncatingTail
-        header.addSubview(dateLabel)
-
-        return header
-    }
-
-    /// Drive the same async pipeline the live preview uses, so the tile shows
-    /// the type-specific icon while loading and the real thumbnail once done.
-    private func kickOffLoad(for info: MediaInfo, tile: MediaTileView) {
+    func setPlaceholder(for info: MediaInfo) {
+        let symbol: String
         switch info.kind {
-        case .image:
-            imageLoader.loadImage(from: info.url) { [weak tile] image in
-                guard let tile = tile, let img = image else {
-                    tile?.setFailed(); return
-                }
-                var enriched = info
-                enriched.dimensions = img.size
-                tile.setLoaded(.image(img, enriched))
-            }
-        case .video:
-            // Async probe is overkill in history — just hand the URL through
-            // so the tile attaches an AVPlayer. AVPlayerView resolves the
-            // natural size itself.
-            tile.setLoaded(.video(info.url, naturalSize: info.dimensions ?? .zero, info))
-        case .markdown, .text, .pdf, .webPage, .other, .folder:
-            tile.setLoaded(.openable(info))
+        case .video: symbol = "film"
+        case .markdown, .text: symbol = "doc.text"
+        case .pdf: symbol = "doc.richtext"
+        case .webPage: symbol = "globe"
+        case .folder: symbol = "folder"
+        default: symbol = "doc"
         }
+        imageView.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        imageView.contentTintColor = PanelStyle.textTertiary
+        imageView.imageScaling = .scaleNone
+        stateLabel.isHidden = true
     }
 
+    override func layout() {
+        super.layout()
+        imageView.frame = bounds
+        let overlayH: CGFloat = 34
+        overlay.frame = NSRect(x: 0, y: 0, width: bounds.width, height: overlayH)
+        nameLabel.frame = NSRect(x: 12, y: (overlayH - 16) / 2, width: bounds.width - 64, height: 16)
+        typeLabel.frame = NSRect(x: bounds.width - 56, y: (overlayH - 14) / 2, width: 44, height: 14)
+        stateLabel.frame = NSRect(x: 0, y: bounds.midY - 8, width: bounds.width, height: 16)
+    }
+
+    override func mouseDown(with event: NSEvent) { onTap?() }
 }

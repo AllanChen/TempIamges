@@ -45,3 +45,15 @@ keyboard input. Rules:
 ## Building
 
 9. The user builds and runs Glance themselves. Do not run the build or offer to.
+
+## Figma plugin (layout/GlanceFigmaPlugin)
+
+10. The user imports and runs the Figma plugin themselves. Do NOT try to trigger
+    it via AppleScript / GUI automation / `screencapture` / CGEvent clicks — this
+    wastes time and is unreliable. When a Figma generation change is ready, just:
+    (a) `node --check code.js` and run `test-generation.cjs`, then
+    (b) tell the user exactly which button to click in Figma **Design Mode**
+    (Shift+D first — Dev Mode cannot create layers). Nothing else.
+11. Figma Desktop MCP is **read-only** (`get_metadata` / `get_design_context` /
+    `get_screenshot` for verification only). All canvas writes go through the
+    plugin the user runs.

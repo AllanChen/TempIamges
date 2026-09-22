@@ -36,6 +36,17 @@
 "ℹ️ Optional" = "ℹ️ 可选";
 "✅ Granted" = "✅ 已授权";
 
+// MARK: - Onboarding V2
+"Set up essential permissions" = "先完成必要权限";
+"Glance needs permission to read the current selection and respond to your keyboard shortcut. You can change these settings later." = "Glance 需要读取当前选择内容并响应快捷键。你可以稍后在系统设置中修改权限。";
+"Read the current selection" = "读取当前选择内容";
+"Recognize the global shortcut" = "识别全局快捷键";
+"Full Disk Access" = "完全磁盘访问";
+"Preview files in protected locations" = "预览受保护位置中的文件";
+"Allowed" = "已允许";
+"Optional" = "可选";
+"Permissions stay under your control in macOS System Settings." = "权限始终由你在 macOS 系统设置中控制。";
+
 // MARK: - Preferences Window
 "Preferences" = "偏好设置";
 "Glance Preferences" = "Glance 偏好设置";
@@ -264,3 +275,61 @@
 "Run" = "运行";
 "Clean" = "清空";
 "Paste any text — click Run (or press ⏎) to test detection." = "粘贴任意文本 — 点击运行（或按回车键）来测试识别。";
+
+// MARK: - Workbench V2
+"Fit to Window" = "适应窗口";
+"Zoom Out" = "缩小";
+"Zoom In" = "放大";
+"Run %@" = "运行 %@";
+"%d task(s) polling" = "%d 个任务正在轮询";
+"You can keep inspecting; the result appears in the filmstrip." = "可以继续查看主图，完成后结果会出现在下方。";
+"New" = "刚完成";
+"Add" = "添加";
+
+// MARK: - Video Inspect workbench
+"Video Information" = "视频信息";
+"Codec" = "编码";
+"Audio" = "音频";
+"Bitrate" = "码率";
+"Fit" = "适应窗口";
+"Compare" = "比较";
+"Close" = "关闭";
+"Minimize" = "最小化";
+"Zoom" = "缩放窗口";
+"Space to play or pause" = "空格键播放或暂停";
+
+// MARK: - Home / Launcher
+"Open Home" = "打开主页";
+"Open images to inspect" = "打开图片开始查看";
+"Open something to inspect" = "打开内容开始查看";
+"Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder." = "Glance 从文件开始工作。把图片拖到这里，或选择文件和文件夹——Glance 会读取文件夹里的每一张图片。";
+"Drag images or a folder here" = "拖入图片或文件夹";
+"PNG · JPEG · HEIC · WebP · TIFF · RAW  and more" = "PNG · JPEG · HEIC · WebP · TIFF · RAW  等";
+"Open Files…" = "打开文件…";
+"Open Folder…" = "打开文件夹…";
+"FOLDER" = "文件夹";
+"%d images found" = "找到 %d 张图片";
+"%d images ready" = "%d 张图片已就绪";
+"No images in that folder" = "该文件夹内没有图片";
+"Inspect all %d images" = "查看全部 %d 张图片";
+"Recent" = "最近";
+"Reopen what you inspected before." = "重新打开你查看过的内容。";
+"Nothing here yet. Inspected files show up here." = "还没有记录。查看过的文件会显示在这里。";
+"Today" = "今天";
+"%d items" = "%d 项";
+"%d items today" = "今天 %d 项";
+"Search filename" = "搜索文件名";
+"Open in Inspect" = "在查看器中打开";
+"Search by filename, inspect again with one click" = "按文件名搜索，一键重新查看";
+
+// MARK: - Tray popover
+"Preview is on" = "预览已开启";
+"Preview is off" = "预览已关闭";
+"Open Glance Home" = "打开 Glance 主页";
+"Permissions" = "权限";
+"All set" = "已就绪";
+"Action needed" = "需要处理";
+"Sign in" = "登录";
+"Signed in" = "已登录";
+"No file open  •  Open images to begin" = "未打开文件  •  打开图片以开始";
+"Drop files anywhere  •  ⌘O to open  •  ⌘⇧O for a folder" = "可拖入任意位置  •  ⌘O 打开文件  •  ⌘⇧O 打开文件夹";
