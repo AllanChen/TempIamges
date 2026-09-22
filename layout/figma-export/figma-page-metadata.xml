@@ -1,12 +1,3 @@
-Currently selected nodes:
-- 10:195: Widget Market / Install / Previous
-- 16:566: Base64 Toolkit / Clean Editable
-- 16:619: Preview History / Clean Editable
-- 16:778: Onboarding / Permissions / Clean Editable
-- 16:690: Preferences / Clean Editable
-
-
-
 <canvas id="0:1" name="Glance Production UI" x="0" y="0" width="0" height="0">
   <frame id="2:270" name="Reference / image-inspect-ui.png" x="0" y="0" width="1554" height="1012" />
   <frame id="2:271" name="Image Inspect / Pixel Match" x="1750" y="0" width="1554" height="1012">
@@ -408,7 +399,7 @@ Currently selected nodes:
       </frame>
     </frame>
   </frame>
-  <frame id="10:195" name="Widget Market / Install / Previous" x="22750" y="0" width="1554" height="1012">
+  <frame id="10:195" name="Widget Market / Install / Previous" x="19250" y="0" width="1554" height="1012">
     <frame id="10:196" name="Editable Content" x="0" y="0" width="1554" height="1012">
       <frame id="10:197" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
         <ellipse id="10:198" name="Close" x="24" y="23" width="12" height="12" />
@@ -519,7 +510,7 @@ Currently selected nodes:
       </frame>
     </frame>
   </frame>
-  <frame id="16:437" name="Content Viewer / Clean Editable" x="12250" y="0" width="1554" height="1012">
+  <frame id="16:437" name="Content Viewer / Clean Editable" x="10500" y="0" width="1554" height="1012">
     <frame id="16:438" name="Editable Content" x="0" y="0" width="1554" height="1012">
       <frame id="16:439" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
         <ellipse id="16:440" name="Close" x="24" y="23" width="12" height="12" />
@@ -591,7 +582,7 @@ Currently selected nodes:
       </frame>
     </frame>
   </frame>
-  <frame id="16:566" name="Base64 Toolkit / Clean Editable" x="15750" y="0" width="1554" height="1012">
+  <frame id="16:566" name="Base64 Toolkit / Clean Editable" x="12250" y="0" width="1554" height="1012">
     <frame id="16:567" name="Editable Content" x="0" y="0" width="1554" height="1012">
       <frame id="16:568" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
         <ellipse id="16:569" name="Close" x="24" y="23" width="12" height="12" />
@@ -651,7 +642,7 @@ Currently selected nodes:
       </frame>
     </frame>
   </frame>
-  <frame id="16:619" name="Preview History / Clean Editable" x="17500" y="0" width="1554" height="1012">
+  <frame id="16:619" name="Preview History / Clean Editable" x="14000" y="0" width="1554" height="1012">
     <frame id="16:620" name="Editable Content" x="0" y="0" width="1554" height="1012">
       <frame id="16:621" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
         <ellipse id="16:622" name="Close" x="24" y="23" width="12" height="12" />
@@ -731,7 +722,7 @@ Currently selected nodes:
       </frame>
     </frame>
   </frame>
-  <frame id="16:690" name="Preferences / Clean Editable" x="19250" y="0" width="1554" height="1012">
+  <frame id="16:690" name="Preferences / Clean Editable" x="15750" y="0" width="1554" height="1012">
     <frame id="16:691" name="Editable Content" x="0" y="0" width="1554" height="1012">
       <frame id="16:692" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
         <ellipse id="16:693" name="Close" x="24" y="23" width="12" height="12" />
@@ -807,7 +798,7 @@ Currently selected nodes:
       </frame>
     </frame>
   </frame>
-  <frame id="16:778" name="Onboarding / Permissions / Clean Editable" x="21000" y="0" width="1554" height="1012">
+  <frame id="16:778" name="Onboarding / Permissions / Clean Editable" x="17500" y="0" width="1554" height="1012">
     <frame id="16:779" name="01 / Glance Window" x="487" y="181" width="580" height="650">
       <frame id="16:780" name="Titlebar" x="0" y="0" width="580" height="44">
         <ellipse id="16:781" name="Close" x="16" y="17" width="11" height="11" />
@@ -960,6 +951,1915 @@ Currently selected nodes:
       </frame>
     </frame>
   </frame>
+  <frame id="22:1030" name="Home / Launcher / Clean Editable" x="21000" y="0" width="1554" height="1012">
+    <frame id="22:1031" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="22:1032" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="22:1033" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="22:1034" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="22:1035" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="22:1036" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="22:1037" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="22:1038" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="22:1039" name="Open Files" x="40" y="14" width="38" height="38">
+          <frame id="22:1040" name="Icon / file" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="22:1042" name="Open Folder" x="88" y="14" width="38" height="38">
+          <frame id="22:1043" name="Icon / folder" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="22:1045" name="Tasks" x="1378" y="14" width="38" height="38">
+          <frame id="22:1046" name="Icon / tasks" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="22:1049" name="Preferences" x="1426" y="14" width="38" height="38">
+          <frame id="22:1050" name="Icon / settings" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="22:1054" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="22:1055" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="22:1059" name="03 / Open Surface" x="6" y="128" width="1000" height="847">
+        <text id="22:1060" name="Welcome" x="56" y="93" width="314" height="29" />
+        <text id="22:1061" name="Welcome Sub" x="56" y="129" width="700" height="16" />
+        <frame id="22:1062" name="Drop Zone" x="56" y="185" width="888" height="300">
+          <frame id="22:1063" name="Drop Icon" x="411" y="60" width="66" height="66">
+            <frame id="22:1064" name="Icon / focus" x="18" y="18" width="30" height="30" />
+          </frame>
+          <text id="22:1068" name="Drop Title" x="0" y="170" width="888" height="19" />
+          <text id="22:1069" name="Drop Hint" x="0" y="200" width="888" height="13" />
+        </frame>
+        <frame id="22:1070" name="Open Files Button" x="274" y="501" width="150" height="38">
+          <text id="22:1071" name="Label" x="0" y="10" width="150" height="15" />
+        </frame>
+        <frame id="22:1072" name="Open Folder Button" x="440" y="501" width="150" height="38">
+          <text id="22:1073" name="Label" x="0" y="10" width="150" height="15" />
+        </frame>
+        <text id="22:1074" name="Folder Group" x="56" y="661" width="156" height="13" />
+        <frame id="22:1076" name="Folder Images" x="56" y="689" width="888" height="132">
+          <frame id="22:1077" name="Folder Image" x="16" y="20" width="92" height="92" />
+          <frame id="22:1079" name="Folder Image" x="124" y="20" width="92" height="92" />
+          <frame id="22:1081" name="Folder Image" x="232" y="20" width="92" height="92" />
+          <frame id="22:1083" name="Folder Image" x="340" y="20" width="92" height="92" />
+          <frame id="22:1085" name="Folder Image" x="448" y="20" width="92" height="92" />
+          <frame id="22:1087" name="Folder Image" x="556" y="20" width="92" height="92" />
+          <frame id="22:1089" name="Folder Image" x="664" y="20" width="92" height="92" />
+          <frame id="22:1091" name="Folder Image" x="772" y="20" width="92" height="92" />
+          <frame id="22:1093" name="More Count" x="880" y="20" width="92" height="92">
+            <text id="22:1094" name="More Label" x="0" y="36" width="92" height="18" />
+          </frame>
+        </frame>
+      </frame>
+      <frame id="22:1097" name="04 / Recent" x="1000" y="128" width="554" height="847">
+        <text id="22:1098" name="Recent Heading" x="40" y="40" width="65" height="23" />
+        <text id="22:1099" name="Recent Sub" x="40" y="70" width="185" height="13" />
+        <frame id="22:1100" name="Search Recent" x="470" y="34" width="38" height="38">
+          <frame id="22:1101" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="22:1104" name="Recent / input.png" x="40" y="110" width="214" height="176">
+          <rounded-rectangle id="22:1105" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="22:1106" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="22:1107" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="22:1235" name="Recent / input.png" x="40" y="710" width="214" height="176">
+          <rounded-rectangle id="22:1236" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="22:1237" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="22:1238" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="22:1239" name="Recent / input.png" x="275" y="710" width="214" height="176">
+          <rounded-rectangle id="22:1240" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="22:1241" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="22:1242" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="22:1108" name="Recent / portrait.jpg" x="278" y="110" width="214" height="176">
+          <rounded-rectangle id="22:1109" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="22:1110" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="22:1111" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="22:1112" name="Recent / result-remove-bg.png" x="40" y="310" width="214" height="176">
+          <rounded-rectangle id="22:1113" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="22:1114" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="22:1115" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="22:1116" name="Recent / product.webp" x="278" y="310" width="214" height="176">
+          <rounded-rectangle id="22:1117" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="22:1118" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="22:1119" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="22:1120" name="Recent / capture.heic" x="40" y="510" width="214" height="176">
+          <rounded-rectangle id="22:1121" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="22:1122" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="22:1123" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="22:1124" name="Recent / design.png" x="278" y="510" width="214" height="176">
+          <rounded-rectangle id="22:1125" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="22:1126" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="22:1127" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+      </frame>
+      <frame id="22:1135" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="22:1136" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="22:1137" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="24:1244" name="Tray Popover / Clean Editable" x="22750" y="0" width="1554" height="1012">
+    <rounded-rectangle id="24:1245" name="macOS Menu Bar" x="0" y="0" width="1554" height="28" />
+    <frame id="24:1246" name="Tray Icon" x="1430" y="6" width="16" height="16" />
+    <text id="24:1250" name="Note" x="42" y="44" width="900" height="15" />
+    <frame id="24:1251" name="01 / Tray Popover" x="1150" y="40" width="300" height="452">
+      <rounded-rectangle id="24:1252" name="Warm Glass Tint" x="0" y="0" width="300" height="452" />
+      <frame id="24:1253" name="Glance Mark" x="16" y="16" width="34" height="34">
+        <frame id="24:1254" name="Icon / focus" x="8" y="8" width="18" height="18" />
+      </frame>
+      <text id="24:1258" name="Brand" x="60" y="18" width="51" height="18" />
+      <text id="24:1259" name="Brand Sub" x="60" y="38" width="64" height="12" />
+      <frame id="24:1260" name="Preview Toggle" x="250" y="22" width="38" height="21" />
+      <rounded-rectangle id="24:1262" name="Header Divider" x="12" y="66" width="276" height="1" />
+      <frame id="24:1263" name="Open Home" x="12" y="80" width="276" height="44">
+        <frame id="24:1264" name="Icon / focus" x="16" y="13" width="18" height="18" />
+        <text id="24:1268" name="Label" x="44" y="14" width="122" height="16" />
+      </frame>
+      <frame id="24:1269" name="Row / Tasks" x="12" y="138" width="276" height="40">
+        <frame id="24:1270" name="Icon / tasks" x="12" y="11" width="18" height="18" />
+        <text id="24:1273" name="Label" x="42" y="12" width="37" height="16" />
+        <frame id="24:1274" name="Badge" x="232" y="10" width="32" height="20">
+          <text id="24:1275" name="Badge Label" x="0" y="4" width="32" height="12" />
+        </frame>
+      </frame>
+      <frame id="24:1276" name="Row / Preview History" x="12" y="182" width="276" height="40">
+        <frame id="24:1277" name="Icon / refresh" x="12" y="11" width="18" height="18" />
+        <text id="24:1280" name="Label" x="42" y="12" width="98" height="16" />
+      </frame>
+      <frame id="24:1281" name="Row / Preferences" x="12" y="226" width="276" height="40">
+        <frame id="24:1282" name="Icon / settings" x="12" y="11" width="18" height="18" />
+        <text id="24:1286" name="Label" x="42" y="12" width="75" height="16" />
+        <text id="24:1287" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <rounded-rectangle id="24:1288" name="Divider 2" x="12" y="278" width="276" height="1" />
+      <frame id="24:1289" name="Row / Permissions" x="12" y="290" width="276" height="40">
+        <frame id="24:1290" name="Icon / shield" x="12" y="11" width="18" height="18" />
+        <text id="24:1293" name="Label" x="42" y="12" width="76" height="16" />
+        <text id="24:1294" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <frame id="24:1295" name="Row / Account" x="12" y="334" width="276" height="40">
+        <frame id="24:1296" name="Icon / grid" x="12" y="11" width="18" height="18" />
+        <text id="24:1301" name="Label" x="42" y="12" width="52" height="16" />
+        <text id="24:1302" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <rounded-rectangle id="24:1303" name="Divider 3" x="12" y="386" width="276" height="1" />
+      <text id="24:1304" name="About" x="24" y="400" width="77" height="15" />
+      <text id="24:1305" name="Quit" x="0" y="400" width="276" height="15" />
+    </frame>
+  </frame>
+  <frame id="26:1306" name="Image Viewer / Simple Operation" x="24500" y="0" width="1554" height="1012">
+    <frame id="26:1307" name="01 / Floating Toolbar" x="662" y="24" width="230" height="54">
+      <frame id="26:1308" name="Focus" x="8" y="8" width="38" height="38">
+        <frame id="26:1309" name="Icon / focus" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1313" name="Compare" x="52" y="8" width="38" height="38">
+        <frame id="26:1314" name="Icon / compare" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1317" name="Slider" x="96" y="8" width="38" height="38">
+        <frame id="26:1318" name="Icon / slider" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1323" name="Widget" x="140" y="8" width="38" height="38">
+        <frame id="26:1324" name="Icon / grid" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1329" name="Information" x="184" y="8" width="38" height="38">
+        <frame id="26:1330" name="Icon / info" x="10" y="10" width="18" height="18" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1334" name="Dark Refresh / Image Viewer / Simple Operation" x="0" y="1252" width="1554" height="1012">
+    <frame id="26:1335" name="01 / Floating Toolbar" x="662" y="24" width="230" height="54">
+      <frame id="26:1336" name="Focus" x="8" y="8" width="38" height="38">
+        <frame id="26:1337" name="Icon / focus" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1341" name="Compare" x="52" y="8" width="38" height="38">
+        <frame id="26:1342" name="Icon / compare" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1345" name="Slider" x="96" y="8" width="38" height="38">
+        <frame id="26:1346" name="Icon / slider" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1351" name="Widget" x="140" y="8" width="38" height="38">
+        <frame id="26:1352" name="Icon / grid" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1357" name="Information" x="184" y="8" width="38" height="38">
+        <frame id="26:1358" name="Icon / info" x="10" y="10" width="18" height="18" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1362" name="Dark Refresh / Video Inspect" x="1750" y="1252" width="1554" height="1012">
+    <frame id="26:1363" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:1364" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:1365" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:1366" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:1367" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:1368" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:1369" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:1370" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:1371" name="Capture Frame" x="40" y="14" width="38" height="38">
+          <frame id="26:1372" name="Icon / capture" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1375" name="Focus" x="686" y="14" width="38" height="38">
+          <frame id="26:1376" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1380" name="Compare" x="734" y="14" width="38" height="38">
+          <frame id="26:1381" name="Icon / compare" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1384" name="Fit" x="782" y="14" width="38" height="38">
+          <frame id="26:1385" name="Icon / fit" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1387" name="Tasks" x="1378" y="14" width="38" height="38">
+          <frame id="26:1388" name="Icon / tasks" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1391" name="Widget" x="1426" y="14" width="38" height="38">
+          <frame id="26:1392" name="Icon / grid" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1397" name="Video Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:1398" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:1402" name="03 / Video Canvas" x="0" y="128" width="1554" height="847">
+        <rounded-rectangle id="26:1403" name="Video / clip.mov" x="48" y="20" width="1458" height="807" />
+        <frame id="26:1404" name="Playback Controls" x="124" y="722" width="1306" height="64">
+          <frame id="26:1405" name="Play" x="16" y="13" width="38" height="38">
+            <frame id="26:1406" name="Icon / play" x="10" y="10" width="18" height="18" />
+          </frame>
+          <rounded-rectangle id="26:1408" name="Timeline Track" x="76" y="30" width="1070" height="4" />
+          <rounded-rectangle id="26:1409" name="Timeline Progress" x="76" y="30" width="416" height="4" />
+          <ellipse id="26:1410" name="Timeline Knob" x="486" y="25" width="14" height="14" />
+          <text id="26:1411" name="Current Time" x="1168" y="24" width="34" height="15" />
+          <text id="26:1412" name="Duration" x="1224" y="24" width="32" height="15" />
+        </frame>
+      </frame>
+      <frame id="26:1413" name="Video Information / hidden by default" x="1120" y="128" width="434" height="847" hidden="true">
+        <text id="26:1414" name="Title" x="36" y="24" width="147" height="21" />
+        <text id="26:1415" name="Key / Dimensions" x="36" y="84" width="73" height="16" />
+        <text id="26:1416" name="Value / Dimensions" x="174" y="84" width="220" height="16" />
+        <rounded-rectangle id="26:1417" name="Divider" x="36" y="114" width="362" height="1" />
+        <text id="26:1418" name="Key / Duration" x="36" y="122" width="54" height="16" />
+        <text id="26:1419" name="Value / Duration" x="174" y="122" width="220" height="16" />
+        <rounded-rectangle id="26:1420" name="Divider" x="36" y="152" width="362" height="1" />
+        <text id="26:1421" name="Key / Codec" x="36" y="160" width="41" height="16" />
+        <text id="26:1422" name="Value / Codec" x="174" y="160" width="220" height="16" />
+        <rounded-rectangle id="26:1423" name="Divider" x="36" y="190" width="362" height="1" />
+        <text id="26:1424" name="Key / Frame rate" x="36" y="198" width="68" height="16" />
+        <text id="26:1425" name="Value / Frame rate" x="174" y="198" width="220" height="16" />
+        <rounded-rectangle id="26:1426" name="Divider" x="36" y="228" width="362" height="1" />
+        <text id="26:1427" name="Key / Audio" x="36" y="236" width="37" height="16" />
+        <text id="26:1428" name="Value / Audio" x="174" y="236" width="220" height="16" />
+        <rounded-rectangle id="26:1429" name="Divider" x="36" y="266" width="362" height="1" />
+        <text id="26:1430" name="Key / Bitrate" x="36" y="274" width="42" height="16" />
+        <text id="26:1431" name="Value / Bitrate" x="174" y="274" width="220" height="16" />
+        <rounded-rectangle id="26:1432" name="Divider" x="36" y="304" width="362" height="1" />
+      </frame>
+      <frame id="26:1433" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:1434" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:1435" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1436" name="Dark Refresh / Task Center" x="3500" y="1252" width="1554" height="1012">
+    <frame id="26:1437" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:1438" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:1439" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:1440" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:1441" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:1442" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:1443" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:1444" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:1445" name="Refresh" x="40" y="14" width="38" height="38">
+          <frame id="26:1446" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1449" name="Search" x="88" y="14" width="38" height="38">
+          <frame id="26:1450" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1453" name="Open in Inspect" x="1378" y="14" width="38" height="38">
+          <frame id="26:1454" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1458" name="Clear Finished" x="1426" y="14" width="38" height="38">
+          <frame id="26:1459" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1461" name="Task Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:1462" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:1466" name="03 / Task List" x="0" y="128" width="360" height="847">
+        <text id="26:1467" name="Heading" x="24" y="22" width="49" height="21" />
+        <text id="26:1468" name="Caption" x="24" y="49" width="159" height="13" />
+        <frame id="26:1469" name="All Filter" x="20" y="82" width="72" height="38">
+          <text id="26:1470" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="26:1471" name="Running Filter" x="100" y="82" width="80" height="38">
+          <text id="26:1472" name="Label" x="0" y="10" width="80" height="15" />
+        </frame>
+        <frame id="26:1473" name="Completed Filter" x="188" y="82" width="72" height="38">
+          <text id="26:1474" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="26:1475" name="Failed Filter" x="268" y="82" width="72" height="38">
+          <text id="26:1476" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="26:1477" name="Task / Remove Background" x="14" y="140" width="332" height="82">
+          <rounded-rectangle id="26:1478" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="26:1479" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="26:1480" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="26:1481" name="State" x="250" y="28" width="70" height="26" />
+          <text id="26:1482" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+        <frame id="26:1483" name="Task / Upscale 2×" x="14" y="232" width="332" height="82">
+          <rounded-rectangle id="26:1484" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="26:1485" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="26:1486" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="26:1487" name="State" x="250" y="28" width="70" height="26" />
+          <text id="26:1488" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+        <frame id="26:1489" name="Task / Image Caption" x="14" y="324" width="332" height="82">
+          <rounded-rectangle id="26:1490" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="26:1491" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="26:1492" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="26:1493" name="State" x="250" y="28" width="70" height="26" />
+          <text id="26:1494" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:1495" name="04 / Task Detail" x="360" y="128" width="1194" height="847">
+        <text id="26:1496" name="Task Title" x="32" y="25" width="179" height="22" />
+        <text id="26:1497" name="Task Metadata" x="32" y="53" width="126" height="15" />
+        <frame id="26:1498" name="Show in Inspect" x="1084" y="22" width="38" height="38">
+          <frame id="26:1499" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1503" name="Cancel Task" x="1132" y="22" width="38" height="38">
+          <frame id="26:1504" name="Icon / uninstall" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1506" name="Source Preview" x="32" y="104" width="528" height="304">
+          <rounded-rectangle id="26:1507" name="Source Image" x="12" y="12" width="504" height="280" />
+        </frame>
+        <frame id="26:1508" name="Result Preview" x="578" y="104" width="528" height="304">
+          <ellipse id="26:1509" name="Waiting Indicator" x="240" y="118" width="48" height="48" />
+          <text id="26:1510" name="Waiting Label" x="0" y="178" width="528" height="15" />
+        </frame>
+        <frame id="26:1511" name="Timeline" x="32" y="440" width="560" height="330">
+          <text id="26:1512" name="Timeline Heading" x="24" y="20" width="54" height="16" />
+          <ellipse id="26:1513" name="Timeline Mark" x="28" y="63" width="14" height="14" />
+          <text id="26:1514" name="Title" x="58" y="60" width="96" height="16" />
+          <text id="26:1515" name="Detail" x="58" y="82" width="175" height="13" />
+          <text id="26:1516" name="Time" x="430" y="63" width="110" height="13" />
+          <rounded-rectangle id="26:1517" name="Connector" x="34" y="78" width="1" height="52" />
+          <ellipse id="26:1518" name="Timeline Mark" x="28" y="135" width="14" height="14" />
+          <text id="26:1519" name="Title" x="58" y="132" width="97" height="16" />
+          <text id="26:1520" name="Detail" x="58" y="154" width="97" height="13" />
+          <text id="26:1521" name="Time" x="430" y="135" width="110" height="13" />
+          <rounded-rectangle id="26:1522" name="Connector" x="34" y="150" width="1" height="52" />
+          <ellipse id="26:1523" name="Timeline Mark" x="28" y="207" width="14" height="14" />
+          <ellipse id="26:1524" name="Current Halo" x="23" y="202" width="24" height="24" />
+          <text id="26:1525" name="Title" x="58" y="204" width="69" height="16" />
+          <text id="26:1526" name="Detail" x="58" y="226" width="124" height="13" />
+          <text id="26:1527" name="Time" x="430" y="207" width="110" height="13" />
+          <rounded-rectangle id="26:1528" name="Connector" x="34" y="222" width="1" height="52" />
+          <ellipse id="26:1529" name="Timeline Mark" x="28" y="279" width="14" height="14" />
+          <text id="26:1530" name="Title" x="58" y="276" width="101" height="16" />
+          <text id="26:1531" name="Detail" x="58" y="298" width="112" height="13" />
+          <text id="26:1532" name="Time" x="430" y="279" width="110" height="13" />
+        </frame>
+        <frame id="26:1533" name="Task Details" x="612" y="440" width="494" height="330">
+          <text id="26:1534" name="Heading" x="24" y="20" width="77" height="16" />
+          <text id="26:1535" name="Key / Widget" x="36" y="60" width="45" height="16" />
+          <text id="26:1536" name="Value / Widget" x="174" y="60" width="220" height="16" />
+          <rounded-rectangle id="26:1537" name="Divider" x="36" y="90" width="362" height="1" />
+          <text id="26:1538" name="Key / Input" x="36" y="98" width="32" height="16" />
+          <text id="26:1539" name="Value / Input" x="174" y="98" width="220" height="16" />
+          <rounded-rectangle id="26:1540" name="Divider" x="36" y="128" width="362" height="1" />
+          <text id="26:1541" name="Key / Worker" x="36" y="136" width="45" height="16" />
+          <text id="26:1542" name="Value / Worker" x="174" y="136" width="220" height="16" />
+          <rounded-rectangle id="26:1543" name="Divider" x="36" y="166" width="362" height="1" />
+          <text id="26:1544" name="Key / Progress" x="36" y="174" width="56" height="16" />
+          <text id="26:1545" name="Value / Progress" x="174" y="174" width="220" height="16" />
+          <rounded-rectangle id="26:1546" name="Divider" x="36" y="204" width="362" height="1" />
+          <text id="26:1547" name="Key / Polling" x="36" y="212" width="42" height="16" />
+          <text id="26:1548" name="Value / Polling" x="174" y="212" width="220" height="16" />
+          <rounded-rectangle id="26:1549" name="Divider" x="36" y="242" width="362" height="1" />
+        </frame>
+      </frame>
+      <frame id="26:1550" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:1551" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:1552" name="Center Hint" x="0" y="11" width="1554" height="15" />
+        <ellipse id="26:1553" name="Status Dot" x="1394" y="15" width="8" height="8" />
+        <text id="26:1554" name="Right Status" x="1414" y="11" width="81" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1555" name="Dark Refresh / Widget Market / Install" x="5250" y="1252" width="1554" height="1012">
+    <text id="26:1556" name="Review Heading" x="42" y="43" width="321" height="22" />
+    <text id="26:1557" name="Review Note" x="42" y="75" width="423" height="13" />
+    <frame id="26:1558" name="01 / Attached Market Catalog" x="337" y="196" width="380" height="620">
+      <rounded-rectangle id="26:1559" name="Warm Glass Tint" x="0" y="0" width="380" height="620" />
+      <text id="26:1560" name="Catalog Heading" x="22" y="20" width="150" height="25" />
+      <frame id="26:1561" name="Close Market" x="294" y="16" width="38" height="38">
+        <frame id="26:1562" name="Icon / close" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:1564" name="Reload Catalog" x="334" y="16" width="38" height="38">
+        <frame id="26:1565" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+      </frame>
+      <rounded-rectangle id="26:1568" name="Header Divider" x="20" y="69" width="340" height="1" />
+      <frame id="26:1569" name="Widget / Remove Background" x="16" y="84" width="348" height="132">
+        <frame id="26:1570" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="26:1571" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="26:1572" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="26:1573" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="26:1574" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="26:1575" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="26:1576" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="26:1577" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="26:1578" name="Commands" x="14" y="103" width="218" height="12" />
+        <frame id="26:1579" name="Installed / local registry" x="243" y="96" width="91" height="31">
+          <text id="26:1580" name="Action Label" x="0" y="8" width="91" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:1581" name="Widget / 超分" x="16" y="226" width="348" height="132">
+        <frame id="26:1582" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="26:1583" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="26:1584" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="26:1585" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="26:1586" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="26:1587" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="26:1588" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="26:1589" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="26:1590" name="Commands" x="14" y="103" width="234" height="12" />
+        <frame id="26:1591" name="Install Widget" x="258" y="96" width="76" height="31">
+          <text id="26:1592" name="Action Label" x="0" y="8" width="76" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:1593" name="Widget / RemoveBG 高级" x="16" y="368" width="348" height="132">
+        <frame id="26:1594" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="26:1595" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="26:1596" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="26:1597" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="26:1598" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="26:1599" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="26:1600" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="26:1601" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="26:1602" name="Commands" x="14" y="103" width="234" height="12" />
+        <frame id="26:1603" name="Install Widget" x="258" y="96" width="76" height="31">
+          <text id="26:1604" name="Action Label" x="0" y="8" width="76" height="13" />
+        </frame>
+      </frame>
+      <text id="26:1605" name="Catalog Footer" x="20" y="527" width="171" height="12" />
+      <text id="26:1606" name="Offline Helper" x="20" y="552" width="338" height="13" />
+    </frame>
+    <frame id="26:1607" name="02 / Selected Widget Detail Drawer" x="837" y="196" width="380" height="620">
+      <rounded-rectangle id="26:1608" name="Warm Glass Tint" x="0" y="0" width="380" height="620" />
+      <frame id="26:1609" name="Back to Catalog" x="20" y="17" width="38" height="38">
+        <frame id="26:1610" name="Icon / back" x="10" y="10" width="18" height="18" />
+      </frame>
+      <text id="26:1612" name="Detail Heading" x="74" y="26" width="90" height="16" />
+      <rounded-rectangle id="26:1613" name="Detail Header Divider" x="20" y="69" width="340" height="1" />
+      <frame id="26:1614" name="48px Widget Icon" x="22" y="93" width="48" height="48">
+        <text id="26:1615" name="Icon Letter" x="0" y="14" width="48" height="18" />
+      </frame>
+      <text id="26:1616" name="Widget Name" x="84" y="96" width="159" height="19" />
+      <text id="26:1617" name="Version" x="84" y="123" width="122" height="13" />
+      <frame id="26:1618" name="Cloud Badge" x="22" y="160" width="55" height="19">
+        <text id="26:1619" name="Badge Label" x="0" y="4" width="55" height="11" />
+      </frame>
+      <frame id="26:1620" name="Installed / local registry" x="269" y="154" width="91" height="31">
+        <text id="26:1621" name="Action Label" x="0" y="8" width="91" height="13" />
+      </frame>
+      <rounded-rectangle id="26:1622" name="Summary Divider" x="22" y="199" width="336" height="1" />
+      <text id="26:1623" name="About Heading" x="22" y="219" width="36" height="12" />
+      <text id="26:1624" name="Summary" x="22" y="243" width="334" height="30" />
+      <text id="26:1625" name="Command Heading" x="22" y="312" width="56" height="12" />
+      <text id="26:1626" name="Command" x="22" y="336" width="334" height="13" />
+      <text id="26:1627" name="Privacy Heading" x="22" y="391" width="44" height="12" />
+      <text id="26:1628" name="Privacy Notice" x="22" y="415" width="334" height="13" />
+      <rounded-rectangle id="26:1629" name="Bottom Divider" x="22" y="517" width="336" height="1" />
+      <frame id="26:1630" name="Uninstall / explicit action" x="22" y="538" width="336" height="38">
+        <text id="26:1631" name="Uninstall Label" x="0" y="12" width="336" height="13" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1632" name="Dark Refresh / Quick Preview" x="0" y="2502" width="1554" height="1012">
+    <frame id="26:1633" name="01 / Glance Window" x="327" y="191" width="900" height="630">
+      <frame id="26:1634" name="Titlebar" x="0" y="0" width="900" height="44">
+        <ellipse id="26:1635" name="Close" x="16" y="17" width="11" height="11" />
+        <ellipse id="26:1636" name="Minimize" x="34" y="17" width="11" height="11" />
+        <ellipse id="26:1637" name="Zoom" x="52" y="17" width="11" height="11" />
+        <text id="26:1638" name="Window Title" x="0" y="13" width="900" height="15" />
+        <frame id="26:1639" name="Pin Preview" x="850" y="4" width="38" height="38">
+          <frame id="26:1640" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:1644" name="02 / Mixed Media Preview" x="0" y="44" width="522" height="532">
+        <frame id="26:1645" name="Media / input.png" x="14" y="14" width="244" height="244">
+          <rounded-rectangle id="26:1646" name="Preview" x="5" y="5" width="234" height="234" />
+          <rounded-rectangle id="26:1647" name="Filename Scrim" x="5" y="205" width="234" height="34" />
+          <text id="26:1648" name="Filename" x="14" y="214" width="51" height="13" />
+        </frame>
+        <frame id="26:1649" name="Media / portrait.jpg" x="264" y="14" width="244" height="244">
+          <rounded-rectangle id="26:1650" name="Preview" x="5" y="5" width="234" height="234" />
+          <rounded-rectangle id="26:1651" name="Filename Scrim" x="5" y="205" width="234" height="34" />
+          <text id="26:1652" name="Filename" x="14" y="214" width="59" height="13" />
+        </frame>
+        <frame id="26:1653" name="Media / README.md" x="14" y="266" width="244" height="244">
+          <rounded-rectangle id="26:1654" name="Preview" x="5" y="5" width="234" height="234" />
+          <rounded-rectangle id="26:1655" name="Filename Scrim" x="5" y="205" width="234" height="34" />
+          <text id="26:1656" name="Filename" x="14" y="214" width="66" height="13" />
+        </frame>
+        <frame id="26:1657" name="Media / clip.mov" x="264" y="266" width="244" height="244">
+          <rounded-rectangle id="26:1658" name="Preview" x="5" y="5" width="234" height="234" />
+          <rounded-rectangle id="26:1659" name="Filename Scrim" x="5" y="205" width="234" height="34" />
+          <text id="26:1660" name="Filename" x="14" y="214" width="44" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:1661" name="03 / Current Selection" x="522" y="44" width="378" height="532">
+        <text id="26:1662" name="Heading" x="22" y="23" width="136" height="19" />
+        <text id="26:1663" name="Section Label" x="22" y="58" width="84" height="12" />
+        <text id="26:1664" name="Selection / ~/Desktop/project/input.png" x="22" y="94" width="330" height="13" />
+        <text id="26:1665" name="Selection / https://temp.himarts.com/result.png" x="22" y="126" width="330" height="13" />
+        <text id="26:1666" name="Selection / README.md" x="22" y="158" width="330" height="13" />
+        <text id="26:1667" name="Selection / clip.mov" x="22" y="190" width="330" height="13" />
+        <text id="26:1668" name="Summary" x="22" y="254" width="326" height="30" />
+        <text id="26:1669" name="Shortcut Label" x="22" y="343" width="171" height="13" />
+        <frame id="26:1670" name="Open in Image Inspect" x="22" y="402" width="334" height="38">
+          <text id="26:1671" name="Label" x="0" y="10" width="334" height="15" />
+        </frame>
+        <frame id="26:1672" name="Copy Resolved URL" x="22" y="454" width="38" height="38">
+          <frame id="26:1673" name="Icon / copy" x="10" y="10" width="18" height="18" />
+        </frame>
+        <text id="26:1676" name="Copy Action" x="72" y="466" width="109" height="15" />
+      </frame>
+      <frame id="26:1677" name="04 / Actions" x="0" y="576" width="900" height="54">
+        <text id="26:1678" name="Item Count" x="16" y="19" width="132" height="13" />
+        <frame id="26:1679" name="Copy" x="638" y="10" width="82" height="38">
+          <text id="26:1680" name="Label" x="0" y="10" width="82" height="15" />
+        </frame>
+        <frame id="26:1681" name="Open Selected" x="730" y="10" width="154" height="38">
+          <text id="26:1682" name="Label" x="0" y="10" width="154" height="15" />
+        </frame>
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1683" name="Dark Refresh / Home / Launcher" x="1750" y="2502" width="1554" height="1012">
+    <frame id="26:1684" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:1685" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:1686" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:1687" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:1688" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:1689" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:1690" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:1691" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:1692" name="Open Files" x="40" y="14" width="38" height="38">
+          <frame id="26:1693" name="Icon / file" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1695" name="Open Folder" x="88" y="14" width="38" height="38">
+          <frame id="26:1696" name="Icon / folder" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1698" name="Tasks" x="1378" y="14" width="38" height="38">
+          <frame id="26:1699" name="Icon / tasks" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1702" name="Preferences" x="1426" y="14" width="38" height="38">
+          <frame id="26:1703" name="Icon / settings" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1707" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:1708" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:1712" name="03 / Open Surface" x="0" y="128" width="1000" height="847">
+        <text id="26:1713" name="Welcome" x="56" y="48" width="314" height="29" />
+        <text id="26:1714" name="Welcome Sub" x="56" y="84" width="700" height="16" />
+        <frame id="26:1715" name="Drop Zone" x="56" y="140" width="888" height="300">
+          <frame id="26:1716" name="Drop Icon" x="411" y="60" width="66" height="66">
+            <frame id="26:1717" name="Icon / focus" x="18" y="18" width="30" height="30" />
+          </frame>
+          <text id="26:1721" name="Drop Title" x="0" y="170" width="888" height="19" />
+          <text id="26:1722" name="Drop Hint" x="0" y="200" width="888" height="13" />
+        </frame>
+        <frame id="26:1723" name="Open Files Button" x="274" y="456" width="150" height="38">
+          <text id="26:1724" name="Label" x="0" y="10" width="150" height="15" />
+        </frame>
+        <frame id="26:1725" name="Open Folder Button" x="440" y="456" width="150" height="38">
+          <text id="26:1726" name="Label" x="0" y="10" width="150" height="15" />
+        </frame>
+        <text id="26:1727" name="Folder Group" x="56" y="528" width="156" height="13" />
+        <text id="26:1728" name="Folder Count" x="730" y="528" width="158" height="13" />
+        <frame id="26:1729" name="Folder Images" x="56" y="556" width="888" height="132">
+          <frame id="26:1730" name="Folder Image" x="16" y="40" width="92" height="92" />
+          <frame id="26:1732" name="Folder Image" x="124" y="40" width="92" height="92" />
+          <frame id="26:1734" name="Folder Image" x="232" y="40" width="92" height="92" />
+          <frame id="26:1736" name="Folder Image" x="340" y="40" width="92" height="92" />
+          <frame id="26:1738" name="Folder Image" x="448" y="40" width="92" height="92" />
+          <frame id="26:1740" name="Folder Image" x="556" y="40" width="92" height="92" />
+          <frame id="26:1742" name="Folder Image" x="664" y="40" width="92" height="92" />
+          <frame id="26:1744" name="Folder Image" x="772" y="40" width="92" height="92" />
+          <frame id="26:1746" name="More Count" x="880" y="40" width="92" height="92">
+            <text id="26:1747" name="More Label" x="0" y="36" width="92" height="18" />
+          </frame>
+        </frame>
+        <frame id="26:1748" name="Inspect All Button" x="56" y="708" width="210" height="38">
+          <text id="26:1749" name="Label" x="0" y="10" width="210" height="15" />
+        </frame>
+      </frame>
+      <frame id="26:1750" name="04 / Recent" x="1000" y="128" width="554" height="847">
+        <text id="26:1751" name="Recent Heading" x="40" y="40" width="65" height="23" />
+        <text id="26:1752" name="Recent Sub" x="40" y="70" width="185" height="13" />
+        <frame id="26:1753" name="Search Recent" x="470" y="34" width="38" height="38">
+          <frame id="26:1754" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1757" name="Recent / input.png" x="40" y="110" width="214" height="176">
+          <rounded-rectangle id="26:1758" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:1759" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:1760" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:1761" name="Recent / portrait.jpg" x="278" y="110" width="214" height="176">
+          <rounded-rectangle id="26:1762" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:1763" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:1764" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:1765" name="Recent / result-remove-bg.png" x="40" y="310" width="214" height="176">
+          <rounded-rectangle id="26:1766" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:1767" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:1768" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:1769" name="Recent / product.webp" x="278" y="310" width="214" height="176">
+          <rounded-rectangle id="26:1770" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:1771" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:1772" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:1773" name="Recent / capture.heic" x="40" y="510" width="214" height="176">
+          <rounded-rectangle id="26:1774" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:1775" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:1776" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:1777" name="Recent / design.png" x="278" y="510" width="214" height="176">
+          <rounded-rectangle id="26:1778" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:1779" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:1780" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <text id="26:1781" name="Recent Folder Group" x="40" y="716" width="97" height="13" />
+        <frame id="26:1782" name="Recent Folder" x="40" y="744" width="474" height="60">
+          <frame id="26:1783" name="Icon / folder" x="18" y="20" width="20" height="20" />
+          <text id="26:1785" name="Folder Name" x="52" y="12" width="46" height="16" />
+          <text id="26:1786" name="Folder Meta" x="52" y="32" width="150" height="12" />
+          <text id="26:1787" name="Folder Open" x="420" y="22" width="40" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:1788" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:1789" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:1790" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1791" name="Dark Refresh / Content Viewer" x="3500" y="2502" width="1554" height="1012">
+    <frame id="26:1792" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:1793" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:1794" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:1795" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:1796" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:1797" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:1798" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:1799" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:1800" name="Plain Text" x="40" y="14" width="38" height="38">
+          <frame id="26:1801" name="Icon / file" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1803" name="Markdown Preview" x="88" y="14" width="38" height="38">
+          <frame id="26:1804" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1808" name="Find" x="1366" y="14" width="38" height="38">
+          <frame id="26:1809" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1812" name="Copy" x="1414" y="14" width="38" height="38">
+          <frame id="26:1813" name="Icon / copy" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1816" name="Reveal in Finder" x="1462" y="14" width="38" height="38">
+          <frame id="26:1817" name="Icon / folder" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:1819" name="03 / Document Content" x="0" y="128" width="1090" height="847">
+        <text id="26:1820" name="Content Type" x="32" y="26" width="118" height="13" />
+        <text id="26:1821" name="Line Number 1" x="38" y="96" width="32" height="15" />
+        <text id="26:1822" name="Line 1" x="92" y="96" width="930" height="19" />
+        <text id="26:1823" name="Line Number 2" x="38" y="139" width="32" height="15" />
+        <text id="26:1824" name="Line Number 3" x="38" y="182" width="32" height="15" />
+        <text id="26:1825" name="Line 3" x="92" y="182" width="930" height="19" />
+        <text id="26:1826" name="Line Number 4" x="38" y="225" width="32" height="15" />
+        <text id="26:1827" name="Line 4" x="92" y="225" width="930" height="19" />
+        <text id="26:1828" name="Line Number 5" x="38" y="268" width="32" height="15" />
+        <text id="26:1829" name="Line Number 6" x="38" y="311" width="32" height="15" />
+        <text id="26:1830" name="Line 6" x="92" y="311" width="930" height="19" />
+        <text id="26:1831" name="Line Number 7" x="38" y="354" width="32" height="15" />
+        <text id="26:1832" name="Line 7" x="92" y="354" width="930" height="19" />
+        <text id="26:1833" name="Line Number 8" x="38" y="397" width="32" height="15" />
+        <text id="26:1834" name="Line 8" x="92" y="397" width="930" height="19" />
+        <text id="26:1835" name="Line Number 9" x="38" y="440" width="32" height="15" />
+        <text id="26:1836" name="Line 9" x="92" y="440" width="930" height="19" />
+      </frame>
+      <frame id="26:1837" name="04 / Document Information" x="1090" y="128" width="464" height="847">
+        <frame id="26:1838" name="Content Information / 3:4" x="44" y="52" width="376" height="502">
+          <text id="26:1839" name="Heading" x="22" y="23" width="166" height="21" />
+          <text id="26:1840" name="Description" x="22" y="62" width="330" height="45" />
+          <text id="26:1841" name="Key / Type" x="22" y="173" width="29" height="15" />
+          <text id="26:1842" name="Value / Type" x="136" y="173" width="210" height="15" />
+          <rounded-rectangle id="26:1843" name="Divider" x="22" y="207" width="332" height="1" />
+          <text id="26:1844" name="Key / Encoding" x="22" y="227" width="54" height="15" />
+          <text id="26:1845" name="Value / Encoding" x="136" y="227" width="210" height="15" />
+          <rounded-rectangle id="26:1846" name="Divider" x="22" y="261" width="332" height="1" />
+          <text id="26:1847" name="Key / Lines" x="22" y="281" width="31" height="15" />
+          <text id="26:1848" name="Value / Lines" x="136" y="281" width="210" height="15" />
+          <rounded-rectangle id="26:1849" name="Divider" x="22" y="315" width="332" height="1" />
+          <text id="26:1850" name="Key / Source" x="22" y="335" width="41" height="15" />
+          <text id="26:1851" name="Value / Source" x="136" y="335" width="210" height="15" />
+          <rounded-rectangle id="26:1852" name="Divider" x="22" y="369" width="332" height="1" />
+          <text id="26:1853" name="Key / Modified" x="22" y="389" width="51" height="15" />
+          <text id="26:1854" name="Value / Modified" x="136" y="389" width="210" height="15" />
+          <rounded-rectangle id="26:1855" name="Divider" x="22" y="423" width="332" height="1" />
+        </frame>
+      </frame>
+      <frame id="26:1856" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:1857" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:1858" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1859" name="Dark Refresh / Widget Web / States" x="5250" y="2502" width="1554" height="1012">
+    <frame id="26:1860" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:1861" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:1862" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:1863" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:1864" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:1865" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:1866" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:1867" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:1868" name="Reload Widget" x="40" y="14" width="38" height="38">
+          <frame id="26:1869" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1872" name="Tasks" x="1378" y="14" width="38" height="38">
+          <frame id="26:1873" name="Icon / tasks" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1876" name="Widget Market" x="1426" y="14" width="38" height="38">
+          <frame id="26:1877" name="Icon / grid" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1882" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:1883" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:1887" name="03 / Web States" x="0" y="128" width="1554" height="847">
+        <text id="26:1888" name="Section Heading" x="56" y="68" width="399" height="27" />
+        <text id="26:1889" name="Section Subtitle" x="56" y="108" width="376" height="15" />
+        <frame id="26:1890" name="Widget Web / Loading" x="39" y="225" width="450" height="397">
+          <ellipse id="26:1891" name="State Halo" x="192" y="54" width="66" height="66" />
+          <frame id="26:1892" name="State Icon" x="206" y="68" width="38" height="38">
+            <frame id="26:1893" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+          </frame>
+          <text id="26:1896" name="Heading" x="0" y="155" width="450" height="22" />
+          <text id="26:1897" name="Explanation" x="42" y="206" width="366" height="30" />
+        </frame>
+        <frame id="26:1898" name="Widget Web / Success" x="552" y="225" width="450" height="397">
+          <ellipse id="26:1899" name="State Halo" x="192" y="54" width="66" height="66" />
+          <frame id="26:1900" name="State Icon" x="206" y="68" width="38" height="38">
+            <frame id="26:1901" name="Icon / check" x="10" y="10" width="18" height="18" />
+          </frame>
+          <text id="26:1903" name="Heading" x="0" y="155" width="450" height="22" />
+          <text id="26:1904" name="Explanation" x="42" y="206" width="366" height="30" />
+          <frame id="26:1905" name="Recovery Action" x="121" y="313" width="208" height="38">
+            <text id="26:1906" name="Label" x="0" y="10" width="208" height="15" />
+          </frame>
+        </frame>
+        <frame id="26:1907" name="Widget Web / Error" x="1065" y="225" width="450" height="397">
+          <ellipse id="26:1908" name="State Halo" x="192" y="54" width="66" height="66" />
+          <frame id="26:1909" name="State Icon" x="206" y="68" width="38" height="38">
+            <frame id="26:1910" name="Icon / warning" x="10" y="10" width="18" height="18" />
+          </frame>
+          <text id="26:1913" name="Heading" x="0" y="155" width="450" height="22" />
+          <text id="26:1914" name="Explanation" x="42" y="206" width="366" height="30" />
+          <frame id="26:1915" name="Recovery Action" x="121" y="313" width="208" height="38">
+            <text id="26:1916" name="Label" x="0" y="10" width="208" height="15" />
+          </frame>
+        </frame>
+      </frame>
+      <frame id="26:1917" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:1918" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:1919" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1920" name="Dark Refresh / Base64 Toolkit" x="0" y="3752" width="1554" height="1012">
+    <frame id="26:1921" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:1922" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:1923" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:1924" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:1925" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:1926" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:1927" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:1928" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:1929" name="Paste Base64" x="40" y="14" width="38" height="38">
+          <frame id="26:1930" name="Icon / copy" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1933" name="Clear Input" x="88" y="14" width="38" height="38">
+          <frame id="26:1934" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1936" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:1937" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:1941" name="03 / Input Editor" x="0" y="128" width="1100" height="847">
+        <text id="26:1942" name="Heading" x="36" y="28" width="163" height="24" />
+        <text id="26:1943" name="Instructions" x="36" y="65" width="334" height="15" />
+        <text id="26:1944" name="Field Label" x="36" y="115" width="101" height="13" />
+        <frame id="26:1945" name="Multiline Base64 Field" x="36" y="147" width="1028" height="560">
+          <text id="26:1946" name="Placeholder" x="22" y="22" width="962" height="16" />
+          <text id="26:1947" name="Example Base64 1" x="22" y="79" width="962" height="15" />
+          <text id="26:1948" name="Example Base64 2" x="22" y="108" width="962" height="15" />
+          <text id="26:1949" name="Example Base64 3" x="22" y="137" width="962" height="15" />
+        </frame>
+        <text id="26:1950" name="Accepted Formats" x="36" y="734" width="153" height="13" />
+        <frame id="26:1951" name="Clear" x="746" y="720" width="92" height="38">
+          <text id="26:1952" name="Label" x="0" y="10" width="92" height="15" />
+        </frame>
+        <frame id="26:1953" name="Decode and Preview" x="852" y="720" width="212" height="38">
+          <text id="26:1954" name="Label" x="0" y="10" width="212" height="15" />
+        </frame>
+      </frame>
+      <frame id="26:1955" name="04 / Result Preview" x="1100" y="128" width="454" height="847">
+        <text id="26:1956" name="Heading" x="28" y="30" width="122" height="21" />
+        <frame id="26:1957" name="Image Frame / 3:4" x="42" y="100" width="370" height="494">
+          <frame id="26:1958" name="Waiting Placeholder" x="131" y="178" width="108" height="108">
+            <frame id="26:1959" name="Image Icon" x="35" y="35" width="38" height="38">
+              <frame id="26:1960" name="Icon / focus" x="10" y="10" width="18" height="18" />
+            </frame>
+          </frame>
+        </frame>
+        <text id="26:1964" name="Waiting Label" x="0" y="623" width="454" height="15" />
+        <text id="26:1965" name="Detected Format" x="42" y="694" width="87" height="13" />
+        <text id="26:1966" name="Detected Value" x="266" y="694" width="146" height="13" />
+        <rounded-rectangle id="26:1967" name="Metadata Divider" x="42" y="720" width="370" height="1" />
+        <text id="26:1968" name="Estimated Size" x="42" y="739" width="77" height="13" />
+        <text id="26:1969" name="Size Value" x="266" y="739" width="146" height="13" />
+      </frame>
+      <frame id="26:1970" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:1971" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:1972" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:1973" name="Dark Refresh / Preview History" x="1750" y="3752" width="1554" height="1012">
+    <frame id="26:1974" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:1975" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:1976" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:1977" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:1978" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:1979" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:1980" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:1981" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:1982" name="Search History" x="40" y="14" width="38" height="38">
+          <frame id="26:1983" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1986" name="Open in Inspect" x="1378" y="14" width="38" height="38">
+          <frame id="26:1987" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1991" name="Clear History" x="1426" y="14" width="38" height="38">
+          <frame id="26:1992" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:1994" name="History Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:1995" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:1999" name="03 / History Grid" x="0" y="128" width="1554" height="847">
+        <text id="26:2000" name="Section Title" x="32" y="26" width="57" height="23" />
+        <text id="26:2001" name="Count" x="32" y="58" width="39" height="13" />
+        <frame id="26:2002" name="Search Field" x="1196" y="24" width="322" height="40">
+          <frame id="26:2003" name="Search Icon" x="4" y="1" width="38" height="38">
+            <frame id="26:2004" name="Icon / search" x="10" y="10" width="18" height="18" />
+          </frame>
+          <text id="26:2007" name="Placeholder" x="54" y="12" width="92" height="15" />
+        </frame>
+        <frame id="26:2008" name="History / input.png" x="32" y="110" width="348" height="218">
+          <rounded-rectangle id="26:2009" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2010" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2011" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2012" name="History / result-remove-bg.png" x="406" y="110" width="348" height="218">
+          <rounded-rectangle id="26:2013" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2014" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2015" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2016" name="History / portrait.jpg" x="780" y="110" width="348" height="218">
+          <rounded-rectangle id="26:2017" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2018" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2019" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2020" name="History / product.webp" x="1154" y="110" width="348" height="218">
+          <rounded-rectangle id="26:2021" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2022" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2023" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2024" name="History / clip.mov" x="32" y="358" width="348" height="218">
+          <rounded-rectangle id="26:2025" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2026" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2027" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2028" name="History / README.md" x="406" y="358" width="348" height="218">
+          <rounded-rectangle id="26:2029" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2030" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2031" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2032" name="History / design.png" x="780" y="358" width="348" height="218">
+          <rounded-rectangle id="26:2033" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2034" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2035" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2036" name="History / capture.jpg" x="1154" y="358" width="348" height="218">
+          <rounded-rectangle id="26:2037" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2038" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2039" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <text id="26:2040" name="Keyboard Hint" x="32" y="665" width="461" height="15" />
+      </frame>
+      <frame id="26:2041" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:2042" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:2043" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2044" name="Dark Refresh / Preferences" x="3500" y="3752" width="1554" height="1012">
+    <frame id="26:2045" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:2046" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:2047" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:2048" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:2049" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:2050" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:2051" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:2052" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:2053" name="General" x="40" y="14" width="38" height="38">
+          <frame id="26:2054" name="Icon / settings" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2058" name="Appearance" x="88" y="14" width="38" height="38">
+          <frame id="26:2059" name="Icon / grid" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2064" name="Privacy" x="1366" y="14" width="38" height="38">
+          <frame id="26:2065" name="Icon / shield" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2068" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:2069" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:2073" name="03 / Settings Navigation" x="0" y="128" width="286" height="847">
+        <frame id="26:2074" name="Tab / General" x="16" y="27" width="254" height="44">
+          <frame id="26:2075" name="Icon / settings" x="13" y="13" width="18" height="18" />
+          <text id="26:2079" name="Tab Label" x="43" y="13" width="46" height="15" />
+        </frame>
+        <frame id="26:2080" name="Tab / Preview" x="16" y="85" width="254" height="44">
+          <frame id="26:2081" name="Icon / focus" x="13" y="13" width="18" height="18" />
+          <text id="26:2085" name="Tab Label" x="43" y="13" width="46" height="15" />
+        </frame>
+        <frame id="26:2086" name="Tab / Widgets" x="16" y="143" width="254" height="44">
+          <frame id="26:2087" name="Icon / grid" x="13" y="13" width="18" height="18" />
+          <text id="26:2092" name="Tab Label" x="43" y="13" width="48" height="15" />
+        </frame>
+        <frame id="26:2093" name="Tab / Privacy &amp; Permissions" x="16" y="201" width="254" height="44">
+          <frame id="26:2094" name="Icon / shield" x="13" y="13" width="18" height="18" />
+          <text id="26:2097" name="Tab Label" x="43" y="13" width="127" height="15" />
+        </frame>
+      </frame>
+      <frame id="26:2098" name="04 / General Settings" x="286" y="128" width="1268" height="847">
+        <text id="26:2099" name="Heading" x="80" y="51" width="83" height="27" />
+        <text id="26:2100" name="Description" x="80" y="92" width="468" height="15" />
+        <text id="26:2101" name="Startup Group" x="80" y="154" width="51" height="13" />
+        <text id="26:2102" name="Setting / Launch Glance at login" x="80" y="192" width="142" height="16" />
+        <text id="26:2103" name="Explanation" x="80" y="217" width="644" height="13" />
+        <frame id="26:2104" name="Toggle / Launch Glance at login" x="758" y="199" width="38" height="21" />
+        <rounded-rectangle id="26:2106" name="Row Divider" x="80" y="254" width="716" height="1" />
+        <text id="26:2107" name="Setting / Remember window position" x="80" y="275" width="173" height="16" />
+        <text id="26:2108" name="Explanation" x="80" y="300" width="644" height="13" />
+        <frame id="26:2109" name="Toggle / Remember window position" x="758" y="282" width="38" height="21" />
+        <rounded-rectangle id="26:2111" name="Row Divider" x="80" y="337" width="716" height="1" />
+        <text id="26:2112" name="Language &amp; Appearance Group" x="80" y="372" width="150" height="13" />
+        <text id="26:2113" name="Setting / Interface language" x="80" y="410" width="117" height="16" />
+        <text id="26:2114" name="Explanation" x="80" y="435" width="644" height="13" />
+        <frame id="26:2115" name="Selection / Interface language" x="661" y="411" width="135" height="32">
+          <text id="26:2116" name="Value" x="12" y="9" width="108" height="13" />
+        </frame>
+        <rounded-rectangle id="26:2117" name="Row Divider" x="80" y="472" width="716" height="1" />
+        <text id="26:2118" name="Setting / Reduce motion" x="80" y="493" width="94" height="16" />
+        <text id="26:2119" name="Explanation" x="80" y="518" width="644" height="13" />
+        <frame id="26:2120" name="Toggle / Reduce motion" x="758" y="500" width="38" height="21" />
+        <rounded-rectangle id="26:2122" name="Row Divider" x="80" y="555" width="716" height="1" />
+        <text id="26:2123" name="Clipboard Group" x="80" y="590" width="63" height="13" />
+        <text id="26:2124" name="Setting / Prefer copied images" x="80" y="628" width="132" height="16" />
+        <text id="26:2125" name="Explanation" x="80" y="653" width="644" height="13" />
+        <frame id="26:2126" name="Toggle / Prefer copied images" x="758" y="635" width="38" height="21" />
+        <rounded-rectangle id="26:2128" name="Row Divider" x="80" y="690" width="716" height="1" />
+      </frame>
+      <frame id="26:2129" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:2130" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:2131" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2132" name="Dark Refresh / Onboarding / Permissions" x="5250" y="3752" width="1554" height="1012">
+    <frame id="26:2133" name="01 / Glance Window" x="487" y="181" width="580" height="650">
+      <frame id="26:2134" name="Titlebar" x="0" y="0" width="580" height="44">
+        <ellipse id="26:2135" name="Close" x="16" y="17" width="11" height="11" />
+        <ellipse id="26:2136" name="Minimize" x="34" y="17" width="11" height="11" />
+        <ellipse id="26:2137" name="Zoom" x="52" y="17" width="11" height="11" />
+        <text id="26:2138" name="Window Title" x="0" y="13" width="580" height="15" />
+      </frame>
+      <frame id="26:2139" name="02 / Permission Setup" x="0" y="44" width="580" height="606">
+        <frame id="26:2140" name="Glance Mark" x="256" y="32" width="68" height="68">
+          <frame id="26:2141" name="Product Icon" x="15" y="15" width="38" height="38">
+            <frame id="26:2142" name="Icon / focus" x="10" y="10" width="18" height="18" />
+          </frame>
+        </frame>
+        <text id="26:2146" name="Heading" x="0" y="125" width="580" height="24" />
+        <text id="26:2147" name="Explanation" x="75" y="164" width="430" height="30" />
+        <frame id="26:2148" name="Permission List" x="56" y="230" width="468" height="240">
+          <frame id="26:2149" name="Permission / Accessibility" x="0" y="0" width="468" height="70">
+            <frame id="26:2150" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="26:2151" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="26:2152" name="Permission" x="54" y="12" width="81" height="16" />
+            <text id="26:2153" name="Description" x="54" y="37" width="137" height="13" />
+            <frame id="26:2154" name="Status / Allowed" x="354" y="18" width="114" height="34">
+              <text id="26:2155" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="26:2156" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+          <frame id="26:2157" name="Permission / Input Monitoring" x="0" y="80" width="468" height="70">
+            <frame id="26:2158" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="26:2159" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="26:2160" name="Permission" x="54" y="12" width="105" height="16" />
+            <text id="26:2161" name="Description" x="54" y="37" width="156" height="13" />
+            <frame id="26:2162" name="Status / Open Settings" x="354" y="18" width="114" height="34">
+              <text id="26:2163" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="26:2164" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+          <frame id="26:2165" name="Permission / Full Disk Access" x="0" y="160" width="468" height="70">
+            <frame id="26:2166" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="26:2167" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="26:2168" name="Permission" x="54" y="12" width="102" height="16" />
+            <text id="26:2169" name="Description" x="54" y="37" width="182" height="13" />
+            <frame id="26:2170" name="Status / Optional" x="354" y="18" width="114" height="34">
+              <text id="26:2171" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="26:2172" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+        </frame>
+        <frame id="26:2173" name="Continue" x="76" y="512" width="428" height="38">
+          <text id="26:2174" name="Label" x="0" y="10" width="428" height="15" />
+        </frame>
+        <text id="26:2175" name="Footnote" x="0" y="565" width="580" height="12" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2176" name="Dark Refresh / Tray Popover" x="0" y="5002" width="1554" height="1012">
+    <rounded-rectangle id="26:2177" name="macOS Menu Bar" x="0" y="0" width="1554" height="28" />
+    <frame id="26:2178" name="Tray Icon" x="1430" y="6" width="16" height="16" />
+    <text id="26:2182" name="Note" x="42" y="44" width="900" height="15" />
+    <frame id="26:2183" name="01 / Tray Popover" x="1150" y="40" width="300" height="452">
+      <rounded-rectangle id="26:2184" name="Warm Glass Tint" x="0" y="0" width="300" height="452" />
+      <frame id="26:2185" name="Glance Mark" x="16" y="16" width="34" height="34">
+        <frame id="26:2186" name="Icon / focus" x="8" y="8" width="18" height="18" />
+      </frame>
+      <text id="26:2190" name="Brand" x="60" y="18" width="51" height="18" />
+      <text id="26:2191" name="Brand Sub" x="60" y="38" width="64" height="12" />
+      <frame id="26:2192" name="Preview Toggle" x="250" y="22" width="38" height="21" />
+      <rounded-rectangle id="26:2194" name="Header Divider" x="12" y="66" width="276" height="1" />
+      <frame id="26:2195" name="Open Home" x="12" y="80" width="276" height="44">
+        <frame id="26:2196" name="Icon / focus" x="16" y="13" width="18" height="18" />
+        <text id="26:2200" name="Label" x="44" y="14" width="122" height="16" />
+      </frame>
+      <frame id="26:2201" name="Row / Tasks" x="12" y="138" width="276" height="40">
+        <frame id="26:2202" name="Icon / tasks" x="12" y="11" width="18" height="18" />
+        <text id="26:2205" name="Label" x="42" y="12" width="37" height="16" />
+        <frame id="26:2206" name="Badge" x="232" y="10" width="32" height="20">
+          <text id="26:2207" name="Badge Label" x="0" y="4" width="32" height="12" />
+        </frame>
+      </frame>
+      <frame id="26:2208" name="Row / Preview History" x="12" y="182" width="276" height="40">
+        <frame id="26:2209" name="Icon / refresh" x="12" y="11" width="18" height="18" />
+        <text id="26:2212" name="Label" x="42" y="12" width="98" height="16" />
+      </frame>
+      <frame id="26:2213" name="Row / Preferences" x="12" y="226" width="276" height="40">
+        <frame id="26:2214" name="Icon / settings" x="12" y="11" width="18" height="18" />
+        <text id="26:2218" name="Label" x="42" y="12" width="75" height="16" />
+        <text id="26:2219" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <rounded-rectangle id="26:2220" name="Divider 2" x="12" y="278" width="276" height="1" />
+      <frame id="26:2221" name="Row / Permissions" x="12" y="290" width="276" height="40">
+        <frame id="26:2222" name="Icon / shield" x="12" y="11" width="18" height="18" />
+        <text id="26:2225" name="Label" x="42" y="12" width="76" height="16" />
+        <text id="26:2226" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <frame id="26:2227" name="Row / Account" x="12" y="334" width="276" height="40">
+        <frame id="26:2228" name="Icon / grid" x="12" y="11" width="18" height="18" />
+        <text id="26:2233" name="Label" x="42" y="12" width="52" height="16" />
+        <text id="26:2234" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <rounded-rectangle id="26:2235" name="Divider 3" x="12" y="386" width="276" height="1" />
+      <text id="26:2236" name="About" x="24" y="400" width="77" height="15" />
+      <text id="26:2237" name="Quit" x="0" y="400" width="276" height="15" />
+    </frame>
+  </frame>
+  <frame id="26:2238" name="Dark Refresh v2 / Image Viewer / Simple Operation" x="0" y="6254" width="1554" height="1012">
+    <frame id="26:2239" name="System / Window Controls" x="24" y="24" width="112" height="54" />
+    <frame id="26:2243" name="01 / Floating Toolbar" x="662" y="24" width="230" height="54">
+      <frame id="26:2244" name="Focus" x="8" y="8" width="38" height="38">
+        <frame id="26:2245" name="Icon / focus" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2249" name="Compare" x="52" y="8" width="38" height="38">
+        <frame id="26:2250" name="Icon / compare" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2253" name="Slider" x="96" y="8" width="38" height="38">
+        <frame id="26:2254" name="Icon / slider" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2259" name="Widget" x="140" y="8" width="38" height="38">
+        <frame id="26:2260" name="Icon / grid" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2265" name="Information" x="184" y="8" width="38" height="38">
+        <frame id="26:2266" name="Icon / info" x="10" y="10" width="18" height="18" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2270" name="Dark Refresh v2 / Video Inspect" x="1750" y="6254" width="1554" height="1012">
+    <frame id="26:2271" name="03 / Video Content" x="0" y="0" width="1554" height="1012" />
+    <frame id="26:2272" name="System / Window Controls" x="24" y="24" width="112" height="54" />
+    <frame id="26:2276" name="01 / Floating Toolbar" x="662" y="24" width="230" height="54">
+      <frame id="26:2277" name="Focus" x="8" y="8" width="38" height="38">
+        <frame id="26:2278" name="Icon / focus" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2282" name="Compare" x="52" y="8" width="38" height="38">
+        <frame id="26:2283" name="Icon / compare" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2286" name="Slider" x="96" y="8" width="38" height="38">
+        <frame id="26:2287" name="Icon / slider" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2292" name="Widget" x="140" y="8" width="38" height="38">
+        <frame id="26:2293" name="Icon / grid" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2298" name="Information" x="184" y="8" width="38" height="38">
+        <frame id="26:2299" name="Icon / info" x="10" y="10" width="18" height="18" />
+      </frame>
+    </frame>
+    <frame id="26:2303" name="02 / Floating Playback Controls" x="377" y="932" width="800" height="56">
+      <frame id="26:2304" name="Play" x="8" y="8" width="38" height="38">
+        <frame id="26:2305" name="Icon / play" x="10" y="10" width="18" height="18" />
+      </frame>
+      <rounded-rectangle id="26:2307" name="Timeline Track" x="62" y="26" width="610" height="4" />
+      <rounded-rectangle id="26:2308" name="Timeline Progress" x="62" y="26" width="238" height="4" />
+      <ellipse id="26:2309" name="Timeline Knob" x="294" y="21" width="14" height="14" />
+      <text id="26:2310" name="Time" x="688" y="20" width="92" height="13" />
+    </frame>
+  </frame>
+  <frame id="26:2311" name="Dark Refresh v2 / Task Center" x="3500" y="6254" width="1554" height="1012">
+    <frame id="26:2312" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:2313" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:2314" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:2315" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:2316" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:2317" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:2318" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:2319" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:2320" name="Refresh" x="40" y="14" width="38" height="38">
+          <frame id="26:2321" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2324" name="Search" x="88" y="14" width="38" height="38">
+          <frame id="26:2325" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2328" name="Open in Inspect" x="1378" y="14" width="38" height="38">
+          <frame id="26:2329" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2333" name="Clear Finished" x="1426" y="14" width="38" height="38">
+          <frame id="26:2334" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2336" name="Task Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:2337" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:2341" name="03 / Task List" x="0" y="128" width="360" height="847">
+        <text id="26:2342" name="Heading" x="24" y="22" width="49" height="21" />
+        <text id="26:2343" name="Caption" x="24" y="49" width="159" height="13" />
+        <frame id="26:2344" name="All Filter" x="20" y="82" width="72" height="38">
+          <text id="26:2345" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="26:2346" name="Running Filter" x="100" y="82" width="80" height="38">
+          <text id="26:2347" name="Label" x="0" y="10" width="80" height="15" />
+        </frame>
+        <frame id="26:2348" name="Completed Filter" x="188" y="82" width="72" height="38">
+          <text id="26:2349" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="26:2350" name="Failed Filter" x="268" y="82" width="72" height="38">
+          <text id="26:2351" name="Label" x="0" y="10" width="72" height="15" />
+        </frame>
+        <frame id="26:2352" name="Task / Remove Background" x="14" y="140" width="332" height="82">
+          <rounded-rectangle id="26:2353" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="26:2354" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="26:2355" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="26:2356" name="State" x="250" y="28" width="70" height="26" />
+          <text id="26:2357" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+        <frame id="26:2358" name="Task / Upscale 2×" x="14" y="232" width="332" height="82">
+          <rounded-rectangle id="26:2359" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="26:2360" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="26:2361" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="26:2362" name="State" x="250" y="28" width="70" height="26" />
+          <text id="26:2363" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+        <frame id="26:2364" name="Task / Image Caption" x="14" y="324" width="332" height="82">
+          <rounded-rectangle id="26:2365" name="Thumbnail" x="12" y="13" width="56" height="56" />
+          <text id="26:2366" name="Title" x="82" y="17" width="170" height="16" />
+          <text id="26:2367" name="Detail" x="82" y="43" width="190" height="13" />
+          <frame id="26:2368" name="State" x="250" y="28" width="70" height="26" />
+          <text id="26:2369" name="Label" x="250" y="34" width="70" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:2370" name="04 / Task Detail" x="360" y="128" width="1194" height="847">
+        <text id="26:2371" name="Task Title" x="32" y="25" width="179" height="22" />
+        <text id="26:2372" name="Task Metadata" x="32" y="53" width="126" height="15" />
+        <frame id="26:2373" name="Show in Inspect" x="1084" y="22" width="38" height="38">
+          <frame id="26:2374" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2378" name="Cancel Task" x="1132" y="22" width="38" height="38">
+          <frame id="26:2379" name="Icon / uninstall" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2381" name="Source Preview" x="32" y="104" width="528" height="304">
+          <rounded-rectangle id="26:2382" name="Source Image" x="12" y="12" width="504" height="280" />
+        </frame>
+        <frame id="26:2383" name="Result Preview" x="578" y="104" width="528" height="304">
+          <ellipse id="26:2384" name="Waiting Indicator" x="240" y="118" width="48" height="48" />
+          <text id="26:2385" name="Waiting Label" x="0" y="178" width="528" height="15" />
+        </frame>
+        <frame id="26:2386" name="Timeline" x="32" y="440" width="560" height="330">
+          <text id="26:2387" name="Timeline Heading" x="24" y="20" width="54" height="16" />
+          <ellipse id="26:2388" name="Timeline Mark" x="28" y="63" width="14" height="14" />
+          <text id="26:2389" name="Title" x="58" y="60" width="96" height="16" />
+          <text id="26:2390" name="Detail" x="58" y="82" width="175" height="13" />
+          <text id="26:2391" name="Time" x="430" y="63" width="110" height="13" />
+          <rounded-rectangle id="26:2392" name="Connector" x="34" y="78" width="1" height="52" />
+          <ellipse id="26:2393" name="Timeline Mark" x="28" y="135" width="14" height="14" />
+          <text id="26:2394" name="Title" x="58" y="132" width="97" height="16" />
+          <text id="26:2395" name="Detail" x="58" y="154" width="97" height="13" />
+          <text id="26:2396" name="Time" x="430" y="135" width="110" height="13" />
+          <rounded-rectangle id="26:2397" name="Connector" x="34" y="150" width="1" height="52" />
+          <ellipse id="26:2398" name="Timeline Mark" x="28" y="207" width="14" height="14" />
+          <ellipse id="26:2399" name="Current Halo" x="23" y="202" width="24" height="24" />
+          <text id="26:2400" name="Title" x="58" y="204" width="69" height="16" />
+          <text id="26:2401" name="Detail" x="58" y="226" width="124" height="13" />
+          <text id="26:2402" name="Time" x="430" y="207" width="110" height="13" />
+          <rounded-rectangle id="26:2403" name="Connector" x="34" y="222" width="1" height="52" />
+          <ellipse id="26:2404" name="Timeline Mark" x="28" y="279" width="14" height="14" />
+          <text id="26:2405" name="Title" x="58" y="276" width="101" height="16" />
+          <text id="26:2406" name="Detail" x="58" y="298" width="112" height="13" />
+          <text id="26:2407" name="Time" x="430" y="279" width="110" height="13" />
+        </frame>
+        <frame id="26:2408" name="Task Details" x="612" y="440" width="494" height="330">
+          <text id="26:2409" name="Heading" x="24" y="20" width="77" height="16" />
+          <text id="26:2410" name="Key / Widget" x="36" y="60" width="45" height="16" />
+          <text id="26:2411" name="Value / Widget" x="174" y="60" width="220" height="16" />
+          <rounded-rectangle id="26:2412" name="Divider" x="36" y="90" width="362" height="1" />
+          <text id="26:2413" name="Key / Input" x="36" y="98" width="32" height="16" />
+          <text id="26:2414" name="Value / Input" x="174" y="98" width="220" height="16" />
+          <rounded-rectangle id="26:2415" name="Divider" x="36" y="128" width="362" height="1" />
+          <text id="26:2416" name="Key / Worker" x="36" y="136" width="45" height="16" />
+          <text id="26:2417" name="Value / Worker" x="174" y="136" width="220" height="16" />
+          <rounded-rectangle id="26:2418" name="Divider" x="36" y="166" width="362" height="1" />
+          <text id="26:2419" name="Key / Progress" x="36" y="174" width="56" height="16" />
+          <text id="26:2420" name="Value / Progress" x="174" y="174" width="220" height="16" />
+          <rounded-rectangle id="26:2421" name="Divider" x="36" y="204" width="362" height="1" />
+          <text id="26:2422" name="Key / Polling" x="36" y="212" width="42" height="16" />
+          <text id="26:2423" name="Value / Polling" x="174" y="212" width="220" height="16" />
+          <rounded-rectangle id="26:2424" name="Divider" x="36" y="242" width="362" height="1" />
+        </frame>
+      </frame>
+      <frame id="26:2425" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:2426" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:2427" name="Center Hint" x="0" y="11" width="1554" height="15" />
+        <ellipse id="26:2428" name="Status Dot" x="1394" y="15" width="8" height="8" />
+        <text id="26:2429" name="Right Status" x="1414" y="11" width="81" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2430" name="Dark Refresh v2 / Widget Market / Install" x="5250" y="6254" width="1554" height="1012">
+    <text id="26:2431" name="Review Heading" x="42" y="43" width="321" height="22" />
+    <text id="26:2432" name="Review Note" x="42" y="75" width="423" height="13" />
+    <frame id="26:2433" name="01 / Attached Market Catalog" x="337" y="196" width="380" height="620">
+      <rounded-rectangle id="26:2434" name="Warm Glass Tint" x="0" y="0" width="380" height="620" />
+      <text id="26:2435" name="Catalog Heading" x="22" y="20" width="150" height="25" />
+      <frame id="26:2436" name="Close Market" x="294" y="16" width="38" height="38">
+        <frame id="26:2437" name="Icon / close" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:2439" name="Reload Catalog" x="334" y="16" width="38" height="38">
+        <frame id="26:2440" name="Icon / refresh" x="10" y="10" width="18" height="18" />
+      </frame>
+      <rounded-rectangle id="26:2443" name="Header Divider" x="20" y="69" width="340" height="1" />
+      <frame id="26:2444" name="Widget / Remove Background" x="16" y="84" width="348" height="132">
+        <frame id="26:2445" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="26:2446" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="26:2447" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="26:2448" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="26:2449" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="26:2450" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="26:2451" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="26:2452" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="26:2453" name="Commands" x="14" y="103" width="218" height="12" />
+        <frame id="26:2454" name="Installed / local registry" x="243" y="96" width="91" height="31">
+          <text id="26:2455" name="Action Label" x="0" y="8" width="91" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:2456" name="Widget / 超分" x="16" y="226" width="348" height="132">
+        <frame id="26:2457" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="26:2458" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="26:2459" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="26:2460" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="26:2461" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="26:2462" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="26:2463" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="26:2464" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="26:2465" name="Commands" x="14" y="103" width="234" height="12" />
+        <frame id="26:2466" name="Install Widget" x="258" y="96" width="76" height="31">
+          <text id="26:2467" name="Action Label" x="0" y="8" width="76" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:2468" name="Widget / RemoveBG 高级" x="16" y="368" width="348" height="132">
+        <frame id="26:2469" name="48px Widget Icon" x="14" y="13" width="48" height="48">
+          <text id="26:2470" name="Icon Letter" x="0" y="14" width="48" height="18" />
+        </frame>
+        <text id="26:2471" name="Name" x="74" y="12" width="215" height="16" />
+        <text id="26:2472" name="Version" x="74" y="32" width="111" height="12" />
+        <frame id="26:2473" name="Cloud Badge" x="278" y="15" width="55" height="19">
+          <text id="26:2474" name="Badge Label" x="0" y="4" width="55" height="11" />
+        </frame>
+        <text id="26:2475" name="Summary" x="14" y="68" width="316" height="13" />
+        <rounded-rectangle id="26:2476" name="Footer Divider" x="14" y="92" width="320" height="1" />
+        <text id="26:2477" name="Commands" x="14" y="103" width="234" height="12" />
+        <frame id="26:2478" name="Install Widget" x="258" y="96" width="76" height="31">
+          <text id="26:2479" name="Action Label" x="0" y="8" width="76" height="13" />
+        </frame>
+      </frame>
+      <text id="26:2480" name="Catalog Footer" x="20" y="527" width="171" height="12" />
+      <text id="26:2481" name="Offline Helper" x="20" y="552" width="338" height="13" />
+    </frame>
+    <frame id="26:2482" name="02 / Selected Widget Detail Drawer" x="837" y="196" width="380" height="620">
+      <rounded-rectangle id="26:2483" name="Warm Glass Tint" x="0" y="0" width="380" height="620" />
+      <frame id="26:2484" name="Back to Catalog" x="20" y="17" width="38" height="38">
+        <frame id="26:2485" name="Icon / back" x="10" y="10" width="18" height="18" />
+      </frame>
+      <text id="26:2487" name="Detail Heading" x="74" y="26" width="90" height="16" />
+      <rounded-rectangle id="26:2488" name="Detail Header Divider" x="20" y="69" width="340" height="1" />
+      <frame id="26:2489" name="48px Widget Icon" x="22" y="93" width="48" height="48">
+        <text id="26:2490" name="Icon Letter" x="0" y="14" width="48" height="18" />
+      </frame>
+      <text id="26:2491" name="Widget Name" x="84" y="96" width="159" height="19" />
+      <text id="26:2492" name="Version" x="84" y="123" width="122" height="13" />
+      <frame id="26:2493" name="Cloud Badge" x="22" y="160" width="55" height="19">
+        <text id="26:2494" name="Badge Label" x="0" y="4" width="55" height="11" />
+      </frame>
+      <frame id="26:2495" name="Installed / local registry" x="269" y="154" width="91" height="31">
+        <text id="26:2496" name="Action Label" x="0" y="8" width="91" height="13" />
+      </frame>
+      <rounded-rectangle id="26:2497" name="Summary Divider" x="22" y="199" width="336" height="1" />
+      <text id="26:2498" name="About Heading" x="22" y="219" width="36" height="12" />
+      <text id="26:2499" name="Summary" x="22" y="243" width="334" height="30" />
+      <text id="26:2500" name="Command Heading" x="22" y="312" width="56" height="12" />
+      <text id="26:2501" name="Command" x="22" y="336" width="334" height="13" />
+      <text id="26:2502" name="Privacy Heading" x="22" y="391" width="44" height="12" />
+      <text id="26:2503" name="Privacy Notice" x="22" y="415" width="334" height="13" />
+      <rounded-rectangle id="26:2504" name="Bottom Divider" x="22" y="517" width="336" height="1" />
+      <frame id="26:2505" name="Uninstall / explicit action" x="22" y="538" width="336" height="38">
+        <text id="26:2506" name="Uninstall Label" x="0" y="12" width="336" height="13" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2558" name="Dark Refresh v2 / Home / Launcher" x="1750" y="7504" width="1554" height="1012">
+    <frame id="26:2559" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:2560" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:2561" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:2562" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:2563" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:2564" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:2565" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:2566" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:2567" name="Open Files" x="40" y="14" width="38" height="38">
+          <frame id="26:2568" name="Icon / file" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2570" name="Open Folder" x="88" y="14" width="38" height="38">
+          <frame id="26:2571" name="Icon / folder" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:2587" name="03 / Open Surface" x="0" y="128" width="1000" height="847">
+        <text id="26:2588" name="Welcome" x="56" y="82" width="314" height="29" />
+        <text id="26:2589" name="Welcome Sub" x="56" y="118" width="700" height="16" />
+        <frame id="26:2590" name="Drop Zone" x="56" y="174" width="888" height="300">
+          <frame id="26:2591" name="Drop Icon" x="411" y="60" width="66" height="66">
+            <frame id="26:2592" name="Icon / focus" x="18" y="18" width="30" height="30" />
+          </frame>
+          <text id="26:2596" name="Drop Title" x="0" y="170" width="888" height="19" />
+          <text id="26:2597" name="Drop Hint" x="0" y="200" width="888" height="13" />
+        </frame>
+        <frame id="26:2598" name="Open Files Button" x="274" y="490" width="150" height="38">
+          <text id="26:2599" name="Label" x="0" y="10" width="150" height="15" />
+        </frame>
+        <frame id="26:2600" name="Open Folder Button" x="440" y="490" width="150" height="38">
+          <text id="26:2601" name="Label" x="0" y="10" width="150" height="15" />
+        </frame>
+        <text id="26:2602" name="Folder Group" x="56" y="618" width="156" height="13" />
+        <frame id="26:2604" name="Folder Images" x="56" y="646" width="888" height="172">
+          <frame id="26:2605" name="Folder Image" x="16" y="40" width="92" height="92" />
+          <frame id="26:2607" name="Folder Image" x="124" y="40" width="92" height="92" />
+          <frame id="26:2609" name="Folder Image" x="232" y="40" width="92" height="92" />
+          <frame id="26:2611" name="Folder Image" x="340" y="40" width="92" height="92" />
+          <frame id="26:2613" name="Folder Image" x="448" y="40" width="92" height="92" />
+          <frame id="26:2615" name="Folder Image" x="556" y="40" width="92" height="92" />
+          <frame id="26:2617" name="Folder Image" x="664" y="40" width="92" height="92" />
+          <frame id="26:2619" name="Folder Image" x="772" y="40" width="92" height="92" />
+          <frame id="26:2621" name="More Count" x="880" y="40" width="92" height="92">
+            <text id="26:2622" name="More Label" x="0" y="36" width="92" height="18" />
+          </frame>
+        </frame>
+      </frame>
+      <frame id="26:2625" name="04 / Recent" x="1000" y="128" width="554" height="847">
+        <text id="26:2626" name="Recent Heading" x="40" y="40" width="65" height="23" />
+        <text id="26:2627" name="Recent Sub" x="40" y="70" width="185" height="13" />
+        <frame id="26:2628" name="Search Recent" x="470" y="34" width="38" height="38">
+          <frame id="26:2629" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2632" name="Recent / input.png" x="40" y="110" width="214" height="176">
+          <rounded-rectangle id="26:2633" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:2634" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:2635" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:2636" name="Recent / portrait.jpg" x="278" y="110" width="214" height="176">
+          <rounded-rectangle id="26:2637" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:2638" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:2639" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:2640" name="Recent / result-remove-bg.png" x="40" y="310" width="214" height="176">
+          <rounded-rectangle id="26:2641" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:2642" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:2643" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:2644" name="Recent / product.webp" x="278" y="310" width="214" height="176">
+          <rounded-rectangle id="26:2645" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:2646" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:2647" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:2648" name="Recent / capture.heic" x="40" y="510" width="214" height="176">
+          <rounded-rectangle id="26:2649" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:2650" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:2651" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <frame id="26:2652" name="Recent / design.png" x="278" y="510" width="214" height="176">
+          <rounded-rectangle id="26:2653" name="Preview" x="6" y="6" width="202" height="128" />
+          <text id="26:2654" name="Filename" x="14" y="142" width="150" height="15" />
+          <text id="26:2655" name="Type" x="150" y="143" width="52" height="12" />
+        </frame>
+        <text id="26:2656" name="Recent Folder Group" x="40" y="716" width="97" height="13" />
+        <frame id="26:2657" name="Recent Folder" x="40" y="744" width="474" height="60">
+          <frame id="26:2658" name="Icon / folder" x="18" y="20" width="20" height="20" />
+          <text id="26:2660" name="Folder Name" x="52" y="12" width="46" height="16" />
+          <text id="26:2661" name="Folder Meta" x="52" y="32" width="150" height="12" />
+          <text id="26:2662" name="Folder Open" x="420" y="22" width="40" height="13" />
+        </frame>
+      </frame>
+      <frame id="26:2663" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:2664" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:2665" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2666" name="Dark Refresh v2 / Content Viewer" x="3500" y="7504" width="1554" height="1012">
+    <frame id="26:2667" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:2668" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:2669" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:2670" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:2671" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:2672" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:2673" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:2674" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:2675" name="Plain Text" x="40" y="14" width="38" height="38">
+          <frame id="26:2676" name="Icon / file" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2678" name="Markdown Preview" x="88" y="14" width="38" height="38">
+          <frame id="26:2679" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2683" name="Find" x="1366" y="14" width="38" height="38">
+          <frame id="26:2684" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2687" name="Copy" x="1414" y="14" width="38" height="38">
+          <frame id="26:2688" name="Icon / copy" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2691" name="Reveal in Finder" x="1462" y="14" width="38" height="38">
+          <frame id="26:2692" name="Icon / folder" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:2694" name="03 / Document Content" x="0" y="128" width="1090" height="847">
+        <text id="26:2695" name="Content Type" x="32" y="26" width="118" height="13" />
+        <text id="26:2696" name="Line Number 1" x="38" y="96" width="32" height="15" />
+        <text id="26:2697" name="Line 1" x="92" y="96" width="930" height="19" />
+        <text id="26:2698" name="Line Number 2" x="38" y="139" width="32" height="15" />
+        <text id="26:2699" name="Line Number 3" x="38" y="182" width="32" height="15" />
+        <text id="26:2700" name="Line 3" x="92" y="182" width="930" height="19" />
+        <text id="26:2701" name="Line Number 4" x="38" y="225" width="32" height="15" />
+        <text id="26:2702" name="Line 4" x="92" y="225" width="930" height="19" />
+        <text id="26:2703" name="Line Number 5" x="38" y="268" width="32" height="15" />
+        <text id="26:2704" name="Line Number 6" x="38" y="311" width="32" height="15" />
+        <text id="26:2705" name="Line 6" x="92" y="311" width="930" height="19" />
+        <text id="26:2706" name="Line Number 7" x="38" y="354" width="32" height="15" />
+        <text id="26:2707" name="Line 7" x="92" y="354" width="930" height="19" />
+        <text id="26:2708" name="Line Number 8" x="38" y="397" width="32" height="15" />
+        <text id="26:2709" name="Line 8" x="92" y="397" width="930" height="19" />
+        <text id="26:2710" name="Line Number 9" x="38" y="440" width="32" height="15" />
+        <text id="26:2711" name="Line 9" x="92" y="440" width="930" height="19" />
+      </frame>
+      <frame id="26:2712" name="04 / Document Information" x="1090" y="128" width="464" height="847">
+        <frame id="26:2713" name="Content Information / 3:4" x="44" y="52" width="376" height="502">
+          <text id="26:2714" name="Heading" x="22" y="23" width="166" height="21" />
+          <text id="26:2715" name="Description" x="22" y="62" width="330" height="45" />
+          <text id="26:2716" name="Key / Type" x="22" y="173" width="29" height="15" />
+          <text id="26:2717" name="Value / Type" x="136" y="173" width="210" height="15" />
+          <rounded-rectangle id="26:2718" name="Divider" x="22" y="207" width="332" height="1" />
+          <text id="26:2719" name="Key / Encoding" x="22" y="227" width="54" height="15" />
+          <text id="26:2720" name="Value / Encoding" x="136" y="227" width="210" height="15" />
+          <rounded-rectangle id="26:2721" name="Divider" x="22" y="261" width="332" height="1" />
+          <text id="26:2722" name="Key / Lines" x="22" y="281" width="31" height="15" />
+          <text id="26:2723" name="Value / Lines" x="136" y="281" width="210" height="15" />
+          <rounded-rectangle id="26:2724" name="Divider" x="22" y="315" width="332" height="1" />
+          <text id="26:2725" name="Key / Source" x="22" y="335" width="41" height="15" />
+          <text id="26:2726" name="Value / Source" x="136" y="335" width="210" height="15" />
+          <rounded-rectangle id="26:2727" name="Divider" x="22" y="369" width="332" height="1" />
+          <text id="26:2728" name="Key / Modified" x="22" y="389" width="51" height="15" />
+          <text id="26:2729" name="Value / Modified" x="136" y="389" width="210" height="15" />
+          <rounded-rectangle id="26:2730" name="Divider" x="22" y="423" width="332" height="1" />
+        </frame>
+      </frame>
+      <frame id="26:2731" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:2732" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:2733" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2795" name="Dark Refresh v2 / Base64 Toolkit" x="0" y="8754" width="1554" height="1012">
+    <frame id="26:2796" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:2797" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:2798" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:2799" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:2800" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:2801" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:2802" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:2803" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:2804" name="Paste Base64" x="40" y="14" width="38" height="38">
+          <frame id="26:2805" name="Icon / copy" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2808" name="Clear Input" x="88" y="14" width="38" height="38">
+          <frame id="26:2809" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2811" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:2812" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:2816" name="03 / Input Editor" x="0" y="128" width="1100" height="847">
+        <text id="26:2817" name="Heading" x="36" y="28" width="163" height="24" />
+        <text id="26:2818" name="Instructions" x="36" y="65" width="334" height="15" />
+        <text id="26:2819" name="Field Label" x="36" y="115" width="101" height="13" />
+        <frame id="26:2820" name="Multiline Base64 Field" x="36" y="147" width="1028" height="560">
+          <text id="26:2821" name="Placeholder" x="22" y="22" width="962" height="16" />
+          <text id="26:2822" name="Example Base64 1" x="22" y="79" width="962" height="15" />
+          <text id="26:2823" name="Example Base64 2" x="22" y="108" width="962" height="15" />
+          <text id="26:2824" name="Example Base64 3" x="22" y="137" width="962" height="15" />
+        </frame>
+        <text id="26:2825" name="Accepted Formats" x="36" y="734" width="153" height="13" />
+        <frame id="26:2826" name="Clear" x="746" y="720" width="92" height="38">
+          <text id="26:2827" name="Label" x="0" y="10" width="92" height="15" />
+        </frame>
+        <frame id="26:2828" name="Decode and Preview" x="852" y="720" width="212" height="38">
+          <text id="26:2829" name="Label" x="0" y="10" width="212" height="15" />
+        </frame>
+      </frame>
+      <frame id="26:2830" name="04 / Result Preview" x="1100" y="128" width="454" height="847">
+        <text id="26:2831" name="Heading" x="28" y="30" width="122" height="21" />
+        <frame id="26:2832" name="Image Frame / 3:4" x="42" y="100" width="370" height="494">
+          <frame id="26:2833" name="Waiting Placeholder" x="131" y="178" width="108" height="108">
+            <frame id="26:2834" name="Image Icon" x="35" y="35" width="38" height="38">
+              <frame id="26:2835" name="Icon / focus" x="10" y="10" width="18" height="18" />
+            </frame>
+          </frame>
+        </frame>
+        <text id="26:2839" name="Waiting Label" x="0" y="623" width="454" height="15" />
+        <text id="26:2840" name="Detected Format" x="42" y="694" width="87" height="13" />
+        <text id="26:2841" name="Detected Value" x="266" y="694" width="146" height="13" />
+        <rounded-rectangle id="26:2842" name="Metadata Divider" x="42" y="720" width="370" height="1" />
+        <text id="26:2843" name="Estimated Size" x="42" y="739" width="77" height="13" />
+        <text id="26:2844" name="Size Value" x="266" y="739" width="146" height="13" />
+      </frame>
+      <frame id="26:2845" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:2846" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:2847" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2848" name="Dark Refresh v2 / Preview History" x="1750" y="8754" width="1554" height="1012">
+    <frame id="26:2849" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:2850" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:2851" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:2852" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:2853" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:2854" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:2855" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:2856" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:2857" name="Search History" x="40" y="14" width="38" height="38">
+          <frame id="26:2858" name="Icon / search" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2861" name="Open in Inspect" x="1378" y="14" width="38" height="38">
+          <frame id="26:2862" name="Icon / focus" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2866" name="Clear History" x="1426" y="14" width="38" height="38">
+          <frame id="26:2867" name="Icon / clear" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2869" name="History Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:2870" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:2874" name="03 / History Grid" x="0" y="128" width="1554" height="847">
+        <text id="26:2875" name="Section Title" x="32" y="26" width="57" height="23" />
+        <text id="26:2876" name="Count" x="32" y="58" width="39" height="13" />
+        <frame id="26:2877" name="Search Field" x="1196" y="24" width="322" height="40">
+          <frame id="26:2878" name="Search Icon" x="4" y="1" width="38" height="38">
+            <frame id="26:2879" name="Icon / search" x="10" y="10" width="18" height="18" />
+          </frame>
+          <text id="26:2882" name="Placeholder" x="54" y="12" width="92" height="15" />
+        </frame>
+        <frame id="26:2883" name="History / input.png" x="32" y="110" width="348" height="218">
+          <rounded-rectangle id="26:2884" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2885" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2886" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2887" name="History / result-remove-bg.png" x="406" y="110" width="348" height="218">
+          <rounded-rectangle id="26:2888" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2889" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2890" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2891" name="History / portrait.jpg" x="780" y="110" width="348" height="218">
+          <rounded-rectangle id="26:2892" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2893" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2894" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2895" name="History / product.webp" x="1154" y="110" width="348" height="218">
+          <rounded-rectangle id="26:2896" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2897" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2898" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2899" name="History / clip.mov" x="32" y="358" width="348" height="218">
+          <rounded-rectangle id="26:2900" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2901" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2902" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2903" name="History / README.md" x="406" y="358" width="348" height="218">
+          <rounded-rectangle id="26:2904" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2905" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2906" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2907" name="History / design.png" x="780" y="358" width="348" height="218">
+          <rounded-rectangle id="26:2908" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2909" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2910" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <frame id="26:2911" name="History / capture.jpg" x="1154" y="358" width="348" height="218">
+          <rounded-rectangle id="26:2912" name="Preview" x="6" y="6" width="336" height="171" />
+          <text id="26:2913" name="Filename" x="14" y="184" width="220" height="15" />
+          <text id="26:2914" name="Type" x="246" y="184" width="88" height="13" />
+        </frame>
+        <text id="26:2915" name="Keyboard Hint" x="32" y="665" width="461" height="15" />
+      </frame>
+      <frame id="26:2916" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:2917" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:2918" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:2919" name="Dark Refresh v2 / Preferences" x="3500" y="8754" width="1554" height="1012">
+    <frame id="26:2920" name="Editable Content" x="0" y="0" width="1554" height="1012">
+      <frame id="26:2921" name="01 / Titlebar" x="0" y="0" width="1554" height="58">
+        <ellipse id="26:2922" name="Close" x="24" y="23" width="12" height="12" />
+        <ellipse id="26:2923" name="Minimize" x="44" y="23" width="12" height="12" />
+        <ellipse id="26:2924" name="Zoom" x="64" y="23" width="12" height="12" />
+        <text id="26:2925" name="Window Title" x="0" y="14" width="1554" height="18" />
+        <text id="26:2926" name="Subtitle" x="0" y="38" width="1554" height="13" />
+      </frame>
+      <frame id="26:2927" name="02 / Icon Toolbar" x="0" y="58" width="1554" height="70">
+        <frame id="26:2928" name="General" x="40" y="14" width="38" height="38">
+          <frame id="26:2929" name="Icon / settings" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2933" name="Appearance" x="88" y="14" width="38" height="38">
+          <frame id="26:2934" name="Icon / grid" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2939" name="Privacy" x="1366" y="14" width="38" height="38">
+          <frame id="26:2940" name="Icon / shield" x="10" y="10" width="18" height="18" />
+        </frame>
+        <frame id="26:2943" name="Information" x="1474" y="14" width="38" height="38">
+          <frame id="26:2944" name="Icon / info" x="10" y="10" width="18" height="18" />
+        </frame>
+      </frame>
+      <frame id="26:2948" name="03 / Settings Navigation" x="0" y="128" width="286" height="847">
+        <frame id="26:2949" name="Tab / General" x="16" y="27" width="254" height="44">
+          <frame id="26:2950" name="Icon / settings" x="13" y="13" width="18" height="18" />
+          <text id="26:2954" name="Tab Label" x="43" y="13" width="46" height="15" />
+        </frame>
+        <frame id="26:2955" name="Tab / Preview" x="16" y="85" width="254" height="44">
+          <frame id="26:2956" name="Icon / focus" x="13" y="13" width="18" height="18" />
+          <text id="26:2960" name="Tab Label" x="43" y="13" width="46" height="15" />
+        </frame>
+        <frame id="26:2961" name="Tab / Widgets" x="16" y="143" width="254" height="44">
+          <frame id="26:2962" name="Icon / grid" x="13" y="13" width="18" height="18" />
+          <text id="26:2967" name="Tab Label" x="43" y="13" width="48" height="15" />
+        </frame>
+        <frame id="26:2968" name="Tab / Privacy &amp; Permissions" x="16" y="201" width="254" height="44">
+          <frame id="26:2969" name="Icon / shield" x="13" y="13" width="18" height="18" />
+          <text id="26:2972" name="Tab Label" x="43" y="13" width="127" height="15" />
+        </frame>
+      </frame>
+      <frame id="26:2973" name="04 / General Settings" x="286" y="128" width="1268" height="847">
+        <text id="26:2974" name="Heading" x="80" y="51" width="83" height="27" />
+        <text id="26:2975" name="Description" x="80" y="92" width="468" height="15" />
+        <text id="26:2976" name="Startup Group" x="80" y="154" width="51" height="13" />
+        <text id="26:2977" name="Setting / Launch Glance at login" x="80" y="192" width="142" height="16" />
+        <text id="26:2978" name="Explanation" x="80" y="217" width="644" height="13" />
+        <frame id="26:2979" name="Toggle / Launch Glance at login" x="758" y="199" width="38" height="21" />
+        <rounded-rectangle id="26:2981" name="Row Divider" x="80" y="254" width="716" height="1" />
+        <text id="26:2982" name="Setting / Remember window position" x="80" y="275" width="173" height="16" />
+        <text id="26:2983" name="Explanation" x="80" y="300" width="644" height="13" />
+        <frame id="26:2984" name="Toggle / Remember window position" x="758" y="282" width="38" height="21" />
+        <rounded-rectangle id="26:2986" name="Row Divider" x="80" y="337" width="716" height="1" />
+        <text id="26:2987" name="Language &amp; Appearance Group" x="80" y="372" width="150" height="13" />
+        <text id="26:2988" name="Setting / Interface language" x="80" y="410" width="117" height="16" />
+        <text id="26:2989" name="Explanation" x="80" y="435" width="644" height="13" />
+        <frame id="26:2990" name="Selection / Interface language" x="661" y="411" width="135" height="32">
+          <text id="26:2991" name="Value" x="12" y="9" width="108" height="13" />
+        </frame>
+        <rounded-rectangle id="26:2992" name="Row Divider" x="80" y="472" width="716" height="1" />
+        <text id="26:2993" name="Setting / Reduce motion" x="80" y="493" width="94" height="16" />
+        <text id="26:2994" name="Explanation" x="80" y="518" width="644" height="13" />
+        <frame id="26:2995" name="Toggle / Reduce motion" x="758" y="500" width="38" height="21" />
+        <rounded-rectangle id="26:2997" name="Row Divider" x="80" y="555" width="716" height="1" />
+        <text id="26:2998" name="Clipboard Group" x="80" y="590" width="63" height="13" />
+        <text id="26:2999" name="Setting / Prefer copied images" x="80" y="628" width="132" height="16" />
+        <text id="26:3000" name="Explanation" x="80" y="653" width="644" height="13" />
+        <frame id="26:3001" name="Toggle / Prefer copied images" x="758" y="635" width="38" height="21" />
+        <rounded-rectangle id="26:3003" name="Row Divider" x="80" y="690" width="716" height="1" />
+      </frame>
+      <frame id="26:3004" name="06 / Statusbar" x="0" y="975" width="1554" height="37">
+        <text id="26:3005" name="Left Status" x="38" y="11" width="480" height="15" />
+        <text id="26:3006" name="Center Hint" x="0" y="11" width="1554" height="15" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:3007" name="Dark Refresh v2 / Onboarding / Permissions" x="5250" y="8754" width="1554" height="1012">
+    <frame id="26:3008" name="01 / Glance Window" x="487" y="181" width="580" height="650">
+      <frame id="26:3009" name="Titlebar" x="0" y="0" width="580" height="44">
+        <ellipse id="26:3010" name="Close" x="16" y="17" width="11" height="11" />
+        <ellipse id="26:3011" name="Minimize" x="34" y="17" width="11" height="11" />
+        <ellipse id="26:3012" name="Zoom" x="52" y="17" width="11" height="11" />
+        <text id="26:3013" name="Window Title" x="0" y="13" width="580" height="15" />
+      </frame>
+      <frame id="26:3014" name="02 / Permission Setup" x="0" y="44" width="580" height="606">
+        <frame id="26:3015" name="Glance Mark" x="256" y="32" width="68" height="68">
+          <frame id="26:3016" name="Product Icon" x="15" y="15" width="38" height="38">
+            <frame id="26:3017" name="Icon / focus" x="10" y="10" width="18" height="18" />
+          </frame>
+        </frame>
+        <text id="26:3021" name="Heading" x="0" y="125" width="580" height="24" />
+        <text id="26:3022" name="Explanation" x="75" y="164" width="430" height="30" />
+        <frame id="26:3023" name="Permission List" x="56" y="230" width="468" height="240">
+          <frame id="26:3024" name="Permission / Accessibility" x="0" y="0" width="468" height="70">
+            <frame id="26:3025" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="26:3026" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="26:3027" name="Permission" x="54" y="12" width="81" height="16" />
+            <text id="26:3028" name="Description" x="54" y="37" width="137" height="13" />
+            <frame id="26:3029" name="Status / Allowed" x="354" y="18" width="114" height="34">
+              <text id="26:3030" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="26:3031" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+          <frame id="26:3032" name="Permission / Input Monitoring" x="0" y="80" width="468" height="70">
+            <frame id="26:3033" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="26:3034" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="26:3035" name="Permission" x="54" y="12" width="105" height="16" />
+            <text id="26:3036" name="Description" x="54" y="37" width="156" height="13" />
+            <frame id="26:3037" name="Status / Open Settings" x="354" y="18" width="114" height="34">
+              <text id="26:3038" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="26:3039" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+          <frame id="26:3040" name="Permission / Full Disk Access" x="0" y="160" width="468" height="70">
+            <frame id="26:3041" name="Symbol" x="0" y="15" width="40" height="40">
+              <text id="26:3042" name="Glyph" x="0" y="12" width="40" height="16" />
+            </frame>
+            <text id="26:3043" name="Permission" x="54" y="12" width="102" height="16" />
+            <text id="26:3044" name="Description" x="54" y="37" width="182" height="13" />
+            <frame id="26:3045" name="Status / Optional" x="354" y="18" width="114" height="34">
+              <text id="26:3046" name="Status Text" x="0" y="10" width="114" height="13" />
+            </frame>
+            <rounded-rectangle id="26:3047" name="Separator" x="0" y="69" width="468" height="1" />
+          </frame>
+        </frame>
+        <frame id="26:3048" name="Continue" x="76" y="512" width="428" height="38">
+          <text id="26:3049" name="Label" x="0" y="10" width="428" height="15" />
+        </frame>
+        <text id="26:3050" name="Footnote" x="0" y="565" width="580" height="12" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="26:3051" name="Dark Refresh v2 / Tray Popover" x="0" y="10004" width="1554" height="1012">
+    <rounded-rectangle id="26:3052" name="macOS Menu Bar" x="0" y="0" width="1554" height="28" />
+    <frame id="26:3053" name="Tray Icon" x="1430" y="6" width="16" height="16" />
+    <text id="26:3057" name="Note" x="42" y="44" width="900" height="15" />
+    <frame id="26:3058" name="01 / Tray Popover" x="1150" y="40" width="300" height="452">
+      <rounded-rectangle id="26:3059" name="Warm Glass Tint" x="0" y="0" width="300" height="452" />
+      <frame id="26:3060" name="Glance Mark" x="16" y="16" width="34" height="34">
+        <frame id="26:3061" name="Icon / focus" x="8" y="8" width="18" height="18" />
+      </frame>
+      <text id="26:3065" name="Brand" x="60" y="18" width="51" height="18" />
+      <text id="26:3066" name="Brand Sub" x="60" y="38" width="64" height="12" />
+      <frame id="26:3067" name="Preview Toggle" x="250" y="22" width="38" height="21" />
+      <rounded-rectangle id="26:3069" name="Header Divider" x="12" y="66" width="276" height="1" />
+      <frame id="26:3070" name="Open Home" x="12" y="80" width="276" height="44">
+        <frame id="26:3071" name="Icon / focus" x="16" y="13" width="18" height="18" />
+        <text id="26:3075" name="Label" x="44" y="14" width="122" height="16" />
+      </frame>
+      <frame id="26:3076" name="Row / Tasks" x="12" y="138" width="276" height="40">
+        <frame id="26:3077" name="Icon / tasks" x="12" y="11" width="18" height="18" />
+        <text id="26:3080" name="Label" x="42" y="12" width="37" height="16" />
+        <frame id="26:3081" name="Badge" x="232" y="10" width="32" height="20">
+          <text id="26:3082" name="Badge Label" x="0" y="4" width="32" height="12" />
+        </frame>
+      </frame>
+      <frame id="26:3083" name="Row / Preview History" x="12" y="182" width="276" height="40">
+        <frame id="26:3084" name="Icon / refresh" x="12" y="11" width="18" height="18" />
+        <text id="26:3087" name="Label" x="42" y="12" width="98" height="16" />
+      </frame>
+      <frame id="26:3088" name="Row / Preferences" x="12" y="226" width="276" height="40">
+        <frame id="26:3089" name="Icon / settings" x="12" y="11" width="18" height="18" />
+        <text id="26:3093" name="Label" x="42" y="12" width="75" height="16" />
+        <text id="26:3094" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <rounded-rectangle id="26:3095" name="Divider 2" x="12" y="278" width="276" height="1" />
+      <frame id="26:3096" name="Row / Permissions" x="12" y="290" width="276" height="40">
+        <frame id="26:3097" name="Icon / shield" x="12" y="11" width="18" height="18" />
+        <text id="26:3100" name="Label" x="42" y="12" width="76" height="16" />
+        <text id="26:3101" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <frame id="26:3102" name="Row / Account" x="12" y="334" width="276" height="40">
+        <frame id="26:3103" name="Icon / grid" x="12" y="11" width="18" height="18" />
+        <text id="26:3108" name="Label" x="42" y="12" width="52" height="16" />
+        <text id="26:3109" name="Trailing" x="150" y="13" width="114" height="13" />
+      </frame>
+      <rounded-rectangle id="26:3110" name="Divider 3" x="12" y="386" width="276" height="1" />
+      <text id="26:3111" name="About" x="24" y="400" width="77" height="15" />
+      <text id="26:3112" name="Quit" x="0" y="400" width="276" height="15" />
+    </frame>
+  </frame>
+  <frame id="26:3113" name="Dark Refresh v3 / Image Viewer / Simple Operation" x="26250" y="0" width="1554" height="1012">
+    <frame id="26:3114" name="System / Transparent Drag Region" x="0" y="0" width="1554" height="44" />
+    <frame id="26:3115" name="System / Window Controls / Bare" x="20" y="16" width="64" height="16" />
+    <frame id="26:3119" name="01 / Floating Toolbar" x="662" y="24" width="230" height="54">
+      <frame id="26:3120" name="Focus" x="8" y="8" width="38" height="38">
+        <frame id="26:3121" name="Icon / focus" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:3125" name="Compare" x="52" y="8" width="38" height="38">
+        <frame id="26:3126" name="Icon / compare" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:3129" name="Slider" x="96" y="8" width="38" height="38">
+        <frame id="26:3130" name="Icon / slider" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:3135" name="Widget" x="140" y="8" width="38" height="38">
+        <frame id="26:3136" name="Icon / grid" x="10" y="10" width="18" height="18" />
+      </frame>
+      <frame id="26:3141" name="Information" x="184" y="8" width="38" height="38">
+        <frame id="26:3142" name="Icon / info" x="10" y="10" width="18" height="18" />
+      </frame>
+    </frame>
+  </frame>
 </canvas>
-
-IMPORTANT: After you call this tool, you MUST call get_design_context if trying to implement the design, since this tool only returns metadata. If you do not call get_design_context, the agent will not be able to implement the design.

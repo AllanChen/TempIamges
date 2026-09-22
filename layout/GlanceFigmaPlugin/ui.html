@@ -29,13 +29,16 @@
     <button id="close">Cancel</button>
     <button id="generate" class="primary">Create editable design</button>
   </div>
+  <div id="status"></div>
+  <button id="generate-simple-viewer" class="generate-screens">Generate Simple Image Viewer</button>
+  <button id="generate-dark-refresh" class="generate-screens">Generate Dark Refresh v2 (13 Screens)</button>
+  <button id="generate-viewer-study" class="generate-screens">Generate Viewer Chrome Study</button>
   <button id="generate-screens" class="generate-screens">Generate Video + Tasks + Widget Market</button>
   <button id="redesign-market" class="generate-screens">Redesign Widget Market (keep previous)</button>
     <button id="generate-home" class="generate-screens">Generate Home / Launcher</button>
     <button id="generate-tray" class="generate-screens">Generate Tray Popover</button>
   <button id="generate-remaining" class="generate-screens">Generate Remaining Screens (Home + 6)</button>
   <button id="export" class="export">Export selected frame (JSON + PNG)</button>
-  <div id="status"></div>
   <script>
     const status = document.getElementById('status');
     document.getElementById('close').onclick = () => parent.postMessage({ pluginMessage: { type: 'close' } }, '*');
@@ -45,6 +48,24 @@
       let bytes = null;
       if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
       parent.postMessage({ pluginMessage: { type: 'generate', bytes } }, '*');
+    };
+    document.getElementById('generate-simple-viewer').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the full-image operation view...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate-simple-image-viewer', bytes } }, '*');
+    };
+    document.getElementById('generate-dark-refresh').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building 13 Dark Refresh screens...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate-dark-refresh-screens', bytes } }, '*');
+    };
+    document.getElementById('generate-viewer-study').onclick = () => {
+      status.textContent = 'Building the borderless window-control study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-viewer-chrome-study' } }, '*');
     };
     document.getElementById('export').onclick = () => {
       status.textContent = 'Exporting selected frame...';

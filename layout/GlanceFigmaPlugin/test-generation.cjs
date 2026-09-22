@@ -20,6 +20,14 @@ function node(type) {
         if (found) return found;
       }
       return null;
+    },
+    findAll(predicate) {
+      const matches = [];
+      for (const child of this.children) {
+        if (predicate(child)) matches.push(child);
+        matches.push(...child.findAll(predicate));
+      }
+      return matches;
     }
   };
 }
@@ -38,7 +46,11 @@ const figma = {
   createRectangle: () => node('RECTANGLE'),
   createEllipse: () => node('ELLIPSE'),
   createText: () => node('TEXT'),
-  createNodeFromSvg: () => node('SVG')
+  createNodeFromSvg: () => node('SVG'),
+  createImage: () => ({
+    hash: 'test-image-hash',
+    getSizeAsync: async () => ({ width: 1920, height: 1080 })
+  })
 };
 
 const source = fs.readFileSync(__dirname + '/code.js', 'utf8');
@@ -83,13 +95,32 @@ const names = [
   assert.equal(page.children.length, 7, 'generate-home must not duplicate existing Home');
   assert.match(figma.ui.lastMessage.message, /already exists/);
 
+  await figma.ui.onmessage({ type: 'generate-simple-image-viewer', bytes: [1, 2, 3] });
+  assert.equal(page.children.length, 8);
+  const viewer = page.children.find(child => child.name === 'Image Viewer / Simple Operation');
+  assert.ok(viewer, 'Simple Image Viewer must be generated');
+  assert.equal(viewer.width, 1920);
+  assert.equal(viewer.height, 1080);
+  assert.equal(viewer.fills[0].type, 'IMAGE');
+  const viewerToolbar = viewer.findOne(child => child.name === '01 / Floating Toolbar');
+  assert.ok(viewerToolbar, 'Simple Image Viewer needs a floating toolbar');
+  assert.equal(viewerToolbar.x, 845, 'Toolbar must remain centered at the image native width');
+  assert.deepEqual(viewerToolbar.children.map(child => child.name),
+    ['Focus', 'Compare', 'Slider', 'Widget', 'Information']);
+  await figma.ui.onmessage({ type: 'generate-simple-image-viewer', bytes: [1, 2, 3] });
+  assert.equal(page.children.length, 8, 'Second viewer generation must preserve the existing frame');
+  assert.match(figma.ui.lastMessage.message, /Updated/);
+  await figma.ui.onmessage({ type: 'generate-simple-image-viewer', bytes: null });
+  assert.equal(page.children.length, 8, 'Viewer generation without an image must preserve the existing frame');
+  assert.match(figma.ui.lastMessage.message, /already exists/);
+
   const previous = node('FRAME');
   previous.name = 'Widget Market / Install / Clean Editable';
   previous.x = 11000;
   previous.resize(1554, 1012);
   page.appendChild(previous);
   await figma.ui.onmessage({ type: 'redesign-widget-market' });
-  assert.equal(page.children.length, 9);
+  assert.equal(page.children.length, 10);
   assert.equal(previous.name, 'Widget Market / Install / Previous');
   const redesigned = page.children.find(child => child.name === 'Widget Market / Install / Clean Editable');
   assert.equal(redesigned.x, 11000);
@@ -99,6 +130,44 @@ const names = [
   assert.deepEqual(redesigned.findOne(child => child.name === '01 / Attached Market Catalog').children.filter(child => child.name.startsWith('Widget / ')).map(child => child.name),
     ['Widget / Remove Background', 'Widget / 超分', 'Widget / RemoveBG 高级']);
   await figma.ui.onmessage({ type: 'redesign-widget-market' });
-  assert.equal(page.children.length, 9, 'Second redesign must keep edited market intact');
-  console.log('Home + six remaining screens and Widget Market redesign generate idempotently');
+  assert.equal(page.children.length, 10, 'Second redesign must keep edited market intact');
+  const beforeRefresh = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-dark-refresh-screens', bytes: [1, 2, 3] });
+  const refreshed = page.children.filter(child => child.name.startsWith('Dark Refresh v2 / '));
+  assert.equal(refreshed.length, 13, 'Dark Refresh must generate exactly 13 review screens: ' + figma.ui.lastMessage.message);
+  assert.equal(page.children.length, beforeRefresh + 13);
+  const refreshedViewer = page.children.find(child => child.name === 'Dark Refresh v2 / Image Viewer / Simple Operation');
+  assert.equal(refreshedViewer.width, 1920);
+  assert.equal(refreshedViewer.height, 1080);
+  const refreshedToolbar = refreshedViewer.findOne(child => child.name === '01 / Floating Toolbar');
+  assert.ok(refreshedToolbar.effects.some(effect => effect.type === 'BACKGROUND_BLUR'));
+  assert.deepEqual(refreshedToolbar.children.map(child => child.name),
+    ['Focus', 'Compare', 'Slider', 'Widget', 'Information']);
+  const systemControls = refreshedViewer.findOne(child => child.name === 'System / Window Controls');
+  assert.deepEqual(systemControls.children.map(child => child.name),
+    ['Close', 'Minimize', 'Fullscreen']);
+  const refreshedVideo = page.children.find(child => child.name === 'Dark Refresh v2 / Video Inspect');
+  const videoToolbar = refreshedVideo.findOne(child => child.name === '01 / Floating Toolbar');
+  assert.deepEqual(videoToolbar.children.map(child => child.name),
+    ['Focus', 'Compare', 'Slider', 'Widget', 'Information']);
+  assert.ok(refreshedVideo.findOne(child => child.name === 'System / Window Controls'));
+  assert.ok(refreshedVideo.findOne(child => child.name === '02 / Floating Playback Controls'));
+  const videoContent = refreshedVideo.findOne(child => child.name === '03 / Video Content');
+  assert.equal(videoContent.width, 1554);
+  assert.equal(videoContent.height, 1012);
+  await figma.ui.onmessage({ type: 'generate-dark-refresh-screens', bytes: [1, 2, 3] });
+  assert.equal(page.children.length, beforeRefresh + 13, 'Dark Refresh generation must be idempotent');
+  const beforeStudy = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-viewer-chrome-study' });
+  const study = page.children.find(child => child.name === 'Dark Refresh v3 / Image Viewer / Simple Operation');
+  assert.ok(study, 'Viewer Chrome Study must be generated');
+  assert.equal(page.children.length, beforeStudy + 1);
+  const bareControls = study.findOne(child => child.name === 'System / Window Controls / Bare');
+  assert.ok(bareControls);
+  assert.equal(bareControls.fills.length, 0, 'Bare controls must not have a capsule fill');
+  assert.deepEqual(bareControls.children.map(child => child.name), ['Close', 'Minimize', 'Fullscreen']);
+  assert.ok(study.findOne(child => child.name === 'System / Transparent Drag Region'));
+  await figma.ui.onmessage({ type: 'generate-viewer-chrome-study' });
+  assert.equal(page.children.length, beforeStudy + 1, 'Viewer Chrome Study must be idempotent');
+  console.log('Production screens, Simple Image Viewer, Widget Market, 13-screen Dark Refresh, and Viewer Chrome Study generate idempotently');
 })().catch(error => { console.error(error); process.exitCode = 1; });

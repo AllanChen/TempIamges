@@ -19,7 +19,7 @@ let fontRegular = { family: 'Inter', style: 'Regular' };
 let fontMedium = { family: 'Inter', style: 'Medium' };
 let fontSemibold = { family: 'Inter', style: 'Semi Bold' };
 
-figma.showUI(__html__, { width: 390, height: 420, themeColors: true });
+figma.showUI(__html__, { width: 390, height: 730, themeColors: true });
 
 const ICONS = {
   rotate: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.7 6.2A6.2 6.2 0 1 0 15 10" stroke="CURRENT" stroke-width="1.6" stroke-linecap="round"/><path d="M11.5 3.5h3.7v3.7" stroke="CURRENT" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -1007,6 +1007,315 @@ function artworkFill(node, colors = ['#24313B', '#8A5F4E', '#26352D']) {
   return node;
 }
 
+function lightIconButton(parent, name, iconName, x, active = false) {
+  const node = frame(name, x, 8, 38, 38, active ? '#34251F' : '#1D1E22', 9);
+  node.fills = [fill(active ? '#34251F' : '#1D1E22', active ? .96 : .72)];
+  node.strokes = [fill(active ? COLORS.accent : '#FFFFFF', active ? .78 : .12)];
+  node.strokeWeight = 1;
+  parent.appendChild(node);
+  const color = active ? COLORS.accent : '#F3F3F3';
+  const svg = figma.createNodeFromSvg(ICONS[iconName].replaceAll('CURRENT', color));
+  svg.name = 'Icon / ' + iconName;
+  svg.resize(18, 18);
+  svg.x = 10;
+  svg.y = 10;
+  node.appendChild(svg);
+  return node;
+}
+
+function createFloatingSystemControls(parent) {
+  const controls = frame('System / Window Controls', 24, 24, 112, 54, null, 15);
+  controls.fills = [fill('#161719', .90)];
+  controls.strokes = [fill('#FFFFFF', .12)];
+  controls.strokeWeight = 1;
+  controls.effects = [{ type: 'BACKGROUND_BLUR', radius: 18, visible: true }];
+  parent.appendChild(controls);
+  ellipse('Close', controls, 20, 21, 12, '#ED6A5E');
+  ellipse('Minimize', controls, 50, 21, 12, '#F4BF4F');
+  ellipse('Fullscreen', controls, 80, 21, 12, '#61C554');
+  return controls;
+}
+
+function createBareSystemControls(parent) {
+  const dragRegion = frame('System / Transparent Drag Region', 0, 0, parent.width, 44, null, 0);
+  dragRegion.fills = [];
+  parent.appendChild(dragRegion);
+  const controls = frame('System / Window Controls / Bare', 20, 16, 64, 16, null, 0);
+  controls.fills = [];
+  parent.appendChild(controls);
+  const specs = [
+    ['Close', 0, '#ED6A5E'],
+    ['Minimize', 26, '#F4BF4F'],
+    ['Fullscreen', 52, '#61C554']
+  ];
+  for (const [name, x, color] of specs) {
+    const control = ellipse(name, controls, x, 2, 12, color);
+    control.strokes = [fill('#000000', .18)];
+    control.strokeWeight = 1;
+    control.effects = [{
+      type: 'DROP_SHADOW',
+      color: { r: 0, g: 0, b: 0, a: .52 },
+      offset: { x: 0, y: 1 },
+      radius: 4,
+      spread: 0,
+      visible: true,
+      blendMode: 'NORMAL'
+    }];
+  }
+  return controls;
+}
+
+function createFloatingInspectToolbar(parent, width) {
+  const toolbar = frame('01 / Floating Toolbar', Math.round((width - 230) / 2), 24, 230, 54, null, 15);
+  toolbar.fills = [fill('#161719', .90)];
+  toolbar.strokes = [fill('#FFFFFF', .12)];
+  toolbar.strokeWeight = 1;
+  toolbar.effects = [{
+    type: 'BACKGROUND_BLUR',
+    radius: 18,
+    visible: true
+  }, {
+    type: 'DROP_SHADOW',
+    color: { r: .08, g: .09, b: .10, a: .24 },
+    offset: { x: 0, y: 8 },
+    radius: 24,
+    spread: 0,
+    visible: true,
+    blendMode: 'NORMAL'
+  }];
+  parent.appendChild(toolbar);
+  lightIconButton(toolbar, 'Focus', 'focus', 8, true);
+  lightIconButton(toolbar, 'Compare', 'compare', 52);
+  lightIconButton(toolbar, 'Slider', 'slider', 96);
+  lightIconButton(toolbar, 'Widget', 'grid', 140);
+  lightIconButton(toolbar, 'Information', 'info', 184);
+  return toolbar;
+}
+
+function createSimpleImageViewerScreen(x, imageHash = null, imageSize = null) {
+  const width = imageSize && imageSize.width ? imageSize.width : 1554;
+  const height = imageSize && imageSize.height ? imageSize.height : 1012;
+  const board = frame('Image Viewer / Simple Operation', x, 0, width, height, null, 16);
+  board.strokes = [fill('#D8D1CA')];
+  board.strokeWeight = 1;
+  if (imageHash) {
+    board.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  } else {
+    artworkFill(board, ['#D9E2E4', '#C89B7D', '#48685C']);
+  }
+  figma.currentPage.appendChild(board);
+  createFloatingSystemControls(board);
+  createFloatingInspectToolbar(board, width);
+  return board;
+}
+
+function createSimpleVideoViewerScreen(x) {
+  const width = 1554;
+  const height = 1012;
+  const board = frame('Video Inspect / Simple Operation', x, 0, width, height, null, 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  artworkFill(board, ['#121C27', '#715041', '#1C2E28']);
+  figma.currentPage.appendChild(board);
+
+  const content = frame('03 / Video Content', 0, 0, width, height, null, 16);
+  content.fills = [];
+  board.appendChild(content);
+  createFloatingSystemControls(board);
+  createFloatingInspectToolbar(board, width);
+
+  const playback = frame('02 / Floating Playback Controls', Math.round((width - 800) / 2), height - 80, 800, 56, null, 15);
+  playback.fills = [fill('#161719', .90)];
+  playback.strokes = [fill('#FFFFFF', .12)];
+  playback.strokeWeight = 1;
+  playback.effects = [
+    { type: 'BACKGROUND_BLUR', radius: 18, visible: true },
+    {
+      type: 'DROP_SHADOW', color: { r: .08, g: .09, b: .10, a: .28 },
+      offset: { x: 0, y: 8 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL'
+    }
+  ];
+  board.appendChild(playback);
+  lightIconButton(playback, 'Play', 'play', 8, true);
+  rect('Timeline Track', playback, 62, 26, 610, 4, '#4A4B50', 2);
+  rect('Timeline Progress', playback, 62, 26, 238, 4, COLORS.accent, 2);
+  ellipse('Timeline Knob', playback, 294, 21, 14, COLORS.accent);
+  text('Time', playback, '00:37 / 01:42', 688, 20, 11, '#F3F3F3', 'medium', 92, 'RIGHT');
+  return board;
+}
+
+function createViewerChromeStudyScreen(x, imageHash = null, imageSize = null) {
+  const width = imageSize && imageSize.width ? imageSize.width : 1554;
+  const height = imageSize && imageSize.height ? imageSize.height : 1012;
+  const board = frame('Dark Refresh v3 / Image Viewer / Simple Operation', x, 0, width, height, null, 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  if (imageHash) {
+    board.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  } else {
+    artworkFill(board, ['#D9E2E4', '#C89B7D', '#48685C']);
+  }
+  figma.currentPage.appendChild(board);
+  createBareSystemControls(board);
+  createFloatingInspectToolbar(board, width);
+  return board;
+}
+
+async function generateViewerChromeStudy() {
+  await loadFonts();
+  await createStyles();
+  const name = 'Dark Refresh v3 / Image Viewer / Simple Operation';
+  const existing = figma.currentPage.children.find(child => child.name === name);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Viewer Chrome Study already exists — nothing changed.' });
+    return;
+  }
+
+  const sourceNames = [
+    'Dark Refresh v2 / Image Viewer / Simple Operation',
+    'Dark Refresh / Image Viewer / Simple Operation',
+    'Image Viewer / Simple Operation'
+  ];
+  const source = sourceNames
+    .map(sourceName => figma.currentPage.children.find(child => child.name === sourceName))
+    .find(Boolean);
+  const sourceFill = source && Array.isArray(source.fills)
+    ? source.fills.find(paint => paint.type === 'IMAGE')
+    : null;
+  const imageSize = source ? { width: source.width, height: source.height } : null;
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const study = createViewerChromeStudyScreen(maxX + 196, sourceFill ? sourceFill.imageHash : null, imageSize);
+  figma.currentPage.selection = [study];
+  figma.viewport.scrollAndZoomIntoView([study]);
+  figma.ui.postMessage({ message: 'Created Viewer Chrome Study with bare macOS window controls.' });
+  figma.notify('Viewer Chrome Study created');
+}
+
+function applyDarkRefreshTreatment(screen, sourceName) {
+  screen.name = 'Dark Refresh v2 / ' + sourceName;
+  const chromeNodes = screen.findAll(node =>
+    node.type === 'FRAME' && (
+      node.name.includes('Toolbar') ||
+      node.name === 'Titlebar' ||
+      node.name.includes('Titlebar') ||
+      node.name === '04 / Actions'
+    )
+  );
+  for (const node of chromeNodes) {
+    node.fills = [fill('#161719', .94)];
+    node.strokes = [fill('#FFFFFF', .10)];
+    node.strokeWeight = 1;
+  }
+  return screen;
+}
+
+async function generateDarkRefreshScreens(bytes) {
+  await loadFonts();
+  await createStyles();
+  const specs = [
+    ['Image Viewer / Simple Operation', null],
+    ['Video Inspect', createSimpleVideoViewerScreen],
+    ['Task Center', createTaskCenterScreen],
+    ['Widget Market / Install', createWidgetMarketScreen],
+    ['Quick Preview', createQuickPreviewScreen],
+    ['Home / Launcher', createHomeScreen],
+    ['Content Viewer', createContentViewerScreen],
+    ['Widget Web / States', createWidgetWebScreen],
+    ['Base64 Toolkit', createBase64Screen],
+    ['Preview History', createHistoryScreen],
+    ['Preferences', createPreferencesScreen],
+    ['Onboarding / Permissions', createOnboardingScreen],
+    ['Tray Popover', createTrayPopoverScreen]
+  ];
+  const existing = new Map(figma.currentPage.children.map(child => [child.name, child]));
+  const alreadyGenerated = specs
+    .map(([name]) => existing.get('Dark Refresh v2 / ' + name))
+    .filter(Boolean);
+  if (alreadyGenerated.length === specs.length) {
+    figma.currentPage.selection = alreadyGenerated;
+    figma.viewport.scrollAndZoomIntoView(alreadyGenerated);
+    figma.ui.postMessage({ message: 'All 13 Dark Refresh screens already exist — nothing changed.' });
+    return;
+  }
+
+  const image = bytes && bytes.length ? figma.createImage(new Uint8Array(bytes)) : null;
+  const imageSize = image ? await image.getSizeAsync() : null;
+  let maxY = 0;
+  for (const child of figma.currentPage.children) maxY = Math.max(maxY, child.y + child.height);
+  const startY = maxY + 240;
+  const startX = 0;
+  const columnWidth = 1750;
+  const rowHeight = 1250;
+  const created = [];
+  const selected = [];
+
+  specs.forEach(([sourceName, create], index) => {
+    const targetName = 'Dark Refresh v2 / ' + sourceName;
+    const prior = existing.get(targetName);
+    if (prior) {
+      selected.push(prior);
+      return;
+    }
+    const x = startX + (index % 4) * columnWidth;
+    const y = startY + Math.floor(index / 4) * rowHeight;
+    const screen = create
+      ? create(x)
+      : createSimpleImageViewerScreen(x, image ? image.hash : null, imageSize);
+    screen.y = y;
+    applyDarkRefreshTreatment(screen, sourceName);
+    created.push(screen);
+    selected.push(screen);
+  });
+
+  figma.currentPage.selection = selected;
+  figma.viewport.scrollAndZoomIntoView(selected);
+  figma.ui.postMessage({ message: `Created ${created.length} Dark Refresh screens; ${13 - created.length} already existed.` });
+  figma.notify(`${created.length} Dark Refresh screens created`);
+}
+
+async function generateSimpleImageViewer(bytes) {
+  await loadFonts();
+  await createStyles();
+  const name = 'Image Viewer / Simple Operation';
+  const existing = figma.currentPage.children.find(child => child.name === name);
+  if (existing) {
+    if (bytes && bytes.length && 'fills' in existing) {
+      const image = figma.createImage(new Uint8Array(bytes));
+      const imageSize = await image.getSizeAsync();
+      existing.resize(imageSize.width, imageSize.height);
+      existing.fills = [{ type: 'IMAGE', imageHash: image.hash, scaleMode: 'FILL' }];
+      const toolbar = existing.findOne(child => child.name === '01 / Floating Toolbar');
+      if (toolbar) toolbar.x = Math.round((imageSize.width - toolbar.width) / 2);
+      figma.currentPage.selection = [existing];
+      figma.viewport.scrollAndZoomIntoView([existing]);
+      figma.ui.postMessage({ message: 'Updated the Simple Image Viewer image without replacing its layers.' });
+      return;
+    }
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Simple Image Viewer already exists — nothing changed.' });
+    return;
+  }
+  const image = bytes && bytes.length
+    ? figma.createImage(new Uint8Array(bytes))
+    : null;
+  const imageSize = image ? await image.getSizeAsync() : null;
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const viewer = createSimpleImageViewerScreen(maxX + 196, image ? image.hash : null, imageSize);
+  figma.currentPage.selection = [viewer];
+  figma.viewport.scrollAndZoomIntoView([viewer]);
+  figma.ui.postMessage({
+    message: image
+      ? 'Created Simple Image Viewer with the selected image.'
+      : 'Created Simple Image Viewer with the built-in preview artwork.'
+  });
+  figma.notify('Simple Image Viewer created');
+}
+
 function metadataRow(parent, key, value, y) {
   text('Key / ' + key, parent, key, 36, y, 13, COLORS.muted, 'medium');
   text('Value / ' + key, parent, value, 174, y, 13, COLORS.text, 'regular', 220, 'LEFT');
@@ -1350,6 +1659,33 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Generation failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Generation failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-simple-image-viewer') {
+    try {
+      await generateSimpleImageViewer(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Simple viewer generation failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Simple viewer generation failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-dark-refresh-screens') {
+    try {
+      await generateDarkRefreshScreens(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Dark Refresh generation failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Dark Refresh generation failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-viewer-chrome-study') {
+    try {
+      await generateViewerChromeStudy();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Viewer Chrome Study failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Viewer Chrome Study failed', { error: true });
     }
   }
   if (message.type === 'generate-production-screens') {
