@@ -6,7 +6,17 @@ APP_PATH="$(cd "$(dirname "$0")" && pwd)/$APP_NAME.app"
 LOG_FILE="$HOME/Library/Application Support/$APP_NAME/app.log"
 
 echo "Killing any running $APP_NAME instances..."
-pkill -x "$APP_NAME" 2>/dev/null && sleep 0.3 || true
+pkill -x "$APP_NAME" 2>/dev/null || true
+for ((attempt = 0; attempt < 50; attempt++)); do
+    if ! pgrep -x "$APP_NAME" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.1
+done
+if pgrep -x "$APP_NAME" >/dev/null 2>&1; then
+    echo "Error: an older $APP_NAME instance is still running. Close it before launching."
+    exit 1
+fi
 
 if [ ! -d "$APP_PATH" ]; then
     echo "Error: $APP_PATH not found. Run ./Glance/build.sh first."
@@ -17,7 +27,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 touch "$LOG_FILE"
 
 echo "Launching $APP_PATH ..."
-open "$APP_PATH"
+open -n "$APP_PATH"
 
 echo "Tailing $LOG_FILE (Ctrl+C to stop)"
 echo "---"

@@ -42,6 +42,31 @@ keyboard input. Rules:
    (`makeBarBlur`, `makeFrostedBase`, `makeIconButton`, color/type tokens). Reuse
    these instead of rolling per-view colors/fonts.
 
+## Figma design compliance
+
+12. When a panel or screen has a corresponding Figma reference frame, match that
+    Figma design exactly: dimensions, colors, typography, spacing, corner radii,
+    shadows, dividers, and component structure. Do not change UI styles
+    arbitrarily or invent alternate layouts. Inspect the reference frame with the
+    Figma Desktop MCP (`get_metadata` / `get_design_context` /
+    `get_screenshot`) before implementing or refactoring the UI. If a design
+    detail is ambiguous, ask the user rather than guessing.
+13. For Figma-matched AppKit UI, implement positions from the reference node
+    coordinates and convert top-origin Figma coordinates to AppKit bottom-origin
+    frames explicitly. Button labels must be optically and mathematically
+    centered both horizontally and vertically; do not rely on `NSButton`'s
+    default title baseline when it does not match the reference. Preserve every
+    visual state separately (installed, install, uninstall/delete, selected,
+    disabled, hover) with the exact Figma fill, border, text color, typography,
+    dimensions, and spacing. Do not approximate these states or merge them into
+    a shared style without verifying the Figma reference.
+14. For Figma text nodes, the font family may use the closest available project
+    font, but the text frame itself must remain 1:1 with Figma: exact x/y
+    position, width, height, alignment, and wrapping behavior. Convert the
+    Figma top-origin text frame to an AppKit bottom-origin frame explicitly.
+    Never let intrinsic content size, default cell padding, or font baseline
+    determine the final text frame when matching Figma.
+
 ## Building
 
 9. The user builds and runs Glance themselves. Do not run the build or offer to.

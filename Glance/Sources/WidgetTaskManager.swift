@@ -85,6 +85,20 @@ final class WidgetTaskManager {
     func remove(_ id: UUID) { records.removeAll { $0.id == id && !$0.phase.isActive }; changed() }
     func clear() { records.removeAll { !$0.phase.isActive }; changed() }
 
+    /// Failed/interrupted state is session-local visual history. Remove it when
+    /// the corresponding Image Inspect window closes so a later session does
+    /// not keep a stale red filmstrip border around the source image.
+    func clearFailed(for sources: [URL]) {
+        let keys = Set(sources.map(\.taskKey))
+        let originalCount = records.count
+        records.removeAll { record in
+            guard let source = record.source,
+                  keys.contains(source.taskKey) else { return false }
+            return record.phase == .failed || record.phase == .interrupted
+        }
+        if records.count != originalCount { changed() }
+    }
+
     private func resumePendingTasks() {
         for record in records where record.phase.isActive {
             guard let remoteID = record.remoteTaskID else { update(record.id, phase: .interrupted, progress: 0); continue }

@@ -113,8 +113,10 @@
 "Mute Right" = "Mute Right";
 "Unmute Right" = "Unmute Right";
 "Capture frame" = "Capture frame";
+"Open captured frame" = "Open captured frame";
 "Replay" = "Replay";
 "Video information" = "Video information";
+"More" = "More";
 "Duration" = "Duration";
 "Size" = "Size";
 "Path" = "Path";
@@ -132,6 +134,7 @@
 "Audio codec" = "Audio codec";
 "Video bitrate" = "Video bitrate";
 "Actions" = "Actions";
+"Automatic hide" = "Automatic hide";
 "Copy Image" = "Copy Image";
 "Save to Documents" = "Save to Documents";
 "Rotate Left" = "Rotate Left";
@@ -298,10 +301,14 @@
 // MARK: - Home / Launcher
 "Open Home" = "Open Home";
 "Open images to inspect" = "Open images to inspect";
+"Open media to inspect" = "Open media to inspect";
 "Open something to inspect" = "Open something to inspect";
 "Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder." = "Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder.";
+"Drop images or videos here, or choose files and folders." = "Drop images or videos here, or choose files and folders.";
 "Drag images or a folder here" = "Drag images or a folder here";
+"Drag images, videos or a folder here" = "Drag images, videos or a folder here";
 "PNG · JPEG · HEIC · WebP · TIFF · RAW  and more" = "PNG · JPEG · HEIC · WebP · TIFF · RAW  and more";
+"PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM  and more" = "PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM  and more";
 "Open Files…" = "Open Files…";
 "Open Folder…" = "Open Folder…";
 "FOLDER" = "FOLDER";

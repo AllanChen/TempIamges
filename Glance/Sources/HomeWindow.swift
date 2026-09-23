@@ -17,6 +17,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     // MARK: Callbacks (wired by AppDelegate)
 
     var onOpenImages: (([URL]) -> Void)?
+    var onOpenMedia: (([URL]) -> Void)?
     var onOpenFolder: ((URL) -> Void)?
     var onOpenRecent: ((MediaInfo) -> Void)?
     var onOpenTasks: (() -> Void)?
@@ -101,6 +102,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         isReleasedWhenClosed = false
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         appearance = NSAppearance(named: .darkAqua)
         backgroundColor = PanelStyle.inspectBackground
         isMovableByWindowBackground = false
@@ -108,6 +110,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         standardWindowButton(.closeButton)?.isHidden = true
         standardWindowButton(.miniaturizeButton)?.isHidden = true
         standardWindowButton(.zoomButton)?.isHidden = true
+        registerForDraggedTypes([.fileURL])
 
         buildUI()
         refresh()
@@ -146,7 +149,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         windowTitleLabel.stringValue = "Glance".localized
         titlebar.addSubview(windowTitleLabel)
         configureLabel(subtitleLabel, size: 11, color: PanelStyle.textTertiary, align: .center)
-        subtitleLabel.stringValue = "Open images to inspect".localized
+        subtitleLabel.stringValue = "Open media to inspect".localized
         titlebar.addSubview(subtitleLabel)
         titlebar.addSubview(closeTrafficButton)
         titlebar.addSubview(minimizeTrafficButton)
@@ -208,7 +211,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
 
         welcomeSubLabel.font = PanelStyle.inspectFont(ofSize: 13)
         welcomeSubLabel.textColor = PanelStyle.textSecondary
-        welcomeSubLabel.stringValue = "Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder.".localized
+        welcomeSubLabel.stringValue = "Drop images or videos here, or choose files and folders.".localized
         welcomeSubLabel.maximumNumberOfLines = 2
         welcomeSubLabel.lineBreakMode = .byWordWrapping
         openSurface.addSubview(welcomeSubLabel)
@@ -222,11 +225,11 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         dropZone.addSubview(dropIconView)
 
         configureLabel(dropTitleLabel, size: 16, weight: .semibold, color: PanelStyle.textPrimary, align: .center)
-        dropTitleLabel.stringValue = "Drag images or a folder here".localized
+        dropTitleLabel.stringValue = "Drag images, videos or a folder here".localized
         dropZone.addSubview(dropTitleLabel)
 
         configureLabel(dropHintLabel, size: 11, color: PanelStyle.textTertiary, align: .center)
-        dropHintLabel.stringValue = "PNG · JPEG · HEIC · WebP · TIFF · RAW  and more".localized
+        dropHintLabel.stringValue = "PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM  and more".localized
         dropZone.addSubview(dropHintLabel)
 
         openSurface.addSubview(openFilesButton)
@@ -539,22 +542,24 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
             onOpenFolder?(folder)
             return
         }
-        let images = urls.filter {
-            if case .localImage = pathDetector.localKind(for: $0.path) { return true }
-            return false
+        let media = urls.filter {
+            switch pathDetector.localKind(for: $0.path) {
+            case .localImage, .localVideo: return true
+            default: return false
+            }
         }
-        if !images.isEmpty { onOpenImages?(images) }
+        if !media.isEmpty { onOpenMedia?(media) }
     }
 
     // MARK: Notifications
 
     @objc private func languageChanged() {
         windowTitleLabel.stringValue = "Glance".localized
-        subtitleLabel.stringValue = "Open images to inspect".localized
+        subtitleLabel.stringValue = "Open media to inspect".localized
         welcomeLabel.stringValue = "Open something to inspect".localized
-        welcomeSubLabel.stringValue = "Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder.".localized
-        dropTitleLabel.stringValue = "Drag images or a folder here".localized
-        dropHintLabel.stringValue = "PNG · JPEG · HEIC · WebP · TIFF · RAW  and more".localized
+        welcomeSubLabel.stringValue = "Drop images or videos here, or choose files and folders.".localized
+        dropTitleLabel.stringValue = "Drag images, videos or a folder here".localized
+        dropHintLabel.stringValue = "PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM  and more".localized
         recentHeadingLabel.stringValue = "Recent".localized
         recentSubLabel.stringValue = "Reopen what you inspected before.".localized
         leftStatusLabel.stringValue = "No file open  •  Open images to begin".localized
@@ -570,6 +575,23 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
 
     func windowDidResize(_ notification: Notification) {
         layoutContent()
+    }
+
+    @objc func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self],
+                                               options: [.urlReadingFileURLsOnly: true]) ? .copy : []
+    }
+
+    @objc func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
+    }
+
+    @objc func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard let urls = sender.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+              !urls.isEmpty else { return false }
+        handleDroppedURLs(urls)
+        return true
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {

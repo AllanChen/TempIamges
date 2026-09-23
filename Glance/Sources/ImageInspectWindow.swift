@@ -46,7 +46,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Image information".localized)
     private let revealButton = InspectToolbarButton(symbol: "folder", tooltip: "Reveal in Finder".localized)
     private let openURLButton = InspectToolbarButton(symbol: "globe", tooltip: "Open image URL".localized)
-    private let actionsButton = InspectToolbarButton(symbol: "ellipsis", tooltip: "Actions".localized)
+    private let actionsButton = InspectToolbarButton(symbol: "ellipsis", tooltip: "More".localized)
     private let widgetMarketButton = InspectToolbarButton(symbol: "square.grid.2x2", tooltip: "Widget Market".localized)
     private let widgetTasksButton = InspectToolbarButton(symbol: "tray.full", tooltip: "Tasks".localized)
     private let taskBadge = NSTextField(labelWithString: "")
@@ -57,6 +57,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let sliderIconButton = InspectToolbarButton(symbol: "slider.horizontal.3", tooltip: "Slider".localized)
     private let fitIconButton = InspectToolbarButton(symbol: "arrow.up.left.and.arrow.down.right", tooltip: "Fit".localized)
     private var isPinned = false
+    private var autoHideChromeEnabled = true
+    private var chromeIsHidden = false
+    private var autoHideWorkItem: DispatchWorkItem?
+    private var autoHideMouseMonitor: Any?
     // Figma workbench chrome: titlebar / toolbar / canvas+overlays / inspector / statusbar.
     private lazy var backButton = PanelStyle.makeQuietButton(title: "‹", target: self, action: #selector(backTapped))
     private lazy var rotateButton = PanelStyle.makeQuietButton(title: "Rotate".localized, target: self, action: #selector(directionTapped))
@@ -154,6 +158,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         standardWindowButton(.miniaturizeButton)?.isHidden = true
         standardWindowButton(.zoomButton)?.isHidden = true
         handledWidgetTaskIDs = Set(WidgetTaskManager.shared.records.filter { $0.phase == .completed }.map(\.id))
+        autoHideMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+            self?.handleAutoHideScreenPoint(NSEvent.mouseLocation)
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(localizationDidChange),
                                                name: .languageDidChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(widgetTasksDidChange),
@@ -164,9 +171,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     /// Aspect ratio (w/h) the window has been sized to. Nil until the first
     /// image resolves, at which point the window is resized to match it so the
-    /// image fills the window with no letterbox plate. The chrome (toolbar,
-    /// traffic lights) scales uniformly from `designSize` regardless of this,
-    /// so icons keep their designed proportions at any window shape.
+    /// image fills the window with no letterbox plate. The floating toolbar
+    /// keeps its Figma size whenever the image window has room for it.
     private var windowImageAspect: CGFloat?
     /// The last image size the window was fitted to, so we don't re-fit on every
     /// re-render of the same image.
@@ -225,6 +231,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     deinit {
+        autoHideWorkItem?.cancel()
+        if let autoHideMouseMonitor {
+            NSEvent.removeMonitor(autoHideMouseMonitor)
+        }
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -256,12 +266,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         titlebar.isHidden = false
         toolbarBar.alphaValue = 1
         toolbarBar.isHidden = false
+        chromeIsHidden = false
         statusbar.isHidden = true
         filmstrip.alphaValue = 1
         // Multi-image sessions show the thumbnail strip for quick switching;
         // renderSession() re-applies this from the live session too.
-        filmstrip.isHidden = infos.count < 2
+        filmstrip.isHidden = !shouldShowFilmstrip(for: infos)
         taskOverlayShade.isHidden = filmstrip.isHidden
+        taskOverlayShade.alphaValue = filmstrip.isHidden ? 0 : 1
         taskSummaryLabel.isHidden = true
         taskSummaryDot.isHidden = true
         taskToast.isHidden = true
@@ -270,11 +282,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         loadSessionImages(generation: loadGeneration)
         NSApp.activate(ignoringOtherApps: true)
         makeKeyAndOrderFront(nil)
+        handleAutoHideScreenPoint(NSEvent.mouseLocation)
     }
 
     func windowWillClose(_ notification: Notification) {
         actionsPanel?.dismissChain()
         actionsPanel = nil
+        autoHideWorkItem?.cancel()
         infoWindow.dismiss()
         removeChildWindow(toastWindow)
         toastWindow.orderOut(nil)
@@ -282,8 +296,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         ocrWindow.orderOut(nil)
         ocrVisible = false
         ocrGeneration = UUID()
+        let closedSources = session?.infos.map(\.url) ?? []
         session = nil
         loadGeneration = UUID()
+        // Failed/interrupted task markers are not permanent image metadata.
+        // Clear them when this Image Inspect session closes.
+        WidgetTaskManager.shared.clearFailed(for: closedSources)
         guard !isClosingProgrammatically else { return }
         onClose?()
     }
@@ -317,6 +335,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         if event.modifierFlags.contains(.command) {
             if key == "0" { activeViewports.forEach { $0.fitToView() }; return true }
             if key == "1" { activeViewports.forEach { $0.setActualSize() }; return true }
+            if key.lowercased() == "w" { closeAndRestore(); return true }
             if key.lowercased() == "i" { toggleInfo(); return true }
             // Image actions only intercept when the active item is an image —
             // otherwise fall through so e.g. ⌘C still copies text in the
@@ -402,8 +421,20 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         if event.type == .mouseMoved {
             let point = canvasContainer.convert(event.locationInWindow, from: nil)
             updateInfoHighlight(atWindowPoint: event.locationInWindow)
+            handleAutoHideMouse(atCanvasPoint: point)
         }
         super.sendEvent(event)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        handleAutoHideScreenPoint(NSEvent.mouseLocation)
+        super.mouseEntered(with: event)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        autoHideWorkItem?.cancel()
+        hideChrome(animated: true)
+        super.mouseExited(with: event)
     }
 
     /// Highlight the info block for whichever on-screen image the cursor is over.
@@ -450,6 +481,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         contentView = canvasContainer
         let root = canvasContainer
         root.wantsLayer = true
+        root.addTrackingArea(NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        ))
         // Frosted semi-transparent black panel: the media is inset 8pt so this
         // dark frosted base shows as a thin frame around the image. Rounded
         // corners + a hairline edge make it read as a floating window.
@@ -580,15 +617,26 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         for view in [directionButton, flipIconButton, focusIconButton,
                      compareIconButton, sliderIconButton, fitIconButton,
                      zoomOutButton, zoomInButton,
-                     widgetTasksButton, widgetMarketButton, infoButton] {
+                     widgetTasksButton, widgetMarketButton, infoButton,
+                     actionsButton] {
             toolbarBar.addSubview(view)
         }
         for button in [directionButton, flipIconButton, focusIconButton,
                        compareIconButton, sliderIconButton, fitIconButton,
                        zoomOutButton, zoomInButton,
-                       widgetTasksButton, widgetMarketButton, infoButton] {
+                       widgetTasksButton, widgetMarketButton, infoButton,
+                       actionsButton] {
             button.usesFigmaStyle = true
         }
+        for button in [focusIconButton, compareIconButton, sliderIconButton,
+                       widgetMarketButton, actionsButton] {
+            button.isBorderlessFigmaTile = true
+        }
+        focusIconButton.setDesignIcon("ToolbarFocus")
+        compareIconButton.setDesignIcon("ToolbarCompare")
+        sliderIconButton.setDesignIcon("ToolbarSlider")
+        widgetMarketButton.setDesignIcon("ToolbarGrid")
+        infoButton.setDesignIcon("ToolbarInfo")
         taskBadge.wantsLayer = true
         taskBadge.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
         taskBadge.layer?.cornerRadius = 4
@@ -653,7 +701,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let menuHandler: (NSEvent) -> Void = { [weak self] event in
             guard let self, let window = event.window else { return }
             let origin = window.convertToScreen(NSRect(origin: event.locationInWindow, size: .zero)).origin
-            self.presentActionsMenu(atScreenPoint: origin)
+            self.presentActionsMenu(atScreenPoint: origin, entries: self.buildContextActionEntries())
         }
         primaryViewport.onActionMenu = menuHandler
         secondaryViewport.onActionMenu = menuHandler
@@ -680,21 +728,21 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let height = canvasContainer.bounds.height
         guard width > 0, height > 0 else { return }
 
-        // The window now takes the focused image's aspect ratio, so the media
-        // fills every point and the chrome (traffic lights + floating toolbar)
-        // merely floats over it. Chrome must scale UNIFORMLY — never by the
-        // window's independent x/y ratios — or the round dots and icon tiles
-        // would stretch into ovals. Derive one scale from the shorter design
-        // dimension and clamp it so controls stay usable on tiny/huge images.
+        // The window takes the focused image's aspect ratio, so the media
+        // fills every point and the chrome floats over it. The image frame
+        // scales uniformly; the toolbar uses its own scale so its 18pt Figma
+        // icons remain legible on ordinary image window sizes.
         let scale = min(max(min(width / Self.designSize.width,
                                 height / Self.designSize.height), 0.62), 1.25)
+        let toolbarScale = max(0.1, min(1, min((width - 16) / 274,
+                                               (height - 16) / 77)))
         // Rounded frosted panel: the media is inset 8pt so the frosted base
         // reads as a dark frame; a hairline edge finishes the window.
         canvasContainer.layer?.cornerRadius = 16 * scale
         canvasContainer.layer?.borderWidth = 1
         frostedBase.layer?.cornerRadius = 16 * scale
-        toolbarBar.layer?.borderWidth = max(1, scale)
-        toolbarBar.layer?.cornerRadius = 15 * scale
+        toolbarBar.layer?.borderWidth = 1
+        toolbarBar.layer?.cornerRadius = 15 * toolbarScale
 
         // Transparent 44pt drag region at the top (scaled uniformly).
         let dragHeight = 44 * scale
@@ -715,10 +763,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // 274×54 floating toolbar, centered horizontally, 23pt from the top.
         // Wider than the old 230 so the five 38pt tiles get 14pt of breathing
         // room between them instead of a cramped 6pt.
-        let toolbarW = 274 * scale
-        let toolbarH = 54 * scale
+        let toolbarW = 274 * toolbarScale
+        let toolbarH = 54 * toolbarScale
         toolbarBar.frame = NSRect(x: (width - toolbarW) / 2,
-                                  y: height - (23 * scale) - toolbarH,
+                                  y: height - (23 * toolbarScale) - toolbarH,
                                   width: toolbarW, height: toolbarH)
         layoutToolbar(width: toolbarW)
 
@@ -768,7 +816,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // (#07080a @ 34%) pinned to the bottom, with the centered thumbnail
         // strip floating inside it. Thumbnails are shrunk 20% from the Figma
         // 96pt (→ 76.8pt) per request; the bar shrinks with them.
-        if filmstrip.isHidden {
+        if !shouldShowFilmstrip(for: session.infos) {
             taskOverlayShade.frame = .zero
             filmstrip.frame = .zero
         } else {
@@ -807,10 +855,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             view.frame = NSRect(x: x * scale, y: 8 * scale, width: 38 * scale, height: 38 * scale)
         }
         let v3Buttons = [focusIconButton, compareIconButton, sliderIconButton,
-                         widgetMarketButton, infoButton]
+                         widgetMarketButton, actionsButton]
         for button in v3Buttons {
             button.layer?.cornerRadius = 9 * scale
-            button.layer?.borderWidth = max(1, scale)
+            button.layer?.borderWidth = 0
             // Match the Figma reference: an 18pt glyph centered in the 38pt tile.
             button.setSymbolPointSize(18 * scale)
         }
@@ -818,12 +866,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         place(compareIconButton, x: 66)
         place(sliderIconButton, x: 118)
         place(widgetMarketButton, x: 170)
-        place(infoButton, x: 222)
+        place(actionsButton, x: 222)
 
         // Retained actions still exist in the controller and keyboard paths,
         // but are intentionally absent from the v3 five-action toolbar.
         for button in [directionButton, flipIconButton, fitIconButton,
-                       zoomOutButton, zoomInButton, widgetTasksButton] {
+                       zoomOutButton, zoomInButton, widgetTasksButton, infoButton] {
             button.frame = .zero
             button.isHidden = true
         }
@@ -838,8 +886,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // Multi-image sessions keep a floating thumbnail strip along the bottom
         // so the user can flip between images quickly. Single images stay
         // image-only. The strip floats over the media; it never shrinks it.
-        filmstrip.isHidden = session.infos.count < 2
+        filmstrip.isHidden = chromeIsHidden || !shouldShowFilmstrip(for: session.infos)
         taskOverlayShade.isHidden = filmstrip.isHidden
+        filmstrip.alphaValue = chromeIsHidden ? 0 : 1
+        taskOverlayShade.alphaValue = filmstrip.isHidden ? 0 : 1
         updateMediaToolbarVisibility(for: info, session: session)
         updateWindowTitle(for: info, index: session.focusedIndex)
         updateStatusbar(for: info, index: session.focusedIndex)
@@ -934,12 +984,15 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         layoutContent()
     }
 
+    private func shouldShowFilmstrip(for infos: [MediaInfo]) -> Bool {
+        infos.count >= 2 || infos.contains { !WidgetTaskManager.shared.activeRecords(for: $0.url).isEmpty }
+    }
+
     private func updateMediaToolbarVisibility(for info: MediaInfo, session: ImageInspectSession) {
         let showingImage = info.kind == .image ||
             (session.mode == .compare && session.compareIndices.map { session.infos.indices.contains($0.0) && session.infos.indices.contains($0.1) && session.infos[$0.0].kind == .image && session.infos[$0.1].kind == .image } == true)
-        // The v3 frame exposes precisely Focus, Compare, Slider, Widget and
-        // Information. Legacy image actions remain available via gestures and
-        // menus, never as additional toolbar tiles.
+        // The floating toolbar exposes Focus, Compare, Slider, Widget and More.
+        // Image information remains available from the More menu.
         directionButton.isHidden = true
         flipIconButton.isHidden = true
         fitIconButton.isHidden = true
@@ -950,7 +1003,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         sliderIconButton.isHidden = !showingImage
         widgetTasksButton.isHidden = true
         widgetMarketButton.isHidden = !showingImage
-        infoButton.isHidden = !showingImage
+        actionsButton.isHidden = !showingImage
+        infoButton.isHidden = true
     }
 
     private func loadSessionImages(generation: UUID) {
@@ -1107,7 +1161,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         widgetMarketButton.updateTooltip("Widget Market".localized)
         revealButton.updateTooltip("Reveal in Finder".localized)
         openURLButton.updateTooltip("Open image URL".localized)
-        actionsButton.updateTooltip("Actions".localized)
+        actionsButton.updateTooltip("More".localized)
         rotateButton.attributedTitle = NSAttributedString(
             string: "Rotate".localized,
             attributes: [.font: PanelStyle.inspectFont(ofSize: 12, weight: .medium),
@@ -1148,19 +1202,145 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     // MARK: - Image actions (rotate / export)
 
-    /// Menu entries for the ⋯ button and right-click menu. Rebuilt per
-    /// presentation so enablement and localized titles are always current.
-    private func buildActionEntries() -> [ActionMenuEntry] {
-        let hasActiveWidgetTask = currentRevealInfo.map { !WidgetTaskManager.shared.activeRecords(for: $0.url).isEmpty } ?? false
+    /// Compact menu for the toolbar ⋯ button.
+    private func buildMoreEntries() -> [ActionMenuEntry] {
+        let hasImageInfo = currentRevealInfo?.kind == .image
+        let hasImage: Bool = currentRevealInfo?.kind == .image
+        let canReveal = currentRevealInfo?.isLocal == true
+        return [
+            ActionMenuEntry(title: "Image information".localized, enabled: hasImageInfo,
+                            action: { [weak self] in self?.toggleInfo() }),
+            ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage,
+                            action: { [weak self] in self?.recognizeTextTapped() }),
+            ActionMenuEntry(title: "Reveal in Finder".localized, enabled: canReveal,
+                            action: { [weak self] in self?.revealInFinderTapped() }),
+            ActionMenuEntry(title: "Automatic hide".localized + (autoHideChromeEnabled ? " ✓" : ""),
+                            action: { [weak self] in self?.toggleAutoHideChrome() }),
+        ]
+    }
+
+    private func toggleAutoHideChrome() {
+        autoHideChromeEnabled.toggle()
+        if autoHideChromeEnabled {
+            resetAutoHideTimer()
+        } else {
+            autoHideWorkItem?.cancel()
+            showChrome(animated: true)
+        }
+    }
+
+    private func resetAutoHideTimer() {
+        guard autoHideChromeEnabled else { return }
+        autoHideWorkItem?.cancel()
+        showChrome(animated: true)
+        guard actionsPanel?.isVisible != true else { return }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.autoHideChromeEnabled else { return }
+            self.hideChrome(animated: true)
+        }
+        autoHideWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
+    }
+
+    private func handleAutoHideMouse(atCanvasPoint point: NSPoint) {
+        guard autoHideChromeEnabled else { return }
+        guard isPointOverActiveImage(point) else {
+            autoHideWorkItem?.cancel()
+            hideChrome(animated: true)
+            return
+        }
+        if actionsPanel?.isVisible == true {
+            autoHideWorkItem?.cancel()
+            showChrome(animated: true)
+            return
+        }
+        resetAutoHideTimer()
+    }
+
+    private func handleAutoHideScreenPoint(_ screenPoint: NSPoint) {
+        guard autoHideChromeEnabled, isVisible else { return }
+        let windowPoint = convertPoint(fromScreen: screenPoint)
+        let canvasPoint = canvasContainer.convert(windowPoint, from: nil)
+        handleAutoHideMouse(atCanvasPoint: canvasPoint)
+    }
+
+    private func isPointOverActiveImage(_ point: NSPoint) -> Bool {
+        guard actionsPanel?.isVisible != true else { return true }
+        let candidates: [NSView]
+        if let session, session.mode == .compare, session.comparisonStyle == .sideBySide {
+            candidates = [primaryViewport, secondaryViewport]
+        } else if session?.mode == .compare {
+            candidates = [sliderViewport]
+        } else {
+            candidates = [primaryViewport]
+        }
+        return candidates.contains { !$0.isHidden && $0.frame.contains(point) }
+    }
+
+    private func hideChrome(animated: Bool) {
+        guard autoHideChromeEnabled, !chromeIsHidden,
+              actionsPanel?.isVisible != true else { return }
+        chromeIsHidden = true
+        let apply = {
+            self.toolbarBar.alphaValue = 0
+            self.filmstrip.alphaValue = 0
+            self.taskOverlayShade.alphaValue = 0
+        }
+        if animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                self.toolbarBar.animator().alphaValue = 0
+                self.filmstrip.animator().alphaValue = 0
+                self.taskOverlayShade.animator().alphaValue = 0
+            }, completionHandler: {
+                guard self.chromeIsHidden else { return }
+                self.toolbarBar.isHidden = true
+                self.filmstrip.isHidden = true
+                self.taskOverlayShade.isHidden = true
+            })
+        } else {
+            apply()
+            toolbarBar.isHidden = true
+            filmstrip.isHidden = true
+            taskOverlayShade.isHidden = true
+        }
+    }
+
+    private func showChrome(animated: Bool) {
+        guard chromeIsHidden || toolbarBar.alphaValue < 1 else { return }
+        chromeIsHidden = false
+        let showFilmstrip = session.map { shouldShowFilmstrip(for: $0.infos) } ?? false
+        toolbarBar.isHidden = false
+        filmstrip.isHidden = !showFilmstrip
+        taskOverlayShade.isHidden = !showFilmstrip
+        layoutContent()
+        let apply = {
+            self.toolbarBar.alphaValue = 1
+            self.filmstrip.alphaValue = showFilmstrip ? 1 : 0
+            self.taskOverlayShade.alphaValue = showFilmstrip ? 1 : 0
+        }
+        if animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                self.toolbarBar.animator().alphaValue = 1
+                self.filmstrip.animator().alphaValue = showFilmstrip ? 1 : 0
+                self.taskOverlayShade.animator().alphaValue = showFilmstrip ? 1 : 0
+            }
+        } else { apply() }
+    }
+
+    /// Full contextual menu for right-clicking an image surface.
+    private func buildContextActionEntries() -> [ActionMenuEntry] {
+        let activeTask = currentRevealInfo.map { !WidgetTaskManager.shared.activeRecords(for: $0.url).isEmpty } ?? false
         let hasImage: Bool = {
             guard let session, let index = currentActionIndex,
-                  session.infos.indices.contains(index),
-                  session.infos[index].kind == .image else { return false }
-            return (session.images[safe: index] ?? nil) != nil && !hasActiveWidgetTask
+                  session.infos.indices.contains(index), session.infos[index].kind == .image else { return false }
+            return (session.images[safe: index] ?? nil) != nil && !activeTask
         }()
         var entries: [ActionMenuEntry] = [
-            ActionMenuEntry(title: "Copy Image".localized, shortcut: "⌘C", enabled: hasImage,
-                            action: { [weak self] in self?.copyActiveImage() }),
+            ActionMenuEntry(title: "Copy Image".localized, shortcut: "⌘C", enabled: hasImage, action: { [weak self] in self?.copyActiveImage() }),
             .separator(),
             ActionMenuEntry(title: "Direction".localized, enabled: hasImage, submenu: [
                 ActionMenuEntry(title: "Rotate Left".localized, shortcut: "⌘L", action: { [weak self] in self?.rotateActive(byQuarters: -1) }),
@@ -1170,24 +1350,17 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             ]),
             .separator(),
             ActionMenuEntry(title: "Format Conversion".localized, enabled: hasImage, submenu: [
-                ActionMenuEntry(title: "To PNG".localized,
-                                action: { [weak self] in self?.exportActive(as: .png) }),
-                ActionMenuEntry(title: "To JPG".localized,
-                                action: { [weak self] in self?.exportActive(as: .jpeg) }),
-                ActionMenuEntry(title: "To WebP".localized,
-                                action: { [weak self] in self?.exportActive(as: .webP) }),
-                ActionMenuEntry(title: "To Icon".localized,
-                                action: { [weak self] in self?.exportActive(as: .icns) }),
+                ActionMenuEntry(title: "To PNG".localized, action: { [weak self] in self?.exportActive(as: .png) }),
+                ActionMenuEntry(title: "To JPG".localized, action: { [weak self] in self?.exportActive(as: .jpeg) }),
+                ActionMenuEntry(title: "To WebP".localized, action: { [weak self] in self?.exportActive(as: .webP) }),
+                ActionMenuEntry(title: "To Icon".localized, action: { [weak self] in self?.exportActive(as: .icns) })
             ]),
             ActionMenuEntry(title: "Base64".localized, submenu: [
-                ActionMenuEntry(title: "Image to Base64".localized, enabled: hasImage,
-                                action: { [weak self] in self?.copyActiveImageAsBase64() }),
-                ActionMenuEntry(title: "Base64 to Image".localized,
-                                action: { [weak self] in self?.presentBase64ImageInput() })
+                ActionMenuEntry(title: "Image to Base64".localized, enabled: hasImage, action: { [weak self] in self?.copyActiveImageAsBase64() }),
+                ActionMenuEntry(title: "Base64 to Image".localized, action: { [weak self] in self?.presentBase64ImageInput() })
             ]),
             .separator(),
-            ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage,
-                            action: { [weak self] in self?.recognizeTextTapped() }),
+            ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() })
         ]
         let widgets = WidgetRegistry.shared.compatible(with: "image")
         if !widgets.isEmpty {
@@ -1195,33 +1368,54 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             entries.insert(ActionMenuEntry(title: "Widgets".localized, submenu: widgets.compactMap { widget in
                 let commands = widget.commands.filter { $0.inputTypes.contains("image") }
                 guard !commands.isEmpty else { return nil }
-                func commandEntry(_ command: WidgetCommand) -> ActionMenuEntry {
-                    let duplicate = currentRevealInfo.map { info in
-                        WidgetTaskManager.shared.activeRecords(for: info.url).contains { $0.widgetID == widget.id && $0.commandID == command.id }
-                    } ?? false
-                    return ActionMenuEntry(title: command.name, enabled: hasImage && !duplicate, action: { [weak self] in
-                        self?.runWidget(widgetID: widget.id, commandID: command.id)
-                    })
+                let commandEntries = commands.map { command in
+                    let duplicate = currentRevealInfo.map { info in WidgetTaskManager.shared.activeRecords(for: info.url).contains { $0.widgetID == widget.id && $0.commandID == command.id } } ?? false
+                    return ActionMenuEntry(title: command.name, enabled: hasImage && !duplicate, action: { [weak self] in self?.runWidget(widgetID: widget.id, commandID: command.id) })
                 }
-                // A single-command widget does not need a redundant widget
-                // grouping row: Widgets → Remove BG instead of three levels.
-                if commands.count == 1 { return commandEntry(commands[0]) }
-                return ActionMenuEntry(title: widget.name, submenu: commands.map(commandEntry))
+                return commands.count == 1 ? commandEntries[0] : ActionMenuEntry(title: widget.name, submenu: commandEntries)
             }), at: 0)
         }
         return entries
     }
 
     private func presentActionsMenu(atScreenPoint point: NSPoint) {
+        presentActionsMenu(atScreenPoint: point, entries: buildMoreEntries())
+    }
+
+    private func presentActionsMenu(atScreenPoint point: NSPoint, entries: [ActionMenuEntry]) {
         actionsPanel?.dismissChain()
-        let panel = ActionMenuPanel(entries: buildActionEntries())
+        let panel = ActionMenuPanel(entries: entries)
+        prepareActionsPanelForAutoHide(panel)
         actionsPanel = panel
         panel.present(at: point)
     }
 
     @objc private func actionsTapped() {
-        let point = actionsButton.convert(NSPoint(x: 0, y: -4), to: nil)
-        presentActionsMenu(atScreenPoint: convertToScreen(NSRect(origin: point, size: .zero)).origin)
+        autoHideWorkItem?.cancel()
+        showChrome(animated: true)
+        // Convert the actual More-button bottom into screen coordinates. The
+        // toolbar-specific presenter places the menu a few points below it.
+        let windowPoint = actionsButton.convert(NSPoint(x: 0, y: -6), to: nil)
+        let screenPoint = convertToScreen(NSRect(origin: windowPoint, size: .zero)).origin
+        presentActionsMenuBelowToolbar(atScreenPoint: screenPoint)
+    }
+
+    private func presentActionsMenuBelowToolbar(atScreenPoint point: NSPoint) {
+        actionsPanel?.dismissChain()
+        let panel = ActionMenuPanel(entries: buildMoreEntries())
+        prepareActionsPanelForAutoHide(panel)
+        actionsPanel = panel
+        panel.presentBelowToolbar(at: point)
+    }
+
+    private func prepareActionsPanelForAutoHide(_ panel: ActionMenuPanel) {
+        autoHideWorkItem?.cancel()
+        showChrome(animated: true)
+        panel.onDismiss = { [weak self] in
+            DispatchQueue.main.async { [weak self] in
+                self?.handleAutoHideScreenPoint(NSEvent.mouseLocation)
+            }
+        }
     }
 
     @objc private func widgetMarketTapped() {
@@ -1650,6 +1844,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         ]
         actionsPanel?.dismissChain()
         let panel = ActionMenuPanel(entries: entries)
+        prepareActionsPanelForAutoHide(panel)
         actionsPanel = panel
         let point = directionButton.convert(NSPoint(x: 0, y: -4), to: nil)
         panel.present(at: convertToScreen(NSRect(origin: point, size: .zero)).origin)
@@ -1663,6 +1858,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             ActionMenuEntry(title: "Flip Vertically".localized,
                             action: { [weak self] in self?.flipActive(horizontal: false) })
         ])
+        prepareActionsPanelForAutoHide(panel)
         actionsPanel = panel
         let point = flipIconButton.convert(NSPoint(x: 0, y: -4), to: nil)
         panel.present(at: convertToScreen(NSRect(origin: point, size: .zero)).origin)
@@ -2354,6 +2550,7 @@ final class ActionMenuPanel: NSPanel {
     private static let padding: CGFloat = 6
 
     private let entries: [ActionMenuEntry]
+    var onDismiss: (() -> Void)?
     private var rowViews: [ActionMenuRow] = []
     private var childPanel: ActionMenuPanel?
     private weak var parentPanel: ActionMenuPanel?
@@ -2430,7 +2627,27 @@ final class ActionMenuPanel: NSPanel {
         orderFront(nil)
     }
 
+    /// Present below a toolbar control. `screenPoint` is the control's bottom
+    /// edge in AppKit screen coordinates; unlike `present(at:)`, this does not
+    /// interpret the point as the menu's top edge.
+    func presentBelowToolbar(at screenPoint: NSPoint) {
+        parentPanel = nil
+        let size = frame.size
+        let gap: CGFloat = 6
+        var origin = NSPoint(x: screenPoint.x, y: screenPoint.y - gap - size.height)
+        let screen = NSScreen.screens.first { $0.frame.contains(screenPoint) } ?? NSScreen.main
+        if let visible = screen?.visibleFrame {
+            if origin.x + size.width > visible.maxX { origin.x = visible.maxX - size.width - 4 }
+            origin.x = max(visible.minX + 4, origin.x)
+            origin.y = min(max(visible.minY + 4, origin.y), visible.maxY - size.height - 4)
+        }
+        setFrameOrigin(origin)
+        installMonitors()
+        orderFront(nil)
+    }
+
     func dismissChain() {
+        let wasVisible = isVisible
         submenuWorkItem?.cancel()
         submenuWorkItem = nil
         childPanel?.dismissChain()
@@ -2442,6 +2659,7 @@ final class ActionMenuPanel: NSPanel {
         keyMonitor = nil
         resignObserver = nil
         orderOut(nil)
+        if wasVisible { onDismiss?() }
     }
 
     private func dismissFromRoot() {
@@ -3115,12 +3333,14 @@ final class InspectIdentityBar: NSVisualEffectView {
 final class InspectToolbarButton: NSButton {
     var isActive = false { didSet { updateAppearance() } }
     var usesFigmaStyle = false { didSet { updateAppearance() } }
+    var isBorderlessFigmaTile = false { didSet { updateAppearance() } }
 
     /// The glyph point size. The toolbar drives this from the tile size so the
     /// icon always fills the same proportion of its 38pt tile (18/38) as the
     /// Figma reference, at any window/image size. Centered via `.imageOnly`.
     private var symbolPointSize: CGFloat = 18
     private var currentSymbolName: String = ""
+    private var designIconName: String?
 
     private var glyphConfiguration: NSImage.SymbolConfiguration {
         NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .light)
@@ -3149,8 +3369,24 @@ final class InspectToolbarButton: NSButton {
     /// (play/pause, mute) match the rest of the toolbar.
     func setSymbol(_ name: String) {
         currentSymbolName = name
+        designIconName = nil
         let raw = NSImage(systemSymbolName: name, accessibilityDescription: toolTip)
         image = raw?.withSymbolConfiguration(glyphConfiguration)
+    }
+
+    /// Use the vector exported by the Glance Figma design for the floating toolbar.
+    func setDesignIcon(_ name: String) {
+        designIconName = name
+        updateDesignIconSize()
+        updateAppearance()
+    }
+
+    private func updateDesignIconSize() {
+        guard let designIconName,
+              let icon = NSImage(named: NSImage.Name(designIconName))?.copy() as? NSImage else { return }
+        icon.isTemplate = true
+        icon.size = NSSize(width: symbolPointSize, height: symbolPointSize)
+        image = icon
     }
 
     /// Resize the glyph so it scales with its tile. No-op if unchanged, so it's
@@ -3159,7 +3395,11 @@ final class InspectToolbarButton: NSButton {
         let clamped = max(8, size)
         guard abs(clamped - symbolPointSize) > 0.5 else { return }
         symbolPointSize = clamped
-        setSymbol(currentSymbolName)
+        if designIconName == nil {
+            setSymbol(currentSymbolName)
+        } else {
+            updateDesignIconSize()
+        }
     }
 
     func updateTooltip(_ tooltip: String) {
@@ -3178,12 +3418,15 @@ final class InspectToolbarButton: NSButton {
             layer?.backgroundColor = PanelStyle.resolvedCG(
                 isActive ? activeFill : idleFill
             )
-            layer?.borderWidth = 1
+            layer?.borderWidth = isBorderlessFigmaTile ? 0 : 1
             layer?.borderColor = PanelStyle.resolvedCG(
                 isActive ? PanelStyle.accent.withAlphaComponent(0.78) : NSColor.white.withAlphaComponent(0.12)
             )
+            let idleTint = designIconName == nil
+                ? PanelStyle.textPrimary
+                : NSColor(srgbRed: 243 / 255, green: 243 / 255, blue: 243 / 255, alpha: 1)
             contentTintColor = isEnabled
-                ? (isActive ? PanelStyle.accent : PanelStyle.textPrimary)
+                ? (isActive ? PanelStyle.accent : idleTint)
                 : PanelStyle.textTertiary
             alphaValue = isEnabled ? 1 : 0.45
             return
@@ -4301,7 +4544,9 @@ final class ImageInfoPanel: NSPanel {
         x = max(visible.minX, min(x, visible.maxX - width))
         // Keep the fixed 684pt design height; just slide it up/down to stay on
         // screen as much as possible.
-        let y = max(visible.minY, min(parent.frame.minY, visible.maxY - height))
+        // Align the child panel to the parent's top edge, matching the Figma
+        // side-panel presentation rather than docking it to the bottom.
+        let y = max(visible.minY, min(parent.frame.maxY - height, visible.maxY - height))
         setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
         contentView?.layoutSubtreeIfNeeded()
     }

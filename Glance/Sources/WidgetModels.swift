@@ -187,31 +187,58 @@ final class WidgetCatalogClient {
 
     func fetch(widgetID: String, completion: @escaping (Result<WidgetManifest, Error>) -> Void) {
         let url = baseURL.appendingPathComponent(widgetID)
-        URLSession.shared.dataTask(with: URLRequest(url: url)) { [weak self] data, response, error in
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
             if let error { DispatchQueue.main.async { completion(.failure(error)) }; return }
             guard let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { DispatchQueue.main.async { completion(.failure(WidgetError.unavailable)) }; return }
             do {
-                let envelope = try JSONDecoder().decode(WidgetEnvelope.self, from: data)
+                let envelope = try JSONDecoder().decode(SingleWidgetEnvelope.self, from: data)
                 guard envelope.success else { throw WidgetError.unavailable }
                 guard let manifest = envelope.result else { throw WidgetError.invalidManifest }
-                let key = try Curve25519.Signing.PublicKey(rawRepresentation: self.publicKeyData)
-                var signatureValid = false
-                if manifest.signature.algorithm == "Ed25519",
-                   let signature = Data(base64URLEncoded: manifest.signature.value) {
-                    signatureValid = try key.isValidSignature(signature, for: manifest.unsignedJSON())
-                }
-                // Official manifests are delivered by the authenticated
-                // GlanceService catalog. During the UUID migration their
-                // stored signatures may still reference the retired ID;
-                // accept only that trusted official path while rejecting
-                // unsigned/unverified third-party manifests.
-                if !signatureValid && !manifest.official { throw WidgetError.invalidSignature }
+                try self.validateSignature(manifest)
                 DispatchQueue.main.async { completion(.success(manifest)) }
             } catch { DispatchQueue.main.async { completion(.failure(error)) } }
         }.resume()
     }
-    private struct WidgetEnvelope: Codable { let success: Bool; let result: WidgetManifest? }
+
+    /// Fetch the full catalog of published widgets. The catalog is served by
+    /// GlanceService, so the list itself is trusted; signature validation is
+    /// deferred to the per-widget install path.
+    func fetchAll(completion: @escaping (Result<[WidgetManifest], Error>) -> Void) {
+        var request = URLRequest(url: baseURL)
+        request.timeoutInterval = 8
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error { DispatchQueue.main.async { completion(.failure(error)) }; return }
+            guard let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { DispatchQueue.main.async { completion(.failure(WidgetError.unavailable)) }; return }
+            do {
+                let envelope = try JSONDecoder().decode(WidgetListEnvelope.self, from: data)
+                guard envelope.success else { throw WidgetError.unavailable }
+                DispatchQueue.main.async { completion(.success(envelope.result?.widgets ?? [])) }
+            } catch { DispatchQueue.main.async { completion(.failure(error)) } }
+        }.resume()
+    }
+
+    private func validateSignature(_ manifest: WidgetManifest) throws {
+        let key = try Curve25519.Signing.PublicKey(rawRepresentation: publicKeyData)
+        var signatureValid = false
+        if manifest.signature.algorithm == "Ed25519",
+           let signature = Data(base64URLEncoded: manifest.signature.value) {
+            signatureValid = try key.isValidSignature(signature, for: manifest.unsignedJSON())
+        }
+        // Official manifests are delivered by the authenticated
+        // GlanceService catalog. During the UUID migration their
+        // stored signatures may still reference the retired ID;
+        // accept only that trusted official path while rejecting
+        // unsigned/unverified third-party manifests.
+        if !signatureValid && !manifest.official { throw WidgetError.invalidSignature }
+    }
+
+    private struct SingleWidgetEnvelope: Codable { let success: Bool; let result: WidgetManifest? }
+    private struct WidgetListEnvelope: Codable { let success: Bool; let result: WidgetListResult? }
+    private struct WidgetListResult: Codable { let widgets: [WidgetManifest]; let pagination: WidgetPagination }
+    private struct WidgetPagination: Codable { let page, limit, total, totalPages: Int }
 }
 
 // MARK: - Submission and release workflow

@@ -10,7 +10,18 @@ SIGN_IDENTITY="${GLANCE_SIGN_IDENTITY:-Glance Self-Signed}"
 LOG_FILE="$HOME/Library/Application Support/$APP_NAME/app.log"
 
 echo "Killing any running $APP_NAME instances..."
-pkill -x "$APP_NAME" 2>/dev/null && sleep 0.3 || true
+stop_running_instances() {
+    pkill -x "$APP_NAME" 2>/dev/null || true
+    for ((attempt = 0; attempt < 50; attempt++)); do
+        if ! pgrep -x "$APP_NAME" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    echo "Error: an older $APP_NAME instance is still running. Close it before launching the new build."
+    return 1
+}
+stop_running_instances
 
 if [ ! -x "$BUILD_SCRIPT" ]; then
     echo "Error: $BUILD_SCRIPT is missing or not executable."
@@ -38,6 +49,10 @@ fi
 
 echo "Building $APP_NAME..."
 "$BUILD_SCRIPT" "$@"
+
+# A second launch can finish while this build is running. Stop it before
+# opening the just-built bundle so an older window cannot mask new changes.
+stop_running_instances
 
 if [ ! -d "$APP_PATH" ]; then
     echo "Error: build completed but $APP_PATH was not created."

@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import AVKit
+import WebKit
 
 /// Technical details of one video, loaded asynchronously from the asset's
 /// tracks. Every field is optional — a missing track simply leaves it nil.
@@ -21,7 +22,6 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private var focusedIndex = 0
     private var compareIndices: (Int, Int)?
     private var activeCompareSlot = 1
-    private var players: [AVPlayer] = []
     private var viewports: [VideoInspectViewport] = []
     private var durations: [Double]
     private var videoMetadata: [VideoTechnicalMetadata?]
@@ -36,8 +36,6 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private let canvas = MediaDropCanvasView()
     private let inspectToolbar = NSView()
     private let identityBar = VideoTitlebar()
-    private let titleLabel = NSTextField(labelWithString: "")
-    private let metaLabel = NSTextField(labelWithString: "")
     private let closeTrafficButton = NSButton()
     private let minimizeTrafficButton = NSButton()
     private let zoomTrafficButton = NSButton()
@@ -45,7 +43,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private let compareButton = InspectToolbarButton(symbol: "rectangle.split.2x1", tooltip: "Compare".localized)
     private let fitButton = InspectToolbarButton(symbol: "arrow.up.left.and.arrow.down.right", tooltip: "Fit".localized)
     private let revealButton = InspectToolbarButton(symbol: "folder", tooltip: "Reveal in Finder".localized)
-    private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Video information".localized)
+    private let moreButton = InspectToolbarButton(symbol: "ellipsis", tooltip: "More".localized)
     private let captureButton = InspectToolbarButton(symbol: "camera", tooltip: "Capture frame".localized)
     private let replayButton = InspectToolbarButton(symbol: "arrow.counterclockwise", tooltip: "Replay".localized)
     private let pinButton = InspectToolbarButton(symbol: "pin", tooltip: "Pin on Top".localized)
@@ -54,10 +52,13 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private var isPinned = false
     private let playbackBar = VideoPlaybackBar()
     private let captureFeedback = CaptureFeedbackView()
+    private let captureThumbnail = CaptureThumbnailButton()
+    private var pendingCaptureURL: URL?
+    private var captureThumbnailTimer: Timer?
+    private var captureThumbnailGeneration = UUID()
+    private var frameCaptureGeneration = UUID()
+    private var shouldResumeAfterCapture = false
     private let infoPanel = VideoInformationView()
-    private let statusbar = NSView()
-    private let statusLeft = NSTextField(labelWithString: "")
-    private let statusCenter = NSTextField(labelWithString: "Space to play or pause".localized)
     private var infoVisible = false
     private let playButton = InspectToolbarButton(symbol: "play.fill", tooltip: "Play".localized)
     private let timeline = WarmVideoTimeline()
@@ -86,6 +87,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         acceptsMouseMovedEvents = true; delegate = self
+        registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes)
         compareIndices = videos.count > 1 ? (0, 1) : nil
         mode = startsInCompare && videos.count > 1 ? .compare : .focus
         buildUI()
@@ -131,9 +133,17 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             isPlaying ? pausePlayback() : playPlayback()
             return
         }
-        // Video chrome stays persistent, matching the Image Inspect workbench.
-        // Hover can change button emphasis but must not hide playback controls.
+        // The floating playback controls stay available while the video plays.
         super.sendEvent(event)
+    }
+    @objc func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        canvas.acceptsDragging(sender) ? .copy : []
+    }
+    @objc func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
+    }
+    @objc func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        canvas.performDrop(sender)
     }
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.contains(.command),
@@ -161,24 +171,13 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
         root.layer?.cornerRadius = 16
         root.layer?.borderWidth = 1
-        root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        root.layer?.borderColor = PanelStyle.resolvedCG(NSColor.white.withAlphaComponent(0.22))
         root.layer?.masksToBounds = true
         canvas.acceptsExtension = { ext in
             MediaDropCanvasView.videoExtensions.contains(ext)
         }
         canvas.onDrop = { [weak self] url, point in
             self?.handleDroppedVideo(url: url, at: point)
-        }
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
-        titleLabel.textColor = PanelStyle.textPrimary
-        titleLabel.alignment = .center
-        metaLabel.font = PanelStyle.inspectFont(ofSize: 11)
-        metaLabel.textColor = PanelStyle.textTertiary
-        metaLabel.alignment = .center
-        for label in [titleLabel, metaLabel] {
-            label.lineBreakMode = .byTruncatingMiddle
-            label.maximumNumberOfLines = 1
-            identityBar.addSubview(label)
         }
         configureTraffic(closeTrafficButton, color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), tooltip: "Close".localized, action: #selector(closeTapped))
         configureTraffic(minimizeTrafficButton, color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), tooltip: "Minimize".localized, action: #selector(minimizeTapped))
@@ -189,7 +188,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         compareButton.target = self; compareButton.action = #selector(compareTapped)
         fitButton.target = self; fitButton.action = #selector(fitTapped)
         revealButton.target = self; revealButton.action = #selector(revealTapped)
-        infoButton.target = self; infoButton.action = #selector(infoTapped)
+        moreButton.target = self; moreButton.action = #selector(moreTapped)
         captureButton.target = self; captureButton.action = #selector(captureTapped)
         replayButton.target = self; replayButton.action = #selector(replayTapped)
         pinButton.target = self; pinButton.action = #selector(pinTapped)
@@ -197,21 +196,35 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         widgetTasksButton.target = self; widgetTasksButton.action = #selector(widgetTasksTapped)
         pinButton.isActive = isPinned
         inspectToolbar.wantsLayer = true
-        inspectToolbar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
+        inspectToolbar.layer?.backgroundColor = NSColor(
+            srgbRed: 22 / 255, green: 23 / 255, blue: 25 / 255, alpha: 0.90
+        ).cgColor
         inspectToolbar.layer?.borderWidth = 1
-        inspectToolbar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        inspectToolbar.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        inspectToolbar.layer?.cornerRadius = 15
+        inspectToolbar.layer?.shadowColor = NSColor(
+            srgbRed: 20 / 255, green: 23 / 255, blue: 26 / 255, alpha: 0.24
+        ).cgColor
+        inspectToolbar.layer?.shadowOpacity = 1
+        inspectToolbar.layer?.shadowOffset = CGSize(width: 0, height: -8)
+        inspectToolbar.layer?.shadowRadius = 12
         for button in [captureButton, focusButton, compareButton, fitButton,
-                       widgetTasksButton, widgetMarketButton, infoButton] {
+                       widgetTasksButton, widgetMarketButton, moreButton] {
             button.usesFigmaStyle = true
+            button.isBorderlessFigmaTile = true
             button.updateTooltip(button.toolTip ?? "")
-            button.layer?.cornerRadius = 8
+            button.layer?.cornerRadius = 9
             inspectToolbar.addSubview(button)
         }
+        focusButton.setDesignIcon("ToolbarFocus")
+        compareButton.setDesignIcon("ToolbarCompare")
+        widgetMarketButton.setDesignIcon("ToolbarGrid")
         canvas.addSubview(inspectToolbar)
         playButton.target = self; playButton.action = #selector(playTapped)
         playButton.usesFigmaStyle = true
+        playButton.isBorderlessFigmaTile = true
         playButton.updateTooltip("Play".localized)
-        playButton.isActive = true
+        playButton.contentTintColor = PanelStyle.accent
         timeline.onChange = { [weak self] value in self?.seek(to: value) }
         for label in [currentLabel, durationLabel] {
             label.font = PanelStyle.inspectFont(ofSize: 12, weight: label === currentLabel ? .medium : .regular)
@@ -221,9 +234,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         [playButton, timeline, currentLabel, durationLabel].forEach { playbackBar.addSubview($0) }
         canvas.addSubview(playbackBar)
         filmstrip.onSelect = { [weak self] index in self?.selectVideo(index) }; canvas.addSubview(filmstrip)
-        // Keep the media chrome visible in the first frame. Video Inspect uses
-        // the same persistent workbench hierarchy as Image Inspect; hover only
-        // changes emphasis, it does not remove playback controls.
+        // The video fills the window; the controls float over it.
         inspectToolbar.isHidden = false; inspectToolbar.alphaValue = 1
         identityBar.isHidden = false; identityBar.alphaValue = 1
         filmstrip.isHidden = infos.count < 2; filmstrip.alphaValue = 1
@@ -231,19 +242,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         infoPanel.autoresizingMask = [.width, .height]
         infoPanel.isHidden = true
         canvas.addSubview(infoPanel)
-        statusbar.wantsLayer = true
-        statusbar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectStatus)
-        statusbar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        statusbar.layer?.borderWidth = 1
-        for label in [statusLeft, statusCenter] {
-            label.font = PanelStyle.inspectFont(ofSize: 12)
-            label.textColor = PanelStyle.textSecondary
-            statusbar.addSubview(label)
-        }
-        statusCenter.alignment = .center
-        canvas.addSubview(statusbar)
         captureFeedback.isHidden = true
         canvas.addSubview(captureFeedback, positioned: .above, relativeTo: nil)
+        captureThumbnail.target = self
+        captureThumbnail.action = #selector(captureThumbnailTapped)
+        captureThumbnail.isHidden = true
+        canvas.addSubview(captureThumbnail, positioned: .above, relativeTo: nil)
         render()
     }
 
@@ -274,60 +278,78 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         canvas.layer?.cornerRadius = 16 * scale
         canvas.layer?.borderWidth = max(1, scale)
 
-        identityBar.frame = NSRect(x: 0, y: b.height - 58 * sy, width: b.width, height: 58 * sy)
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 15 * sy, weight: .semibold)
-        metaLabel.font = PanelStyle.inspectFont(ofSize: 11 * sy)
-        titleLabel.frame = NSRect(x: 0, y: 26 * sy, width: b.width, height: 18 * sy)
-        metaLabel.frame = NSRect(x: 0, y: 7 * sy, width: b.width, height: 13 * sy)
+        identityBar.frame = NSRect(x: 0, y: b.height - 44 * sy,
+                                   width: b.width, height: 44 * sy)
         for (offset, button) in [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].enumerated() {
-            button.frame = NSRect(x: (24 + CGFloat(offset) * 20) * sx, y: 23 * sy,
-                                  width: 12 * sx, height: 12 * sy)
-            button.layer?.cornerRadius = 6 * scale
+            button.frame = NSRect(x: 20 * sx + CGFloat(offset) * 26 * sx,
+                                  y: 14 * sy, width: 12, height: 12)
+            button.layer?.cornerRadius = 6
         }
 
-        inspectToolbar.frame = NSRect(x: 0, y: b.height - 128 * sy,
-                                      width: b.width, height: 70 * sy)
+        let toolbarW = 378 * scale
+        inspectToolbar.frame = NSRect(x: (b.width - toolbarW) / 2,
+                                      y: b.height - 78 * scale,
+                                      width: toolbarW, height: 54 * scale)
         inspectToolbar.layer?.borderWidth = max(1, scale)
+        inspectToolbar.layer?.cornerRadius = 15 * scale
         func place(_ button: InspectToolbarButton, x: CGFloat) {
-            button.frame = NSRect(x: x * sx, y: 18 * sy, width: 38 * sx, height: 38 * sy)
-            button.layer?.cornerRadius = 8 * scale
-            button.layer?.borderWidth = max(1, scale)
+            button.frame = NSRect(x: x * scale, y: 8 * scale,
+                                  width: 38 * scale, height: 38 * scale)
+            button.layer?.cornerRadius = 9 * scale
+            button.layer?.borderWidth = 0
+            button.setSymbolPointSize(18 * scale)
         }
-        place(captureButton, x: 40)
-        place(focusButton, x: 686)
-        place(compareButton, x: 734)
-        place(fitButton, x: 782)
-        place(widgetTasksButton, x: 1378)
-        place(widgetMarketButton, x: 1426)
-        place(infoButton, x: 1474)
-
-        let statusH = 37 * sy
-        statusbar.frame = NSRect(x: 0, y: 0, width: b.width, height: statusH)
-        statusbar.layer?.borderWidth = max(1, scale)
-        statusLeft.font = PanelStyle.inspectFont(ofSize: 12 * sy)
-        statusCenter.font = PanelStyle.inspectFont(ofSize: 12 * sy)
-        statusLeft.frame = NSRect(x: 38 * sx, y: 11 * sy, width: 480 * sx, height: 15 * sy)
-        statusCenter.frame = NSRect(x: 0, y: 11 * sy, width: b.width, height: 15 * sy)
+        place(captureButton, x: 14)
+        place(focusButton, x: 66)
+        place(compareButton, x: 118)
+        place(fitButton, x: 170)
+        place(widgetTasksButton, x: 222)
+        place(widgetMarketButton, x: 274)
+        place(moreButton, x: 326)
 
         let canvasW = max(0, b.width - (infoVisible ? 434 * sx : 0))
-        let videoRect = NSRect(x: 0, y: statusH, width: canvasW, height: 847 * sy)
-        infoPanel.frame = NSRect(x: canvasW, y: statusH, width: 434 * sx, height: videoRect.height)
+        let videoRect = NSRect(x: 0, y: 0, width: canvasW, height: b.height)
+        infoPanel.frame = NSRect(x: canvasW, y: 0, width: 434 * sx, height: videoRect.height)
         infoPanel.isHidden = !infoVisible
         if mode == .compare, activeIndices.count == 2 {
-            let gap = max(1, scale)
-            let half = (videoRect.width - gap) / 2
-            viewports[safe: 0]?.frame = NSRect(x: 0, y: videoRect.minY, width: half, height: videoRect.height)
-            viewports[safe: 1]?.frame = NSRect(x: half + gap, y: videoRect.minY, width: half, height: videoRect.height)
+            // Fit each complete video, then place the visible images beside
+            // each other. Equal half-window viewports put a large empty band
+            // between two portrait videos even though their pane gap is 2pt.
+            let gap = 2 * scale
+            let maxWidth = max(1, (videoRect.width - gap) / 2)
+            func fittedSize(for slot: Int) -> CGSize {
+                guard let index = activeIndices[safe: slot] else {
+                    return CGSize(width: maxWidth, height: videoRect.height)
+                }
+                let natural = infos[index].dimensions
+                    ?? viewports[safe: slot]?.videoSize
+                    ?? .zero
+                guard natural.width > 0, natural.height > 0 else {
+                    return CGSize(width: maxWidth, height: videoRect.height)
+                }
+                let fit = min(maxWidth / natural.width, videoRect.height / natural.height)
+                return CGSize(width: natural.width * fit, height: natural.height * fit)
+            }
+            let left = fittedSize(for: 0)
+            let right = fittedSize(for: 1)
+            // Keep the compare seam centered, as in Image Inspect. Any spare
+            // width stays at the outside edges instead of between the videos.
+            let seam = videoRect.midX
+            viewports[safe: 0]?.frame = NSRect(x: seam - gap / 2 - left.width,
+                                                y: videoRect.midY - left.height / 2,
+                                                width: left.width, height: left.height)
+            viewports[safe: 1]?.frame = NSRect(x: seam + gap / 2,
+                                                y: videoRect.midY - right.height / 2,
+                                                width: right.width, height: right.height)
         } else {
             viewports[safe: 0]?.frame = videoRect
             viewports[safe: 1]?.frame = .zero
         }
 
         let barWidth = min(1306 * sx, max(0, canvasW - 96 * sx))
-        playbackBar.frame = NSRect(x: (canvasW - barWidth) / 2, y: statusH + 61 * sy,
+        playbackBar.frame = NSRect(x: (canvasW - barWidth) / 2, y: 24 * sy,
                                    width: barWidth, height: 64 * sy)
-        playbackBar.layer?.cornerRadius = 12 * scale
-        playbackBar.layer?.borderWidth = max(1, scale)
+        playbackBar.layer?.cornerRadius = 15 * scale
         let barScale = barWidth / 1306
         playButton.frame = NSRect(x: 16 * barScale, y: 13 * sy,
                                   width: 38 * barScale, height: 38 * sy)
@@ -348,18 +370,23 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                                  y: playbackBar.frame.maxY + 20 * sy,
                                  width: filmWidth, height: 96 * sy)
         captureFeedback.frame = videoRect
+        let thumbnailSize = NSSize(width: 220 * scale, height: 125 * scale)
+        captureThumbnail.contentWidth = thumbnailSize.width
+        if !captureThumbnail.isHidden, pendingCaptureURL != nil {
+            captureThumbnail.frame = NSRect(
+                x: canvasW - 24 * sx - thumbnailSize.width,
+                y: playbackBar.frame.maxY + 24 * sy,
+                width: thumbnailSize.width, height: thumbnailSize.height
+            )
+        }
     }
 
     private func render() {
-        generation = UUID(); removeObservers(); viewports.forEach { $0.removeFromSuperview() }; viewports.removeAll(); players.forEach { $0.pause() }; players.removeAll(); isPlaying = false; currentTime = 0
+        generation = UUID(); frameCaptureGeneration = UUID(); shouldResumeAfterCapture = false
+        removeObservers(); viewports.forEach { $0.pause(); $0.removeFromSuperview() }; viewports.removeAll(); isPlaying = false; currentTime = 0
         for index in activeIndices {
             let info = infos[index]
-            let player = AVPlayer(url: info.url)
-            player.isMuted = true
-            // Both compare players should start immediately after the shared
-            // exact seek instead of independently waiting for buffering.
-            player.automaticallyWaitsToMinimizeStalling = false
-            let viewport = VideoInspectViewport(index: index, player: player)
+            let viewport = VideoInspectViewport(index: index, url: info.url)
             viewport.dropTarget = canvas
             viewport.onActionMenu = { [weak self] event in
                 guard let self, let window = event.window else { return }
@@ -372,8 +399,32 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                 self.updateVideoCompareDimming()
                 self.refreshInfoPanel()
             }
+            viewport.onReady = { [weak self] in self?.layoutContent() }
+            viewport.onWebMMetadata = { [weak self] duration, size in
+                guard let self, self.infos.indices.contains(index) else { return }
+                self.durations[index] = duration
+                self.infos[index].dimensions = size
+                self.updateTimeline()
+                self.layoutContent()
+                self.refreshInfoPanel()
+            }
+            var needsWebMThumbnail = true
+            viewport.onWebMFrameReady = { [weak self, weak viewport] in
+                guard needsWebMThumbnail else { return }
+                needsWebMThumbnail = false
+                viewport?.captureFrame(at: 0) { [weak self] image in
+                    guard let image else { return }
+                    self?.filmstrip.setThumbnail(image, at: index)
+                }
+            }
+            viewport.onTimeUpdate = { [weak self, weak viewport] time in
+                guard let self, self.isPlaying, self.viewports.first === viewport else { return }
+                self.currentTime = min(max(0, time), self.maximumDuration)
+                self.updateTimeline()
+            }
+            viewport.onEnded = { [weak self] in self?.pausePlayback() }
             viewport.setCompareDimmed(mode == .compare && activeCompareSlot != (compareIndices?.0 == index ? 0 : 1))
-            canvas.addSubview(viewport, positioned: .below, relativeTo: inspectToolbar); players.append(player); viewports.append(viewport)
+            canvas.addSubview(viewport, positioned: .below, relativeTo: inspectToolbar); viewports.append(viewport)
             if !info.isLocal {
                 let token = generation
                 // Remote playback starts immediately above; persistent download
@@ -392,17 +443,14 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         canvas.addSubview(playbackBar, positioned: .above, relativeTo: nil)
         canvas.addSubview(filmstrip, positioned: .above, relativeTo: nil)
         canvas.addSubview(infoPanel, positioned: .above, relativeTo: nil)
-        canvas.addSubview(statusbar, positioned: .above, relativeTo: nil)
         canvas.addSubview(inspectToolbar, positioned: .above, relativeTo: nil)
         canvas.addSubview(captureFeedback, positioned: .above, relativeTo: nil)
-        titleLabel.stringValue = "Video Inspect".localized
-        metaLabel.stringValue = infos[safe: activeIndices[safe: mode == .compare ? activeCompareSlot : 0] ?? focusedIndex]?.filename ?? ""
+        canvas.addSubview(captureThumbnail, positioned: .above, relativeTo: nil)
         focusButton.isEnabled = true
         compareButton.isEnabled = infos.count > 1
         focusButton.isActive = mode == .focus
         compareButton.isActive = mode == .compare
         revealButton.isEnabled = activeIndices.contains { infos[$0].isLocal }
-        infoButton.isActive = infoVisible
         filmstrip.isHidden = infos.count < 2
         filmstrip.configure(infos: infos, selectedIndex: focusedIndex, compareIndices: mode == .compare ? compareIndices : nil)
         refreshInfoPanel()
@@ -412,6 +460,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private func loadDurations() {
         let token = generation
         for (index, info) in infos.enumerated() {
+            if info.url.pathExtension.lowercased() == "webm" { continue }
             let asset = AVURLAsset(url: info.url)
             Task { [weak self] in
                 let duration = (try? await asset.load(.duration))?.seconds ?? info.duration ?? 0
@@ -452,6 +501,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                     if let dimensions, self.infos[index].dimensions == nil { self.infos[index].dimensions = dimensions }
                     if let fileSize, self.infos[index].fileSize == nil { self.infos[index].fileSize = fileSize }
                     self.updateTimeline()
+                    self.layoutContent()
                     self.refreshInfoPanel()
                 }
             }
@@ -460,7 +510,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     }
     private var maximumDuration: Double { durations.max() ?? 0 }
     private func installObserver() {
-        guard timeObserver == nil, let player = players.first else { return }
+        guard timeObserver == nil, let player = viewports.first?.player else { return }
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600), queue: .main) { [weak self] time in guard let self, self.isPlaying else { return }; self.currentTime = min(max(0, time.seconds), self.maximumDuration); self.updateTimeline() }
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player.currentItem, queue: .main) { [weak self] _ in self?.pausePlayback() }
     }
@@ -470,14 +520,6 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         currentLabel.stringValue = Self.formatTime(currentTime)
         durationLabel.stringValue = Self.formatTime(maximumDuration)
         playButton.setSymbol(isPlaying ? "pause.fill" : "play.fill")
-        let index = activeIndices[safe: mode == .compare ? activeCompareSlot : 0] ?? focusedIndex
-        guard infos.indices.contains(index) else { return }
-        let info = infos[index]
-        var parts: [String] = []
-        if let codec = videoMetadata[safe: index]??.videoCodec { parts.append(codec) }
-        if let size = info.dimensions { parts.append("\(Int(size.width)) × \(Int(size.height))") }
-        if let fps = videoMetadata[safe: index]??.fps { parts.append(String(format: "%g fps", Double(fps))) }
-        statusLeft.stringValue = parts.isEmpty ? info.filename : parts.joined(separator: "  •  ")
     }
     @objc private func playTapped() { isPlaying ? pausePlayback() : playPlayback() }
     private func playPlayback() {
@@ -486,15 +528,20 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             // setRate(_:atHostTime:) throws when an AVPlayer has no usable
             // host-time anchor. Exact-seek both first, then start them in this
             // single main-thread turn with buffering waits disabled.
-            self.players.forEach { $0.playImmediately(atRate: 1) }
+            self.viewports.forEach { $0.play() }
             self.isPlaying = true
             self.updateTimeline()
         }
     }
-    private func pausePlayback() { players.forEach { $0.pause() }; isPlaying = false; updateTimeline() }
+    private func pausePlayback() { viewports.forEach { $0.pause() }; isPlaying = false; updateTimeline() }
     private func seek(to time: Double, completion: (() -> Void)? = nil) {
         currentTime = min(max(0, time), maximumDuration); let group = DispatchGroup()
-        for (offset, player) in players.enumerated() { let index = activeIndices[safe: offset] ?? focusedIndex; let limit = durations[safe: index] ?? maximumDuration; group.enter(); player.seek(to: CMTime(seconds: min(currentTime, limit), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { _ in group.leave() } }
+        for (offset, viewport) in viewports.enumerated() {
+            let index = activeIndices[safe: offset] ?? focusedIndex
+            let limit = durations[safe: index] ?? maximumDuration
+            group.enter()
+            viewport.seek(to: min(currentTime, limit)) { group.leave() }
+        }
         updateTimeline(); group.notify(queue: .main) { completion?() }
     }
     @objc private func focusTapped() { mode = .focus; pausePlayback(); render() }
@@ -512,9 +559,16 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         level = isPinned ? .floating : .normal
     }
     @objc private func widgetMarketTapped() { WidgetMarketPanel.shared.toggle(from: self) }
+    @objc private func moreTapped() {
+        actionsPanel?.dismissChain()
+        let panel = ActionMenuPanel(entries: buildMoreEntries())
+        actionsPanel = panel
+        let windowPoint = moreButton.convert(NSPoint(x: 0, y: -6), to: nil)
+        let screenPoint = convertToScreen(NSRect(origin: windowPoint, size: .zero)).origin
+        panel.presentBelowToolbar(at: screenPoint)
+    }
     @objc private func infoTapped() {
         infoVisible.toggle()
-        infoButton.isActive = infoVisible
         infoPanel.isHidden = !infoVisible
         refreshInfoPanel()
         layoutContent()
@@ -531,63 +585,144 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         // Freeze and exactly seek every player to the same master time before
         // reading pixels. Generating frames while playback continues returns
         // neighboring keyframes at different moments.
-        let playerTime = players.first?.currentTime().seconds ?? currentTime
+        let playerTime = viewports.first?.currentTime ?? currentTime
         let captureTime = playerTime.isFinite ? max(0, playerTime) : max(0, currentTime)
+        shouldResumeAfterCapture = shouldResumeAfterCapture || isPlaying
+        let captureGeneration = generation
+        frameCaptureGeneration = UUID()
+        let frameCaptureToken = frameCaptureGeneration
         pausePlayback()
         seek(to: captureTime) { [weak self] in
-            self?.finishCapture(at: captureTime)
+            guard let self, self.generation == captureGeneration,
+                  self.frameCaptureGeneration == frameCaptureToken else { return }
+            let resumePlayback = self.shouldResumeAfterCapture
+            self.shouldResumeAfterCapture = false
+            self.finishCapture(at: captureTime, resumePlayback: resumePlayback)
         }
     }
-    private func finishCapture(at time: Double) {
-        guard let image = captureCurrentFrame(at: time) else { return }
+    private func finishCapture(at time: Double, resumePlayback: Bool) {
+        let token = generation
+        captureCurrentFrame(at: time) { [weak self] image in
+            guard let self, self.generation == token else { return }
+            self.completeCapture(image: image, at: time, resumePlayback: resumePlayback)
+        }
+    }
+    private func completeCapture(image: NSImage?, at time: Double, resumePlayback: Bool) {
+        defer {
+            if resumePlayback {
+                viewports.forEach { $0.play() }
+                isPlaying = true
+                updateTimeline()
+            }
+        }
+        guard let image else { return }
         NSSound(named: "Grab")?.play()
         captureFeedback.flash()
-        // No save panel: hand the frame straight to Image Inspect. Repeated
-        // captures append to its filmstrip.
+        // Keep the captured frame ready for the thumbnail's existing Image
+        // Inspect handoff. A second capture replaces the pending preview.
         guard let data = image.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: data),
               let png = bitmap.representation(using: .png, properties: [:]) else { return }
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("GlanceCaptures", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let url = directory.appendingPathComponent("capture-\(Int(Date().timeIntervalSince1970 * 1000)).png")
+        let url = directory.appendingPathComponent("capture-\(UUID().uuidString).png")
         do {
             try png.write(to: url)
         } catch {
             Logger.error("Video capture write failed: \(error.localizedDescription)")
             return
         }
-        // Defer until the capture button's mouse event has finished; otherwise
-        // AppKit can re-key the video window after Image Inspect is presented.
+        showCaptureThumbnail(image: image, time: time, url: url)
+    }
+    private func showCaptureThumbnail(image: NSImage, time: Double, url: URL) {
+        captureThumbnailTimer?.invalidate()
+        if let previous = pendingCaptureURL { try? FileManager.default.removeItem(at: previous) }
+        pendingCaptureURL = url
+        captureThumbnailGeneration = UUID()
+        captureThumbnail.layer?.removeAllAnimations()
+        captureThumbnail.capturedImage = image
+        captureThumbnail.timecode = Self.thumbnailTimecode(time)
+        captureThumbnail.alphaValue = 1
+        captureThumbnail.isHidden = false
+        layoutContent()
+
+        let token = captureThumbnailGeneration
+        let timer = Timer(timeInterval: 10, repeats: false) { [weak self] _ in
+            guard let self, self.captureThumbnailGeneration == token else { return }
+            self.hideCaptureThumbnail()
+        }
+        captureThumbnailTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+    @objc private func captureThumbnailTapped() {
+        guard let url = pendingCaptureURL else { return }
+        captureThumbnailTimer?.invalidate()
+        captureThumbnailTimer = nil
+        pendingCaptureURL = nil
+        captureThumbnailGeneration = UUID()
+        captureThumbnail.isHidden = true
+        captureThumbnail.capturedImage = nil
+        // Finish the thumbnail's mouse event before Image Inspect takes focus.
         DispatchQueue.main.async { [weak self] in self?.onCaptureFrame?(url) }
     }
-    private func captureCurrentFrame(at time: Double) -> NSImage? {
-        let frames: [NSImage] = players.enumerated().compactMap { offset, player in
-            guard let item = player.currentItem else { return nil }
-            let generator = AVAssetImageGenerator(asset: item.asset)
-            generator.appliesPreferredTrackTransform = true
-            generator.requestedTimeToleranceBefore = .zero
-            generator.requestedTimeToleranceAfter = .zero
+    private func hideCaptureThumbnail() {
+        captureThumbnailTimer?.invalidate()
+        captureThumbnailTimer = nil
+        let expiredURL = pendingCaptureURL
+        pendingCaptureURL = nil
+        let token = captureThumbnailGeneration
+        let frame = captureThumbnail.frame
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            captureThumbnail.animator().frame = NSRect(x: frame.maxX, y: frame.minY,
+                                                       width: 0, height: frame.height)
+        }) { [weak self] in
+            if let expiredURL { try? FileManager.default.removeItem(at: expiredURL) }
+            guard let self, self.captureThumbnailGeneration == token else { return }
+            self.captureThumbnail.isHidden = true
+            self.captureThumbnail.capturedImage = nil
+        }
+    }
+    private static func thumbnailTimecode(_ seconds: Double) -> String {
+        let total = max(0, Int(seconds.rounded(.down)))
+        return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+    private func captureCurrentFrame(at time: Double, completion: @escaping (NSImage?) -> Void) {
+        guard !viewports.isEmpty else { completion(nil); return }
+        var captured = Array<NSImage?>(repeating: nil, count: viewports.count)
+        let group = DispatchGroup()
+        for (offset, viewport) in viewports.enumerated() {
             let index = activeIndices[safe: offset] ?? focusedIndex
             let limit = durations[safe: index] ?? maximumDuration
-            let target = CMTime(seconds: min(max(0, time), limit), preferredTimescale: 600)
-            guard let cgImage = try? generator.copyCGImage(at: target, actualTime: nil) else { return nil }
-            return NSImage(cgImage: cgImage, size: NSSize(width: CGFloat(cgImage.width), height: CGFloat(cgImage.height)))
+            group.enter()
+            viewport.captureFrame(at: min(max(0, time), limit)) { image in
+                captured[offset] = image
+                group.leave()
+            }
         }
-        guard !frames.isEmpty else { return nil }
-        if frames.count == 1 { return frames[0] }
-        let gap: CGFloat = 2
-        let height = frames.map(\.size.height).max() ?? 1
-        let width = frames.reduce(0) { $0 + ($1.size.width * height / max(1, $1.size.height)) } + gap
-        let output = NSImage(size: NSSize(width: width, height: height))
-        output.lockFocus(); NSColor.black.setFill(); NSBezierPath(rect: NSRect(origin: .zero, size: output.size)).fill()
-        var x: CGFloat = 0
-        for frame in frames {
-            let frameWidth = frame.size.width * height / max(1, frame.size.height)
-            frame.draw(in: NSRect(x: x, y: 0, width: frameWidth, height: height), from: .zero, operation: .sourceOver, fraction: 1)
-            x += frameWidth + gap
+        group.notify(queue: .main) {
+            let frames = captured.compactMap { $0 }
+            guard !frames.isEmpty else { completion(nil); return }
+            if frames.count == 1 { completion(frames[0]); return }
+            let gap: CGFloat = 2
+            let height = frames.map(\.size.height).max() ?? 1
+            let width = frames.reduce(0) { $0 + ($1.size.width * height / max(1, $1.size.height)) } + gap
+            let output = NSImage(size: NSSize(width: width, height: height))
+            output.lockFocus()
+            NSColor.black.setFill()
+            NSBezierPath(rect: NSRect(origin: .zero, size: output.size)).fill()
+            var x: CGFloat = 0
+            for frame in frames {
+                let frameWidth = frame.size.width * height / max(1, frame.size.height)
+                frame.draw(in: NSRect(x: x, y: 0, width: frameWidth, height: height),
+                           from: .zero, operation: .sourceOver, fraction: 1)
+                x += frameWidth + gap
+            }
+            output.unlockFocus()
+            completion(output)
         }
-        output.unlockFocus(); return output
     }
     private func selectVideo(_ index: Int) { guard infos.indices.contains(index) else { return }; if mode == .compare, let pair = compareIndices { if activeCompareSlot == 0, index != pair.1 { compareIndices = (index, pair.1) } else if activeCompareSlot == 1, index != pair.0 { compareIndices = (pair.0, index) } } else { focusedIndex = index }; pausePlayback(); render() }
 
@@ -596,30 +731,28 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     /// current mode:
     ///   - Focus: play the dropped video directly.
     ///   - Compare: replace the side the drop landed on.
-    /// Right-click mute menu. Focus toggles the single player; side-by-side
-    /// offers independent mute control for the left and right videos.
-    private func presentMuteMenu(atScreenPoint point: NSPoint) {
-        actionsPanel?.dismissChain()
-        var entries: [ActionMenuEntry]
+    /// The toolbar More button and right-click share one menu. Video
+    /// information is available here instead of occupying a toolbar tile.
+    private func buildMoreEntries() -> [ActionMenuEntry] {
+        var entries = [
+            ActionMenuEntry(title: "Video information".localized,
+                            action: { [weak self] in self?.infoTapped() }),
+            .separator(),
+        ]
+        // Focus toggles one player; Compare offers independent mute control.
         if mode == .compare, viewports.count == 2 {
             let leftMuted = viewports[0].isMuted
             let rightMuted = viewports[1].isMuted
-            entries = [
-                ActionMenuEntry(title: (leftMuted ? "Unmute Left" : "Mute Left").localized,
-                                action: { [weak self] in self?.toggleMute(slot: 0) }),
-                ActionMenuEntry(title: (rightMuted ? "Unmute Right" : "Mute Right").localized,
-                                action: { [weak self] in self?.toggleMute(slot: 1) }),
-            ]
+            entries.append(ActionMenuEntry(title: (leftMuted ? "Unmute Left" : "Mute Left").localized,
+                                           action: { [weak self] in self?.toggleMute(slot: 0) }))
+            entries.append(ActionMenuEntry(title: (rightMuted ? "Unmute Right" : "Mute Right").localized,
+                                           action: { [weak self] in self?.toggleMute(slot: 1) }))
         } else if let viewport = viewports.first {
-            entries = [
-                ActionMenuEntry(title: (viewport.isMuted ? "Unmute" : "Mute").localized,
-                                action: { [weak viewport] in
-                    guard let viewport else { return }
-                    viewport.setMuted(!viewport.isMuted)
-                }),
-            ]
-        } else {
-            return
+            entries.append(ActionMenuEntry(title: (viewport.isMuted ? "Unmute" : "Mute").localized,
+                                           action: { [weak viewport] in
+                guard let viewport else { return }
+                viewport.setMuted(!viewport.isMuted)
+            }))
         }
         entries.append(.separator())
         entries.append(ActionMenuEntry(title: "Replay".localized,
@@ -649,7 +782,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                 return ActionMenuEntry(title: widget.name, submenu: commands.map(entry))
             }))
         }
-        let panel = ActionMenuPanel(entries: entries)
+        return entries
+    }
+
+    private func presentMuteMenu(atScreenPoint point: NSPoint) {
+        actionsPanel?.dismissChain()
+        let panel = ActionMenuPanel(entries: buildMoreEntries())
         actionsPanel = panel
         panel.present(at: point)
     }
@@ -713,12 +851,19 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         for (offset, viewport) in viewports.enumerated() {
             viewport.setCompareDimmed(offset != activeCompareSlot)
         }
-        if let index = activeIndices[safe: activeCompareSlot], infos.indices.contains(index) {
-            metaLabel.stringValue = infos[index].filename
-        }
     }
-    private func removeObservers() { if let observer = timeObserver, !players.isEmpty { players[0].removeTimeObserver(observer) }; timeObserver = nil; if let observer = endObserver { NotificationCenter.default.removeObserver(observer) }; endObserver = nil }
-    func windowWillClose(_ notification: Notification) { pausePlayback(); removeObservers(); actionsPanel?.dismissChain(); actionsPanel = nil; infoVisible = false; generation = UUID() }
+    private func removeObservers() { if let observer = timeObserver, let player = viewports.first?.player { player.removeTimeObserver(observer) }; timeObserver = nil; if let observer = endObserver { NotificationCenter.default.removeObserver(observer) }; endObserver = nil }
+    func windowWillClose(_ notification: Notification) {
+        pausePlayback(); removeObservers(); actionsPanel?.dismissChain(); actionsPanel = nil
+        infoVisible = false; generation = UUID()
+        frameCaptureGeneration = UUID()
+        shouldResumeAfterCapture = false
+        captureThumbnailTimer?.invalidate(); captureThumbnailTimer = nil
+        captureThumbnailGeneration = UUID()
+        if let pendingCaptureURL { try? FileManager.default.removeItem(at: pendingCaptureURL) }
+        pendingCaptureURL = nil
+        captureThumbnail.capturedImage = nil
+    }
     private static func formatTime(_ seconds: Double) -> String { let total = max(0, Int(seconds.rounded(.down))); return String(format: "%d:%02d", total / 60, total % 60) }
 
     static func videoCodecName(for subType: FourCharCode) -> String {
@@ -760,24 +905,122 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
 }
 
 private final class VideoInspectViewport: NSView {
-    let index: Int; let player: AVPlayer; private let playerView: AVPlayerView; private let muteButton = InspectToolbarButton(symbol: "speaker.slash.fill", tooltip: "Mute".localized); private let compareDimmer = CALayer(); private let loadingView = ModularImageLoadingView(frame: .zero); private let failureView = LoadFailedAnimationView(frame: .zero); private var statusObservation: NSKeyValueObservation?; var onActivate: (() -> Void)?
-    weak var dropTarget: MediaDropCanvasView?
-    init(index: Int, player: AVPlayer) { self.index = index; self.player = player; playerView = PassthroughVideoPlayerView(frame: .zero); super.init(frame: .zero); registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes); wantsLayer = true; layer?.masksToBounds = true; layer?.backgroundColor = PanelStyle.inspectCanvas.cgColor; playerView.controlsStyle = .none; playerView.videoGravity = .resizeAspect; playerView.player = player; playerView.wantsLayer = true; playerView.layer?.cornerRadius = 6; playerView.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine); playerView.layer?.borderWidth = 1; playerView.layer?.masksToBounds = true; addSubview(playerView); addSubview(loadingView); addSubview(failureView); failureView.isHidden = true; compareDimmer.backgroundColor = NSColor.black.withAlphaComponent(0.10).cgColor; compareDimmer.opacity = 0; layer?.addSublayer(compareDimmer); muteButton.target = self; muteButton.action = #selector(toggleMute); muteButton.updateTooltip("Mute".localized); muteButton.isHidden = true; addSubview(muteButton); observePlayerItem() }
+    let index: Int
+    let player: AVPlayer?
+    private let playerView: AVPlayerView?
+    private let webMView: WebMVideoView?
+    private let muteButton = InspectToolbarButton(symbol: "speaker.slash.fill", tooltip: "Mute".localized)
+    private let compareDimmer = CALayer()
+    private let loadingView = ModularImageLoadingView(frame: .zero)
+    private let failureView = LoadFailedAnimationView(frame: .zero)
+    private var statusObservation: NSKeyValueObservation?
+    var onActivate: (() -> Void)?
+    var onReady: (() -> Void)?
+    var onWebMMetadata: ((Double, CGSize) -> Void)?
+    var onWebMFrameReady: (() -> Void)?
+    var onTimeUpdate: ((Double) -> Void)?
+    var onEnded: (() -> Void)?
+    var videoSize: CGSize { webMView?.videoSize ?? player?.currentItem?.presentationSize ?? .zero }
+    var currentTime: Double { webMView?.videoTime ?? player?.currentTime().seconds ?? 0 }
+    weak var dropTarget: MediaDropCanvasView? {
+        didSet {
+            webMView?.dropTarget = dropTarget
+            (playerView as? PassthroughVideoPlayerView)?.dropTarget = dropTarget
+        }
+    }
+    init(index: Int, url: URL) {
+        self.index = index
+        if url.pathExtension.lowercased() == "webm" {
+            player = nil
+            playerView = nil
+            webMView = WebMVideoView(url: url)
+        } else {
+            let nativePlayer = AVPlayer(url: url)
+            nativePlayer.isMuted = true
+            nativePlayer.automaticallyWaitsToMinimizeStalling = false
+            player = nativePlayer
+            let nativeView = PassthroughVideoPlayerView(frame: .zero)
+            nativeView.controlsStyle = .none
+            nativeView.videoGravity = .resizeAspect
+            nativeView.player = nativePlayer
+            nativeView.registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes)
+            playerView = nativeView
+            webMView = nil
+        }
+        super.init(frame: .zero)
+        registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes)
+        wantsLayer = true
+        layer?.masksToBounds = true
+        layer?.backgroundColor = PanelStyle.inspectCanvas.cgColor
+        if let playerView {
+            playerView.wantsLayer = true
+            playerView.layer?.masksToBounds = true
+            addSubview(playerView)
+        }
+        if let webMView {
+            webMView.onReady = { [weak self] duration, size in
+                guard let self else { return }
+                self.loadingView.setLoading(false)
+                self.failureView.isHidden = true
+                self.onWebMMetadata?(duration, size)
+                self.onReady?()
+            }
+            webMView.onTimeUpdate = { [weak self] time in self?.onTimeUpdate?(time) }
+            webMView.onEnded = { [weak self] in self?.onEnded?() }
+            webMView.onFrameReady = { [weak self] in self?.onWebMFrameReady?() }
+            webMView.onFailure = { [weak self] in
+                self?.loadingView.setLoading(false)
+                self?.failureView.isHidden = false
+            }
+            addSubview(webMView)
+        }
+        addSubview(loadingView)
+        addSubview(failureView)
+        failureView.isHidden = true
+        compareDimmer.backgroundColor = NSColor.black.withAlphaComponent(0.10).cgColor
+        compareDimmer.opacity = 0
+        layer?.addSublayer(compareDimmer)
+        muteButton.target = self
+        muteButton.action = #selector(toggleMute)
+        muteButton.updateTooltip("Mute".localized)
+        muteButton.isHidden = true
+        addSubview(muteButton)
+        if player != nil { observePlayerItem() }
+        else { loadingView.setLoading(true) }
+    }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layout() { super.layout(); let insetX = max(16, bounds.width * 48 / 1554), insetY = max(12, bounds.height * 20 / 847); let mediaFrame = bounds.insetBy(dx: insetX, dy: insetY); playerView.frame = mediaFrame; compareDimmer.frame = bounds; muteButton.frame = NSRect(x: mediaFrame.maxX - 40, y: mediaFrame.maxY - 40, width: 32, height: 32); let loader = ModularImageLoadingView.preferredSize; loadingView.frame = NSRect(x: bounds.midX - loader.width / 2, y: bounds.midY - loader.height / 2, width: loader.width, height: loader.height); let failed = LoadFailedAnimationView.preferredSize; failureView.frame = NSRect(x: bounds.midX - failed.width / 2, y: bounds.midY - failed.height / 2, width: failed.width, height: failed.height) }
+    override func layout() {
+        super.layout()
+        playerView?.frame = bounds
+        webMView?.frame = bounds
+        compareDimmer.frame = bounds
+        muteButton.frame = NSRect(x: bounds.maxX - 40, y: bounds.maxY - 40,
+                                  width: 32, height: 32)
+        let loader = ModularImageLoadingView.preferredSize
+        loadingView.frame = NSRect(x: bounds.midX - loader.width / 2,
+                                   y: bounds.midY - loader.height / 2,
+                                   width: loader.width, height: loader.height)
+        let failed = LoadFailedAnimationView.preferredSize
+        failureView.frame = NSRect(x: bounds.midX - failed.width / 2,
+                                   y: bounds.midY - failed.height / 2,
+                                   width: failed.width, height: failed.height)
+    }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { dropTarget?.acceptsDragging(sender) == true ? .copy : [] }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { dropTarget?.acceptsDragging(sender) == true ? .copy : [] }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool { dropTarget?.performDrop(sender) == true }
     func replaceSource(with url: URL) {
+        if let webMView { webMView.replaceSource(with: url); return }
+        guard let player else { return }
         let time = player.currentTime()
         let wasPlaying = player.rate != 0
         player.replaceCurrentItem(with: AVPlayerItem(url: url))
         observePlayerItem()
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-            if wasPlaying { self?.player.playImmediately(atRate: 1) }
+            if wasPlaying { self?.player?.playImmediately(atRate: 1) }
         }
     }
     private func observePlayerItem() {
+        guard let player else { return }
         statusObservation = nil
         failureView.isHidden = true
         loadingView.setLoading(true)
@@ -788,6 +1031,7 @@ private final class VideoInspectViewport: NSView {
                 case .readyToPlay:
                     self.loadingView.setLoading(false)
                     self.failureView.isHidden = true
+                    self.onReady?()
                 case .failed:
                     self.loadingView.setLoading(false)
                     self.failureView.isHidden = false
@@ -802,11 +1046,38 @@ private final class VideoInspectViewport: NSView {
         }
     }
     func setCompareDimmed(_ dimmed: Bool) { compareDimmer.opacity = dimmed ? 1 : 0 }
-    var isMuted: Bool { player.isMuted }
-    func setMuted(_ muted: Bool) { player.isMuted = muted; updateMuteButton() }
+    var isMuted: Bool { webMView?.isVideoMuted ?? player?.isMuted ?? true }
+    func setMuted(_ muted: Bool) {
+        if let webMView { webMView.setVideoMuted(muted) }
+        else { player?.isMuted = muted }
+        updateMuteButton()
+    }
     var onActionMenu: ((NSEvent) -> Void)?
-    @objc private func toggleMute() { player.isMuted.toggle(); updateMuteButton() }
-    private func updateMuteButton() { muteButton.setSymbol(player.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"); muteButton.updateTooltip(player.isMuted ? "Mute".localized : "Unmute".localized); muteButton.isActive = !player.isMuted }
+    @objc private func toggleMute() { setMuted(!isMuted) }
+    private func updateMuteButton() { muteButton.setSymbol(isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"); muteButton.updateTooltip(isMuted ? "Mute".localized : "Unmute".localized); muteButton.isActive = !isMuted }
+    func play() { if let webMView { webMView.playVideo() } else { player?.playImmediately(atRate: 1) } }
+    func pause() { if let webMView { webMView.pauseVideo() } else { player?.pause() } }
+    func seek(to time: Double, completion: @escaping () -> Void) {
+        if let webMView { webMView.seek(to: time, completion: completion) }
+        else if let player {
+            player.seek(to: CMTime(seconds: time, preferredTimescale: 600),
+                        toleranceBefore: .zero, toleranceAfter: .zero) { _ in completion() }
+        } else { completion() }
+    }
+    func captureFrame(at time: Double, completion: @escaping (NSImage?) -> Void) {
+        if let webMView { webMView.captureFrame(completion); return }
+        guard let asset = player?.currentItem?.asset else { completion(nil); return }
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        let target = CMTime(seconds: max(0, time), preferredTimescale: 600)
+        guard let cgImage = try? generator.copyCGImage(at: target, actualTime: nil) else {
+            completion(nil); return
+        }
+        completion(NSImage(cgImage: cgImage,
+                           size: NSSize(width: cgImage.width, height: cgImage.height)))
+    }
     override func mouseDown(with event: NSEvent) {
         // Double-click toggles between aspect-fit and a 2× zoom, mirroring the
         // image viewer's double-click-to-zoom gesture.
@@ -818,18 +1089,356 @@ private final class VideoInspectViewport: NSView {
         onActivate?(); super.mouseDown(with: event)
     }
     private var zoomScale: CGFloat = 1
-    func fitToView() { zoomScale = 1; applyZoom() }
+    func fitToView() {
+        zoomScale = 1
+        playerView?.videoGravity = .resizeAspect
+        applyZoom()
+    }
     private func applyZoom() {
         let transform = zoomScale > 1.01
             ? CGAffineTransform(scaleX: zoomScale, y: zoomScale)
             : CGAffineTransform.identity
-        playerView.layer?.setAffineTransform(transform)
+        playerView?.layer?.setAffineTransform(transform)
+        webMView?.layer?.setAffineTransform(transform)
     }
     override func rightMouseDown(with event: NSEvent) {
         if let onActionMenu { onActionMenu(event) } else { super.rightMouseDown(with: event) }
     }
 }
-private final class PassthroughVideoPlayerView: AVPlayerView { override func hitTest(_ point: NSPoint) -> NSView? { nil } }
+private final class PassthroughVideoPlayerView: AVPlayerView {
+    weak var dropTarget: MediaDropCanvasView?
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        dropTarget?.acceptsDragging(sender) == true ? .copy : []
+    }
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { draggingEntered(sender) }
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        dropTarget?.performDrop(sender) == true
+    }
+}
+
+/// WebKit decodes WebM on macOS, while AVFoundation cannot open its container.
+/// A small local page owns the video element so its layout and playback can be
+/// controlled without the media document's built-in presentation overriding it.
+final class WebMVideoView: WKWebView {
+    weak var dropTarget: MediaDropCanvasView?
+    var onReady: ((Double, CGSize) -> Void)?
+    var onTimeUpdate: ((Double) -> Void)?
+    var onEnded: (() -> Void)?
+    var onFailure: (() -> Void)?
+    var onFrameReady: (() -> Void)?
+    private(set) var videoTime = 0.0
+    private(set) var videoDuration = 0.0
+    private(set) var videoSize = CGSize.zero
+    private(set) var isReady = false
+    private var wantsPlay = false
+    private var pendingSeek: (Double, (() -> Void)?)?
+    private var seekCompletion: (() -> Void)?
+    private var muted = true
+    private var loadToken = UUID()
+    private var wrapperDirectory: URL?
+    private var sourceURL: URL
+    private var usingFallback = false
+    private var fallbackDirectory: URL?
+    private var fallbackProcess: Process?
+
+    init(url: URL) {
+        sourceURL = url
+        let configuration = WKWebViewConfiguration()
+        configuration.mediaTypesRequiringUserActionForPlayback = []
+        let handler = WeakWebMMessageHandler()
+        configuration.userContentController.add(handler, name: "glanceVideo")
+        configuration.userContentController.addUserScript(WKUserScript(source: Self.bridgeScript,
+                                                                       injectionTime: .atDocumentEnd,
+                                                                       forMainFrameOnly: true))
+        super.init(frame: .zero, configuration: configuration)
+        handler.owner = self
+        registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.black.cgColor
+        loadSource(url)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit {
+        if fallbackProcess?.isRunning == true { fallbackProcess?.terminate() }
+        if let wrapperDirectory { try? FileManager.default.removeItem(at: wrapperDirectory) }
+        if let fallbackDirectory { try? FileManager.default.removeItem(at: fallbackDirectory) }
+    }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        dropTarget?.acceptsDragging(sender) == true ? .copy : []
+    }
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { draggingEntered(sender) }
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        dropTarget?.performDrop(sender) == true
+    }
+
+    private func releaseEmbeddedDragDestinations() {
+        func visit(_ view: NSView) {
+            for child in view.subviews {
+                child.unregisterDraggedTypes()
+                visit(child)
+            }
+        }
+        visit(self)
+    }
+
+    private static let bridgeScript = """
+        (() => {
+          const video = document.querySelector('video');
+          if (!video) return;
+          const fit = () => {
+            document.documentElement.style.cssText = 'margin:0;background:#000;overflow:hidden';
+            document.body.style.cssText = 'margin:0;background:#000;overflow:hidden';
+            video.style.setProperty('position', 'fixed', 'important');
+            video.style.setProperty('inset', '0', 'important');
+            video.style.setProperty('width', '100vw', 'important');
+            video.style.setProperty('height', '100vh', 'important');
+            video.style.setProperty('object-fit', 'contain', 'important');
+            video.style.setProperty('background', '#000', 'important');
+            video.controls = false;
+          };
+          fit();
+          video.muted = true;
+          video.pause();
+          const send = (type, extra = {}) => window.webkit.messageHandlers.glanceVideo.postMessage({type, ...extra});
+          video.addEventListener('loadedmetadata', () => { fit(); send('ready', {
+            duration: video.duration, width: video.videoWidth, height: video.videoHeight
+          }); });
+          video.addEventListener('canplay', () => { fit(); send('frameReady'); });
+          window.addEventListener('resize', fit);
+          video.addEventListener('timeupdate', () => send('time', {time: video.currentTime}));
+          video.addEventListener('seeked', () => send('seeked', {time: video.currentTime}));
+          video.addEventListener('ended', () => send('ended'));
+          video.addEventListener('error', () => send('error', {
+            code: video.error?.code ?? 0, message: video.error?.message ?? ''
+          }));
+          if (video.readyState >= 1) send('ready', {
+            duration: video.duration, width: video.videoWidth, height: video.videoHeight
+          });
+        })();
+        """
+
+    private func loadSource(_ url: URL) {
+        isReady = false
+        videoTime = 0
+        loadToken = UUID()
+        let token = loadToken
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GlanceWebM-\(UUID().uuidString)", isDirectory: true)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                let fileExtension = url.pathExtension.isEmpty ? "webm" : url.pathExtension.lowercased()
+                let source = url.isFileURL ? "video.\(fileExtension)" : url.absoluteString
+                if url.isFileURL {
+                    let local = directory.appendingPathComponent(source)
+                    do {
+                        try FileManager.default.linkItem(at: url, to: local)
+                    } catch {
+                        // External volumes cannot be hard-linked into /tmp.
+                        try FileManager.default.copyItem(at: url, to: local)
+                    }
+                }
+                let encodedSource = String(data: try JSONEncoder().encode(source), encoding: .utf8) ?? "\"\""
+                let html = """
+                    <!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+                    <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}
+                    video{display:block;width:100vw;height:100vh;object-fit:contain;background:#000}</style></head>
+                    <body><video muted playsinline preload="auto"></video>
+                    <script>document.querySelector('video').src = \(encodedSource);</script></body></html>
+                    """
+                let page = directory.appendingPathComponent("index.html")
+                try html.write(to: page, atomically: true, encoding: .utf8)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.loadToken == token else {
+                        try? FileManager.default.removeItem(at: directory)
+                        return
+                    }
+                    if let previous = self.wrapperDirectory {
+                        try? FileManager.default.removeItem(at: previous)
+                    }
+                    self.wrapperDirectory = directory
+                    self.loadFileURL(page, allowingReadAccessTo: directory)
+                }
+            } catch {
+                try? FileManager.default.removeItem(at: directory)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.loadToken == token else { return }
+                    Logger.error("WebMVideoView: could not prepare \(url.lastPathComponent): \(error.localizedDescription)")
+                    self.onFailure?()
+                }
+            }
+        }
+    }
+    func replaceSource(with url: URL) {
+        pendingSeek = (videoTime, nil)
+        if fallbackProcess?.isRunning == true { fallbackProcess?.terminate() }
+        fallbackProcess = nil
+        if let fallbackDirectory { try? FileManager.default.removeItem(at: fallbackDirectory) }
+        fallbackDirectory = nil
+        usingFallback = false
+        sourceURL = url
+        loadSource(url)
+    }
+    private static func ffmpegURL() -> URL? {
+        let pathEntries = (ProcessInfo.processInfo.environment["PATH"] ?? "")
+            .split(separator: ":").map(String.init)
+        let searchDirectories = pathEntries + [
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin").path,
+            "/opt/homebrew/bin", "/usr/local/bin"
+        ]
+        return searchDirectories.lazy
+            .map { URL(fileURLWithPath: $0).appendingPathComponent("ffmpeg") }
+            .first { FileManager.default.isExecutableFile(atPath: $0.path) }
+    }
+    private func transcodeUnsupportedWebM() -> Bool {
+        guard !usingFallback, sourceURL.isFileURL,
+              let ffmpeg = Self.ffmpegURL() else { return false }
+        usingFallback = true
+        isReady = false
+        let token = loadToken
+        let original = sourceURL
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GlanceWebMFallback-\(UUID().uuidString)", isDirectory: true)
+        let output = directory.appendingPathComponent("video.mp4")
+        let process = Process()
+        process.executableURL = ffmpeg
+        process.arguments = [
+            "-nostdin", "-hide_banner", "-loglevel", "error", "-i", original.path,
+            "-map", "0:v:0", "-map", "0:a?", "-sn",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart", "-y", output.path
+        ]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try process.run()
+        } catch {
+            try? FileManager.default.removeItem(at: directory)
+            Logger.error("WebMVideoView: fallback could not start: \(error.localizedDescription)")
+            return false
+        }
+        fallbackProcess = process
+        Logger.info("WebMVideoView: converting unsupported WebM \(original.lastPathComponent)")
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            process.waitUntilExit()
+            DispatchQueue.main.async {
+                guard let self, self.loadToken == token else {
+                    try? FileManager.default.removeItem(at: directory)
+                    return
+                }
+                self.fallbackProcess = nil
+                guard process.terminationStatus == 0,
+                      FileManager.default.fileExists(atPath: output.path) else {
+                    try? FileManager.default.removeItem(at: directory)
+                    Logger.error("WebMVideoView: fallback conversion failed (exit \(process.terminationStatus))")
+                    self.onFailure?()
+                    return
+                }
+                self.fallbackDirectory = directory
+                self.loadSource(output)
+            }
+        }
+        return true
+    }
+    func playVideo() {
+        wantsPlay = true
+        guard isReady else { return }
+        evaluateJavaScript("document.querySelector('video')?.play().catch(() => {})")
+    }
+    func pauseVideo() {
+        wantsPlay = false
+        evaluateJavaScript("document.querySelector('video')?.pause()")
+    }
+    func seek(to seconds: Double, completion: (() -> Void)? = nil) {
+        guard isReady else {
+            pendingSeek = (seconds, completion)
+            return
+        }
+        seekCompletion = completion
+        let target = max(0, seconds.isFinite ? seconds : 0)
+        evaluateJavaScript("(() => { const v = document.querySelector('video'); if (!v) return; if (Math.abs(v.currentTime - \(target)) < 0.01 && !v.seeking) { window.webkit.messageHandlers.glanceVideo.postMessage({type:'seeked',time:v.currentTime}); } else { v.currentTime = \(target); } })()") { [weak self] _, error in
+            if error != nil {
+                let completion = self?.seekCompletion
+                self?.seekCompletion = nil
+                completion?()
+            }
+        }
+    }
+    func setVideoMuted(_ value: Bool) {
+        muted = value
+        evaluateJavaScript("document.querySelector('video').muted = \(value ? "true" : "false")")
+    }
+    var isVideoMuted: Bool { muted }
+    func captureFrame(_ completion: @escaping (NSImage?) -> Void) {
+        let script = """
+            (() => { const v = document.querySelector('video');
+              if (!v || !v.videoWidth || !v.videoHeight) return null;
+              const c = document.createElement('canvas');
+              c.width = v.videoWidth; c.height = v.videoHeight;
+              c.getContext('2d').drawImage(v, 0, 0);
+              return c.toDataURL('image/png'); })()
+            """
+        evaluateJavaScript(script) { [weak self] result, _ in
+            if let dataURL = result as? String,
+               let data = Data(base64Encoded: String(dataURL.split(separator: ",", maxSplits: 1).last ?? "")),
+               let image = NSImage(data: data) {
+                completion(image)
+            } else {
+                self?.takeSnapshot(with: nil) { image, _ in completion(image) }
+            }
+        }
+    }
+    fileprivate func receive(_ message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any],
+              let type = body["type"] as? String else { return }
+        switch type {
+        case "ready":
+            releaseEmbeddedDragDestinations()
+            isReady = true
+            videoDuration = body["duration"] as? Double ?? 0
+            videoSize = CGSize(width: body["width"] as? Double ?? 0,
+                               height: body["height"] as? Double ?? 0)
+            onReady?(videoDuration, videoSize)
+            if let (time, completion) = pendingSeek {
+                pendingSeek = nil
+                seek(to: time, completion: completion)
+            }
+            if wantsPlay { playVideo() }
+            if !muted { setVideoMuted(false) }
+        case "time":
+            videoTime = body["time"] as? Double ?? videoTime
+            onTimeUpdate?(videoTime)
+        case "seeked":
+            videoTime = body["time"] as? Double ?? videoTime
+            let completion = seekCompletion
+            seekCompletion = nil
+            completion?()
+        case "ended":
+            wantsPlay = false
+            onEnded?()
+        case "frameReady":
+            releaseEmbeddedDragDestinations()
+            if !wantsPlay { pauseVideo() }
+            onFrameReady?()
+        case "error":
+            Logger.warning("WebMVideoView: media element failed (code \(body["code"] ?? 0)); \(body["message"] ?? "")")
+            if !transcodeUnsupportedWebM() { onFailure?() }
+        default: break
+        }
+    }
+}
+
+private final class WeakWebMMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var owner: WebMVideoView?
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        owner?.receive(message)
+    }
+}
 
 private final class WarmVideoTimeline: NSView {
     var value = 0.0 { didSet { needsDisplay = true } }; var maximum = 1.0 { didSet { needsDisplay = true } }; var onChange: ((Double) -> Void)?
@@ -843,6 +1452,9 @@ private final class WarmVideoTimeline: NSView {
 private final class VideoFilmstripView: NSView {
     var onSelect: ((Int) -> Void)?; private var infos: [MediaInfo] = []; private var selectedIndex = 0; private var compareIndices: (Int, Int)?
     func configure(infos: [MediaInfo], selectedIndex: Int, compareIndices: (Int, Int)?) { self.infos = infos; self.selectedIndex = selectedIndex; self.compareIndices = compareIndices; rebuild() }
+    func setThumbnail(_ image: NSImage, at index: Int) {
+        (subviews[safe: index] as? VideoFilmstripItem)?.setThumbnail(image)
+    }
     override init(frame frameRect: NSRect) { super.init(frame: frameRect) }; required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     private func rebuild() {
         subviews.forEach { $0.removeFromSuperview() }
@@ -890,6 +1502,7 @@ private final class VideoFilmstripItem: NSView {
     // Selection is communicated by the warm-cue border only (mirrors the image
     // filmstrip); the frosted background stays the same either way.
     func configure(selected: Bool, compared: Bool) { layer?.borderWidth = selected || compared ? 2 : 1; layer?.borderColor = PanelStyle.resolvedCG(selected || compared ? PanelStyle.accent : PanelStyle.inspectLine); setAccessibilityElement(true); setAccessibilityRole(.button) }
+    func setThumbnail(_ image: NSImage) { imageView.image = image }
     func loadThumbnail(from url: URL) { DispatchQueue.global(qos: .userInitiated).async { [weak self] in let generator = AVAssetImageGenerator(asset: AVAsset(url: url)); generator.appliesPreferredTrackTransform = true; guard let image = try? generator.copyCGImage(at: .zero, actualTime: nil) else { return }; DispatchQueue.main.async { self?.imageView.image = NSImage(cgImage: image, size: NSSize(width: CGFloat(image.width), height: CGFloat(image.height))) } } }
     override func layout() { super.layout(); layer?.cornerRadius = 9 * bounds.width / 96; imageView.frame = bounds.insetBy(dx: 5 * bounds.width / 96, dy: 5 * bounds.height / 96) }; override func mouseDown(with event: NSEvent) { onClick?() }
     override func accessibilityPerformPress() -> Bool { onClick?(); return true }
@@ -909,7 +1522,7 @@ private final class VideoTitlebar: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        layer?.backgroundColor = NSColor.clear.cgColor
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -924,10 +1537,13 @@ private final class VideoPlaybackBar: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(NSColor(srgbRed: 17 / 255, green: 18 / 255, blue: 23 / 255, alpha: 1))
-        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        layer?.borderWidth = 1
-        layer?.cornerRadius = 12
+        layer?.backgroundColor = NSColor(srgbRed: 22 / 255, green: 23 / 255,
+                                         blue: 25 / 255, alpha: 0.88).cgColor
+        layer?.cornerRadius = 15
+        layer?.shadowColor = NSColor.black.withAlphaComponent(0.24).cgColor
+        layer?.shadowOpacity = 1
+        layer?.shadowOffset = CGSize(width: 0, height: -8)
+        layer?.shadowRadius = 12
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -1007,6 +1623,66 @@ private final class VideoInformationView: NSView {
         } else { bitrate = "—" }
         let values = [dimensions, time, metadata?.videoCodec ?? "—", fps, audio, bitrate]
         for (label, value) in zip(valueLabels, values) { label.stringValue = value }
+    }
+}
+
+/// A captured still that remains clickable until the ten-second timeout.
+/// During dismissal the view's right edge stays fixed while its width shrinks;
+/// drawing at a fixed content width clips the still from left to right.
+private final class CaptureThumbnailButton: NSButton {
+    var contentWidth: CGFloat = 220 { didSet { needsDisplay = true } }
+    var timecode = "" { didSet { needsDisplay = true } }
+    var capturedImage: NSImage? { didSet { needsDisplay = true } }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        title = ""
+        isBordered = false
+        imagePosition = .noImage
+        setAccessibilityLabel("Open captured frame".localized)
+        wantsLayer = true
+        layer?.shadowColor = NSColor.black.cgColor
+        layer?.shadowOpacity = 0.52
+        layer?.shadowOffset = CGSize(width: 0, height: -7)
+        layer?.shadowRadius = 13
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let content = NSRect(x: bounds.maxX - contentWidth, y: 0,
+                             width: contentWidth, height: bounds.height)
+        NSGraphicsContext.saveGraphicsState()
+        let cornerRadius = content.height * 0.12
+        NSBezierPath(roundedRect: content, xRadius: cornerRadius, yRadius: cornerRadius).addClip()
+        NSColor(srgbRed: 26 / 255, green: 28 / 255, blue: 33 / 255, alpha: 1).setFill()
+        NSBezierPath(rect: content).fill()
+        if let image = capturedImage, image.size.width > 0, image.size.height > 0 {
+            let sourceAspect = image.size.width / image.size.height
+            let targetAspect = content.width / max(1, content.height)
+            let source: NSRect
+            if sourceAspect > targetAspect {
+                let width = image.size.height * targetAspect
+                source = NSRect(x: (image.size.width - width) / 2, y: 0,
+                                width: width, height: image.size.height)
+            } else {
+                let height = image.size.width / targetAspect
+                source = NSRect(x: 0, y: (image.size.height - height) / 2,
+                                width: image.size.width, height: height)
+            }
+            image.draw(in: content, from: source, operation: .sourceOver, fraction: 1)
+        }
+        let shade = NSRect(x: content.minX, y: content.minY,
+                           width: content.width, height: min(35, content.height * 0.28))
+        NSColor.black.withAlphaComponent(0.78).setFill()
+        NSBezierPath(rect: shade).fill()
+        let fontSize = max(8, min(20, content.height * 0.16))
+        let label = NSAttributedString(string: timecode, attributes: [
+            .font: PanelStyle.inspectFont(ofSize: fontSize, weight: .medium),
+            .foregroundColor: NSColor.white
+        ])
+        label.draw(at: NSPoint(x: content.minX + max(5, content.width * 0.055),
+                               y: shade.midY - label.size().height / 2))
+        NSGraphicsContext.restoreGraphicsState()
     }
 }
 

@@ -744,8 +744,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         previewPanel?.closeWithoutAffectingContent()
         videoCompareWindow?.close()
         let window = VideoCompareWindow(infos: infos, focusedIndex: focusedIndex, startsInCompare: infos.count == 2)
-        // Frame captures hand off to the image inspect window: first capture
-        // opens it, subsequent ones append to its filmstrip.
+        // Clicking a captured-frame thumbnail hands it to Image Inspect:
+        // the first opens the window and later clicks append to its filmstrip.
         window?.onCaptureFrame = { [weak self] url in
             self?.openCapturedFrame(url: url)
         }
@@ -763,7 +763,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         } else {
             openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
         }
-        // Capture is initiated by a click in Video Inspect. Reorder once now
+        // The thumbnail is clicked in Video Inspect. Reorder once now
         // and once on the next run-loop turn, after AppKit finishes the source
         // button event, so Video Inspect cannot reclaim the front position.
         NSApp.activate(ignoringOtherApps: true)
@@ -934,6 +934,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private func makeHomeWindow() -> HomeWindow {
         let window = HomeWindow(imageLoader: imageLoader ?? ImageLoader())
         window.onOpenImages = { [weak self] urls in self?.openImages(urls) }
+        window.onOpenMedia = { [weak self] urls in self?.openMediaFromHome(urls) }
         window.onOpenFolder = { [weak self] folder in self?.openFolder(folder) }
         window.onOpenRecent = { [weak self] info in self?.openRecent(info) }
         window.onOpenTasks = { [weak self] in self?.openTasks() }
@@ -953,6 +954,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let mode = Self.preferredInspectMode(for: infos.count)
         openImageInspect(infos: infos, loaded: loaded, focusedIndex: 0, preferredMode: mode)
         closeHomeIfVisible()
+    }
+
+    private func openMediaFromHome(_ urls: [URL]) {
+        let detector = pathDetector ?? PathDetector()
+        let infos = urls.compactMap { MediaInfo.from(detector.localKind(for: $0.path)) }
+            .filter { $0.kind == .image || $0.kind == .video }
+        guard !infos.isEmpty else { return }
+        if infos.allSatisfy({ $0.kind == .image }) {
+            openImages(infos.map(\.url))
+        } else if infos.allSatisfy({ $0.kind == .video }) {
+            openVideoCompare(infos: infos)
+            closeHomeIfVisible()
+        } else {
+            openImageInspect(infos: infos,
+                             loaded: Array<LoadedMedia?>(repeating: nil, count: infos.count),
+                             focusedIndex: 0, preferredMode: .browse)
+            closeHomeIfVisible()
+        }
     }
 
     /// Persist images opened from Home / paste / drop / folder into history so

@@ -1799,6 +1799,7 @@ final class MediaTileView: NSView {
     private var pathLabel: NSTextField?
 
     private var playerView: AVPlayerView?
+    private var webMPlayerView: WebMVideoView?
     private var player: AVPlayer?
     private var endObserver: NSObjectProtocol?
 
@@ -2109,6 +2110,7 @@ final class MediaTileView: NSView {
             mediaContainer.frame = bounds
             imageLayer.frame = mediaContainer.bounds
             playerView?.frame = mediaContainer.bounds
+            webMPlayerView?.frame = mediaContainer.bounds
             loadFailedView.frame = centeredFailureFrame(in: mediaContainer.bounds)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -2155,6 +2157,7 @@ final class MediaTileView: NSView {
             mediaContainer.frame = NSRect(x: 0, y: 14, width: bounds.width, height: bounds.height - 14)
             imageLayer.frame = mediaContainer.bounds
             playerView?.frame = mediaContainer.bounds
+            webMPlayerView?.frame = mediaContainer.bounds
             loadFailedView.frame = centeredFailureFrame(in: mediaContainer.bounds)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -2281,12 +2284,15 @@ final class MediaTileView: NSView {
 
     func teardown() {
         player?.pause()
+        webMPlayerView?.pauseVideo()
+        webMPlayerView?.stopLoading()
         if let obs = endObserver {
             NotificationCenter.default.removeObserver(obs)
             endObserver = nil
         }
         player = nil
         playerView?.player = nil
+        webMPlayerView = nil
     }
 
     private func showOpenablePlaceholder(for info: MediaInfo) {
@@ -2346,6 +2352,14 @@ final class MediaTileView: NSView {
     }
 
     private func attachPlayer(url: URL) {
+        if url.pathExtension.lowercased() == "webm" {
+            let webView = WebMVideoView(url: url)
+            webView.frame = mediaContainer.bounds
+            webView.onReady = { [weak webView] _, _ in webView?.playVideo() }
+            mediaContainer.addSubview(webView)
+            webMPlayerView = webView
+            return
+        }
         let pv = PassthroughPlayerView(frame: mediaContainer.bounds)
         pv.controlsStyle = .none
         pv.videoGravity = (style == .singleCard) ? .resizeAspect : .resizeAspectFill

@@ -113,8 +113,10 @@
 "Mute Right" = "静音右侧";
 "Unmute Right" = "取消右侧静音";
 "Capture frame" = "截帧";
+"Open captured frame" = "打开截帧";
 "Replay" = "重播";
 "Video information" = "视频信息";
+"More" = "更多";
 "Duration" = "时长";
 "Size" = "大小";
 "Path" = "路径";
@@ -132,6 +134,7 @@
 "Audio codec" = "音频编码";
 "Video bitrate" = "视频码率";
 "Actions" = "操作";
+"Automatic hide" = "自动隐藏";
 "Refresh" = "刷新";
 "Direction" = "方向";
 "Copy Image" = "复制图片";
@@ -301,10 +304,14 @@
 // MARK: - Home / Launcher
 "Open Home" = "打开主页";
 "Open images to inspect" = "打开图片开始查看";
+"Open media to inspect" = "打开图片或视频开始查看";
 "Open something to inspect" = "打开内容开始查看";
 "Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder." = "Glance 从文件开始工作。把图片拖到这里，或选择文件和文件夹——Glance 会读取文件夹里的每一张图片。";
+"Drop images or videos here, or choose files and folders." = "把图片或视频拖到这里，也可以选择文件或文件夹。";
 "Drag images or a folder here" = "拖入图片或文件夹";
+"Drag images, videos or a folder here" = "拖入图片、视频或文件夹";
 "PNG · JPEG · HEIC · WebP · TIFF · RAW  and more" = "PNG · JPEG · HEIC · WebP · TIFF · RAW  等";
+"PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM  and more" = "PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM 等";
 "Open Files…" = "打开文件…";
 "Open Folder…" = "打开文件夹…";
 "FOLDER" = "文件夹";

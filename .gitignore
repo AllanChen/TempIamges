@@ -41,3 +41,7 @@ prototype/*
 
 # Cloudflare Pages build output
 dist/
+
+# Local tool state
+.wrangler/
+website/.openai/
