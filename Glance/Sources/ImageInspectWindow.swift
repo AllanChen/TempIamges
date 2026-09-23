@@ -603,6 +603,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // Market panel), not overlaid on the picture. The hosting panel owns
         // `infoPanel`; nothing is added to the canvas here.
         infoPanel.autoresizingMask = [.width, .height]
+        infoPanel.onRunDefaultWidget = { [weak self] in self?.runDefaultWidgetTapped() }
+        infoPanel.onUpscale = { [weak self] in self?.runUpscaleWidget() }
 
         // MARK: Statusbar (26pt) — file summary left, task polling right.
         statusbar.wantsLayer = true
@@ -4036,51 +4038,61 @@ private final class FigmaAddButton: NSControl {
     }
 }
 
-/// Image Inspect's Figma-defined right inspector. Unlike the legacy reusable
-/// difference cards, this is a stable 434×808 design surface with one-column
-/// metadata rows, quick actions, and a bottom-right Add affordance.
+/// Image Inspect's Figma-defined right inspector. Matches the
+/// "Dark Refresh v3 / Image Inspect / Clean Editable" image information panel:
+/// frosted dark card, title + filename hint, two-column metadata rows, and
+/// Quick Actions buttons.
 private final class FigmaImageInspectorView: NSView {
-    // Information-only panel: no Quick Actions, no Add button. Just the image's
-    // metadata, presented in a readable header + key/value list.
-    private let titleLabel = NSTextField(labelWithString: "Image Information".localized)
+    var onRunDefaultWidget: (() -> Void)?
+    var onUpscale: (() -> Void)?
+
+    private let titleLabel = NSTextField(labelWithString: "Image information".localized)
     private let subtitleLabel = NSTextField(labelWithString: "")
-    private let keys = ["Name", "Dimensions", "Format", "File size", "Color profile", "Alpha", "Created"]
+    // Figma panel shows six metadata rows; Alpha is omitted to match the design.
+    private let keys = ["Name", "Dimensions", "Format", "File size", "Color profile", "Created"]
     private var keyLabels: [NSTextField] = []
     private var valueLabels: [NSTextField] = []
     private var dividers: [NSView] = []
+    private let quickActionsLabel = NSTextField(labelWithString: "QUICK ACTIONS".localized)
+    private let removeButton = PanelButton(title: "Remove Background".localized, target: nil, action: nil)
+    private let upscaleButton = PanelButton(title: "Upscale 2×".localized, target: nil, action: nil)
     private var items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)] = []
 
-    // Layout metrics (points at 1× panel scale).
-    private let padX: CGFloat = 24
-    private let headerTop: CGFloat = 28
-    private let rowStartY: CGFloat = 96
-    private let rowHeight: CGFloat = 52
+    // MARK: Layout metrics (points at 1×, matching Figma)
+    private let padX: CGFloat = 23
+    private let rowInsetX: CGFloat = 35
+    private let rowValueX: CGFloat = 173
+    private let headerTop: CGFloat = 23
+    private let headerDividerY: CGFloat = 81
+    private let rowStartY: CGFloat = 111
+    private let rowHeight: CGFloat = 46
+    private let quickActionsTop: CGFloat = 413
+    private let buttonHeight: CGFloat = 42
+    private let buttonSpacing: CGFloat = 10
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
 
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 20, weight: .semibold)
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 17, weight: .semibold)
         titleLabel.textColor = PanelStyle.textPrimary
         addSubview(titleLabel)
 
-        subtitleLabel.font = PanelStyle.inspectFont(ofSize: 12)
-        subtitleLabel.textColor = PanelStyle.textTertiary
+        subtitleLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        subtitleLabel.textColor = PanelStyle.textSecondary
         subtitleLabel.lineBreakMode = .byTruncatingMiddle
         addSubview(subtitleLabel)
 
         for key in keys {
-            // Key: small, muted, uppercase-feel label above the value.
             let keyLabel = NSTextField(labelWithString: key.localized)
-            keyLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
+            keyLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
             keyLabel.textColor = PanelStyle.textTertiary
             addSubview(keyLabel)
             keyLabels.append(keyLabel)
 
-            // Value: larger, high-contrast, selectable — the thing to read.
             let valueLabel = NSTextField(labelWithString: "—")
-            valueLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .medium)
+            valueLabel.font = PanelStyle.inspectFont(ofSize: 13)
             valueLabel.textColor = PanelStyle.textPrimary
             valueLabel.lineBreakMode = .byTruncatingMiddle
             valueLabel.isSelectable = true
@@ -4093,6 +4105,31 @@ private final class FigmaImageInspectorView: NSView {
             addSubview(divider)
             dividers.append(divider)
         }
+        // One extra divider for the header separator (white at 12% opacity).
+        let headerDivider = NSView()
+        headerDivider.wantsLayer = true
+        addSubview(headerDivider)
+        dividers.insert(headerDivider, at: 0)
+
+        quickActionsLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
+        quickActionsLabel.textColor = PanelStyle.textSecondary
+        addSubview(quickActionsLabel)
+
+        let buttonFill = NSColor(srgbRed: 29 / 255, green: 30 / 255, blue: 34 / 255, alpha: 1)
+        let buttonBorder = NSColor.white.withAlphaComponent(0.12)
+        for button in [removeButton, upscaleButton] {
+            button.normalBackground = buttonFill
+            button.hoverBackground = buttonFill.withAlphaComponent(0.86)
+            button.titleColor = PanelStyle.textPrimary
+            button.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+            button.layer?.cornerRadius = 10
+            button.layer?.borderColor = buttonBorder.cgColor
+            addSubview(button)
+        }
+        removeButton.target = self
+        removeButton.action = #selector(removeTapped)
+        upscaleButton.target = self
+        upscaleButton.action = #selector(upscaleTapped)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -4100,26 +4137,35 @@ private final class FigmaImageInspectorView: NSView {
     override func layout() {
         super.layout()
         guard bounds.width > 0, bounds.height > 0 else { return }
-        let contentW = bounds.width - padX * 2
-        // Value sits at 44% across; key label spans the left, value the right.
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 20, weight: .semibold)
-        subtitleLabel.font = PanelStyle.inspectFont(ofSize: 12)
-        for label in keyLabels { label.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold) }
-        for label in valueLabels { label.font = PanelStyle.inspectFont(ofSize: 15, weight: .medium) }
 
         func topFrame(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
             NSRect(x: x, y: bounds.height - y - h, width: w, height: h)
         }
-        titleLabel.frame = topFrame(padX, headerTop, contentW, 24)
-        subtitleLabel.frame = topFrame(padX, headerTop + 28, contentW, 16)
 
-        // Each row: key label on top, value below, then a hairline divider.
+        titleLabel.frame = topFrame(padX, headerTop, bounds.width - padX * 2, 21)
+        subtitleLabel.frame = topFrame(padX, headerTop + 28, bounds.width - padX * 2, 13)
+
+        let headerDivider = dividers[0]
+        headerDivider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.textPrimary.withAlphaComponent(0.12))
+        headerDivider.frame = topFrame(padX, headerDividerY, bounds.width - padX * 2, 1)
+
         for index in keys.indices {
             let y = rowStartY + CGFloat(index) * rowHeight
-            keyLabels[index].frame = topFrame(padX, y, contentW, 14)
-            valueLabels[index].frame = topFrame(padX, y + 18, contentW, 20)
-            dividers[index].frame = topFrame(padX, y + rowHeight - 8, contentW, 1)
+            keyLabels[index].frame = topFrame(rowInsetX, y, rowValueX - rowInsetX - 8, 16)
+            valueLabels[index].frame = topFrame(rowValueX, y, bounds.width - rowValueX - rowInsetX, 16)
+            // Row dividers sit below each value (except we reuse the first divider
+            // for the header; metadata dividers start at index 1).
+            let dividerIndex = index + 1
+            if dividerIndex < dividers.count {
+                dividers[dividerIndex].frame = topFrame(rowInsetX, y + 30, bounds.width - rowInsetX * 2, 1)
+            }
         }
+
+        quickActionsLabel.frame = topFrame(padX, quickActionsTop, bounds.width - padX * 2, 12)
+        let buttonY = quickActionsTop + 28
+        let buttonW = bounds.width - padX * 2
+        removeButton.frame = topFrame(padX, buttonY, buttonW, buttonHeight)
+        upscaleButton.frame = topFrame(padX, buttonY + buttonHeight + buttonSpacing, buttonW, buttonHeight)
     }
 
     func show(items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)]) {
@@ -4151,24 +4197,25 @@ private final class FigmaImageInspectorView: NSView {
             info.formatName.isDisplayableValue ? info.formatName : "—",
             size,
             item.metadata?.colorSpace?.isDisplayableValue == true ? item.metadata!.colorSpace! : "—",
-            item.metadata?.hasAlpha.map { $0 ? "Yes".localized : "No".localized } ?? "—",
             created
         ]
         for (label, value) in zip(valueLabels, values) { label.stringValue = value }
         subtitleLabel.stringValue = info.filename
     }
+
+    @objc private func removeTapped() { onRunDefaultWidget?() }
+    @objc private func upscaleTapped() { onUpscale?() }
 }
 
 /// Image Information as its own frosted child window, attached to the right edge
-/// of the Image Inspect window — presented OUTSIDE the image (same pattern as
-/// the Widget Market panel) rather than overlaid on the picture.
+/// of the Image Inspect window — matches the Figma panel exactly.
 final class ImageInfoPanel: NSPanel {
-    private static let panelWidth: CGFloat = 340
+    private static let panelWidth: CGFloat = 372
+    private static let panelHeight: CGFloat = 684
     private weak var attachedParent: NSWindow?
-    private let closeButton = NSButton(title: "", target: nil, action: nil)
 
     init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: Self.panelWidth, height: 620),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: Self.panelWidth, height: Self.panelHeight),
                    styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
@@ -4178,43 +4225,56 @@ final class ImageInfoPanel: NSPanel {
         appearance = NSAppearance(named: .darkAqua)
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: Self.panelWidth, height: 620))
+        // Outer wrapper casts the Figma shadow; inner content clips the frost.
+        let wrapper = NSView(frame: NSRect(x: 0, y: 0, width: Self.panelWidth, height: Self.panelHeight))
+        wrapper.wantsLayer = true
+        wrapper.layer?.masksToBounds = false
+        wrapper.layer?.shadowColor = NSColor.black.withAlphaComponent(0.32).cgColor
+        wrapper.layer?.shadowOffset = CGSize(width: 0, height: -12)
+        wrapper.layer?.shadowRadius = 28
+        wrapper.layer?.shadowOpacity = 1
+
+        let root = NSView(frame: wrapper.bounds)
         root.wantsLayer = true
         root.layer?.cornerRadius = 16
         root.layer?.masksToBounds = true
         root.layer?.borderWidth = 1
-        root.layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
+        root.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        root.autoresizingMask = [.width, .height]
+        wrapper.addSubview(root)
 
-        // Frosted semi-transparent black base, matching the main window.
-        let frost = PanelStyle.makeFrostedBase(cornerRadius: 16)
-        frost.frame = root.bounds
-        frost.autoresizingMask = [.width, .height]
-        root.addSubview(frost)
+        // Frosted base: NSVisualEffectView samples from behind the panel, and a
+        // tint layer biases it toward the Figma rgba(22,23,25,0.92) fill.
+        let blur = NSVisualEffectView()
+        blur.material = .hudWindow
+        blur.blendingMode = .behindWindow
+        blur.state = .active
+        blur.appearance = NSAppearance(named: .vibrantDark)
+        blur.wantsLayer = true
+        blur.layer?.cornerRadius = 16
+        blur.layer?.masksToBounds = true
+        blur.frame = root.bounds
+        blur.autoresizingMask = [.width, .height]
+        root.addSubview(blur)
 
-        closeButton.bezelStyle = .texturedRounded
-        closeButton.isBordered = false
-        closeButton.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close".localized)
-        closeButton.imagePosition = .imageOnly
-        closeButton.contentTintColor = PanelStyle.textSecondary
-        closeButton.toolTip = "Close".localized
-        closeButton.target = self
-        closeButton.action = #selector(closeTapped)
-        closeButton.frame = NSRect(x: root.bounds.width - 40, y: root.bounds.height - 40, width: 28, height: 28)
-        closeButton.autoresizingMask = [.minXMargin, .minYMargin]
+        let tint = CALayer()
+        tint.backgroundColor = NSColor(srgbRed: 22 / 255, green: 23 / 255, blue: 25 / 255, alpha: 0.92).cgColor
+        tint.cornerRadius = 16
+        tint.frame = root.bounds
+        tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        blur.layer?.addSublayer(tint)
 
-        contentView = root
-        root.addSubview(closeButton, positioned: .above, relativeTo: nil)
+        contentView = wrapper
     }
 
-    /// Insert the metadata view into the frosted root (below the close button,
-    /// inset a touch so it never sits flush against the panel edge).
     func setContent(_ view: NSView) {
-        guard let root = contentView else { return }
+        guard let wrapper = contentView,
+              let root = wrapper.subviews.first else { return }
         if view.superview !== root {
             view.removeFromSuperview()
             view.frame = root.bounds
             view.autoresizingMask = [.width, .height]
-            root.addSubview(view, positioned: .below, relativeTo: closeButton)
+            root.addSubview(view)
         }
     }
 
@@ -4231,20 +4291,16 @@ final class ImageInfoPanel: NSPanel {
         orderOut(nil)
     }
 
-    @objc private func closeTapped() {
-        // Route through the parent so its info button state stays in sync.
-        (attachedParent as? ImageInspectWindow)?.dismissInfoPanel()
-    }
-
     private func position(alongside parent: NSWindow) {
         let gap: CGFloat = 2
         let width = Self.panelWidth
+        let height = Self.panelHeight
         let visible = (parent.screen ?? NSScreen.main)?.visibleFrame ?? parent.frame
-        let height = min(parent.frame.height, visible.height)
-        // Attach on the parent's right; if it would run off-screen, flip left.
         var x = parent.frame.maxX + gap
         if x + width > visible.maxX { x = max(visible.minX, parent.frame.minX - width - gap) }
         x = max(visible.minX, min(x, visible.maxX - width))
+        // Keep the fixed 684pt design height; just slide it up/down to stay on
+        // screen as much as possible.
         let y = max(visible.minY, min(parent.frame.minY, visible.maxY - height))
         setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
         contentView?.layoutSubtreeIfNeeded()

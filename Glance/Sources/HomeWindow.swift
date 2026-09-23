@@ -26,7 +26,6 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
 
     private enum Metric {
         static let titlebarH: CGFloat = 52
-        static let toolbarH: CGFloat = 56
         static let statusH: CGFloat = 30
         static let recentWidth: CGFloat = 380
         static let pad: CGFloat = 40
@@ -45,7 +44,6 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     private let titlebar = HomeTitlebar()
     private let windowTitleLabel = NSTextField(labelWithString: "")
     private let subtitleLabel = NSTextField(labelWithString: "")
-    private let toolbarBar = NSView()
     private let openSurface = HomeFlippedView()
     private let recentColumn = HomeFlippedView()
     private let statusbar = NSView()
@@ -89,9 +87,6 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     private let recentScroll = NSScrollView()
     private let recentDocView = HomeFlippedView()
     private var recentCards: [RecentCardView] = []
-
-    private var toolbarLeadingButtons: [NSButton] = []
-    private var toolbarTrailingButtons: [NSButton] = []
 
     // MARK: Init
 
@@ -157,18 +152,6 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         titlebar.addSubview(minimizeTrafficButton)
         titlebar.addSubview(zoomTrafficButton)
 
-        // Toolbar
-        toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        toolbarBar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        toolbarBar.layer?.borderWidth = 1
-        contentContainer.addSubview(toolbarBar)
-        addToolbarButton(symbol: "doc", tooltip: "Open Files…".localized, action: #selector(openFilesTapped))
-        addToolbarButton(symbol: "folder", tooltip: "Open Folder…".localized, action: #selector(openFolderTapped))
-        addToolbarButton(symbol: "checklist", tooltip: "Tasks".localized, action: #selector(tasksTapped), trailing: true)
-        addToolbarButton(symbol: "slider.horizontal.3", tooltip: "Preferences...".localized, action: #selector(preferencesTapped), trailing: true)
-        addToolbarButton(symbol: "info.circle", tooltip: "About Glance".localized, action: #selector(aboutTapped), trailing: true)
-
         // Left open surface
         openSurface.wantsLayer = true
         openSurface.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
@@ -216,12 +199,6 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         label.alignment = align
         label.lineBreakMode = .byTruncatingTail
         label.cell?.usesSingleLineMode = true
-    }
-
-    private func addToolbarButton(symbol: String, tooltip: String, action: Selector, trailing: Bool = false) {
-        let btn = PanelStyle.makeIconButton(symbol: symbol, tooltip: tooltip, target: self, action: action)
-        toolbarBar.addSubview(btn)
-        if trailing { toolbarTrailingButtons.append(btn) } else { toolbarLeadingButtons.append(btn) }
     }
 
     private func buildOpenSurface() {
@@ -317,24 +294,13 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         windowTitleLabel.frame = NSRect(x: 100, y: Metric.titlebarH / 2, width: W - 200, height: 20)
         subtitleLabel.frame = NSRect(x: 100, y: Metric.titlebarH / 2 - 17, width: W - 200, height: 14)
 
-        // Toolbar
-        toolbarBar.frame = NSRect(x: 0, y: H - Metric.titlebarH - Metric.toolbarH, width: W, height: Metric.toolbarH)
-        let btn: CGFloat = 36
-        let btnY = (Metric.toolbarH - btn) / 2
-        for (i, b) in toolbarLeadingButtons.enumerated() {
-            b.frame = NSRect(x: 20 + CGFloat(i) * 44, y: btnY, width: btn, height: btn)
-        }
-        for (i, b) in toolbarTrailingButtons.enumerated() {
-            b.frame = NSRect(x: W - 20 - btn - CGFloat(i) * 44, y: btnY, width: btn, height: btn)
-        }
-
         // Statusbar
         statusbar.frame = NSRect(x: 0, y: 0, width: W, height: Metric.statusH)
         leftStatusLabel.frame = NSRect(x: 20, y: (Metric.statusH - 15) / 2, width: 460, height: 15)
         centerHintLabel.frame = NSRect(x: 0, y: (Metric.statusH - 15) / 2, width: W, height: 15)
 
         // Body
-        let bodyTop = H - Metric.titlebarH - Metric.toolbarH
+        let bodyTop = H - Metric.titlebarH
         let bodyH = bodyTop - Metric.statusH
         let openW = W - Metric.recentWidth
         openSurface.frame = NSRect(x: 0, y: Metric.statusH, width: openW, height: bodyH)

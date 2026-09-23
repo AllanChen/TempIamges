@@ -926,6 +926,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    private func closeHomeIfVisible() {
+        guard let window = homeWindow, window.isVisible else { return }
+        window.orderOut(nil)
+    }
+
     private func makeHomeWindow() -> HomeWindow {
         let window = HomeWindow(imageLoader: imageLoader ?? ImageLoader())
         window.onOpenImages = { [weak self] urls in self?.openImages(urls) }
@@ -947,6 +952,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let loaded = [LoadedMedia?](repeating: nil, count: infos.count)
         let mode = Self.preferredInspectMode(for: infos.count)
         openImageInspect(infos: infos, loaded: loaded, focusedIndex: 0, preferredMode: mode)
+        closeHomeIfVisible()
     }
 
     /// Persist images opened from Home / paste / drop / folder into history so
@@ -966,10 +972,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         case .image:
             recordImagesInHistory([info.url])
             openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
+            closeHomeIfVisible()
         case .video:
             openVideoCompare(infos: [info], focusedIndex: 0)
+            closeHomeIfVisible()
         case .markdown, .text, .pdf, .webPage:
             openInViewerWindow(info: info)
+            closeHomeIfVisible()
         case .other:
             if info.isLocal { NSWorkspace.shared.activateFileViewerSelecting([info.url]) }
             else { NSWorkspace.shared.open(info.url) }
