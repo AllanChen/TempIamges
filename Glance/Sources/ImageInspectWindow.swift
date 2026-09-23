@@ -88,16 +88,22 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let taskSummaryLabel = NSTextField(labelWithString: "")
     private let taskToast = TaskToastView()
     private let taskOverlayShade = InspectNonHitTestingView()
-    private let inspectorContainer = NSView()
     /// Themed action menu panel (frosted dark, warm-cue selection); rebuilt
     /// per presentation so enabled states and titles are always fresh.
     private var actionsPanel: ActionMenuPanel?
     private lazy var errorTooltip = ErrorTooltip()
     private lazy var toastWindow = InspectToastWindow()
     private let canvasContainer = MediaDropCanvasView()
+    /// Frosted semi-transparent black base filling the window behind the media,
+    /// so the 8pt inset between the image and the window edge reads as a dark
+    /// frosted frame rather than a transparent gap.
+    private let frostedBase = PanelStyle.makeFrostedBase(cornerRadius: 16)
     private let primaryViewport = InspectImageViewport()
     private let secondaryViewport = InspectImageViewport()
     private let sliderViewport = ImageRevealView()
+    /// Figma Compare Mode "Compare / Divider": a 2pt dark seam (#0b0c0e)
+    /// between the two panes so the split reads as an edge, not a gap.
+    private let compareDivider = InspectNonHitTestingView()
     /// Inline file preview for mixed-content sessions: text/markdown/pdf/web
     /// render in the web view; video/unsupported/folder use the placeholder.
     private let fileWebView = InspectFileWebView()
@@ -105,6 +111,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private var fileContentGeneration = UUID()
     private let filmstrip = ImageFilmstripView()
     private let infoPanel = FigmaImageInspectorView()
+    /// The Image Information child window (attached to the right edge, outside
+    /// the image), presenting `infoPanel` like the Widget Market panel.
+    private lazy var infoWindow = ImageInfoPanel()
     private var isClosingProgrammatically = false
     /// In-window right inspector (280pt, collapsible) — V2 spec replaces the
     /// separate floating info window.
@@ -233,6 +242,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // no persistent inspector, status bar, toast, or filmstrip.
         infoVisible = false
         infoButton.isActive = false
+        infoWindow.dismiss()
         // Re-fit the window to the next image that resolves.
         fittedImageSize = nil
         // If the focused image is already loaded (e.g. reopened), fit now so the
@@ -265,6 +275,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         actionsPanel?.dismissChain()
         actionsPanel = nil
+        infoWindow.dismiss()
         removeChildWindow(toastWindow)
         toastWindow.orderOut(nil)
         removeChildWindow(ocrWindow)
@@ -375,7 +386,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
            session.comparisonStyle == .sideBySide {
             let point = canvasContainer.convert(event.locationInWindow, from: nil)
             let overlays: [NSView] = [titlebar, toolbarBar, filmstrip, statusbar,
-                                      inspectorContainer, modeSwitcher, taskToast,
+                                      modeSwitcher, taskToast,
                                       taskSummaryLabel, taskSummaryDot]
             let hitsVisibleOverlay = overlays.contains { view in
                 !view.isHidden && view.alphaValue >= 0.05 && view.frame.contains(point)
@@ -439,13 +450,18 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         contentView = canvasContainer
         let root = canvasContainer
         root.wantsLayer = true
-        // The window IS the image: no plate, no border, no rounded corners.
-        // The media fills every pixel to the window edge, so any border or
-        // corner radius would read as a dark frame around the picture.
+        // Frosted semi-transparent black panel: the media is inset 8pt so this
+        // dark frosted base shows as a thin frame around the image. Rounded
+        // corners + a hairline edge make it read as a floating window.
         root.layer?.backgroundColor = NSColor.clear.cgColor
-        root.layer?.cornerRadius = 0
-        root.layer?.borderWidth = 0
+        root.layer?.cornerRadius = 16
+        root.layer?.borderWidth = 1
+        root.layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
         root.layer?.masksToBounds = true
+        // Backmost: the frosted base fills the whole window behind everything.
+        frostedBase.frame = root.bounds
+        frostedBase.autoresizingMask = [.width, .height]
+        root.addSubview(frostedBase)
 
         // Image Inspect is the general mixed-content window: accept any file
         // or URL, then classify it after drop. Images stay here; videos route
@@ -465,6 +481,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             view.autoresizingMask = [.width, .height]
             canvasContainer.addSubview(view)
         }
+        // Compare seam (#0b0c0e), above the two panes; hidden outside compare.
+        compareDivider.wantsLayer = true
+        compareDivider.layer?.backgroundColor = NSColor(
+            srgbRed: 11 / 255, green: 12 / 255, blue: 14 / 255, alpha: 1
+        ).cgColor
+        compareDivider.isHidden = true
+        canvasContainer.addSubview(compareDivider, positioned: .above, relativeTo: secondaryViewport)
         fileWebView.isHidden = true
         filePlaceholder.isHidden = true
         primaryViewport.onViewportChange = { [weak self] state in
@@ -575,25 +598,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         toolbarBar.isHidden = false
         canvasContainer.addSubview(toolbarBar, positioned: .above, relativeTo: nil)
 
-        // MARK: On-demand information panel — floats over the image rather than
-        // reserving a permanent right rail in the v3 operation state.
-        inspectorContainer.wantsLayer = true
-        inspectorContainer.layer?.backgroundColor = PanelStyle.inspectChrome.withAlphaComponent(0.94).cgColor
-        inspectorContainer.layer?.borderWidth = 1
-        inspectorContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
-        inspectorContainer.layer?.cornerRadius = 16
-        inspectorContainer.layer?.shadowColor = NSColor.black.withAlphaComponent(0.30).cgColor
-        inspectorContainer.layer?.shadowOpacity = 1
-        inspectorContainer.layer?.shadowOffset = CGSize(width: 0, height: -8)
-        inspectorContainer.layer?.shadowRadius = 16
-        inspectorContainer.layer?.masksToBounds = true
+        // MARK: Image Information — presented OUTSIDE the image as its own
+        // child window attached to the right edge (same pattern as the Widget
+        // Market panel), not overlaid on the picture. The hosting panel owns
+        // `infoPanel`; nothing is added to the canvas here.
         infoPanel.autoresizingMask = [.width, .height]
-        infoPanel.onRunDefaultWidget = { [weak self] in self?.runDefaultWidgetTapped() }
-        infoPanel.onUpscale = { [weak self] in self?.runUpscaleWidget() }
-        infoPanel.onAdd = { [weak self] in self?.presentAddImagesPanel() }
-        inspectorContainer.addSubview(infoPanel)
-        inspectorContainer.isHidden = !infoVisible
-        canvasContainer.addSubview(inspectorContainer, positioned: .above, relativeTo: nil)
 
         // MARK: Statusbar (26pt) — file summary left, task polling right.
         statusbar.wantsLayer = true
@@ -677,24 +686,26 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // dimension and clamp it so controls stay usable on tiny/huge images.
         let scale = min(max(min(width / Self.designSize.width,
                                 height / Self.designSize.height), 0.62), 1.25)
-        // The window matches the image exactly — keep the content plane flush
-        // (no radius, no border) so no dark frame appears around the picture.
-        canvasContainer.layer?.cornerRadius = 0
-        canvasContainer.layer?.borderWidth = 0
+        // Rounded frosted panel: the media is inset 8pt so the frosted base
+        // reads as a dark frame; a hairline edge finishes the window.
+        canvasContainer.layer?.cornerRadius = 16 * scale
+        canvasContainer.layer?.borderWidth = 1
+        frostedBase.layer?.cornerRadius = 16 * scale
         toolbarBar.layer?.borderWidth = max(1, scale)
         toolbarBar.layer?.cornerRadius = 15 * scale
-        inspectorContainer.layer?.borderWidth = max(1, scale)
-        inspectorContainer.layer?.cornerRadius = 16 * scale
 
         // Transparent 44pt drag region at the top (scaled uniformly).
         let dragHeight = 44 * scale
         titlebar.frame = NSRect(x: 0, y: height - dragHeight, width: width, height: dragHeight)
-        // Three bare traffic dots, 12pt, anchored to the top-left corner.
-        let dot = 12 * scale
-        let dotY = height - (16 * scale) - dot
-        closeTrafficButton.frame = NSRect(x: 20 * scale, y: dotY, width: dot, height: dot)
-        minimizeTrafficButton.frame = NSRect(x: 20 * scale + 26 * scale, y: dotY, width: dot, height: dot)
-        zoomTrafficButton.frame = NSRect(x: 20 * scale + 52 * scale, y: dotY, width: dot, height: dot)
+        // Standard macOS traffic lights: fixed 12pt dots (NOT scaled down with
+        // the window), 20pt between centers, left dot at x≈20, vertically
+        // centered in the drag region. Fixed size keeps them at the normal
+        // system size regardless of how small the image window gets.
+        let dot: CGFloat = 12
+        let dotY = (dragHeight / 2 - dot / 2) - 5
+        closeTrafficButton.frame = NSRect(x: 20, y: dotY, width: dot, height: dot)
+        minimizeTrafficButton.frame = NSRect(x: 40, y: dotY, width: dot, height: dot)
+        zoomTrafficButton.frame = NSRect(x: 60, y: dotY, width: dot, height: dot)
         for button in [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton] {
             button.layer?.cornerRadius = dot / 2
         }
@@ -711,59 +722,72 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
         // No bottom bar or strip in the Simple Operation default state.
         statusbar.frame = .zero
-        let canvasRect = canvasContainer.bounds
+        // Inset between the media and the window edge (scaled uniformly), so the
+        // frosted base shows as a thin frame: 12pt top/bottom, 8pt left/right.
+        let mediaInsetX = 8 * scale
+        let mediaInsetY = 12 * scale
+        let canvasRect = canvasContainer.bounds.insetBy(dx: mediaInsetX, dy: mediaInsetY)
 
-        // Information is an opt-in floating card. It overlays rather than
-        // changes the canvas dimensions, preserving the v3 image-first layout.
-        let inspectorW = min(434 * scale, max(280 * scale, width - 32 * scale))
-        let inspectorH = min(808 * scale, max(320 * scale, height - 112 * scale))
-        inspectorContainer.frame = NSRect(x: width - inspectorW - 20 * scale,
-                                          y: max(20 * scale, height - inspectorH - 96 * scale),
-                                          width: inspectorW, height: inspectorH)
-        // Unhide immediately when opening; hiding is deferred to toggleInfo's
-        // fade-out completion so the 160ms animation stays visible.
-        if infoVisible { inspectorContainer.isHidden = false }
-        infoPanel.frame = inspectorContainer.bounds
+        // Image Information is presented as a separate child window (see
+        // toggleInfo / ImageInfoPanel), so it no longer occupies canvas space.
 
         guard let session else {
             primaryViewport.frame = canvasRect
             return
         }
         if session.mode == .compare, session.comparisonStyle == .sideBySide {
-            let gap: CGFloat = 1
+            // Figma Compare Mode: two equal panes split by a 2pt divider.
+            let gap: CGFloat = 2
             let half = (canvasRect.width - gap) / 2
             primaryViewport.frame = NSRect(x: canvasRect.minX, y: canvasRect.minY,
                                            width: half, height: canvasRect.height)
             secondaryViewport.frame = NSRect(x: canvasRect.minX + half + gap, y: canvasRect.minY,
                                              width: half, height: canvasRect.height)
+            compareDivider.isHidden = false
+            compareDivider.frame = NSRect(x: canvasRect.minX + half, y: canvasRect.minY,
+                                          width: gap, height: canvasRect.height)
         } else {
             primaryViewport.frame = canvasRect
             sliderViewport.frame = canvasRect
+            compareDivider.isHidden = true
+            compareDivider.frame = .zero
+        }
+        // Round the media corners a touch so they sit inside the frosted frame.
+        let mediaRadius = 8 * scale
+        for v in [primaryViewport, secondaryViewport, sliderViewport] {
+            v.layer?.cornerRadius = mediaRadius
+            v.layer?.masksToBounds = true
         }
         // File previews always fill the canvas; only visible in Focus/Browse.
         fileWebView.frame = canvasRect
         filePlaceholder.frame = canvasRect
 
-        // Floating thumbnail strip for quick image switching in multi-image
-        // sessions. It sits centered near the bottom, floating over the media
-        // (never resizing it), and scales uniformly with the chrome.
+        // Figma "05 / Task and Filmstrip Overlay": a full-width scrim bar
+        // (#07080a @ 34%) pinned to the bottom, with the centered thumbnail
+        // strip floating inside it. Thumbnails are shrunk 20% from the Figma
+        // 96pt (→ 76.8pt) per request; the bar shrinks with them.
         if filmstrip.isHidden {
+            taskOverlayShade.frame = .zero
             filmstrip.frame = .zero
         } else {
-            // The filmstrip sizes its own 96pt tiles from its width; give it the
-            // natural row width (one extra slot for the trailing "+" add tile),
-            // capped to the canvas so it never runs off-screen.
+            // The scrim bar keeps its current size; only the thumbnails inside
+            // shrink a further 20% (96 × 0.8 × 0.8 ≈ 61.4pt) and are centered
+            // vertically within the bar.
+            let barH = (117 * 0.8) * scale
+            let barRect = NSRect(x: canvasRect.minX, y: canvasRect.minY,
+                                 width: canvasRect.width, height: barH)
+            taskOverlayShade.frame = barRect
+
+            let tile = 96 * 0.8 * 0.8 * scale
+            let gap = 8 * scale
             let slotCount = max(1, session.infos.count) + 1
-            let tile = 96 * scale
-            let gap = 10 * scale
-            let stripH = tile
             let naturalW = CGFloat(slotCount) * tile + CGFloat(slotCount - 1) * gap
             let stripW = min(naturalW, canvasRect.width - 48 * scale)
-            filmstrip.frame = NSRect(x: canvasRect.midX - stripW / 2,
-                                     y: canvasRect.minY + 20 * scale,
-                                     width: stripW, height: stripH)
+            // Vertically center the thumbnail row inside the (unchanged) bar.
+            let stripY = barRect.minY + (barH - tile) / 2
+            filmstrip.frame = NSRect(x: barRect.midX - stripW / 2,
+                                     y: stripY, width: stripW, height: tile)
         }
-        taskOverlayShade.frame = .zero
         taskSummaryDot.isHidden = true
         taskSummaryLabel.isHidden = true
         taskToast.isHidden = true
@@ -1557,18 +1581,24 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func toggleInfo() {
         infoVisible.toggle()
         infoButton.isActive = infoVisible
-        layoutContent()
-        // 160ms fade (spec: 侧栏开合 160ms，透明度变化，动画可中断).
-        if infoVisible { inspectorContainer.alphaValue = 0 }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.16
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            inspectorContainer.animator().alphaValue = infoVisible ? 1 : 0
-        } completionHandler: { [weak self] in
-            guard let self, !self.infoVisible else { return }
-            self.inspectorContainer.isHidden = true
+        // The information panel is a child window attached to the right edge,
+        // shown outside the image (like the Widget Market panel).
+        if infoVisible {
+            infoWindow.setContent(infoPanel)
+            infoWindow.present(alongside: self)
+            renderSession()   // populate before it appears
+        } else {
+            infoWindow.dismiss()
         }
-        renderSession()
+    }
+
+    /// Called by the info panel's own close button so the toolbar toggle state
+    /// stays in sync when the panel is dismissed from outside.
+    func dismissInfoPanel() {
+        guard infoVisible else { return }
+        infoVisible = false
+        infoButton.isActive = false
+        infoWindow.dismiss()
     }
 
     private func updateStatusbar(for info: MediaInfo, index: Int) {
@@ -4010,43 +4040,47 @@ private final class FigmaAddButton: NSControl {
 /// difference cards, this is a stable 434×808 design surface with one-column
 /// metadata rows, quick actions, and a bottom-right Add affordance.
 private final class FigmaImageInspectorView: NSView {
-    var onRunDefaultWidget: (() -> Void)?
-    var onUpscale: (() -> Void)?
-    var onAdd: (() -> Void)?
-
-    private let titleLabel = NSTextField(labelWithString: "Image Information")
-    private let quickActionsLabel = NSTextField(labelWithString: "QUICK ACTIONS")
-    private let removeButton = PanelStyle.makeQuietButton(title: "Remove Background", target: nil, action: nil)
-    private let upscaleButton = PanelStyle.makeQuietButton(title: "Upscale 2x", target: nil, action: nil)
-    private let addButton = FigmaAddButton()
+    // Information-only panel: no Quick Actions, no Add button. Just the image's
+    // metadata, presented in a readable header + key/value list.
+    private let titleLabel = NSTextField(labelWithString: "Image Information".localized)
+    private let subtitleLabel = NSTextField(labelWithString: "")
     private let keys = ["Name", "Dimensions", "Format", "File size", "Color profile", "Alpha", "Created"]
     private var keyLabels: [NSTextField] = []
     private var valueLabels: [NSTextField] = []
     private var dividers: [NSView] = []
     private var items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)] = []
 
+    // Layout metrics (points at 1× panel scale).
+    private let padX: CGFloat = 24
+    private let headerTop: CGFloat = 28
+    private let rowStartY: CGFloat = 96
+    private let rowHeight: CGFloat = 52
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        layer?.backgroundColor = NSColor.clear.cgColor
 
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 17, weight: .semibold)
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 20, weight: .semibold)
         titleLabel.textColor = PanelStyle.textPrimary
         addSubview(titleLabel)
 
-        quickActionsLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
-        quickActionsLabel.textColor = PanelStyle.textTertiary
-        addSubview(quickActionsLabel)
+        subtitleLabel.font = PanelStyle.inspectFont(ofSize: 12)
+        subtitleLabel.textColor = PanelStyle.textTertiary
+        subtitleLabel.lineBreakMode = .byTruncatingMiddle
+        addSubview(subtitleLabel)
 
         for key in keys {
+            // Key: small, muted, uppercase-feel label above the value.
             let keyLabel = NSTextField(labelWithString: key.localized)
-            keyLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
+            keyLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
             keyLabel.textColor = PanelStyle.textTertiary
             addSubview(keyLabel)
             keyLabels.append(keyLabel)
 
+            // Value: larger, high-contrast, selectable — the thing to read.
             let valueLabel = NSTextField(labelWithString: "—")
-            valueLabel.font = PanelStyle.inspectFont(ofSize: 13)
+            valueLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .medium)
             valueLabel.textColor = PanelStyle.textPrimary
             valueLabel.lineBreakMode = .byTruncatingMiddle
             valueLabel.isSelectable = true
@@ -4059,14 +4093,6 @@ private final class FigmaImageInspectorView: NSView {
             addSubview(divider)
             dividers.append(divider)
         }
-
-        removeButton.target = self
-        removeButton.action = #selector(removeTapped)
-        upscaleButton.target = self
-        upscaleButton.action = #selector(upscaleTapped)
-        addButton.target = self
-        addButton.action = #selector(addTapped)
-        for button in [removeButton, upscaleButton, addButton] { addSubview(button) }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -4074,32 +4100,26 @@ private final class FigmaImageInspectorView: NSView {
     override func layout() {
         super.layout()
         guard bounds.width > 0, bounds.height > 0 else { return }
-        let sx = bounds.width / 434
-        let sy = bounds.height / 808
-        let scale = min(sx, sy)
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 17 * scale, weight: .semibold)
-        quickActionsLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale, weight: .semibold)
-        for label in keyLabels { label.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .medium) }
-        for label in valueLabels { label.font = PanelStyle.inspectFont(ofSize: 13 * scale) }
-        for button in [removeButton, upscaleButton] {
-            button.titleFont = PanelStyle.inspectFont(ofSize: 12 * scale, weight: .medium)
-            button.layer?.cornerRadius = 8 * scale
-            button.layer?.borderWidth = max(1, scale)
-        }
+        let contentW = bounds.width - padX * 2
+        // Value sits at 44% across; key label spans the left, value the right.
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 20, weight: .semibold)
+        subtitleLabel.font = PanelStyle.inspectFont(ofSize: 12)
+        for label in keyLabels { label.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold) }
+        for label in valueLabels { label.font = PanelStyle.inspectFont(ofSize: 15, weight: .medium) }
+
         func topFrame(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
-            NSRect(x: x * sx, y: bounds.height - (y + h) * sy, width: w * sx, height: h * sy)
+            NSRect(x: x, y: bounds.height - y - h, width: w, height: h)
         }
-        titleLabel.frame = topFrame(36, 24, 300, 21)
-        let rowY: [CGFloat] = [84, 122, 160, 198, 236, 274, 312]
+        titleLabel.frame = topFrame(padX, headerTop, contentW, 24)
+        subtitleLabel.frame = topFrame(padX, headerTop + 28, contentW, 16)
+
+        // Each row: key label on top, value below, then a hairline divider.
         for index in keys.indices {
-            keyLabels[index].frame = topFrame(36, rowY[index], 124, 16)
-            valueLabels[index].frame = topFrame(174, rowY[index], 220, 16)
-            dividers[index].frame = topFrame(36, rowY[index] + 30, 362, 1)
+            let y = rowStartY + CGFloat(index) * rowHeight
+            keyLabels[index].frame = topFrame(padX, y, contentW, 14)
+            valueLabels[index].frame = topFrame(padX, y + 18, contentW, 20)
+            dividers[index].frame = topFrame(padX, y + rowHeight - 8, contentW, 1)
         }
-        quickActionsLabel.frame = topFrame(36, 386, 200, 13)
-        removeButton.frame = topFrame(36, 424, 362, 38)
-        upscaleButton.frame = topFrame(36, 488, 362, 38)
-        addButton.frame = topFrame(282, 650, 112, 112)
     }
 
     func show(items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)]) {
@@ -4135,11 +4155,100 @@ private final class FigmaImageInspectorView: NSView {
             created
         ]
         for (label, value) in zip(valueLabels, values) { label.stringValue = value }
+        subtitleLabel.stringValue = info.filename
+    }
+}
+
+/// Image Information as its own frosted child window, attached to the right edge
+/// of the Image Inspect window — presented OUTSIDE the image (same pattern as
+/// the Widget Market panel) rather than overlaid on the picture.
+final class ImageInfoPanel: NSPanel {
+    private static let panelWidth: CGFloat = 340
+    private weak var attachedParent: NSWindow?
+    private let closeButton = NSButton(title: "", target: nil, action: nil)
+
+    init() {
+        super.init(contentRect: NSRect(x: 0, y: 0, width: Self.panelWidth, height: 620),
+                   styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
+        isOpaque = false
+        backgroundColor = .clear
+        hasShadow = true
+        isReleasedWhenClosed = false
+        hidesOnDeactivate = false
+        appearance = NSAppearance(named: .darkAqua)
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: Self.panelWidth, height: 620))
+        root.wantsLayer = true
+        root.layer?.cornerRadius = 16
+        root.layer?.masksToBounds = true
+        root.layer?.borderWidth = 1
+        root.layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
+
+        // Frosted semi-transparent black base, matching the main window.
+        let frost = PanelStyle.makeFrostedBase(cornerRadius: 16)
+        frost.frame = root.bounds
+        frost.autoresizingMask = [.width, .height]
+        root.addSubview(frost)
+
+        closeButton.bezelStyle = .texturedRounded
+        closeButton.isBordered = false
+        closeButton.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close".localized)
+        closeButton.imagePosition = .imageOnly
+        closeButton.contentTintColor = PanelStyle.textSecondary
+        closeButton.toolTip = "Close".localized
+        closeButton.target = self
+        closeButton.action = #selector(closeTapped)
+        closeButton.frame = NSRect(x: root.bounds.width - 40, y: root.bounds.height - 40, width: 28, height: 28)
+        closeButton.autoresizingMask = [.minXMargin, .minYMargin]
+
+        contentView = root
+        root.addSubview(closeButton, positioned: .above, relativeTo: nil)
     }
 
-    @objc private func removeTapped() { onRunDefaultWidget?() }
-    @objc private func upscaleTapped() { onUpscale?() }
-    @objc private func addTapped() { onAdd?() }
+    /// Insert the metadata view into the frosted root (below the close button,
+    /// inset a touch so it never sits flush against the panel edge).
+    func setContent(_ view: NSView) {
+        guard let root = contentView else { return }
+        if view.superview !== root {
+            view.removeFromSuperview()
+            view.frame = root.bounds
+            view.autoresizingMask = [.width, .height]
+            root.addSubview(view, positioned: .below, relativeTo: closeButton)
+        }
+    }
+
+    func present(alongside parent: NSWindow) {
+        if let old = attachedParent, old !== parent { old.removeChildWindow(self) }
+        attachedParent = parent
+        position(alongside: parent)
+        parent.addChildWindow(self, ordered: .above)
+        makeKeyAndOrderFront(nil)
+    }
+
+    func dismiss() {
+        if let parent = attachedParent { parent.removeChildWindow(self) }
+        orderOut(nil)
+    }
+
+    @objc private func closeTapped() {
+        // Route through the parent so its info button state stays in sync.
+        (attachedParent as? ImageInspectWindow)?.dismissInfoPanel()
+    }
+
+    private func position(alongside parent: NSWindow) {
+        let gap: CGFloat = 2
+        let width = Self.panelWidth
+        let visible = (parent.screen ?? NSScreen.main)?.visibleFrame ?? parent.frame
+        let height = min(parent.frame.height, visible.height)
+        // Attach on the parent's right; if it would run off-screen, flip left.
+        var x = parent.frame.maxX + gap
+        if x + width > visible.maxX { x = max(visible.minX, parent.frame.minX - width - gap) }
+        x = max(visible.minX, min(x, visible.maxX - width))
+        let y = max(visible.minY, min(parent.frame.minY, visible.maxY - height))
+        setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
+        contentView?.layoutSubtreeIfNeeded()
+    }
 }
 
 /// One image's full metadata as a self-contained block. A soft glowing border
