@@ -31,6 +31,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var generation = UUID()
+    private var fittedVideoSignature = ""
 
     private static let designSize = NSSize(width: 1554, height: 1012)
     private let canvas = MediaDropCanvasView()
@@ -41,14 +42,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private let zoomTrafficButton = NSButton()
     private let focusButton = InspectToolbarButton(symbol: "photo", tooltip: "Focus".localized)
     private let compareButton = InspectToolbarButton(symbol: "rectangle.split.2x1", tooltip: "Compare".localized)
-    private let fitButton = InspectToolbarButton(symbol: "arrow.up.left.and.arrow.down.right", tooltip: "Fit".localized)
     private let revealButton = InspectToolbarButton(symbol: "folder", tooltip: "Reveal in Finder".localized)
     private let moreButton = InspectToolbarButton(symbol: "ellipsis", tooltip: "More".localized)
     private let captureButton = InspectToolbarButton(symbol: "camera", tooltip: "Capture frame".localized)
     private let replayButton = InspectToolbarButton(symbol: "arrow.counterclockwise", tooltip: "Replay".localized)
     private let pinButton = InspectToolbarButton(symbol: "pin", tooltip: "Pin on Top".localized)
     private let widgetMarketButton = InspectToolbarButton(symbol: "square.grid.2x2", tooltip: "Widget Market".localized)
-    private let widgetTasksButton = InspectToolbarButton(symbol: "tray.full", tooltip: "Tasks".localized)
     private var isPinned = false
     private let playbackBar = VideoPlaybackBar()
     private let captureFeedback = CaptureFeedbackView()
@@ -83,7 +82,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         title = "Video Inspect".localized
         titleVisibility = .hidden; titlebarAppearsTransparent = true
         appearance = NSAppearance(named: .darkAqua); backgroundColor = PanelStyle.inspectBackground
-        minSize = NSSize(width: 900, height: 586); contentAspectRatio = Self.designSize
+        minSize = NSSize(width: 320, height: 180)
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         acceptsMouseMovedEvents = true; delegate = self
@@ -186,14 +185,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         canvas.addSubview(identityBar)
         focusButton.target = self; focusButton.action = #selector(focusTapped)
         compareButton.target = self; compareButton.action = #selector(compareTapped)
-        fitButton.target = self; fitButton.action = #selector(fitTapped)
         revealButton.target = self; revealButton.action = #selector(revealTapped)
         moreButton.target = self; moreButton.action = #selector(moreTapped)
         captureButton.target = self; captureButton.action = #selector(captureTapped)
         replayButton.target = self; replayButton.action = #selector(replayTapped)
         pinButton.target = self; pinButton.action = #selector(pinTapped)
         widgetMarketButton.target = self; widgetMarketButton.action = #selector(widgetMarketTapped)
-        widgetTasksButton.target = self; widgetTasksButton.action = #selector(widgetTasksTapped)
         pinButton.isActive = isPinned
         inspectToolbar.wantsLayer = true
         inspectToolbar.layer?.backgroundColor = NSColor(
@@ -208,8 +205,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         inspectToolbar.layer?.shadowOpacity = 1
         inspectToolbar.layer?.shadowOffset = CGSize(width: 0, height: -8)
         inspectToolbar.layer?.shadowRadius = 12
-        for button in [captureButton, focusButton, compareButton, fitButton,
-                       widgetTasksButton, widgetMarketButton, moreButton] {
+        for button in [captureButton, focusButton, compareButton,
+                       widgetMarketButton, moreButton] {
             button.usesFigmaStyle = true
             button.isBorderlessFigmaTile = true
             button.updateTooltip(button.toolTip ?? "")
@@ -286,26 +283,26 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             button.layer?.cornerRadius = 6
         }
 
-        let toolbarW = 378 * scale
+        let toolbarScale = max(0.1, min(1, min((b.width - 16) / 274,
+                                              (b.height - 16) / 54)))
+        let toolbarW = 274 * toolbarScale
         inspectToolbar.frame = NSRect(x: (b.width - toolbarW) / 2,
-                                      y: b.height - 78 * scale,
-                                      width: toolbarW, height: 54 * scale)
-        inspectToolbar.layer?.borderWidth = max(1, scale)
-        inspectToolbar.layer?.cornerRadius = 15 * scale
+                                      y: b.height - 78 * toolbarScale,
+                                      width: toolbarW, height: 54 * toolbarScale)
+        inspectToolbar.layer?.borderWidth = 1
+        inspectToolbar.layer?.cornerRadius = 15 * toolbarScale
         func place(_ button: InspectToolbarButton, x: CGFloat) {
-            button.frame = NSRect(x: x * scale, y: 8 * scale,
-                                  width: 38 * scale, height: 38 * scale)
-            button.layer?.cornerRadius = 9 * scale
+            button.frame = NSRect(x: x * toolbarScale, y: 8 * toolbarScale,
+                                  width: 38 * toolbarScale, height: 38 * toolbarScale)
+            button.layer?.cornerRadius = 9 * toolbarScale
             button.layer?.borderWidth = 0
-            button.setSymbolPointSize(18 * scale)
+            button.setSymbolPointSize(18 * toolbarScale)
         }
         place(captureButton, x: 14)
         place(focusButton, x: 66)
         place(compareButton, x: 118)
-        place(fitButton, x: 170)
-        place(widgetTasksButton, x: 222)
-        place(widgetMarketButton, x: 274)
-        place(moreButton, x: 326)
+        place(widgetMarketButton, x: 170)
+        place(moreButton, x: 222)
 
         let canvasW = max(0, b.width - (infoVisible ? 434 * sx : 0))
         let videoRect = NSRect(x: 0, y: 0, width: canvasW, height: b.height)
@@ -404,7 +401,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                 self.updateVideoCompareDimming()
                 self.refreshInfoPanel()
             }
-            viewport.onReady = { [weak self] in self?.layoutContent() }
+            viewport.onReady = { [weak self, weak viewport] in
+                guard let self else { return }
+                self.fitWindowToActiveVideosIfNeeded()
+                self.layoutContent()
+                if self.isPlaying { viewport?.play() }
+            }
             viewport.onWebMMetadata = { [weak self] duration, size in
                 guard let self, self.infos.indices.contains(index) else { return }
                 self.durations[index] = duration
@@ -459,7 +461,57 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         filmstrip.isHidden = infos.count < 2
         filmstrip.configure(infos: infos, selectedIndex: focusedIndex, compareIndices: mode == .compare ? compareIndices : nil)
         refreshInfoPanel()
-        updateTimeline(); layoutContent(); loadDurations()
+        fitWindowToActiveVideosIfNeeded()
+        updateTimeline(); layoutContent(); loadDurations(); startPlaybackImmediately()
+    }
+
+    private func startPlaybackImmediately() {
+        guard !viewports.isEmpty else { return }
+        isPlaying = true
+        viewports.forEach { $0.play() }
+        installObserver()
+        updateTimeline()
+    }
+
+    private func fitWindowToActiveVideosIfNeeded() {
+        let sizes: [CGSize] = activeIndices.enumerated().compactMap { offset, index in
+            let size = infos[safe: index]?.dimensions ?? viewports[safe: offset]?.videoSize
+            guard let size, size.width > 0, size.height > 0 else { return nil }
+            return size
+        }
+        guard sizes.count == activeIndices.count, !sizes.isEmpty else { return }
+
+        let targetSize: CGSize
+        if mode == .compare, sizes.count == 2 {
+            let height = max(sizes[0].height, sizes[1].height)
+            let width = sizes.reduce(CGFloat(0)) {
+                $0 + $1.width * height / max(1, $1.height)
+            } + 2
+            targetSize = CGSize(width: width, height: height)
+        } else {
+            targetSize = sizes[0]
+        }
+
+        let signature = "\(mode)-\(targetSize.width.rounded())x\(targetSize.height.rounded())"
+        guard signature != fittedVideoSignature else { return }
+        fittedVideoSignature = signature
+
+        let aspect = targetSize.width / targetSize.height
+        contentAspectRatio = NSSize(width: aspect, height: 1)
+        let center = CGPoint(x: frame.midX, y: frame.midY)
+        guard let screen = ScreenManager.shared.screenForMouseLocation(center)
+                ?? self.screen ?? NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        let downscale = min(1, visible.width * 0.96 / targetSize.width,
+                            visible.height * 0.96 / targetSize.height)
+        let contentSize = NSSize(width: targetSize.width * downscale,
+                                 height: targetSize.height * downscale)
+        let frameSize = frameRect(forContentRect: NSRect(origin: .zero, size: contentSize)).size
+        var origin = NSPoint(x: center.x - frameSize.width / 2,
+                             y: center.y - frameSize.height / 2)
+        origin.x = max(visible.minX, min(origin.x, visible.maxX - frameSize.width))
+        origin.y = max(visible.minY, min(origin.y, visible.maxY - frameSize.height))
+        setFrame(NSRect(origin: origin, size: frameSize), display: true, animate: false)
     }
 
     private func loadDurations() {
@@ -505,6 +557,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                     if self.videoMetadata.indices.contains(index) { self.videoMetadata[index] = metadata }
                     if let dimensions, self.infos[index].dimensions == nil { self.infos[index].dimensions = dimensions }
                     if let fileSize, self.infos[index].fileSize == nil { self.infos[index].fileSize = fileSize }
+                    self.fitWindowToActiveVideosIfNeeded()
                     self.updateTimeline()
                     self.layoutContent()
                     self.refreshInfoPanel()
@@ -551,8 +604,6 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     }
     @objc private func focusTapped() { mode = .focus; pausePlayback(); render() }
     @objc private func compareTapped() { guard infos.count > 1 else { return }; if compareIndices == nil { compareIndices = (focusedIndex, focusedIndex == 0 ? 1 : 0) }; mode = .compare; pausePlayback(); render() }
-    @objc private func fitTapped() { viewports.forEach { $0.fitToView() } }
-    @objc private func widgetTasksTapped() { (NSApp.delegate as? AppDelegate)?.openTasks() }
     @objc private func closeTapped() { close() }
     @objc private func minimizeTapped() { miniaturize(nil) }
     @objc private func zoomTapped() { zoom(nil) }
@@ -568,7 +619,6 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         actionsPanel?.dismissChain()
         let panel = ActionMenuPanel(entries: buildMoreEntries(), style: .more)
         actionsPanel = panel
-        ActionMenuPanel.animateMoreButtonPress(moreButton)
         // Anchor the menu to the toolbar's bottom-right corner so it drops
         // down from the toolbar with an 8pt gap and right-aligns with it.
         let windowPoint = inspectToolbar.convert(NSPoint(x: inspectToolbar.bounds.maxX, y: 0), to: nil)

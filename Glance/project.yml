@@ -20,6 +20,10 @@ packages:
   Highlightr:
     url: https://github.com/raspu/Highlightr
     from: "2.1.0"
+  # macOS ImageIO can decode WebP but does not provide a WebP encoder.
+  libwebp:
+    url: https://github.com/SDWebImage/libwebp-Xcode.git
+    exactVersion: "1.6.0"
 
 targets:
   Glance:
@@ -35,6 +39,7 @@ targets:
         buildPhase: resources
     dependencies:
       - package: Highlightr
+      - package: libwebp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.glance.app

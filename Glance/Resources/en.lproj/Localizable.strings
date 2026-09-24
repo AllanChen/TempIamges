@@ -149,12 +149,11 @@
 "Exported ✓" = "Exported ✓";
 "Recognize Text" = "Recognize Text";
 "Compress Image" = "Compress Image";
-"Quality: 70%" = "Quality: 70%";
-"Format:" = "Format:";
-"Same as original" = "Same as original";
+"Quality" = "Quality";
+"Compressed size" = "Compressed size";
+"Keep original dimensions" = "Keep original dimensions";
 "Compress" = "Compress";
 "Lower quality means a smaller file." = "Lower quality means a smaller file.";
-"Quality: %.0f%%" = "Quality: %.0f%%";
 "Compressed ✓" = "Compressed ✓";
 "Compression failed" = "Compression failed";
 "Base64" = "Base64";

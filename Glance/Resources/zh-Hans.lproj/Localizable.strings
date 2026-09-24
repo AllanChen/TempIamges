@@ -153,12 +153,11 @@
 "Exported ✓" = "导出成功 ✓";
 "Recognize Text" = "识别文字";
 "Compress Image" = "压缩图片";
-"Quality: 70%" = "质量：70%";
-"Format:" = "格式：";
-"Same as original" = "与原图相同";
+"Quality" = "质量";
+"Compressed size" = "压缩后大小";
+"Keep original dimensions" = "保持原始尺寸";
 "Compress" = "压缩";
 "Lower quality means a smaller file." = "质量越低，文件越小。";
-"Quality: %.0f%%" = "质量：%.0f%%";
 "Compressed ✓" = "压缩成功 ✓";
 "Compression failed" = "压缩失败";
 "Base64" = "Base64";

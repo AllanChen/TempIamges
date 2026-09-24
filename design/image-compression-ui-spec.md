@@ -1,6 +1,6 @@
 # Image Compression UI Spec
 
-This document describes the Figma UI稿 for the Glance image-compression feature. It is based entirely on the existing Glance design system (dark chrome, Inter typeface, 8-pt grid, frosted panels) and the current Swift implementation.
+This document describes the Figma UI稿 for the Glance image-compression feature. It is based entirely on the existing Glance design system (dark chrome, Inter typeface, 8-pt grid, frosted panels) and the approved compression flow.
 
 ## Feature scope (no new behavior)
 
@@ -8,9 +8,10 @@ This document describes the Figma UI稿 for the Glance image-compression feature
 - Action: open a small modal dialog.
 - Dialog controls:
   - Quality slider: 10 % – 100 %, default 70 %.
-  - Output format: Same as original / JPEG / PNG / WebP.
+  - Compressed size: updates as the quality slider moves.
   - Primary: **Compress**; Secondary: **Cancel**.
 - Result:
+  - Preserve the source image format; compression does not convert formats.
   - Save a new file next to the source (`{name}.compressed.{ext}`).
   - Insert it at `index + 1`.
   - Enter **Compare / Side-by-Side** with the original on the left and the compressed image on the right.
@@ -52,7 +53,7 @@ The dialog is a centered modal over a dimmed Image Inspect window.
 | Property | Value |
 |----------|-------|
 | Width | 350 px |
-| Height | 236 px |
+| Height | 280 px |
 | Padding | 20 px |
 | Background | `#17181D` |
 | Border radius | 14 px |
@@ -70,29 +71,40 @@ The dialog is a centered modal over a dimmed Image Inspect window.
    - Text: "Lower quality means a smaller file." / "质量越低，文件越小。"
 
 3. **Quality row**
-   - Label: "Quality: 70%" / "质量：70%"
+   - Left label: "Quality" / "质量"
      - Font: Inter Medium, 12 px, `#F3EEE8`
+   - Right value: "70%"
+     - Font: Inter Semi Bold, 12 px, `#E8A87C`
+     - Updates continuously while the slider moves.
    - Slider track below label:
-     - Track: 280 × 4 px, rounded 2 px, fill `#34353A`
-     - Filled portion (0.1 → 0.7): `#E8A87C`
+     - Track: 310 × 4 px, rounded 2 px, fill `#34353A`
+     - Filled portion at 70%: 217 × 4 px, `#E8A87C`
      - Knob: 14 × 14 px circle, fill `#F3EEE8`, shadow `0 2 4 rgba(0,0,0,0.35)`
    - Helper text under slider:
      - Font: Inter Regular, 11 px, `#726D69`
      - Text: "10% – 100%"
 
-4. **Format row**
-   - Label: "Format:" / "格式："
-     - Font: Inter Medium, 12 px, `#F3EEE8`, width 52 px
-   - Dropdown to the right:
-     - Width: 228 px
-     - Height: 30 px
-     - Background: `#17181D`
-     - Border radius: 8 px
-     - Stroke: 1 px `#34353A`
-     - Text: Inter Medium, 12 px, `#F3EEE8`
-     - Chevron icon on the right (use existing chevron icon, color `#AAA4A0`)
+4. **Dimension option**
+   - Checkbox row: 310 × 20 px.
+   - Checkbox: 16 × 16 px, radius 4 px.
+   - Default state: checked, accent fill `#E8A87C`, dark check `#21130D`.
+   - Label: "Keep original dimensions" / "保持原始尺寸".
+     - Inter Medium, 12 px, `#F3EEE8`.
+   - Checked: preserve the source width and height while compressing.
+   - Unchecked: width and height may be reduced together to reach a smaller file.
+   - Both states must preserve the source aspect ratio. Width and height can never scale independently.
 
-5. **Button row** (horizontal, gap 10 px, justify end)
+5. **Compressed-size row**
+   - Size: 310 × 38 px, radius 8 px.
+   - Fill: `#111217`; stroke: 1 px `#34353A`.
+   - Left label: "Compressed size" / "压缩后大小".
+     - Inter Medium, 12 px, `#AAA4A0`.
+   - Right value: "2.1 MB".
+     - Inter Semi Bold, 15 px, `#F3EEE8`, right aligned.
+     - Updates continuously while the quality slider moves.
+   - Do not display "Estimated" or equivalent language in the UI.
+
+6. **Button row** (horizontal, gap 10 px, justify end)
    - **Cancel** button
      - Width: 80 px, height 32 px
      - Background: `#17181D`

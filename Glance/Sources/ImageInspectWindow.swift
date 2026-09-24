@@ -1,6 +1,7 @@
 import AppKit
 import UniformTypeIdentifiers
 import ImageIO
+import libwebp
 import WebKit
 import Vision
 
@@ -36,19 +37,24 @@ final class ImageInspectSession {
 // MARK: - Image compression dialog
 
 private enum ImageCompressionFormat {
-    case sameAsSource, jpeg, png, webP
-
-    func exportFormat(for sourceURL: URL) -> ImageExportFormat {
-        switch self {
-        case .sameAsSource:
-            let ext = sourceURL.pathExtension.lowercased()
-            if ext == "png" { return .png }
-            if ext == "webp" { return .webP }
-            return .jpeg
-        case .jpeg: return .jpeg
-        case .png: return .png
-        case .webP: return .webP
+    static func exportFormat(for sourceURL: URL) -> ImageExportFormat? {
+        switch sourceURL.pathExtension.lowercased() {
+        case "jpg", "jpeg", "jpe", "jfif": return .jpeg
+        case "png", "apng": return .png
+        case "webp": return .webP
+        case "heic", "heif": return .heic
+        case "tif", "tiff": return .tiff
+        case "gif": return .gif
+        default: return nil
         }
+    }
+}
+
+private enum CompressionSizeEstimate {
+    static func byteCount(sourceByteCount: Int64, quality: CGFloat) -> Int64 {
+        let clampedQuality = max(0.1, min(1, quality))
+        let factor = 0.18 + 0.82 * pow(Double(clampedQuality), 1.45)
+        return max(1_024, Int64(Double(max(1, sourceByteCount)) * factor))
     }
 }
 
@@ -107,8 +113,7 @@ private final class CompressionSlider: NSView {
         let y = (bounds.height - trackHeight) / 2
         track.frame = NSRect(x: 0, y: y, width: bounds.width, height: trackHeight)
 
-        let fraction = (value - 0.1) / 0.9
-        let fillWidth = bounds.width * fraction
+        let fillWidth = bounds.width * value
         fill.frame = NSRect(x: 0, y: y, width: fillWidth, height: trackHeight)
 
         let knobX = fillWidth - knobSize / 2
@@ -130,116 +135,97 @@ private final class CompressionSlider: NSView {
 
     private func handleMouse(_ event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        let fraction = max(0, min(1, point.x / bounds.width))
-        value = 0.1 + fraction * 0.9
+        value = max(0.1, min(1, point.x / bounds.width))
     }
 }
 
-private final class CompressionFormatPicker: NSView {
-    private let background = NSView()
-    private let label = NSTextField(labelWithString: "")
-    private let chevron = NSImageView()
-    private let popupMenu = NSMenu()
+private final class CompressionDimmerView: NSView {
+    override var mouseDownCanMoveWindow: Bool { false }
+    override func mouseDown(with event: NSEvent) {}
+    override func mouseDragged(with event: NSEvent) {}
+    override func mouseUp(with event: NSEvent) {}
+}
 
-    var options: [String] = [] {
-        didSet { rebuildMenu() }
-    }
+private final class CompressionCheckbox: NSControl {
+    var isOn = true { didSet { refresh() } }
 
-    var selectedIndex: Int = 0 {
-        didSet { updateLabel() }
-    }
-
-    var onSelection: ((Int) -> Void)?
+    private let box = NSView()
+    private let checkmark = NSImageView()
+    private let label = NSTextField(labelWithString: "Keep original dimensions".localized)
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        setup()
+        box.wantsLayer = true
+        box.layer?.cornerRadius = 4
+        box.layer?.borderWidth = 1
+        box.frame = NSRect(x: 0, y: 2, width: 16, height: 16)
+        addSubview(box)
+
+        checkmark.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)
+        checkmark.imageScaling = .scaleProportionallyUpOrDown
+        checkmark.contentTintColor = PanelStyle.accentInk
+        checkmark.frame = NSRect(x: 2, y: 2, width: 12, height: 12)
+        box.addSubview(checkmark)
+
+        label.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        label.textColor = PanelStyle.textPrimary
+        label.frame = NSRect(x: 26, y: 3, width: 284, height: 15)
+        addSubview(label)
+
+        setAccessibilityRole(.checkBox)
+        setAccessibilityLabel("Keep original dimensions".localized)
+        refresh()
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    private func setup() {
-        wantsLayer = true
-
-        background.wantsLayer = true
-        background.layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
-        background.layer?.cornerRadius = 8
-        background.layer?.borderWidth = 1
-        background.layer?.borderColor = PanelStyle.inspectLine.cgColor
-        background.autoresizingMask = [.width, .height]
-        background.frame = bounds
-        addSubview(background)
-
-        label.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
-        label.textColor = PanelStyle.textPrimary
-        label.backgroundColor = .clear
-        label.isBordered = false
-        label.isEditable = false
-        label.isSelectable = false
-        label.frame = NSRect(x: 12, y: 7, width: 180, height: 16)
-        addSubview(label)
-
-        chevron.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
-        chevron.contentTintColor = PanelStyle.textSecondary
-        chevron.imageScaling = .scaleProportionallyUpOrDown
-        chevron.frame = NSRect(x: bounds.width - 21, y: 8, width: 14, height: 14)
-        chevron.autoresizingMask = [.minXMargin]
-        addSubview(chevron)
-
-        rebuildMenu()
-        updateLabel()
-    }
-
-    private func rebuildMenu() {
-        popupMenu.removeAllItems()
-        for (index, option) in options.enumerated() {
-            let item = NSMenuItem(title: option, action: #selector(selectItem(_:)), keyEquivalent: "")
-            item.target = self
-            item.tag = index
-            popupMenu.addItem(item)
-        }
-    }
-
-    private func updateLabel() {
-        guard options.indices.contains(selectedIndex) else { return }
-        label.stringValue = options[selectedIndex]
-    }
+    override var acceptsFirstResponder: Bool { true }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        let pointInSelf = convert(point, from: superview)
-        return bounds.contains(pointInSelf) ? self : nil
+        let local = convert(point, from: superview)
+        return bounds.contains(local) ? self : nil
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard !options.isEmpty else { return }
-        let point = NSPoint(x: 0, y: bounds.height)
-        popupMenu.popUp(positioning: nil, at: point, in: self)
+        guard isEnabled else { return }
+        window?.makeFirstResponder(self)
+        isOn.toggle()
+        sendAction(action, to: target)
     }
 
-    @objc private func selectItem(_ sender: NSMenuItem) {
-        selectedIndex = sender.tag
-        onSelection?(selectedIndex)
+    override func accessibilityValue() -> Any? { isOn }
+
+    private func refresh() {
+        box.layer?.backgroundColor = (isOn ? PanelStyle.accent : PanelStyle.inspectChrome).cgColor
+        box.layer?.borderColor = (isOn ? PanelStyle.accent : PanelStyle.inspectLine).cgColor
+        checkmark.isHidden = !isOn
     }
 }
 
 private final class CompressionDialogPanel: NSPanel {
-    var onConfirm: ((CGFloat, ImageCompressionFormat) -> Void)?
+    var onConfirm: ((CGFloat, Int64, Bool) -> Void)?
     var onCancel: (() -> Void)?
 
     private let titleLabel = NSTextField(labelWithString: "Compress Image".localized)
     private let captionLabel = NSTextField(labelWithString: "Lower quality means a smaller file.".localized)
-    private let qualityLabel = NSTextField(labelWithString: "Quality: 70%".localized)
+    private let qualityLabel = NSTextField(labelWithString: "Quality".localized)
+    private let qualityValueLabel = NSTextField(labelWithString: "70%")
     private let slider = CompressionSlider()
     private let sliderHint = NSTextField(labelWithString: "10% – 100%")
-    private let formatLabel = NSTextField(labelWithString: "Format:".localized)
-    private let formatPicker = CompressionFormatPicker()
+    private let keepDimensionsCheckbox = CompressionCheckbox()
+    private let resultCard = NSView()
+    private let resultLabel = NSTextField(labelWithString: "Compressed size".localized)
+    private let resultValueLabel = NSTextField(labelWithString: "")
     private let cancelButton = PanelButton(title: "Cancel".localized, target: nil, action: nil)
     private let compressButton = PanelButton(title: "Compress".localized, target: nil, action: nil)
+    private let sourceByteCount: Int64
+    private var targetByteCount: Int64 = 1_024
 
     private var keyMonitor: Any?
 
-    init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 350, height: 236),
+    init(sourceByteCount: Int64) {
+        self.sourceByteCount = max(1, sourceByteCount)
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 350, height: 280),
                    styleMask: [.borderless, .nonactivatingPanel],
                    backing: .buffered, defer: false)
         isOpaque = false
@@ -252,7 +238,7 @@ private final class CompressionDialogPanel: NSPanel {
         appearance = NSAppearance(named: .darkAqua)
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 350, height: 236))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 350, height: 280))
         content.wantsLayer = true
         content.layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
         content.layer?.cornerRadius = 14
@@ -262,45 +248,60 @@ private final class CompressionDialogPanel: NSPanel {
 
         titleLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
         titleLabel.textColor = PanelStyle.textPrimary
-        titleLabel.frame = NSRect(x: 20, y: 198, width: 310, height: 18)
+        titleLabel.frame = NSRect(x: 20, y: 242, width: 310, height: 18)
         content.addSubview(titleLabel)
 
         captionLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .regular)
         captionLabel.textColor = PanelStyle.textSecondary
-        captionLabel.frame = NSRect(x: 20, y: 177, width: 280, height: 15)
+        captionLabel.frame = NSRect(x: 20, y: 221, width: 310, height: 15)
         content.addSubview(captionLabel)
 
         qualityLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
         qualityLabel.textColor = PanelStyle.textPrimary
-        qualityLabel.frame = NSRect(x: 20, y: 143, width: 310, height: 15)
+        qualityLabel.frame = NSRect(x: 20, y: 187, width: 160, height: 15)
         content.addSubview(qualityLabel)
+
+        qualityValueLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
+        qualityValueLabel.textColor = PanelStyle.accent
+        qualityValueLabel.alignment = .right
+        qualityValueLabel.frame = NSRect(x: 268, y: 187, width: 62, height: 15)
+        content.addSubview(qualityValueLabel)
 
         slider.value = 0.7
         slider.valueChanged = { [weak self] value in
-            self?.qualityLabel.stringValue = String(format: "Quality: %.0f%%".localized, value * 100)
+            self?.updateValues(for: value)
         }
-        slider.frame = NSRect(x: 20, y: 124, width: 280, height: 16)
+        slider.frame = NSRect(x: 20, y: 168, width: 310, height: 16)
         content.addSubview(slider)
 
         sliderHint.font = PanelStyle.inspectFont(ofSize: 11, weight: .regular)
         sliderHint.textColor = PanelStyle.textTertiary
-        sliderHint.frame = NSRect(x: 20, y: 109, width: 310, height: 13)
+        sliderHint.frame = NSRect(x: 20, y: 153, width: 310, height: 13)
         content.addSubview(sliderHint)
 
-        formatLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
-        formatLabel.textColor = PanelStyle.textPrimary
-        formatLabel.frame = NSRect(x: 20, y: 77, width: 52, height: 15)
-        content.addSubview(formatLabel)
+        keepDimensionsCheckbox.target = self
+        keepDimensionsCheckbox.action = #selector(keepDimensionsChanged)
+        keepDimensionsCheckbox.frame = NSRect(x: 20, y: 118, width: 310, height: 20)
+        content.addSubview(keepDimensionsCheckbox)
 
-        formatPicker.options = [
-            "Same as original".localized,
-            "JPEG",
-            "PNG",
-            "WebP"
-        ]
-        formatPicker.selectedIndex = 0
-        formatPicker.frame = NSRect(x: 72, y: 66, width: 228, height: 30)
-        content.addSubview(formatPicker)
+        resultCard.wantsLayer = true
+        resultCard.layer?.backgroundColor = NSColor(srgbRed: 17 / 255, green: 18 / 255, blue: 23 / 255, alpha: 1).cgColor
+        resultCard.layer?.cornerRadius = 8
+        resultCard.layer?.borderWidth = 1
+        resultCard.layer?.borderColor = PanelStyle.inspectLine.cgColor
+        resultCard.frame = NSRect(x: 20, y: 66, width: 310, height: 38)
+        content.addSubview(resultCard)
+
+        resultLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        resultLabel.textColor = PanelStyle.textSecondary
+        resultLabel.frame = NSRect(x: 12, y: 12, width: 150, height: 15)
+        resultCard.addSubview(resultLabel)
+
+        resultValueLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
+        resultValueLabel.textColor = PanelStyle.textPrimary
+        resultValueLabel.alignment = .right
+        resultValueLabel.frame = NSRect(x: 212, y: 11, width: 86, height: 18)
+        resultCard.addSubview(resultValueLabel)
 
         cancelButton.target = self
         cancelButton.action = #selector(cancelTapped)
@@ -309,7 +310,7 @@ private final class CompressionDialogPanel: NSPanel {
         cancelButton.titleColor = PanelStyle.textPrimary
         cancelButton.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
         cancelButton.layer?.borderColor = PanelStyle.inspectLine.cgColor
-        cancelButton.frame = NSRect(x: 150, y: 12, width: 80, height: 32)
+        cancelButton.frame = NSRect(x: 170, y: 12, width: 80, height: 32)
         content.addSubview(cancelButton)
 
         compressButton.target = self
@@ -319,8 +320,10 @@ private final class CompressionDialogPanel: NSPanel {
         compressButton.titleColor = PanelStyle.accentInk
         compressButton.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
         compressButton.layer?.borderWidth = 0
-        compressButton.frame = NSRect(x: 240, y: 12, width: 90, height: 32)
+        compressButton.frame = NSRect(x: 260, y: 12, width: 90, height: 32)
         content.addSubview(compressButton)
+
+        updateValues(for: slider.value)
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard event.keyCode == 53 else { return event }
@@ -333,6 +336,18 @@ private final class CompressionDialogPanel: NSPanel {
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    private func updateValues(for quality: CGFloat) {
+        qualityValueLabel.stringValue = String(format: "%.0f%%", quality * 100)
+        targetByteCount = CompressionSizeEstimate.byteCount(sourceByteCount: sourceByteCount,
+                                                             quality: quality)
+        resultValueLabel.stringValue = ByteCountFormatter.string(fromByteCount: targetByteCount,
+                                                                  countStyle: .file)
+    }
+
+    @objc private func keepDimensionsChanged() {
+        updateValues(for: slider.value)
+    }
 
     func present(over parent: NSWindow) {
         let parentFrame = parent.frame
@@ -357,14 +372,7 @@ private final class CompressionDialogPanel: NSPanel {
     }
 
     @objc private func compressTapped() {
-        let format: ImageCompressionFormat
-        switch formatPicker.selectedIndex {
-        case 1: format = .jpeg
-        case 2: format = .png
-        case 3: format = .webP
-        default: format = .sameAsSource
-        }
-        onConfirm?(slider.value, format)
+        onConfirm?(slider.value, targetByteCount, keepDimensionsCheckbox.isOn)
     }
 }
 
@@ -1746,7 +1754,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let panel = ActionMenuPanel(entries: buildMoreEntries(), style: .more)
         prepareActionsPanelForAutoHide(panel)
         actionsPanel = panel
-        ActionMenuPanel.animateMoreButtonPress(actionsButton)
         panel.presentBelowToolbar(at: point)
     }
 
@@ -2100,25 +2107,33 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
     }
 
-    /// Present a small dialog to pick quality and output format, then compress
+    /// Present a dialog to pick quality and show the resulting file size, then compress
     /// the active image and insert it next to the original for side-by-side comparison.
     @objc private func compressImageTapped() {
         guard let session, let index = currentActionIndex,
               session.infos.indices.contains(index),
               session.infos[index].kind == .image,
+              let image = session.images[safe: index] ?? nil,
               let content = contentView else { return }
 
-        let dimmer = NSView(frame: content.bounds)
+        let dimmer = CompressionDimmerView(frame: content.bounds)
         dimmer.autoresizingMask = [.width, .height]
         dimmer.wantsLayer = true
         dimmer.layer?.backgroundColor = NSColor(srgbRed: 6 / 255, green: 7 / 255, blue: 10 / 255, alpha: 0.48).cgColor
         content.addSubview(dimmer)
 
-        let dialog = CompressionDialogPanel()
-        dialog.onConfirm = { [weak self, weak dialog, weak dimmer] quality, format in
+        let sourceBytes = session.infos[index].fileSize ?? {
+            let pixels = image.representations.reduce(0) { current, representation in
+                max(current, representation.pixelsWide * representation.pixelsHigh)
+            }
+            return max(1_048_576, Int64(Double(max(1, pixels)) * 0.5))
+        }()
+        let dialog = CompressionDialogPanel(sourceByteCount: sourceBytes)
+        dialog.onConfirm = { [weak self, weak dialog, weak dimmer] quality, targetByteCount, keepOriginalDimensions in
             dialog?.close()
             dimmer?.removeFromSuperview()
-            self?.compressImage(at: index, quality: quality, outputFormat: format)
+            self?.compressImage(at: index, quality: quality, targetByteCount: targetByteCount,
+                                keepOriginalDimensions: keepOriginalDimensions)
         }
         dialog.onCancel = { [weak dialog, weak dimmer] in
             dialog?.close()
@@ -2129,12 +2144,16 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     /// Compress the image at `index` and insert the result at `index + 1`, then
     /// enter side-by-side compare mode so the user can see before/after.
-    private func compressImage(at index: Int, quality: CGFloat, outputFormat: ImageCompressionFormat) {
+    private func compressImage(at index: Int, quality: CGFloat, targetByteCount: Int64,
+                               keepOriginalDimensions: Bool) {
         guard let session,
               let image = session.images[safe: index] ?? nil else { return }
 
         let sourceURL = session.infos[index].url
-        let format = outputFormat.exportFormat(for: sourceURL)
+        guard let format = ImageCompressionFormat.exportFormat(for: sourceURL) else {
+            showCompressionError()
+            return
+        }
         let baseName = (sourceURL.lastPathComponent as NSString).deletingPathExtension
         let outputDir: URL
         if sourceURL.isFileURL {
@@ -2144,14 +2163,19 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads")
         }
 
-        let targetURL = uniqueURL(in: outputDir, baseName: baseName + ".compressed", fileExtension: format.fileExtension)
+        let sourceExtension = sourceURL.pathExtension.lowercased()
+        let targetURL = uniqueURL(in: outputDir, baseName: baseName + ".compressed",
+                                  fileExtension: sourceExtension.isEmpty ? format.fileExtension : sourceExtension)
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let cgImage = ImageExporter.cgImage(from: image, rotatedQuarters: 0) else {
                 DispatchQueue.main.async { self?.showCompressionError() }
                 return
             }
-            let success = ImageExporter.write(cgImage: cgImage, to: targetURL, format: format, quality: quality)
+            let success = ImageExporter.writeCompressed(cgImage: cgImage, to: targetURL,
+                                                        format: format, quality: quality,
+                                                        targetByteCount: targetByteCount,
+                                                        allowResizing: !keepOriginalDimensions)
             DispatchQueue.main.async {
                 guard let self, success else {
                     self?.showCompressionError()
@@ -3984,6 +4008,11 @@ final class InspectToolbarButton: NSButton {
         didSet { updateAppearance() }
     }
 
+    override func mouseDown(with event: NSEvent) {
+        if usesFigmaStyle { ActionMenuPanel.animateMoreButtonPress(self) }
+        super.mouseDown(with: event)
+    }
+
     private func updateAppearance() {
         if usesFigmaStyle {
             let idleFill = NSColor(srgbRed: 29 / 255, green: 30 / 255, blue: 34 / 255, alpha: 0.72)
@@ -5397,13 +5426,16 @@ private enum QuickSaveSource {
 }
 
 private enum ImageExportFormat {
-    case png, jpeg, webP, icns
+    case png, jpeg, webP, heic, tiff, gif, icns
 
     var utType: UTType {
         switch self {
         case .png: return .png
         case .jpeg: return .jpeg
         case .webP: return UTType("org.webmproject.webp") ?? .png
+        case .heic: return .heic
+        case .tiff: return .tiff
+        case .gif: return .gif
         case .icns: return UTType("com.apple.icns")!
         }
     }
@@ -5413,15 +5445,17 @@ private enum ImageExportFormat {
         case .png: return "png"
         case .jpeg: return "jpg"
         case .webP: return "webp"
+        case .heic: return "heic"
+        case .tiff: return "tiff"
+        case .gif: return "gif"
         case .icns: return "icns"
         }
     }
 }
 
-/// Encodes an NSImage to disk via ImageIO — NSBitmapImageRep has no WebP
-/// support, while CGImageDestination covers PNG/JPEG/WebP uniformly.
-/// Never mutates the source file; always writes a new one chosen in a
-/// Save panel.
+/// Encodes an NSImage to disk. ImageIO handles PNG/JPEG/ICNS; libwebp handles
+/// WebP because macOS ships a WebP decoder but no ImageIO WebP destination.
+/// Never mutates the source file.
 private enum ImageExporter {
     static func write(image: NSImage, rotatedQuarters: Int, to url: URL,
                       format: ImageExportFormat) -> Bool {
@@ -5441,13 +5475,223 @@ private enum ImageExporter {
         if format == .icns {
             return writeIcon(cgImage: cgImage, to: url)
         }
-        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, format.utType.identifier as CFString, 1, nil) else { return false }
+        guard let data = encodedData(cgImage: cgImage, format: format, quality: quality) else { return false }
+        return write(data: data, to: url)
+    }
+
+    static func writeCompressed(cgImage: CGImage, to url: URL, format: ImageExportFormat,
+                                quality: CGFloat, targetByteCount: Int64,
+                                allowResizing: Bool) -> Bool {
+        let target = max(1_024, targetByteCount)
+        var image = cgImage
+        guard var data = compressedData(cgImage: image, format: format,
+                                        quality: quality, targetByteCount: target) else { return false }
+
+        // Only the unchecked dimension option allows resizing. Width and height
+        // always use the same scale, so the source aspect ratio cannot change.
+        for _ in 0..<(allowResizing ? 6 : 0) where Int64(data.count) > Int64(Double(target) * 1.08) {
+            let ratio = sqrt(Double(target) / Double(data.count))
+            let scale = max(0.35, min(0.98, ratio * 0.98))
+            let width = max(1, Int((Double(image.width) * scale).rounded()))
+            let height = max(1, Int((Double(image.height) * scale).rounded()))
+            guard width < image.width || height < image.height,
+                  let resized = resized(image, width: width, height: height),
+                  let resizedData = compressedData(cgImage: resized, format: format,
+                                                   quality: quality, targetByteCount: target) else { break }
+            image = resized
+            data = resizedData
+        }
+
+        return write(data: data, to: url)
+    }
+
+    private static func compressedData(cgImage: CGImage, format: ImageExportFormat,
+                                       quality: CGFloat, targetByteCount: Int64) -> Data? {
+        switch format {
+        case .jpeg, .heic, .webP:
+            return lossyData(cgImage: cgImage, format: format,
+                             maximumQuality: quality, targetByteCount: targetByteCount)
+        case .png, .tiff, .gif:
+            return quantizedData(cgImage: cgImage, format: format,
+                                 quality: quality, targetByteCount: targetByteCount)
+        case .icns:
+            return nil
+        }
+    }
+
+    private static func lossyData(cgImage: CGImage, format: ImageExportFormat,
+                                  maximumQuality: CGFloat, targetByteCount: Int64) -> Data? {
+        let maxQuality = max(0.03, min(1, maximumQuality))
+        guard var smallest = encodedData(cgImage: cgImage, format: format,
+                                         quality: maxQuality) else { return nil }
+        let upperBound = Int64(Double(targetByteCount) * 1.08)
+        guard Int64(smallest.count) > upperBound else { return smallest }
+
+        // Find the highest usable encoding quality that reaches the displayed
+        // size target while preserving the original pixel dimensions.
+        var low: CGFloat = 0.03
+        var high = maxQuality
+        var best: Data?
+        for _ in 0..<8 {
+            let candidateQuality = (low + high) / 2
+            guard let candidate = encodedData(cgImage: cgImage, format: format,
+                                              quality: candidateQuality) else { break }
+            if candidate.count < smallest.count { smallest = candidate }
+            if Int64(candidate.count) <= upperBound {
+                best = candidate
+                low = candidateQuality
+            } else {
+                high = candidateQuality
+            }
+        }
+        return best ?? smallest
+    }
+
+    private static func quantizedData(cgImage: CGImage, format: ImageExportFormat,
+                                      quality: CGFloat, targetByteCount: Int64) -> Data? {
+        let upperBound = Int64(Double(targetByteCount) * 1.08)
+        let startingBits = max(2, min(8, Int((quality * 7).rounded()) + 1))
+        var smallest: Data?
+
+        // PNG/TIFF/GIF ignore lossy quality. Reduce color precision instead;
+        // dimensions and aspect ratio remain exactly unchanged.
+        for bits in stride(from: startingBits, through: 2, by: -1) {
+            guard let image = quantized(cgImage, bitsPerChannel: bits),
+                  let data = encodedData(cgImage: image, format: format, quality: quality) else { continue }
+            if smallest.map({ data.count < $0.count }) ?? true { smallest = data }
+            if Int64(data.count) <= upperBound { return data }
+        }
+        return smallest
+    }
+
+    private static func encodedData(cgImage: CGImage, format: ImageExportFormat,
+                                    quality: CGFloat) -> Data? {
+        if format == .webP {
+            return webPData(cgImage: cgImage, quality: quality)
+        }
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data as CFMutableData, format.utType.identifier as CFString, 1, nil
+        ) else { return nil }
         var properties: [CFString: Any] = [:]
-        if format == .jpeg || format == .webP {
+        if format == .jpeg || format == .heic {
             properties[kCGImageDestinationLossyCompressionQuality] = quality
+        } else if format == .tiff {
+            properties[kCGImagePropertyTIFFDictionary] = [kCGImagePropertyTIFFCompression: 5]
         }
         CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
-        return CGImageDestinationFinalize(destination)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
+    }
+
+    private static func webPData(cgImage: CGImage, quality: CGFloat) -> Data? {
+        let width = cgImage.width
+        let height = cgImage.height
+        guard width > 0, height > 0, width <= 16_383, height <= 16_383 else {
+            Logger.error("WebP export rejected unsupported dimensions: \(width) × \(height)")
+            return nil
+        }
+
+        let bytesPerRow = width * 4
+        var rgba = [UInt8](repeating: 0, count: bytesPerRow * height)
+        let rendered = rgba.withUnsafeMutableBytes { bytes -> Bool in
+            guard let baseAddress = bytes.baseAddress,
+                  let context = CGContext(
+                    data: baseAddress,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: bytesPerRow,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue
+                        | CGImageAlphaInfo.premultipliedLast.rawValue
+                  ) else { return false }
+            context.interpolationQuality = .high
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard rendered else {
+            Logger.error("WebP export could not create an RGBA bitmap context")
+            return nil
+        }
+
+        // Core Graphics renders premultiplied RGBA. libwebp expects straight
+        // alpha, so restore RGB at translucent edges before encoding.
+        for offset in stride(from: 0, to: rgba.count, by: 4) {
+            let alpha = Int(rgba[offset + 3])
+            guard alpha > 0, alpha < 255 else { continue }
+            rgba[offset] = UInt8(min(255, Int(rgba[offset]) * 255 / alpha))
+            rgba[offset + 1] = UInt8(min(255, Int(rgba[offset + 1]) * 255 / alpha))
+            rgba[offset + 2] = UInt8(min(255, Int(rgba[offset + 2]) * 255 / alpha))
+        }
+
+        var output: UnsafeMutablePointer<UInt8>?
+        let encodedSize = rgba.withUnsafeBufferPointer { pixels in
+            WebPEncodeRGBA(
+                pixels.baseAddress,
+                Int32(width),
+                Int32(height),
+                Int32(bytesPerRow),
+                Float(max(0, min(1, quality)) * 100),
+                &output
+            )
+        }
+        guard encodedSize > 0, let output else {
+            Logger.error("libwebp failed to encode the image")
+            return nil
+        }
+        defer { WebPFree(output) }
+        return Data(bytes: output, count: encodedSize)
+    }
+
+    private static func resized(_ image: CGImage, width: Int, height: Int) -> CGImage? {
+        guard let context = makeContext(width: width, height: height) else { return nil }
+        context.interpolationQuality = .high
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()
+    }
+
+    private static func quantized(_ image: CGImage, bitsPerChannel: Int) -> CGImage? {
+        let width = image.width
+        let height = image.height
+        let bytesPerRow = width * 4
+        var rgba = [UInt8](repeating: 0, count: bytesPerRow * height)
+        return rgba.withUnsafeMutableBytes { bytes in
+            guard let baseAddress = bytes.baseAddress,
+                  let context = CGContext(
+                    data: baseAddress,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: bytesPerRow,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue
+                        | CGImageAlphaInfo.premultipliedLast.rawValue
+                  ) else { return nil }
+            context.interpolationQuality = .high
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+            let shift = max(0, 8 - bitsPerChannel)
+            let mask = UInt8(truncatingIfNeeded: 0xFF << shift)
+            guard shift > 0 else { return context.makeImage() }
+            let pixels = bytes.bindMemory(to: UInt8.self)
+            for offset in stride(from: 0, to: pixels.count, by: 4) {
+                pixels[offset] &= mask
+                pixels[offset + 1] &= mask
+                pixels[offset + 2] &= mask
+            }
+            return context.makeImage()
+        }
+    }
+
+    private static func write(data: Data, to url: URL) -> Bool {
+        do {
+            try data.write(to: url, options: .atomic)
+            return true
+        } catch {
+            Logger.error("Image export failed: \(error.localizedDescription)")
+            return false
+        }
     }
 
     /// Build a multi-resolution macOS icon. Every representation is square;

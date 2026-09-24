@@ -1270,7 +1270,7 @@ function compressionMoreMenu(parent, x, y) {
 }
 
 function compressionDialog(parent, x, y) {
-  const dialog = panel(parent, 'Compression Dialog', x, y, 320, 236, COLORS.surface, 14);
+  const dialog = panel(parent, 'Compression Dialog', x, y, 350, 280, COLORS.surface, 14);
   dialog.effects = [{
     type: 'DROP_SHADOW',
     color: { r: 0, g: 0, b: 0, a: .45 },
@@ -1282,29 +1282,38 @@ function compressionDialog(parent, x, y) {
   }];
 
   text('Title', dialog, 'Compress Image', 20, 20, 15, COLORS.text, 'semibold');
-  text('Caption', dialog, 'Lower quality means a smaller file.', 20, 44, 12, COLORS.secondary, 'regular', 280);
+  text('Caption', dialog, 'Lower quality means a smaller file.', 20, 44, 12, COLORS.secondary, 'regular', 310);
 
-  text('Quality Label', dialog, 'Quality: 70%', 20, 78, 12, COLORS.text, 'medium');
-  rect('Slider Track', dialog, 20, 102, 280, 4, COLORS.line, 2);
-  rect('Slider Fill', dialog, 20, 102, 196, 4, COLORS.accent, 2);
-  const knob = ellipse('Slider Knob', dialog, 20 + 196 - 7, 97, 14, '#F3EEE8');
+  text('Quality Label', dialog, 'Quality', 20, 78, 12, COLORS.text, 'medium');
+  text('Quality Value / updates with slider', dialog, '70%', 268, 78, 12, COLORS.accent, 'semibold', 62, 'RIGHT');
+  rect('Slider Track', dialog, 20, 102, 310, 4, COLORS.line, 2);
+  rect('Slider Fill / 70%', dialog, 20, 102, 217, 4, COLORS.accent, 2);
+  const knob = ellipse('Slider Knob / draggable', dialog, 20 + 217 - 7, 97, 14, '#F3EEE8');
   knob.effects = [{
     type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .35 },
     offset: { x: 0, y: 2 }, radius: 4, spread: 0, visible: true, blendMode: 'NORMAL'
   }];
   text('Slider Hint', dialog, '10% – 100%', 20, 114, 11, COLORS.muted, 'regular');
 
-  text('Format Label', dialog, 'Format:', 20, 144, 12, COLORS.text, 'medium');
-  const dropdown = panel(dialog, 'Format Dropdown', 72, 140, 228, 30, '#17181D', 8);
-  text('Dropdown Value', dropdown, 'Same as original', 12, 8, 12, COLORS.text, 'medium', 180);
-  const chevron = figma.createNodeFromSvg(ICONS.chevron.replaceAll('CURRENT', COLORS.secondary));
-  chevron.name = 'Icon / chevron'; chevron.resize(14, 14); chevron.x = 206; chevron.y = 8; dropdown.appendChild(chevron);
+  const keepSize = frame('Keep original dimensions / checked', 20, 142, 310, 20, null, 0);
+  keepSize.fills = [];
+  dialog.appendChild(keepSize);
+  const checkbox = frame('Checkbox / checked', 0, 2, 16, 16, COLORS.accent, 4);
+  checkbox.strokes = [fill(COLORS.accent)]; checkbox.strokeWeight = 1;
+  keepSize.appendChild(checkbox);
+  const check = figma.createNodeFromSvg(ICONS.check.replaceAll('CURRENT', '#21130D'));
+  check.name = 'Icon / check'; check.resize(12, 12); check.x = 2; check.y = 2; checkbox.appendChild(check);
+  text('Checkbox Label', keepSize, 'Keep original dimensions', 26, 2, 12, COLORS.text, 'medium', 284);
 
-  const cancel = frame('Cancel Button', 150, 192, 80, 32, '#17181D', 8);
+  const result = panel(dialog, 'Compressed size / updates with slider', 20, 176, 310, 38, '#111217', 8);
+  text('Result Label', result, 'Compressed size', 12, 11, 12, COLORS.secondary, 'medium');
+  text('Result Value', result, '2.1 MB', 212, 9, 15, COLORS.text, 'semibold', 86, 'RIGHT');
+
+  const cancel = frame('Cancel Button', 170, 236, 80, 32, '#17181D', 8);
   cancel.strokes = [fill(COLORS.line)]; cancel.strokeWeight = 1; dialog.appendChild(cancel);
   text('Cancel Label', cancel, 'Cancel', 0, 9, 12, COLORS.text, 'medium', 80, 'CENTER');
 
-  const compress = frame('Compress Button', 240, 192, 90, 32, COLORS.accent, 8);
+  const compress = frame('Compress Button', 260, 236, 90, 32, COLORS.accent, 8);
   dialog.appendChild(compress);
   text('Compress Label', compress, 'Compress', 0, 9, 12, '#21130D', 'semibold', 90, 'CENTER');
 
@@ -1353,7 +1362,7 @@ function createCompressionFlowScreen(x, imageHash = null) {
   const scene2 = compressionSceneBase('02 / Compression Dialog', 1750);
   flow.appendChild(scene2.board);
   scene2.shade.opacity = .48;
-  compressionDialog(scene2.board, Math.round((1554 - 320) / 2), Math.round((1012 - 236) / 2));
+  compressionDialog(scene2.board, Math.round((1554 - 350) / 2), Math.round((1012 - 280) / 2));
 
   // Scene 3: Compare result
   const scene3 = frame('03 / Compare Result', 3500, 0, 1554, 1012, '#060709', 16);
@@ -1420,18 +1429,19 @@ async function generateImageCompressionFlow() {
   await createStyles();
   const name = 'Image Compression Flow';
   const existing = figma.currentPage.children.find(child => child.name === name);
-  if (existing) {
-    figma.currentPage.selection = [existing];
-    figma.viewport.scrollAndZoomIntoView([existing]);
-    figma.ui.postMessage({ message: 'Image Compression Flow already exists — delete it to regenerate.' });
-    return;
-  }
   let maxX = 0;
   for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
-  const flow = createCompressionFlowScreen(maxX + 196);
+  const targetX = existing ? existing.x : maxX + 196;
+  if (existing) existing.name = 'Image Compression Flow / Previous';
+  const flow = createCompressionFlowScreen(targetX);
+  if (existing) {
+    existing.x = Math.max(maxX, targetX + flow.width) + 196;
+  }
   figma.currentPage.selection = [flow];
   figma.viewport.scrollAndZoomIntoView([flow]);
-  figma.ui.postMessage({ message: 'Created Image Compression Flow (3 scenes).' });
+  figma.ui.postMessage({ message: existing
+    ? 'Updated Image Compression Flow. Previous frame kept to the right.'
+    : 'Created Image Compression Flow (3 scenes).' });
   figma.notify('Image Compression Flow created');
 }
 

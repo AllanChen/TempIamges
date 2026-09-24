@@ -106,7 +106,8 @@ Flow` frame containing three scenes placed side by side:
 1. **01 / Image Inspect + More menu** — the floating toolbar with the More
    menu open and "Compress Image" highlighted.
 2. **02 / Compression Dialog** — the same viewer dimmed, with a centered
-   compression dialog (quality slider + format dropdown + Cancel/Compress).
+   compression dialog (quality slider + keep-original-dimensions checkbox +
+   live compressed size + Cancel/Compress).
 3. **03 / Compare Result** — the bordered Compare Mode with original (A) on
    the left and compressed (B) on the right, plus the bottom filmstrip showing
    both source and compressed thumbnails.

@@ -228,5 +228,24 @@ const names = [
     ['Focus', 'Compare', 'Slider', 'Widget', 'Information']);
   await figma.ui.onmessage({ type: 'generate-image-inspect-chrome-study' });
   assert.equal(page.children.length, beforeInspectStudy + 1, 'Image Inspect Chrome Study must be idempotent');
+
+  const beforeCompressionFlow = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-image-compression-flow' });
+  const compressionFlow = page.children.find(child => child.name === 'Image Compression Flow');
+  assert.ok(compressionFlow, 'Image Compression Flow must be generated');
+  assert.equal(page.children.length, beforeCompressionFlow + 1);
+  const compressionDialog = compressionFlow.findOne(child => child.name === 'Compression Dialog');
+  assert.ok(compressionDialog, 'Compression flow needs a dialog');
+  assert.ok(compressionDialog.findOne(child => child.name === 'Quality Value / updates with slider'));
+  assert.ok(compressionDialog.findOne(child => child.name === 'Keep original dimensions / checked'));
+  assert.ok(compressionDialog.findOne(child => child.name === 'Checkbox / checked'));
+  assert.ok(compressionDialog.findOne(child => child.name === 'Compressed size / updates with slider'));
+  assert.equal(compressionDialog.findOne(child => child.name === 'Format Dropdown'), null,
+    'Compression dialog must not offer format conversion');
+  await figma.ui.onmessage({ type: 'generate-image-compression-flow' });
+  assert.equal(page.children.filter(child => child.name === 'Image Compression Flow').length, 1,
+    'Regeneration must leave exactly one current compression flow');
+  assert.equal(page.children.filter(child => child.name === 'Image Compression Flow / Previous').length, 1,
+    'Regeneration must preserve the previous compression flow for review');
   console.log('Production screens, Simple Image Viewer, Widget Market, 13-screen Dark Refresh, v3 Chrome Studies, Preview Chrome, and bordered Compare Mode generate idempotently');
 })().catch(error => { console.error(error); process.exitCode = 1; });

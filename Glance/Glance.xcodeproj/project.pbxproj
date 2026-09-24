@@ -44,6 +44,7 @@
 		AAE02EAD160CC4F1385DF930 /* ScreenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658FDB8BCED20C2ECE359B84 /* ScreenManager.swift */; };
 		AE2DCC31AA708716120E2356 /* Inter-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 47C6E64D2379C95E1D6A4AF4 /* Inter-SemiBold.otf */; };
 		B0D706856EF690BF636AC184 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC10A80E0682249D4C76FAD /* Preferences.swift */; };
+		B7D0536BB572326DAE8768C3 /* libwebp in Frameworks */ = {isa = PBXBuildFile; productRef = 727B54D24F50BE7C77E2BFB2 /* libwebp */; };
 		BC7B4C576CE9D7E62A343E9D /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E389BCB266C4E57B04B570 /* AuthManager.swift */; };
 		D12206470892182751E6C498 /* Inter-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = 0FE438770872A37E845AF821 /* Inter-Medium.otf */; };
 		D44D26ACDA05AD10CFA15A4B /* LoadFailed.gif in Resources */ = {isa = PBXBuildFile; fileRef = 790B6D57380E5760E9CEA752 /* LoadFailed.gif */; };
@@ -113,6 +114,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				508804CD84F27A12CF0C0AA0 /* Highlightr in Frameworks */,
+				B7D0536BB572326DAE8768C3 /* libwebp in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -222,6 +224,7 @@
 			name = Glance;
 			packageProductDependencies = (
 				C96ACA981C9C32B7FA35152E /* Highlightr */,
+				727B54D24F50BE7C77E2BFB2 /* libwebp */,
 			);
 			productName = Glance;
 			productReference = E6681C13BACBBD0D74A80EB4 /* Glance.app */;
@@ -253,6 +256,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				3E7FDE13AEF45801E7B5C411 /* XCRemoteSwiftPackageReference "Highlightr" */,
+				149AA6524917E18339DB3519 /* XCRemoteSwiftPackageReference "libwebp-Xcode" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 897E7B5C0E3778F8AD681930 /* Products */;
@@ -526,6 +530,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		149AA6524917E18339DB3519 /* XCRemoteSwiftPackageReference "libwebp-Xcode" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SDWebImage/libwebp-Xcode.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.6.0;
+			};
+		};
 		3E7FDE13AEF45801E7B5C411 /* XCRemoteSwiftPackageReference "Highlightr" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/raspu/Highlightr";
@@ -537,6 +549,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		727B54D24F50BE7C77E2BFB2 /* libwebp */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 149AA6524917E18339DB3519 /* XCRemoteSwiftPackageReference "libwebp-Xcode" */;
+			productName = libwebp;
+		};
 		C96ACA981C9C32B7FA35152E /* Highlightr */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 3E7FDE13AEF45801E7B5C411 /* XCRemoteSwiftPackageReference "Highlightr" */;
