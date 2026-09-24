@@ -51,9 +51,10 @@ The dialog is a centered modal over a dimmed Image Inspect window.
 
 | Property | Value |
 |----------|-------|
-| Width | 320 px |
+| Width | 350 px |
+| Height | 236 px |
 | Padding | 20 px |
-| Background | `#1C1D21` |
+| Background | `#17181D` |
 | Border radius | 14 px |
 | Stroke | 1 px `#34353A` |
 | Shadow | `0 18 48 rgba(0,0,0,0.45)` |

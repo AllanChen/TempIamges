@@ -3,7 +3,6 @@ import UniformTypeIdentifiers
 import ImageIO
 import WebKit
 import Vision
-import ObjectiveC
 
 final class ImageInspectSession {
     enum Mode { case focus, browse, compare }
@@ -31,6 +30,328 @@ final class ImageInspectSession {
         if self.mode == .compare, infos.count >= 2 {
             compareIndices = (0, 1)
         }
+    }
+}
+
+// MARK: - Image compression dialog
+
+private enum ImageCompressionFormat {
+    case sameAsSource, jpeg, png, webP
+
+    func exportFormat(for sourceURL: URL) -> ImageExportFormat {
+        switch self {
+        case .sameAsSource:
+            let ext = sourceURL.pathExtension.lowercased()
+            if ext == "png" { return .png }
+            if ext == "webp" { return .webP }
+            return .jpeg
+        case .jpeg: return .jpeg
+        case .png: return .png
+        case .webP: return .webP
+        }
+    }
+}
+
+private final class CompressionSlider: NSView {
+    var value: CGFloat = 0.7 {
+        didSet {
+            guard value != oldValue else { return }
+            layoutLayers()
+            valueChanged?(value)
+        }
+    }
+    var valueChanged: ((CGFloat) -> Void)?
+
+    private let track = NSView()
+    private let fill = NSView()
+    private let knob = NSView()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func setup() {
+        track.wantsLayer = true
+        track.layer?.backgroundColor = PanelStyle.inspectLine.cgColor
+        track.layer?.cornerRadius = 2
+        addSubview(track)
+
+        fill.wantsLayer = true
+        fill.layer?.backgroundColor = PanelStyle.accent.cgColor
+        fill.layer?.cornerRadius = 2
+        addSubview(fill)
+
+        knob.wantsLayer = true
+        knob.layer?.backgroundColor = PanelStyle.textPrimary.cgColor
+        knob.layer?.cornerRadius = 7
+        knob.layer?.shadowColor = NSColor.black.cgColor
+        knob.layer?.shadowOffset = NSSize(width: 0, height: 2)
+        knob.layer?.shadowRadius = 4
+        knob.layer?.shadowOpacity = 0.35
+        addSubview(knob)
+
+        layoutLayers()
+    }
+
+    override func layout() {
+        super.layout()
+        layoutLayers()
+    }
+
+    private func layoutLayers() {
+        let trackHeight: CGFloat = 4
+        let knobSize: CGFloat = 14
+        let y = (bounds.height - trackHeight) / 2
+        track.frame = NSRect(x: 0, y: y, width: bounds.width, height: trackHeight)
+
+        let fraction = (value - 0.1) / 0.9
+        let fillWidth = bounds.width * fraction
+        fill.frame = NSRect(x: 0, y: y, width: fillWidth, height: trackHeight)
+
+        let knobX = fillWidth - knobSize / 2
+        knob.frame = NSRect(x: knobX, y: (bounds.height - knobSize) / 2, width: knobSize, height: knobSize)
+    }
+
+    override func mouseDown(with event: NSEvent) { handleMouse(event) }
+    override func mouseDragged(with event: NSEvent) { handleMouse(event) }
+
+    private func handleMouse(_ event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let fraction = max(0, min(1, point.x / bounds.width))
+        value = 0.1 + fraction * 0.9
+    }
+}
+
+private final class CompressionFormatPicker: NSControl {
+    private let background = NSView()
+    private let label = NSTextField(labelWithString: "")
+    private let chevron = NSImageView()
+    private let popupMenu = NSMenu()
+
+    var options: [String] = [] {
+        didSet { rebuildMenu() }
+    }
+
+    var selectedIndex: Int = 0 {
+        didSet { updateLabel() }
+    }
+
+    var onSelection: ((Int) -> Void)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func setup() {
+        wantsLayer = true
+
+        background.wantsLayer = true
+        background.layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
+        background.layer?.cornerRadius = 8
+        background.layer?.borderWidth = 1
+        background.layer?.borderColor = PanelStyle.inspectLine.cgColor
+        background.autoresizingMask = [.width, .height]
+        background.frame = bounds
+        addSubview(background)
+
+        label.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        label.textColor = PanelStyle.textPrimary
+        label.backgroundColor = .clear
+        label.isBordered = false
+        label.isEditable = false
+        label.isSelectable = false
+        label.frame = NSRect(x: 12, y: 7, width: bounds.width - 32, height: 16)
+        label.autoresizingMask = [.width]
+        addSubview(label)
+
+        chevron.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
+        chevron.contentTintColor = PanelStyle.textSecondary
+        chevron.imageScaling = .scaleProportionallyUpOrDown
+        chevron.frame = NSRect(x: bounds.width - 21, y: 8, width: 14, height: 14)
+        chevron.autoresizingMask = [.minXMargin]
+        addSubview(chevron)
+
+        target = self
+        action = #selector(showMenu)
+        rebuildMenu()
+        updateLabel()
+    }
+
+    private func rebuildMenu() {
+        popupMenu.removeAllItems()
+        for (index, option) in options.enumerated() {
+            let item = NSMenuItem(title: option, action: #selector(selectItem(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = index
+            popupMenu.addItem(item)
+        }
+    }
+
+    private func updateLabel() {
+        guard options.indices.contains(selectedIndex) else { return }
+        label.stringValue = options[selectedIndex]
+    }
+
+    @objc private func showMenu() {
+        guard !options.isEmpty else { return }
+        let point = NSPoint(x: 0, y: bounds.height)
+        popupMenu.popUp(positioning: nil, at: point, in: self)
+    }
+
+    @objc private func selectItem(_ sender: NSMenuItem) {
+        selectedIndex = sender.tag
+        onSelection?(selectedIndex)
+    }
+}
+
+private final class CompressionDialogOverlay: NSView {
+    var onConfirm: ((CGFloat, ImageCompressionFormat) -> Void)?
+    var onCancel: (() -> Void)?
+
+    private let dialog = NSView()
+    private let titleLabel = NSTextField(labelWithString: "Compress Image".localized)
+    private let captionLabel = NSTextField(labelWithString: "Lower quality means a smaller file.".localized)
+    private let qualityLabel = NSTextField(labelWithString: "Quality: 70%".localized)
+    private let slider = CompressionSlider()
+    private let sliderHint = NSTextField(labelWithString: "10% – 100%")
+    private let formatLabel = NSTextField(labelWithString: "Format:".localized)
+    private let formatPicker = CompressionFormatPicker()
+    private let cancelButton = PanelButton(title: "Cancel".localized, target: nil, action: nil)
+    private let compressButton = PanelButton(title: "Compress".localized, target: nil, action: nil)
+
+    private var keyMonitor: Any?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func setupUI() {
+        wantsLayer = true
+        layer?.backgroundColor = NSColor(srgbRed: 6 / 255, green: 7 / 255, blue: 10 / 255, alpha: 0.48).cgColor
+
+        dialog.wantsLayer = true
+        dialog.layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
+        dialog.layer?.cornerRadius = 14
+        dialog.layer?.borderWidth = 1
+        dialog.layer?.borderColor = PanelStyle.inspectLine.cgColor
+        dialog.layer?.shadowColor = NSColor.black.cgColor
+        dialog.layer?.shadowOffset = NSSize(width: 0, height: 18)
+        dialog.layer?.shadowRadius = 48
+        dialog.layer?.shadowOpacity = 0.45
+        dialog.frame = NSRect(x: (bounds.width - 350) / 2,
+                              y: (bounds.height - 236) / 2,
+                              width: 350, height: 236)
+        dialog.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
+        addSubview(dialog)
+
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
+        titleLabel.textColor = PanelStyle.textPrimary
+        titleLabel.frame = NSRect(x: 20, y: 198, width: 310, height: 18)
+        dialog.addSubview(titleLabel)
+
+        captionLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .regular)
+        captionLabel.textColor = PanelStyle.textSecondary
+        captionLabel.frame = NSRect(x: 20, y: 177, width: 280, height: 15)
+        dialog.addSubview(captionLabel)
+
+        qualityLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        qualityLabel.textColor = PanelStyle.textPrimary
+        qualityLabel.frame = NSRect(x: 20, y: 143, width: 310, height: 15)
+        dialog.addSubview(qualityLabel)
+
+        slider.value = 0.7
+        slider.valueChanged = { [weak self] value in
+            self?.qualityLabel.stringValue = String(format: "Quality: %.0f%%".localized, value * 100)
+        }
+        slider.frame = NSRect(x: 20, y: 124, width: 280, height: 16)
+        dialog.addSubview(slider)
+
+        sliderHint.font = PanelStyle.inspectFont(ofSize: 11, weight: .regular)
+        sliderHint.textColor = PanelStyle.textTertiary
+        sliderHint.frame = NSRect(x: 20, y: 109, width: 310, height: 13)
+        dialog.addSubview(sliderHint)
+
+        formatLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        formatLabel.textColor = PanelStyle.textPrimary
+        formatLabel.frame = NSRect(x: 20, y: 77, width: 52, height: 15)
+        dialog.addSubview(formatLabel)
+
+        formatPicker.options = [
+            "Same as original".localized,
+            "JPEG",
+            "PNG",
+            "WebP"
+        ]
+        formatPicker.selectedIndex = 0
+        formatPicker.frame = NSRect(x: 72, y: 66, width: 228, height: 30)
+        dialog.addSubview(formatPicker)
+
+        cancelButton.target = self
+        cancelButton.action = #selector(cancelTapped)
+        cancelButton.normalBackground = PanelStyle.inspectChrome
+        cancelButton.hoverBackground = PanelStyle.inspectLine
+        cancelButton.titleColor = PanelStyle.textPrimary
+        cancelButton.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        cancelButton.layer?.borderColor = PanelStyle.inspectLine.cgColor
+        cancelButton.frame = NSRect(x: 150, y: 12, width: 80, height: 32)
+        dialog.addSubview(cancelButton)
+
+        compressButton.target = self
+        compressButton.action = #selector(compressTapped)
+        compressButton.normalBackground = PanelStyle.accent
+        compressButton.hoverBackground = PanelStyle.accentHover
+        compressButton.titleColor = PanelStyle.accentInk
+        compressButton.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
+        compressButton.layer?.borderWidth = 0
+        compressButton.frame = NSRect(x: 240, y: 12, width: 90, height: 32)
+        dialog.addSubview(compressButton)
+
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.keyCode == 53 else { return event }
+            self?.cancelTapped()
+            return nil
+        }
+    }
+
+    override func removeFromSuperview() {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
+        }
+        super.removeFromSuperview()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if !dialog.frame.contains(point) {
+            cancelTapped()
+        } else {
+            super.mouseDown(with: event)
+        }
+    }
+
+    @objc private func cancelTapped() {
+        onCancel?()
+    }
+
+    @objc private func compressTapped() {
+        let format: ImageCompressionFormat
+        switch formatPicker.selectedIndex {
+        case 1: format = .jpeg
+        case 2: format = .png
+        case 3: format = .webP
+        default: format = .sameAsSource
+        }
+        onConfirm?(slider.value, format)
     }
 }
 
@@ -1771,82 +2092,19 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     @objc private func compressImageTapped() {
         guard let session, let index = currentActionIndex,
               session.infos.indices.contains(index),
-              session.infos[index].kind == .image else { return }
+              session.infos[index].kind == .image,
+              let content = contentView else { return }
 
-        let alert = NSAlert()
-        alert.messageText = "Compress Image".localized
-        alert.informativeText = "Lower quality means a smaller file.".localized
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Compress".localized)
-        alert.addButton(withTitle: "Cancel".localized)
-
-        let accessory = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 70))
-
-        let qualityLabel = NSTextField(labelWithString: "Quality: 70%".localized)
-        qualityLabel.frame = NSRect(x: 0, y: 42, width: 260, height: 16)
-        qualityLabel.alignment = .left
-        accessory.addSubview(qualityLabel)
-
-        let slider = NSSlider(target: nil, action: nil)
-        slider.frame = NSRect(x: 0, y: 28, width: 260, height: 20)
-        slider.minValue = 0.1
-        slider.maxValue = 1.0
-        slider.doubleValue = 0.7
-        slider.action = #selector(compressionQualitySliderChanged(_:))
-        slider.target = self
-        objc_setAssociatedObject(slider, &Self.qualityLabelKey, qualityLabel, .OBJC_ASSOCIATION_RETAIN)
-        accessory.addSubview(slider)
-
-        let formatLabel = NSTextField(labelWithString: "Format:".localized)
-        formatLabel.frame = NSRect(x: 0, y: 4, width: 50, height: 16)
-        accessory.addSubview(formatLabel)
-
-        let formatPopup = NSPopUpButton(frame: NSRect(x: 58, y: 0, width: 202, height: 22))
-        formatPopup.addItem(withTitle: "Same as original".localized)
-        formatPopup.addItem(withTitle: "JPEG".localized)
-        formatPopup.addItem(withTitle: "PNG".localized)
-        formatPopup.addItem(withTitle: "WebP".localized)
-        formatPopup.selectItem(at: 0)
-        accessory.addSubview(formatPopup)
-
-        alert.accessoryView = accessory
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-
-        let quality = CGFloat(slider.doubleValue)
-        let formatIndex = formatPopup.indexOfSelectedItem
-        let format: ImageCompressionFormat
-        switch formatIndex {
-        case 1: format = .jpeg
-        case 2: format = .png
-        case 3: format = .webP
-        default: format = .sameAsSource
+        let overlay = CompressionDialogOverlay(frame: content.bounds)
+        overlay.autoresizingMask = [.width, .height]
+        overlay.onConfirm = { [weak self, weak overlay] quality, format in
+            overlay?.removeFromSuperview()
+            self?.compressImage(at: index, quality: quality, outputFormat: format)
         }
-        compressImage(at: index, quality: quality, outputFormat: format)
-    }
-
-    @objc private func compressionQualitySliderChanged(_ sender: NSSlider) {
-        guard let label = objc_getAssociatedObject(sender, &Self.qualityLabelKey) as? NSTextField else { return }
-        label.stringValue = String(format: "Quality: %.0f%%".localized, sender.doubleValue * 100)
-    }
-
-    private static var qualityLabelKey: UInt8 = 0
-
-    private enum ImageCompressionFormat {
-        case sameAsSource, jpeg, png, webP
-
-        func exportFormat(for sourceURL: URL) -> ImageExportFormat {
-            switch self {
-            case .sameAsSource:
-                let ext = sourceURL.pathExtension.lowercased()
-                if ext == "png" { return .png }
-                if ext == "webp" { return .webP }
-                return .jpeg
-            case .jpeg: return .jpeg
-            case .png: return .png
-            case .webP: return .webP
-            }
+        overlay.onCancel = { [weak overlay] in
+            overlay?.removeFromSuperview()
         }
+        content.addSubview(overlay)
     }
 
     /// Compress the image at `index` and insert the result at `index + 1`, then
