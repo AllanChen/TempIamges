@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 import ImageIO
 import WebKit
 import Vision
+import ObjectiveC
 
 final class ImageInspectSession {
     enum Mode { case focus, browse, compare }
@@ -1213,6 +1214,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                             action: { [weak self] in self?.toggleInfo() }),
             ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage,
                             action: { [weak self] in self?.recognizeTextTapped() }),
+            ActionMenuEntry(title: "Compress Image".localized, enabled: hasImage,
+                            action: { [weak self] in self?.compressImageTapped() }),
             ActionMenuEntry(title: "Reveal in Finder".localized, enabled: canReveal,
                             action: { [weak self] in self?.revealInFinderTapped() }),
             ActionMenuEntry(title: "Automatic hide".localized + (autoHideChromeEnabled ? " ✓" : ""),
@@ -1362,6 +1365,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             ]),
             .separator(),
             ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() }),
+            ActionMenuEntry(title: "Compress Image".localized, enabled: hasImage, action: { [weak self] in self?.compressImageTapped() }),
             ActionMenuEntry(title: "Reveal in Finder".localized, enabled: currentRevealInfo?.isLocal == true,
                             action: { [weak self] in self?.revealInFinderTapped() })
         ]
@@ -1760,6 +1764,158 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 }
             }
         }
+    }
+
+    /// Present a small dialog to pick quality and output format, then compress
+    /// the active image and insert it next to the original for side-by-side comparison.
+    @objc private func compressImageTapped() {
+        guard let session, let index = currentActionIndex,
+              session.infos.indices.contains(index),
+              session.infos[index].kind == .image else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Compress Image".localized
+        alert.informativeText = "Lower quality means a smaller file.".localized
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Compress".localized)
+        alert.addButton(withTitle: "Cancel".localized)
+
+        let accessory = NSView(frame: NSRect(x: 0, y: 0, width: 260, height: 70))
+
+        let qualityLabel = NSTextField(labelWithString: "Quality: 70%".localized)
+        qualityLabel.frame = NSRect(x: 0, y: 42, width: 260, height: 16)
+        qualityLabel.alignment = .left
+        accessory.addSubview(qualityLabel)
+
+        let slider = NSSlider(target: nil, action: nil)
+        slider.frame = NSRect(x: 0, y: 28, width: 260, height: 20)
+        slider.minValue = 0.1
+        slider.maxValue = 1.0
+        slider.doubleValue = 0.7
+        slider.action = #selector(compressionQualitySliderChanged(_:))
+        slider.target = self
+        objc_setAssociatedObject(slider, &Self.qualityLabelKey, qualityLabel, .OBJC_ASSOCIATION_RETAIN)
+        accessory.addSubview(slider)
+
+        let formatLabel = NSTextField(labelWithString: "Format:".localized)
+        formatLabel.frame = NSRect(x: 0, y: 4, width: 50, height: 16)
+        accessory.addSubview(formatLabel)
+
+        let formatPopup = NSPopUpButton(frame: NSRect(x: 58, y: 0, width: 202, height: 22))
+        formatPopup.addItem(withTitle: "Same as original".localized)
+        formatPopup.addItem(withTitle: "JPEG".localized)
+        formatPopup.addItem(withTitle: "PNG".localized)
+        formatPopup.addItem(withTitle: "WebP".localized)
+        formatPopup.selectItem(at: 0)
+        accessory.addSubview(formatPopup)
+
+        alert.accessoryView = accessory
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let quality = CGFloat(slider.doubleValue)
+        let formatIndex = formatPopup.indexOfSelectedItem
+        let format: ImageCompressionFormat
+        switch formatIndex {
+        case 1: format = .jpeg
+        case 2: format = .png
+        case 3: format = .webP
+        default: format = .sameAsSource
+        }
+        compressImage(at: index, quality: quality, outputFormat: format)
+    }
+
+    @objc private func compressionQualitySliderChanged(_ sender: NSSlider) {
+        guard let label = objc_getAssociatedObject(sender, &Self.qualityLabelKey) as? NSTextField else { return }
+        label.stringValue = String(format: "Quality: %.0f%%".localized, sender.doubleValue * 100)
+    }
+
+    private static var qualityLabelKey: UInt8 = 0
+
+    private enum ImageCompressionFormat {
+        case sameAsSource, jpeg, png, webP
+
+        func exportFormat(for sourceURL: URL) -> ImageExportFormat {
+            switch self {
+            case .sameAsSource:
+                let ext = sourceURL.pathExtension.lowercased()
+                if ext == "png" { return .png }
+                if ext == "webp" { return .webP }
+                return .jpeg
+            case .jpeg: return .jpeg
+            case .png: return .png
+            case .webP: return .webP
+            }
+        }
+    }
+
+    /// Compress the image at `index` and insert the result at `index + 1`, then
+    /// enter side-by-side compare mode so the user can see before/after.
+    private func compressImage(at index: Int, quality: CGFloat, outputFormat: ImageCompressionFormat) {
+        guard let session,
+              let image = session.images[safe: index] ?? nil else { return }
+
+        let sourceURL = session.infos[index].url
+        let format = outputFormat.exportFormat(for: sourceURL)
+        let baseName = (sourceURL.lastPathComponent as NSString).deletingPathExtension
+        let outputDir: URL
+        if sourceURL.isFileURL {
+            outputDir = sourceURL.deletingLastPathComponent()
+        } else {
+            outputDir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+                ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads")
+        }
+
+        let targetURL = uniqueURL(in: outputDir, baseName: baseName + ".compressed", fileExtension: format.fileExtension)
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let cgImage = ImageExporter.cgImage(from: image, rotatedQuarters: 0) else {
+                DispatchQueue.main.async { self?.showCompressionError() }
+                return
+            }
+            let success = ImageExporter.write(cgImage: cgImage, to: targetURL, format: format, quality: quality)
+            DispatchQueue.main.async {
+                guard let self, success else {
+                    self?.showCompressionError()
+                    return
+                }
+                self.insertCompressedImage(at: index, url: targetURL)
+            }
+        }
+    }
+
+    private func uniqueURL(in directory: URL, baseName: String, fileExtension: String) -> URL {
+        var url = directory.appendingPathComponent("\(baseName).\(fileExtension)")
+        var counter = 1
+        while FileManager.default.fileExists(atPath: url.path) {
+            url = directory.appendingPathComponent("\(baseName)-\(counter).\(fileExtension)")
+            counter += 1
+        }
+        return url
+    }
+
+    private func insertCompressedImage(at index: Int, url: URL) {
+        guard let session, session.infos.indices.contains(index) else { return }
+        let compressedInfo = MediaInfo(url: url, isLocal: url.isFileURL, kind: .image)
+        let insertIndex = index + 1
+        session.infos.insert(compressedInfo, at: insertIndex)
+        session.images.insert(nil, at: insertIndex)
+        session.metadata.insert(nil, at: insertIndex)
+
+        session.mode = .compare
+        session.comparisonStyle = .sideBySide
+        session.compareIndices = (index, insertIndex)
+        session.activeCompareSlot = 1
+        session.focusedIndex = index
+
+        renderSession()
+        loadDroppedItem(at: insertIndex, generation: loadGeneration)
+
+        toastWindow.show(message: "Compressed ✓".localized + "\n" + url.path, over: self)
+    }
+
+    private func showCompressionError() {
+        errorTooltip.show(message: "Compression failed".localized, at: NSEvent.mouseLocation)
     }
 
     private var currentRevealInfo: MediaInfo? {
@@ -5002,14 +5158,15 @@ private enum ImageExporter {
         return rotate(image, quarters: quarters)
     }
 
-    static func write(cgImage: CGImage, to url: URL, format: ImageExportFormat) -> Bool {
+    static func write(cgImage: CGImage, to url: URL, format: ImageExportFormat,
+                      quality: CGFloat = 0.9) -> Bool {
         if format == .icns {
             return writeIcon(cgImage: cgImage, to: url)
         }
         guard let destination = CGImageDestinationCreateWithURL(url as CFURL, format.utType.identifier as CFString, 1, nil) else { return false }
         var properties: [CFString: Any] = [:]
-        if format == .jpeg {
-            properties[kCGImageDestinationLossyCompressionQuality] = 0.9
+        if format == .jpeg || format == .webP {
+            properties[kCGImageDestinationLossyCompressionQuality] = quality
         }
         CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
         return CGImageDestinationFinalize(destination)

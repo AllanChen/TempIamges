@@ -89,6 +89,7 @@
 
 // MARK: - Preview Panel
 "Loading…" = "Loading…";
+"Preparing preview" = "Preparing preview";
 "Failed" = "Failed";
 "Folder" = "Folder";
 "Failed to load" = "Failed to load";
@@ -147,6 +148,15 @@
 "Export failed" = "Export failed";
 "Exported ✓" = "Exported ✓";
 "Recognize Text" = "Recognize Text";
+"Compress Image" = "Compress Image";
+"Quality: 70%" = "Quality: 70%";
+"Format:" = "Format:";
+"Same as original" = "Same as original";
+"Compress" = "Compress";
+"Lower quality means a smaller file." = "Lower quality means a smaller file.";
+"Quality: %.0f%%" = "Quality: %.0f%%";
+"Compressed ✓" = "Compressed ✓";
+"Compression failed" = "Compression failed";
 "Base64" = "Base64";
 "Image to Base64" = "Image to Base64";
 "Base64 to Image" = "Base64 to Image";

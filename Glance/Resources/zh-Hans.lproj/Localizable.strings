@@ -89,6 +89,7 @@
 
 // MARK: - Preview Panel
 "Loading…" = "加载中…";
+"Preparing preview" = "正在准备预览";
 "Failed" = "失败";
 "Folder" = "文件夹";
 "Failed to load" = "加载失败";
@@ -151,6 +152,15 @@
 "Export failed" = "导出失败";
 "Exported ✓" = "导出成功 ✓";
 "Recognize Text" = "识别文字";
+"Compress Image" = "压缩图片";
+"Quality: 70%" = "质量：70%";
+"Format:" = "格式：";
+"Same as original" = "与原图相同";
+"Compress" = "压缩";
+"Lower quality means a smaller file." = "质量越低，文件越小。";
+"Quality: %.0f%%" = "质量：%.0f%%";
+"Compressed ✓" = "压缩成功 ✓";
+"Compression failed" = "压缩失败";
 "Base64" = "Base64";
 "Image to Base64" = "图片转 Base64";
 "Base64 to Image" = "Base64 转图片";
