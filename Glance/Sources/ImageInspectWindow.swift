@@ -115,6 +115,11 @@ private final class CompressionSlider: NSView {
         knob.frame = NSRect(x: knobX, y: (bounds.height - knobSize) / 2, width: knobSize, height: knobSize)
     }
 
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let pointInSelf = convert(point, from: superview)
+        return bounds.contains(pointInSelf) ? self : nil
+    }
+
     override func mouseDown(with event: NSEvent) { handleMouse(event) }
     override func mouseDragged(with event: NSEvent) { handleMouse(event) }
 
@@ -196,6 +201,11 @@ private final class CompressionFormatPicker: NSControl {
     private func updateLabel() {
         guard options.indices.contains(selectedIndex) else { return }
         label.stringValue = options[selectedIndex]
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let pointInSelf = convert(point, from: superview)
+        return bounds.contains(pointInSelf) ? self : nil
     }
 
     @objc private func showMenu() {
