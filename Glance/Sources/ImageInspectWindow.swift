@@ -698,14 +698,15 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
         // The same themed action menu serves the toolbar ⋯ button and
         // right-clicks on every image surface.
-        let menuHandler: (NSEvent) -> Void = { [weak self] event in
+        let menuHandler: (NSEvent, Int?) -> Void = { [weak self] event, slot in
             guard let self, let window = event.window else { return }
+            if let slot { self.selectCompareSlot(slot) }
             let origin = window.convertToScreen(NSRect(origin: event.locationInWindow, size: .zero)).origin
             self.presentActionsMenu(atScreenPoint: origin, entries: self.buildContextActionEntries())
         }
-        primaryViewport.onActionMenu = menuHandler
-        secondaryViewport.onActionMenu = menuHandler
-        sliderViewport.onActionMenu = menuHandler
+        primaryViewport.onActionMenu = { menuHandler($0, 0) }
+        secondaryViewport.onActionMenu = { menuHandler($0, 1) }
+        sliderViewport.onActionMenu = { menuHandler($0, nil) }
         layoutContent()
     }
 
@@ -1360,7 +1361,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 ActionMenuEntry(title: "Base64 to Image".localized, action: { [weak self] in self?.presentBase64ImageInput() })
             ]),
             .separator(),
-            ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() })
+            ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() }),
+            ActionMenuEntry(title: "Reveal in Finder".localized, enabled: currentRevealInfo?.isLocal == true,
+                            action: { [weak self] in self?.revealInFinderTapped() })
         ]
         let widgets = WidgetRegistry.shared.compatible(with: "image")
         if !widgets.isEmpty {
@@ -1393,18 +1396,19 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     @objc private func actionsTapped() {
         autoHideWorkItem?.cancel()
         showChrome(animated: true)
-        // Convert the actual More-button bottom into screen coordinates. The
-        // toolbar-specific presenter places the menu a few points below it.
-        let windowPoint = actionsButton.convert(NSPoint(x: 0, y: -6), to: nil)
+        // Anchor the menu to the toolbar's bottom-right corner so it drops
+        // down from the toolbar with an 8pt gap and right-aligns with it.
+        let windowPoint = toolbarBar.convert(NSPoint(x: toolbarBar.bounds.maxX, y: 0), to: nil)
         let screenPoint = convertToScreen(NSRect(origin: windowPoint, size: .zero)).origin
         presentActionsMenuBelowToolbar(atScreenPoint: screenPoint)
     }
 
     private func presentActionsMenuBelowToolbar(atScreenPoint point: NSPoint) {
         actionsPanel?.dismissChain()
-        let panel = ActionMenuPanel(entries: buildMoreEntries())
+        let panel = ActionMenuPanel(entries: buildMoreEntries(), style: .more)
         prepareActionsPanelForAutoHide(panel)
         actionsPanel = panel
+        ActionMenuPanel.animateMoreButtonPress(actionsButton)
         panel.presentBelowToolbar(at: point)
     }
 
@@ -2102,14 +2106,20 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     /// ⌘V: classify clipboard text through the same PathDetector used by the
     /// selection-hotkey pipeline, then display a remote image URL directly.
-    /// Browsers also place the decoded image itself on the pasteboard; handle
-    /// that representation before looking for text/URL data.
+    /// A copied URL can coexist with image data on the pasteboard; prefer the
+    /// explicit text URL so it enters the remote download path.
     private func pasteRemoteImageFromClipboard() -> Bool {
+        if let text = NSPasteboard.general.string(forType: .string),
+           pasteRemoteImage(from: text) { return true }
         if let imageURL = Self.materializeClipboardImage() {
             appendOrFocusImage(info: MediaInfo(url: imageURL, isLocal: true, kind: .image))
             return true
         }
         guard let text = Self.clipboardText() else { return false }
+        return pasteRemoteImage(from: text)
+    }
+
+    private func pasteRemoteImage(from text: String) -> Bool {
         guard let info = imageInfo(from: text, allowExtensionlessRemoteURL: true),
               !info.isLocal else { return false }
         appendOrFocusImage(info: info)
@@ -2544,12 +2554,15 @@ struct ActionMenuEntry {
 /// highlights (the system menu's blue selection and light-mode material
 /// clash with the darkroom theme). Supports one cascading submenu level.
 final class ActionMenuPanel: NSPanel {
+    enum Style { case context, more }
+
     private static let menuWidth: CGFloat = 216
     private static let rowHeight: CGFloat = 26
     private static let separatorHeight: CGFloat = 9
     private static let padding: CGFloat = 6
 
     private let entries: [ActionMenuEntry]
+    private let style: Style
     var onDismiss: (() -> Void)?
     private var rowViews: [ActionMenuRow] = []
     private var childPanel: ActionMenuPanel?
@@ -2558,9 +2571,11 @@ final class ActionMenuPanel: NSPanel {
     private var keyMonitor: Any?
     private var resignObserver: NSObjectProtocol?
     private var submenuWorkItem: DispatchWorkItem?
+    private var isDismissing = false
 
-    init(entries: [ActionMenuEntry]) {
+    init(entries: [ActionMenuEntry], style: Style = .context) {
         self.entries = entries
+        self.style = style
         var height = Self.padding * 2
         for entry in entries {
             height += entry.isSeparator ? Self.separatorHeight : Self.rowHeight
@@ -2572,7 +2587,7 @@ final class ActionMenuPanel: NSPanel {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = style == .context
         hidesOnDeactivate = true
         appearance = NSAppearance(named: .darkAqua)
         collectionBehavior = [.canJoinAllSpaces]
@@ -2581,23 +2596,30 @@ final class ActionMenuPanel: NSPanel {
         // top of NSVisualEffectView vibrancy makes them look soft/gray on
         // Retina displays, especially while the panel is animating.
         content.wantsLayer = true
-        content.layer?.backgroundColor = PanelStyle.surface.cgColor
+        content.layer?.backgroundColor = style == .more
+            ? NSColor(srgbRed: 28 / 255, green: 29 / 255, blue: 33 / 255, alpha: 1).cgColor
+            : PanelStyle.surface.cgColor
         content.layer?.cornerRadius = 10
-        content.layer?.borderWidth = 1
-        content.layer?.borderColor = PanelStyle.hairline.cgColor
+        content.layer?.borderWidth = style == .more ? 0 : 1
+        if style == .context { content.layer?.borderColor = PanelStyle.hairline.cgColor }
 
         var y = height - Self.padding
         for entry in entries {
             if entry.isSeparator {
-                let sep = NSView(frame: NSRect(x: Self.padding + 6, y: y - Self.separatorHeight + 4,
-                                               width: Self.menuWidth - (Self.padding + 6) * 2, height: 1))
+                let sepX: CGFloat = style == .more ? 13 : Self.padding + 6
+                let sepWidth: CGFloat = style == .more ? 190 : Self.menuWidth - sepX * 2
+                let sepY = y - Self.separatorHeight + (style == .more ? 5 : 4)
+                let sep = NSView(frame: NSRect(x: sepX, y: sepY,
+                                               width: sepWidth, height: 1))
                 sep.wantsLayer = true
-                sep.layer?.backgroundColor = PanelStyle.hairline.cgColor
+                sep.layer?.backgroundColor = style == .more
+                    ? NSColor(srgbRed: 69 / 255, green: 71 / 255, blue: 77 / 255, alpha: 1).cgColor
+                    : PanelStyle.hairline.cgColor
                 content.addSubview(sep)
                 y -= Self.separatorHeight
                 continue
             }
-            let row = ActionMenuRow(entry: entry,
+            let row = ActionMenuRow(entry: entry, usesMoreStyle: style == .more,
                                     frame: NSRect(x: Self.padding, y: y - Self.rowHeight,
                                                   width: Self.menuWidth - Self.padding * 2,
                                                   height: Self.rowHeight))
@@ -2610,6 +2632,66 @@ final class ActionMenuPanel: NSPanel {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    static func animateMoreButtonPress(_ button: NSView) {
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+              let layer = button.layer else { return }
+        // Figma's spring is exported as sampled linear() easing. Preserve its
+        // overshoot for both the press (1 → .84) and release (.84 → 1).
+        let spring: [Double] = [
+            0, 0.03, 0.1077, 0.2165, 0.342, 0.4728, 0.6001, 0.7175, 0.8208,
+            0.9077, 0.9776, 1.0307, 1.0684, 1.0925, 1.1051, 1.1084,
+            1.1047, 1.096, 1.084, 1.0703, 1.0561, 1.0424, 1.0297, 1.0187,
+            1.0094, 1.0019, 0.9963, 0.9923, 0.9898, 0.9885, 0.9882,
+            0.9887, 0.9897, 0.991, 0.9925, 0.994, 0.9955, 0.9969,
+            0.9981, 0.9991, 0.9998, 1.0004, 1.0009, 1.0011, 1.0012,
+            1.0013, 1.0012, 1.0011, 1.001, 1.0008, 1.0006
+        ]
+        let segments: [(from: Double, to: Double, start: Double, end: Double)] = [
+            (1, 0.84, 0, 0.16), (0.84, 1, 0.16, 0.38)
+        ]
+        var values: [NSNumber] = []
+        var times: [NSNumber] = []
+        for (segmentIndex, segment) in segments.enumerated() {
+            for (index, progress) in spring.enumerated() where segmentIndex == 0 || index > 0 {
+                let fraction = Double(index) / Double(spring.count - 1)
+                values.append(NSNumber(value: segment.from + (segment.to - segment.from) * progress))
+                times.append(NSNumber(value: (segment.start + (segment.end - segment.start) * fraction) / 0.38))
+            }
+        }
+        let scale = CAKeyframeAnimation(keyPath: "transform.scale")
+        scale.values = values
+        scale.keyTimes = times
+        scale.calculationMode = .linear
+        scale.duration = 0.38
+        layer.add(scale, forKey: "glance.moreButtonPress")
+    }
+
+    private func animateEntrance() {
+        guard style == .more,
+              !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+              let layer = contentView?.layer else { return }
+        let opacity = CAKeyframeAnimation(keyPath: "opacity")
+        opacity.values = [0, 0, 1]
+        opacity.keyTimes = [0, NSNumber(value: 0.16 / 0.42), 1]
+        opacity.timingFunctions = [CAMediaTimingFunction(name: .linear),
+                                   CAMediaTimingFunction(name: .easeOut)]
+        opacity.duration = 0.42
+        let position = CABasicAnimation(keyPath: "transform.translation.y")
+        position.fromValue = 8
+        position.toValue = 0
+        position.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        position.duration = 0.42
+        let scale = CABasicAnimation(keyPath: "transform.scale")
+        scale.fromValue = 0.96
+        scale.toValue = 1
+        scale.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        scale.duration = 0.42
+        let group = CAAnimationGroup()
+        group.animations = [opacity, position, scale]
+        group.duration = 0.42
+        layer.add(group, forKey: "glance.moreMenuEntrance")
+    }
 
     /// Present top-left-anchored at a screen point, clamped on screen.
     func present(at screenPoint: NSPoint, parent: ActionMenuPanel? = nil) {
@@ -2633,20 +2715,30 @@ final class ActionMenuPanel: NSPanel {
     func presentBelowToolbar(at screenPoint: NSPoint) {
         parentPanel = nil
         let size = frame.size
-        let gap: CGFloat = 6
-        var origin = NSPoint(x: screenPoint.x, y: screenPoint.y - gap - size.height)
+        let gap: CGFloat = 8
+        // The menu drops down from the toolbar: its right edge aligns with the
+        // toolbar's right edge and there is an 8pt gap between them.
+        var origin = NSPoint(x: screenPoint.x - size.width,
+                             y: screenPoint.y - gap - size.height)
         let screen = NSScreen.screens.first { $0.frame.contains(screenPoint) } ?? NSScreen.main
         if let visible = screen?.visibleFrame {
-            if origin.x + size.width > visible.maxX { origin.x = visible.maxX - size.width - 4 }
+            if origin.x + size.width > visible.maxX {
+                // Keep the menu right-aligned with the toolbar when possible;
+                // only pin to the screen edge when the toolbar is too close.
+                origin.x = min(screenPoint.x - size.width, visible.maxX - size.width - 4)
+            }
             origin.x = max(visible.minX + 4, origin.x)
             origin.y = min(max(visible.minY + 4, origin.y), visible.maxY - size.height - 4)
         }
         setFrameOrigin(origin)
         installMonitors()
+        animateEntrance()
         orderFront(nil)
     }
 
     func dismissChain() {
+        guard !isDismissing else { return }
+        isDismissing = true
         let wasVisible = isVisible
         submenuWorkItem?.cancel()
         submenuWorkItem = nil
@@ -2658,8 +2750,33 @@ final class ActionMenuPanel: NSPanel {
         mouseMonitor = nil
         keyMonitor = nil
         resignObserver = nil
-        orderOut(nil)
-        if wasVisible { onDismiss?() }
+        if wasVisible, style == .more,
+           !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+           let layer = contentView?.layer {
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = layer.presentation()?.opacity ?? 1
+            fade.toValue = 0
+            fade.duration = 0.27
+            fade.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            let lift = CABasicAnimation(keyPath: "transform.translation.y")
+            lift.fromValue = 0
+            lift.toValue = 4
+            lift.duration = 0.27
+            lift.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.opacity = 0
+            CATransaction.commit()
+            layer.add(fade, forKey: "glance.moreMenuExitOpacity")
+            layer.add(lift, forKey: "glance.moreMenuExitLift")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.27) { [self] in
+                orderOut(nil)
+                onDismiss?()
+            }
+        } else {
+            orderOut(nil)
+            if wasVisible { onDismiss?() }
+        }
     }
 
     private func dismissFromRoot() {
@@ -2773,6 +2890,7 @@ final class ActionMenuPanel: NSPanel {
 /// warm-cue highlight with dark text for contrast.
 final class ActionMenuRow: NSView {
     let entry: ActionMenuEntry
+    private let usesMoreStyle: Bool
     var onHover: ((ActionMenuRow) -> Void)?
     var onActivate: ((ActionMenuRow) -> Void)?
     private(set) var isHighlightedState = false
@@ -2780,13 +2898,15 @@ final class ActionMenuRow: NSView {
     private let shortcutLabel = NSTextField(labelWithString: "")
     private let chevronLabel = NSTextField(labelWithString: "›")
 
-    init(entry: ActionMenuEntry, frame: NSRect) {
+    init(entry: ActionMenuEntry, usesMoreStyle: Bool, frame: NSRect) {
         self.entry = entry
+        self.usesMoreStyle = usesMoreStyle
         super.init(frame: frame)
         wantsLayer = true
-        layer?.cornerRadius = 5
+        layer?.cornerRadius = usesMoreStyle ? 6 : 5
         titleLabel.stringValue = entry.title
-        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        titleLabel.font = usesMoreStyle ? PanelStyle.inspectFont(ofSize: 13)
+                                        : NSFont.systemFont(ofSize: 13, weight: .medium)
         titleLabel.lineBreakMode = .byTruncatingTail
         addSubview(titleLabel)
         if let shortcut = entry.shortcut {
@@ -2828,14 +2948,33 @@ final class ActionMenuRow: NSView {
     }
 
     func setHighlighted(_ highlighted: Bool) {
+        guard highlighted != isHighlightedState else { return }
         isHighlightedState = highlighted
-        layer?.backgroundColor = highlighted ? PanelStyle.warmCue.cgColor : NSColor.clear.cgColor
+        let color = usesMoreStyle
+            ? NSColor(srgbRed: 61 / 255, green: 48 / 255, blue: 43 / 255,
+                      alpha: highlighted ? 0.8 : 0).cgColor
+            : (highlighted ? PanelStyle.warmCue.cgColor : NSColor.clear.cgColor)
+        if usesMoreStyle, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+           let layer = layer {
+            let transition = CABasicAnimation(keyPath: "backgroundColor")
+            transition.fromValue = layer.presentation()?.backgroundColor ?? layer.backgroundColor
+            transition.toValue = color
+            transition.duration = highlighted ? 0.26 : 0.23
+            transition.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            layer.add(transition, forKey: "glance.moreRowHover")
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer?.backgroundColor = color
+        CATransaction.commit()
         updateColors()
     }
 
     private func updateColors() {
         let color: NSColor
         if !entry.enabled { color = PanelStyle.textTertiary }
+        else if usesMoreStyle { color = NSColor(srgbRed: 237 / 255, green: 232 / 255,
+                                               blue: 227 / 255, alpha: 1) }
         else if isHighlightedState { color = PanelStyle.canvas }
         else { color = PanelStyle.textPrimary }
         titleLabel.textColor = color
@@ -3486,10 +3625,10 @@ final class InspectImageViewport: NSView {
 
     private let imageLayer = CALayer()
     private let activeIndicator = CALayer()
-    private let loadingView = ModularImageLoadingView(frame: .zero)
+    private let loadingView = FocusSweepLoadingView(frame: .zero)
     private let failureView = LoadFailedAnimationView(frame: .zero)
     private let widgetOverlay = NSVisualEffectView()
-    private let widgetLoadingView = ModularImageLoadingView(frame: .zero)
+    private let widgetLoadingView = FocusSweepLoadingView(frame: .zero)
     private let widgetStatusLabel = NSTextField(labelWithString: "")
     private var loadFailed = false
     private var zoom: CGFloat = 1
@@ -3571,7 +3710,7 @@ final class InspectImageViewport: NSView {
         CATransaction.setDisableActions(true)
         activeIndicator.frame = indicatorRect
         CATransaction.commit()
-        let loaderSize = ModularImageLoadingView.preferredSize
+        let loaderSize = FocusSweepLoadingView.preferredSize
         loadingView.frame = NSRect(x: bounds.midX - loaderSize.width / 2,
                                    y: bounds.midY - loaderSize.height / 2,
                                    width: loaderSize.width,
@@ -3582,7 +3721,7 @@ final class InspectImageViewport: NSView {
                                    width: failureSize.width,
                                    height: failureSize.height)
         widgetOverlay.frame = bounds
-        let widgetLoaderSize = ModularImageLoadingView.preferredSize
+        let widgetLoaderSize = FocusSweepLoadingView.preferredSize
         widgetLoadingView.frame = NSRect(x: bounds.midX - widgetLoaderSize.width / 2,
                                          y: bounds.midY - widgetLoaderSize.height / 2 + 14,
                                          width: widgetLoaderSize.width, height: widgetLoaderSize.height)
@@ -3838,7 +3977,7 @@ final class InspectImageViewport: NSView {
 final class ImageRevealView: NSView {
     let viewport = InspectImageViewport()
     private let overlayViewport = InspectImageViewport()
-    private let loadingView = ModularImageLoadingView(frame: .zero)
+    private let loadingView = FocusSweepLoadingView(frame: .zero)
     private let failureView = LoadFailedAnimationView(frame: .zero)
     private let maskLayer = CALayer()
     private let divider = NSView()
@@ -3925,7 +4064,7 @@ final class ImageRevealView: NSView {
         super.layout()
         viewport.frame = bounds
         overlayViewport.frame = bounds
-        let loaderSize = ModularImageLoadingView.preferredSize
+        let loaderSize = FocusSweepLoadingView.preferredSize
         loadingView.frame = NSRect(x: bounds.midX - loaderSize.width / 2,
                                    y: bounds.midY - loaderSize.height / 2,
                                    width: loaderSize.width,

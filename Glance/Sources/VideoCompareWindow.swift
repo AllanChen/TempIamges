@@ -390,6 +390,11 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             viewport.dropTarget = canvas
             viewport.onActionMenu = { [weak self] event in
                 guard let self, let window = event.window else { return }
+                if let compareIndices = self.compareIndices {
+                    self.activeCompareSlot = compareIndices.0 == index ? 0 : 1
+                    self.updateVideoCompareDimming()
+                    self.refreshInfoPanel()
+                }
                 let origin = window.convertToScreen(NSRect(origin: event.locationInWindow, size: .zero)).origin
                 self.presentMuteMenu(atScreenPoint: origin)
             }
@@ -561,9 +566,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     @objc private func widgetMarketTapped() { WidgetMarketPanel.shared.toggle(from: self) }
     @objc private func moreTapped() {
         actionsPanel?.dismissChain()
-        let panel = ActionMenuPanel(entries: buildMoreEntries())
+        let panel = ActionMenuPanel(entries: buildMoreEntries(), style: .more)
         actionsPanel = panel
-        let windowPoint = moreButton.convert(NSPoint(x: 0, y: -6), to: nil)
+        ActionMenuPanel.animateMoreButtonPress(moreButton)
+        // Anchor the menu to the toolbar's bottom-right corner so it drops
+        // down from the toolbar with an 8pt gap and right-aligns with it.
+        let windowPoint = inspectToolbar.convert(NSPoint(x: inspectToolbar.bounds.maxX, y: 0), to: nil)
         let screenPoint = convertToScreen(NSRect(origin: windowPoint, size: .zero)).origin
         panel.presentBelowToolbar(at: screenPoint)
     }
@@ -911,7 +919,7 @@ private final class VideoInspectViewport: NSView {
     private let webMView: WebMVideoView?
     private let muteButton = InspectToolbarButton(symbol: "speaker.slash.fill", tooltip: "Mute".localized)
     private let compareDimmer = CALayer()
-    private let loadingView = ModularImageLoadingView(frame: .zero)
+    private let loadingView = FocusSweepLoadingView(frame: .zero)
     private let failureView = LoadFailedAnimationView(frame: .zero)
     private var statusObservation: NSKeyValueObservation?
     var onActivate: (() -> Void)?
@@ -996,7 +1004,7 @@ private final class VideoInspectViewport: NSView {
         compareDimmer.frame = bounds
         muteButton.frame = NSRect(x: bounds.maxX - 40, y: bounds.maxY - 40,
                                   width: 32, height: 32)
-        let loader = ModularImageLoadingView.preferredSize
+        let loader = FocusSweepLoadingView.preferredSize
         loadingView.frame = NSRect(x: bounds.midX - loader.width / 2,
                                    y: bounds.midY - loader.height / 2,
                                    width: loader.width, height: loader.height)
