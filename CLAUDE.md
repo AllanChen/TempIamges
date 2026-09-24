@@ -71,6 +71,14 @@ keyboard input. Rules:
 
 9. The user builds and runs Glance themselves. Do not run the build or offer to.
 
+## UI testing
+
+15. After code changes, the user performs UI testing by default. Do not launch
+    Glance or operate its interface to verify changes unless the user explicitly
+    requests UI testing. This includes AppleScript, screen capture, simulated
+    mouse or keyboard input, and computer-use tools. Non-UI code checks remain
+    available when appropriate.
+
 ## Figma plugin (layout/GlanceFigmaPlugin)
 
 10. The user imports and runs the Figma plugin themselves. Do NOT try to trigger
