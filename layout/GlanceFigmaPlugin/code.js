@@ -1232,6 +1232,209 @@ function createCompareChromeStudyScreen(x, imageHash = null, imageSize = null) {
   return board;
 }
 
+// ---------------------------------------------------------------------------
+// Image Compression Flow
+// ---------------------------------------------------------------------------
+
+function compressionMenuRow(parent, y, iconName, label, active = false) {
+  const row = frame('Row / ' + label, 12, y, 192, 34, active ? COLORS.accentSoft : COLORS.surface, 8);
+  if (active) {
+    row.strokes = [fill(COLORS.accent, .45)];
+    row.strokeWeight = 1;
+  }
+  parent.appendChild(row);
+  const color = active ? COLORS.accent : COLORS.secondary;
+  const svg = figma.createNodeFromSvg(ICONS[iconName].replaceAll('CURRENT', color));
+  svg.name = 'Icon / ' + iconName; svg.resize(18, 18); svg.x = 12; svg.y = 8; row.appendChild(svg);
+  text('Label', row, label, 42, 9, 13, active ? COLORS.accent : COLORS.text, active ? 'semibold' : 'medium');
+  return row;
+}
+
+function compressionMoreMenu(parent, x, y) {
+  const menu = panel(parent, 'More menu', x, y, 216, 160, COLORS.surface, 10);
+  menu.effects = [{
+    type: 'DROP_SHADOW',
+    color: { r: 0, g: 0, b: 0, a: .45 },
+    offset: { x: 0, y: 18 },
+    radius: 48,
+    spread: 0,
+    visible: true,
+    blendMode: 'NORMAL'
+  }];
+  compressionMenuRow(menu, 10, 'copy', 'Copy Image');
+  compressionMenuRow(menu, 50, 'folder', 'Save to Documents');
+  compressionMenuRow(menu, 90, 'settings', 'Compress Image', true);
+  rect('Menu Divider', menu, 12, 128, 192, 1, COLORS.line);
+  compressionMenuRow(menu, 132, 'uninstall', 'Delete');
+  return menu;
+}
+
+function compressionDialog(parent, x, y) {
+  const dialog = panel(parent, 'Compression Dialog', x, y, 320, 236, COLORS.surface, 14);
+  dialog.effects = [{
+    type: 'DROP_SHADOW',
+    color: { r: 0, g: 0, b: 0, a: .45 },
+    offset: { x: 0, y: 18 },
+    radius: 48,
+    spread: 0,
+    visible: true,
+    blendMode: 'NORMAL'
+  }];
+
+  text('Title', dialog, 'Compress Image', 20, 20, 15, COLORS.text, 'semibold');
+  text('Caption', dialog, 'Lower quality means a smaller file.', 20, 44, 12, COLORS.secondary, 'regular', 280);
+
+  text('Quality Label', dialog, 'Quality: 70%', 20, 78, 12, COLORS.text, 'medium');
+  rect('Slider Track', dialog, 20, 102, 280, 4, COLORS.line, 2);
+  rect('Slider Fill', dialog, 20, 102, 196, 4, COLORS.accent, 2);
+  const knob = ellipse('Slider Knob', dialog, 20 + 196 - 7, 97, 14, '#F3EEE8');
+  knob.effects = [{
+    type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .35 },
+    offset: { x: 0, y: 2 }, radius: 4, spread: 0, visible: true, blendMode: 'NORMAL'
+  }];
+  text('Slider Hint', dialog, '10% – 100%', 20, 114, 11, COLORS.muted, 'regular');
+
+  text('Format Label', dialog, 'Format:', 20, 144, 12, COLORS.text, 'medium');
+  const dropdown = panel(dialog, 'Format Dropdown', 72, 140, 228, 30, '#17181D', 8);
+  text('Dropdown Value', dropdown, 'Same as original', 12, 8, 12, COLORS.text, 'medium', 180);
+  const chevron = figma.createNodeFromSvg(ICONS.chevron.replaceAll('CURRENT', COLORS.secondary));
+  chevron.name = 'Icon / chevron'; chevron.resize(14, 14); chevron.x = 206; chevron.y = 8; dropdown.appendChild(chevron);
+
+  const cancel = frame('Cancel Button', 150, 192, 80, 32, '#17181D', 8);
+  cancel.strokes = [fill(COLORS.line)]; cancel.strokeWeight = 1; dialog.appendChild(cancel);
+  text('Cancel Label', cancel, 'Cancel', 0, 9, 12, COLORS.text, 'medium', 80, 'CENTER');
+
+  const compress = frame('Compress Button', 240, 192, 90, 32, COLORS.accent, 8);
+  dialog.appendChild(compress);
+  text('Compress Label', compress, 'Compress', 0, 9, 12, '#21130D', 'semibold', 90, 'CENTER');
+
+  return dialog;
+}
+
+function compressionSceneBase(name, x) {
+  const board = frame(name, x, 0, 1554, 1012, '#060709', 16);
+  board.strokes = [fill('#5A5B62')];
+  board.strokeWeight = 2;
+  board.effects = [{
+    type: 'DROP_SHADOW',
+    color: { r: 0, g: 0, b: 0, a: .45 },
+    offset: { x: 0, y: 18 },
+    radius: 48,
+    spread: 0,
+    visible: true,
+    blendMode: 'NORMAL'
+  }];
+
+  const leftImg = rect('Image / original', board, 0, 0, 1554, 1012, null, 0);
+  artworkFill(leftImg, ['#24313B', '#A77B72', '#26352D']);
+
+  const shade = rect('Dim Shade', board, 0, 0, 1554, 1012, '#06070A', 0);
+  shade.opacity = 0;
+
+  createBareSystemControls(board);
+  createFloatingInspectToolbar(board, 1554, 'Widget');
+  return { board, shade };
+}
+
+function createCompressionFlowScreen(x, imageHash = null) {
+  const flow = frame('Image Compression Flow', x, 0, 5054, 1012, null, 0);
+  flow.fills = [];
+  figma.currentPage.appendChild(flow);
+
+  // Scene 1: Image Inspect with More menu open
+  const scene1 = compressionSceneBase('01 / Image Inspect + More menu', 0);
+  flow.appendChild(scene1.board);
+  scene1.shade.opacity = 0;
+  // More menu anchored below the toolbar right edge with 8 px gap.
+  // Toolbar is 274 px wide centered in 1554: x=640, right edge=914.
+  compressionMoreMenu(scene1.board, 914 - 216, 24 + 54 + 8);
+
+  // Scene 2: Compression dialog
+  const scene2 = compressionSceneBase('02 / Compression Dialog', 1750);
+  flow.appendChild(scene2.board);
+  scene2.shade.opacity = .48;
+  compressionDialog(scene2.board, Math.round((1554 - 320) / 2), Math.round((1012 - 236) / 2));
+
+  // Scene 3: Compare result
+  const scene3 = frame('03 / Compare Result', 3500, 0, 1554, 1012, '#060709', 16);
+  scene3.strokes = [fill('#5A5B62')]; scene3.strokeWeight = 2;
+  scene3.effects = [{
+    type: 'DROP_SHADOW',
+    color: { r: 0, g: 0, b: 0, a: .45 },
+    offset: { x: 0, y: 18 },
+    radius: 48,
+    spread: 0,
+    visible: true,
+    blendMode: 'NORMAL'
+  }];
+  flow.appendChild(scene3);
+
+  const gap = 2;
+  const halfW = (1554 - gap) / 2;
+  const paneA = rect('Compare / A', scene3, 0, 0, halfW, 1012, null, 0);
+  const paneB = rect('Compare / B', scene3, halfW + gap, 0, halfW, 1012, null, 0);
+  if (imageHash) {
+    paneA.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+    paneB.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  } else {
+    artworkFill(paneA, ['#D9E2E4', '#48685C']);
+    artworkFill(paneB, ['#E7C9A6', '#8A5F4E']);
+  }
+  rect('Compare / Divider', scene3, halfW, 0, gap, 1012, '#0B0C0E');
+
+  const chipA = frame('Chip / A', 20, 1012 - 52, 32, 32, null, 8);
+  chipA.fills = [fill('#161719', .82)];
+  chipA.strokes = [fill('#FFFFFF', .14)]; chipA.strokeWeight = 1;
+  chipA.effects = [{ type: 'BACKGROUND_BLUR', radius: 12, visible: true }];
+  scene3.appendChild(chipA);
+  text('A', chipA, 'A', 0, 8, 14, '#F3F3F3', 'semibold', 32, 'CENTER');
+
+  const chipB = frame('Chip / B', halfW + gap + 20, 1012 - 52, 32, 32, null, 8);
+  chipB.fills = [fill('#161719', .82)];
+  chipB.strokes = [fill('#FFFFFF', .14)]; chipB.strokeWeight = 1;
+  chipB.effects = [{ type: 'BACKGROUND_BLUR', radius: 12, visible: true }];
+  scene3.appendChild(chipB);
+  text('B', chipB, 'B', 0, 8, 14, '#F3F3F3', 'semibold', 32, 'CENTER');
+
+  createBareSystemControls(scene3);
+  createFloatingInspectToolbar(scene3, 1554, 'Compare');
+
+  // Filmstrip overlay
+  const strip = frame('05 / Filmstrip Overlay', 16, 1012 - 117, 1522, 96, null, 0);
+  strip.fills = [];
+  scene3.appendChild(strip);
+  const sourceThumb = frame('Source Thumbnail', 390, 0, 96, 96, COLORS.surface, 8);
+  sourceThumb.strokes = [fill(COLORS.accent, .6)]; sourceThumb.strokeWeight = 2;
+  strip.appendChild(sourceThumb);
+  artworkFill(rect('Preview', sourceThumb, 5, 5, 86, 86, null, 6), ['#24313B', '#A77B72', '#26352D']);
+  const compThumb = frame('Compressed Thumbnail', 496, 0, 96, 96, COLORS.surface, 8);
+  compThumb.strokes = [fill(COLORS.accent, .6)]; compThumb.strokeWeight = 2;
+  strip.appendChild(compThumb);
+  artworkFill(rect('Preview', compThumb, 5, 5, 86, 86, null, 6), ['#E7C9A6', '#8A5F4E']);
+
+  return flow;
+}
+
+async function generateImageCompressionFlow() {
+  await loadFonts();
+  await createStyles();
+  const name = 'Image Compression Flow';
+  const existing = figma.currentPage.children.find(child => child.name === name);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Image Compression Flow already exists — delete it to regenerate.' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createCompressionFlowScreen(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Image Compression Flow (3 scenes).' });
+  figma.notify('Image Compression Flow created');
+}
+
 // A single round icon button used in the Preview-style top chrome bar.
 function previewRoundButton(parent, name, iconName, x, y, tint = '#F3F3F3', fillHex = '#2A2B2F') {
   const node = frame(name, x, y, 28, 28, null, 14);
@@ -2220,6 +2423,15 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Market redesign failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Market redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-image-compression-flow') {
+    try {
+      await generateImageCompressionFlow();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Image Compression Flow failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Image Compression Flow failed', { error: true });
     }
   }
   if (message.type === 'export-selection') {

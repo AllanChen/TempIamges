@@ -98,6 +98,23 @@ as the full canvas, and demonstrates the Information state as a dark floating
 panel instead of a permanently attached inspector. The five-button toolbar and
 the processing toast remain above the image as separate glass layers.
 
+## Generate the Image Compression Flow
+
+Click **Generate Image Compression Flow** to add a single `Image Compression
+Flow` frame containing three scenes placed side by side:
+
+1. **01 / Image Inspect + More menu** — the floating toolbar with the More
+   menu open and "Compress Image" highlighted.
+2. **02 / Compression Dialog** — the same viewer dimmed, with a centered
+   compression dialog (quality slider + format dropdown + Cancel/Compress).
+3. **03 / Compare Result** — the bordered Compare Mode with original (A) on
+   the left and compressed (B) on the right, plus the bottom filmstrip showing
+   both source and compressed thumbnails.
+
+The flow matches the current Swift implementation and reuses the existing
+Glance color palette, floating toolbar, compare chrome, and typography. Running
+the action again selects the existing frame instead of duplicating it.
+
 ## Generate the remaining production screens
 
 Run `Glance UI Builder v2` and click:
