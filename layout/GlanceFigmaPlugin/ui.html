@@ -37,6 +37,7 @@
   <button id="generate-compare-study" class="generate-screens">Generate Compare Mode (bordered)</button>
   <button id="replace-study-images" class="generate-screens">Replace color blocks with image (Focus + Compare)</button>
   <button id="generate-image-inspect-study" class="generate-screens">Generate Image Inspect Chrome Study</button>
+  <button id="generate-video-inspect-study" class="generate-screens">Generate Video Inspect v4 (Focus + Compare)</button>
   <button id="generate-image-compression-flow" class="generate-screens">Generate Image Compression Flow</button>
   <button id="generate-screens" class="generate-screens">Generate Video + Tasks + Widget Market</button>
   <button id="redesign-market" class="generate-screens">Redesign Widget Market (keep previous)</button>
@@ -96,6 +97,12 @@
     document.getElementById('generate-image-inspect-study').onclick = () => {
       status.textContent = 'Building v3 Image Inspect...';
       parent.postMessage({ pluginMessage: { type: 'generate-image-inspect-chrome-study' } }, '*');
+    };
+    document.getElementById('generate-video-inspect-study').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building Video Inspect v4 with consistent controls...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-video-inspect-controls-study', bytes } }, '*');
     };
     document.getElementById('generate-image-compression-flow').onclick = () => {
       status.textContent = 'Building Image Compression Flow...';

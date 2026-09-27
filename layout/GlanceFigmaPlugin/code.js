@@ -25,6 +25,8 @@ const ICONS = {
   rotate: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.7 6.2A6.2 6.2 0 1 0 15 10" stroke="CURRENT" stroke-width="1.6" stroke-linecap="round"/><path d="M11.5 3.5h3.7v3.7" stroke="CURRENT" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   flip: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 9h13M5.5 5.5 2 9l3.5 3.5M12.5 5.5 16 9l-3.5 3.5" stroke="CURRENT" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   focus: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="12" height="10" rx="2" stroke="CURRENT" stroke-width="1.5"/><circle cx="7" cy="7.5" r="1.2" fill="CURRENT"/><path d="m4.5 12 3-3 2.2 2 1.8-1.6 2 2.6" stroke="CURRENT" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  videoFocus: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3.5" width="14" height="11" rx="2" stroke="CURRENT" stroke-width="1.5"/><path d="m7.25 6 4.5 3-4.5 3V6Z" fill="CURRENT"/></svg>',
+  more: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="4" cy="9" r="1.25" fill="CURRENT"/><circle cx="9" cy="9" r="1.25" fill="CURRENT"/><circle cx="14" cy="9" r="1.25" fill="CURRENT"/></svg>',
   compare: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="3.5" width="13" height="11" rx="2" stroke="CURRENT" stroke-width="1.5"/><path d="M9 4v10" stroke="CURRENT" stroke-width="1.5"/></svg>',
   slider: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 5h12M3 9h12M3 13h12" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="5" r="1.6" fill="CURRENT"/><circle cx="11" cy="9" r="1.6" fill="CURRENT"/><circle cx="6" cy="13" r="1.6" fill="CURRENT"/></svg>',
   fit: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 7V3h4M11 3h4v4M15 11v4h-4M7 15H3v-4" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -193,10 +195,8 @@ function createStatusbar(root, left, center, right = '', rightColor = COLORS.acc
 function createVideoInspectScreen(x) {
   const { screen, root, toolbar } = createScreenShell('Video Inspect / Clean Editable', x, 'Video Inspect', 'clip.mov');
   iconButton(toolbar, 'Capture Frame', 'capture', 40, 14);
-  iconButton(toolbar, 'Focus', 'focus', 686, 14, true);
+  iconButton(toolbar, 'Focus', 'videoFocus', 686, 14, true);
   iconButton(toolbar, 'Compare', 'compare', 734, 14);
-  iconButton(toolbar, 'Fit', 'fit', 782, 14);
-  iconButton(toolbar, 'Tasks', 'tasks', 1378, 14);
   iconButton(toolbar, 'Widget', 'grid', 1426, 14);
   iconButton(toolbar, 'Video Information', 'info', 1474, 14);
 
@@ -1070,7 +1070,7 @@ function createBareSystemControls(parent) {
   return controls;
 }
 
-function createFloatingInspectToolbar(parent, width, activeName = 'Focus') {
+function createFloatingInspectToolbar(parent, width, activeName = 'Focus', focusIcon = 'focus') {
   const toolbar = frame('01 / Floating Toolbar', Math.round((width - 274) / 2), 24, 274, 54, null, 15);
   toolbar.fills = [fill('#161719', .90)];
   toolbar.strokes = [fill('#FFFFFF', .12)];
@@ -1089,7 +1089,7 @@ function createFloatingInspectToolbar(parent, width, activeName = 'Focus') {
     blendMode: 'NORMAL'
   }];
   parent.appendChild(toolbar);
-  lightIconButton(toolbar, 'Focus', 'focus', 14, activeName === 'Focus');
+  lightIconButton(toolbar, 'Focus', focusIcon, 14, activeName === 'Focus');
   lightIconButton(toolbar, 'Compare', 'compare', 66, activeName === 'Compare');
   lightIconButton(toolbar, 'Slider', 'slider', 118, activeName === 'Slider');
   lightIconButton(toolbar, 'Widget', 'grid', 170, activeName === 'Widget');
@@ -1127,7 +1127,7 @@ function createSimpleVideoViewerScreen(x) {
   content.fills = [];
   board.appendChild(content);
   createFloatingSystemControls(board);
-  createFloatingInspectToolbar(board, width);
+  createFloatingInspectToolbar(board, width, 'Focus', 'videoFocus');
 
   const playback = frame('02 / Floating Playback Controls', Math.round((width - 800) / 2), height - 80, 800, 56, null, 15);
   playback.fills = [fill('#161719', .90)];
@@ -1147,6 +1147,188 @@ function createSimpleVideoViewerScreen(x) {
   ellipse('Timeline Knob', playback, 294, 21, 14, COLORS.accent);
   text('Time', playback, '00:37 / 01:42', 688, 20, 11, '#F3F3F3', 'medium', 92, 'RIGHT');
   return board;
+}
+
+// Video chrome uses fixed logical sizes in every mode. Only the timeline's
+// width flexes; scaling the window must never scale controls or text.
+const VIDEO_INSPECT_METRICS = {
+  inset: 24, playbackHeight: 64, playbackMaxWidth: 1306,
+  captureWidth: 220, captureHeight: 125, captureFooter: 25,
+  filmstripSize: 96, filmstripGap: 10
+};
+
+function videoStudyGlass(parent, name, x, y, width, height, radius = 15) {
+  const node = frame(name, x, y, width, height, null, radius);
+  node.fills = [fill('#161719', .90)];
+  node.strokes = [fill('#FFFFFF', .12)];
+  node.strokeWeight = 1;
+  node.effects = [{ type: 'BACKGROUND_BLUR', radius: 18, visible: true }, {
+    type: 'DROP_SHADOW', color: { r: .08, g: .09, b: .10, a: .24 },
+    offset: { x: 0, y: 8 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL'
+  }];
+  parent.appendChild(node);
+  return node;
+}
+
+function videoStudyText(parent, name, value, x, y, width, height = 16) {
+  const label = text(name, parent, value, x, y, 12, COLORS.text, 'medium', width, 'CENTER');
+  label.textAutoResize = 'NONE';
+  label.resize(width, height);
+  label.textAlignVertical = 'CENTER';
+  return label;
+}
+
+function videoStudyArtwork(parent, name, x, y, width, height, aspect, imageHash, alternate = false) {
+  const container = frame(name, x, y, width, height, COLORS.canvas);
+  parent.appendChild(container);
+  const fittedWidth = Math.min(width, height * aspect);
+  const fittedHeight = fittedWidth / aspect;
+  const media = rect('Full frame / aspect fit', container,
+    (width - fittedWidth) / 2, (height - fittedHeight) / 2, fittedWidth, fittedHeight, null);
+  if (imageHash) media.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FIT' }];
+  else artworkFill(media, alternate ? ['#252C28', '#546C59', '#141C1A'] : ['#121C27', '#715041', '#1C2E28']);
+  return container;
+}
+
+function createVideoInspectControlsStudy(x, spec, imageHash) {
+  const m = VIDEO_INSPECT_METRICS;
+  const { width, height, compare, aspect } = spec;
+  const board = frame(spec.name, x, 0, width, height, COLORS.canvas, 16);
+  board.strokes = [fill('#FFFFFF', .22)];
+  board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+  if (compare) {
+    const half = (width - 2) / 2;
+    videoStudyArtwork(board, 'Compare / A', 0, 0, half, height, aspect, imageHash);
+    videoStudyArtwork(board, 'Compare / B', half + 2, 0, half, height, aspect, imageHash, true);
+    rect('Compare / Divider', board, half, 0, 2, height, COLORS.canvas);
+  } else {
+    videoStudyArtwork(board, 'Focus / Video', 0, 0, width, height, aspect, imageHash);
+  }
+  createBareSystemControls(board);
+  // On a narrow window, place the toolbar below the traffic lights.
+  const toolbar = videoStudyGlass(board, '01 / Floating Toolbar',
+    (width - 274) / 2, width < 520 ? 56 : 24, 274, 54);
+  const tools = [
+    ['Capture Frame', 'capture'], ['Focus', 'videoFocus'], ['Compare', 'compare'],
+    ['Widget', 'grid'], ['More', 'more']
+  ];
+  tools.forEach(([name, icon], index) => {
+    const tile = lightIconButton(toolbar, name, icon, 14 + index * 52,
+      name === (compare ? 'Compare' : 'Focus'));
+    tile.strokes = [];
+  });
+
+  const barWidth = Math.min(m.playbackMaxWidth, width - m.inset * 2);
+  const playback = videoStudyGlass(board, '02 / Floating Playback Controls',
+    (width - barWidth) / 2, height - m.inset - m.playbackHeight, barWidth, m.playbackHeight);
+  const play = lightIconButton(playback, 'Play / Pause', 'pause', 16, true);
+  play.y = 13;
+  play.strokes = [];
+  const currentX = barWidth - 126;
+  const timeline = frame('Timeline / hit area', 70, 20, currentX - 86, 24, null);
+  playback.appendChild(timeline);
+  const trackWidth = timeline.width - 14;
+  rect('Timeline Track', timeline, 7, 10, trackWidth, 4, '#34353A', 2);
+  rect('Timeline Progress', timeline, 7, 10, trackWidth * .37, 4, COLORS.accent, 2);
+  ellipse('Timeline Knob', timeline, trackWidth * .37, 5, 14, COLORS.accent);
+  videoStudyText(playback, 'Current Time', '00:37', currentX, 24, 42);
+  videoStudyText(playback, 'Time Separator', '/', currentX + 44, 24, 12);
+  videoStudyText(playback, 'Duration', '01:42', barWidth - 68, 24, 52);
+
+  const capture = videoStudyGlass(board, '03 / Captured Frame / fixed 220 × 125',
+    width - m.inset - m.captureWidth, playback.y - m.inset - m.captureHeight,
+    m.captureWidth, m.captureHeight, 12);
+  const imageHeight = m.captureHeight - m.captureFooter;
+  if (compare) {
+    // Fit the complete side-by-side capture inside the same preview card.
+    const fullWidth = Math.min(m.captureWidth, imageHeight * aspect * 2 + 2);
+    const paneWidth = (fullWidth - 2) / 2;
+    const paneHeight = paneWidth / aspect;
+    const left = (m.captureWidth - fullWidth) / 2;
+    const top = (imageHeight - paneHeight) / 2;
+    videoStudyArtwork(capture, 'Capture / A', left, top, paneWidth, paneHeight, aspect, imageHash);
+    videoStudyArtwork(capture, 'Capture / B', left + paneWidth + 2, top,
+      paneWidth, paneHeight, aspect, imageHash, true);
+  } else {
+    videoStudyArtwork(capture, 'Capture / Full Video', 0, 0,
+      m.captureWidth, imageHeight, aspect, imageHash);
+  }
+  const footer = frame('Timecode Footer', 0, imageHeight, m.captureWidth, m.captureFooter, COLORS.chrome);
+  capture.appendChild(footer);
+  const timecode = videoStudyText(footer, 'Capture Timecode', '00:37', 10, 5, m.captureWidth - 20, 15);
+  timecode.textAlignHorizontal = 'LEFT';
+
+  ensureVideoStudyFilmstrip(board, spec, imageHash);
+  return board;
+}
+
+function ensureVideoStudyFilmstrip(board, spec, imageHash) {
+  const name = '04 / Video Filmstrip / fixed 96 × 96';
+  if (board.findOne(child => child.name === name)) return;
+  const m = VIDEO_INSPECT_METRICS;
+  const playback = board.findOne(child => child.name === '02 / Floating Playback Controls');
+  const stripWidth = m.filmstripSize * 2 + m.filmstripGap;
+  const strip = frame(name, (board.width - stripWidth) / 2,
+    playback.y - 20 - m.filmstripSize, stripWidth, m.filmstripSize, null);
+  board.appendChild(strip);
+  const focusedVideo = board.findOne(child => child.name === 'Focus / Video');
+  const focusedArtwork = focusedVideo && focusedVideo.findOne(child => child.name === 'Full frame / aspect fit');
+  for (let index = 0; index < 2; index++) {
+    const tile = videoStudyArtwork(strip, 'Video ' + (index + 1),
+      index * (m.filmstripSize + m.filmstripGap), 0,
+      m.filmstripSize, m.filmstripSize, spec.aspect, imageHash, index === 1);
+    if (index === 0 && focusedArtwork) {
+      tile.findOne(child => child.name === 'Full frame / aspect fit').fills = focusedArtwork.fills;
+    }
+    const selected = index === (spec.compare ? 1 : 0);
+    tile.cornerRadius = 9;
+    tile.strokes = [fill(selected ? COLORS.accent : '#FFFFFF', selected ? .8 : .16)];
+    tile.strokeWeight = 1;
+  }
+  // Narrow Focus layouts stack the captured-frame preview above the filmstrip.
+  const capture = board.findOne(child => child.name === '03 / Captured Frame / fixed 220 × 125');
+  if (capture && capture.x < strip.x + strip.width && capture.x + capture.width > strip.x &&
+      capture.y < strip.y + strip.height && capture.y + capture.height > strip.y) {
+    capture.y = strip.y - m.inset - capture.height;
+  }
+}
+
+async function generateVideoInspectControlsStudy(bytes) {
+  await loadFonts();
+  const specs = [
+    { name: 'Video Inspect v4 / Focus / Landscape', width: 1120, height: 700, aspect: 16 / 9 },
+    { name: 'Video Inspect v4 / Focus / Portrait', width: 560, height: 900, aspect: 9 / 16 },
+    { name: 'Video Inspect v4 / Focus / Narrow', width: 320, height: 568, aspect: 9 / 16 },
+    { name: 'Video Inspect v4 / Compare', width: 1554, height: 1012, aspect: 9 / 16, compare: true }
+  ];
+  const { imageHash } = await resolveStudyImage(bytes, ['Video Inspect / Simple Operation', 'Dark Refresh v2 / Video Inspect']);
+  let x = figma.currentPage.children.reduce((right, child) => Math.max(right, child.x + child.width), 0) + 196;
+  const boards = [];
+  for (const spec of specs) {
+    const existing = figma.currentPage.children.find(child => child.name === spec.name);
+    const board = existing || createVideoInspectControlsStudy(x, spec, imageHash);
+    if (existing) ensureVideoStudyFilmstrip(board, spec, imageHash);
+    boards.push(board);
+    if (!existing) x += spec.width + 120;
+  }
+  const noCaptureName = 'Video Inspect v4 / Focus / No Capture';
+  let noCapture = figma.currentPage.children.find(child => child.name === noCaptureName);
+  if (!noCapture) {
+    // Derive the default state from the existing review frame, preserving
+    // its artwork and any user edits to the toolbar or playback controls.
+    noCapture = boards[0].clone();
+    noCapture.name = noCaptureName;
+    noCapture.x = x;
+    noCapture.y = boards[0].y;
+    const preview = noCapture.findOne(child => child.name === '03 / Captured Frame / fixed 220 × 125');
+    if (preview) preview.remove();
+  }
+  ensureVideoStudyFilmstrip(noCapture, specs[0], imageHash);
+  boards.push(noCapture);
+  figma.currentPage.selection = boards;
+  figma.viewport.scrollAndZoomIntoView(boards);
+  figma.ui.postMessage({ message: 'Video Inspect v4 ready: Focus filmstrips added, including No Capture. Existing review frames updated in place.' });
 }
 
 function createViewerChromeStudyScreen(x, imageHash = null, imageSize = null) {
@@ -2388,6 +2570,14 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Image Inspect Chrome Study failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Image Inspect Chrome Study failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-video-inspect-controls-study') {
+    try {
+      await generateVideoInspectControlsStudy(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Video Inspect study failed: ' + (error && error.message ? error.message : String(error)) });
     }
   }
   if (message.type === 'generate-production-screens') {

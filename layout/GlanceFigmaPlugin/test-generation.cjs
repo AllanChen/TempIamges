@@ -13,6 +13,25 @@ function node(type) {
     children: [],
     resize(width, height) { this.width = width; this.height = height; },
     appendChild(child) { this.children.push(child); child.parent = this; },
+    clone() {
+      function copy(original) {
+        const duplicate = node(original.type);
+        for (const [key, value] of Object.entries(original)) {
+          if (key !== 'parent' && key !== 'children' && typeof value !== 'function') {
+            duplicate[key] = structuredClone(value);
+          }
+        }
+        original.children.forEach(child => duplicate.appendChild(copy(child)));
+        return duplicate;
+      }
+      const duplicate = copy(this);
+      if (this.parent) this.parent.appendChild(duplicate);
+      return duplicate;
+    },
+    remove() {
+      if (this.parent) this.parent.children.splice(this.parent.children.indexOf(this), 1);
+      this.parent = null;
+    },
     findOne(predicate) {
       for (const child of this.children) {
         if (predicate(child)) return child;
@@ -247,5 +266,113 @@ const names = [
     'Regeneration must leave exactly one current compression flow');
   assert.equal(page.children.filter(child => child.name === 'Image Compression Flow / Previous').length, 1,
     'Regeneration must preserve the previous compression flow for review');
-  console.log('Production screens, Simple Image Viewer, Widget Market, 13-screen Dark Refresh, v3 Chrome Studies, Preview Chrome, and bordered Compare Mode generate idempotently');
+  const beforeVideoStudy = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-video-inspect-controls-study', bytes: [1, 2, 3] });
+  const videoStudies = page.children.filter(child => child.name.startsWith('Video Inspect v4 /'));
+  assert.equal(videoStudies.length, 5, 'Include the default Focus state without a captured-frame preview');
+  assert.equal(page.children.length, beforeVideoStudy + 5);
+  for (const board of videoStudies) {
+    const toolbar = board.findOne(child => child.name === '01 / Floating Toolbar');
+    assert.deepEqual(toolbar.children.map(child => child.name),
+      ['Capture Frame', 'Focus', 'Compare', 'Widget', 'More']);
+    assert.ok(toolbar.findOne(child => child.name === 'Icon / videoFocus'), 'Focus uses the video-play icon');
+    const capture = board.findOne(child => child.name === '03 / Captured Frame / fixed 220 × 125');
+    if (board.name.endsWith('/ No Capture')) {
+      assert.equal(capture, null, 'Default playback must have no screenshot preview');
+      assert.equal(board.findOne(child => child.name === 'Capture Timecode'), null);
+    } else {
+      assert.equal(capture.width, 220, board.name + ': capture width must not scale');
+      assert.equal(capture.height, 125, board.name + ': capture height must not scale');
+    }
+    const playback = board.findOne(child => child.name === '02 / Floating Playback Controls');
+    assert.equal(playback.height, 64, board.name + ': playback height must not scale');
+    const play = playback.findOne(child => child.name === 'Play / Pause');
+    assert.equal(play.width, 38);
+    assert.equal(play.height, 38);
+    for (const name of ['Current Time', 'Duration']) {
+      const label = playback.findOne(child => child.name === name);
+      assert.equal(label.fontSize, 12, board.name + ': time text must remain readable');
+      assert.equal(label.height, 16);
+    }
+    const timeline = playback.findOne(child => child.name === 'Timeline / hit area');
+    assert.ok(timeline.width >= 60, 'The narrowest window still has a usable seek area');
+    assert.equal(timeline.findOne(child => child.name === 'Timeline Track').height, 4);
+    assert.equal(timeline.findOne(child => child.name === 'Timeline Knob').width, 14);
+    if (capture) assert.ok(capture.y + capture.height <= playback.y - 24, 'Capture must clear playback controls');
+    const strip = board.findOne(child => child.name === '04 / Video Filmstrip / fixed 96 × 96');
+    assert.ok(strip, board.name + ': video navigation must exist in both Focus and Compare');
+    assert.equal(strip.children.length, 2);
+    for (const tile of strip.children) {
+      assert.equal(tile.width, 96);
+      assert.equal(tile.height, 96);
+    }
+    assert.ok(strip.y + strip.height <= playback.y - 20);
+    if (capture) assert.ok(capture.x + capture.width <= strip.x ||
+      strip.x + strip.width <= capture.x || capture.y + capture.height <= strip.y - 24,
+    board.name + ': capture preview and video thumbnails must not overlap');
+    const controls = board.findOne(child => child.name === 'System / Window Controls / Bare');
+    if (board.width < 520) assert.ok(toolbar.y >= controls.y + controls.height, 'Narrow toolbar must clear traffic lights');
+    function assertContained(parent) {
+      for (const child of parent.children) {
+        assert.ok(child.x >= -0.001 && child.y >= -0.001, board.name + ': ' + child.name + ' starts outside parent');
+        assert.ok(child.x + child.width <= parent.width + 0.001, board.name + ': ' + child.name + ' clips horizontally');
+        assert.ok(child.y + child.height <= parent.height + 0.001, board.name + ': ' + child.name + ' clips vertically');
+        assertContained(child);
+      }
+    }
+    assertContained(board);
+    for (const artwork of board.findAll(child => child.name === 'Full frame / aspect fit')) {
+      assert.equal(artwork.fills[0].scaleMode, 'FIT', 'Preview artwork must show the complete image');
+    }
+  }
+  const comparison = videoStudies.find(child => child.name === 'Video Inspect v4 / Compare');
+  const filmstrip = comparison.findOne(child => child.name === '04 / Video Filmstrip / fixed 96 × 96');
+  for (const tile of filmstrip.children) {
+    assert.equal(tile.width, 96);
+    assert.equal(tile.height, 96);
+  }
+  await figma.ui.onmessage({ type: 'generate-video-inspect-controls-study' });
+  assert.equal(page.children.length, beforeVideoStudy + 5, 'Video study rerun must preserve existing review frames');
+  // Upgrade an existing four-frame review, including edits made in Figma.
+  videoStudies.find(child => child.name.endsWith('/ No Capture')).remove();
+  const landscape = videoStudies.find(child => child.name.endsWith('/ Landscape'));
+  landscape.findOne(child => child.name === 'Current Time').characters = '00:38';
+  await figma.ui.onmessage({ type: 'generate-video-inspect-controls-study' });
+  const noCapture = page.children.find(child => child.name === 'Video Inspect v4 / Focus / No Capture');
+  assert.ok(noCapture);
+  assert.equal(page.children.length, beforeVideoStudy + 5, 'Existing four-frame review gains exactly one state');
+  assert.equal(noCapture.findOne(child => child.name === 'Current Time').characters, '00:38',
+    'Default state must preserve the reviewed source design');
+  assert.equal(noCapture.findOne(child => child.name === '03 / Captured Frame / fixed 220 × 125'), null);
+  assert.ok(landscape.findOne(child => child.name === '03 / Captured Frame / fixed 220 × 125'),
+    'Original capture-state frame must remain intact');
+  for (const original of videoStudies.filter(child => !child.name.endsWith('/ No Capture'))) {
+    assert.ok(page.children.includes(original), 'Previously reviewed frames must not be replaced');
+  }
+  // Existing five-frame files need the missing Focus strips patched in place.
+  const focusBoards = page.children.filter(child => child.name.startsWith('Video Inspect v4 / Focus /'));
+  for (const board of focusBoards) {
+    board.findOne(child => child.name === '04 / Video Filmstrip / fixed 96 × 96').remove();
+    const capture = board.findOne(child => child.name === '03 / Captured Frame / fixed 220 × 125');
+    if (capture) capture.y = board.height - 24 - 64 - 24 - 125;
+  }
+  const reviewedControls = landscape.findOne(child => child.name === '02 / Floating Playback Controls');
+  await figma.ui.onmessage({ type: 'generate-video-inspect-controls-study' });
+  assert.equal(page.children.length, beforeVideoStudy + 5, 'Fix existing Focus frames without duplicating boards');
+  for (const board of focusBoards) {
+    assert.ok(page.children.includes(board));
+    const strip = board.findOne(child => child.name === '04 / Video Filmstrip / fixed 96 × 96');
+    assert.ok(strip, board.name + ': existing frame gains the missing filmstrip');
+    const capture = board.findOne(child => child.name === '03 / Captured Frame / fixed 220 × 125');
+    if (capture && board.width <= 560) assert.ok(capture.y + capture.height <= strip.y - 24);
+  }
+  assert.equal(landscape.findOne(child => child.name === '02 / Floating Playback Controls'), reviewedControls);
+  assert.equal(reviewedControls.findOne(child => child.name === 'Current Time').characters, '00:38');
+  assert.equal(noCapture.findOne(child => child.name === '03 / Captured Frame / fixed 220 × 125'), null);
+  await figma.ui.onmessage({ type: 'generate-video-inspect-controls-study' });
+  for (const board of focusBoards) {
+    assert.equal(board.findAll(child => child.name === '04 / Video Filmstrip / fixed 96 × 96').length, 1,
+      'Rerunning must not duplicate the video filmstrip');
+  }
+  console.log('All screen generators pass, including Video Inspect v4: consistent Focus/Compare sizes, no clipped controls, and idempotent generation');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -345,7 +345,6 @@ struct VideoInspectPage: View {
                     Divider().frame(height: 20).background(GlanceTheme.hairline).padding(.horizontal, 4)
                     ToolButton(symbol: "rectangle.split.2x1", label: "Side by Side")
                     ToolButton(symbol: "slider.horizontal.below.rectangle", label: "Slider Compare")
-                    ToolButton(symbol: "viewfinder", label: "Fit to Window")
                     Spacer()
                     ToolButton(symbol: "sidebar.right", label: "Toggle Information", selected: infoVisible) {
                         infoVisible.toggle()
