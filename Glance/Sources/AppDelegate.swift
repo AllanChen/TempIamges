@@ -719,8 +719,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let restoreApp = NSWorkspace.shared.frontmostApplication
         let window = imageInspectWindow ?? ImageInspectWindow(imageLoader: imageLoader ?? ImageLoader())
         imageInspectWindow = window
-        window.onOpenVideo = { [weak self, weak window] info in
-            window?.closeForViewerHandoff()
+        window.onOpenVideo = { [weak self] info in
             self?.openVideoCompare(infos: [info], focusedIndex: 0)
         }
         window.onOpenContent = { [weak self, weak window] info in
@@ -748,6 +747,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         // the first opens the window and later clicks append to its filmstrip.
         window?.onCaptureFrame = { [weak self] url in
             self?.openCapturedFrame(url: url)
+        }
+        window?.onOpenImage = { [weak self] info in
+            self?.openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0,
+                                   preferredMode: .focus)
         }
         videoCompareWindow = window
         NSApp.activate(ignoringOtherApps: true)

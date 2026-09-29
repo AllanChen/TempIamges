@@ -1,28 +1,56 @@
 import AppKit
 import Highlightr
 
-/// Shared loading indicator used by image, document, and web previews.
-/// The three wireframe modules follow the same calm 2.04-second cycle as the
-/// reference animation, while staying resolution-independent in Core Animation.
-final class ModularImageLoadingView: NSView {
-    static let preferredSize = NSSize(width: 104, height: 128)
+/// The Focus Sweep loader from Glance Motion / 05. Shared by preview surfaces.
+final class FocusSweepLoadingView: NSView {
+    static let preferredSize = NSSize(width: 160, height: 173)
 
-    private let moduleLayers = (0..<3).map { _ in CAShapeLayer() }
+    private let focusArtwork = NSView(frame: NSRect(x: 0, y: 61, width: 160, height: 112))
+    private let beam = NSView(frame: NSRect(x: 12, y: 76, width: 136, height: 16))
+    private let scanLine = NSView(frame: NSRect(x: 12, y: 90, width: 136, height: 2))
+    private let imageGlyph = NSImageView(frame: NSRect(x: 48, y: 35, width: 64, height: 42))
+    private let corners: [NSImageView] = [
+        NSImageView(frame: NSRect(x: 0, y: 94, width: 18, height: 18)),
+        NSImageView(frame: NSRect(x: 142, y: 94, width: 18, height: 18)),
+        NSImageView(frame: NSRect(x: 0, y: 0, width: 18, height: 18)),
+        NSImageView(frame: NSRect(x: 142, y: 0, width: 18, height: 18))
+    ]
+    private let caption = NSTextField(labelWithString: "Preparing preview".localized)
     private var isLoading = false
+
+    var showsCaption = true {
+        didSet { caption.isHidden = !showsCaption }
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        for moduleLayer in moduleLayers {
-            moduleLayer.fillColor = NSColor.clear.cgColor
-            moduleLayer.strokeColor = PanelStyle.resolvedCG(PanelStyle.textPrimary.withAlphaComponent(0.58))
-            moduleLayer.lineWidth = 1
-            moduleLayer.lineCap = .round
-            moduleLayer.lineJoin = .round
-            moduleLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
-            layer?.addSublayer(moduleLayer)
+        focusArtwork.wantsLayer = true
+        addSubview(focusArtwork)
+
+        let accent = NSColor(srgbRed: 232 / 255, green: 168 / 255, blue: 125 / 255, alpha: 1)
+        for (view, radius) in [(beam, CGFloat(0)), (scanLine, CGFloat(1))] {
+            view.wantsLayer = true
+            view.layer?.backgroundColor = accent.cgColor
+            view.layer?.cornerRadius = radius
+            focusArtwork.addSubview(view)
         }
-        configureGeometry()
+        for (view, name) in zip([imageGlyph] + corners,
+                                ["FocusSweepImage", "FocusSweepCornerTL", "FocusSweepCornerTR",
+                                 "FocusSweepCornerBL", "FocusSweepCornerBR"]) {
+            view.image = NSImage(named: NSImage.Name(name))
+            view.imageScaling = .scaleProportionallyUpOrDown
+            view.wantsLayer = true
+            focusArtwork.addSubview(view)
+        }
+        caption.font = PanelStyle.inspectFont(ofSize: 14)
+        caption.textColor = NSColor(srgbRed: 0.72, green: 0.69, blue: 0.67, alpha: 1)
+        caption.alignment = .center
+        caption.frame = NSRect(x: 0, y: 0, width: 160, height: 24)
+        caption.wantsLayer = true
+        addSubview(caption)
+        resetAppearance()
+        setAccessibilityLabel("Preparing preview".localized)
         isHidden = true
     }
 
@@ -36,56 +64,84 @@ final class ModularImageLoadingView: NSView {
         loading ? startAnimating() : stopAnimating()
     }
 
-    private func configureGeometry() {
-        let path = CGMutablePath()
-        let top = CGPoint(x: 19, y: 0)
-        let upperRight = CGPoint(x: 38, y: 11)
-        let lowerRight = CGPoint(x: 38, y: 33)
-        let bottom = CGPoint(x: 19, y: 44)
-        let lowerLeft = CGPoint(x: 0, y: 33)
-        let upperLeft = CGPoint(x: 0, y: 11)
-        let center = CGPoint(x: 19, y: 22)
-        path.move(to: top)
-        path.addLines(between: [upperRight, lowerRight, bottom, lowerLeft, upperLeft, top])
-        path.move(to: top)
-        path.addLines(between: [center, bottom])
-        path.move(to: upperLeft)
-        path.addLines(between: [center, upperRight])
-
-        let restingPositions = [CGPoint(x: 52, y: 22), CGPoint(x: 52, y: 64), CGPoint(x: 62, y: 106)]
-        for (moduleLayer, position) in zip(moduleLayers, restingPositions) {
-            moduleLayer.bounds = CGRect(x: 0, y: 0, width: 38, height: 44)
-            moduleLayer.position = position
-            moduleLayer.path = path
-        }
+    private var animatedLayers: [CALayer] {
+        ([beam, scanLine, imageGlyph] + corners + [caption]).compactMap(\.layer)
     }
 
     private func startAnimating() {
         stopAnimating()
-        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
-        let positions: [[CGPoint]] = [
-            [CGPoint(x: 52, y: 22), CGPoint(x: 52, y: 64), CGPoint(x: 62, y: 106)],
-            [CGPoint(x: 34, y: 50), CGPoint(x: 70, y: 50), CGPoint(x: 52, y: 82)],
-            [CGPoint(x: 52, y: 22), CGPoint(x: 34, y: 78), CGPoint(x: 70, y: 78)],
-            [CGPoint(x: 34, y: 22), CGPoint(x: 70, y: 50), CGPoint(x: 52, y: 92)],
-            [CGPoint(x: 52, y: 22), CGPoint(x: 52, y: 64), CGPoint(x: 62, y: 106)],
-        ]
-        let keyTimes: [NSNumber] = [0, 0.25, 0.5, 0.75, 1]
-        let timing = CAMediaTimingFunction(name: .easeInEaseOut)
-        for (index, moduleLayer) in moduleLayers.enumerated() {
-            let movement = CAKeyframeAnimation(keyPath: "position")
-            movement.values = positions.map { NSValue(point: $0[index]) }
-            movement.keyTimes = keyTimes
-            movement.timingFunctions = Array(repeating: timing, count: keyTimes.count - 1)
-            movement.duration = 2.04
-            movement.repeatCount = .infinity
-            movement.isRemovedOnCompletion = false
-            moduleLayer.add(movement, forKey: "glance.modularLoading")
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            imageGlyph.layer?.opacity = 0.92
+            imageGlyph.layer?.transform = CATransform3DIdentity
+            corners.forEach { $0.layer?.opacity = 0.9 }
+            caption.layer?.opacity = 0.88
+            CATransaction.commit()
+            return
+        }
+
+        // Figma's three-cycle 6.12s timeline is three identical 2.04s sweeps.
+        for (view, peak) in [(beam, 0.09), (scanLine, 0.82)] {
+            animate(view.layer, "opacity", [0, 0.18, 1.58, 1.84, 2.04],
+                    [0, peak, peak, 0, 0])
+            // The last millisecond is an invisible step back to the top.
+            animate(view.layer, "transform.translation.y", [0, 0.18, 1.58, 1.84, 2.039, 2.04],
+                    [0, 0, -72, -80, -80, 0])
+        }
+        animate(imageGlyph.layer, "opacity", [0, 0.55, 1.2, 1.72, 2.04],
+                [0.28, 0.4, 0.92, 0.55, 0.28])
+        animate(imageGlyph.layer, "transform.scale", [0, 1.2, 2.04], [0.94, 1.02, 0.94])
+        animate(caption.layer, "opacity", [0, 1.02, 2.04], [0.55, 0.88, 0.55])
+
+        for (index, view) in corners.enumerated() {
+            guard let layer = view.layer else { continue }
+            let x: CGFloat = index.isMultiple(of: 2) ? 4 : -4
+            let y: CGFloat = index < 2 ? -4 : 4
+            let origin = layer.position
+            let times: [Double] = [0, 0.35, 0.52, 1.45, 2.04]
+            let positions = [origin,
+                             CGPoint(x: origin.x + x * 1.1, y: origin.y + y * 1.1),
+                             CGPoint(x: origin.x + x, y: origin.y + y),
+                             CGPoint(x: origin.x + x, y: origin.y + y), origin]
+            let movement = keyframes("position", times, positions.map { NSValue(point: $0) })
+            layer.add(movement, forKey: "focusSweep.position")
+            animate(layer, "opacity", [0, 0.52, 1.45, 2.04], [0.55, 0.9, 0.9, 0.55])
         }
     }
 
     private func stopAnimating() {
-        moduleLayers.forEach { $0.removeAnimation(forKey: "glance.modularLoading") }
+        animatedLayers.forEach { $0.removeAllAnimations() }
+        resetAppearance()
+    }
+
+    private func resetAppearance() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        beam.layer?.opacity = 0
+        scanLine.layer?.opacity = 0
+        imageGlyph.layer?.opacity = 0.28
+        imageGlyph.layer?.transform = CATransform3DMakeScale(0.94, 0.94, 1)
+        corners.forEach { $0.layer?.opacity = 0.55 }
+        caption.layer?.opacity = 0.55
+        CATransaction.commit()
+    }
+
+    private func animate(_ layer: CALayer?, _ path: String, _ seconds: [Double], _ values: [Double]) {
+        guard let layer else { return }
+        layer.add(keyframes(path, seconds, values.map { NSNumber(value: $0) }), forKey: "focusSweep.\(path)")
+    }
+
+    private func keyframes(_ path: String, _ seconds: [Double], _ values: [Any]) -> CAKeyframeAnimation {
+        let animation = CAKeyframeAnimation(keyPath: path)
+        animation.values = values
+        animation.keyTimes = seconds.map { NSNumber(value: $0 / 2.04) }
+        animation.timingFunctions = Array(repeating: CAMediaTimingFunction(name: .easeInEaseOut),
+                                          count: seconds.count - 1)
+        animation.duration = 2.04
+        animation.repeatCount = .infinity
+        animation.isRemovedOnCompletion = false
+        return animation
     }
 }
 

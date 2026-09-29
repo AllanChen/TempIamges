@@ -626,27 +626,40 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
             return true
         }
 
-        // 2) Raw image data (screenshot / copied bitmap) — materialize to PNG.
+        // 2) A copied URL/path in text form takes precedence over any image
+        // representation that the browser also put on the pasteboard.
+        if let text = pb.string(forType: .string), openPastedLocation(text) {
+            return true
+        }
+
+        // 3) Raw image data (screenshot / copied bitmap) — materialize to PNG.
         if let url = Self.materializeClipboardImage() {
             onOpenImages?([url])
             return true
         }
 
-        // 3) An image URL or local path pasted as text.
-        if let text = pb.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !text.isEmpty {
-            let expanded = (text as NSString).expandingTildeInPath
-            let fileURL = URL(fileURLWithPath: expanded)
-            if case .localImage = pathDetector.localKind(for: fileURL.path) {
-                onOpenImages?([fileURL])
-                return true
-            }
-            if let remote = URL(string: text), remote.scheme?.hasPrefix("http") == true {
-                onOpenImages?([remote])
-                return true
-            }
+        // 4) Some browsers provide only public.url, without plain text.
+        if let text = ImageInspectWindow.clipboardText(), openPastedLocation(text) {
+            return true
         }
         NSSound.beep()
+        return false
+    }
+
+    private func openPastedLocation(_ rawText: String) -> Bool {
+        let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return false }
+        if let remote = URL(string: text), ["http", "https"].contains(remote.scheme?.lowercased() ?? ""),
+           remote.host != nil {
+            onOpenImages?([remote])
+            return true
+        }
+        let expanded = (text as NSString).expandingTildeInPath
+        let fileURL = URL(fileURLWithPath: expanded)
+        if case .localImage = pathDetector.localKind(for: fileURL.path) {
+            onOpenImages?([fileURL])
+            return true
+        }
         return false
     }
 

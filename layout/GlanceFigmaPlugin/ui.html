@@ -37,6 +37,7 @@
   <button id="generate-compare-study" class="generate-screens">Generate Compare Mode (bordered)</button>
   <button id="replace-study-images" class="generate-screens">Replace color blocks with image (Focus + Compare)</button>
   <button id="generate-image-inspect-study" class="generate-screens">Generate Image Inspect Chrome Study</button>
+  <button id="generate-image-filmstrip-study" class="generate-screens">Generate Image Filmstrip Scroll Study</button>
   <button id="generate-video-inspect-study" class="generate-screens">Generate Video Inspect v4 (Focus + Compare)</button>
   <button id="generate-image-compression-flow" class="generate-screens">Generate Image Compression Flow</button>
   <button id="generate-screens" class="generate-screens">Generate Video + Tasks + Widget Market</button>
@@ -97,6 +98,10 @@
     document.getElementById('generate-image-inspect-study').onclick = () => {
       status.textContent = 'Building v3 Image Inspect...';
       parent.postMessage({ pluginMessage: { type: 'generate-image-inspect-chrome-study' } }, '*');
+    };
+    document.getElementById('generate-image-filmstrip-study').onclick = () => {
+      status.textContent = 'Building Image Filmstrip Scroll Study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-image-filmstrip-scroll-study' } }, '*');
     };
     document.getElementById('generate-video-inspect-study').onclick = async () => {
       const file = document.getElementById('reference').files[0];

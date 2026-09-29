@@ -39,7 +39,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     private let imageInfoBarH: CGFloat = 56
 
     private weak var loadingOverlay: NSView?
-    private weak var loadingIndicator: ModularImageLoadingView?
+    private weak var loadingIndicator: FocusSweepLoadingView?
     private weak var loadFailedView: LoadFailedAnimationView?
 
     private let imageInfoBar = PanelStyle.makeBarBlur()
@@ -417,11 +417,11 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         overlay.autoresizingMask = [.width, .height]
         overlay.isHidden = true
 
-        let loadingIndicator = ModularImageLoadingView(frame: NSRect(
-            x: (contentFrame.width - ModularImageLoadingView.preferredSize.width) / 2,
-            y: (contentFrame.height - ModularImageLoadingView.preferredSize.height) / 2 + 10,
-            width: ModularImageLoadingView.preferredSize.width,
-            height: ModularImageLoadingView.preferredSize.height
+        let loadingIndicator = FocusSweepLoadingView(frame: NSRect(
+            x: (contentFrame.width - FocusSweepLoadingView.preferredSize.width) / 2,
+            y: (contentFrame.height - FocusSweepLoadingView.preferredSize.height) / 2 + 10,
+            width: FocusSweepLoadingView.preferredSize.width,
+            height: FocusSweepLoadingView.preferredSize.height
         ))
         loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         overlay.addSubview(loadingIndicator)
@@ -435,15 +435,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         loadFailedView.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         loadFailedView.isHidden = true
         overlay.addSubview(loadFailedView)
-
-        let loadingLbl = NSTextField(labelWithString: "Loading…".localized)
-        loadingLbl.textColor = PanelStyle.textSecondary
-        loadingLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        loadingLbl.alignment = .center
-        loadingLbl.frame = NSRect(x: 0, y: loadingIndicator.frame.minY - 24,
-                                   width: contentFrame.width, height: 18)
-        loadingLbl.autoresizingMask = [.width, .minXMargin, .maxXMargin]
-        overlay.addSubview(loadingLbl)
 
         root.addSubview(overlay)
         loadingOverlay = overlay

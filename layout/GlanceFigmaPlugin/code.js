@@ -1759,6 +1759,82 @@ function createImageInspectChromeStudyScreen(x, imageHash = null) {
   return board;
 }
 
+function filmstripStudyThumbnail(parent, index, x, selected = false) {
+  const palettes = [
+    ['#24313B', '#A77B72', '#26352D'], ['#342A32', '#8C6671', '#28343B'],
+    ['#24382F', '#6F9B7A', '#28302D'], ['#302A26', '#B08565', '#3B3930'],
+    ['#27323C', '#7890A4', '#3A4A42'], ['#352C3A', '#966E8B', '#30333E'],
+    ['#293128', '#97A66E', '#3B382B']
+  ];
+  const item = frame('Thumbnail ' + (index + 1), x, 0, 96, 96, COLORS.raised, 9);
+  item.strokes = [fill(selected ? COLORS.accent : COLORS.line, selected ? .9 : 1)];
+  item.strokeWeight = selected ? 3 : 2;
+  parent.appendChild(item);
+  artworkFill(rect('Preview', item, selected ? 2 : 3, selected ? 2 : 3,
+                   selected ? 92 : 90, selected ? 92 : 90, null, 6), palettes[index]);
+  return item;
+}
+
+function createImageFilmstripScrollStudyScreen(x) {
+  const board = frame('Image Inspect / Filmstrip Scroll / Review', x, 0, 1554, 1012, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)]; board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+  text('Review Heading', board, 'Image Inspect  /  filmstrip after six images', 40, 38,
+       18, COLORS.text, 'semibold');
+  text('Review Note', board,
+       'Six thumbnails stay at 96 × 96. Additional images scroll horizontally without shrinking.',
+       40, 68, 12, COLORS.secondary, 'regular', 900);
+
+  const canvas = frame('01 / Image Canvas', 40, 112, 1474, 650, COLORS.canvas, 12);
+  canvas.strokes = [fill(COLORS.line)]; canvas.strokeWeight = 1; board.appendChild(canvas);
+  artworkFill(rect('Image / full bleed', canvas, 0, 0, 1474, 650, null, 12),
+              ['#24313B', '#A77B72', '#26352D']);
+  createFloatingInspectToolbar(canvas, 1474, 'Focus');
+
+  const viewportWidth = 6 * 96 + 5 * 10;
+  const viewport = frame('02 / Filmstrip Viewport / six visible',
+                         Math.round((1554 - viewportWidth) / 2), 794,
+                         viewportWidth, 118, '#111217', 12);
+  viewport.strokes = [fill(COLORS.line)]; viewport.strokeWeight = 1;
+  board.appendChild(viewport);
+  const content = frame('Scrollable Thumbnail Content / seven images', 0, 0,
+                        7 * 96 + 6 * 10, 96, null, 0);
+  content.fills = []; viewport.appendChild(content);
+  for (let i = 0; i < 7; i++) filmstripStudyThumbnail(content, i, i * 106, i === 0);
+
+  const scrollbar = frame('03 / Themed Scrollbar', 0, 104, viewportWidth, 6, null, 3);
+  scrollbar.fills = []; viewport.appendChild(scrollbar);
+  rect('Scrollbar Track', scrollbar, 0, 1.5, viewportWidth, 3, '#34353A', 1.5);
+  const thumbWidth = Math.round(viewportWidth * 6 / 7);
+  const thumb = rect('Scrollbar Thumb / warm cue', scrollbar, 0, 1, thumbWidth, 4, COLORS.accent, 2);
+  thumb.opacity = .82;
+
+  text('Visible Capacity', board, '6 visible', 40, 938, 11, COLORS.accent, 'semibold');
+  text('Scroll Behavior', board, 'Trackpad, mouse wheel, or drag the warm thumb', 132, 938,
+       11, COLORS.muted, 'regular');
+  return board;
+}
+
+async function generateImageFilmstripScrollStudy() {
+  await loadFonts();
+  await createStyles();
+  const name = 'Image Inspect / Filmstrip Scroll / Review';
+  const existing = figma.currentPage.children.find(child => child.name === name);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Image Filmstrip Scroll Study already exists.' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = createImageFilmstripScrollStudyScreen(maxX + 196);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created Image Filmstrip Scroll Study.' });
+  figma.notify('Image Filmstrip Scroll Study created');
+}
+
 // Resolve the photo to fill a study with. Prefer freshly-uploaded bytes (so the
 // user can drop in a real picture), otherwise reuse an IMAGE fill already on one
 // of the named source frames. Returns { imageHash, imageSize } or nulls.
@@ -2570,6 +2646,15 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Image Inspect Chrome Study failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Image Inspect Chrome Study failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-image-filmstrip-scroll-study') {
+    try {
+      await generateImageFilmstripScrollStudy();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Image Filmstrip Scroll Study failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Image Filmstrip Scroll Study failed', { error: true });
     }
   }
   if (message.type === 'generate-video-inspect-controls-study') {

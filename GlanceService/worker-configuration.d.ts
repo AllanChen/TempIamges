@@ -4,6 +4,8 @@ interface Env {
   PUBLIC_ORIGIN: string;
   SESSION_SECRET: string;
   ADMIN_TOKEN: string;
+  FLOW_TEST_TOKEN?: string;
+  WORKER_AUTH_DISABLED?: string;
   WORKER_TOKEN_PEPPER: string;
   MEDIA_SIGNING_SECRET: string;
 }

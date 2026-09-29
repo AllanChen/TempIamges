@@ -19,6 +19,9 @@ final class ImageInspectSession {
     var activeCompareSlot = 1
     var metadata: [ImageTechnicalMetadata?]
     var failedIndices = Set<Int>()
+    /// Results created in this inspect session keep their NEW tag even if
+    /// their task history changes or is cleared.
+    var generatedResultPaths = Set<String>()
 
     init(infos: [MediaInfo], images: [NSImage?], focusedIndex: Int, mode: Mode? = nil) {
         self.infos = infos
@@ -707,6 +710,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // Focus, side-by-side, and slider all use the same viewport gesture.
         if event.type == .magnify, let session {
             let point = canvasContainer.convert(event.locationInWindow, from: nil)
+            // A pinch that starts over the filmstrip must not reach the image
+            // viewport underneath it.
+            if !filmstrip.isHidden, filmstrip.alphaValue >= 0.05,
+               filmstrip.frame.contains(point) { return }
             var handled = true
             if session.mode == .compare, session.comparisonStyle == .sideBySide {
                 if primaryViewport.frame.contains(point) {
@@ -725,6 +732,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
         if event.type == .scrollWheel, let session {
             let point = canvasContainer.convert(event.locationInWindow, from: nil)
+            // The filmstrip floats over the image viewport. Route the wheel
+            // here first so a mouse wheel or trackpad scroll over any tile
+            // moves the thumbnail row instead of zooming/panning the image.
+            if !filmstrip.isHidden, filmstrip.alphaValue >= 0.05,
+               filmstrip.frame.contains(point) {
+                filmstrip.scrollWheel(with: event)
+                return
+            }
             if session.mode == .compare, session.comparisonStyle == .sideBySide {
                 if primaryViewport.frame.contains(point) {
                     primaryViewport.scrollWheel(with: event)
@@ -1158,8 +1173,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
         // Figma "05 / Task and Filmstrip Overlay": a full-width scrim bar
         // (#07080a @ 34%) pinned to the bottom, with the centered thumbnail
-        // strip floating inside it. Thumbnails are shrunk 20% from the Figma
-        // 96pt (→ 76.8pt) per request; the bar shrinks with them.
+        // strip floating inside it. Keep the previously requested thumbnail
+        // scale, while the strip shows up to eight and a half fixed-size tiles.
         if !shouldShowFilmstrip(for: session.infos) {
             taskOverlayShade.frame = .zero
             filmstrip.frame = .zero
@@ -1174,11 +1189,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
             let tile = 96 * 0.8 * 0.8 * scale
             let gap = 8 * scale
-            let slotCount = max(1, session.infos.count) + 1
-            let naturalW = CGFloat(slotCount) * tile + CGFloat(slotCount - 1) * gap
-            let stripW = min(naturalW, canvasRect.width - 48 * scale)
-            // Vertically center the thumbnail row inside the (unchanged) bar.
+            let slotCount = max(1, session.infos.count)
+            let visibleW = slotCount <= 8
+                ? CGFloat(slotCount) * tile + CGFloat(slotCount - 1) * gap
+                : 8.5 * tile + 8 * gap
+            let stripW = min(visibleW, max(1, canvasRect.width - 48 * scale))
             let stripY = barRect.minY + (barH - tile) / 2
+            filmstrip.setGeometry(tileSize: tile, gap: gap)
             filmstrip.frame = NSRect(x: barRect.midX - stripW / 2,
                                      y: stripY, width: stripW, height: tile)
         }
@@ -1316,7 +1333,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
 
         filmstrip.configure(infos: session.infos, images: session.images,
-                            selectedIndex: session.focusedIndex, compareIndices: session.compareIndices)
+                            selectedIndex: session.focusedIndex, compareIndices: session.compareIndices,
+                            generatedResultPaths: session.generatedResultPaths)
 
         // Default glow marks the active compare slot so the user sees which
         // side a filmstrip tap will replace; hover overrides this.
@@ -1793,11 +1811,16 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         completed.forEach { handledWidgetTaskIDs.insert($0.id) }
         guard let session else { return }
         renderSession()
-        for task in completed {
+        for task in completed.sorted(by: { $0.updatedAt < $1.updatedAt }) {
             guard let output = task.output, let source = task.source,
-                  session.infos.contains(where: { $0.url.absoluteString == source.absoluteString }),
-                  !session.infos.contains(where: { $0.url.standardizedFileURL == output.standardizedFileURL }) else { continue }
-            // Spec: 结果紧随源图插入右侧，不自动切换当前主图.
+                  session.infos.contains(where: { $0.url.absoluteString == source.absoluteString }) else { continue }
+            if let existingIndex = session.infos.firstIndex(where: {
+                $0.url.standardizedFileURL == output.standardizedFileURL
+            }) {
+                selectWidgetResult(at: existingIndex)
+                loadFullResolutionForActiveItems(generation: loadGeneration)
+                continue
+            }
             insertWidgetResult(info: MediaInfo(url: output, isLocal: true, kind: .image),
                                after: source)
         }
@@ -1825,8 +1848,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         taskToast.hide()
     }
 
-    /// Insert a completed widget result immediately after its source image in
-    /// the filmstrip, WITHOUT moving focus or leaving compare mode.
+    /// Insert a completed widget result immediately after its source image,
+    /// then show and select the result in the filmstrip.
     private func insertWidgetResult(info: MediaInfo, after source: URL) {
         guard let session,
               let sourceIndex = session.infos.firstIndex(where: { $0.url.absoluteString == source.absoluteString }) else { return }
@@ -1834,16 +1857,22 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session.infos.insert(info, at: insertionIndex)
         session.images.insert(nil, at: insertionIndex)
         session.metadata.insert(nil, at: insertionIndex)
-        // Indices after the insertion point shift by one — keep focus and the
-        // compare pair pointing at the same images.
-        if session.focusedIndex >= insertionIndex { session.focusedIndex += 1 }
-        if var pair = session.compareIndices {
-            if pair.0 >= insertionIndex { pair.0 += 1 }
-            if pair.1 >= insertionIndex { pair.1 += 1 }
-            session.compareIndices = pair
-        }
-        renderSession()
+        session.generatedResultPaths.insert(info.url.standardizedFileURL.path)
+        session.failedIndices = Set(session.failedIndices.map {
+            $0 >= insertionIndex ? $0 + 1 : $0
+        })
+        selectWidgetResult(at: insertionIndex)
         loadDroppedItem(at: insertionIndex, generation: loadGeneration)
+    }
+
+    private func selectWidgetResult(at index: Int) {
+        guard let session, session.infos.indices.contains(index) else { return }
+        session.mode = .browse
+        session.compareIndices = nil
+        session.focusedIndex = index
+        refitFocusedImageIfNeeded()
+        renderSession()
+        showChrome(animated: false)
     }
 
     /// The viewport the actions menu acts on: focused image in Focus/Browse,
@@ -2203,6 +2232,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session.infos.insert(compressedInfo, at: insertIndex)
         session.images.insert(nil, at: insertIndex)
         session.metadata.insert(nil, at: insertIndex)
+        session.generatedResultPaths.insert(url.standardizedFileURL.path)
 
         session.mode = .compare
         session.comparisonStyle = .sideBySide
@@ -2549,6 +2579,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         url.isFileURL ? url.standardizedFileURL.path : url.absoluteURL.absoluteString
     }
 
+    private func sessionIndex(for url: URL, in session: ImageInspectSession) -> Int? {
+        let identity = mediaIdentity(for: url)
+        return session.infos.firstIndex { mediaIdentity(for: $0.url) == identity }
+    }
+
     /// Clipboard text for URL pasting. Browser address-bar copies and some
     /// apps only provide an NSURL object (public.url) without a plain-string
     /// type, so readObjects is required as a fallback.
@@ -2747,26 +2782,32 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
         imageLoader.loadFullResolutionImage(from: info.url) { [weak self] image in
             guard let self, generation == self.loadGeneration,
-                  let session = self.session, session.images.indices.contains(index) else { return }
+                  let session = self.session,
+                  let currentIndex = self.sessionIndex(for: info.url, in: session) else { return }
             if let image {
-                session.failedIndices.remove(index)
-                session.images[index] = image
-                session.infos[index].dimensions = image.size
+                session.failedIndices.remove(currentIndex)
+                session.images[currentIndex] = image
+                session.infos[currentIndex].dimensions = image.size
+                if session.mode != .compare, currentIndex == session.focusedIndex {
+                    self.fitWindowToImage(image.size)
+                }
             } else {
-                session.failedIndices.insert(index)
+                session.failedIndices.insert(currentIndex)
             }
             self.renderSession()
         }
         imageLoader.loadFileSize(from: info.url) { [weak self] bytes in
             guard let self, generation == self.loadGeneration,
-                  let session = self.session, session.infos.indices.contains(index) else { return }
-            session.infos[index].fileSize = bytes
+                  let session = self.session,
+                  let currentIndex = self.sessionIndex(for: info.url, in: session) else { return }
+            session.infos[currentIndex].fileSize = bytes
             self.renderSession()
         }
         imageLoader.loadTechnicalMetadata(from: info.url) { [weak self] metadata in
             guard let self, generation == self.loadGeneration,
-                  let session = self.session, session.metadata.indices.contains(index) else { return }
-            session.metadata[index] = metadata
+                  let session = self.session,
+                  let currentIndex = self.sessionIndex(for: info.url, in: session) else { return }
+            session.metadata[currentIndex] = metadata
             self.renderSession()
         }
     }
@@ -4117,10 +4158,11 @@ final class InspectImageViewport: NSView {
         registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.cornerRadius = 5
         layer?.masksToBounds = true
         imageLayer.contentsGravity = .resizeAspect
-        imageLayer.cornerRadius = 0
-        imageLayer.masksToBounds = false
+        imageLayer.cornerRadius = 5
+        imageLayer.masksToBounds = true
         imageLayer.borderWidth = 0
         layer?.addSublayer(imageLayer)
         // Compare selection is communicated by gently dimming the inactive
@@ -4593,11 +4635,6 @@ final class ImageRevealView: NSView {
 }
 
 final class ImageFilmstripView: NSView {
-    private static let itemWidth: CGFloat = 96
-    private static let itemHeight: CGFloat = 96
-    private static let itemGap: CGFloat = 10
-    private static let horizontalPadding: CGFloat = 0
-
     var onSelect: ((Int) -> Void)?
     var onCompare: ((Int) -> Void)?
     /// The trailing "+" tile — an explicit alternative to drag-and-drop.
@@ -4606,15 +4643,21 @@ final class ImageFilmstripView: NSView {
     private var addTile: ImageFilmstripItem?
     private var infos: [MediaInfo] = []
     private var images: [NSImage?] = []
+    private var generatedResultPaths = Set<String>()
     private var selectedIndex = 0
     private var compareIndices: (Int, Int)?
     /// Generated type icons for non-image items (mixed sessions), by index.
     private var iconCache: [Int: NSImage] = [:]
+    private var tileSize: CGFloat = 96
+    private var itemGap: CGFloat = 10
+    private var scrollOffset: CGFloat = 0
+    private var pendingRevealIndex: Int?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.masksToBounds = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -4632,14 +4675,65 @@ final class ImageFilmstripView: NSView {
         alphaValue < 0.05 ? nil : super.hitTest(point)
     }
 
+    func setGeometry(tileSize: CGFloat, gap: CGFloat) {
+        guard self.tileSize != tileSize || itemGap != gap else { return }
+        self.tileSize = tileSize
+        itemGap = gap
+        layoutItems()
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        guard maxScrollOffset > 0 else { return }
+        let delta = abs(event.scrollingDeltaX) > 0.01 ? event.scrollingDeltaX : event.scrollingDeltaY
+        let step = event.hasPreciseScrollingDeltas ? delta : delta * 20
+        scrollOffset = min(max(0, scrollOffset - step), maxScrollOffset)
+        layoutItems()
+    }
+
     func configure(infos: [MediaInfo], images: [NSImage?], selectedIndex: Int,
-                   compareIndices: (Int, Int)?) {
+                   compareIndices: (Int, Int)?, generatedResultPaths: Set<String>) {
+        let previousURLs = Set(self.infos.map { $0.url.standardizedFileURL })
+        let previousSelection = self.selectedIndex
+        let firstLoad = itemViews.isEmpty
+        let sessionChanged = self.infos.first?.url != infos.first?.url
+        if sessionChanged { scrollOffset = 0 }
         self.infos = infos
         self.images = images
+        self.generatedResultPaths = generatedResultPaths
         self.selectedIndex = selectedIndex
         self.compareIndices = compareIndices
         iconCache.removeAll()
         rebuild()
+        if !sessionChanged, let resultIndex = infos.indices.first(where: {
+            !previousURLs.contains(infos[$0].url.standardizedFileURL) &&
+            (isGeneratedResult(infos[$0].url) ||
+             WidgetTaskManager.shared.completedRecord(for: infos[$0].url) != nil)
+        }) {
+            revealItem(at: resultIndex)
+        } else if firstLoad || sessionChanged || previousSelection != selectedIndex {
+            revealItem(at: selectedIndex)
+        }
+    }
+
+    private func revealItem(at index: Int) {
+        guard itemViews.indices.contains(index) else { return }
+        guard bounds.width > 0 else {
+            pendingRevealIndex = index
+            return
+        }
+        adjustOffsetToReveal(index)
+        layoutItems()
+    }
+
+    private func isGeneratedResult(_ url: URL) -> Bool {
+        url.isFileURL && generatedResultPaths.contains(url.standardizedFileURL.path)
+    }
+
+    private func adjustOffsetToReveal(_ index: Int) {
+        let itemStart = CGFloat(index) * (tileSize + itemGap)
+        let itemEnd = itemStart + tileSize
+        if itemStart < scrollOffset { scrollOffset = itemStart }
+        else if itemEnd > scrollOffset + bounds.width { scrollOffset = itemEnd - bounds.width }
     }
 
     private func thumbnail(for index: Int) -> NSImage? {
@@ -4651,32 +4745,23 @@ final class ImageFilmstripView: NSView {
         return icon
     }
 
-    /// Cell geometry shared by rebuild() and layoutItems(): shrink-to-fit row,
-    /// one extra slot for the trailing "+" add tile.
-    private func cellMetrics() -> (cellWidth: CGFloat, cellHeight: CGFloat, startX: CGFloat, itemY: CGFloat) {
-        let slotCount = max(1, itemViews.count)
-        let gap = Self.itemGap
-        let itemWidth = Self.itemWidth
-        let itemHeight = Self.itemHeight
-        let maxRowWidth = bounds.width - Self.horizontalPadding * 2
-        let naturalWidth = CGFloat(slotCount) * itemWidth + CGFloat(slotCount - 1) * gap
-        let rowWidth = min(naturalWidth, maxRowWidth)
-        let cellWidth = slotCount > 1
-            ? min(itemWidth, (rowWidth - CGFloat(slotCount - 1) * gap) / CGFloat(slotCount))
-            : itemWidth
-        let startX = Self.horizontalPadding
-        let cellHeight = itemHeight * min(1, cellWidth / itemWidth)
-        return (cellWidth, cellHeight, startX, (bounds.height - cellHeight) / 2)
+    private var contentWidth: CGFloat {
+        CGFloat(itemViews.count) * tileSize + CGFloat(max(0, itemViews.count - 1)) * itemGap
     }
+
+    private var maxScrollOffset: CGFloat { max(0, contentWidth - bounds.width) }
 
     /// Position the existing tiles without touching the view hierarchy.
     private func layoutItems() {
-        guard !itemViews.isEmpty else { return }
-        let metrics = cellMetrics()
-        var x = metrics.startX
+        if let index = pendingRevealIndex, bounds.width > 0 {
+            pendingRevealIndex = nil
+            adjustOffsetToReveal(index)
+        }
+        scrollOffset = min(scrollOffset, maxScrollOffset)
+        var x = -scrollOffset
         for item in itemViews {
-            item.frame = NSRect(x: x, y: metrics.itemY, width: metrics.cellWidth, height: metrics.cellHeight)
-            x += metrics.cellWidth + Self.itemGap
+            item.frame = NSRect(x: x, y: 0, width: tileSize, height: tileSize)
+            x += tileSize + itemGap
         }
     }
 
@@ -4694,12 +4779,12 @@ final class ImageFilmstripView: NSView {
             // focusedIndex can never create a third highlighted thumbnail.
             let isSelected = compareIndices == nil && index == selectedIndex
             let task = WidgetTaskManager.shared.latestRecord(for: infos[index].url)
-            let resultTask = task == nil ? WidgetTaskManager.shared.completedRecord(for: infos[index].url) : nil
+            let resultTask = WidgetTaskManager.shared.completedRecord(for: infos[index].url)
             item.configure(image: thumbnail(for: index), title: infos[index].filename,
                            selected: isSelected,
                            compared: isCompared,
                            taskPhase: (task ?? resultTask)?.phase,
-                           isResult: resultTask != nil,
+                           isResult: resultTask != nil || isGeneratedResult(infos[index].url),
                            activeTaskCount: WidgetTaskManager.shared.activeRecords(for: infos[index].url).count)
             item.onClick = { [weak self] modifiers in
                 if modifiers.contains(.option) { self?.onCompare?(index) }
@@ -4714,6 +4799,28 @@ final class ImageFilmstripView: NSView {
 
 private final class NonHitTestingImageView: NSImageView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let image, image.size.width > 0, image.size.height > 0,
+              bounds.width > 0, bounds.height > 0 else { return }
+        let sourceAspect = image.size.width / image.size.height
+        let targetAspect = bounds.width / bounds.height
+        var source = CGRect(origin: .zero, size: image.size)
+        if sourceAspect > targetAspect {
+            source.size.width = image.size.height * targetAspect
+            source.origin.x = (image.size.width - source.width) / 2
+        } else {
+            source.size.height = image.size.width / targetAspect
+            source.origin.y = (image.size.height - source.height) / 2
+        }
+        NSGraphicsContext.saveGraphicsState()
+        let radius = min(bounds.width, bounds.height) * 6 / 96
+        NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).addClip()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        image.draw(in: bounds, from: source, operation: .sourceOver,
+                   fraction: 1, respectFlipped: true, hints: nil)
+        NSGraphicsContext.restoreGraphicsState()
+    }
 }
 
 private final class ImageFilmstripItem: NSView {
@@ -4731,7 +4838,6 @@ private final class ImageFilmstripItem: NSView {
         layer?.cornerRadius = 9
         layer?.masksToBounds = true
         layer?.backgroundColor = PanelStyle.inspectToolbar.cgColor
-        imageView.imageScaling = .scaleProportionallyUpOrDown
         addSubview(imageView)
         taskBadge.cornerRadius = 3.5
         taskBadge.isHidden = true
@@ -4793,10 +4899,10 @@ private final class ImageFilmstripItem: NSView {
         plusLabel.isHidden = true
         let processing = taskPhase?.isActive == true
         let failed = taskPhase == .failed || taskPhase == .interrupted
-        let completedResult = isResult && taskPhase == .completed
+        let completedResult = isResult
         let emphasized = selected || compared || processing
         layer?.borderWidth = emphasized ? 2 : 1
-        previewInset = emphasized ? 3 : 4
+        previewInset = emphasized ? 2 : 3
         layer?.borderColor = (failed ? PanelStyle.failure : (emphasized ? PanelStyle.warmCue : PanelStyle.inspectLine)).cgColor
         taskBadge.isHidden = !failed
         taskBadge.backgroundColor = PanelStyle.failure.cgColor

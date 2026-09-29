@@ -45,3 +45,6 @@ dist/
 # Local tool state
 .wrangler/
 website/.openai/
+
+# Local upload provider credentials
+docs/designs/upload_info.txt

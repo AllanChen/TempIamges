@@ -23,7 +23,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     private var locateButton = NSButton()   // Reveal in Finder, local-only
     private let modifiedLabel = NSTextField(labelWithString: "")  // identity subtitle: path · modified
     private let addressBar = NSTextField()
-    private let loadingIndicator = ModularImageLoadingView(frame: .zero)
+    private let loadingIndicator = FocusSweepLoadingView(frame: .zero)
 
     // WebView find UI
     private let webFindBar = PanelStyle.makeBarBlur()
@@ -285,10 +285,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         content.addSubview(textScroll)
 
         loadingIndicator.frame = NSRect(
-            x: bodyFrame.midX - ModularImageLoadingView.preferredSize.width / 2,
-            y: bodyFrame.midY - ModularImageLoadingView.preferredSize.height / 2,
-            width: ModularImageLoadingView.preferredSize.width,
-            height: ModularImageLoadingView.preferredSize.height
+            x: bodyFrame.midX - FocusSweepLoadingView.preferredSize.width / 2,
+            y: bodyFrame.midY - FocusSweepLoadingView.preferredSize.height / 2,
+            width: FocusSweepLoadingView.preferredSize.width,
+            height: FocusSweepLoadingView.preferredSize.height
         )
         loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         content.addSubview(loadingIndicator)

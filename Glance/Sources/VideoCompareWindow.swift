@@ -36,7 +36,10 @@ struct VideoInspectChromeLayout {
         let thumbnailScale = min(max(min(size.width / 1554, size.height / 1012), 0.62), 1.25)
         let tile = Self.filmstripBaseSize * thumbnailScale
         let gap = Self.filmstripBaseGap * thumbnailScale
-        let stripWidth = min(count * tile + (count - 1) * gap, size.width - 48)
+        let visibleWidth = count <= 8
+            ? count * tile + (count - 1) * gap
+            : 8.5 * tile + 8 * gap
+        let stripWidth = min(visibleWidth, max(1, size.width - 48))
         filmstrip = fromTop((size.width - stripWidth) / 2, size.height - 108 - tile, stripWidth, tile)
         var preview = fromTop(size.width - 244, size.height - 237, 220, 125)
         if videoCount > 1 && preview.intersects(filmstrip) {
@@ -113,6 +116,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     /// Fired with the temp-file URL of a captured frame; AppDelegate routes it
     /// into the image inspect window.
     var onCaptureFrame: ((URL) -> Void)?
+    /// A dropped image opens in Image Inspect while this video window stays open.
+    var onOpenImage: ((MediaInfo) -> Void)?
     /// Themed right-click menu (mute controls), rebuilt per presentation.
     private var actionsPanel: ActionMenuPanel?
 
@@ -132,7 +137,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         acceptsMouseMovedEvents = true; delegate = self
-        registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes)
+        registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         compareIndices = videos.count > 1 ? (0, 1) : nil
         mode = startsInCompare && videos.count > 1 ? .compare : .focus
         buildUI()
@@ -176,6 +181,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
            !event.isARepeat,
            event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty {
             playTapped()
+            return
+        }
+        if (event.type == .scrollWheel || event.type == .magnify),
+           !filmstrip.isHidden, filmstrip.alphaValue >= 0.05,
+           filmstrip.frame.contains(canvas.convert(event.locationInWindow, from: nil)) {
+            if event.type == .scrollWheel { filmstrip.scrollWheel(with: event) }
             return
         }
         // The floating playback controls stay available while the video plays.
@@ -225,10 +236,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         root.layer?.borderColor = PanelStyle.resolvedCG(NSColor.white.withAlphaComponent(0.22))
         root.layer?.masksToBounds = true
         canvas.acceptsExtension = { ext in
-            MediaDropCanvasView.videoExtensions.contains(ext)
+            MediaDropCanvasView.videoExtensions.contains(ext) ||
+            MediaDropCanvasView.imageExtensions.contains(ext)
         }
+        canvas.acceptsImageData = true
         canvas.onDrop = { [weak self] url, point in
-            self?.handleDroppedVideo(url: url, at: point)
+            self?.handleDroppedResource(url: url, at: point)
         }
         configureTraffic(closeTrafficButton, color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), tooltip: "Close".localized, action: #selector(closeTapped))
         configureTraffic(minimizeTrafficButton, color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), tooltip: "Minimize".localized, action: #selector(minimizeTapped))
@@ -917,6 +930,25 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         render()
     }
 
+    private func handleDroppedResource(url: URL, at point: NSPoint) {
+        let info: MediaInfo?
+        if url.isFileURL {
+            info = MediaInfo.from(pathDetector.localKind(for: url.path))
+        } else {
+            info = pathDetector.detectAll(url.absoluteString)
+                .compactMap(MediaInfo.from).first
+        }
+        guard let info else { return }
+        switch info.kind {
+        case .image:
+            onOpenImage?(info)
+        case .video:
+            handleDroppedVideo(url: info.url, at: point)
+        default:
+            break
+        }
+    }
+
     /// ⌘V uses the same PathDetector classification as selection activation.
     /// Duplicate URLs focus the existing video; new URLs append and display.
     private func pasteRemoteVideoFromClipboard() -> Bool {
@@ -1008,7 +1040,7 @@ private final class VideoInspectViewport: NSView {
     private let webMView: WebMVideoView?
     private let muteButton = InspectToolbarButton(symbol: "speaker.wave.2.fill", tooltip: "Mute".localized)
     private let compareDimmer = CALayer()
-    private let loadingView = ModularImageLoadingView(frame: .zero)
+    private let loadingView = FocusSweepLoadingView(frame: .zero)
     private let failureView = LoadFailedAnimationView(frame: .zero)
     private var statusObservation: NSKeyValueObservation?
     var onActivate: (() -> Void)?
@@ -1055,21 +1087,25 @@ private final class VideoInspectViewport: NSView {
             nativeView.controlsStyle = .none
             nativeView.videoGravity = .resizeAspect
             nativeView.player = nativePlayer
-            nativeView.registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes)
+            nativeView.registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
             playerView = nativeView
             webMView = nil
         }
         super.init(frame: .zero)
-        registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes)
+        registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
+        layer?.cornerRadius = 5
         layer?.masksToBounds = true
         layer?.backgroundColor = PanelStyle.inspectCanvas.cgColor
         if let playerView {
             playerView.wantsLayer = true
+            playerView.layer?.cornerRadius = 5
             playerView.layer?.masksToBounds = true
             addSubview(playerView)
         }
         if let webMView {
+            webMView.layer?.cornerRadius = 5
+            webMView.layer?.masksToBounds = true
             webMView.onReady = { [weak self] duration, size in
                 guard let self else { return }
                 self.loadingView.setLoading(false)
@@ -1108,7 +1144,7 @@ private final class VideoInspectViewport: NSView {
         compareDimmer.frame = bounds
         muteButton.frame = NSRect(x: bounds.maxX - 40, y: bounds.maxY - 40,
                                   width: 32, height: 32)
-        let loader = ModularImageLoadingView.preferredSize
+        let loader = FocusSweepLoadingView.preferredSize
         loadingView.frame = NSRect(x: bounds.midX - loader.width / 2,
                                    y: bounds.midY - loader.height / 2,
                                    width: loader.width, height: loader.height)
@@ -1265,7 +1301,7 @@ final class WebMVideoView: WKWebView {
                                                                        forMainFrameOnly: true))
         super.init(frame: .zero, configuration: configuration)
         handler.owner = self
-        registerForDraggedTypes(MediaDropCanvasView.videoDraggedTypes)
+        registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
         layer?.backgroundColor = NSColor.black.cgColor
         loadSource(url)
@@ -1576,10 +1612,8 @@ private final class VideoFilmstripView: NSView {
         super.init(frame: frameRect)
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
-        scrollView.hasHorizontalScroller = true
+        scrollView.hasHorizontalScroller = false
         scrollView.hasVerticalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.scrollerStyle = .overlay
         scrollView.horizontalScrollElasticity = .none
         scrollView.verticalScrollElasticity = .none
         scrollView.documentView = document
@@ -1587,7 +1621,11 @@ private final class VideoFilmstripView: NSView {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    override func scrollWheel(with event: NSEvent) { scrollView.scrollWheel(with: event) }
+
     func configure(infos: [MediaInfo], selectedIndex: Int, compareIndices: (Int, Int)?) {
+        let previousSelection = self.selectedIndex
+        let previousURLs = itemURLs
         self.selectedIndex = selectedIndex
         var reusableItems = Array(zip(itemURLs, items))
         items.forEach { $0.removeFromSuperview() }
@@ -1606,7 +1644,7 @@ private final class VideoFilmstripView: NSView {
             return item
         }
         itemURLs = infos.map(\.url)
-        revealSelection = true
+        revealSelection = previousSelection != selectedIndex || previousURLs != itemURLs
         needsLayout = true
     }
 
@@ -1637,13 +1675,11 @@ private final class VideoFilmstripView: NSView {
 /// every video without squeezing thumbnails as more videos are added.
 private final class VideoFilmstripScrollView: NSScrollView {
     override func scrollWheel(with event: NSEvent) {
-        guard abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX), let documentView else {
-            super.scrollWheel(with: event)
-            return
-        }
-        let multiplier: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 16
+        guard let documentView else { return }
+        let delta = abs(event.scrollingDeltaX) > 0.01 ? event.scrollingDeltaX : event.scrollingDeltaY
+        let multiplier: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 20
         let maxX = max(0, documentView.bounds.width - contentView.bounds.width)
-        let x = min(maxX, max(0, contentView.bounds.minX - event.scrollingDeltaY * multiplier))
+        let x = min(maxX, max(0, contentView.bounds.minX - delta * multiplier))
         contentView.scroll(to: NSPoint(x: x, y: 0))
         reflectScrolledClipView(contentView)
     }
@@ -1652,12 +1688,13 @@ private final class VideoFilmstripScrollView: NSScrollView {
 private final class VideoFilmstripItem: NSView {
     var onClick: (() -> Void)?
     private let imageView = VideoThumbnailImageView()
+    private var previewInset: CGFloat = 3
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.cornerRadius = 9
         layer?.masksToBounds = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
+        layer?.backgroundColor = PanelStyle.inspectToolbar.cgColor
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.image = NSImage(systemSymbolName: "film", accessibilityDescription: nil)
         imageView.contentTintColor = PanelStyle.textTertiary
@@ -1667,21 +1704,53 @@ private final class VideoFilmstripItem: NSView {
     // Selection is communicated by the warm-cue border only (mirrors the image
     // filmstrip); the frosted background stays the same either way.
     func configure(selected: Bool, compared: Bool) {
-        layer?.borderWidth = 1
-        layer?.borderColor = PanelStyle.resolvedCG(selected || compared
-            ? PanelStyle.accent.withAlphaComponent(0.8) : NSColor.white.withAlphaComponent(0.16))
+        let emphasized = selected || compared
+        layer?.borderWidth = emphasized ? 2 : 1
+        layer?.borderColor = (emphasized ? PanelStyle.warmCue : PanelStyle.inspectLine).cgColor
+        previewInset = emphasized ? 2 : 3
+        needsLayout = true
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
         setAccessibilityValue(selected || compared ? 1 : 0)
     }
     func setThumbnail(_ image: NSImage) { imageView.image = image }
     func loadThumbnail(from url: URL) { DispatchQueue.global(qos: .userInitiated).async { [weak self] in let generator = AVAssetImageGenerator(asset: AVAsset(url: url)); generator.appliesPreferredTrackTransform = true; guard let image = try? generator.copyCGImage(at: .zero, actualTime: nil) else { return }; DispatchQueue.main.async { self?.imageView.image = NSImage(cgImage: image, size: NSSize(width: CGFloat(image.width), height: CGFloat(image.height))) } } }
-    override func layout() { super.layout(); layer?.cornerRadius = 9 * bounds.height / 96; imageView.frame = bounds }; override func mouseDown(with event: NSEvent) { onClick?() }
+    override func layout() {
+        super.layout()
+        let scale = bounds.height / 96
+        layer?.cornerRadius = 9 * scale
+        imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
+    }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func mouseDown(with event: NSEvent) { onClick?() }
     override func accessibilityPerformPress() -> Bool { onClick?(); return true }
 }
 
 private final class VideoThumbnailImageView: NSImageView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let image, image.size.width > 0, image.size.height > 0,
+              bounds.width > 0, bounds.height > 0 else { return }
+        if image.isTemplate { super.draw(dirtyRect); return }
+        let sourceAspect = image.size.width / image.size.height
+        let targetAspect = bounds.width / bounds.height
+        var source = CGRect(origin: .zero, size: image.size)
+        if sourceAspect > targetAspect {
+            source.size.width = image.size.height * targetAspect
+            source.origin.x = (image.size.width - source.width) / 2
+        } else {
+            source.size.height = image.size.width / targetAspect
+            source.origin.y = (image.size.height - source.height) / 2
+        }
+        NSGraphicsContext.saveGraphicsState()
+        let radius = min(bounds.width, bounds.height) * 6 / 96
+        NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).addClip()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        image.draw(in: bounds, from: source, operation: .sourceOver,
+                   fraction: 1, respectFlipped: true, hints: nil)
+        NSGraphicsContext.restoreGraphicsState()
+    }
 }
 
 private extension Array {

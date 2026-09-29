@@ -248,6 +248,20 @@ const names = [
   await figma.ui.onmessage({ type: 'generate-image-inspect-chrome-study' });
   assert.equal(page.children.length, beforeInspectStudy + 1, 'Image Inspect Chrome Study must be idempotent');
 
+  const beforeFilmstripStudy = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-image-filmstrip-scroll-study' });
+  const filmstripStudy = page.children.find(child => child.name === 'Image Inspect / Filmstrip Scroll / Review');
+  assert.ok(filmstripStudy, 'Image Filmstrip Scroll Study must be generated');
+  assert.equal(page.children.length, beforeFilmstripStudy + 1);
+  const viewport = filmstripStudy.findOne(child => child.name === '02 / Filmstrip Viewport / six visible');
+  const content = filmstripStudy.findOne(child => child.name === 'Scrollable Thumbnail Content / seven images');
+  assert.equal(viewport.width, 626, 'Viewport must fit exactly six 96px tiles and five 10px gaps');
+  assert.equal(content.findAll(child => child.name.startsWith('Thumbnail ')).length, 7);
+  assert.ok(filmstripStudy.findOne(child => child.name === 'Scrollbar Track'));
+  assert.ok(filmstripStudy.findOne(child => child.name === 'Scrollbar Thumb / warm cue'));
+  await figma.ui.onmessage({ type: 'generate-image-filmstrip-scroll-study' });
+  assert.equal(page.children.length, beforeFilmstripStudy + 1, 'Filmstrip study must be idempotent');
+
   const beforeCompressionFlow = page.children.length;
   await figma.ui.onmessage({ type: 'generate-image-compression-flow' });
   const compressionFlow = page.children.find(child => child.name === 'Image Compression Flow');

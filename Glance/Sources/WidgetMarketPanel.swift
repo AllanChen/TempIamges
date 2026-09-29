@@ -50,7 +50,7 @@ final class WidgetMarketPanel: NSPanel {
     private let scrollView = NSScrollView()
     private let catalogContainer = NSView()
     private let loadingOverlay = NSView()
-    private let loadingSpinner = ModularImageLoadingView(frame: .zero)
+    private let loadingSpinner = FocusSweepLoadingView(frame: .zero)
     private let footerLabel = NSTextField(labelWithString: "")
     private let offlineLabel = NSTextField(labelWithString: "")
     private let detailView = WidgetMarketDetailView()
@@ -324,10 +324,10 @@ final class WidgetMarketPanel: NSPanel {
         offlineLabel.frame = NSRect(x: 19, y: 56, width: 340, height: 13)
 
         loadingOverlay.frame = NSRect(x: 0, y: 0, width: W, height: H)
-        loadingSpinner.frame = NSRect(x: (W - ModularImageLoadingView.preferredSize.width) / 2,
-                                      y: (H - ModularImageLoadingView.preferredSize.height) / 2,
-                                      width: ModularImageLoadingView.preferredSize.width,
-                                      height: ModularImageLoadingView.preferredSize.height)
+        loadingSpinner.frame = NSRect(x: (W - FocusSweepLoadingView.preferredSize.width) / 2,
+                                      y: (H - FocusSweepLoadingView.preferredSize.height) / 2,
+                                      width: FocusSweepLoadingView.preferredSize.width,
+                                      height: FocusSweepLoadingView.preferredSize.height)
 
         detailView.frame = NSRect(x: 0, y: 0, width: W, height: H)
     }

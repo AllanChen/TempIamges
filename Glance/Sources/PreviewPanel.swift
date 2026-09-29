@@ -1781,11 +1781,11 @@ final class MediaTileView: NSView {
 
     private var mediaContainer: NSView!
     private let imageLayer = CALayer()
-    private let loadingIndicator = ModularImageLoadingView(frame: .zero)
+    private let loadingIndicator = FocusSweepLoadingView(frame: .zero)
     private let loadFailedView = LoadFailedAnimationView(frame: .zero)
     private let loadingLabel = NSTextField(labelWithString: "Searching…".localized)
     private var downloadBtn: NSButton?
-    private let downloadLoadingIndicator = ModularImageLoadingView(frame: .zero)
+    private let downloadLoadingIndicator = FocusSweepLoadingView(frame: .zero)
     private var downloadState: DownloadState = .idle
     private var downloadedFileURL: URL?
 
@@ -1960,6 +1960,7 @@ final class MediaTileView: NSView {
         loadingLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
         loadingLabel.alignment = .center
         loadingLabel.maximumNumberOfLines = 1
+        loadingLabel.isHidden = true
         addSubview(loadingLabel)
 
         // Action button + companion spinner. Remote items start in .idle
@@ -1974,7 +1975,9 @@ final class MediaTileView: NSView {
         addSubview(btn)
         downloadBtn = btn
 
-        downloadLoadingIndicator.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.26, y: 0.26))
+        downloadLoadingIndicator.showsCaption = false
+        downloadLoadingIndicator.setAccessibilityLabel("Loading…".localized)
+        downloadLoadingIndicator.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.20, y: 0.20))
         downloadLoadingIndicator.setLoading(false)
         addSubview(downloadLoadingIndicator)
 
@@ -2118,10 +2121,10 @@ final class MediaTileView: NSView {
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradH)
             CATransaction.commit()
             loadingIndicator.frame = NSRect(
-                x: bounds.midX - ModularImageLoadingView.preferredSize.width / 2,
-                y: bounds.midY - ModularImageLoadingView.preferredSize.height / 2 + 8,
-                width: ModularImageLoadingView.preferredSize.width,
-                height: ModularImageLoadingView.preferredSize.height
+                x: bounds.midX - FocusSweepLoadingView.preferredSize.width / 2,
+                y: bounds.midY - FocusSweepLoadingView.preferredSize.height / 2 + 8,
+                width: FocusSweepLoadingView.preferredSize.width,
+                height: FocusSweepLoadingView.preferredSize.height
             )
             loadingLabel.frame = NSRect(x: 0, y: bounds.midY - 18,
                                          width: bounds.width, height: 14)
@@ -2142,10 +2145,10 @@ final class MediaTileView: NSView {
             )
             let downloadCenter = CGPoint(x: bounds.width - dlBtnSize / 2 - 10, y: 22 + dlBtnSize / 2)
             downloadLoadingIndicator.frame = NSRect(
-                x: downloadCenter.x - ModularImageLoadingView.preferredSize.width / 2,
-                y: downloadCenter.y - ModularImageLoadingView.preferredSize.height / 2,
-                width: ModularImageLoadingView.preferredSize.width,
-                height: ModularImageLoadingView.preferredSize.height
+                x: downloadCenter.x - FocusSweepLoadingView.preferredSize.width / 2,
+                y: downloadCenter.y - FocusSweepLoadingView.preferredSize.height / 2,
+                width: FocusSweepLoadingView.preferredSize.width,
+                height: FocusSweepLoadingView.preferredSize.height
             )
             locateBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSize - 10,
@@ -2165,10 +2168,10 @@ final class MediaTileView: NSView {
             overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradientH)
             CATransaction.commit()
             loadingIndicator.frame = NSRect(
-                x: bounds.midX - ModularImageLoadingView.preferredSize.width / 2,
-                y: bounds.midY - ModularImageLoadingView.preferredSize.height / 2 + 6,
-                width: ModularImageLoadingView.preferredSize.width,
-                height: ModularImageLoadingView.preferredSize.height
+                x: bounds.midX - FocusSweepLoadingView.preferredSize.width / 2,
+                y: bounds.midY - FocusSweepLoadingView.preferredSize.height / 2 + 6,
+                width: FocusSweepLoadingView.preferredSize.width,
+                height: FocusSweepLoadingView.preferredSize.height
             )
             loadingLabel.frame = NSRect(x: 0, y: bounds.midY - 18,
                                          width: bounds.width, height: 14)
@@ -2191,10 +2194,10 @@ final class MediaTileView: NSView {
             )
             let downloadCenter = CGPoint(x: bounds.width - dlBtnSizeM / 2 - 6, y: 14 + dlBtnSizeM / 2)
             downloadLoadingIndicator.frame = NSRect(
-                x: downloadCenter.x - ModularImageLoadingView.preferredSize.width / 2,
-                y: downloadCenter.y - ModularImageLoadingView.preferredSize.height / 2,
-                width: ModularImageLoadingView.preferredSize.width,
-                height: ModularImageLoadingView.preferredSize.height
+                x: downloadCenter.x - FocusSweepLoadingView.preferredSize.width / 2,
+                y: downloadCenter.y - FocusSweepLoadingView.preferredSize.height / 2,
+                width: FocusSweepLoadingView.preferredSize.width,
+                height: FocusSweepLoadingView.preferredSize.height
             )
             locateBtn?.frame = NSRect(
                 x: bounds.width - dlBtnSizeM - 6,

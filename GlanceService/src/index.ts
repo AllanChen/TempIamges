@@ -6,6 +6,7 @@ export interface Env {
   PUBLIC_ORIGIN: string;
   SESSION_SECRET: string;
   ADMIN_TOKEN: string;
+  FLOW_TEST_TOKEN?: string;
   ADMIN_USERNAME: string;
   ADMIN_PASSWORD: string;
   ADMIN_PATH: string;
@@ -17,7 +18,7 @@ export interface Env {
 
 type Manifest = {
   schemaVersion?: number; id?: string; version?: string; name?: string; summary?: string;
-  author?: string; iconURL?: string; execution?: { mode?: string };
+  author?: string; iconURL?: string; official?: boolean; execution?: { mode?: string };
   commands?: Array<{ id?: string; name?: string; inputTypes?: string[]; outputs?: string[]; taskType?: string; parameterSchema?: unknown }>;
   privacy?: { uploadsMedia?: boolean; notice?: string };
 };
@@ -27,7 +28,7 @@ const MAX_ASSET = 50 * 1024 * 1024;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Widget-Id",
-  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   Vary: "Origin"
 };
 
@@ -40,15 +41,23 @@ function now() { return new Date().toISOString(); }
 function id(prefix: string) { return `${prefix}_${crypto.randomUUID()}`; }
 function bearer(request: Request) { const value = request.headers.get("Authorization") || ""; return value.startsWith("Bearer ") ? value.slice(7).trim() : ""; }
 function pathParts(url: URL) { return url.pathname.split("/").filter(Boolean); }
+function countryName(code: unknown) {
+  if (typeof code !== "string" || !/^[A-Z]{2}$/.test(code) || code === "XX") return null;
+  return new Intl.DisplayNames(["en"], { type: "region" }).of(code) || null;
+}
+function requestCountry(request: Request) {
+  return countryName(request.cf?.country) || "Unknown";
+}
 
 async function digest(value: string) {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 async function tokenHash(env: Env, token: string) { return digest(`${env.WORKER_TOKEN_PEPPER}:${token}`); }
-// TEMPORARY dev switch: when "true", worker endpoints skip token verification
-// so the pull/heartbeat/result flow can be tested end-to-end before auth is wired.
-function workerAuthDisabled(env: Env) { return String(env.WORKER_AUTH_DISABLED || "").toLowerCase() === "true"; }
+function isFlowTestToken(env: Env, token: string) { return !!token && !!env.FLOW_TEST_TOKEN && token === env.FLOW_TEST_TOKEN; }
+function isFlowTestWorkerToken(env: Env, token: string) {
+  return String(env.WORKER_AUTH_DISABLED || "").toLowerCase() === "true" && isFlowTestToken(env, token);
+}
 async function hmac(env: Env, value: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.MEDIA_SIGNING_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const bytes = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
@@ -73,11 +82,11 @@ async function validAssetSignature(env: Env, assetID: string, exp: string, sig: 
 }
 async function requireUser(request: Request, env?: Env) {
   const token = bearer(request);
-  if (!token && env && workerAuthDisabled(env)) return "user_anonymous";
   if (!token) throw new Error("Unauthorized");
   return `user_${await digest(token)}`;
 }
 async function requireAdmin(env: Env, request: Request) {
+  if (isFlowTestToken(env, bearer(request))) return;
   if (env.ADMIN_TOKEN && bearer(request) === env.ADMIN_TOKEN) return;
   const cookie = request.headers.get("Cookie") || "";
   const token = cookie.match(/(?:^|;\s*)glance_admin_session=([^;]+)/)?.[1] || "";
@@ -130,6 +139,28 @@ async function adminWidgets(env: Env, request: Request) {
   const rows = await env.DB.prepare("SELECT v.id AS version_id,v.widget_id,v.version,v.status,v.manifest_json,v.created_at,v.updated_at,w.name,w.author,w.owner_id FROM widget_versions v JOIN widgets w ON w.id=v.widget_id ORDER BY v.updated_at DESC LIMIT 100").all<Record<string, unknown>>();
   return ok(rows.results.map((row) => ({ ...row, manifest: JSON.parse(String(row.manifest_json)), manifest_json: undefined })), 200, { "Cache-Control": "no-store" });
 }
+
+async function adminAllWidgets(env: Env, request: Request) {
+  await requireAdmin(env, request);
+  await ensureOfficialWidgets(env);
+  const rows = await env.DB.prepare(
+    "SELECT w.id AS widget_id,w.name,w.summary,w.author,w.icon_url,w.current_version,w.status,w.created_at,w.updated_at,v.id AS version_id,v.manifest_json,v.status AS version_status FROM widgets w LEFT JOIN widget_versions v ON v.widget_id=w.id AND v.version=w.current_version ORDER BY w.updated_at DESC"
+  ).all<Record<string, unknown>>();
+  return ok({ widgets: rows.results.map((row) => ({
+    widgetId: row.widget_id,
+    name: row.name,
+    summary: row.summary,
+    author: row.author,
+    iconURL: row.icon_url,
+    currentVersion: row.current_version,
+    status: row.status,
+    versionId: row.version_id,
+    versionStatus: row.version_status,
+    manifest: row.manifest_json ? JSON.parse(String(row.manifest_json)) : null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  })) }, 200, { "Cache-Control": "no-store" });
+}
 function validationIssues(manifest: Manifest) {
   const issues: string[] = [];
   if (manifest.schemaVersion !== 1) issues.push("schemaVersion must be 1");
@@ -147,6 +178,30 @@ function validationIssues(manifest: Manifest) {
   }
   if (!manifest.privacy?.notice?.trim()) issues.push("privacy.notice is required");
   return issues;
+}
+function widgetManifestWithID(input: unknown, widgetID: string, existingCommands: Manifest["commands"] = []): Manifest {
+  const fields = input && typeof input === "object" && !Array.isArray(input) ? input as Manifest : {};
+  const retainedIDs = new Set<string>();
+  const commands = Array.isArray(fields.commands) ? fields.commands.map((command, index) => {
+    const matching = existingCommands?.find((entry) => entry.id && entry.id === command.id && !retainedIDs.has(entry.id));
+    const indexed = existingCommands?.[index];
+    const previous = matching || (indexed?.id && !retainedIDs.has(indexed.id) ? indexed : undefined);
+    if (previous?.id) retainedIDs.add(previous.id);
+    const commandID = previous?.id || crypto.randomUUID();
+    return {
+      ...command,
+      id: commandID,
+      taskType: previous?.taskType || `widget.${widgetID}.${commandID}`
+    };
+  }) : fields.commands;
+  return {
+    ...fields,
+    id: widgetID,
+    commands
+  };
+}
+function newWidgetManifest(input: unknown): Manifest {
+  return widgetManifestWithID(input, crypto.randomUUID());
 }
 async function readJSON(request: Request) {
   const length = Number(request.headers.get("content-length") || 0);
@@ -166,8 +221,12 @@ async function ensureOfficialWidgets(env: Env) {
     if (exists) {
       // Keep the catalog manifest in sync when a widget row was migrated from
       // a legacy string ID to its immutable UUID.
-      await env.DB.prepare("UPDATE widget_versions SET manifest_json=?,updated_at=? WHERE widget_id=? AND version=?")
-        .bind(JSON.stringify(manifest), timestamp, manifest.id, manifest.version).run();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE widget_versions SET manifest_json=?,status='published',updated_at=? WHERE widget_id=? AND version=?")
+          .bind(JSON.stringify(manifest), timestamp, manifest.id, manifest.version),
+        env.DB.prepare("UPDATE widgets SET name=?,summary=?,author=?,icon_url=?,current_version=?,status='published',updated_at=? WHERE id=?")
+          .bind(manifest.name, manifest.summary, manifest.author, manifest.iconURL, manifest.version, timestamp, manifest.id)
+      ]);
       continue;
     }
     const versionID = id("version");
@@ -178,21 +237,108 @@ async function ensureOfficialWidgets(env: Env) {
   }
 }
 
+/// Admin-side widget creation: same manifest validation and storage shape as
+/// the client submission flow, but authorized by the Ops Console session and
+/// allowing the admin to choose the initial lifecycle status.
+async function adminCreateWidget(env: Env, request: Request) {
+  await requireAdmin(env, request);
+  const body = await readJSON(request);
+  const manifest = newWidgetManifest(body.manifest);
+  const issues = validationIssues(manifest);
+  if (issues.length) return fail("invalid_manifest", issues.join("; "), 422);
+  // Widgets created from the authenticated Admin Console are part of the
+  // trusted Glance catalog. Third-party manifests use the signed submission API.
+  const storedManifest = { ...manifest, official: true };
+  const widgetID = manifest.id!;
+  const status = body.status === "gray_release" ? "gray_release" : body.status === "published" ? "published" : "manual_review";
+  const versionID = id("version");
+  const workerID = id("worker");
+  const workerToken = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+  const timestamp = now();
+  try {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO widgets (id,owner_id,name,summary,author,icon_url,current_version,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(widgetID, "admin", manifest.name, manifest.summary, manifest.author, manifest.iconURL || null, manifest.version, status, timestamp, timestamp),
+      env.DB.prepare("INSERT INTO widget_versions (id,widget_id,version,manifest_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(versionID, widgetID, manifest.version, JSON.stringify(storedManifest), status, timestamp, timestamp),
+      env.DB.prepare("INSERT INTO widget_workers (id,widget_id,owner_id,token_hash,status,created_at) VALUES (?,?,?,?,?,?)").bind(workerID, widgetID, "admin", await tokenHash(env, workerToken), "active", timestamp),
+      env.DB.prepare("INSERT INTO widget_audit_logs (id,widget_id,version_id,actor_id,action,previous_status,next_status,note,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(id("audit"), widgetID, versionID, "admin", "admin_create", null, status, typeof body.note === "string" ? body.note : null, timestamp)
+    ]);
+  } catch (error) {
+    const message = error instanceof Error && error.message.includes("UNIQUE")
+      ? "Widget version already exists."
+      : "Unable to create Widget.";
+    return fail("create_failed", message, 409);
+  }
+  return ok({ widgetId: widgetID, commandIds: manifest.commands?.map((command) => command.id), versionId: versionID, version: manifest.version, workerToken, status }, 201, { "Cache-Control": "no-store" });
+}
+
+async function adminUpdateWidget(env: Env, request: Request, widgetID: string) {
+  await requireAdmin(env, request);
+  const body = await readJSON(request);
+  const existing = await env.DB.prepare("SELECT id,current_version,status FROM widgets WHERE id=?")
+    .bind(widgetID).first<{ id: string; current_version: string; status: string }>();
+  if (!existing) return fail("widget_not_found", "Widget not found.", 404);
+  const current = await env.DB.prepare("SELECT id,manifest_json FROM widget_versions WHERE widget_id=? AND version=?")
+    .bind(widgetID, existing.current_version).first<{ id: string; manifest_json: string }>();
+  if (!current) return fail("version_missing", "Current Widget version is missing.", 409);
+  const previousManifest = JSON.parse(current.manifest_json) as Manifest;
+  const manifest = widgetManifestWithID(body.manifest, widgetID, previousManifest.commands);
+  const issues = validationIssues(manifest);
+  if (issues.length) return fail("invalid_manifest", issues.join("; "), 422);
+
+  const status = body.status === "gray_release" ? "gray_release"
+    : body.status === "published" ? "published"
+    : body.status === "rejected" ? "rejected"
+    : body.status === "suspended" ? "suspended"
+    : "manual_review";
+  const storedManifest = { ...manifest, official: true };
+  const timestamp = now();
+  let versionID: string;
+  try {
+    if (manifest.version === existing.current_version) {
+      versionID = current.id;
+      await env.DB.batch([
+        env.DB.prepare("UPDATE widgets SET name=?,summary=?,author=?,icon_url=?,status=?,updated_at=? WHERE id=?")
+          .bind(manifest.name, manifest.summary, manifest.author, manifest.iconURL || null, status, timestamp, widgetID),
+        env.DB.prepare("UPDATE widget_versions SET manifest_json=?,status=?,updated_at=? WHERE id=?")
+          .bind(JSON.stringify(storedManifest), status, timestamp, versionID),
+        env.DB.prepare("INSERT INTO widget_audit_logs (id,widget_id,version_id,actor_id,action,previous_status,next_status,note,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
+          .bind(id("audit"), widgetID, versionID, "admin", "admin_edit", existing.status, status, typeof body.note === "string" ? body.note : null, timestamp)
+      ]);
+    } else {
+      versionID = id("version");
+      await env.DB.batch([
+        env.DB.prepare("UPDATE widgets SET name=?,summary=?,author=?,icon_url=?,current_version=?,status=?,updated_at=? WHERE id=?")
+          .bind(manifest.name, manifest.summary, manifest.author, manifest.iconURL || null, manifest.version, status, timestamp, widgetID),
+        env.DB.prepare("INSERT INTO widget_versions (id,widget_id,version,manifest_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)")
+          .bind(versionID, widgetID, manifest.version, JSON.stringify(storedManifest), status, timestamp, timestamp),
+        env.DB.prepare("INSERT INTO widget_audit_logs (id,widget_id,version_id,actor_id,action,previous_status,next_status,note,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
+          .bind(id("audit"), widgetID, versionID, "admin", "admin_new_version", existing.status, status, typeof body.note === "string" ? body.note : null, timestamp)
+      ]);
+    }
+  } catch (error) {
+    const message = error instanceof Error && error.message.includes("UNIQUE")
+      ? "Widget version already exists."
+      : "Unable to update Widget.";
+    return fail("update_failed", message, 409);
+  }
+  return ok({ widgetId: widgetID, commandIds: manifest.commands?.map((command) => command.id), versionId: versionID, version: manifest.version, status }, 200, { "Cache-Control": "no-store" });
+}
+
 async function createSubmission(env: Env, request: Request) {
   const owner = await requireUser(request, env);
   const body = await readJSON(request);
-  const manifest = body.manifest as Manifest;
-  const issues = validationIssues(manifest || {});
+  const manifest = newWidgetManifest(body.manifest);
+  const issues = validationIssues(manifest);
   if (issues.length) return fail("invalid_manifest", issues.join("; "), 422);
   const widgetID = manifest.id!;
   const versionID = id("version");
-  const submissionID = id("submission");
   const workerToken = `${crypto.randomUUID()}${crypto.randomUUID()}`;
   const workerID = id("worker");
   const timestamp = now();
   try {
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO widgets (id,owner_id,name,summary,author,icon_url,current_version,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,summary=excluded.summary,author=excluded.author,icon_url=excluded.icon_url,updated_at=excluded.updated_at").bind(widgetID, owner, manifest.name, manifest.summary, manifest.author, manifest.iconURL || null, manifest.version, "manual_review", timestamp, timestamp),
+      env.DB.prepare("INSERT INTO widgets (id,owner_id,name,summary,author,icon_url,current_version,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
+        .bind(widgetID, owner, manifest.name, manifest.summary, manifest.author, manifest.iconURL || null, manifest.version, "manual_review", timestamp, timestamp),
       env.DB.prepare("INSERT INTO widget_versions (id,widget_id,version,manifest_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(versionID, widgetID, manifest.version, JSON.stringify(manifest), "manual_review", timestamp, timestamp),
       env.DB.prepare("INSERT INTO widget_workers (id,widget_id,owner_id,token_hash,status,created_at) VALUES (?,?,?,?,?,?)").bind(workerID, widgetID, owner, await tokenHash(env, workerToken), "active", timestamp),
       env.DB.prepare("INSERT INTO widget_audit_logs (id,widget_id,version_id,actor_id,action,previous_status,next_status,note,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(id("audit"), widgetID, versionID, owner, "submit", null, "manual_review", null, timestamp)
@@ -201,7 +347,7 @@ async function createSubmission(env: Env, request: Request) {
     const message = error instanceof Error && error.message.includes("UNIQUE") ? "Widget version already exists." : "Unable to save submission.";
     return fail("submission_failed", message, 409);
   }
-  return ok({ submissionId: versionID, widgetId: widgetID, version: manifest.version, workerToken, status: "manual_review" }, 201, { "Cache-Control": "no-store" });
+  return ok({ submissionId: versionID, widgetId: widgetID, commandIds: manifest.commands?.map((command) => command.id), version: manifest.version, workerToken, status: "manual_review" }, 201, { "Cache-Control": "no-store" });
 }
 
 async function listWidgets(env: Env) {
@@ -218,7 +364,7 @@ async function widgetDetail(env: Env, widgetID: string) {
 
 async function taskStatus(env: Env, request: Request, taskID: string) {
   const actor = await requireUser(request, env);
-  const row = workerAuthDisabled(env)
+  const row = isFlowTestToken(env, bearer(request))
     ? await env.DB.prepare("SELECT id,owner_id,status,result_json,error_code,attempts FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
     : await env.DB.prepare("SELECT id,owner_id,status,result_json,error_code,attempts FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
   if (!row) return fail("task_not_found", "Task not found.", 404);
@@ -248,7 +394,7 @@ async function uploadAsset(env: Env, request: Request) {
 
 async function assetDownload(env: Env, request: Request, assetID: string) {
   const signed = await validAssetSignature(env, assetID, new URL(request.url).searchParams.get("exp") || "", new URL(request.url).searchParams.get("sig") || "");
-  const owner = signed ? null : await requireUser(request, env);
+  const owner = signed || isFlowTestToken(env, bearer(request)) ? null : await requireUser(request, env);
   const row = owner
     ? await env.DB.prepare("SELECT object_key,mime_type FROM widget_assets WHERE id=? AND owner_id=?").bind(assetID, owner).first<{ object_key: string; mime_type: string }>()
     : await env.DB.prepare("SELECT object_key,mime_type FROM widget_assets WHERE id=?").bind(assetID).first<{ object_key: string; mime_type: string }>();
@@ -273,19 +419,24 @@ async function createTask(env: Env, request: Request, admin = false) {
   if (!command) return fail("unknown_command", "Unknown Widget command.", 400);
   const taskID = id("task");
   const type = admin ? "review_test" : "production";
-  const input = (body.input && typeof body.input === "object") ? body.input : { url: (body.taskParams as Record<string, unknown> | undefined)?.url || body.url || null };
+  const supplied = body.parameters || body.taskParams;
+  const taskParams: Record<string, unknown> = supplied && typeof supplied === "object" && !Array.isArray(supplied)
+    ? { ...supplied as Record<string, unknown> } : {};
+  if (!("prompt" in taskParams)) taskParams.prompt = "";
+  if (!("mask" in taskParams)) taskParams.mask = null;
+  taskParams.location = countryName(taskParams.location) || requestCountry(request);
+  const input = (body.input && typeof body.input === "object") ? body.input : { url: taskParams.url || body.url || null };
   await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
-    .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(body.parameters || body.taskParams || {}), "queued", now()).run();
+    .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", now()).run();
   return ok({ taskID, status: "queued", processCount: 0, pollAfterMs: 1000 }, 202, { "Cache-Control": "no-store" });
 }
 
 async function pullTask(env: Env, request: Request, url: URL) {
   const token = bearer(request);
   const widgetID = url.searchParams.get("widget_id") || "";
-  const bypass = workerAuthDisabled(env);
-  if (!widgetID || (!bypass && !token)) return fail("worker_auth_required", "Widget ID and Worker token are required.", 401);
-  let workerID = "dev-worker";
-  if (!bypass) {
+  if (!widgetID || !token) return fail("worker_auth_required", "Widget ID and Worker token are required.", 401);
+  let workerID = "flow-test-worker";
+  if (!isFlowTestWorkerToken(env, token)) {
     const worker = await env.DB.prepare("SELECT id,widget_id FROM widget_workers WHERE widget_id=? AND token_hash=? AND status='active'").bind(widgetID, await tokenHash(env, token)).first<{ id: string; widget_id: string }>();
     if (!worker) return fail("worker_unauthorized", "Worker is not authorized for this Widget.", 403);
     workerID = worker.id;
@@ -311,7 +462,8 @@ async function pullTask(env: Env, request: Request, url: URL) {
 
 async function taskResult(env: Env, request: Request, taskID: string) {
   const token = bearer(request);
-  const task = workerAuthDisabled(env)
+  if (!token) return fail("worker_auth_required", "Worker token is required.", 401);
+  const task = isFlowTestWorkerToken(env, token)
     ? await env.DB.prepare("SELECT * FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
     : await env.DB.prepare("SELECT t.*, w.widget_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=?").bind(taskID, await tokenHash(env, token)).first<Record<string, unknown>>();
   if (!task) return fail("task_not_found", "Task not found or Worker is not authorized.", 404);
@@ -324,9 +476,8 @@ async function taskResult(env: Env, request: Request, taskID: string) {
 
 async function taskHeartbeat(env: Env, request: Request, taskID: string) {
   const token = bearer(request);
-  const bypass = workerAuthDisabled(env);
-  if (!bypass && !token) return fail("worker_auth_required", "Worker token is required.", 401);
-  const task = bypass
+  if (!token) return fail("worker_auth_required", "Worker token is required.", 401);
+  const task = isFlowTestWorkerToken(env, token)
     ? await env.DB.prepare("SELECT id,worker_id FROM widget_tasks WHERE id=?").bind(taskID).first<{ id: string; worker_id: string | null }>()
     : await env.DB.prepare("SELECT t.id,t.worker_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=?").bind(taskID, await tokenHash(env, token)).first<{ id: string; worker_id: string }>();
   if (!task) return fail("task_not_found", "Task not found or Worker is not authorized.", 404);
@@ -337,7 +488,9 @@ async function taskHeartbeat(env: Env, request: Request, taskID: string) {
 
 async function submissionDetail(env: Env, request: Request, submissionID: string) {
   const actor = await requireUser(request, env);
-  const row = await env.DB.prepare("SELECT v.id,v.widget_id,v.version,v.manifest_json,v.status,v.created_at,v.updated_at,w.owner_id FROM widget_versions v JOIN widgets w ON w.id=v.widget_id WHERE v.id=? AND w.owner_id=?").bind(submissionID, actor).first<Record<string, unknown>>();
+  const global = isFlowTestToken(env, bearer(request));
+  const row = await env.DB.prepare(`SELECT v.id,v.widget_id,v.version,v.manifest_json,v.status,v.created_at,v.updated_at,w.owner_id FROM widget_versions v JOIN widgets w ON w.id=v.widget_id WHERE v.id=?${global ? "" : " AND w.owner_id=?"}`)
+    .bind(...(global ? [submissionID] : [submissionID, actor])).first<Record<string, unknown>>();
   if (!row) return fail("submission_not_found", "Submission not found.", 404);
   return ok({ submissionId: row.id, widgetId: row.widget_id, version: row.version, status: row.status, manifest: JSON.parse(String(row.manifest_json)), createdAt: row.created_at, updatedAt: row.updated_at }, 200, { "Cache-Control": "no-store" });
 }
@@ -378,31 +531,40 @@ export default {
       }
       if (url.pathname === "/admin" || url.pathname === "/admin/" || url.pathname === "/admin/index.html") return fail("not_found", "Not found.", 404);
       if (!url.pathname.startsWith("/api/") && url.pathname !== "/health") return env.ASSETS.fetch(request);
-      if (request.method === "POST" && url.pathname === "/api/admin/auth/login") return adminLogin(env, request);
+      if (request.method === "POST" && url.pathname === "/api/admin/auth/login") return await adminLogin(env, request);
       if (request.method === "POST" && url.pathname === "/api/admin/auth/logout") return adminLogout();
-      if (request.method === "GET" && url.pathname === "/api/admin/auth/me") return adminMe(env, request);
-      if (request.method === "GET" && url.pathname === "/api/admin/v2/overview") return adminOverview(env, request);
-      if (request.method === "GET" && url.pathname === "/api/admin/v2/tasks") return adminTasks(env, request);
-      if (request.method === "GET" && url.pathname === "/api/admin/v2/widgets") return adminWidgets(env, request);
+      if (request.method === "GET" && url.pathname === "/api/admin/auth/me") return await adminMe(env, request);
+      if (request.method === "GET" && url.pathname === "/api/admin/v2/overview") return await adminOverview(env, request);
+      if (request.method === "GET" && url.pathname === "/api/admin/v2/tasks") return await adminTasks(env, request);
+      if (request.method === "GET" && url.pathname === "/api/admin/v2/widgets") return await adminAllWidgets(env, request);
+      if (request.method === "GET" && url.pathname === "/api/admin/v2/widget-versions") return await adminWidgets(env, request);
+      if (request.method === "POST" && url.pathname === "/api/admin/v2/widgets") return await adminCreateWidget(env, request);
+      if (request.method === "PUT" && parts[0] === "api" && parts[1] === "admin" && parts[2] === "v2" && parts[3] === "widgets" && parts[4]) return await adminUpdateWidget(env, request, parts[4]);
       if (request.method === "GET" && url.pathname === "/health") return ok({ service: "glance-service", time: now() });
-      if (request.method === "GET" && url.pathname === "/api/v2/widgets") return listWidgets(env);
-      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widgets" && parts[3]) return widgetDetail(env, parts[3]);
-      if (request.method === "POST" && url.pathname === "/api/v2/widget-submissions") return createSubmission(env, request);
-      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-submissions" && parts[3]) return submissionDetail(env, request, parts[3]);
-      if (request.method === "POST" && url.pathname === "/api/v2/widget-jobs") return createTask(env, request);
-      if (request.method === "POST" && url.pathname === "/api/v2/tasks") return createTask(env, request);
-      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) return taskStatus(env, request, parts[3]);
+      if (request.method === "GET" && url.pathname === "/api/v2/widgets") return await listWidgets(env);
+      if (request.method === "GET" && url.pathname === "/api/v2/location") {
+        await requireUser(request, env);
+        return ok({ location: requestCountry(request) }, 200, { "Cache-Control": "no-store" });
+      }
+      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widgets" && parts[3]) return await widgetDetail(env, parts[3]);
+      if (request.method === "POST" && url.pathname === "/api/v2/widget-submissions") return await createSubmission(env, request);
+      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-submissions" && parts[3]) return await submissionDetail(env, request, parts[3]);
+      if (request.method === "POST" && url.pathname === "/api/v2/widget-jobs") return await createTask(env, request);
+      if (request.method === "POST" && url.pathname === "/api/v2/tasks") return await createTask(env, request);
+      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) return await taskStatus(env, request, parts[3]);
       if (request.method === "DELETE" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) {
         const actor = await requireUser(request, env);
-        const cancelled = await env.DB.prepare("UPDATE widget_tasks SET status='cancelled',completed_at=? WHERE id=? AND owner_id=? AND status IN ('queued','claimed','running')").bind(now(), parts[3], actor).run();
+        const global = isFlowTestToken(env, bearer(request));
+        const cancelled = await env.DB.prepare(`UPDATE widget_tasks SET status='cancelled',completed_at=? WHERE id=?${global ? "" : " AND owner_id=?"} AND status IN ('queued','claimed','running')`)
+          .bind(...(global ? [now(), parts[3]] : [now(), parts[3], actor])).run();
         return cancelled.meta.changes ? ok({ taskID: parts[3], status: "cancelled" }) : fail("task_not_found", "Task not found or cannot be cancelled.", 404);
       }
-      if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "uploads") return uploadAsset(env, request);
-      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "assets" && parts[3]) return assetDownload(env, request, parts[3]);
-      if (request.method === "GET" && url.pathname === "/api/v2/widget-tasks/pull") return pullTask(env, request, url);
-      if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-tasks" && parts[4] === "result") return taskResult(env, request, parts[3]);
-      if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-tasks" && parts[4] === "heartbeat") return taskHeartbeat(env, request, parts[3]);
-      if (parts[0] === "api" && parts[1] === "admin" && parts[2] === "v2" && parts[3] === "widget-submissions" && parts[5]) return adminAction(env, request, parts[4], parts[5].replace("-", "_"));
+      if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "uploads") return await uploadAsset(env, request);
+      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "assets" && parts[3]) return await assetDownload(env, request, parts[3]);
+      if (request.method === "GET" && url.pathname === "/api/v2/widget-tasks/pull") return await pullTask(env, request, url);
+      if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-tasks" && parts[4] === "result") return await taskResult(env, request, parts[3]);
+      if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-tasks" && parts[4] === "heartbeat") return await taskHeartbeat(env, request, parts[3]);
+      if (parts[0] === "api" && parts[1] === "admin" && parts[2] === "v2" && parts[3] === "widget-submissions" && parts[5]) return await adminAction(env, request, parts[4], parts[5].replace("-", "_"));
       if (parts[0] === "api" && parts[1] === "admin" && parts[2] === "v2" && parts[3] === "widget-submissions" && request.method === "GET") { await requireAdmin(env, request); const rows = await env.DB.prepare("SELECT * FROM widget_versions ORDER BY updated_at DESC").all(); return ok(rows.results); }
       return fail("not_found", "Not found.", 404);
     } catch (error) {

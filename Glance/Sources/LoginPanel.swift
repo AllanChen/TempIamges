@@ -5,7 +5,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
     static let shared = LoginPanel()
 
     private let webView: WKWebView
-    private let loadingIndicator = ModularImageLoadingView(frame: .zero)
+    private let loadingIndicator = FocusSweepLoadingView(frame: .zero)
     private let loadFailedView = LoadFailedAnimationView(frame: .zero)
     private let headerHeight: CGFloat = 48
     private weak var titleLabel: NSTextField?
@@ -56,10 +56,10 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
         root.addSubview(webView)
 
         loadingIndicator.frame = NSRect(
-            x: webFrame.midX - ModularImageLoadingView.preferredSize.width / 2,
-            y: webFrame.midY - ModularImageLoadingView.preferredSize.height / 2,
-            width: ModularImageLoadingView.preferredSize.width,
-            height: ModularImageLoadingView.preferredSize.height
+            x: webFrame.midX - FocusSweepLoadingView.preferredSize.width / 2,
+            y: webFrame.midY - FocusSweepLoadingView.preferredSize.height / 2,
+            width: FocusSweepLoadingView.preferredSize.width,
+            height: FocusSweepLoadingView.preferredSize.height
         )
         loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         root.addSubview(loadingIndicator)

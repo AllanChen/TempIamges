@@ -98,6 +98,11 @@ as the full canvas, and demonstrates the Information state as a dark floating
 panel instead of a permanently attached inspector. The five-button toolbar and
 the processing toast remain above the image as separate glass layers.
 
+Click **Generate Image Filmstrip Scroll Study** to add an isolated review frame
+for the Image Inspect filmstrip. It keeps six 96 × 96 thumbnails visible, puts
+additional images in a clipped horizontal content row, and replaces the native
+macOS scroller with a 3px dark Glance track and warm-apricot draggable thumb.
+
 ## Generate the Image Compression Flow
 
 Click **Generate Image Compression Flow** to add a single `Image Compression
