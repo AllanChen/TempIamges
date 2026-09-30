@@ -1,4 +1,4 @@
-"""Download an image URL, upload the image to Freeimage, and return its URL."""
+"""Route image URLs to Freeimage or Glance R2 according to task location."""
 
 import argparse
 import ipaddress
@@ -16,6 +16,17 @@ import uuid
 
 UPLOAD_URL = "https://freeimage.host/api/1/upload"
 MAX_IMAGE_BYTES = 50 * 1024 * 1024
+
+
+def image_provider(url: str) -> str | None:
+    parsed = urlparse(image_url(url))
+    host = (parsed.hostname or "").lower()
+    if host in {"iili.io", "freeimage.host"} or host.endswith((".iili.io", ".freeimage.host")):
+        return "freeimage"
+    if host.endswith(".r2.dev") or (host == "glance-service.allanchanni.workers.dev"
+                                    and parsed.path.startswith("/api/v2/assets/")):
+        return "r2"
+    return None
 
 
 def image_url(value: str) -> str:
@@ -125,18 +136,28 @@ def upload_image(key: str, data: bytes, mime: str, extension: str) -> str:
     return uploaded_url
 
 
+def r2_output(data: bytes, extension: str) -> dict:
+    output_dir = os.environ.get("GLANCE_TASK_OUTPUT_DIR")
+    if not output_dir:
+        raise RuntimeError("上传 R2 需要通过 glance worker 执行任务")
+    path = Path(output_dir) / f"uploaded-image.{extension}"
+    path.write_bytes(data)
+    return {"outputs": [{"type": "image", "path": str(path), "returnURL": True}]}
+
+
 def main(task: dict | str) -> dict:
-    """Accept a URL in input.url or parameters.url; return a text URL output."""
+    """Reuse a matching provider URL, otherwise upload to the target provider."""
     if isinstance(task, str):
-        task = {"input": {"url": task}}
+        task = {"input": {"url": task}, "parameters": {"location": "China"}}
     if not isinstance(task, dict):
         raise ValueError("task 必须是对象或图片 URL")
-    key = os.environ.get("FREEIMAGEKEY", "").strip()
-    if not key:
-        raise ValueError("请设置 FREEIMAGEKEY 环境变量")
     input_info = task.get("input") or {}
-    parameters = task.get("parameters") or {}
+    parameters = task.get("task_params") or task.get("parameters") or {}
+    china = str(parameters.get("location") or task.get("location") or "").strip().upper() in {"CN", "CHINA"}
+    target = "freeimage" if china else "r2"
     url = parameters.get("url") or input_info.get("url")
+    if url and image_provider(url) == target:
+        return {"outputs": [{"type": "text", "text": url}]}
     local_path = input_info.get("path")
     if local_path and (not parameters.get("url") or parameters.get("url") == input_info.get("url")):
         with Path(local_path).open("rb") as source:
@@ -146,8 +167,15 @@ def main(task: dict | str) -> dict:
     else:
         raise ValueError("请提供 input.url、parameters.url 或 input.path")
     data, mime, extension = compatible_image(data)
-    uploaded_url = upload_image(key, data, mime, extension)
-    return {"outputs": [{"type": "text", "text": uploaded_url}]}
+    if china:
+        key = os.environ.get("FREEIMAGEKEY", "").strip()
+        if key:
+            try:
+                uploaded_url = upload_image(key, data, mime, extension)
+                return {"outputs": [{"type": "text", "text": uploaded_url}]}
+            except RuntimeError:
+                pass  # Freeimage 不可用时交给 Worker 上传 R2。
+    return r2_output(data, extension)
 
 
 if __name__ == "__main__":

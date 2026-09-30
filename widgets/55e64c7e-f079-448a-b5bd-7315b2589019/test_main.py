@@ -18,7 +18,8 @@ class WidgetTest(unittest.TestCase):
     @patch("main.urlopen")
     def test_url_is_downloaded_and_uploaded_as_multipart(self, open_url):
         open_url.side_effect = [io.BytesIO(PNG), io.BytesIO(json.dumps(RESULT).encode())]
-        result = widget.main({"input": {"url": "https://example.com/photo.png"}})
+        result = widget.main({"input": {"url": "https://example.com/photo.png"},
+                              "parameters": {"location": "China"}})
         self.assertEqual(result, {"outputs": [{"type": "text", "text": RESULT["image"]["url"]}]})
         download, upload = [call.args[0] for call in open_url.call_args_list]
         self.assertEqual(download.full_url, "https://example.com/photo.png")
@@ -38,14 +39,59 @@ class WidgetTest(unittest.TestCase):
             image = Path(directory) / "image.png"
             image.write_bytes(PNG)
             result = widget.main({"input": {"url": "https://example.com/photo.png",
-                                            "path": str(image)}})
+                                            "path": str(image)},
+                                  "parameters": {"location": "CN"}})
         self.assertEqual(result["outputs"][0]["text"], RESULT["image"]["url"])
         self.assertEqual(open_url.call_count, 1)
 
-    def test_missing_key_and_private_url_are_rejected(self):
-        with patch.dict(os.environ, {"FREEIMAGEKEY": ""}):
-            with self.assertRaisesRegex(ValueError, "FREEIMAGEKEY"):
-                widget.main("https://example.com/photo.png")
+    @patch("main.urlopen")
+    def test_matching_provider_url_is_returned_without_upload(self, open_url):
+        for location, url in [
+            ("china", "https://iili.io/example.png"),
+            ("US", "https://pub-example.r2.dev/example.png"),
+            ("US", "https://glance-service.allanchanni.workers.dev/api/v2/assets/asset_1?sig=x"),
+        ]:
+            with self.subTest(location=location, url=url):
+                result = widget.main({"task_params": {"url": url, "location": location}})
+                self.assertEqual(result["outputs"], [{"type": "text", "text": url}])
+        open_url.assert_not_called()
+
+    @patch.dict(os.environ, {"FREEIMAGEKEY": "test-key"})
+    @patch("main.urlopen")
+    def test_china_reuploads_r2_url_to_freeimage(self, open_url):
+        source = "https://pub-example.r2.dev/example.png"
+        open_url.side_effect = [io.BytesIO(PNG), io.BytesIO(json.dumps(RESULT).encode())]
+        result = widget.main({"task_params": {"url": source, "location": "China"}})
+        self.assertEqual(result["outputs"][0]["text"], RESULT["image"]["url"])
+        self.assertEqual(open_url.call_args_list[0].args[0].full_url, source)
+        self.assertEqual(open_url.call_args_list[1].args[0].full_url, widget.UPLOAD_URL)
+
+    @patch("main.urlopen")
+    def test_other_region_reuploads_freeimage_url_to_r2(self, open_url):
+        source = "https://iili.io/example.png"
+        open_url.return_value = io.BytesIO(PNG)
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+                os.environ, {"GLANCE_TASK_OUTPUT_DIR": directory}):
+            result = widget.main({"task_params": {"url": source, "location": "US"}})
+            output = result["outputs"][0]
+            self.assertEqual(output["type"], "image")
+            self.assertTrue(output["returnURL"])
+            self.assertEqual(Path(output["path"]).read_bytes(), PNG)
+        self.assertEqual(open_url.call_args_list[0].args[0].full_url, source)
+
+    @patch.dict(os.environ, {"FREEIMAGEKEY": "test-key"})
+    @patch("main.upload_image", side_effect=RuntimeError("Freeimage failed"))
+    @patch("main.urlopen")
+    def test_freeimage_failure_falls_back_to_r2(self, open_url, upload):
+        open_url.return_value = io.BytesIO(PNG)
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+                os.environ, {"GLANCE_TASK_OUTPUT_DIR": directory}):
+            result = widget.main({"task_params": {"url": "https://example.com/image.png",
+                                                   "location": "China"}})
+            self.assertTrue(result["outputs"][0]["returnURL"])
+        upload.assert_called_once()
+
+    def test_private_url_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "内网地址"):
             widget.image_url("http://127.0.0.1/photo.png")
 

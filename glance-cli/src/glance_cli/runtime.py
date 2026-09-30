@@ -79,7 +79,10 @@ def validate_outputs(result: dict, code_path: Path) -> list[dict]:
             mime = mimetypes.guess_type(path.name)[0] or ""
             if not mime.startswith(f"{kind}/"):
                 raise ValueError(f"{kind} 输出文件格式与类型不符：{path.name}")
-            checked.append({"type": kind, "path": str(path)})
+            checked_output = {"type": kind, "path": str(path)}
+            if kind == "image" and output.get("returnURL") is True:
+                checked_output["returnURL"] = True
+            checked.append(checked_output)
     return checked
 
 

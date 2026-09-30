@@ -63,6 +63,8 @@ glance worker logs --lines 50
 glance worker logs --follow
 ```
 
+日志会显示每次拉取、暂无任务、执行和完成。临时网络错误会注明下次重试时间；Worker 会继续运行。
+
 日志文件最多 5 MB，保留 3 份轮换文件。`glance worker logs` 只读取日志，不会启动 Worker。
 
 CLI 数据放在 `~/.config/glance/`，可通过 `GLANCE_CLI_HOME` 调整。开发或本地联调可通过 `GLANCE_API_URL` 指向其他 GlanceService。这个包尚未上传到 PyPI。

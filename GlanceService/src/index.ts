@@ -480,8 +480,9 @@ async function createSubmission(env: Env, request: Request) {
 
 async function developerWidget(env: Env, request: Request, widgetID: string) {
   const owner = (await developerSession(env, request)).owner_id;
-  const widget = await env.DB.prepare("SELECT id,name,current_version,status FROM widgets WHERE id=? AND owner_id=?")
-    .bind(widgetID, owner).first<{ id: string; name: string; current_version: string; status: string }>();
+  const widget = await env.DB.prepare(`SELECT id,name,current_version,status FROM widgets WHERE id=? AND
+    (owner_id=? OR EXISTS (SELECT 1 FROM widget_worker_grants WHERE widget_id=widgets.id AND developer_id=?))`)
+    .bind(widgetID, owner, owner).first<{ id: string; name: string; current_version: string; status: string }>();
   if (!widget) return fail("widget_not_found", "Widget not found.", 404);
   const versions = await env.DB.prepare("SELECT id,version,status,created_at,updated_at FROM widget_versions WHERE widget_id=? ORDER BY created_at DESC")
     .bind(widgetID).all();
@@ -687,8 +688,10 @@ async function pullBatch(env: Env, request: Request) {
     if (!item || typeof item !== "object") return fail("invalid_widgets", "Invalid Widget list.", 400);
     const fields = item as Record<string, unknown>;
     if (typeof fields.widgetId !== "string" || typeof fields.version !== "string") return fail("invalid_widgets", "Widget ID and version are required.", 400);
-    const row = await env.DB.prepare("SELECT v.id,v.status,w.status AS widget_status FROM widget_versions v JOIN widgets w ON w.id=v.widget_id WHERE v.widget_id=? AND v.version=? AND w.owner_id=?")
-      .bind(fields.widgetId, fields.version, actor.owner_id).first<{ id: string; status: string; widget_status: string }>();
+    const row = await env.DB.prepare(`SELECT v.id,v.status,w.status AS widget_status FROM widget_versions v JOIN widgets w ON w.id=v.widget_id
+      WHERE v.widget_id=? AND v.version=? AND (w.owner_id=? OR EXISTS
+      (SELECT 1 FROM widget_worker_grants g WHERE g.widget_id=w.id AND g.developer_id=?))`)
+      .bind(fields.widgetId, fields.version, actor.owner_id, actor.owner_id).first<{ id: string; status: string; widget_status: string }>();
     if (!row) return fail("worker_unauthorized", "Widget version is not owned by this developer.", 403);
     if (!["manual_review", "test_passed", "gray_release", "published"].includes(row.status) || ["suspended", "archived"].includes(row.widget_status)) continue;
     requested.push({ widgetId: fields.widgetId, version: fields.version, versionId: row.id });
@@ -724,8 +727,10 @@ async function taskForDeveloper(env: Env, request: Request, taskID: string) {
   const actor = await developerSession(env, request);
   const claimToken = request.headers.get("X-Task-Claim") || "";
   if (!claimToken) return null;
-  return env.DB.prepare("SELECT t.* FROM widget_tasks t JOIN widgets w ON w.id=t.widget_id WHERE t.id=? AND w.owner_id=? AND t.claim_token_hash=? AND t.lease_expires_at>? AND t.status IN ('claimed','running')")
-    .bind(taskID, actor.owner_id, await digest(claimToken), now()).first<Record<string, unknown>>();
+  return env.DB.prepare(`SELECT t.* FROM widget_tasks t JOIN widgets w ON w.id=t.widget_id WHERE t.id=?
+    AND (w.owner_id=? OR EXISTS (SELECT 1 FROM widget_worker_grants g WHERE g.widget_id=w.id AND g.developer_id=?))
+    AND t.claim_token_hash=? AND t.lease_expires_at>? AND t.status IN ('claimed','running')`)
+    .bind(taskID, actor.owner_id, actor.owner_id, await digest(claimToken), now()).first<Record<string, unknown>>();
 }
 
 async function uploadTaskArtifact(env: Env, request: Request, taskID: string) {
@@ -750,7 +755,8 @@ async function publicTaskArtifacts(env: Env, request: Request, data: unknown) {
     if (!entry || typeof entry !== "object") return entry;
     const artifact = entry as Record<string, unknown>;
     if (typeof artifact.assetID !== "string") return artifact;
-    return { ...artifact, url: await signedAssetURL(env, request, artifact.assetID, 3600) };
+    const url = await signedAssetURL(env, request, artifact.assetID, 3600);
+    return artifact.type === "text" ? { ...artifact, text: url } : { ...artifact, url };
   }));
 }
 
@@ -770,7 +776,13 @@ async function taskResult(env: Env, request: Request, taskID: string) {
     if (!value || typeof value !== "object") return fail("invalid_result", "Invalid output.", 422);
     const artifact = value as Record<string, unknown>;
     if (artifact.type === "text") {
-      if (typeof artifact.text !== "string" || artifact.text.length > 1024 * 1024) return fail("invalid_text", "Invalid text output.", 422);
+      if (typeof artifact.assetID === "string") {
+        const asset = await env.DB.prepare("SELECT mime_type FROM widget_assets WHERE id=? AND widget_id=? AND owner_id=? AND object_key=?")
+          .bind(artifact.assetID, task.widget_id, task.owner_id, `results/${taskID}/${artifact.assetID}`).first<{ mime_type: string }>();
+        if (!asset?.mime_type.startsWith("image/")) return fail("invalid_asset", "Output asset does not match this task and type.", 403);
+      } else if (typeof artifact.text !== "string" || artifact.text.length > 1024 * 1024) {
+        return fail("invalid_text", "Invalid text output.", 422);
+      }
     } else if (["image", "video", "audio"].includes(String(artifact.type))) {
       if (typeof artifact.assetID !== "string") return fail("invalid_asset", "Output asset is required.", 422);
       const asset = await env.DB.prepare("SELECT mime_type FROM widget_assets WHERE id=? AND widget_id=? AND owner_id=? AND object_key=?")

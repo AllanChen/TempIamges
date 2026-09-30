@@ -38,7 +38,8 @@ def _run_task(row: dict, task: dict) -> None:
                     artifacts.append(output)
                 else:
                     uploaded = upload_task_file(task_id, Path(output["path"]), claim_token=claim)
-                    artifacts.append({"type": output["type"], "assetID": uploaded["assetID"]})
+                    artifacts.append({"type": "text" if output.get("returnURL") else output["type"],
+                                      "assetID": uploaded["assetID"]})
         request("POST", f"/api/v2/widget-tasks/{task_id}/result",
                 {"status": "succeeded", "artifacts": artifacts}, headers={"X-Task-Claim": claim})
         logger.info("[%s] 完成：%s 个输出", task_id, len(artifacts))
@@ -62,6 +63,7 @@ def run_worker() -> None:
     active: dict[Future, tuple[str, str]] = {}
     last_sync = 0.0
     batch_offset = 0
+    pull_failures = 0
     logger.info("Glance Worker 已启动；每次请求前读取本机 Widget 表。按 Ctrl+C 停止。")
     try:
         with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
@@ -95,18 +97,23 @@ def run_worker() -> None:
                     batch_offset += 50
                 widgets = [{"widgetId": row["widget_id"], "version": row["version"]}
                            for row in candidates]
+                logger.info("请求任务：%s 个 Widget，最长等待 %s 秒", len(widgets), PULL_WAIT)
                 try:
                     result = request("POST", "/api/v2/widget-tasks/pull-batch",
                                      {"widgets": widgets, "wait": PULL_WAIT},
                                      timeout=PULL_WAIT + 15)
                 except APIError as error:
-                    logger.warning("拉取失败：%s", error)
-                    time.sleep(3)
+                    pull_failures += 1
+                    retry_delay = min(3 * 2 ** min(pull_failures - 1, 4), 30)
+                    logger.warning("拉取失败：%s；%s 秒后重试", error, retry_delay)
+                    time.sleep(retry_delay)
                     continue
+                pull_failures = 0
                 for row in candidates:
                     update(db, row["widget_id"], row["version"], last_request_at=utc_now())
                 task = result.get("task")
                 if not task:
+                    logger.info("暂无任务，继续等待")
                     continue
                 key = (task["widgetId"], task["version"])
                 row = next((item for item in candidates if

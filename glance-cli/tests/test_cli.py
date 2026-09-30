@@ -1,5 +1,5 @@
 import json
-from contextlib import closing, redirect_stdout
+from contextlib import closing, contextmanager, redirect_stdout
 import io
 import os
 from pathlib import Path
@@ -15,7 +15,8 @@ import venv
 from glance_cli.cli import main
 from glance_cli.api import APIError
 from glance_cli.registry import connect, eligible, read_session, rows, update
-from glance_cli.runtime import execute
+from glance_cli.runtime import execute, validate_outputs
+from glance_cli.worker import _run_task
 from glance_cli.worker_logs import configure_worker_logging, logger
 
 
@@ -58,6 +59,28 @@ class CLITest(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             with execute(folder, task, download_input=False):
                 pass
+
+    def test_image_return_url_is_uploaded_as_text_asset(self):
+        widget = self.root / "widget"
+        widget.mkdir()
+        image = widget / "result.png"
+        image.write_bytes(b"\x89PNG\r\n\x1a\n")
+        outputs = validate_outputs({"outputs": [{"type": "image", "path": str(image),
+                                                   "returnURL": True}]}, widget)
+        self.assertTrue(outputs[0]["returnURL"])
+
+        @contextmanager
+        def fake_execute(*args, **kwargs):
+            yield outputs
+
+        task = {"taskId": "task_1", "claimToken": "claim_1"}
+        with patch("glance_cli.worker.execute", side_effect=fake_execute), \
+             patch("glance_cli.worker.upload_task_file", return_value={"assetID": "asset_1"}), \
+             patch("glance_cli.worker.request") as api:
+            _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
+        result_call = next(call for call in api.call_args_list if call.args[1].endswith("/result"))
+        self.assertEqual(result_call.args[2]["artifacts"],
+                         [{"type": "text", "assetID": "asset_1"}])
 
     def test_widget_uses_its_own_virtual_environment(self):
         folder, manifest = self.create_widget()
