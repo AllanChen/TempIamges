@@ -38,7 +38,7 @@ struct WidgetManifest: Codable, Hashable {
     let name: String
     let summary: String
     let author: String
-    let iconURL: URL
+    let iconURL: URL?
     let official: Bool
     let execution: WidgetExecution
     let commands: [WidgetCommand]
@@ -184,6 +184,7 @@ final class WidgetCatalogClient {
     static let shared = WidgetCatalogClient()
     private let baseURL = URL(string: "https://glance-service.allanchanni.workers.dev/api/v2/widgets")!
     private let publicKeyData = Data(base64Encoded: "zFrAHRuvuZVpWbAFaetTG+d27XeLkxicodlTFt1+cv8=")!
+    private let developerPublicKeyData = Data(base64Encoded: "F4eg6N56Z8z3CC7E4CUV0YecA6NpeHpAtx0/NFsUGFs=")!
 
     func fetch(widgetID: String, completion: @escaping (Result<WidgetManifest, Error>) -> Void) {
         let url = baseURL.appendingPathComponent(widgetID)
@@ -221,10 +222,11 @@ final class WidgetCatalogClient {
     }
 
     private func validateSignature(_ manifest: WidgetManifest) throws {
-        let key = try Curve25519.Signing.PublicKey(rawRepresentation: publicKeyData)
         var signatureValid = false
         if manifest.signature.algorithm == "Ed25519",
            let signature = Data(base64URLEncoded: manifest.signature.value) {
+            let data = manifest.signature.keyID == "glance-market-2026-02" ? developerPublicKeyData : publicKeyData
+            let key = try Curve25519.Signing.PublicKey(rawRepresentation: data)
             signatureValid = try key.isValidSignature(signature, for: manifest.unsignedJSON())
         }
         // Official manifests are delivered by the authenticated

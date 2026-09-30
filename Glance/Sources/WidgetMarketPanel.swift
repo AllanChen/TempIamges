@@ -13,8 +13,8 @@ final class WidgetMarketPanel: NSPanel {
     private var hasAttemptedLoad = false
     private var selectedManifest: WidgetManifest?
 
-    // Known official widgets. Used as the primary fetch IDs and as a hardcoded
-    // offline fallback so the market never opens empty.
+    // Known official widgets used only as an offline fallback so the market
+    // never opens empty when the catalog cannot be reached.
     private static let officialWidgets: [(id: String, name: String, summary: String, commandName: String, commandDescription: String, taskType: String, privacy: String)] = [
         ("a0d3311a-b952-4831-8ee4-69f72c381a88",
          "Remove Background",
@@ -38,8 +38,6 @@ final class WidgetMarketPanel: NSPanel {
          "image.remove-bg-pro.v1",
          "The selected image will be uploaded to Glance for cloud processing.")
     ]
-    private static let officialWidgetIDs: [String] = officialWidgets.map { $0.id }
-
     // MARK: - UI
 
     private let rootView = NSView()
@@ -85,7 +83,8 @@ final class WidgetMarketPanel: NSPanel {
         position(alongside: parent)
         parent.addChildWindow(self, ordered: .above)
         makeKeyAndOrderFront(nil)
-        if manifests.isEmpty && !isLoading { loadCatalog() }
+        if !hasAttemptedLoad { loadCatalog() }
+        else if !isLoading { refreshFromServer(showLoading: false) }
     }
 
     override func close() {
@@ -112,32 +111,20 @@ final class WidgetMarketPanel: NSPanel {
         isLoading = true
         if showLoading { setLoading(true) }
 
-        // Load the three known official widgets individually (the same API the
-        // install path uses). If the network is down, any already-visible data
-        // remains.
-        let group = DispatchGroup()
-        var manifests: [WidgetManifest] = []
-        var errors: [Error] = []
-        for id in Self.officialWidgetIDs {
-            group.enter()
-            WidgetCatalogClient.shared.fetch(widgetID: id) { result in
-                switch result {
-                case .success(let manifest): manifests.append(manifest)
-                case .failure(let error): errors.append(error)
-                }
-                group.leave()
-            }
-        }
-        group.notify(queue: .main) { [weak self] in
+        WidgetCatalogClient.shared.fetchAll { [weak self] result in
             guard let self else { return }
             self.isLoading = false
             if showLoading { self.setLoading(false) }
-            if !manifests.isEmpty {
+            switch result {
+            case .success(let manifests):
                 Logger.info("WidgetMarketPanel: refreshed \(manifests.count) widgets from server")
                 self.manifests = manifests
                 self.refreshCatalog()
-            } else {
-                Logger.info("WidgetMarketPanel: widget fetches failed: \(errors.map { $0.localizedDescription }.joined(separator: "; "))")
+                let top = max(0, self.catalogContainer.bounds.height - self.scrollView.contentView.bounds.height)
+                self.scrollView.contentView.scroll(to: NSPoint(x: 0, y: top))
+                self.scrollView.reflectScrolledClipView(self.scrollView.contentView)
+            case .failure(let error):
+                Logger.info("WidgetMarketPanel: catalog fetch failed: \(error.localizedDescription)")
             }
         }
     }
@@ -435,12 +422,12 @@ private final class WidgetMarketCardView: NSView {
     private let iconView = WidgetMarketIconView()
     private let nameLabel = NSTextField(labelWithString: "")
     private let versionLabel = NSTextField(labelWithString: "")
-    private let cloudBadge = WidgetMarketTextView()
+    private let cloudBadge = PanelCenteredTextView()
     private let summaryLabel = NSTextField(wrappingLabelWithString: "")
     private let footerDivider = NSView()
     private let commandsLabel = NSTextField(labelWithString: "")
     private let installButton = WidgetMarketActionButton()
-    private let installedBadge = WidgetMarketTextView()
+    private let installedBadge = PanelCenteredTextView()
 
     init(manifest: WidgetManifest, isInstalled: Bool) {
         self.manifest = manifest
@@ -561,10 +548,10 @@ private final class WidgetMarketCardView: NSView {
 
 private final class WidgetMarketIconView: NSView {
     var letter: String = "W" {
-        didSet { letterLabel.stringValue = letter }
+        didSet { letterLabel.string = letter }
     }
 
-    private let letterLabel = NSTextField(labelWithString: "W")
+    private let letterLabel = PanelCenteredTextView()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -576,7 +563,7 @@ private final class WidgetMarketIconView: NSView {
 
         letterLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
         letterLabel.textColor = PanelStyle.accent
-        letterLabel.alignment = .center
+        letterLabel.string = letter
         addSubview(letterLabel)
     }
 
@@ -596,7 +583,7 @@ private final class WidgetMarketActionButton: NSButton {
     var style: Style = .install {
         didSet { applyStyle() }
     }
-    private let titleView = WidgetMarketTextView()
+    private let titleView = PanelCenteredTextView()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -641,34 +628,7 @@ private final class WidgetMarketActionButton: NSButton {
 
     override func layout() {
         super.layout()
-        // Figma text node: x=0, y=8, width=button width, height=13 for the
-        // 31pt catalog actions; the 38pt detail action uses y=11, h=13.
-        let textHeight: CGFloat = 13
-        let textY: CGFloat = bounds.height >= 38 ? 11 : 8
-        titleView.frame = NSRect(x: 0, y: textY, width: bounds.width, height: textHeight)
-    }
-}
-
-private final class WidgetMarketTextView: NSView {
-    var string = "" { didSet { needsDisplay = true } }
-    var font = PanelStyle.inspectFont(ofSize: 11) { didSet { needsDisplay = true } }
-    var textColor = NSColor.white { didSet { needsDisplay = true } }
-
-    override func draw(_ dirtyRect: NSRect) {
-        guard !string.isEmpty else { return }
-        let text = NSAttributedString(string: string,
-                                      attributes: [.font: font, .foregroundColor: textColor])
-        let layout = NSLayoutManager()
-        let storage = NSTextStorage(attributedString: text)
-        let container = NSTextContainer(size: bounds.size)
-        container.lineFragmentPadding = 0
-        layout.addTextContainer(container)
-        storage.addLayoutManager(layout)
-        let glyphRange = layout.glyphRange(for: container)
-        let used = layout.boundingRect(forGlyphRange: glyphRange, in: container)
-        let origin = NSPoint(x: floor(bounds.midX - used.midX),
-                             y: floor(bounds.midY - used.midY))
-        layout.drawGlyphs(forGlyphRange: glyphRange, at: origin)
+        titleView.frame = bounds
     }
 }
 
@@ -686,8 +646,8 @@ private final class WidgetMarketDetailView: NSView {
     private let iconView = WidgetMarketIconView()
     private let nameLabel = NSTextField(labelWithString: "")
     private let versionLabel = NSTextField(labelWithString: "")
-    private let cloudBadge = WidgetMarketTextView()
-    private let installedBadge = WidgetMarketTextView()
+    private let cloudBadge = PanelCenteredTextView()
+    private let installedBadge = PanelCenteredTextView()
     private let summaryDivider = NSView()
     private let aboutHeading = NSTextField(labelWithString: "ABOUT".localized)
     private let summaryLabel = NSTextField(wrappingLabelWithString: "")

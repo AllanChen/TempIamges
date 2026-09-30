@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import UserNotifications
+import UniformTypeIdentifiers
 
 struct WidgetTaskRecord: Codable, Identifiable {
     let id: UUID
@@ -116,6 +117,10 @@ final class WidgetTaskManager {
     }
 
     private func download(_ id: UUID, from url: URL) {
+        if url.isFileURL {
+            finish(id, output: url)
+            return
+        }
         update(id, phase: .downloading, progress: 100)
         URLSession.shared.downloadTask(with: url) { [weak self] temporary, response, error in
             guard let self else { return }
@@ -132,7 +137,8 @@ final class WidgetTaskManager {
         let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!.appendingPathComponent("Glance", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let suggested = response?.suggestedFilename.map { URL(fileURLWithPath: $0).pathExtension }
-        let ext = suggested?.isEmpty == false ? suggested! : (fallback.pathExtension.isEmpty ? "png" : fallback.pathExtension)
+        let mimeExtension = response?.mimeType.flatMap { UTType(mimeType: $0)?.preferredFilenameExtension }
+        let ext = suggested?.isEmpty == false ? suggested! : (mimeExtension ?? (fallback.pathExtension.isEmpty ? "bin" : fallback.pathExtension))
         let rawName = records.first(where: { $0.id == id })?.commandName ?? "Widget Result"
         let base = rawName.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         var destination = folder.appendingPathComponent("\(base).\(ext)"); var suffix = 2

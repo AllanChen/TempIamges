@@ -531,7 +531,7 @@ private final class TaskCenterCellView: NSTableCellView {
     private let titleLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(labelWithString: "")
     private let stateBadge = NSView()
-    private let stateLabel = NSTextField(labelWithString: "")
+    private let stateLabel = PanelCenteredTextView()
     override var isFlipped: Bool { true }
 
     override init(frame frameRect: NSRect) {
@@ -541,7 +541,7 @@ private final class TaskCenterCellView: NSTableCellView {
         titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold); titleLabel.textColor = PanelStyle.textPrimary
         detailLabel.font = PanelStyle.inspectFont(ofSize: 11); detailLabel.textColor = PanelStyle.textTertiary
         stateBadge.wantsLayer = true; stateBadge.layer?.cornerRadius = 6; stateBadge.layer?.masksToBounds = true
-        stateLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold); stateLabel.alignment = .center; stateLabel.lineBreakMode = .byClipping
+        stateLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
         stateBadge.addSubview(stateLabel)
         [preview, titleLabel, detailLabel, stateBadge].forEach(addSubview)
     }
@@ -555,10 +555,10 @@ private final class TaskCenterCellView: NSTableCellView {
         titleLabel.stringValue = record.commandName
         detailLabel.stringValue = "\(relativeDate(record.createdAt))  •  \(record.source?.lastPathComponent ?? "Media")"
         let color: NSColor = record.phase.isActive ? PanelStyle.accent : ((record.phase == .failed || record.phase == .interrupted) ? PanelStyle.failure : PanelStyle.success)
-        stateLabel.stringValue = taskState(record)
+        stateLabel.string = taskState(record)
         stateLabel.textColor = color
         stateBadge.layer?.backgroundColor = color.withAlphaComponent(0.16).cgColor
-        setAccessibilityLabel("\(record.commandName), \(stateLabel.stringValue)")
+        setAccessibilityLabel("\(record.commandName), \(stateLabel.string)")
     }
 
     override func layout() {
@@ -578,11 +578,7 @@ private final class TaskCenterCellView: NSTableCellView {
         titleLabel.frame = NSRect(x: 82 * sx, y: 17 * sy, width: 160 * sx, height: 17 * sy)
         detailLabel.frame = NSRect(x: 82 * sx, y: 43 * sy, width: 160 * sx, height: 14 * sy)
         stateBadge.frame = NSRect(x: 250 * sx, y: 28 * sy, width: 70 * sx, height: 26 * sy)
-        let labelHeight = ceil(stateLabel.fittingSize.height)
-        stateLabel.frame = NSRect(x: 2 * sx,
-                                  y: floor((stateBadge.bounds.height - labelHeight) / 2) + 1,
-                                  width: stateBadge.bounds.width - 4 * sx,
-                                  height: labelHeight)
+        stateLabel.frame = stateBadge.bounds.insetBy(dx: 2 * sx, dy: 0)
     }
 
     private func taskState(_ record: WidgetTaskRecord) -> String {

@@ -1,5 +1,6 @@
 import Foundation
 import ImageIO
+import Security
 import UniformTypeIdentifiers
 
 enum WidgetTaskPhase: String, Codable {
@@ -14,6 +15,12 @@ final class WidgetTaskClient {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 40
         configuration.timeoutIntervalForResource = 60
+        return URLSession(configuration: configuration)
+    }()
+    private let freeimageSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 120
+        configuration.timeoutIntervalForResource = 120
         return URLSession(configuration: configuration)
     }()
     private let taskTokenKey = "glance.widgetTaskToken"
@@ -34,19 +41,21 @@ final class WidgetTaskClient {
              submitted: @escaping (String) -> Void,
              completion: @escaping (Result<URL, Error>) -> Void) {
         progress(.uploading, 0)
-        uploadIfNeeded(mediaURL) { [weak self] upload in
+        fetchCountry { [weak self] country in
             guard let self else { return }
-            switch upload {
-            case .failure(let error): completion(.failure(error))
-            case .success(let url):
-                progress(.submitting, 0)
-                self.fetchCountry { country in
-                    self.submit(widgetID: widgetID, commandID: commandID, mediaURL: url, location: country) { submission in
-                        switch submission {
-                        case .failure(let error): completion(.failure(error))
-                        case .success(let taskID):
-                            submitted(taskID); progress(.processing, 0)
-                            self.poll(taskID: taskID, started: Date(), progress: progress, completion: completion)
+            self.fetchUploadConfig { config in
+                self.uploadIfNeeded(mediaURL, country: country, config: config) { upload in
+                    switch upload {
+                    case .failure(let error): completion(.failure(error))
+                    case .success(let url):
+                        progress(.submitting, 0)
+                        self.submit(widgetID: widgetID, commandID: commandID, mediaURL: url, location: country) { submission in
+                            switch submission {
+                            case .failure(let error): completion(.failure(error))
+                            case .success(let taskID):
+                                submitted(taskID); progress(.processing, 0)
+                                self.poll(taskID: taskID, started: Date(), progress: progress, completion: completion)
+                            }
                         }
                     }
                 }
@@ -60,7 +69,23 @@ final class WidgetTaskClient {
         poll(taskID: taskID, started: Date(), progress: progress, completion: completion)
     }
 
-    private func uploadIfNeeded(_ url: URL, completion: @escaping (Result<String, Error>) -> Void) {
+    private func fetchUploadConfig(completion: @escaping (UploadConfig) -> Void) {
+        var request = authorizedRequest(apiBase.appendingPathComponent("glance_config"))
+        request.timeoutInterval = 5
+        session.dataTask(with: request) { data, response, error in
+            guard error == nil, let data, let http = response as? HTTPURLResponse,
+                  (200..<300).contains(http.statusCode),
+                  let envelope = try? JSONDecoder().decode(UploadConfigEnvelope.self, from: data),
+                  envelope.success, let config = envelope.result else {
+                completion(UploadConfig(locationBasedUpload: false))
+                return
+            }
+            completion(config)
+        }.resume()
+    }
+
+    private func uploadIfNeeded(_ url: URL, country: String, config: UploadConfig,
+                                completion: @escaping (Result<String, Error>) -> Void) {
         prepareLocalInput(url) { prepared in
             switch prepared {
             case .failure(let error): completion(.failure(error))
@@ -68,38 +93,116 @@ final class WidgetTaskClient {
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
                         let data = try Data(contentsOf: localURL)
-                        var request = self.authorizedRequest(self.apiBase.appendingPathComponent("uploads")); request.httpMethod = "POST"
-                        let boundary = "Boundary-\(UUID().uuidString)"
-                        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
                         let mime = UTType(filenameExtension: localURL.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-                        var body = Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(localURL.lastPathComponent)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8)
-                        body.append(data); body.append(Data("\r\n--\(boundary)--\r\n".utf8)); request.httpBody = body
-                        self.upload(request, attempt: 0) { result in
+                        let uploadToR2 = {
+                            self.uploadToService(data: data, mime: mime, filename: localURL.lastPathComponent,
+                                                 completion: completion)
+                        }
+                        let china = ["CN", "CHINA"].contains(country.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
+                        let key = self.localFreeimageKey()?
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard config.locationBasedUpload, china, mime.hasPrefix("image/"),
+                              let key, !key.isEmpty,
+                              let image = Self.freeimageImage(data: data, mime: mime) else {
+                            uploadToR2()
+                            return
+                        }
+                        self.uploadToFreeimage(data: image.data, mime: image.mime, key: key) { result in
                             switch result {
-                            case .success:
-                                completion(result)
-                            case .failure(let cloudflareError):
-                                guard let fallbackImage = Self.freeimageImage(data: data, mime: mime),
-                                      let key = UserDefaults.standard.string(forKey: self.freeimageKeyKey),
-                                      !key.isEmpty else {
-                                    completion(.failure(cloudflareError))
-                                    return
-                                }
-                                self.uploadToFreeimage(data: fallbackImage.data, mime: fallbackImage.mime, key: key) { fallback in
-                                    switch fallback {
-                                    case .success:
-                                        completion(fallback)
-                                    case .failure(let fallbackError):
-                                        completion(.failure(WidgetUploadFallbackError(
-                                            cloudflare: cloudflareError, freeimage: fallbackError)))
-                                    }
-                                }
+                            case .success: completion(result)
+                            case .failure(let error):
+                                Logger.warning("Freeimage upload failed; falling back to R2: \(error.localizedDescription)")
+                                uploadToR2()
                             }
                         }
                     } catch { completion(.failure(error)) }
                 }
             }
         }
+    }
+
+    private func uploadToService(data: Data, mime: String, filename: String,
+                                 completion: @escaping (Result<String, Error>) -> Void) {
+        var request = authorizedRequest(apiBase.appendingPathComponent("uploads"))
+        request.httpMethod = "POST"
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        var body = Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8)
+        body.append(data)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        request.httpBody = body
+        upload(request, attempt: 0, completion: completion)
+    }
+
+    private static let freeimageMIMETypes: Set<String> = [
+        "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"
+    ]
+
+    private func localFreeimageKey() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.glance.app.freeimage",
+            kSecAttrAccount as String: "api-key",
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var item: CFTypeRef?
+        if SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+           let data = item as? Data,
+           let key = String(data: data, encoding: .utf8), !key.isEmpty {
+            return key
+        }
+        return UserDefaults.standard.string(forKey: freeimageKeyKey)
+            ?? ProcessInfo.processInfo.environment["FREEIMAGEKEY"]
+    }
+
+    private static func freeimageImage(data: Data, mime: String) -> (data: Data, mime: String)? {
+        if freeimageMIMETypes.contains(mime) { return (data, mime) }
+        guard mime == "image/heic" || mime == "image/heif",
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              let output = CFDataCreateMutable(nil, 0),
+              let destination = CGImageDestinationCreateWithData(output, UTType.png.identifier as CFString, 1, nil) else {
+            return nil
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return (output as Data, "image/png")
+    }
+
+    private func uploadToFreeimage(data: Data, mime: String, key: String,
+                                   completion: @escaping (Result<String, Error>) -> Void) {
+        let boundary = "FreeimageBoundary-\(UUID().uuidString.replacingOccurrences(of: "-", with: ""))"
+        let fileExtension = mime == "image/jpeg" ? "jpg" : String(mime.split(separator: "/").last ?? "png")
+        var body = Data()
+        for (name, value) in [("key", key), ("action", "upload"), ("format", "json")] {
+            body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
+        }
+        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"source\"; filename=\"widget-input.\(fileExtension)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8))
+        body.append(data)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+
+        var request = URLRequest(url: URL(string: "https://freeimage.host/api/1/upload")!)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        freeimageSession.dataTask(with: request) { data, response, error in
+            do {
+                if let error { throw error }
+                guard let data, let http = response as? HTTPURLResponse else { throw WidgetError.unavailable }
+                guard (200..<300).contains(http.statusCode),
+                      let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      payload["status_code"] as? Int == 200,
+                      let image = payload["image"] as? [String: Any],
+                      let rawURL = image["url"] as? String,
+                      let url = URL(string: rawURL), url.scheme == "https",
+                      let host = url.host?.lowercased(),
+                      host == "iili.io" || host.hasSuffix(".iili.io") || host == "freeimage.host" else {
+                    throw WidgetTaskRequestError(statusCode: http.statusCode, message: "Freeimage upload failed.")
+                }
+                completion(.success(url.absoluteString))
+            } catch { completion(.failure(error)) }
+        }.resume()
     }
 
     private func upload(_ request: URLRequest, attempt: Int,
@@ -119,59 +222,6 @@ final class WidgetTaskClient {
                 let envelope: UploadEnvelope = try Self.decode(data, response)
                 guard envelope.success, let value = envelope.result?.url else { throw WidgetError.unavailable }
                 completion(.success(value))
-            } catch { completion(.failure(error)) }
-        }.resume()
-    }
-
-    private static let freeimageMIMETypes: Set<String> = [
-        "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"
-    ]
-
-    private static func freeimageImage(data: Data, mime: String) -> (data: Data, mime: String)? {
-        if freeimageMIMETypes.contains(mime) { return (data, mime) }
-        guard mime == "image/heic" || mime == "image/heif",
-              let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
-              let output = CFDataCreateMutable(nil, 0),
-              let destination = CGImageDestinationCreateWithData(output, UTType.png.identifier as CFString, 1, nil) else {
-            return nil
-        }
-        CGImageDestinationAddImage(destination, image, nil)
-        guard CGImageDestinationFinalize(destination) else { return nil }
-        return (output as Data, "image/png")
-    }
-
-    private func uploadToFreeimage(data: Data, mime: String, key: String,
-                                   completion: @escaping (Result<String, Error>) -> Void) {
-        let boundary = "FreeimageBoundary-\(UUID().uuidString)"
-        let fileExtension = mime == "image/jpeg" ? "jpg" : String(mime.split(separator: "/").last ?? "png")
-        var body = Data()
-        for (name, value) in [("key", key), ("action", "upload"), ("format", "json")] {
-            body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
-        }
-        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"source\"; filename=\"widget-input.\(fileExtension)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8))
-        body.append(data)
-        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
-
-        var request = URLRequest(url: URL(string: "https://freeimage.host/api/1/upload")!)
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = body
-        session.dataTask(with: request) { data, response, error in
-            do {
-                if let error { throw error }
-                guard let data, let http = response as? HTTPURLResponse else { throw WidgetError.unavailable }
-                guard (200..<300).contains(http.statusCode),
-                      let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      payload["status_code"] as? Int == 200,
-                      let image = payload["image"] as? [String: Any],
-                      let rawURL = image["url"] as? String,
-                      let url = URL(string: rawURL), url.scheme == "https",
-                      let host = url.host?.lowercased(),
-                      host == "iili.io" || host.hasSuffix(".iili.io") || host == "freeimage.host" else {
-                    throw WidgetTaskRequestError(statusCode: http.statusCode, message: "Freeimage upload failed.")
-                }
-                completion(.success(url.absoluteString))
             } catch { completion(.failure(error)) }
         }.resume()
     }
@@ -281,12 +331,64 @@ final class WidgetTaskClient {
                 if let error { throw error }
                 let envelope: TaskEnvelope = try Self.decode(data, response)
                 guard envelope.success, let result = envelope.result else { throw WidgetError.unavailable }
-                if (result.status == "completed" || result.status == "succeeded"), let raw = result.resultURL, let url = URL(string: raw) { completion(.success(url)); return }
+                if result.status == "completed" || result.status == "succeeded" {
+                    if let artifacts = result.result, !artifacts.isEmpty {
+                        self.prepareResults(artifacts, taskID: taskID, completion: completion)
+                        return
+                    }
+                    if let raw = result.resultURL, let url = URL(string: raw) {
+                        completion(.success(url)); return
+                    }
+                    completion(.failure(WidgetError.unavailable)); return
+                }
                 if result.status == "failed" { completion(.failure(WidgetError.unavailable)); return }
                 progress(.processing, result.processCount ?? 0)
             } catch { /* transient query errors retry until the overall timeout */ }
             DispatchQueue.global().asyncAfter(deadline: .now() + 5) { self.poll(taskID: taskID, started: started, progress: progress, completion: completion) }
         }.resume()
+    }
+
+    private func prepareResults(_ artifacts: [TaskArtifact], taskID: String,
+                                completion: @escaping (Result<URL, Error>) -> Void) {
+        if artifacts.count == 1, artifacts[0].type != "text",
+           let raw = artifacts[0].url, let url = URL(string: raw) {
+            completion(.success(url)); return
+        }
+        let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Glance", isDirectory: true)
+            .appendingPathComponent("\(taskID)-\(UUID().uuidString)", isDirectory: true)
+        do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+        catch { completion(.failure(error)); return }
+        func save(_ index: Int) {
+            if index >= artifacts.count {
+                completion(.success(artifacts.count == 1 ? folder.appendingPathComponent("result.txt") : folder))
+                return
+            }
+            let artifact = artifacts[index]
+            if artifact.type == "text", let value = artifact.text {
+                do {
+                    try value.write(to: folder.appendingPathComponent(artifacts.count == 1 ? "result.txt" : "result-\(index + 1).txt"), atomically: true, encoding: .utf8)
+                    save(index + 1)
+                } catch { completion(.failure(error)) }
+                return
+            }
+            guard let raw = artifact.url, let url = URL(string: raw) else {
+                completion(.failure(WidgetError.unavailable)); return
+            }
+            self.session.downloadTask(with: url) { temporary, response, error in
+                guard let temporary, error == nil else {
+                    completion(.failure(error ?? WidgetError.unavailable)); return
+                }
+                do {
+                    let mimeExtension = response?.mimeType.flatMap { UTType(mimeType: $0)?.preferredFilenameExtension }
+                    let ext = mimeExtension ?? (artifact.type == "audio" ? "m4a" : artifact.type == "video" ? "mp4" : "png")
+                    let destination = folder.appendingPathComponent("result-\(index + 1).\(ext)")
+                    try FileManager.default.moveItem(at: temporary, to: destination)
+                    save(index + 1)
+                } catch { completion(.failure(error)) }
+            }.resume()
+        }
+        save(0)
     }
 
     private static func decode<T: Decodable>(_ data: Data?, _ response: URLResponse?) throws -> T {
@@ -300,10 +402,13 @@ final class WidgetTaskClient {
     }
     private struct UploadEnvelope: Codable { let success: Bool; let result: UploadResult? }
     private struct UploadResult: Codable { let url: String }
+    private struct UploadConfig: Codable { let locationBasedUpload: Bool }
+    private struct UploadConfigEnvelope: Codable { let success: Bool; let result: UploadConfig? }
     private struct LocationEnvelope: Codable { let success: Bool; let result: LocationResult }
     private struct LocationResult: Codable { let location: String }
     private struct TaskEnvelope: Codable { let success: Bool; let result: TaskResult? }
-    private struct TaskResult: Codable { let taskID: String; let status: String; let processCount: Int?; let resultURL: String? }
+    private struct TaskResult: Codable { let taskID: String; let status: String; let processCount: Int?; let resultURL: String?; let result: [TaskArtifact]? }
+    private struct TaskArtifact: Codable { let type: String?; let text: String?; let url: String? }
 }
 
 private struct WidgetTaskRequestError: LocalizedError {
@@ -312,14 +417,5 @@ private struct WidgetTaskRequestError: LocalizedError {
 
     var errorDescription: String? {
         message ?? "Widget request failed (HTTP \(statusCode))."
-    }
-}
-
-private struct WidgetUploadFallbackError: LocalizedError {
-    let cloudflare: Error
-    let freeimage: Error
-
-    var errorDescription: String? {
-        "Cloudflare upload failed: \(cloudflare.localizedDescription) Freeimage upload failed: \(freeimage.localizedDescription)"
     }
 }

@@ -2,6 +2,24 @@
 
 独立的 Glance Widget 平台 Worker。它是 Widget 提交、审核、发布、任务队列和开发者 Worker 拉取任务的唯一后端，不依赖 `mcreator` 项目。
 
+## 开发者 CLI
+
+仓库中的 `glance-cli/` 是 Python 包。开发者安装后运行 `glance widget init` 创建 UUID 文件夹，`glance widget publish` 提交审核，并在自己的机器上运行一个 `glance worker`。该 Worker 用一次 `POST /api/v2/widget-tasks/pull-batch` 请求本机表里多个 Widget 版本的任务，执行对应目录的 `main.py`，上传结果并发送心跳。管理员在 Admin Console 发送测试任务、检查结果、手动灰度及正式发布。
+
+开发者 Google 登录需要设置 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`，并在 Google OAuth 客户端中登记重定向地址：`<PUBLIC_ORIGIN>/api/v2/developer/auth/google/callback`。发布前还需要配置 `GLANCE_SIGNING_KEY_PKCS8`，值是与 Glance 客户端内 `glance-market-2026-02` 公钥对应的 Ed25519 PKCS#8 DER 的 Base64。此机器上的开发用私钥保存在 `~/.config/glance-service/signing-key.pem`，**不要提交私钥到仓库**；生产环境应通过 Wrangler Secret 配置并安全备份。配置命令示例：
+
+当前联调可把临时开发者 token 配为 Wrangler Secret `DEVELOPER_TEST_TOKEN`，CLI 本机将相同 token 写入 `~/.config/glance/mock-token` 后运行 `glance login`。Service 将其映射为固定的模拟开发者 `mock:glance-cli`；这个 token 只用于开发者 API，不授予 Admin Console 权限。完成真实 Google 登录后应删除此 Secret 和本机 mock-token 文件。
+
+```bash
+openssl pkey -in ~/.config/glance-service/signing-key.pem -outform DER | base64 | tr -d '\n' | wrangler secret put GLANCE_SIGNING_KEY_PKCS8
+wrangler secret put GOOGLE_CLIENT_ID
+wrangler secret put GOOGLE_CLIENT_SECRET
+wrangler d1 migrations apply glance-service-db --remote
+```
+
+2026-09-30 已将当前 Service 部署到 `https://glance-service.allanchanni.workers.dev`，并应用 `0002_developers.sql`；线上已配置临时开发者 token 和 Manifest 签名密钥。Google OAuth 仍需配置客户端凭据。Gray release 只供审核，不进入公开 Market；管理员执行 `promote` 后才公开。
+登录使用 Google 官方的 [Web Server OAuth 流程](https://developers.google.com/identity/protocols/oauth2/web-server)和 [OpenID Connect UserInfo 接口](https://developers.google.com/identity/openid-connect/reference)。
+
 ## 本地配置
 
 复制环境变量示例并通过 Wrangler secret 注入：
@@ -29,6 +47,11 @@ wrangler d1 migrations apply glance-service-db --remote
 
 ```text
 POST /api/v2/widget-submissions
+GET  /api/v2/developer/widgets/:widget_id
+POST /api/v2/developer/widgets/:widget_id/unpublish
+POST /api/v2/developer/widgets/:widget_id/archive
+POST /api/v2/widget-tasks/pull-batch
+POST /api/v2/widget-tasks/:id/artifacts
 GET  /api/v2/widgets
 GET  /api/admin/v2/widgets
 POST /api/admin/v2/widgets
@@ -44,6 +67,11 @@ POST /api/v2/widget-jobs
 GET  /api/v2/widget-jobs/:id
 DELETE /api/v2/widget-jobs/:id
 GET  /api/v2/location
+GET  /api/v2/glance_config
+GET  /api/admin/v2/glance-config
+PUT  /api/admin/v2/glance-config
+GET  /api/admin/v2/upload-settings
+PUT  /api/admin/v2/upload-settings
 ```
 
 `POST /api/admin/v2/widgets` 是 Admin Console（或 `ADMIN_TOKEN`）直接新建 Widget 的管理端点，请求体为：
@@ -56,19 +84,19 @@ GET  /api/v2/location
 }
 ```
 
-新建 Widget 时，服务端为 Widget 和每个命令分别生成 UUID，并写入保存的 manifest；请求中的 `manifest.id` 和 `commands[].id` 即使存在也不会被采用。`POST /api/v2/widget-submissions` 同样由服务端生成这些 ID，且每次调用都会创建一个新 Widget。创建响应通过 `widgetId`、`commandIds` 返回 ID，同时返回一次性 `workerToken`。后台「Widget Review」的新建表单无需填写 ID，创建成功后才显示。
+管理后台新建 Widget 时，服务端为 Widget 和每个命令生成 UUID，并返回一次性 `workerToken`。开发者通过 Python CLI 提交 `POST /api/v2/widget-submissions` 时，保留 `glance widget init` 生成的 Widget UUID 和稳定的 Command ID；相同 Widget 可以提交新的版本，服务端按开发者身份核对所有权。CLI 使用可撤销的开发者会话调用批量领取接口，不从提交响应获取 Worker Token。
 
 它复用与客户端提交一致的 manifest 校验，创建 `widgets` + `widget_versions` + `widget_workers` + 审计日志。
 
 `commands[].taskType` 是内部兼容字段，当前不参与任务路由。后台表单无需填写；新建时服务端按 Widget ID 和命令 ID 生成，编辑时保留已有值。
 
-`GET /api/admin/v2/widgets` 返回 D1 中的全部 Widget，包括 `manual_review`、`published`、`gray_release`、`rejected` 和 `suspended`，每个 Widget 只返回当前版本，并明确包含 `widgetId`。公开的 `GET /api/v2/widgets` 仍只返回可安装的 `published` / `gray_release`，不会泄露草稿。
+`GET /api/admin/v2/widgets` 返回 D1 中的全部 Widget，每个 Widget 只返回当前线上版本；`GET /api/admin/v2/widget-versions` 返回待审核和历史版本。公开的 `GET /api/v2/widgets` 只返回正式 `published` 的当前版本，不泄露待审核或灰度版本。
 
 `PUT /api/admin/v2/widgets/:widget_id` 用于编辑 Widget。编辑沿用 URL 中的已有 Widget ID，并沿用已有命令 ID；请求的 manifest 无需填写这些 ID。版本号不变时更新当前 manifest；版本号变化时创建新版本并将其设为当前版本。`GET /api/admin/v2/widget-versions` 保留按版本查看全部历史提交的能力。已有 ID 不会因这次改动而变化。
 
-开发者 Worker 使用提交时生成的 token 拉取任务；生产用户和 Glance 客户端使用用户 Bearer token，管理员使用 `ADMIN_TOKEN`。
+Python CLI Worker 使用开发者会话批量领取属于自己 Widget 的任务，并在心跳、上传和回传时附带本次领取的 `X-Task-Claim`。旧版单 Widget Worker 仍使用原有 Worker Token。生产用户和 Glance 客户端使用用户 Bearer token，管理员使用 Admin 会话或 `ADMIN_TOKEN`。
 
-调试完整链路时，可以把同一个高强度随机值配置为 `FLOW_TEST_TOKEN` Secret，并在用户、Worker 和管理 API 请求中发送 `Authorization: Bearer <FLOW_TEST_TOKEN>`。它没有时间过期限制，也可读取和操作其他用户的任务、素材与提交；仅限受控调试，完成后删除或轮换该 Secret。未配置时全局 token 不生效。`WORKER_AUTH_DISABLED=true` 仅允许这个全局 token 绕过 Widget 专属 Worker token 校验，Worker 请求仍必须携带 token；普通 Worker Token 仍只授权所属 Widget。管理后台的网页登录仍使用会话 Cookie。
+旧版任务链路仍支持受控调试用的 `FLOW_TEST_TOKEN`；它不授予开发者提交、批量领取或管理后台权限。`WORKER_AUTH_DISABLED=true` 只影响旧版单 Widget Worker 接口。开发者 API 通常使用 Google 登录后取得的会话；联调期间也接受独立配置的 `DEVELOPER_TEST_TOKEN`。管理后台网页登录仍使用会话 Cookie。
 
 ```bash
 wrangler secret put FLOW_TEST_TOKEN
@@ -76,7 +104,11 @@ wrangler secret put FLOW_TEST_TOKEN
 
 将客户端中的调试 token 替换为 login 获取的用户 token 后，新 token 会对应新的用户身份；调试 token 创建的私人任务、素材和提交不会自动迁移到该身份。
 
-`POST /api/v2/uploads` 返回带时效 HMAC 签名的媒体 URL，Worker 可直接读取该 URL；签名过期后必须重新上传或由客户端重新获取授权 URL。
+Admin Console 左侧的“Glance 配置”页面可编辑整份 `glance_config` JSON；配置保存在 D1 的 `service_settings` 表，新增字段无需新增数据库列。`PUT /api/admin/v2/glance-config` 会替换整份配置，要求 `locationBasedUpload` 为布尔值；首页的便捷开关只修改这个字段并保留其他字段。该字段默认开启。`GET /api/v2/glance_config` 下发整份配置，Glance 客户端在每次上传前读取；读取失败时保守地使用 R2。开启时，客户端根据随后任务中使用的同一个 `location` 值判断：`CN` 或 `China` 的图片优先从本机上传到 Freeimage，失败时回退 R2；其他地区及非图片文件使用 R2。关闭时所有媒体统一上传 R2。Service 的 `POST /api/v2/uploads` 始终只上传 R2，不再调用 Freeimage。`glance_config` 会完整下发给客户端，不应放入密钥。
+
+Freeimage API Key 保存在运行 Glance 的 Mac 的 Keychain 中，不由 `glance_config` 下发。开发机已在 shell 中配置 `FREEIMAGEKEY` 时，可从仓库根目录运行 `zsh -ic 'swift Glance/scripts/set-freeimage-key.swift'` 导入 Keychain。客户端也兼容已有的 `glance.freeimageAPIKey` UserDefaults 值与进程环境变量。缺少本地 Key 时，中国地区图片同样回退 R2。
+
+R2 上传返回带时效 HMAC 签名的媒体 URL，Worker 可直接读取；签名过期后必须重新上传或由客户端重新获取授权 URL。Freeimage 成功时由客户端直接取得图床的 HTTPS 图片 URL。客户端将最终 URL 放入后续任务参数；R2 响应包含 `assetID`、`url` 和 `provider`。
 
 ## Admin Console
 
@@ -168,7 +200,7 @@ Authorization: Bearer <user_token>
 Content-Type: multipart/form-data
 ```
 
-表单字段为 `file`。上传接口返回 `assetID` 和临时 `url`，再将其放入任务的 `input`。
+表单字段为 `file` 和 `location`（如 `CN`）；旧客户端未提供 `location` 时，Service 使用 Cloudflare 请求地区。上传接口返回图片 `url`，再将其放入任务的 `input`。当 `provider` 为 `r2` 时，还返回 `assetID`。
 
 ### 2. Widget Worker 拉取任务
 

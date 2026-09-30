@@ -45,6 +45,11 @@ dist/
 # Local tool state
 .wrangler/
 website/.openai/
+__pycache__/
+.venv/
+*.py[cod]
+*.egg-info/
+.glance-test-output/
 
 # Local upload provider credentials
 docs/designs/upload_info.txt

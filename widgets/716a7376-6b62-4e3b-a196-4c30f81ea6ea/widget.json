@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "716a7376-6b62-4e3b-a196-4c30f81ea6ea",
+  "version": "0.1.0",
+  "name": "My Widget",
+  "summary": "Describe your widget.",
+  "author": "Your name",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "Run",
+      "description": "Process an input.",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg"
+      ],
+      "outputs": [
+        "text"
+      ],
+      "taskType": "widget.716a7376-6b62-4e3b-a196-4c30f81ea6ea.run",
+      "requiresUpload": true,
+      "parameterSchema": {}
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "The selected media is uploaded to Glance for processing."
+  },
+  "minimumGlanceVersion": "2.0.0"
+}

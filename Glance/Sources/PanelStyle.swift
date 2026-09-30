@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import Highlightr
 
 /// The Focus Sweep loader from Glance Motion / 05. Shared by preview surfaces.
@@ -504,6 +505,55 @@ enum PanelStyle {
     }
 }
 
+/// Draws the actual glyph bounds at the center of a fixed Figma text frame.
+/// NSTextField's cell padding otherwise shifts short labels and badge counts.
+final class PanelCenteredTextView: NSView {
+    var string = "" { didSet { setAccessibilityLabel(string); needsDisplay = true } }
+    var font = PanelStyle.inspectFont(ofSize: 11) { didSet { needsDisplay = true } }
+    var textColor = NSColor.white { didSet { needsDisplay = true } }
+    var alignment: NSTextAlignment = .center { didSet { needsDisplay = true } }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard !string.isEmpty, let context = NSGraphicsContext.current?.cgContext else { return }
+        let text = NSAttributedString(string: string,
+                                      attributes: [.font: font, .foregroundColor: textColor])
+        let line = CTLineCreateWithAttributedString(text)
+        let token = CTLineCreateWithAttributedString(NSAttributedString(string: "…",
+                                                                         attributes: [.font: font, .foregroundColor: textColor]))
+        let displayed = CTLineCreateTruncatedLine(line, Double(bounds.width), .end, token) ?? line
+        let ink = CTLineGetImageBounds(displayed, nil)
+        guard !ink.isNull, !ink.isEmpty else { return }
+
+        context.saveGState()
+        if isFlipped {
+            context.translateBy(x: 0, y: bounds.height)
+            context.scaleBy(x: 1, y: -1)
+        }
+        context.clip(to: bounds)
+        context.textMatrix = .identity
+        let x: CGFloat
+        switch alignment {
+        case .left, .natural: x = bounds.minX - ink.minX
+        case .right: x = bounds.maxX - ink.maxX
+        default: x = bounds.midX - ink.midX
+        }
+        context.textPosition = CGPoint(x: x, y: bounds.midY - ink.midY)
+        CTLineDraw(displayed, context)
+        context.restoreGState()
+    }
+}
+
+private final class PanelCenteredButtonCell: NSButtonCell {
+    override func drawTitle(_ title: NSAttributedString, withFrame frame: NSRect, in controlView: NSView) -> NSRect {
+        let textHeight = min(frame.height, ceil(title.size().height))
+        let centered = NSRect(x: frame.minX, y: frame.midY - textHeight / 2,
+                              width: frame.width, height: textHeight)
+        return super.drawTitle(title, withFrame: centered, in: controlView)
+    }
+}
+
 /// Layer-backed text button used by the V2 control factories. Draws its own
 /// rounded background so normal/hover/disabled states stay on the darkroom
 /// palette instead of AppKit's system button face.
@@ -518,6 +568,7 @@ final class PanelButton: NSButton {
 
     init(title: String, target: AnyObject?, action: Selector?) {
         super.init(frame: .zero)
+        cell = PanelCenteredButtonCell(textCell: title)
         self.target = target
         self.action = action
         bezelStyle = .recessed

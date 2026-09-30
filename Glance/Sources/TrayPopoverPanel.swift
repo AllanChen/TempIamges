@@ -196,9 +196,9 @@ final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
 private final class TrayRow: NSView {
     var onClick: (() -> Void)?
     private let iconView = NSImageView()
-    private let titleLabel = NSTextField(labelWithString: "")
-    private let trailingLabel = NSTextField(labelWithString: "")
-    private let badge = NSTextField(labelWithString: "")
+    private let titleLabel = PanelCenteredTextView()
+    private let trailingLabel = PanelCenteredTextView()
+    private let badge = PanelCenteredTextView()
     private var hovering = false
 
     init(icon: String, title: String, trailing: String? = nil) {
@@ -210,14 +210,13 @@ private final class TrayRow: NSView {
         addSubview(iconView)
         titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
         titleLabel.textColor = PanelStyle.textPrimary
-        titleLabel.isBordered = false; titleLabel.isEditable = false; titleLabel.backgroundColor = .clear
-        titleLabel.stringValue = title
+        titleLabel.alignment = .left
+        titleLabel.string = title
         addSubview(titleLabel)
         trailingLabel.font = PanelStyle.inspectFont(ofSize: 11)
         trailingLabel.textColor = PanelStyle.textTertiary
         trailingLabel.alignment = .right
-        trailingLabel.isBordered = false; trailingLabel.isEditable = false; trailingLabel.backgroundColor = .clear
-        trailingLabel.stringValue = trailing ?? ""
+        trailingLabel.string = trailing ?? ""
         addSubview(trailingLabel)
         badge.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
         badge.textColor = PanelStyle.accentInk
@@ -225,7 +224,6 @@ private final class TrayRow: NSView {
         badge.wantsLayer = true
         badge.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
         badge.layer?.cornerRadius = 9
-        badge.isBordered = false; badge.isEditable = false
         badge.isHidden = true
         addSubview(badge)
     }
@@ -233,14 +231,14 @@ private final class TrayRow: NSView {
 
     func setBadge(_ text: String?) {
         badge.isHidden = text == nil
-        badge.stringValue = text ?? ""
+        badge.string = text ?? ""
         needsLayout = true
     }
     func setTrailing(_ text: String?, color: NSColor) {
-        trailingLabel.stringValue = text ?? ""
+        trailingLabel.string = text ?? ""
         trailingLabel.textColor = color
     }
-    func setTitle(_ text: String) { titleLabel.stringValue = text }
+    func setTitle(_ text: String) { titleLabel.string = text }
 
     override func layout() {
         super.layout()
@@ -279,11 +277,12 @@ private final class TrayPrimaryButton: NSView {
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         icon.contentTintColor = PanelStyle.accentInk
         addSubview(icon)
-        let label = NSTextField(labelWithString: title)
+        let label = PanelCenteredTextView()
+        label.string = title
         label.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold)
         label.textColor = PanelStyle.accentInk
-        label.frame = NSRect(x: 44, y: 14, width: 200, height: 16)
-        label.isBordered = false; label.isEditable = false; label.backgroundColor = .clear
+        label.alignment = .left
+        label.frame = NSRect(x: 44, y: 0, width: 200, height: 44)
         addSubview(label)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -292,18 +291,18 @@ private final class TrayPrimaryButton: NSView {
 
 private final class TrayTextButton: NSView {
     var onClick: (() -> Void)?
+    private let label = PanelCenteredTextView()
+
     init(title: String, align: NSTextAlignment) {
         super.init(frame: .zero)
-        let label = NSTextField(labelWithString: title)
+        label.string = title
         label.font = PanelStyle.inspectFont(ofSize: 12)
         label.textColor = PanelStyle.textTertiary
         label.alignment = align
-        label.isBordered = false; label.isEditable = false; label.backgroundColor = .clear
-        label.frame = NSRect(x: 0, y: 0, width: 140, height: 18)
-        label.autoresizingMask = [.width]
         addSubview(label)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func layout() { super.layout(); label.frame = bounds }
     override func mouseDown(with event: NSEvent) { onClick?() }
 }
 
