@@ -304,13 +304,14 @@ function createTaskCenterScreen(x) {
 }
 
 function marketBadge(parent, label, x, y, width = 50) {
-  const badge = frame('Cloud Badge', x, y, width, 19, COLORS.accentSoft, 4);
+  const badge = frame('Widget Badge / ' + label, x, y, width, 19, COLORS.accentSoft, 4);
   parent.appendChild(badge);
   text('Badge Label', badge, label, 0, 4, 9, COLORS.accent, 'semibold', width, 'CENTER');
+  return badge;
 }
 
-function marketButton(parent, title, x, y, installed = false) {
-  const width = installed ? 91 : 76;
+function marketButton(parent, title, x, y, installed = false, width = null) {
+  width = width || (installed ? 91 : 76);
   const action = frame(installed ? 'Installed / local registry' : 'Install Widget', x, y,
                        width, 31, installed ? '#1B3029' : COLORS.accent, 8);
   action.strokes = [fill(installed ? COLORS.success : COLORS.accent, .5)];
@@ -321,97 +322,262 @@ function marketButton(parent, title, x, y, installed = false) {
   return action;
 }
 
-function marketRow(parent, y, widget) {
-  const row = panel(parent, 'Widget / ' + widget.name, 16, y, 348, 132,
-                    widget.selected ? '#211C1A' : COLORS.surface, 12);
-  if (widget.selected) row.strokes = [fill(COLORS.accent, .45)];
-  const icon = frame('48px Widget Icon', 14, 13, 48, 48, '#2A2423', 10);
-  icon.strokes = [fill(COLORS.line)]; icon.strokeWeight = 1;
+const WIDGET_MARKET_CATALOG = [
+  ['RB', 'Remove Background', 'Image', 'Remove backgrounds while preserving fine subject edges.'],
+  ['IC', 'Image Caption', 'AI', 'Turn an image into a clear natural-language description.'],
+  ['2×', 'Upscale 2×', 'Enhance', 'Increase resolution while recovering texture and detail.'],
+  ['FR', 'Face Restore', 'Enhance', 'Repair soft or damaged faces in old photographs.'],
+  ['SC', 'Smart Crop', 'Image', 'Create balanced crops for common aspect ratios.'],
+  ['OE', 'Object Eraser', 'Image', 'Remove selected objects and reconstruct the background.'],
+  ['PR', 'Portrait Relight', 'Enhance', 'Adjust portrait lighting with natural skin tones.'],
+  ['PS', 'Product Shadow', 'Commerce', 'Add clean studio shadows beneath product photos.'],
+  ['CZ', 'Colorize Photo', 'Enhance', 'Colorize monochrome photographs with restrained color.'],
+  ['ST', 'Style Transfer', 'Creative', 'Apply a visual style while preserving composition.'],
+  ['TX', 'OCR Extract', 'Text', 'Extract selectable text from images and screenshots.'],
+  ['TR', 'Translate Image', 'Text', 'Translate detected text and preserve the source layout.'],
+  ['QR', 'QR Reader', 'Utility', 'Read QR codes directly from the current image.'],
+  ['BC', 'Barcode Scanner', 'Utility', 'Detect common product and inventory barcodes.'],
+  ['EX', 'EXIF Cleaner', 'Privacy', 'Remove private camera and location metadata.'],
+  ['FC', 'Format Converter', 'Utility', 'Convert images between modern file formats.'],
+  ['BR', 'Batch Rename', 'Workflow', 'Rename a set of media files with reusable patterns.'],
+  ['CM', 'Image Compressor', 'Optimize', 'Reduce image size with a visual quality target.'],
+  ['PO', 'PNG Optimizer', 'Optimize', 'Shrink PNG files without changing visible pixels.'],
+  ['WP', 'WebP Converter', 'Optimize', 'Create efficient WebP copies for web delivery.'],
+  ['HC', 'HEIC Converter', 'Utility', 'Convert HEIC photos into broadly compatible formats.'],
+  ['64', 'Base64 Toolkit', 'Developer', 'Encode images to Base64 or restore encoded images.'],
+  ['PE', 'Palette Extractor', 'Color', 'Build a usable palette from the current image.'],
+  ['DC', 'Dominant Color', 'Color', 'Find dominant colors and copy their values.'],
+  ['BF', 'Blur Faces', 'Privacy', 'Detect and blur faces before sharing an image.'],
+  ['WM', 'Watermark', 'Commerce', 'Apply a reusable text or logo watermark.'],
+  ['MC', 'Meme Caption', 'Creative', 'Add readable captions with safe image margins.'],
+  ['CS', 'Contact Sheet', 'Workflow', 'Arrange selected images into a contact sheet.'],
+  ['PI', 'PDF to Images', 'Document', 'Render PDF pages into individual images.'],
+  ['IP', 'Images to PDF', 'Document', 'Combine selected images into one PDF document.'],
+  ['KF', 'Video Keyframes', 'Video', 'Extract representative frames from a video.'],
+  ['VC', 'Video Caption', 'Video', 'Generate a concise description of a video clip.'],
+  ['VS', 'Video Stabilize', 'Video', 'Reduce camera shake in handheld footage.'],
+  ['VZ', 'Video Compress', 'Video', 'Reduce video size with a quality target.'],
+  ['AT', 'Audio Transcribe', 'Audio', 'Transcribe spoken audio into editable text.'],
+  ['SU', 'Subtitle Translate', 'Audio', 'Translate subtitle files while preserving timing.'],
+  ['SD', 'Scene Detector', 'Video', 'Split footage into scenes at visual cuts.'],
+  ['GM', 'GIF Maker', 'Creative', 'Create a looping GIF from images or video.'],
+  ['GO', 'GIF Optimizer', 'Optimize', 'Reduce GIF size and preserve smooth playback.'],
+  ['BB', 'Background Blur', 'Image', 'Create a natural lens blur behind the subject.'],
+  ['DM', 'Depth Map', '3D', 'Estimate a grayscale depth map from one image.'],
+  ['NM', 'Normal Map', '3D', 'Generate a normal map for texture workflows.'],
+  ['LA', 'Line Art', 'Creative', 'Convert a photograph into clean line art.'],
+  ['SR', 'Sketch Render', 'Creative', 'Render an image with a restrained pencil style.'],
+  ['PX', 'Pixel Art', 'Creative', 'Create crisp pixel-art variants at selected scales.'],
+  ['MI', 'Metadata Inspector', 'Developer', 'Inspect embedded media metadata in one place.'],
+  ['DF', 'Duplicate Finder', 'Workflow', 'Find visually similar and duplicate images.'],
+  ['SS', 'Screenshot Stitch', 'Workflow', 'Join overlapping screenshots into one image.'],
+  ['CU', 'Cloud Upload', 'Cloud', 'Upload a result and copy a temporary share link.'],
+  ['OS', 'OSS Publisher', 'Cloud', 'Publish generated files to configured OSS storage.']
+].map((item, index) => ({
+  icon: item[0], name: item[1], category: item[2], summary: item[3],
+  publisher: index < 12 ? 'Glance Labs' : index % 4 === 0 ? 'Pixel Forge' : 'Glance Community',
+  runs: index === 0 ? '12.4K' : ((49 - index) * 0.37 + 1.2).toFixed(1) + 'K',
+  rating: index % 7 === 0 ? '4.9' : index % 5 === 0 ? '4.8' : '4.7',
+  installed: [0, 2, 10, 17, 21, 45].includes(index),
+  update: [2, 17, 31].includes(index),
+  selected: index === 0
+}));
+
+function marketDenseRow(parent, y, widget, index) {
+  const row = frame('Widget ' + String(index + 1).padStart(2, '0') + ' / ' + widget.name,
+                    0, y, 444, 84, widget.selected ? '#211C1A' : COLORS.canvas);
+  parent.appendChild(row);
+  if (widget.selected) rect('Selected Accent', row, 0, 0, 3, 84, COLORS.accent);
+  rect('Row Divider', row, 16, 83, 412, 1, COLORS.line);
+  const iconColors = ['#342522', '#22312D', '#202C38', '#32273A', '#303022', '#26313A'];
+  const icon = frame('Widget Icon', 16, 14, 48, 48, iconColors[index % iconColors.length], 10);
+  icon.strokes = [fill(widget.selected ? COLORS.accent : COLORS.line, widget.selected ? .52 : 1)];
+  icon.strokeWeight = 1;
   row.appendChild(icon);
-  text('Icon Letter', icon, widget.icon, 0, 14, 15, COLORS.accent, 'semibold', 48, 'CENTER');
-  text('Name', row, widget.name, 74, 12, 13, COLORS.text, 'semibold', 215);
-  text('Version', row, 'Official Widget  ·  v' + widget.version, 74, 32, 10, COLORS.muted);
-  marketBadge(row, 'CLOUD', 278, 15, 55);
-  text('Summary', row, widget.summary, 14, 68, 11, COLORS.secondary, 'regular', 316);
-  rect('Footer Divider', row, 14, 92, 320, 1, COLORS.line);
-  text('Commands', row, '1 command  ·  ' + widget.command, 14, 103, 10, COLORS.muted,
-       'regular', widget.installed ? 218 : 234);
+  text('Icon Letter', icon, widget.icon, 0, 14, 14,
+       widget.selected ? COLORS.accent : COLORS.secondary, 'semibold', 48, 'CENTER');
+  text('Widget Name', row, widget.name, 78, 10, 13, COLORS.text, 'semibold', 248);
+  if (widget.publisher === 'Glance Labs') ellipse('Verified Publisher', row, 78, 33, 7, COLORS.success);
+  text('Publisher', row, widget.publisher, widget.publisher === 'Glance Labs' ? 91 : 78,
+       29, 10, COLORS.muted, 'regular', 220);
+  text('Summary', row, widget.summary, 78, 47, 10, COLORS.secondary, 'regular', 252);
+  text('Usage and Rating', row, '↓ ' + widget.runs + '   ★ ' + widget.rating,
+       78, 66, 9, COLORS.muted, 'regular', 174);
+  if (widget.update) {
+    marketBadge(row, 'UPDATE', 275, 63, 54);
+  }
+  const actionWidth = widget.installed ? 82 : 68;
   marketButton(row, widget.installed ? 'Installed' : 'Install',
-               widget.installed ? 243 : 258, 96, widget.installed);
+               344, 26, widget.installed, actionWidth);
   return row;
 }
 
-function marketPanel(parent, name, x) {
-  const shell = panel(parent, name, x, 196, 380, 620, COLORS.canvas, 16);
-  const tint = rect('Warm Glass Tint', shell, 0, 0, 380, 620, '#2B211D');
-  tint.opacity = .24;
-  return shell;
+function marketFilter(parent, label, count, x, width, selected) {
+  const item = frame('Filter / ' + label, x, 0, width, 30,
+                     selected ? COLORS.accentSoft : null, 7);
+  item.strokes = [fill(selected ? COLORS.accent : COLORS.line, selected ? .44 : 1)];
+  item.strokeWeight = 1;
+  parent.appendChild(item);
+  text('Filter Label', item, label, 10, 8, 10,
+       selected ? COLORS.accent : COLORS.secondary, selected ? 'semibold' : 'medium');
+  text('Filter Count', item, String(count), width - 31, 8, 10, COLORS.muted,
+       'regular', 21, 'RIGHT');
+  return item;
 }
 
 function createWidgetMarketScreen(x) {
   const board = frame('Widget Market / Install / Clean Editable', x, 0, 1554, 1012, COLORS.bg, 16);
   board.strokes = [fill(COLORS.line)]; board.strokeWeight = 1;
   figma.currentPage.appendChild(board);
-  text('Review Heading', board, 'Widget Market  /  existing install flow', 42, 43,
+  text('Review Heading', board, 'Widget Market  /  50-widget catalog', 92, 43,
        18, COLORS.text, 'semibold');
-  text('Review Note', board, 'Compact VS Code-style list. Detail is a secondary state, not a permanent column.',
-       42, 75, 11, COLORS.muted);
+  text('Review Note', board, 'VS Code-inspired search, filters, dense results, and a persistent detail view.',
+       92, 70, 11, COLORS.muted);
 
-  const catalog = marketPanel(board, '01 / Attached Market Catalog', 337);
-  text('Catalog Heading', catalog, 'Widget Market', 22, 20, 21, COLORS.text, 'semibold');
-  iconButton(catalog, 'Close Market', 'close', 294, 16);
-  iconButton(catalog, 'Reload Catalog', 'refresh', 334, 16);
-  rect('Header Divider', catalog, 20, 69, 340, 1, COLORS.line);
-  marketRow(catalog, 84, {
-    icon: 'R', name: 'Remove Background', version: '1.0.0',
-    summary: 'Remove an image background, preserving subject edges.',
-    command: 'Remove Background', installed: true, selected: true
-  });
-  marketRow(catalog, 226, {
-    icon: '2×', name: '超分', version: '1.0.0',
-    summary: '图生图超分辨率，提升图片清晰度与细节。',
-    command: '超分', installed: false
-  });
-  marketRow(catalog, 368, {
-    icon: 'R+', name: 'RemoveBG 高级', version: '1.0.0',
-    summary: '高级背景移除，保留精细主体边缘。',
-    command: 'RemoveBG 高级', installed: false
-  });
-  text('Catalog Footer', catalog, 'OFFICIAL WIDGETS  ·  3 AVAILABLE', 20, 527,
-       10, COLORS.muted, 'semibold');
-  paragraph('Offline Helper', catalog,
-            'Installed Widgets remain available when the catalog is offline.',
-            20, 552, 338, 11, COLORS.secondary);
+  const market = panel(board, '01 / Widget Marketplace Window', 92, 104, 1370, 824,
+                       COLORS.surface, 16);
+  market.effects = [{
+    type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .42 },
+    offset: { x: 0, y: 20 }, radius: 44, spread: 0,
+    visible: true, blendMode: 'NORMAL'
+  }];
+  const titlebar = frame('Titlebar', 0, 0, 1370, 48, COLORS.chrome);
+  market.appendChild(titlebar);
+  ellipse('Close', titlebar, 18, 18, 12, '#ED6A5E');
+  ellipse('Minimize', titlebar, 38, 18, 12, '#F4BF4F');
+  ellipse('Zoom', titlebar, 58, 18, 12, '#61C554');
+  text('Window Title', titlebar, 'Widget Market', 0, 16, 13,
+       COLORS.text, 'semibold', 1370, 'CENTER');
+  iconButton(titlebar, 'Refresh Catalog', 'refresh', 1274, 5);
+  iconButton(titlebar, 'Close Market', 'close', 1318, 5);
+  rect('Titlebar Divider', titlebar, 0, 47, 1370, 1, COLORS.line);
 
-  const detail = marketPanel(board, '02 / Selected Widget Detail Drawer', 837);
-  iconButton(detail, 'Back to Catalog', 'back', 20, 17);
-  text('Detail Heading', detail, 'Widget details', 74, 26, 13, COLORS.secondary, 'medium');
-  rect('Detail Header Divider', detail, 20, 69, 340, 1, COLORS.line);
-  const icon = frame('48px Widget Icon', 22, 93, 48, 48, '#2A2423', 10);
-  detail.appendChild(icon);
-  text('Icon Letter', icon, 'R', 0, 14, 15, COLORS.accent, 'semibold', 48, 'CENTER');
-  text('Widget Name', detail, 'Remove Background', 84, 96, 16, COLORS.text, 'semibold');
-  text('Version', detail, 'Official Widget  ·  v1.0.0', 84, 123, 11, COLORS.muted);
-  marketBadge(detail, 'CLOUD', 22, 160, 55);
-  marketButton(detail, 'Installed', 269, 154, true);
-  rect('Summary Divider', detail, 22, 199, 336, 1, COLORS.line);
-  text('About Heading', detail, 'ABOUT', 22, 219, 10, COLORS.muted, 'semibold');
-  paragraph('Summary', detail,
-            'Remove an image background while preserving fine subject edges.',
-            22, 243, 334, 12, COLORS.secondary);
-  text('Command Heading', detail, 'COMMAND', 22, 312, 10, COLORS.muted, 'semibold');
-  paragraph('Command', detail, 'Remove Background  ·  Image → PNG with transparency',
-            22, 336, 334, 11, COLORS.secondary);
-  text('Privacy Heading', detail, 'PRIVACY', 22, 391, 10, COLORS.muted, 'semibold');
-  paragraph('Privacy Notice', detail,
-            'The selected image is uploaded to Glance for cloud processing.',
-            22, 415, 334, 11, COLORS.secondary);
-  rect('Bottom Divider', detail, 22, 517, 336, 1, COLORS.line);
-  const uninstall = frame('Uninstall / explicit action', 22, 538, 336, 38, '#231719', 8);
-  uninstall.strokes = [fill(COLORS.danger, .42)]; uninstall.strokeWeight = 1;
-  detail.appendChild(uninstall);
-  text('Uninstall Label', uninstall, 'Uninstall Widget', 0, 12, 11,
-       COLORS.danger, 'medium', 336, 'CENTER');
+  const catalog = frame('02 / Search and Widget List', 0, 48, 448, 776, COLORS.canvas);
+  catalog.strokes = [fill(COLORS.line)]; catalog.strokeWeight = 1;
+  market.appendChild(catalog);
+  text('Catalog Heading', catalog, 'Widgets', 20, 17, 18, COLORS.text, 'semibold');
+  text('Catalog Count', catalog, '50 available', 312, 22, 10,
+       COLORS.muted, 'medium', 116, 'RIGHT');
+
+  const search = frame('Search Widgets', 16, 53, 416, 38, COLORS.raised, 8);
+  search.strokes = [fill(COLORS.accent, .52)]; search.strokeWeight = 1;
+  catalog.appendChild(search);
+  const searchIcon = figma.createNodeFromSvg(ICONS.search.replaceAll('CURRENT', COLORS.secondary));
+  searchIcon.name = 'Search Icon'; searchIcon.resize(18, 18);
+  searchIcon.x = 11; searchIcon.y = 10; search.appendChild(searchIcon);
+  text('Search Placeholder', search, 'Search 50 widgets', 39, 11, 12, COLORS.secondary);
+  text('Search Shortcut', search, '⌘F', 366, 11, 10, COLORS.muted, 'medium', 34, 'RIGHT');
+
+  const filters = frame('Catalog Filters', 16, 103, 416, 30, null);
+  catalog.appendChild(filters);
+  marketFilter(filters, 'Marketplace', 50, 0, 132, true);
+  marketFilter(filters, 'Installed', 6, 140, 116, false);
+  marketFilter(filters, 'Updates', 3, 264, 104, false);
+  iconButton(filters, 'Sort and Filter', 'settings', 378, -4);
+  rect('List Header Divider', catalog, 0, 145, 448, 1, COLORS.line);
+
+  const viewport = frame('03 / Scroll Viewport / 7 of 50 visible', 0, 146, 448, 600, COLORS.canvas);
+  viewport.clipsContent = true;
+  viewport.overflowDirection = 'VERTICAL_SCROLLING';
+  catalog.appendChild(viewport);
+  const list = frame('04 / Scroll Content / 50 Widgets', 0, 0, 444,
+                     WIDGET_MARKET_CATALOG.length * 84, COLORS.canvas);
+  list.clipsContent = false;
+  viewport.appendChild(list);
+  WIDGET_MARKET_CATALOG.forEach((widget, index) => {
+    marketDenseRow(list, index * 84, widget, index);
+  });
+  rect('Scrollbar Track', viewport, 441, 8, 3, 584, '#34353A', 2).opacity = .72;
+  rect('Scrollbar Thumb / top of 50', viewport, 441, 8, 3, 84, COLORS.accent, 2).opacity = .9;
+  const listFooter = frame('Catalog Footer', 0, 746, 448, 30, COLORS.chrome);
+  listFooter.strokes = [fill(COLORS.line)]; listFooter.strokeWeight = 1;
+  catalog.appendChild(listFooter);
+  text('Footer Count', listFooter, '50 widgets  •  Marketplace', 16, 9, 10, COLORS.muted);
+  text('Footer Hint', listFooter, 'Scroll for more', 316, 9, 10,
+       COLORS.muted, 'regular', 116, 'RIGHT');
+
+  const detail = frame('05 / Selected Widget Detail', 448, 48, 922, 776, COLORS.surface);
+  market.appendChild(detail);
+  const detailIcon = frame('Selected Widget Icon', 32, 30, 72, 72, '#342522', 14);
+  detailIcon.strokes = [fill(COLORS.accent, .52)]; detailIcon.strokeWeight = 1;
+  detail.appendChild(detailIcon);
+  text('Icon Letter', detailIcon, 'RB', 0, 23, 20, COLORS.accent, 'semibold', 72, 'CENTER');
+  text('Widget Name', detail, 'Remove Background', 128, 29, 24, COLORS.text, 'semibold');
+  ellipse('Verified Publisher', detail, 129, 66, 8, COLORS.success);
+  text('Publisher', detail, 'Glance Labs  ·  Verified publisher', 144, 62, 11,
+       COLORS.secondary, 'medium');
+  text('Version', detail, 'v1.4.2', 128, 84, 10, COLORS.muted);
+  marketButton(detail, 'Installed', 778, 32, true, 110);
+  text('Selected Summary', detail,
+       'Remove image backgrounds while preserving hair, soft edges, and transparent detail.',
+       32, 122, 13, COLORS.secondary, 'regular', 720);
+  text('Selected Metrics', detail, '↓ 12.4K runs    ★ 4.9    Updated 2 days ago',
+       32, 153, 11, COLORS.muted);
+  marketBadge(detail, 'IMAGE', 720, 147, 58);
+  marketBadge(detail, 'CLOUD', 786, 147, 58);
+  marketBadge(detail, 'OFFICIAL', 852, 147, 66);
+
+  const tabs = frame('Detail Tabs', 0, 190, 922, 44, COLORS.chrome);
+  tabs.strokes = [fill(COLORS.line)]; tabs.strokeWeight = 1;
+  detail.appendChild(tabs);
+  text('Overview Tab', tabs, 'Overview', 32, 14, 11, COLORS.accent, 'semibold');
+  text('Commands Tab', tabs, 'Commands', 122, 14, 11, COLORS.secondary, 'medium');
+  text('Changelog Tab', tabs, 'Changelog', 218, 14, 11, COLORS.secondary, 'medium');
+  text('Permissions Tab', tabs, 'Permissions', 318, 14, 11, COLORS.secondary, 'medium');
+  rect('Selected Tab Indicator', tabs, 32, 41, 53, 2, COLORS.accent, 1);
+
+  const overview = frame('06 / Overview Content', 0, 234, 922, 542, COLORS.surface);
+  detail.appendChild(overview);
+  text('About Heading', overview, 'Remove backgrounds without leaving Glance',
+       32, 30, 19, COLORS.text, 'semibold');
+  paragraph('About Copy', overview,
+            'Run the Widget from Image Inspect. The source image stays visible while the result is added beside it with a clear NEW badge.',
+            32, 67, 568, 12, COLORS.secondary);
+  rect('About Divider', overview, 32, 129, 568, 1, COLORS.line);
+  text('Workflow Heading', overview, 'WORKFLOW', 32, 151, 10, COLORS.muted, 'semibold');
+  const steps = [
+    ['01', 'Choose an image', 'Run from the Widget menu in Image Inspect.'],
+    ['02', 'Process securely', 'The source is uploaded to the configured worker.'],
+    ['03', 'Review the result', 'A transparent PNG appears beside the source.']
+  ];
+  steps.forEach((step, index) => {
+    const y = 181 + index * 76;
+    const number = frame('Step ' + step[0], 32, y, 34, 34, COLORS.raised, 8);
+    number.strokes = [fill(COLORS.line)]; number.strokeWeight = 1;
+    overview.appendChild(number);
+    text('Step Number', number, step[0], 0, 10, 10, COLORS.accent, 'semibold', 34, 'CENTER');
+    text('Step Title', overview, step[1], 82, y, 13, COLORS.text, 'semibold');
+    text('Step Detail', overview, step[2], 82, y + 24, 11, COLORS.secondary, 'regular', 470);
+  });
+  rect('Commands Divider', overview, 32, 420, 568, 1, COLORS.line);
+  text('Command Heading', overview, 'AVAILABLE COMMAND', 32, 444, 10, COLORS.muted, 'semibold');
+  text('Command Name', overview, 'Remove Background', 32, 470, 13, COLORS.text, 'semibold');
+  text('Command IO', overview, 'Image  →  PNG with transparency', 32, 494, 11, COLORS.secondary);
+
+  const facts = frame('Widget Information', 634, 30, 256, 482, COLORS.canvas, 10);
+  facts.strokes = [fill(COLORS.line)]; facts.strokeWeight = 1;
+  overview.appendChild(facts);
+  text('Facts Heading', facts, 'Widget information', 20, 18, 13, COLORS.text, 'semibold');
+  const factRows = [
+    ['Publisher', 'Glance Labs'], ['Version', '1.4.2'], ['Released', 'Aug 18, 2026'],
+    ['Category', 'Image'], ['Execution', 'Cloud'], ['Input', 'Image'], ['Output', 'PNG']
+  ];
+  factRows.forEach((fact, index) => {
+    const y = 58 + index * 45;
+    text('Fact Label / ' + fact[0], facts, fact[0], 20, y, 10, COLORS.muted);
+    text('Fact Value / ' + fact[0], facts, fact[1], 112, y, 11,
+         COLORS.secondary, 'medium', 124, 'RIGHT');
+    if (index < factRows.length - 1) rect('Fact Divider / ' + fact[0], facts, 20, y + 27, 216, 1, COLORS.line);
+  });
+  const privacy = frame('Privacy Notice', 20, 389, 216, 69, '#17221F', 8);
+  privacy.strokes = [fill(COLORS.success, .32)]; privacy.strokeWeight = 1;
+  facts.appendChild(privacy);
+  const shield = figma.createNodeFromSvg(ICONS.shield.replaceAll('CURRENT', COLORS.success));
+  shield.name = 'Privacy Icon'; shield.resize(18, 18); shield.x = 12; shield.y = 12;
+  privacy.appendChild(shield);
+  text('Privacy Title', privacy, 'Reviewed permissions', 40, 12, 11,
+       COLORS.success, 'semibold');
+  text('Privacy Copy', privacy, 'Uploads only the selected image.', 12, 39, 10, COLORS.secondary);
   return board;
 }
 
@@ -524,15 +690,129 @@ async function generateHomeScreen() {
   figma.notify('Home / Launcher created');
 }
 
+async function generateHomeFolderScrollStudy() {
+  await loadFonts();
+  await createStyles();
+  const name = 'Home / Folder Scroll / Thin Track Study';
+  const existing = figma.currentPage.children.find(child => child.name === name);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Selected the existing Home folder scroll study.' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = createHomeFolderScrollStudy(maxX + 196);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created Home / Folder Scroll / Thin Track Study.' });
+  figma.notify('Home folder scroll study created');
+}
+
+function createHomeFolderScrollStudy(x) {
+  const board = frame('Home / Folder Scroll / Thin Track Study', x, 0, 1080, 720, COLORS.bg, 12);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+
+  const titlebar = frame('Titlebar', 0, 0, 1080, 52, COLORS.chrome);
+  board.appendChild(titlebar);
+  ellipse('Close', titlebar, 20, 20, 12, '#ED6A5E');
+  ellipse('Minimize', titlebar, 40, 20, 12, '#F4BF4F');
+  ellipse('Zoom', titlebar, 60, 20, 12, '#61C554');
+  text('Title', titlebar, 'Glance', 100, 12, 15, COLORS.text, 'semibold', 880, 'CENTER');
+  text('Subtitle', titlebar, 'Open media to inspect', 100, 32, 11, COLORS.muted, 'regular', 880, 'CENTER');
+
+  const open = frame('Open Surface', 0, 52, 700, 638, COLORS.canvas);
+  board.appendChild(open);
+  text('Welcome', open, 'Open something to inspect', 40, 40, 22, COLORS.text, 'semibold');
+  text('Welcome Sub', open, 'Drop images or videos here, or choose files and folders.', 40, 82, 13, COLORS.secondary, 'regular', 620);
+  const drop = frame('Drop Zone', 40, 128, 620, 222, '#0C0D11', 12);
+  drop.strokes = [fill(COLORS.accent, .42)];
+  drop.strokeWeight = 1;
+  drop.dashPattern = [7, 6];
+  open.appendChild(drop);
+  const dropIcon = figma.createNodeFromSvg(ICONS.focus.replaceAll('CURRENT', COLORS.accent));
+  dropIcon.name = 'Image Icon';
+  dropIcon.resize(40, 40);
+  dropIcon.x = 290;
+  dropIcon.y = 62;
+  drop.appendChild(dropIcon);
+  text('Drop Title', drop, 'Drag images, videos or a folder here', 0, 140, 16, COLORS.text, 'semibold', 620, 'CENTER');
+  text('Drop Hint', drop, 'PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM', 0, 170, 11, COLORS.muted, 'regular', 620, 'CENTER');
+  const openFiles = button(open, 'Open Files', 'Open Files…', 40, 370, 150, true);
+  openFiles.fills = [fill(COLORS.accent)];
+  openFiles.findOne(node => node.type === 'TEXT').fills = [fill('#21130D')];
+  button(open, 'Open Folder', 'Open Folder…', 202, 370, 150);
+
+  text('Folder Path', open, 'FOLDER  ·  ~/Pictures/Iceland', 40, 436, 11, COLORS.muted, 'semibold', 440);
+  text('Folder Count', open, '12 images found', 500, 436, 11, COLORS.secondary, 'regular', 160, 'RIGHT');
+  const strip = panel(open, 'Folder Thumbnails / Clipped', 40, 462, 620, 108, COLORS.surface, 12);
+  strip.clipsContent = true;
+  const palettes = [
+    ['#24313B', '#8A5F4E', '#26352D'], ['#2E323D', '#A77B72', '#1A2633'],
+    ['#24312D', '#7DA67D', '#26352D'], ['#363539', '#926A58', '#26332A'],
+    ['#273032', '#B08565', '#36463C'], ['#323644', '#95718A', '#282A34'],
+    ['#1B1D24', '#5B7C93', '#181A20']
+  ];
+  palettes.forEach((palette, index) => {
+    const thumbnail = frame('Image ' + (index + 1), 12 + index * 96, 12, 84, 84, COLORS.raised, 6);
+    thumbnail.strokes = [fill(COLORS.line)];
+    thumbnail.strokeWeight = 1;
+    strip.appendChild(thumbnail);
+    artworkFill(rect('Preview', thumbnail, 3, 3, 78, 78, null, 4), palette);
+  });
+  // A slim in-panel track indicates the remaining images without adding
+  // AppKit's full-height native scrollbar chrome to the thumbnail row.
+  rect('Scroll Track', strip, 12, 102, 596, 3, '#34353A', 2).opacity = .8;
+  rect('Draggable Thumb / 6 of 12 visible', strip, 12, 102, 286, 3, COLORS.accent, 2).opacity = .86;
+  const next = frame('Next Images', 570, 39, 32, 32, COLORS.chrome, 16);
+  next.strokes = [fill(COLORS.line)];
+  next.strokeWeight = 1;
+  strip.appendChild(next);
+  const chevron = figma.createNodeFromSvg(ICONS.chevron.replaceAll('CURRENT', COLORS.text));
+  chevron.name = 'Right Chevron';
+  chevron.resize(18, 18);
+  chevron.x = 7;
+  chevron.y = 7;
+  next.appendChild(chevron);
+  const inspect = button(open, 'Inspect All', 'Inspect all 12 images', 40, 586, 220, true);
+  inspect.fills = [fill(COLORS.accent)];
+  inspect.findOne(node => node.type === 'TEXT').fills = [fill('#21130D')];
+
+  const recent = frame('Recent Column', 700, 52, 380, 638, COLORS.surface);
+  recent.strokes = [fill(COLORS.line)];
+  recent.strokeWeight = 1;
+  board.appendChild(recent);
+  text('Recent Heading', recent, 'Recent', 40, 40, 19, COLORS.text, 'semibold');
+  text('Recent Sub', recent, 'Reopen what you inspected before.', 40, 72, 11, COLORS.muted);
+  const names = ['input.png', 'portrait.jpg', 'result.png', 'capture.heic'];
+  names.forEach((name, index) => {
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+    const card = frame('Recent / ' + name, 20 + col * 176, 116 + row * 164, 164, 148, COLORS.raised, 9);
+    recent.appendChild(card);
+    artworkFill(rect('Preview', card, 5, 5, 154, 106, null, 6), palettes[index]);
+    text('Filename', card, name, 10, 120, 11, COLORS.text, 'medium', 144);
+  });
+  const status = frame('Statusbar', 0, 690, 1080, 30, COLORS.chrome);
+  status.strokes = [fill(COLORS.line)];
+  status.strokeWeight = 1;
+  board.appendChild(status);
+  text('Status', status, '12 images ready', 20, 8, 12, COLORS.secondary);
+  return board;
+}
+
 async function redesignWidgetMarket() {
   await loadFonts();
   await createStyles();
   const name = 'Widget Market / Install / Clean Editable';
   const old = figma.currentPage.children.find(child => child.name === name);
-  if (old && old.findOne(node => node.name === '01 / Attached Market Catalog')) {
+  if (old && old.findOne(node => node.name === '04 / Scroll Content / 50 Widgets')) {
     figma.currentPage.selection = [old];
     figma.viewport.scrollAndZoomIntoView([old]);
-    figma.ui.postMessage({ message: 'Widget Market already uses the compact catalog layout.' });
+    figma.ui.postMessage({ message: 'Widget Market already contains the 50-widget scalable catalog.' });
     return;
   }
   let maxX = 0;
@@ -545,8 +825,8 @@ async function redesignWidgetMarket() {
   }
   figma.currentPage.selection = [updated];
   figma.viewport.scrollAndZoomIntoView([updated]);
-  figma.ui.postMessage({ message: 'Redesigned Widget Market. Previous frame kept to the right.' });
-  figma.notify('Widget Market catalog redesigned');
+  figma.ui.postMessage({ message: 'Updated Widget Market for 50 Widgets. Previous frame kept to the right.' });
+  figma.notify('50-widget Market design created');
 }
 
 function createCompactShell(name, x, title, windowWidth, windowHeight) {
@@ -3055,6 +3335,308 @@ async function exportSelection() {
   figma.notify('Selected frame exported');
 }
 
+async function generateResultBadgeStudy() {
+  await loadFonts();
+  const studyName = 'Widget Result Badge Study';
+  const existing = figma.currentPage.children.find(child => child.name === studyName);
+  if (existing) existing.remove();
+
+  const board = frame(studyName, 0, 0, 760, 440, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+
+  text('Title', board, 'Widget Result Badge Study', 40, 32, 24, COLORS.text, 'semibold');
+  text('Subtitle', board, 'Mint result marker at actual filmstrip size',
+       40, 68, 13, COLORS.secondary, 'regular');
+
+  const panel = frame('Image Inspect / Filmstrip Context', 40, 112, 680, 278,
+                      COLORS.chrome, 12);
+  panel.strokes = [fill(COLORS.line)];
+  panel.strokeWeight = 1;
+  board.appendChild(panel);
+  text('Context Title', panel, 'WIDGET OUTPUT', 24, 22, 11,
+       COLORS.secondary, 'semibold');
+  text('Size Note', panel, '96 × 96 filmstrip thumbnails', 24, 45, 11,
+       COLORS.muted, 'regular');
+
+  function addThumbnail(name, x, y, size, isResult) {
+    const scale = size / 96;
+    const thumb = frame(name, x, y, size, size, COLORS.surface, 9 * scale);
+    thumb.strokes = [fill(COLORS.line)];
+    thumb.strokeWeight = scale;
+    panel.appendChild(thumb);
+
+    const image = rect('Image / no baked-in label', thumb,
+                       3 * scale, 3 * scale, 90 * scale, 90 * scale,
+                       null, 6 * scale);
+    artworkFill(image, ['#2C3440', '#B27D61', '#2C4136']);
+
+    if (isResult) {
+      const badge = frame('NEW Corner Badge / separate layer',
+                          48 * scale, 0, 48 * scale, 22 * scale,
+                          COLORS.success, 4 * scale);
+      thumb.appendChild(badge);
+      text('NEW Label', badge, 'NEW', 0, 5 * scale, 10 * scale,
+           '#21130D', 'semibold', 48 * scale, 'CENTER');
+    }
+    return thumb;
+  }
+
+  addThumbnail('Original Thumbnail / 96', 24, 88, 96, false);
+  addThumbnail('Widget Result Thumbnail / 96', 166, 88, 96, true);
+  addThumbnail('Widget Result Thumbnail / 2x detail', 404, 55, 192, true);
+  text('Original Caption', panel, 'ORIGINAL', 24, 196, 10,
+       COLORS.muted, 'semibold', 96, 'CENTER');
+  text('Result Caption', panel, 'WIDGET RESULT', 166, 196, 10,
+       COLORS.success, 'semibold', 96, 'CENTER');
+  rect('Detail Divider', panel, 338, 69, 1, 170, COLORS.line);
+  text('Detail Caption', panel, '2× DETAIL', 404, 254, 10,
+       COLORS.muted, 'semibold', 192, 'CENTER');
+
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created Widget Result Badge Study' });
+  figma.notify('Widget Result Badge Study created');
+}
+
+const WIDGET_TASK_RUNNING_FOCUSED = 'Image Inspect / Widget Task Running / Focused Source';
+const WIDGET_TASK_RUNNING_BROWSING = 'Image Inspect / Widget Task Running / Browsing Another Image';
+const WIDGET_TEXT_RESULT_MAIN = 'Image Inspect / Widget Text Result / Main Image';
+const WIDGET_TEXT_RESULT_WINDOW = 'Widget Output / Text / Side Window';
+
+function widgetTaskRunningThumbnail(strip, name, x, imageHash, active, selected, colors) {
+  const size = 96 * .8 * .8; // ImageInspectWindow.layoutContent's shared tile size.
+  const tile = frame(name, x, 0, size, size, COLORS.raised, 9 * size / 96);
+  tile.strokes = [fill(COLORS.accent, active ? .85 : selected ? 1 : .24)];
+  tile.strokeWeight = active || selected ? 2 : 1;
+  if (active) {
+    tile.effects = [{
+      type: 'DROP_SHADOW', color: { ...rgb(COLORS.accent), a: .32 },
+      offset: { x: 0, y: 0 }, radius: 10, spread: 0,
+      visible: true, blendMode: 'NORMAL'
+    }];
+  }
+  strip.appendChild(tile);
+  const preview = rect('Image / no status text', tile, 3, 3, size - 6, size - 6, null, 5);
+  if (imageHash) preview.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  else artworkFill(preview, colors);
+  return tile;
+}
+
+function addWidgetTaskRunningFilmstrip(board, imageHash) {
+  const barHeight = 117 * .8;
+  const bar = frame('Filmstrip Scrim / existing geometry', 8,
+                    board.height - 12 - barHeight, board.width - 16, barHeight, null);
+  bar.fills = [fill('#07080A', .34)];
+  board.appendChild(bar);
+  const tile = 96 * .8 * .8;
+  const gap = 8;
+  const stripWidth = 3 * tile + 2 * gap;
+  const strip = frame('Filmstrip / existing 61.44px thumbnails',
+                      (board.width - stripWidth) / 2,
+                      bar.y + (barHeight - tile) / 2,
+                      stripWidth, tile, null);
+  strip.fills = [];
+  board.appendChild(strip);
+  widgetTaskRunningThumbnail(strip, 'Source / task breathing', 0,
+                             imageHash, true, false,
+                             ['#24313B', '#A77B72', '#26352D']);
+  widgetTaskRunningThumbnail(strip, 'Other image / selected', tile + gap,
+                             null, false, true,
+                             ['#2F3747', '#9F8C78', '#35444B']);
+  widgetTaskRunningThumbnail(strip, 'Other image / idle', 2 * (tile + gap),
+                             null, false, false,
+                             ['#33372C', '#918167', '#273D36']);
+}
+
+function createWidgetTaskRunningScreen(x, name, imageHash, isFocusedSource) {
+  const board = createViewerChromeStudyScreen(x,
+    isFocusedSource ? imageHash : null, { width: 1554, height: 1012 });
+  board.name = name;
+  if (!isFocusedSource) {
+    artworkFill(board, ['#2F3747', '#9F8C78', '#35444B']);
+  } else {
+    // The artwork stays fully visible. These two independent layers preview
+    // the bright phase of a border that animates between .35 and .80 opacity.
+    const ring = rect('Main Image / breathing border / pulse peak', board,
+                      8, 12, board.width - 16, board.height - 24, null, 12);
+    ring.strokes = [fill(COLORS.accent, .80)];
+    ring.strokeWeight = 2;
+    ring.effects = [{
+      type: 'DROP_SHADOW', color: { ...rgb(COLORS.accent), a: .28 },
+      offset: { x: 0, y: 0 }, radius: 16, spread: 0,
+      visible: true, blendMode: 'NORMAL'
+    }];
+    const label = frame('Task running / persistent image label',
+                        board.width - 24 - 160, 67, 160, 34, COLORS.raised, 8);
+    label.strokes = [fill(COLORS.accent, .72)];
+    label.strokeWeight = 1;
+    board.appendChild(label);
+    ellipse('Running Dot / warm apricot', label, 14, 13, 8, COLORS.accent);
+    text('Task running text', label, 'Task running', 30, 9, 12,
+         COLORS.accent, 'semibold', 118, 'CENTER');
+  }
+  if (!isFocusedSource) addWidgetTaskRunningFilmstrip(board, imageHash);
+  return board;
+}
+
+async function generateWidgetTaskRunningStudy(bytes) {
+  await loadFonts();
+  await createStyles();
+  const names = [WIDGET_TASK_RUNNING_FOCUSED, WIDGET_TASK_RUNNING_BROWSING];
+  const existing = names.map(name => figma.currentPage.children.find(child => child.name === name));
+  if (existing.every(Boolean)) {
+    figma.currentPage.selection = existing;
+    figma.viewport.scrollAndZoomIntoView(existing);
+    figma.ui.postMessage({ message: 'Widget Task Running study already exists. Showing both frames without changing your edits.' });
+    return;
+  }
+  const { imageHash } = await resolveStudyImage(bytes, [...FOCUS_FRAME_NAMES, 'Image Viewer / Simple Operation']);
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const boards = [];
+  for (let index = 0; index < names.length; index++) {
+    if (existing[index]) { boards.push(existing[index]); continue; }
+    const board = createWidgetTaskRunningScreen(maxX + 196, names[index], imageHash, index === 0);
+    boards.push(board);
+    maxX = board.x + board.width;
+  }
+  figma.currentPage.selection = boards;
+  figma.viewport.scrollAndZoomIntoView(boards);
+  figma.ui.postMessage({ message: 'Created Widget Task Running study: focused source with persistent main-image cue, and another image with the source thumbnail breathing.' });
+  figma.notify('Widget Task Running study created');
+}
+
+function ensureWidgetTextResultInputPreview(result, imageHash) {
+  let preview = result.findOne(node => node.name === 'Input Image Preview');
+  const added = !preview;
+  if (!preview) {
+    preview = rect('Input Image Preview', result, 28, 126, 128, 96, null, 9, COLORS.line);
+    if (imageHash) preview.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+    else artworkFill(preview, ['#25323A', '#A47761', '#293B33']);
+  } else if (imageHash) {
+    preview.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  }
+
+  if (!result.findOne(node => node.name === 'Input Image Label')) {
+    text('Input Image Label', result, 'INPUT IMAGE', 176, 132, 10,
+         COLORS.muted, 'semibold');
+  }
+  let filename = result.findOne(node =>
+    node.name === 'Input Filename' || node.name === 'Source Context');
+  if (filename) {
+    filename.name = 'Input Filename';
+    filename.characters = 'portrait.jpg';
+    filename.x = 176;
+    filename.y = 157;
+    filename.fontSize = 13;
+    filename.fontName = fontMedium;
+    filename.fills = [fill(COLORS.text)];
+  } else {
+    filename = text('Input Filename', result, 'portrait.jpg', 176, 157, 13,
+                    COLORS.text, 'medium');
+  }
+  if (!result.findOne(node => node.name === 'Input Image Metadata')) {
+    text('Input Image Metadata', result, '2048 × 1365  ·  JPEG',
+         176, 183, 11, COLORS.muted);
+  }
+
+  const divider = result.findOne(node => node.name === 'Content Divider');
+  if (divider) divider.y = 250;
+  const body = result.findOne(node => node.name === 'Result Text / direct content');
+  if (body) body.y = 280;
+  return added;
+}
+
+function createWidgetTextResultWindow(x, y, imageHash) {
+  const width = 456;
+  const height = 720;
+  const result = frame(WIDGET_TEXT_RESULT_WINDOW, x, y, width, height, COLORS.surface, 16);
+  result.strokes = [fill('#FFFFFF', .14)];
+  result.strokeWeight = 1;
+  result.effects = [{
+    type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .42 },
+    offset: { x: 0, y: 18 }, radius: 42, spread: 0,
+    visible: true, blendMode: 'NORMAL'
+  }];
+  figma.currentPage.appendChild(result);
+
+  const titlebar = frame('01 / Result Window Titlebar', 0, 0, width, 58, COLORS.chrome, 0);
+  result.appendChild(titlebar);
+  ellipse('Close', titlebar, 18, 23, 12, '#ED6A5E');
+  ellipse('Minimize', titlebar, 38, 23, 12, '#F4BF4F');
+  ellipse('Zoom', titlebar, 58, 23, 12, '#61C554');
+  text('Window Title', titlebar, 'Widget Result', 0, 20, 13,
+       COLORS.text, 'semibold', width, 'CENTER');
+  const copy = frame('Copy Text', 354, 13, 82, 32, COLORS.raised, 8);
+  copy.strokes = [fill(COLORS.line)];
+  copy.strokeWeight = 1;
+  titlebar.appendChild(copy);
+  const copyIcon = figma.createNodeFromSvg(ICONS.copy.replaceAll('CURRENT', COLORS.accent));
+  copyIcon.name = 'Icon / copy';
+  copyIcon.resize(15, 15);
+  copyIcon.x = 11;
+  copyIcon.y = 8.5;
+  copy.appendChild(copyIcon);
+  text('Copy Label', copy, 'Copy', 28, 9, 11, COLORS.accent, 'semibold');
+  rect('Titlebar Divider', titlebar, 0, 57, width, 1, '#000000').opacity = .5;
+
+  text('Widget Name', result, '图片反推文字', 28, 82, 17, COLORS.text, 'semibold');
+  text('Source Context', result, 'portrait.jpg', 28, 111, 11, COLORS.muted);
+  ellipse('Text Result Status', result, 351, 88, 8, COLORS.success);
+  text('Result Type', result, 'TEXT RESULT', 367, 84, 10,
+       COLORS.success, 'semibold', 61, 'RIGHT');
+  rect('Content Divider', result, 28, 143, width - 56, 1, COLORS.line);
+
+  const body = paragraph('Result Text / direct content', result,
+    'A cinematic portrait in warm afternoon light. Natural skin tones, soft depth of field, and a muted green background create a calm, intimate mood. The subject is photographed at eye level with gentle contrast, clean facial detail, and subtle film grain. The composition feels editorial while remaining natural and understated.',
+    28, 174, width - 56, 15, COLORS.text, 'regular');
+  body.lineHeight = { unit: 'PIXELS', value: 24 };
+
+  rect('Footer Divider', result, 28, height - 67, width - 56, 1, COLORS.line);
+  text('Output Format', result, 'Plain text', 28, height - 43, 11, COLORS.muted);
+  text('Character Count', result, '326 characters', 286, height - 43, 11,
+       COLORS.muted, 'regular', 142, 'RIGHT');
+  ensureWidgetTextResultInputPreview(result, imageHash);
+  return result;
+}
+
+async function generateWidgetTextResultWindow(bytes) {
+  await loadFonts();
+  await createStyles();
+  const page = figma.currentPage;
+  const existingMain = page.children.find(child => child.name === WIDGET_TEXT_RESULT_MAIN);
+  const existingResult = page.children.find(child => child.name === WIDGET_TEXT_RESULT_WINDOW);
+  const { imageHash } = await resolveStudyImage(bytes,
+    [WIDGET_TEXT_RESULT_MAIN, ...FOCUS_FRAME_NAMES,
+     WIDGET_TASK_RUNNING_FOCUSED, 'Image Viewer / Simple Operation']);
+  if (existingMain && existingResult) {
+    const addedInputPreview = ensureWidgetTextResultInputPreview(existingResult, imageHash);
+    page.selection = [existingMain, existingResult];
+    figma.viewport.scrollAndZoomIntoView([existingMain, existingResult]);
+    figma.ui.postMessage({ message: addedInputPreview
+      ? 'Updated the existing text result window with its input image preview.'
+      : 'Widget text result side-window study already includes the input image. Showing both windows.' });
+    return;
+  }
+
+  let maxX = 0;
+  for (const child of page.children) maxX = Math.max(maxX, child.x + child.width);
+  const startX = existingMain ? existingMain.x : existingResult
+    ? existingResult.x - 1554 - 16 : maxX + 196;
+  const main = existingMain || createViewerChromeStudyScreen(
+    startX, imageHash, { width: 1554, height: 1012 });
+  main.name = WIDGET_TEXT_RESULT_MAIN;
+  const result = existingResult || createWidgetTextResultWindow(
+    main.x + main.width + 16, main.y + 84, imageHash);
+  if (existingResult) ensureWidgetTextResultInputPreview(existingResult, imageHash);
+
+  page.selection = [main, result];
+  figma.viewport.scrollAndZoomIntoView([main, result]);
+  figma.ui.postMessage({ message: 'Created Widget text result study: the source image keeps its full window, and the right window shows both the input image and direct plain-text output.' });
+  figma.notify('Widget text result side window created');
+}
+
 figma.ui.onmessage = async message => {
   if (message.type === 'close') {
     figma.closePlugin();
@@ -3184,6 +3766,15 @@ figma.ui.onmessage = async message => {
       figma.notify('Home generation failed', { error: true });
     }
   }
+  if (message.type === 'generate-home-folder-scroll-study') {
+    try {
+      await generateHomeFolderScrollStudy();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Home folder scroll study failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Home folder scroll study failed', { error: true });
+    }
+  }
   if (message.type === 'generate-tray') {
     try {
       await generateTrayPopover();
@@ -3228,6 +3819,36 @@ figma.ui.onmessage = async message => {
       figma.ui.postMessage({ message: 'Widget OSS result generation failed: ' +
         (error && error.message ? error.message : String(error)) });
       figma.notify('Widget OSS result generation failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-result-badge-study') {
+    try {
+      await generateResultBadgeStudy();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Result badge study failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Result badge study failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-widget-task-running-study') {
+    try {
+      await generateWidgetTaskRunningStudy(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Widget Task Running study failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Widget Task Running study failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-widget-text-result-window') {
+    try {
+      await generateWidgetTextResultWindow(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Widget text result side window failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Widget text result side window failed', { error: true });
     }
   }
   if (message.type === 'export-selection') {

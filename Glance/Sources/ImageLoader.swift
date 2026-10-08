@@ -197,6 +197,7 @@ enum LoadedMedia {
 
 class ImageLoader {
     private let imageCache = NSCache<NSString, NSImage>()
+    private let videoThumbnailCache = NSCache<NSString, NSImage>()
     private let originalImageCache = NSCache<NSString, NSImage>()
     private let maxCacheSize: Int = 50 * 1024 * 1024
     private let maxOriginalCacheSize: Int = 300 * 1024 * 1024
@@ -215,6 +216,7 @@ class ImageLoader {
     init() {
         imageCache.totalCostLimit = maxCacheSize
         originalImageCache.totalCostLimit = maxOriginalCacheSize
+        videoThumbnailCache.totalCostLimit = 24 * 1024 * 1024
     }
 
     /// Streams results back as each item finishes. `onProgress(i, nil)` means
@@ -334,6 +336,65 @@ class ImageLoader {
         } else {
             loadRemoteCachedImage(from: url, cacheKey: cacheKey, fullResolution: false,
                                   completion: completion)
+        }
+    }
+
+    /// Produce a small poster for Recent and Preview History without decoding
+    /// video on the main thread. WebM needs the same ffmpeg path as Video Inspect.
+    func loadVideoThumbnail(from url: URL, completion: @escaping (NSImage?) -> Void) {
+        let key = url.absoluteString as NSString
+        if let cached = videoThumbnailCache.object(forKey: key) {
+            DispatchQueue.main.async { completion(cached) }
+            return
+        }
+
+        func finish(_ image: NSImage?) {
+            if let image {
+                videoThumbnailCache.setObject(image, forKey: key, cost: 320 * 240 * 4)
+            }
+            DispatchQueue.main.async { completion(image) }
+        }
+
+        func generateNative(from source: URL, fallback: @escaping () -> Void) {
+            let generator = AVAssetImageGenerator(asset: AVURLAsset(url: source))
+            generator.appliesPreferredTrackTransform = true
+            generator.maximumSize = CGSize(width: 320, height: 240)
+            let time = CMTime(seconds: 0.5, preferredTimescale: 600)
+            generator.generateCGImagesAsynchronously(forTimes: [NSValue(time: time)]) { [generator] _, cgImage, _, _, _ in
+                _ = generator // Keep the image generator alive until its callback.
+                guard let cgImage else { fallback(); return }
+                finish(NSImage(cgImage: cgImage,
+                               size: NSSize(width: cgImage.width, height: cgImage.height)))
+            }
+        }
+
+        func generateWithFFmpeg(from source: URL, fallback: @escaping () -> Void) {
+            WebMVideoView.generateThumbnail(from: source) { image in
+                if let image { finish(image) } else { fallback() }
+            }
+        }
+
+        if url.isFileURL {
+            if ["webm", "mkv", "avi"].contains(url.pathExtension.lowercased()) {
+                generateWithFFmpeg(from: url) {
+                    generateNative(from: url) { finish(nil) }
+                }
+            } else {
+                generateNative(from: url) {
+                    generateWithFFmpeg(from: url) { finish(nil) }
+                }
+            }
+        } else {
+            // Remote MP4/MOV assets can provide a frame through range requests.
+            // If that fails, use a copy that Video Inspect already cached.
+            generateNative(from: url) {
+                RemoteMediaDiskCache.shared.cachedURL(for: url) { cached in
+                    guard let cached else { finish(nil); return }
+                    generateWithFFmpeg(from: cached) {
+                        generateNative(from: cached) { finish(nil) }
+                    }
+                }
+            }
         }
     }
 
@@ -592,6 +653,7 @@ class ImageLoader {
 
     func clearCache() {
         imageCache.removeAllObjects()
+        videoThumbnailCache.removeAllObjects()
         originalImageCache.removeAllObjects()
         URLCache.shared.removeAllCachedResponses()
         RemoteMediaDiskCache.shared.clear()

@@ -78,6 +78,9 @@ keyboard input. Rules:
     requests UI testing. This includes AppleScript, screen capture, simulated
     mouse or keyboard input, and computer-use tools. Non-UI code checks remain
     available when appropriate.
+16. Image Inspect filmstrip thumbnails keep their existing shared size and
+    spacing in every state, including Widget results. Result indicators are
+    overlays; do not add a result-specific thumbnail geometry branch.
 
 ## Figma plugin (layout/GlanceFigmaPlugin)
 

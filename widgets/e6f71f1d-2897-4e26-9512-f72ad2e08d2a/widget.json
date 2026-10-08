@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
+  "version": "0.1.0",
+  "name": "图片反推文字",
+  "summary": "使用 RunningHub 从图片生成文字描述。",
+  "author": "Your name",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "图片反推文字",
+      "description": "分析所选图片并返回文字描述。",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg"
+      ],
+      "outputs": [
+        "text"
+      ],
+      "taskType": "widget.e6f71f1d-2897-4e26-9512-f72ad2e08d2a.run",
+      "requiresUpload": true,
+      "parameterSchema": {}
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "所选图片将上传到 Glance 和 RunningHub 进行分析。"
+  },
+  "minimumGlanceVersion": "2.0.0"
+}

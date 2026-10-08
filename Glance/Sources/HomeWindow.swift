@@ -35,6 +35,17 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     }
 
     private static let contentSize = NSSize(width: 1080, height: 720)
+    private static let savedSizeKey = "HomeWindowUserSize"
+
+    private static var openingSize: NSSize {
+        guard let saved = UserDefaults.standard.dictionary(forKey: savedSizeKey),
+              let width = saved["width"] as? Double,
+              let height = saved["height"] as? Double,
+              width.isFinite, height.isFinite, width >= 900, height >= 580 else {
+            return contentSize
+        }
+        return NSSize(width: width, height: height)
+    }
 
     private let imageLoader: ImageLoader
     private let pathDetector = PathDetector()
@@ -62,7 +73,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         target: self, action: #selector(zoomTapped))
 
     // Open surface
-    private let welcomeLabel = NSTextField(labelWithString: "")
+    private let welcomeLabel = PanelCenteredTextView()
     private let welcomeSubLabel = NSTextField(wrappingLabelWithString: "")
     private let dropZone = DropZoneView()
     private let dropIconView = NSImageView()
@@ -77,12 +88,21 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     private let folderGroupLabel = NSTextField(labelWithString: "")
     private let folderCountLabel = NSTextField(labelWithString: "")
     private let folderStrip = NSView()
+    private let folderScroll = HomeFolderScrollView()
+    private let folderDocView = NSView()
+    private let folderIndicator = HomeFolderScrollIndicator()
+    private lazy var folderPreviousButton = makeFolderArrow(
+        symbol: "chevron.left", tooltip: "Previous images".localized,
+        action: #selector(previousFolderImagesTapped))
+    private lazy var folderNextButton = makeFolderArrow(
+        symbol: "chevron.right", tooltip: "Next images".localized,
+        action: #selector(nextFolderImagesTapped))
     private let inspectAllButton: PanelButton
     private var folderImageURLs: [URL] = []
     private var folderThumbViews: [NSView] = []
 
     // Recent
-    private let recentHeadingLabel = NSTextField(labelWithString: "")
+    private let recentHeadingLabel = PanelCenteredTextView()
     private let recentSubLabel = NSTextField(labelWithString: "")
     private let recentEmptyLabel = NSTextField(labelWithString: "")
     private let recentScroll = NSScrollView()
@@ -106,7 +126,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         appearance = NSAppearance(named: .darkAqua)
         backgroundColor = PanelStyle.inspectBackground
         isMovableByWindowBackground = false
-        minSize = NSSize(width: 900, height: 560)
+        minSize = NSSize(width: 900, height: 580)
         standardWindowButton(.closeButton)?.isHidden = true
         standardWindowButton(.miniaturizeButton)?.isHidden = true
         standardWindowButton(.zoomButton)?.isHidden = true
@@ -122,7 +142,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
             self, selector: #selector(historyChanged),
             name: HistoryManager.didChange, object: nil)
 
-        setFrame(ScreenManager.shared.contentFrame(for: Self.contentSize), display: false)
+        setFrame(ScreenManager.shared.contentFrame(for: Self.openingSize), display: false)
         layoutContent()
         // The content view's bounds settle after the frame is applied; lay out
         // once more on the next turn so the recent grid builds at its real size.
@@ -205,8 +225,10 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     }
 
     private func buildOpenSurface() {
-        configureLabel(welcomeLabel, size: 22, weight: .semibold, color: PanelStyle.textPrimary)
-        welcomeLabel.stringValue = "Open something to inspect".localized
+        welcomeLabel.font = PanelStyle.inspectFont(ofSize: 22, weight: .semibold)
+        welcomeLabel.textColor = PanelStyle.textPrimary
+        welcomeLabel.alignment = .left
+        welcomeLabel.string = "Open something to inspect".localized
         openSurface.addSubview(welcomeLabel)
 
         welcomeSubLabel.font = PanelStyle.inspectFont(ofSize: 13)
@@ -245,7 +267,24 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         folderStrip.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
         folderStrip.layer?.borderWidth = 1
         folderStrip.layer?.cornerRadius = 12
+        folderStrip.layer?.masksToBounds = true
         openSurface.addSubview(folderStrip)
+        folderScroll.drawsBackground = false
+        folderScroll.borderType = .noBorder
+        folderScroll.hasVerticalScroller = false
+        folderScroll.hasHorizontalScroller = false
+        folderScroll.verticalScrollElasticity = .none
+        folderScroll.horizontalScrollElasticity = .none
+        folderScroll.documentView = folderDocView
+        folderScroll.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(self, selector: #selector(folderClipBoundsChanged),
+                                               name: NSView.boundsDidChangeNotification,
+                                               object: folderScroll.contentView)
+        folderStrip.addSubview(folderScroll)
+        folderIndicator.onSeek = { [weak self] fraction in self?.seekFolder(to: fraction) }
+        folderStrip.addSubview(folderIndicator)
+        folderStrip.addSubview(folderPreviousButton)
+        folderStrip.addSubview(folderNextButton)
 
         inspectAllButton.target = self
         inspectAllButton.action = #selector(inspectAllTapped)
@@ -255,8 +294,10 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     }
 
     private func buildRecentColumn() {
-        configureLabel(recentHeadingLabel, size: 19, weight: .semibold, color: PanelStyle.textPrimary)
-        recentHeadingLabel.stringValue = "Recent".localized
+        recentHeadingLabel.font = PanelStyle.inspectFont(ofSize: 19, weight: .semibold)
+        recentHeadingLabel.textColor = PanelStyle.textPrimary
+        recentHeadingLabel.alignment = .left
+        recentHeadingLabel.string = "Recent".localized
         recentColumn.addSubview(recentHeadingLabel)
 
         configureLabel(recentSubLabel, size: 11, color: PanelStyle.textTertiary)
@@ -323,11 +364,22 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         welcomeSubLabel.frame = NSRect(x: p, y: 82, width: min(contentW, 620), height: 40)
 
         let dropW = contentW
-        let dropH: CGFloat = 260
+        // Keep the folder action visible at the current window height.
+        let dropH: CGFloat = folderImageURLs.isEmpty ? 260
+            : min(260, max(80, openSurface.bounds.height - 416))
         dropZone.frame = NSRect(x: p, y: 128, width: dropW, height: dropH)
-        dropIconView.frame = NSRect(x: (dropW - 40) / 2, y: 62, width: 40, height: 40)
-        dropTitleLabel.frame = NSRect(x: 0, y: 140, width: dropW, height: 22)
-        dropHintLabel.frame = NSRect(x: 0, y: 170, width: dropW, height: 15)
+        if dropH >= 210 {
+            dropIconView.frame = NSRect(x: (dropW - 40) / 2, y: 62, width: 40, height: 40)
+            dropTitleLabel.frame = NSRect(x: 0, y: 140, width: dropW, height: 22)
+            dropHintLabel.frame = NSRect(x: 0, y: 170, width: dropW, height: 15)
+        } else {
+            let iconSize = min(40, max(24, dropH * 0.22))
+            let iconY = max(8, (dropH - iconSize - 50) / 2)
+            dropIconView.frame = NSRect(x: (dropW - iconSize) / 2, y: iconY,
+                                        width: iconSize, height: iconSize)
+            dropTitleLabel.frame = NSRect(x: 0, y: iconY + iconSize + 6, width: dropW, height: 22)
+            dropHintLabel.frame = NSRect(x: 0, y: iconY + iconSize + 30, width: dropW, height: 15)
+        }
 
         let btnY = 128 + dropH + 20
         openFilesButton.frame = NSRect(x: p, y: btnY, width: 150, height: 36)
@@ -340,12 +392,6 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         folderStrip.frame = NSRect(x: p, y: stripY, width: contentW, height: 108)
         inspectAllButton.frame = NSRect(x: p, y: stripY + 108 + 16, width: 220, height: 36)
         layoutFolderStrip()
-
-        // Grow the flipped content view so scrolling isn't needed here.
-        let neededH = inspectAllButton.frame.maxY + 24
-        if openSurface.frame.height < neededH {
-            // Only used if window is very short; keep simple, no scroll.
-        }
     }
 
     private func layoutRecentColumn() {
@@ -424,6 +470,11 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
                     if let image = image { card?.setImage(image) } else { card?.setFailed() }
                 }
             }
+        case .video:
+            card.setPlaceholder(for: info)
+            imageLoader.loadVideoThumbnail(from: info.url) { [weak card] image in
+                if let image { card?.setImage(image) }
+            }
         default:
             card.setPlaceholder(for: info)
         }
@@ -454,8 +505,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     private func rebuildFolderStrip() {
         for v in folderThumbViews { v.removeFromSuperview() }
         folderThumbViews.removeAll()
-        let maxThumbs = 8
-        for url in folderImageURLs.prefix(maxThumbs) {
+        for url in folderImageURLs {
             let thumb = NSImageView()
             thumb.wantsLayer = true
             thumb.layer?.cornerRadius = 6
@@ -464,24 +514,11 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
             thumb.layer?.masksToBounds = true
             thumb.imageScaling = .scaleAxesIndependently
             thumb.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surfaceRaised)
-            folderStrip.addSubview(thumb)
+            folderDocView.addSubview(thumb)
             folderThumbViews.append(thumb)
             imageLoader.loadImage(from: url) { [weak thumb] image in
                 DispatchQueue.main.async { if let image = image { thumb?.image = image } }
             }
-        }
-        if folderImageURLs.count > maxThumbs {
-            let more = NSTextField(labelWithString: "+\(folderImageURLs.count - maxThumbs)")
-            more.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
-            more.textColor = PanelStyle.textSecondary
-            more.alignment = .center
-            more.wantsLayer = true
-            more.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surfaceRaised)
-            more.layer?.cornerRadius = 6
-            more.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-            more.layer?.borderWidth = 1
-            folderStrip.addSubview(more)
-            folderThumbViews.append(more)
         }
         layoutFolderStrip()
     }
@@ -489,15 +526,72 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     private func layoutFolderStrip() {
         let thumb: CGFloat = 84
         let pitch: CGFloat = 96
-        let y = (folderStrip.bounds.height - thumb) / 2
+        folderScroll.frame = NSRect(x: 12, y: 0,
+                                    width: max(0, folderStrip.bounds.width - 24),
+                                    height: folderStrip.bounds.height)
+        let viewportWidth = folderScroll.contentSize.width
+        let thumbnailsWidth = folderThumbViews.isEmpty ? 0
+            : thumb + CGFloat(folderThumbViews.count - 1) * pitch
+        folderDocView.frame = NSRect(x: 0, y: 0, width: max(viewportWidth, thumbnailsWidth),
+                                     height: folderStrip.bounds.height)
+        let maxOffset = max(0, thumbnailsWidth - viewportWidth)
+        folderScroll.contentView.scroll(to: NSPoint(x: min(folderScroll.contentView.bounds.minX, maxOffset), y: 0))
+        folderScroll.reflectScrolledClipView(folderScroll.contentView)
+        folderIndicator.frame = NSRect(x: 12, y: 0, width: viewportWidth, height: 12)
+        folderPreviousButton.frame = NSRect(x: 18, y: (folderStrip.bounds.height - 32) / 2,
+                                            width: 32, height: 32)
+        folderNextButton.frame = NSRect(x: folderStrip.bounds.width - 50,
+                                        y: (folderStrip.bounds.height - 32) / 2,
+                                        width: 32, height: 32)
+        updateFolderNavigation()
+        let y = (folderDocView.bounds.height - thumb) / 2
         for (i, v) in folderThumbViews.enumerated() {
-            let x = 12 + CGFloat(i) * pitch
-            if let field = v as? NSTextField {
-                field.frame = NSRect(x: x, y: y + (thumb - 20) / 2, width: thumb, height: 20)
-            } else {
-                v.frame = NSRect(x: x, y: y, width: thumb, height: thumb)
-            }
+            v.frame = NSRect(x: CGFloat(i) * pitch, y: y, width: thumb, height: thumb)
         }
+    }
+
+    private func makeFolderArrow(symbol: String, tooltip: String, action: Selector) -> NSButton {
+        let button = PanelStyle.makeIconButton(symbol: symbol, tooltip: tooltip,
+                                               target: self, action: action)
+        button.wantsLayer = true
+        button.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        button.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        button.layer?.borderWidth = 1
+        button.layer?.cornerRadius = 16
+        return button
+    }
+
+    @objc private func folderClipBoundsChanged(_ notification: Notification) {
+        updateFolderNavigation()
+    }
+
+    private func updateFolderNavigation() {
+        let overflow = max(0, folderDocView.bounds.width - folderScroll.contentSize.width)
+        let offset = min(max(0, folderScroll.contentView.bounds.minX), overflow)
+        folderIndicator.update(contentWidth: folderDocView.bounds.width,
+                               viewportWidth: folderScroll.contentSize.width, offset: offset)
+        folderPreviousButton.isHidden = overflow < 1 || offset < 1
+        folderNextButton.isHidden = overflow < 1 || offset >= overflow - 1
+    }
+
+    private func seekFolder(to fraction: CGFloat) {
+        let overflow = max(0, folderDocView.bounds.width - folderScroll.contentSize.width)
+        scrollFolder(to: min(max(0, fraction), 1) * overflow)
+    }
+
+    private func scrollFolder(to offset: CGFloat) {
+        let overflow = max(0, folderDocView.bounds.width - folderScroll.contentSize.width)
+        folderScroll.contentView.scroll(to: NSPoint(x: min(max(0, offset), overflow), y: 0))
+        folderScroll.reflectScrolledClipView(folderScroll.contentView)
+        updateFolderNavigation()
+    }
+
+    @objc private func previousFolderImagesTapped() {
+        scrollFolder(to: folderScroll.contentView.bounds.minX - folderScroll.contentSize.width * 0.8)
+    }
+
+    @objc private func nextFolderImagesTapped() {
+        scrollFolder(to: folderScroll.contentView.bounds.minX + folderScroll.contentSize.width * 0.8)
     }
 
     // MARK: Actions
@@ -556,11 +650,11 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     @objc private func languageChanged() {
         windowTitleLabel.stringValue = "Glance".localized
         subtitleLabel.stringValue = "Open media to inspect".localized
-        welcomeLabel.stringValue = "Open something to inspect".localized
+        welcomeLabel.string = "Open something to inspect".localized
         welcomeSubLabel.stringValue = "Drop images or videos here, or choose files and folders.".localized
         dropTitleLabel.stringValue = "Drag images, videos or a folder here".localized
         dropHintLabel.stringValue = "PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM  and more".localized
-        recentHeadingLabel.stringValue = "Recent".localized
+        recentHeadingLabel.string = "Recent".localized
         recentSubLabel.stringValue = "Reopen what you inspected before.".localized
         leftStatusLabel.stringValue = "No file open  •  Open images to begin".localized
         centerHintLabel.stringValue = "Drop files anywhere  •  ⌘O to open  •  ⌘⇧O for a folder".localized
@@ -575,6 +669,9 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
 
     func windowDidResize(_ notification: Notification) {
         layoutContent()
+        let size = frame.size
+        UserDefaults.standard.set(["width": Double(size.width), "height": Double(size.height)],
+                                  forKey: Self.savedSizeKey)
     }
 
     @objc func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -695,6 +792,79 @@ private final class HomeFlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
+private final class HomeFolderScrollView: NSScrollView {
+    override func scrollWheel(with event: NSEvent) {
+        guard let documentView, documentView.frame.width > contentSize.width else { return }
+        let delta = abs(event.scrollingDeltaX) > 0.01
+            ? event.scrollingDeltaX : event.scrollingDeltaY
+        let maxOffset = documentView.frame.width - contentSize.width
+        let x = min(max(0, contentView.bounds.minX - delta), maxOffset)
+        contentView.scroll(to: NSPoint(x: x, y: 0))
+        reflectScrolledClipView(contentView)
+    }
+}
+
+private final class HomeFolderScrollIndicator: NSView {
+    var onSeek: ((CGFloat) -> Void)?
+
+    private let trackLayer = CALayer()
+    private let thumbLayer = CALayer()
+    private var contentWidth: CGFloat = 0
+    private var viewportWidth: CGFloat = 0
+    private var offset: CGFloat = 0
+    private var dragAnchor: CGFloat = 0
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        trackLayer.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine.withAlphaComponent(0.8))
+        trackLayer.cornerRadius = 1.5
+        thumbLayer.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.86))
+        thumbLayer.cornerRadius = 1.5
+        layer?.addSublayer(trackLayer)
+        layer?.addSublayer(thumbLayer)
+        setAccessibilityLabel("Scroll folder images".localized)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func update(contentWidth: CGFloat, viewportWidth: CGFloat, offset: CGFloat) {
+        self.contentWidth = contentWidth
+        self.viewportWidth = viewportWidth
+        self.offset = offset
+        isHidden = contentWidth <= viewportWidth + 1
+        needsLayout = true
+    }
+
+    override func layout() {
+        super.layout()
+        trackLayer.frame = NSRect(x: 0, y: 3, width: bounds.width, height: 3)
+        let thumbWidth = min(bounds.width, max(28, bounds.width * viewportWidth / max(contentWidth, 1)))
+        let overflow = max(0, contentWidth - viewportWidth)
+        let thumbTravel = max(0, bounds.width - thumbWidth)
+        let x = overflow > 0 ? offset / overflow * thumbTravel : 0
+        thumbLayer.frame = NSRect(x: x, y: 3, width: thumbWidth, height: 3)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        layoutSubtreeIfNeeded()
+        let x = convert(event.locationInWindow, from: nil).x
+        dragAnchor = thumbLayer.frame.contains(NSPoint(x: x, y: 4))
+            ? x - thumbLayer.frame.minX : thumbLayer.frame.width / 2
+        seek(at: x)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        seek(at: convert(event.locationInWindow, from: nil).x)
+    }
+
+    private func seek(at x: CGFloat) {
+        let travel = bounds.width - thumbLayer.frame.width
+        guard travel > 0 else { return }
+        onSeek?(min(max(0, (x - dragAnchor) / travel), 1))
+    }
+}
+
 private final class HomeTitlebar: NSView {
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 { window?.zoom(nil) } else { window?.performDrag(with: event) }
@@ -775,6 +945,8 @@ private final class RecentCardView: NSView {
 
     func setImage(_ image: NSImage) {
         imageView.image = image
+        imageView.contentTintColor = nil
+        imageView.imageScaling = .scaleProportionallyUpOrDown
         stateLabel.isHidden = true
     }
 

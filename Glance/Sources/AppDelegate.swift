@@ -117,6 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
     /// Whether any Glance-owned content / tool window is currently on screen.
     private func hasVisibleContentWindow() -> Bool {
+        if statusBarController?.isTrayVisible == true { return true }
         if previewPanel?.isVisible == true { return true }
         if ContentPanel.shared.isVisible { return true }
         if imageInspectWindow?.isVisible == true { return true }
@@ -720,6 +721,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         let window = imageInspectWindow ?? ImageInspectWindow(imageLoader: imageLoader ?? ImageLoader())
         imageInspectWindow = window
         window.onOpenVideo = { [weak self] info in
+            self?.recordMediaInHistory([info])
             self?.openVideoCompare(infos: [info], focusedIndex: 0)
         }
         window.onOpenContent = { [weak self, weak window] info in
@@ -952,7 +954,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private func openImages(_ urls: [URL]) {
         let infos = urls.map { MediaInfo(url: $0, isLocal: $0.isFileURL, kind: .image) }
         guard !infos.isEmpty else { return }
-        recordImagesInHistory(urls)
+        recordMediaInHistory(infos)
         let loaded = [LoadedMedia?](repeating: nil, count: infos.count)
         let mode = Self.preferredInspectMode(for: infos.count)
         openImageInspect(infos: infos, loaded: loaded, focusedIndex: 0, preferredMode: mode)
@@ -967,9 +969,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         if infos.allSatisfy({ $0.kind == .image }) {
             openImages(infos.map(\.url))
         } else if infos.allSatisfy({ $0.kind == .video }) {
+            recordMediaInHistory(infos)
             openVideoCompare(infos: infos)
             closeHomeIfVisible()
         } else {
+            recordMediaInHistory(infos)
             openImageInspect(infos: infos,
                              loaded: Array<LoadedMedia?>(repeating: nil, count: infos.count),
                              focusedIndex: 0, preferredMode: .browse)
@@ -977,12 +981,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
     }
 
-    /// Persist images opened from Home / paste / drop / folder into history so
-    /// they show up in Recent and Preview History (the hotkey preview pipeline
-    /// records itself; these entry points did not).
-    private func recordImagesInHistory(_ urls: [URL]) {
-        let paths: [DetectedPath] = urls.map { url in
-            url.isFileURL ? .localImage(url.standardizedFileURL) : .remoteImage(url)
+    /// Home, paste, and direct inspection entry points bypass the hotkey
+    /// pipeline that normally records history. Persist both images and videos.
+    private func recordMediaInHistory(_ infos: [MediaInfo]) {
+        let paths: [DetectedPath] = infos.compactMap { info in
+            switch info.kind {
+            case .image:
+                return info.isLocal ? .localImage(info.url.standardizedFileURL) : .remoteImage(info.url)
+            case .video:
+                return info.isLocal ? .localVideo(info.url.standardizedFileURL) : .remoteVideo(info.url)
+            default:
+                return nil
+            }
         }
         guard !paths.isEmpty else { return }
         HistoryManager.shared.record(selectedText: "", detectedPaths: paths)
@@ -992,10 +1002,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     private func openRecent(_ info: MediaInfo) {
         switch info.kind {
         case .image:
-            recordImagesInHistory([info.url])
+            recordMediaInHistory([info])
             openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
             closeHomeIfVisible()
         case .video:
+            recordMediaInHistory([info])
             openVideoCompare(infos: [info], focusedIndex: 0)
             closeHomeIfVisible()
         case .markdown, .text, .pdf, .webPage:

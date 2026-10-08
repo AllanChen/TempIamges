@@ -303,6 +303,11 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
                     if let image = image { card?.setImage(image) } else { card?.setFailed() }
                 }
             }
+        case .video:
+            card.setPlaceholder(for: info)
+            imageLoader.loadVideoThumbnail(from: info.url) { [weak card] image in
+                if let image { card?.setImage(image) }
+            }
         default:
             card.setPlaceholder(for: info)
         }
@@ -448,7 +453,12 @@ private final class HistoryCardView: NSView {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func setImage(_ image: NSImage) { imageView.image = image; stateLabel.isHidden = true }
+    func setImage(_ image: NSImage) {
+        imageView.image = image
+        imageView.contentTintColor = nil
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        stateLabel.isHidden = true
+    }
 
     func setFailed() {
         imageView.image = nil

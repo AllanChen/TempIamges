@@ -187,7 +187,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         configurePanel(propertiesPanel, color: NSColor(srgbRed: 20 / 255, green: 21 / 255, blue: 25 / 255, alpha: 1), radius: 10)
         configureLabel(propertiesTitle, size: 13, color: PanelStyle.textPrimary, weight: .semibold)
         propertiesPanel.addSubview(propertiesTitle)
-        for key in ["Widget", "Input", "Worker", "Progress", "Polling"] {
+        for key in ["Widget", "Input", "Worker", "Progress", "Polling", "Failure reason"] {
             let keyLabel = NSTextField(labelWithString: key.localized)
             let valueLabel = NSTextField(labelWithString: "—")
             configureLabel(keyLabel, size: 11, color: PanelStyle.textTertiary, weight: .medium)
@@ -309,7 +309,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         let timelineY: [CGFloat] = [60, 132, 204, 276]
         for (row, y) in zip(timelineRows, timelineY) { row.frame = topRect(timelinePanel, 20, y, 520, 54, designW: 560, designH: 330) }
         propertiesTitle.frame = topRect(propertiesPanel, 24, 20, 300, 16, designW: 494, designH: 330)
-        let propertyY: [CGFloat] = [60, 98, 136, 174, 212]
+        let propertyY: [CGFloat] = [60, 98, 136, 174, 212, 250]
         for index in propertyKeys.indices {
             propertyKeys[index].frame = topRect(propertiesPanel, 24, propertyY[index], 120, 15, designW: 494, designH: 330)
             propertyValues[index].frame = topRect(propertiesPanel, 168, propertyY[index], 290, 15, designW: 494, designH: 330)
@@ -404,12 +404,23 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         selected?.output.map { FileManager.default.fileExists(atPath: $0.path) } == true
     }
 
+    private func returnsText(_ record: WidgetTaskRecord) -> Bool {
+        if record.outputTypes?.contains("text") == true { return true }
+        if let output = record.output,
+           ["txt", "text", "md", "markdown"].contains(output.pathExtension.lowercased()) {
+            return true
+        }
+        guard let widget = WidgetRegistry.shared.installed.first(where: { $0.id == record.widgetID }),
+              let command = widget.commands.first(where: { $0.id == record.commandID }) else { return false }
+        return command.outputs.contains("text")
+    }
+
     private func updateDetail(_ record: WidgetTaskRecord?) {
         guard let record else {
             detailTitle.stringValue = "Select a task".localized
             detailStatus.stringValue = ""
             sourcePreview.configure(url: nil, waiting: false)
-            resultPreview.configure(url: nil, waiting: true)
+            resultPreview.configure(url: nil, waiting: true, displaysText: false)
             timelineRows.enumerated().forEach { $0.element.configure(state: $0.offset == 0 ? .pending : .disabled, time: "") }
             propertyValues.forEach { $0.stringValue = "—" }
             centerStatus.stringValue = "Select a task to inspect details".localized
@@ -423,7 +434,8 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         detailTitle.stringValue = record.commandName
         detailStatus.stringValue = "Task \(record.id.uuidString.prefix(4).uppercased())  •  \(stateText(record))"
         sourcePreview.configure(url: record.source, waiting: false)
-        resultPreview.configure(url: record.output, waiting: record.phase != .completed)
+        resultPreview.configure(url: record.output, waiting: record.phase != .completed,
+                                displaysText: returnsText(record))
         let phaseIndex: Int
         switch record.phase {
         case .uploading, .submitting: phaseIndex = 0
@@ -441,6 +453,14 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         propertyValues[2].stringValue = record.remoteTaskID == nil ? "—" : "Remote"
         propertyValues[3].stringValue = "\(record.progress)%"
         propertyValues[4].stringValue = record.phase.isActive ? "2 seconds".localized : "—"
+        let failed = record.phase == .failed || record.phase == .interrupted
+        let failureReason = record.errorMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
+        propertyValues[5].stringValue = failed
+            ? ((failureReason?.isEmpty == false ? failureReason : nil)
+                ?? "The task stopped without reporting a reason.".localized)
+            : "—"
+        propertyValues[5].textColor = failed ? PanelStyle.failure : PanelStyle.textPrimary
+        propertyValues[5].toolTip = failed ? propertyValues[5].stringValue : nil
         centerStatus.stringValue = record.errorMessage ?? detailText(record)
         inspectButton.isEnabled = selectedOutputExists
         copyURLButton.isHidden = record.outputURLString == nil
@@ -588,8 +608,12 @@ private final class TaskCenterCellView: NSTableCellView {
     func configure(record: WidgetTaskRecord, selected: Bool) {
         layer?.backgroundColor = PanelStyle.resolvedCG(selected ? NSColor(srgbRed: 36 / 255, green: 34 / 255, blue: 41 / 255, alpha: 1) : PanelStyle.inspectChrome)
         layer?.borderColor = PanelStyle.resolvedCG(selected ? PanelStyle.accent.withAlphaComponent(0.42) : PanelStyle.inspectLine)
-        let previewURL = record.output.flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil } ?? record.source
-        preview.image = previewURL.flatMap { $0.isFileURL ? NSImage(contentsOf: $0) : nil } ?? NSImage(systemSymbolName: record.phase.isActive ? "hourglass" : "photo", accessibilityDescription: nil)
+        let candidates = [record.output, record.source].compactMap { $0 }
+        preview.image = candidates.lazy.compactMap { url -> NSImage? in
+            guard url.isFileURL, FileManager.default.fileExists(atPath: url.path) else { return nil }
+            return NSImage(contentsOf: url)
+        }.first ?? NSImage(systemSymbolName: record.phase.isActive ? "hourglass" : "photo",
+                          accessibilityDescription: nil)
         titleLabel.stringValue = record.commandName
         detailLabel.stringValue = "\(relativeDate(record.createdAt))  •  \(record.source?.lastPathComponent ?? "Media")"
         let color: NSColor = record.phase.isActive ? PanelStyle.accent : ((record.phase == .failed || record.phase == .interrupted) ? PanelStyle.failure : PanelStyle.success)
@@ -646,10 +670,115 @@ private final class TaskCenterRowView: NSTableRowView {
 private final class TaskPreviewView: NSView {
     private let imageView = NSImageView()
     private let waitingLabel: NSTextField
-    init(title: String) { waitingLabel = NSTextField(labelWithString: title); super.init(frame: .zero); wantsLayer = true; layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas); layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine); layer?.borderWidth = 1; layer?.cornerRadius = 10; imageView.imageScaling = .scaleProportionallyUpOrDown; addSubview(imageView); waitingLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium); waitingLabel.textColor = PanelStyle.textTertiary; waitingLabel.alignment = .center; addSubview(waitingLabel) }
+    private let textScroll = NSScrollView()
+    private let textView = NSTextView()
+    private var loadGeneration = UUID()
+
+    init(title: String) {
+        waitingLabel = NSTextField(labelWithString: title)
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
+        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        layer?.borderWidth = 1
+        layer?.cornerRadius = 10
+        layer?.masksToBounds = true
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        addSubview(imageView)
+        textScroll.drawsBackground = false
+        textScroll.hasVerticalScroller = true
+        textScroll.autohidesScrollers = true
+        textScroll.scrollerStyle = .overlay
+        textScroll.borderType = .noBorder
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.drawsBackground = false
+        textView.font = PanelStyle.inspectFont(ofSize: 13)
+        textView.textColor = PanelStyle.textPrimary
+        textView.textContainerInset = NSSize(width: 10, height: 10)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        textScroll.documentView = textView
+        textScroll.isHidden = true
+        addSubview(textScroll)
+        waitingLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        waitingLabel.textColor = PanelStyle.textTertiary
+        waitingLabel.alignment = .center
+        addSubview(waitingLabel)
+    }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    func configure(url: URL?, waiting: Bool) { imageView.image = url.flatMap { $0.isFileURL ? NSImage(contentsOf: $0) : nil }; waitingLabel.isHidden = imageView.image != nil; if waiting { waitingLabel.stringValue = "Waiting for result".localized } }
-    override func layout() { super.layout(); imageView.frame = bounds.insetBy(dx: 12, dy: 12); waitingLabel.frame = NSRect(x: 20, y: bounds.midY - 9, width: bounds.width - 40, height: 18) }
+
+    func configure(url: URL?, waiting: Bool, displaysText: Bool = false) {
+        loadGeneration = UUID()
+        let generation = loadGeneration
+        imageView.image = nil
+        textView.string = ""
+        textScroll.isHidden = true
+        waitingLabel.isHidden = false
+        waitingLabel.stringValue = waiting ? "Waiting for result".localized : "Preview unavailable".localized
+        guard let url else { return }
+        if displaysText {
+            waitingLabel.stringValue = "Loading text…".localized
+            DispatchQueue.global(qos: .userInitiated).async {
+                let result = Result { try Self.readTextResult(at: url) }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.loadGeneration == generation else { return }
+                    switch result {
+                    case .success(let text):
+                        self.textView.string = text.isEmpty ? "No text returned".localized : text
+                        self.textScroll.isHidden = false
+                        self.waitingLabel.isHidden = true
+                        self.layoutTextView()
+                        self.textView.scrollToBeginningOfDocument(nil)
+                    case .failure:
+                        self.waitingLabel.stringValue = "Unable to read text result".localized
+                    }
+                }
+            }
+            return
+        }
+        if url.isFileURL, let image = NSImage(contentsOf: url) {
+            imageView.image = image
+            waitingLabel.isHidden = true
+        }
+    }
+
+    private static func readTextResult(at url: URL) throws -> String {
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
+            let files = try FileManager.default.contentsOfDirectory(at: url,
+                includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
+            guard let textURL = files.first(where: {
+                ["txt", "text", "md", "markdown"].contains($0.pathExtension.lowercased())
+            }) else { throw CocoaError(.fileReadUnsupportedScheme) }
+            return try String(contentsOf: textURL, encoding: .utf8)
+        }
+        return try String(contentsOf: url, encoding: .utf8)
+    }
+
+    override func layout() {
+        super.layout()
+        imageView.frame = bounds.insetBy(dx: 12, dy: 12)
+        textScroll.frame = bounds.insetBy(dx: 12, dy: 12)
+        waitingLabel.frame = NSRect(x: 20, y: bounds.midY - 9, width: bounds.width - 40, height: 18)
+        layoutTextView()
+    }
+
+    private func layoutTextView() {
+        let size = textScroll.contentSize
+        guard size.width > 0, let textContainer = textView.textContainer,
+              let layoutManager = textView.layoutManager else { return }
+        textContainer.containerSize = NSSize(width: size.width,
+                                             height: CGFloat.greatestFiniteMagnitude)
+        textView.frame = NSRect(x: 0, y: 0, width: size.width, height: max(1, size.height))
+        layoutManager.ensureLayout(for: textContainer)
+        let usedHeight = ceil(layoutManager.usedRect(for: textContainer).height)
+            + textView.textContainerInset.height * 2
+        textView.frame.size.height = max(size.height, usedHeight)
+    }
 }
 
 private final class TaskTimelineRow: NSView {

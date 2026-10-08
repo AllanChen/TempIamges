@@ -12,7 +12,12 @@ function node(type) {
     height: type === 'TEXT' ? 16 : 0,
     children: [],
     resize(width, height) { this.width = width; this.height = height; },
-    appendChild(child) { this.children.push(child); child.parent = this; },
+    appendChild(child) {
+      assert.ok(['PAGE', 'FRAME', 'GROUP', 'COMPONENT'].includes(this.type),
+        `${this.type} cannot contain child layers`);
+      this.children.push(child);
+      child.parent = this;
+    },
     clone() {
       function copy(original) {
         const duplicate = node(original.type);
@@ -65,11 +70,15 @@ const figma = {
   createRectangle: () => node('RECTANGLE'),
   createEllipse: () => node('ELLIPSE'),
   createText: () => node('TEXT'),
+  createVector: () => node('VECTOR'),
   createNodeFromSvg: () => node('SVG'),
   createImage: () => ({
     hash: 'test-image-hash',
     getSizeAsync: async () => ({ width: 1920, height: 1080 })
-  })
+  }),
+  widget: {
+    register: () => {}
+  }
 };
 
 const source = fs.readFileSync(__dirname + '/code.js', 'utf8');
@@ -78,6 +87,12 @@ assert.ok(uiSource.indexOf('<button id="generate-widget-flow"') < uiSource.index
   'Widget flow action must be visible near the top of the plugin');
 assert.ok(uiSource.indexOf('<button id="generate-widget-oss-result"') < uiSource.indexOf('<label for="reference">'),
   'OSS result action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-widget-task-running-study"') < uiSource.indexOf('<label for="reference">'),
+  'Widget task running study action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-widget-text-result-window"') < uiSource.indexOf('<label for="reference">'),
+  'Widget text result side-window action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-home-folder-scroll-study"') < uiSource.indexOf('<label for="reference">'),
+  'Home folder scroll study action must be visible near the top of the plugin');
 vm.runInNewContext(source, { figma, __html__: '' }, { filename: 'code.js' });
 
 const names = [
@@ -91,6 +106,89 @@ const names = [
 ];
 
 (async () => {
+  await figma.ui.onmessage({ type: 'generate-result-badge-study' });
+  const badgeStudy = page.children.find(child => child.name === 'Widget Result Badge Study');
+  assert.ok(badgeStudy, 'result badge study should be created');
+  const originalThumb = badgeStudy.findOne(child => child.name === 'Original Thumbnail / 96');
+  const resultThumb = badgeStudy.findOne(child => child.name === 'Widget Result Thumbnail / 96');
+  const badge = resultThumb.findOne(child => child.name === 'NEW Corner Badge / separate layer');
+  const image = resultThumb.findOne(child => child.name === 'Image / no baked-in label');
+  assert.equal(originalThumb.findOne(child => child.name === 'NEW Corner Badge / separate layer'), null);
+  assert.equal(resultThumb.width, 96);
+  assert.equal(badge.parent, resultThumb, 'NEW badge must be separate from image');
+  assert.equal(image.type, 'RECTANGLE');
+  assert.equal(badge.x + badge.width, resultThumb.width, 'badge must reach the top-right corner');
+  assert.equal(badge.y, 0);
+  assert.equal(badge.fills[0].color.r, 0x8F / 255);
+  assert.ok(badgeStudy.findOne(child => child.name === 'Widget Result Thumbnail / 2x detail'));
+  badgeStudy.remove();
+
+  await figma.ui.onmessage({ type: 'generate-widget-task-running-study', bytes: [1, 2, 3] });
+  const focusedRunning = page.children.find(child => child.name === 'Image Inspect / Widget Task Running / Focused Source');
+  const browsingRunning = page.children.find(child => child.name === 'Image Inspect / Widget Task Running / Browsing Another Image');
+  assert.ok(focusedRunning && browsingRunning, 'both task-running states must be created');
+  assert.equal(focusedRunning.width, 1554);
+  assert.equal(focusedRunning.height, 1012);
+  assert.equal(focusedRunning.fills[0].type, 'IMAGE', 'focused state uses the selected photo');
+  assert.equal(focusedRunning.findOne(child => child.name === 'Task running text').characters, 'Task running');
+  const mainRing = focusedRunning.findOne(child => child.name === 'Main Image / breathing border / pulse peak');
+  assert.equal(mainRing.x, 8);
+  assert.equal(mainRing.y, 12);
+  assert.equal(mainRing.strokeWeight, 2);
+  assert.equal(mainRing.strokes[0].opacity, .80);
+  assert.equal(focusedRunning.findOne(child => child.name === 'Filmstrip / existing 61.44px thumbnails'), null,
+    'the focused preview demonstrates that the main cue remains visible with the filmstrip hidden');
+  assert.equal(browsingRunning.findOne(child => child.name === 'Task running text'), null);
+  const runningStrip = browsingRunning.findOne(child => child.name === 'Filmstrip / existing 61.44px thumbnails');
+  assert.ok(runningStrip);
+  const runningSource = runningStrip.findOne(child => child.name === 'Source / task breathing');
+  const selectedOther = runningStrip.findOne(child => child.name === 'Other image / selected');
+  assert.equal(runningSource.width, 96 * .8 * .8, 'task source retains the existing thumbnail size');
+  assert.equal(selectedOther.width, runningSource.width);
+  assert.ok(runningSource.effects.length > 0, 'running thumbnail shows its breathing glow');
+  const runningFrameCount = page.children.length;
+  focusedRunning.findOne(child => child.name === 'Task running text').characters = 'User edited label';
+  await figma.ui.onmessage({ type: 'generate-widget-task-running-study', bytes: null });
+  assert.equal(page.children.length, runningFrameCount, 'rerun must not duplicate task-running states');
+  assert.equal(focusedRunning.findOne(child => child.name === 'Task running text').characters, 'User edited label',
+    'rerun must preserve manual Figma edits');
+  focusedRunning.remove();
+  browsingRunning.remove();
+
+  await figma.ui.onmessage({ type: 'generate-widget-text-result-window', bytes: [1, 2, 3] });
+  const textResultMain = page.children.find(child => child.name === 'Image Inspect / Widget Text Result / Main Image');
+  const textResultWindow = page.children.find(child => child.name === 'Widget Output / Text / Side Window');
+  assert.ok(textResultMain && textResultWindow, 'main image and text result must be separate windows');
+  assert.equal(textResultMain.width, 1554);
+  assert.equal(textResultMain.height, 1012);
+  assert.equal(textResultWindow.width, 456);
+  assert.equal(textResultWindow.height, 720);
+  assert.equal(textResultWindow.x, textResultMain.x + textResultMain.width + 16);
+  assert.equal(textResultWindow.y, textResultMain.y + 84);
+  assert.equal(textResultWindow.findOne(child => child.name === 'Result Type').characters, 'TEXT RESULT');
+  assert.ok(textResultWindow.findOne(child => child.name === 'Result Text / direct content'));
+  const inputPreview = textResultWindow.findOne(child => child.name === 'Input Image Preview');
+  assert.ok(inputPreview, 'the result window must show the input image');
+  assert.equal(inputPreview.width, 128);
+  assert.equal(inputPreview.height, 96);
+  assert.equal(inputPreview.fills[0].type, 'IMAGE');
+  assert.equal(textResultWindow.findOne(child => child.name === 'Input Filename').characters, 'portrait.jpg');
+  assert.equal(textResultWindow.findOne(child => child.name === 'Content Divider').y, 250);
+  assert.equal(textResultWindow.findOne(child => child.name === 'Result Text / direct content').y, 280);
+  assert.equal(textResultWindow.findOne(child => child.name === 'Output Text Preview'), null,
+    'text must be direct window content rather than an embedded preview card');
+  const textResultCount = page.children.length;
+  textResultWindow.findOne(child => child.name === 'Result Text / direct content').characters = 'User edited result';
+  inputPreview.remove();
+  await figma.ui.onmessage({ type: 'generate-widget-text-result-window', bytes: null });
+  assert.equal(page.children.length, textResultCount, 'rerun must not duplicate text result windows');
+  assert.ok(textResultWindow.findOne(child => child.name === 'Input Image Preview'),
+    'rerun upgrades an existing result window that lacks the input preview');
+  assert.equal(textResultWindow.findOne(child => child.name === 'Result Text / direct content').characters, 'User edited result',
+    'rerun must preserve manual Figma edits');
+  textResultMain.remove();
+  textResultWindow.remove();
+
   await figma.ui.onmessage({ type: 'generate-remaining-screens' });
   assert.equal(page.children.length, 7);
   for (const [index, child] of page.children.entries()) {
@@ -118,6 +216,21 @@ const names = [
   await figma.ui.onmessage({ type: 'generate-home' });
   assert.equal(page.children.length, 7, 'generate-home must not duplicate existing Home');
   assert.match(figma.ui.lastMessage.message, /already exists/);
+
+  await figma.ui.onmessage({ type: 'generate-home-folder-scroll-study' });
+  const folderStudy = page.children.find(child => child.name === 'Home / Folder Scroll / Thin Track Study');
+  assert.ok(folderStudy, 'Home folder scroll study should be created');
+  assert.equal(folderStudy.width, 1080);
+  assert.equal(folderStudy.height, 720);
+  const folderStrip = folderStudy.findOne(child => child.name === 'Folder Thumbnails / Clipped');
+  assert.ok(folderStrip && folderStrip.clipsContent);
+  assert.ok(folderStrip.findOne(child => child.name === 'Scroll Track'));
+  assert.ok(folderStrip.findOne(child => child.name === 'Draggable Thumb / 6 of 12 visible'));
+  assert.ok(folderStrip.findOne(child => child.name === 'Next Images'));
+  assert.equal(folderStrip.children.filter(child => child.name.startsWith('Image ')).length, 7);
+  await figma.ui.onmessage({ type: 'generate-home-folder-scroll-study' });
+  assert.equal(page.children.filter(child => child.name === folderStudy.name).length, 1);
+  folderStudy.remove();
 
   await figma.ui.onmessage({ type: 'generate-simple-image-viewer', bytes: [1, 2, 3] });
   assert.equal(page.children.length, 8);
@@ -149,10 +262,16 @@ const names = [
   const redesigned = page.children.find(child => child.name === 'Widget Market / Install / Clean Editable');
   assert.equal(redesigned.x, 11000);
   assert.equal(redesigned.width, 1554);
-  assert.ok(redesigned.findOne(child => child.name === '01 / Attached Market Catalog'));
-  assert.ok(redesigned.findOne(child => child.name === '02 / Selected Widget Detail Drawer'));
-  assert.deepEqual(redesigned.findOne(child => child.name === '01 / Attached Market Catalog').children.filter(child => child.name.startsWith('Widget / ')).map(child => child.name),
-    ['Widget / Remove Background', 'Widget / 超分', 'Widget / RemoveBG 高级']);
+  assert.ok(redesigned.findOne(child => child.name === '01 / Widget Marketplace Window'));
+  assert.ok(redesigned.findOne(child => child.name === '02 / Search and Widget List'));
+  assert.ok(redesigned.findOne(child => child.name === '05 / Selected Widget Detail'));
+  const marketList = redesigned.findOne(child => child.name === '04 / Scroll Content / 50 Widgets');
+  assert.ok(marketList, 'Widget Market needs a dedicated scrolling list container');
+  assert.equal(redesigned.findOne(child => child.name === '03 / Scroll Viewport / 7 of 50 visible').overflowDirection,
+    'VERTICAL_SCROLLING');
+  assert.equal(marketList.children.filter(child => child.name.startsWith('Widget ')).length, 50);
+  assert.equal(marketList.children[0].name, 'Widget 01 / Remove Background');
+  assert.equal(marketList.children[49].name, 'Widget 50 / OSS Publisher');
   await figma.ui.onmessage({ type: 'redesign-widget-market' });
   assert.equal(page.children.length, 10, 'Second redesign must keep edited market intact');
   const beforeRefresh = page.children.length;

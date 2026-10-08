@@ -108,6 +108,11 @@ for the Image Inspect filmstrip. It keeps six 96 × 96 thumbnails visible, puts
 additional images in a clipped horizontal content row, and replaces the native
 macOS scroller with a 3px dark Glance track and warm-apricot draggable thumb.
 
+Click **Generate Home Folder Scroll Study** to add one editable 1080 × 720 Home
+review frame. It shows a 12-image folder in the current two-column Home layout,
+with a clipped thumbnail row, a 3px inset track, an apricot draggable thumb,
+and a compact next-images control. The original Home frame is preserved.
+
 ## Generate the Image Compression Flow
 
 Click **Generate Image Compression Flow** to add a single `Image Compression
@@ -127,6 +132,27 @@ Glance color palette, floating toolbar, compare chrome, and typography. Running
 the action again selects the existing frame instead of duplicating it.
 
 ## Review the Widget input and output pages
+
+For the revised plain-text result, click **Generate Widget Text Result Side
+Window** in Figma Design Mode. It creates the current full-size main image
+window plus a separate 456 × 720 result window docked 16 px to its right. The
+source image is not resized. The right window starts with a 128 × 96 input-image
+preview and its filename/format metadata, followed by the returned text rendered
+directly in the content area with no inner preview card. A compact Copy action
+sits in the title bar and mint green is limited to the text-result status cue.
+You may choose a **Reference image** for the source photo. Running the action
+again upgrades an older generated result window with the input preview, then
+selects the existing two windows while preserving edited result text.
+
+For the running-state design, click **Generate Widget Task Running Study** in
+Figma Design Mode. It creates two editable 1554 × 1012 frames:
+`Image Inspect / Widget Task Running / Focused Source` shows the warm apricot
+breathing border and persistent **Task running** label while the filmstrip is
+hidden; `Image Inspect / Widget Task Running / Browsing Another Image` shows
+the source thumbnail breathing while another image is selected. The thumbnail
+size remains the current Image Inspect size of 61.44 pt at the design scale.
+You may choose a **Reference image** for the source photo. Running the action
+again selects the existing frames and preserves manual edits.
 
 For the Widget that returns an OSS image URL, click **Refine OSS Result Page** in
 Figma Design Mode. The action updates an existing `Widget Output / Image URL /
@@ -187,16 +213,21 @@ Click **Generate Remaining 7 Screens** to add:
 The screens are placed to the right of existing frames. Running this action
 again skips any frame with the same name, so edited pages remain untouched.
 
-## Redesign Widget Market without changing the product flow
+## Update Widget Market for a 50-widget catalog
 
-Click **Redesign Widget Market (keep previous)** in the current Figma file.
+Click **Update Widget Market (50 widgets)** in the current Figma file.
 The plugin keeps the existing `Widget Market / Install / Clean Editable` as
 `Widget Market / Install / Previous` and replaces it at the same position
-with a compact, VS Code-style 380pt catalog. The new editable frame contains:
+with a VS Code-inspired marketplace built for a 50-widget catalog. The new
+editable frame contains:
 
-- one vertical list of the three official Widgets, with icon, name, version,
-  cloud badge, summary, command and an inline Install/Installed action;
-- a secondary detail-drawer state shown next to the list for design review.
+- search plus Marketplace, Installed, and Updates filters;
+- a dense scroll viewport backed by 50 editable Widget rows, including
+  publisher, usage, rating, update state, and Install/Installed actions;
+- a persistent selected-Widget detail view with Overview, Commands,
+  Changelog, and Permissions tabs;
+- a thin scrollbar sized to communicate the full catalog without making
+  every row visible at once.
 
 The existing WebView and Widget installation flow in the macOS app are not
 modified by this Figma-only design update.

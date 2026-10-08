@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Widget Result Mint Corner Badge</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px;
+    background: #06070a;
+    color: #f3eee8;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  }
+  main {
+    width: 760px;
+    max-width: 100%;
+    margin: auto;
+    padding: 40px;
+    border: 1px solid #34353a;
+    border-radius: 16px;
+  }
+  h1 { margin: 0; font-size: 24px; }
+  .subtitle { margin: 8px 0 30px; color: #aaa4a0; font-size: 13px; }
+  .panel {
+    display: flex;
+    align-items: flex-end;
+    gap: 42px;
+    padding: 24px;
+    background: #17181d;
+    border: 1px solid #34353a;
+    border-radius: 12px;
+  }
+  figure { margin: 0; }
+  .thumb {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    overflow: hidden;
+    border: 1px solid #34353a;
+    border-radius: 9px;
+    background: #17181d;
+  }
+  .image {
+    position: absolute;
+    inset: 3px;
+    border-radius: 6px;
+    background: linear-gradient(145deg, #25323a, #a47761 55%, #293b33);
+  }
+  .result .image { background: linear-gradient(145deg, #2c3440, #b27d61 55%, #2c4136); }
+  .badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 48px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: 4px;
+    background: #8fd0af;
+    color: #21130d;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  figcaption {
+    margin-top: 9px;
+    color: #726d69;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .result figcaption { color: #8fd0af; }
+  .detail { margin-left: auto; padding-left: 42px; border-left: 1px solid #34353a; }
+  .detail .thumb { width: 192px; height: 192px; border-radius: 18px; }
+  .detail .image { inset: 6px; border-radius: 12px; }
+  .detail .badge { width: 96px; height: 44px; font-size: 20px; border-radius: 8px; }
+  .detail figcaption { color: #726d69; }
+  .note { margin: 10px 0 0; color: #aaa4a0; font-size: 11px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Widget Result Badge Study</h1>
+  <p class="subtitle">Mint result marker at actual filmstrip size</p>
+  <div class="panel">
+    <figure>
+      <div class="thumb"><div class="image"></div></div>
+      <figcaption>ORIGINAL</figcaption>
+    </figure>
+    <figure class="result">
+      <div class="thumb result"><div class="image"></div><div class="badge">NEW</div></div>
+      <figcaption>WIDGET RESULT</figcaption>
+    </figure>
+    <figure class="result detail">
+      <div class="thumb result"><div class="image"></div><div class="badge">NEW</div></div>
+      <figcaption>2× DETAIL</figcaption>
+    </figure>
+  </div>
+</main>
+</body>
+</html>

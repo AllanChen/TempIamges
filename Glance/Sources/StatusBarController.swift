@@ -20,6 +20,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
     private var loginMenuItem: NSMenuItem!
     private var tasksMenuItem: NSMenuItem!
     private var trayPanel: TrayPopoverPanel?
+    var isTrayVisible: Bool { trayPanel?.isVisible == true }
 
     override init() {
         super.init()
@@ -102,9 +103,8 @@ class StatusBarController: NSObject, NSMenuDelegate {
         fallback.addItem(.separator())
         let quit = NSMenuItem(title: "Quit Glance".localized, action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self; fallback.addItem(quit)
-        statusItem.menu = fallback
-        statusItem.button?.performClick(nil)
-        statusItem.menu = nil
+        guard let button = statusItem.button else { return }
+        fallback.popUp(positioning: nil, at: NSPoint(x: 0, y: 0), in: button)
     }
 
     private func updateMenuBarIcon() {

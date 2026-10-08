@@ -23,11 +23,15 @@
   </style>
 </head>
 <body>
-  <h1>Glance UI Builder <span style="color:#e8a87c">v2</span></h1>
-  <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages.</p>
+  <h1>Glance UI Builder <span style="color:#e8a87c">v2.1</span></h1>
+  <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages. Includes the Result Badge Study.</p>
   <div id="mode">Checking Figma mode…</div>
+  <button id="generate-home-folder-scroll-study" class="generate-screens featured">Generate Home Folder Scroll Study</button>
   <button id="generate-widget-oss-result" class="generate-screens featured">Refine OSS Result Page</button>
+  <button id="generate-widget-task-running-study" class="generate-screens featured">Generate Widget Task Running Study</button>
+  <button id="generate-widget-text-result-window" class="generate-screens featured">Generate Widget Text Result Side Window</button>
   <button id="generate-widget-flow" class="generate-screens featured">Generate Revised Widget Pages (7 Screens)</button>
+  <button id="generate-result-badge-study" class="generate-screens featured">Generate Widget Result Badge Study</button>
   <label for="reference">Reference image</label>
   <input id="reference" type="file" accept="image/png,image/jpeg">
   <div class="hint">Choose <code>layout/image-inspect-ui.png</code> to place a locked reference beside the editable design.</div>
@@ -47,7 +51,7 @@
   <button id="generate-video-inspect-study" class="generate-screens">Generate Video Inspect v4 (Focus + Compare)</button>
   <button id="generate-image-compression-flow" class="generate-screens">Generate Image Compression Flow</button>
   <button id="generate-screens" class="generate-screens">Generate Video + Tasks + Widget Market</button>
-  <button id="redesign-market" class="generate-screens">Redesign Widget Market (keep previous)</button>
+  <button id="redesign-market" class="generate-screens">Update Widget Market (50 widgets)</button>
     <button id="generate-home" class="generate-screens">Generate Home / Launcher</button>
     <button id="generate-tray" class="generate-screens">Generate Tray Popover</button>
   <button id="generate-remaining" class="generate-screens">Generate Remaining Screens (Home + 6)</button>
@@ -131,6 +135,18 @@
       const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
       parent.postMessage({ pluginMessage: { type: 'generate-widget-oss-result', bytes } }, '*');
     };
+    document.getElementById('generate-widget-task-running-study').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building two Widget task-running states...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-task-running-study', bytes } }, '*');
+    };
+    document.getElementById('generate-widget-text-result-window').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the main image and text result side window...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-text-result-window', bytes } }, '*');
+    };
     document.getElementById('export').onclick = () => {
       status.textContent = 'Exporting selected frame...';
       parent.postMessage({ pluginMessage: { type: 'export-selection' } }, '*');
@@ -144,16 +160,24 @@
       parent.postMessage({ pluginMessage: { type: 'generate-remaining-screens' } }, '*');
     };
     document.getElementById('redesign-market').onclick = () => {
-      status.textContent = 'Redesigning the existing Widget Market frame...';
+      status.textContent = 'Building the VS Code-inspired 50-widget Market...';
       parent.postMessage({ pluginMessage: { type: 'redesign-widget-market' } }, '*');
     };
     document.getElementById('generate-home').onclick = () => {
       status.textContent = 'Building the Home / Launcher screen...';
       parent.postMessage({ pluginMessage: { type: 'generate-home' } }, '*');
     };
+    document.getElementById('generate-home-folder-scroll-study').onclick = () => {
+      status.textContent = 'Building the Home folder scroll study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-home-folder-scroll-study' } }, '*');
+    };
     document.getElementById('generate-tray').onclick = () => {
       status.textContent = 'Building the Tray Popover screen...';
       parent.postMessage({ pluginMessage: { type: 'generate-tray' } }, '*');
+    };
+    document.getElementById('generate-result-badge-study').onclick = () => {
+      status.textContent = 'Building Widget Result Badge Study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-result-badge-study' } }, '*');
     };
 
     function download(filename, blob) {

@@ -9,6 +9,7 @@ struct WidgetTaskRecord: Codable, Identifiable {
     let widgetName: String
     let commandID: String
     let commandName: String
+    let outputTypes: [String]?
     let sourceURL: String
     let createdAt: Date
     var updatedAt: Date
@@ -57,7 +58,8 @@ final class WidgetTaskManager {
         let id = UUID()
         requestNotificationPermissionIfNeeded()
         records.insert(WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.name,
-            commandID: command.id, commandName: command.name, sourceURL: media.url.absoluteString,
+            commandID: command.id, commandName: command.name, outputTypes: command.outputs,
+            sourceURL: media.url.absoluteString,
             createdAt: Date(), updatedAt: Date(), remoteTaskID: nil, phase: .uploading,
             progress: 0, outputPath: nil, outputURLString: nil, errorMessage: nil), at: 0)
         changed()

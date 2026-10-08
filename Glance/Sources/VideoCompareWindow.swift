@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import AVKit
+import Network
 import WebKit
 
 /// Figma 110:50 — Video Inspect v4 / Focus / Portrait. All values are logical
@@ -80,6 +81,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private var endObserver: NSObjectProtocol?
     private var generation = UUID()
     private var fittedVideoSignature = ""
+    private var resizeLayoutScheduled = false
 
     private static let designSize = NSSize(width: 1554, height: 1012)
     private let canvas = MediaDropCanvasView()
@@ -159,15 +161,17 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
-        // AppKit calls setFrame repeatedly while it is in its live-resize
-        // display cycle. Do not synchronously mutate the content hierarchy
-        // from here; that can re-enter AppKit's layout pass and raise an
-        // internal NSWindow layout exception.
-        super.setFrame(frameRect, display: flag)
-    }
     func windowDidResize(_ notification: Notification) {
-        layoutContent()
+        // AppKit is still updating the window's display region during live
+        // resize. Lay out video views on the next main-loop turn instead of
+        // invalidating their layers inside that cycle.
+        guard !resizeLayoutScheduled else { return }
+        resizeLayoutScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.resizeLayoutScheduled = false
+            self.layoutContent()
+        }
     }
     func windowDidEndLiveResize(_ notification: Notification) {
         layoutContent()
@@ -436,12 +440,21 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                 self.refreshInfoPanel()
             }
             var needsWebMThumbnail = true
-            viewport.onWebMFrameReady = { [weak self, weak viewport] in
+            viewport.onWebMPosterReady = { [weak self] image in
                 guard needsWebMThumbnail else { return }
                 needsWebMThumbnail = false
-                viewport?.captureFrame(at: 0) { [weak self] image in
-                    guard let image else { return }
-                    self?.filmstrip.setThumbnail(image, at: index)
+                self?.filmstrip.setThumbnail(image, at: index)
+            }
+            viewport.onWebMFrameReady = { [weak self, weak viewport] in
+                // Let WebKit paint its first frame before requesting a
+                // thumbnail. The local poster normally supplies it sooner.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self, weak viewport] in
+                    guard needsWebMThumbnail else { return }
+                    needsWebMThumbnail = false
+                    viewport?.captureWebMThumbnail { [weak self] image in
+                        guard let image else { return }
+                        self?.filmstrip.setThumbnail(image, at: index)
+                    }
                 }
             }
             viewport.onTimeUpdate = { [weak self, weak viewport] time in
@@ -515,11 +528,13 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         let signature = "\(mode)-\(targetSize.width.rounded())x\(targetSize.height.rounded())"
         guard signature != fittedVideoSignature else { return }
         fittedVideoSignature = signature
+        // Metadata can arrive while the user is resizing. Keep their chosen
+        // frame rather than issuing a second setFrame inside AppKit's drag loop.
+        guard !inLiveResize else { return }
 
         let aspect = targetSize.width / targetSize.height
         // Focus fits media inside the reference window; window proportions do
         // not follow the source video's aspect ratio (Portrait is 560 × 900).
-        contentAspectRatio = mode == .compare ? NSSize(width: aspect, height: 1) : .zero
         let center = CGPoint(x: frame.midX, y: frame.midY)
         guard let screen = ScreenManager.shared.screenForMouseLocation(center)
                 ?? self.screen ?? NSScreen.main else { return }
@@ -692,9 +707,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     }
     @objc private func replayTapped() { pausePlayback(); currentTime = 0; playPlayback() }
     @objc private func captureTapped() {
-        // Freeze and exactly seek every player to the same master time before
-        // reading pixels. Generating frames while playback continues returns
-        // neighboring keyframes at different moments.
+        // Freeze the visible frame. Compare mode also seeks every player to
+        // the same master time so its captures stay aligned.
         let playerTime = viewports.first?.currentTime ?? currentTime
         let captureTime = playerTime.isFinite ? max(0, playerTime) : max(0, currentTime)
         shouldResumeAfterCapture = shouldResumeAfterCapture || isPlaying
@@ -702,48 +716,62 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         frameCaptureGeneration = UUID()
         let frameCaptureToken = frameCaptureGeneration
         pausePlayback()
+        if mode != .compare {
+            finishCapture(at: captureTime, token: frameCaptureToken)
+            return
+        }
         seek(to: captureTime) { [weak self] in
             guard let self, self.generation == captureGeneration,
                   self.frameCaptureGeneration == frameCaptureToken else { return }
-            let resumePlayback = self.shouldResumeAfterCapture
-            self.shouldResumeAfterCapture = false
-            self.finishCapture(at: captureTime, resumePlayback: resumePlayback)
+            self.finishCapture(at: captureTime, token: frameCaptureToken)
         }
     }
-    private func finishCapture(at time: Double, resumePlayback: Bool) {
-        let token = generation
+    private func finishCapture(at time: Double, token: UUID) {
+        let sourceToken = generation
         captureCurrentFrame(at: time) { [weak self] image in
-            guard let self, self.generation == token else { return }
+            guard let self, self.generation == sourceToken,
+                  self.frameCaptureGeneration == token else { return }
+            let resumePlayback = self.shouldResumeAfterCapture
+            self.shouldResumeAfterCapture = false
             self.completeCapture(image: image, at: time, resumePlayback: resumePlayback)
         }
     }
     private func completeCapture(image: NSImage?, at time: Double, resumePlayback: Bool) {
-        defer {
-            if resumePlayback {
-                viewports.forEach { $0.play() }
-                isPlaying = true
-                updateTimeline()
-            }
+        if resumePlayback {
+            viewports.forEach { $0.play() }
+            isPlaying = true
+            updateTimeline()
         }
         guard let image else { return }
         NSSound(named: "Grab")?.play()
         captureFeedback.flash()
         // Keep the captured frame ready for the thumbnail's existing Image
         // Inspect handoff. A second capture replaces the pending preview.
-        guard let data = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: data),
-              let png = bitmap.representation(using: .png, properties: [:]) else { return }
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("GlanceCaptures", isDirectory: true)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let url = directory.appendingPathComponent("capture-\(UUID().uuidString).png")
-        do {
-            try png.write(to: url)
-        } catch {
-            Logger.error("Video capture write failed: \(error.localizedDescription)")
-            return
+        let sourceToken = generation
+        let captureToken = frameCaptureGeneration
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let data = image.tiffRepresentation,
+                  let bitmap = NSBitmapImageRep(data: data),
+                  let png = bitmap.representation(using: .png, properties: [:]) else { return }
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("GlanceCaptures", isDirectory: true)
+            let url = directory.appendingPathComponent("capture-\(UUID().uuidString).png")
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try png.write(to: url)
+            } catch {
+                Logger.error("Video capture write failed: \(error.localizedDescription)")
+                return
+            }
+            DispatchQueue.main.async {
+                guard let self, self.generation == sourceToken,
+                      self.frameCaptureGeneration == captureToken else {
+                    try? FileManager.default.removeItem(at: url)
+                    return
+                }
+                self.showCaptureThumbnail(image: image, time: time, url: url)
+            }
         }
-        showCaptureThumbnail(image: image, time: time, url: url)
     }
     private func showCaptureThumbnail(image: NSImage, time: Double, url: URL) {
         captureThumbnailTimer?.invalidate()
@@ -808,8 +836,10 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             let limit = durations[safe: index] ?? maximumDuration
             group.enter()
             viewport.captureFrame(at: min(max(0, time), limit)) { image in
-                captured[offset] = image
-                group.leave()
+                DispatchQueue.main.async {
+                    captured[offset] = image
+                    group.leave()
+                }
             }
         }
         group.notify(queue: .main) {
@@ -915,6 +945,9 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     }
 
     private func handleDroppedVideo(url: URL, at point: NSPoint) {
+        let path: DetectedPath = url.isFileURL
+            ? .localVideo(url.standardizedFileURL) : .remoteVideo(url)
+        HistoryManager.shared.record(selectedText: "", detectedPaths: [path])
         infos.append(MediaInfo(url: url, isLocal: url.isFileURL, kind: .video))
         durations.append(0)
         videoMetadata.append(nil)
@@ -956,6 +989,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
               let info = pathDetector.detectAll(text)
                 .compactMap(MediaInfo.from)
                 .first(where: { $0.kind == .video && !$0.isLocal }) else { return false }
+        HistoryManager.shared.record(selectedText: "", detectedPaths: [.remoteVideo(info.url)])
         let identity = info.url.absoluteURL.absoluteString
         if let index = infos.firstIndex(where: { $0.url.absoluteURL.absoluteString == identity }) {
             focusedIndex = index
@@ -1038,6 +1072,9 @@ private final class VideoInspectViewport: NSView {
     let player: AVPlayer?
     private let playerView: AVPlayerView?
     private let webMView: WebMVideoView?
+    private let webMPoster = PassthroughVideoPosterView()
+    private var posterRequestToken = UUID()
+    private var awaitingWebMFrame = false
     private let muteButton = InspectToolbarButton(symbol: "speaker.wave.2.fill", tooltip: "Mute".localized)
     private let compareDimmer = CALayer()
     private let loadingView = FocusSweepLoadingView(frame: .zero)
@@ -1047,6 +1084,7 @@ private final class VideoInspectViewport: NSView {
     var onReady: (() -> Void)?
     var onWebMMetadata: ((Double, CGSize) -> Void)?
     var onWebMFrameReady: (() -> Void)?
+    var onWebMPosterReady: ((NSImage) -> Void)?
     var onTimeUpdate: ((Double) -> Void)?
     var onEnded: (() -> Void)?
     var videoSize: CGSize { webMView?.videoSize ?? player?.currentItem?.presentationSize ?? .zero }
@@ -1108,19 +1146,34 @@ private final class VideoInspectViewport: NSView {
             webMView.layer?.masksToBounds = true
             webMView.onReady = { [weak self] duration, size in
                 guard let self else { return }
-                self.loadingView.setLoading(false)
                 self.failureView.isHidden = true
                 self.onWebMMetadata?(duration, size)
                 self.onReady?()
             }
             webMView.onTimeUpdate = { [weak self] time in self?.onTimeUpdate?(time) }
             webMView.onEnded = { [weak self] in self?.onEnded?() }
-            webMView.onFrameReady = { [weak self] in self?.onWebMFrameReady?() }
+            webMView.onFrameReady = { [weak self] in
+                guard let self else { return }
+                self.awaitingWebMFrame = false
+                self.posterRequestToken = UUID()
+                self.webMPoster.isHidden = true
+                self.webMPoster.image = nil
+                self.loadingView.setLoading(false)
+                self.onWebMFrameReady?()
+            }
             webMView.onFailure = { [weak self] in
-                self?.loadingView.setLoading(false)
-                self?.failureView.isHidden = false
+                guard let self else { return }
+                self.awaitingWebMFrame = false
+                self.webMPoster.isHidden = true
+                self.webMPoster.image = nil
+                self.loadingView.setLoading(false)
+                self.failureView.isHidden = false
             }
             addSubview(webMView)
+            webMPoster.imageScaling = .scaleProportionallyUpOrDown
+            webMPoster.isHidden = true
+            addSubview(webMPoster)
+            prepareWebMPoster(from: url)
         }
         addSubview(loadingView)
         addSubview(failureView)
@@ -1141,6 +1194,7 @@ private final class VideoInspectViewport: NSView {
         super.layout()
         playerView?.frame = bounds
         webMView?.frame = bounds
+        webMPoster.frame = bounds
         compareDimmer.frame = bounds
         muteButton.frame = NSRect(x: bounds.maxX - 40, y: bounds.maxY - 40,
                                   width: 32, height: 32)
@@ -1157,7 +1211,13 @@ private final class VideoInspectViewport: NSView {
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { dropTarget?.acceptsDragging(sender) == true ? .copy : [] }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool { dropTarget?.performDrop(sender) == true }
     func replaceSource(with url: URL) {
-        if let webMView { webMView.replaceSource(with: url); return }
+        if let webMView {
+            failureView.isHidden = true
+            loadingView.setLoading(true)
+            prepareWebMPoster(from: url)
+            webMView.replaceSource(with: url)
+            return
+        }
         guard let player else { return }
         let time = player.currentTime()
         let wasPlaying = player.rate != 0
@@ -1166,6 +1226,26 @@ private final class VideoInspectViewport: NSView {
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
             if wasPlaying { self?.player?.playImmediately(atRate: 1) }
         }
+    }
+    private func prepareWebMPoster(from url: URL) {
+        posterRequestToken = UUID()
+        let token = posterRequestToken
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        awaitingWebMFrame = true
+        webMPoster.image = nil
+        webMPoster.isHidden = true
+        WebMVideoView.generatePoster(from: url) { [weak self] image in
+            guard let self, self.posterRequestToken == token,
+                  self.awaitingWebMFrame, let image else { return }
+            let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
+            Logger.info("WebMVideoView: poster ready after \(String(format: "%.2f", elapsed))s")
+            self.webMPoster.image = image
+            self.webMPoster.isHidden = false
+            self.onWebMPosterReady?(image)
+        }
+    }
+    func captureWebMThumbnail(_ completion: @escaping (NSImage?) -> Void) {
+        webMView?.captureThumbnail(completion)
     }
     private func observePlayerItem() {
         guard let player else { return }
@@ -1220,11 +1300,13 @@ private final class VideoInspectViewport: NSView {
         generator.requestedTimeToleranceBefore = .zero
         generator.requestedTimeToleranceAfter = .zero
         let target = CMTime(seconds: max(0, time), preferredTimescale: 600)
-        guard let cgImage = try? generator.copyCGImage(at: target, actualTime: nil) else {
-            completion(nil); return
+        generator.generateCGImagesAsynchronously(forTimes: [NSValue(time: target)]) { [generator] _, cgImage, _, _, _ in
+            let image = cgImage.map { cgImage in
+                NSImage(cgImage: cgImage,
+                        size: NSSize(width: cgImage.width, height: cgImage.height))
+            }
+            DispatchQueue.main.async { completion(image) }
         }
-        completion(NSImage(cgImage: cgImage,
-                           size: NSSize(width: cgImage.width, height: cgImage.height)))
     }
     override func mouseDown(with event: NSEvent) {
         // Double-click toggles between aspect-fit and a 2× zoom, mirroring the
@@ -1253,6 +1335,9 @@ private final class VideoInspectViewport: NSView {
         if let onActionMenu { onActionMenu(event) } else { super.rightMouseDown(with: event) }
     }
 }
+private final class PassthroughVideoPosterView: NSImageView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
 private final class PassthroughVideoPlayerView: AVPlayerView {
     weak var dropTarget: MediaDropCanvasView?
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -1265,9 +1350,8 @@ private final class PassthroughVideoPlayerView: AVPlayerView {
     }
 }
 
-/// WebKit decodes WebM on macOS, while AVFoundation cannot open its container.
-/// A small local page owns the video element so its layout and playback can be
-/// controlled without the media document's built-in presentation overriding it.
+/// Local WebM is converted into short HLS segments for native playback.
+/// WebKit remains available for remote WebM and when ffmpeg is unavailable.
 final class WebMVideoView: WKWebView {
     weak var dropTarget: MediaDropCanvasView?
     var onReady: ((Double, CGSize) -> Void)?
@@ -1289,6 +1373,15 @@ final class WebMVideoView: WKWebView {
     private var usingFallback = false
     private var fallbackDirectory: URL?
     private var fallbackProcess: Process?
+    private var streamingFallback: WebMStreamingFallback?
+    private var streamingPlayer: AVPlayer?
+    private var streamingLayer: AVPlayerLayer?
+    private var streamingOverlay: PassthroughVideoOverlay?
+    private var displayObservation: NSKeyValueObservation?
+    private var streamingFirstFrameSent = false
+    private var streamingTimeObserver: Any?
+    private var streamingEndObserver: NSObjectProtocol?
+    private var loadStartedAt = ProcessInfo.processInfo.systemUptime
 
     init(url: URL) {
         sourceURL = url
@@ -1304,15 +1397,21 @@ final class WebMVideoView: WKWebView {
         registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
         layer?.backgroundColor = NSColor.black.cgColor
-        loadSource(url)
+        if !startStreamingFallback() { loadSource(url) }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     deinit {
+        stopStreamingFallback()
         if fallbackProcess?.isRunning == true { fallbackProcess?.terminate() }
         if let wrapperDirectory { try? FileManager.default.removeItem(at: wrapperDirectory) }
         if let fallbackDirectory { try? FileManager.default.removeItem(at: fallbackDirectory) }
     }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func layout() {
+        super.layout()
+        streamingOverlay?.frame = bounds
+        streamingLayer?.frame = streamingOverlay?.bounds ?? .zero
+    }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         dropTarget?.acceptsDragging(sender) == true ? .copy : []
     }
@@ -1353,7 +1452,21 @@ final class WebMVideoView: WKWebView {
           video.addEventListener('loadedmetadata', () => { fit(); send('ready', {
             duration: video.duration, width: video.videoWidth, height: video.videoHeight
           }); });
-          video.addEventListener('canplay', () => { fit(); send('frameReady'); });
+          let frameSent = false;
+          const firstFrame = () => {
+            if (frameSent) return;
+            frameSent = true;
+            fit();
+            send('frameReady');
+          };
+          let frameScheduled = false;
+          const scheduleFirstFrame = () => {
+            if (frameScheduled) return;
+            frameScheduled = true;
+            requestAnimationFrame(() => requestAnimationFrame(firstFrame));
+          };
+          video.addEventListener('loadeddata', scheduleFirstFrame);
+          video.addEventListener('canplay', scheduleFirstFrame);
           window.addEventListener('resize', fit);
           video.addEventListener('timeupdate', () => send('time', {time: video.currentTime}));
           video.addEventListener('seeked', () => send('seeked', {time: video.currentTime}));
@@ -1364,6 +1477,7 @@ final class WebMVideoView: WKWebView {
           if (video.readyState >= 1) send('ready', {
             duration: video.duration, width: video.videoWidth, height: video.videoHeight
           });
+          if (video.readyState >= 2) scheduleFirstFrame();
         })();
         """
 
@@ -1403,6 +1517,7 @@ final class WebMVideoView: WKWebView {
                         try? FileManager.default.removeItem(at: directory)
                         return
                     }
+                    self.logLoadStage("source prepared")
                     if let previous = self.wrapperDirectory {
                         try? FileManager.default.removeItem(at: previous)
                     }
@@ -1420,16 +1535,19 @@ final class WebMVideoView: WKWebView {
         }
     }
     func replaceSource(with url: URL) {
+        loadStartedAt = ProcessInfo.processInfo.systemUptime
         pendingSeek = (videoTime, nil)
+        loadToken = UUID()
+        stopStreamingFallback()
         if fallbackProcess?.isRunning == true { fallbackProcess?.terminate() }
         fallbackProcess = nil
         if let fallbackDirectory { try? FileManager.default.removeItem(at: fallbackDirectory) }
         fallbackDirectory = nil
         usingFallback = false
         sourceURL = url
-        loadSource(url)
+        if !startStreamingFallback() { loadSource(url) }
     }
-    private static func ffmpegURL() -> URL? {
+    fileprivate static func ffmpegURL() -> URL? {
         let pathEntries = (ProcessInfo.processInfo.environment["PATH"] ?? "")
             .split(separator: ":").map(String.init)
         let searchDirectories = pathEntries + [
@@ -1439,6 +1557,185 @@ final class WebMVideoView: WKWebView {
         return searchDirectories.lazy
             .map { URL(fileURLWithPath: $0).appendingPathComponent("ffmpeg") }
             .first { FileManager.default.isExecutableFile(atPath: $0.path) }
+    }
+    static func generatePoster(from url: URL, completion: @escaping (NSImage?) -> Void) {
+        generateFrame(from: url, at: 0, maxSize: NSSize(width: 1280, height: 720),
+                      completion: completion)
+    }
+    static func generateThumbnail(from url: URL, completion: @escaping (NSImage?) -> Void) {
+        generateFrame(from: url, at: 0.5, maxSize: NSSize(width: 320, height: 240),
+                      completion: completion)
+    }
+    private static func generateFrame(from url: URL, at time: Double, maxSize: NSSize?,
+                                      completion: @escaping (NSImage?) -> Void) {
+        guard url.isFileURL, let ffmpeg = ffmpegURL() else {
+            DispatchQueue.main.async { completion(nil) }
+            return
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let process = Process()
+            let output = Pipe()
+            process.executableURL = ffmpeg
+            var arguments = ["-nostdin", "-hide_banner", "-loglevel", "error",
+                             "-i", url.path, "-ss", String(format: "%.3f", max(0, time)),
+                             "-an", "-frames:v", "1"]
+            if let maxSize {
+                arguments += ["-vf", "scale=\(Int(maxSize.width)):\(Int(maxSize.height)):force_original_aspect_ratio=decrease"]
+            }
+            arguments += ["-f", "image2pipe", "-vcodec", maxSize == nil ? "png" : "mjpeg", "pipe:1"]
+            process.arguments = arguments
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            let image: NSImage?
+            do {
+                try process.run()
+                let data = output.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                image = process.terminationStatus == 0 ? NSImage(data: data) : nil
+            } catch {
+                image = nil
+            }
+            DispatchQueue.main.async { completion(image) }
+        }
+    }
+    private func logLoadStage(_ stage: String) {
+        let elapsed = ProcessInfo.processInfo.systemUptime - loadStartedAt
+        Logger.info("WebMVideoView: \(stage) after \(String(format: "%.2f", elapsed))s")
+    }
+    private func startStreamingFallback() -> Bool {
+        guard !usingFallback, sourceURL.isFileURL,
+              let ffmpeg = Self.ffmpegURL() else { return false }
+        usingFallback = true
+        isReady = false
+        videoTime = 0
+        videoDuration = 0
+        videoSize = .zero
+        let token = loadToken
+        let streamer = WebMStreamingFallback(source: sourceURL, ffmpeg: ffmpeg)
+        streamingFallback = streamer
+        logLoadStage("streaming conversion started")
+        Self.probeMetadata(from: sourceURL, ffmpeg: ffmpeg) { [weak self, weak streamer] duration, size in
+            guard let self, let streamer, self.loadToken == token,
+                  self.streamingFallback === streamer else { return }
+            self.videoDuration = duration
+            self.videoSize = size
+            if self.isReady { self.onReady?(duration, size) }
+        }
+        streamer.start { [weak self, weak streamer] playlist in
+            guard let self, let streamer, self.loadToken == token,
+                  self.streamingFallback === streamer else { return }
+            guard let playlist else {
+                self.stopStreamingFallback()
+                self.usingFallback = false
+                if !self.transcodeUnsupportedWebM() { self.onFailure?() }
+                return
+            }
+            self.logLoadStage("first stream segment ready")
+            self.attachStreamingPlayer(url: playlist)
+        }
+        return true
+    }
+    private func attachStreamingPlayer(url: URL) {
+        let player = AVPlayer(url: url)
+        // Live HLS can briefly outrun ffmpeg's next segment. Keep the play
+        // request pending and resume automatically when the buffer refills.
+        player.automaticallyWaitsToMinimizeStalling = true
+        player.isMuted = muted
+        player.currentItem?.preferredForwardBufferDuration = 0.5
+        let overlay = PassthroughVideoOverlay(frame: bounds)
+        let videoLayer = AVPlayerLayer(player: player)
+        videoLayer.frame = overlay.bounds
+        videoLayer.videoGravity = .resizeAspect
+        overlay.wantsLayer = true
+        overlay.layer?.addSublayer(videoLayer)
+        addSubview(overlay)
+        streamingOverlay = overlay
+        streamingLayer = videoLayer
+        streamingPlayer = player
+        displayObservation = videoLayer.observe(\.isReadyForDisplay, options: [.initial, .new]) { [weak self] layer, _ in
+            guard layer.isReadyForDisplay else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.streamingLayer === layer,
+                      !self.streamingFirstFrameSent else { return }
+                self.streamingFirstFrameSent = true
+                self.logLoadStage("native first frame ready; play requested=\(self.wantsPlay); status=\(self.streamingPlayer?.timeControlStatus.rawValue ?? -1)")
+                self.onFrameReady?()
+                self.displayObservation = nil
+            }
+        }
+        streamingTimeObserver = player.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main
+        ) { [weak self] time in
+            guard let self, time.seconds.isFinite else { return }
+            self.videoTime = time.seconds
+            self.onTimeUpdate?(time.seconds)
+        }
+        streamingEndObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime, object: player.currentItem, queue: .main
+        ) { [weak self] _ in
+            self?.wantsPlay = false
+            self?.onEnded?()
+        }
+        isReady = true
+        onReady?(videoDuration, videoSize)
+        if let (time, completion) = pendingSeek {
+            pendingSeek = nil
+            seek(to: time, completion: completion)
+        }
+        Logger.info("WebMVideoView: native player attached; autoplay=\(wantsPlay)")
+        if wantsPlay { player.play() }
+    }
+    private func stopStreamingFallback() {
+        displayObservation = nil
+        if let streamingTimeObserver, let streamingPlayer {
+            streamingPlayer.removeTimeObserver(streamingTimeObserver)
+        }
+        streamingTimeObserver = nil
+        if let streamingEndObserver { NotificationCenter.default.removeObserver(streamingEndObserver) }
+        streamingEndObserver = nil
+        streamingPlayer?.pause()
+        streamingPlayer = nil
+        streamingLayer?.player = nil
+        streamingLayer = nil
+        streamingFirstFrameSent = false
+        streamingOverlay?.removeFromSuperview()
+        streamingOverlay = nil
+        streamingFallback?.stop()
+        streamingFallback = nil
+    }
+    private static func probeMetadata(from url: URL, ffmpeg: URL,
+                                      completion: @escaping (Double, CGSize) -> Void) {
+        let candidates = [ffmpeg.deletingLastPathComponent().appendingPathComponent("ffprobe"),
+                          URL(fileURLWithPath: "/opt/homebrew/bin/ffprobe"),
+                          URL(fileURLWithPath: "/usr/local/bin/ffprobe")]
+        guard let ffprobe = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }) else {
+            DispatchQueue.main.async { completion(0, .zero) }
+            return
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let process = Process()
+            let output = Pipe()
+            process.executableURL = ffprobe
+            process.arguments = ["-v", "error", "-select_streams", "v:0",
+                                 "-show_entries", "format=duration:stream=width,height",
+                                 "-of", "json", url.path]
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            var duration = 0.0
+            var size = CGSize.zero
+            if (try? process.run()) != nil {
+                let data = output.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                if let info = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                    let format = info["format"] as? [String: Any]
+                    duration = Double(format?["duration"] as? String ?? "") ?? 0
+                    let stream = (info["streams"] as? [[String: Any]])?.first
+                    size = CGSize(width: stream?["width"] as? Int ?? 0,
+                                  height: stream?["height"] as? Int ?? 0)
+                }
+            }
+            DispatchQueue.main.async { completion(duration, size) }
+        }
     }
     private func transcodeUnsupportedWebM() -> Bool {
         guard !usingFallback, sourceURL.isFileURL,
@@ -1470,6 +1767,7 @@ final class WebMVideoView: WKWebView {
             return false
         }
         fallbackProcess = process
+        logLoadStage("unsupported media; conversion started")
         Logger.info("WebMVideoView: converting unsupported WebM \(original.lastPathComponent)")
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             process.waitUntilExit()
@@ -1479,6 +1777,7 @@ final class WebMVideoView: WKWebView {
                     return
                 }
                 self.fallbackProcess = nil
+                self.logLoadStage("conversion finished")
                 guard process.terminationStatus == 0,
                       FileManager.default.fileExists(atPath: output.path) else {
                     try? FileManager.default.removeItem(at: directory)
@@ -1494,14 +1793,30 @@ final class WebMVideoView: WKWebView {
     }
     func playVideo() {
         wantsPlay = true
+        if let streamingPlayer {
+            streamingPlayer.play()
+            return
+        }
         guard isReady else { return }
         evaluateJavaScript("document.querySelector('video')?.play().catch(() => {})")
     }
     func pauseVideo() {
         wantsPlay = false
+        if let streamingPlayer {
+            streamingPlayer.pause()
+            return
+        }
         evaluateJavaScript("document.querySelector('video')?.pause()")
     }
     func seek(to seconds: Double, completion: (() -> Void)? = nil) {
+        if let streamingPlayer {
+            let target = max(0, seconds.isFinite ? seconds : 0)
+            streamingPlayer.seek(to: CMTime(seconds: target, preferredTimescale: 600),
+                                 toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                DispatchQueue.main.async { completion?() }
+            }
+            return
+        }
         guard isReady else {
             pendingSeek = (seconds, completion)
             return
@@ -1518,10 +1833,25 @@ final class WebMVideoView: WKWebView {
     }
     func setVideoMuted(_ value: Bool) {
         muted = value
+        if let streamingPlayer {
+            streamingPlayer.isMuted = value
+            return
+        }
         evaluateJavaScript("document.querySelector('video').muted = \(value ? "true" : "false")")
     }
     var isVideoMuted: Bool { muted }
+    func captureThumbnail(_ completion: @escaping (NSImage?) -> Void) {
+        if streamingPlayer != nil {
+            Self.generatePoster(from: sourceURL, completion: completion)
+        } else {
+            takeSnapshot(with: nil) { image, _ in completion(image) }
+        }
+    }
     func captureFrame(_ completion: @escaping (NSImage?) -> Void) {
+        if streamingPlayer != nil {
+            Self.generateFrame(from: sourceURL, at: videoTime, maxSize: nil, completion: completion)
+            return
+        }
         let script = """
             (() => { const v = document.querySelector('video');
               if (!v || !v.videoWidth || !v.videoHeight) return null;
@@ -1531,20 +1861,30 @@ final class WebMVideoView: WKWebView {
               return c.toDataURL('image/png'); })()
             """
         evaluateJavaScript(script) { [weak self] result, _ in
-            if let dataURL = result as? String,
-               let data = Data(base64Encoded: String(dataURL.split(separator: ",", maxSplits: 1).last ?? "")),
-               let image = NSImage(data: data) {
-                completion(image)
-            } else {
+            guard let dataURL = result as? String else {
                 self?.takeSnapshot(with: nil) { image, _ in completion(image) }
+                return
+            }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let encoded = String(dataURL.split(separator: ",", maxSplits: 1).last ?? "")
+                let image = Data(base64Encoded: encoded).flatMap(NSImage.init(data:))
+                DispatchQueue.main.async {
+                    if let image {
+                        completion(image)
+                    } else {
+                        self?.takeSnapshot(with: nil) { image, _ in completion(image) }
+                    }
+                }
             }
         }
     }
     fileprivate func receive(_ message: WKScriptMessage) {
+        guard streamingFallback == nil else { return }
         guard let body = message.body as? [String: Any],
               let type = body["type"] as? String else { return }
         switch type {
         case "ready":
+            logLoadStage("metadata ready")
             releaseEmbeddedDragDestinations()
             isReady = true
             videoDuration = body["duration"] as? Double ?? 0
@@ -1570,14 +1910,179 @@ final class WebMVideoView: WKWebView {
             wantsPlay = false
             onEnded?()
         case "frameReady":
+            logLoadStage("first frame ready")
             releaseEmbeddedDragDestinations()
             if !wantsPlay { pauseVideo() }
             onFrameReady?()
         case "error":
             Logger.warning("WebMVideoView: media element failed (code \(body["code"] ?? 0)); \(body["message"] ?? "")")
-            if !transcodeUnsupportedWebM() { onFailure?() }
+            if !startStreamingFallback() { onFailure?() }
         default: break
         }
+    }
+}
+
+private final class PassthroughVideoOverlay: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// Serves completed HLS segments over loopback as ffmpeg produces them. AVPlayer
+/// needs HTTP for HLS and can begin once the first segments exist.
+private final class WebMStreamingFallback {
+    private let source: URL
+    private let ffmpeg: URL
+    private let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("GlanceWebMStream-\(UUID().uuidString)", isDirectory: true)
+    private let queue = DispatchQueue(label: "com.glance.webm-stream", qos: .userInitiated)
+    private var listener: NWListener?
+    private var process: Process?
+    private var completion: ((URL?) -> Void)?
+    private var stopped = false
+
+    init(source: URL, ffmpeg: URL) {
+        self.source = source
+        self.ffmpeg = ffmpeg
+    }
+
+    func start(completion: @escaping (URL?) -> Void) {
+        self.completion = completion
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let parameters = NWParameters.tcp
+            parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
+            let listener = try NWListener(using: parameters)
+            self.listener = listener
+            listener.newConnectionHandler = { [weak self] connection in self?.serve(connection) }
+            listener.stateUpdateHandler = { [weak self] state in
+                guard let self, !self.stopped else { return }
+                switch state {
+                case .ready:
+                    guard let port = self.listener?.port?.rawValue else {
+                        self.deliver(nil)
+                        return
+                    }
+                    self.beginTranscoding(port: port)
+                case .failed(let error):
+                    Logger.error("WebM streaming server failed: \(error.localizedDescription)")
+                    self.deliver(nil)
+                default: break
+                }
+            }
+            listener.start(queue: queue)
+        } catch {
+            Logger.error("WebM streaming server failed: \(error.localizedDescription)")
+            deliver(nil)
+        }
+    }
+
+    func stop() {
+        queue.async { [self] in
+            guard !stopped else { return }
+            stopped = true
+            listener?.cancel()
+            listener = nil
+            if process?.isRunning == true { process?.terminate() }
+            process = nil
+            try? FileManager.default.removeItem(at: directory)
+            completion = nil
+        }
+    }
+
+    private func beginTranscoding(port: UInt16) {
+        guard process == nil else { return }
+        let process = Process()
+        process.executableURL = ffmpeg
+        process.arguments = [
+            "-nostdin", "-hide_banner", "-loglevel", "error", "-i", source.path,
+            "-map", "0:v:0", "-map", "0:a?", "-sn",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+            "-pix_fmt", "yuv420p", "-force_key_frames", "expr:gte(t,n_forced*1)",
+            "-c:a", "aac", "-b:a", "128k",
+            "-f", "hls", "-hls_time", "1", "-hls_list_size", "0",
+            "-hls_playlist_type", "event",
+            "-hls_flags", "temp_file+independent_segments",
+            "-hls_segment_filename", directory.appendingPathComponent("segment_%05d.ts").path,
+            directory.appendingPathComponent("index.m3u8").path
+        ]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        process.terminationHandler = { [weak self] finishedProcess in
+            let exitCode = finishedProcess.terminationStatus
+            self?.queue.async { [weak self] in
+                guard self?.stopped == false, exitCode != 0 else { return }
+                Logger.error("WebM streaming conversion exited with code \(exitCode)")
+            }
+        }
+        do {
+            try process.run()
+        } catch {
+            Logger.error("WebM streaming conversion failed to start: \(error.localizedDescription)")
+            deliver(nil)
+            return
+        }
+        self.process = process
+        let playlist = directory.appendingPathComponent("index.m3u8")
+        DispatchQueue.global(qos: .userInitiated).async { [weak self, weak process] in
+            let deadline = ProcessInfo.processInfo.systemUptime + 12
+            while ProcessInfo.processInfo.systemUptime < deadline {
+                if let contents = try? String(contentsOf: playlist, encoding: .utf8),
+                   let segment = contents.split(separator: "\n").filter({ $0.hasPrefix("segment_") }).last,
+                   (contents.components(separatedBy: "#EXTINF").count > 3 || contents.contains("#EXT-X-ENDLIST")),
+                   FileManager.default.fileExists(atPath: self?.directory.appendingPathComponent(String(segment)).path ?? "") {
+                    self?.queue.async { self?.deliver(URL(string: "http://127.0.0.1:\(port)/index.m3u8")) }
+                    return
+                }
+                if process?.isRunning == false { break }
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+            self?.queue.async { self?.deliver(nil) }
+        }
+    }
+
+    private func deliver(_ url: URL?) {
+        guard !stopped, let completion else { return }
+        self.completion = nil
+        DispatchQueue.main.async { completion(url) }
+    }
+
+    private func serve(_ connection: NWConnection) {
+        connection.start(queue: queue)
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [weak self] data, _, _, _ in
+            guard let self, let data,
+                  let request = String(data: data, encoding: .utf8),
+                  let firstLine = request.components(separatedBy: "\r\n").first else {
+                connection.cancel()
+                return
+            }
+            let parts = firstLine.split(separator: " ")
+            guard parts.count >= 2, parts[0] == "GET" || parts[0] == "HEAD" else {
+                self.respond(connection, status: "405 Method Not Allowed", body: Data(), mime: "text/plain")
+                return
+            }
+            let name = String(parts[1].split(separator: "?").first ?? "").dropFirst()
+            let segmentNumber = name.hasPrefix("segment_") && name.hasSuffix(".ts")
+                ? name.dropFirst(8).dropLast(3) : Substring()
+            guard name == "index.m3u8" || (!segmentNumber.isEmpty && segmentNumber.allSatisfy(\.isNumber)) else {
+                self.respond(connection, status: "404 Not Found", body: Data(), mime: "text/plain")
+                return
+            }
+            let file = self.directory.appendingPathComponent(String(name))
+            guard let body = try? Data(contentsOf: file) else {
+                self.respond(connection, status: "404 Not Found", body: Data(), mime: "text/plain")
+                return
+            }
+            self.respond(connection, status: "200 OK", body: body,
+                         mime: name == "index.m3u8" ? "application/vnd.apple.mpegurl" : "video/mp2t",
+                         headOnly: parts[0] == "HEAD")
+        }
+    }
+
+    private func respond(_ connection: NWConnection, status: String, body: Data,
+                         mime: String, headOnly: Bool = false) {
+        let headers = "HTTP/1.1 \(status)\r\nContent-Type: \(mime)\r\nContent-Length: \(body.count)\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n"
+        var response = Data(headers.utf8)
+        if !headOnly { response.append(body) }
+        connection.send(content: response, completion: .contentProcessed { _ in connection.cancel() })
     }
 }
 

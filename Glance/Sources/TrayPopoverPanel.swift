@@ -180,8 +180,8 @@ final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
         let x = screenRect.midX - Self.panelSize.width / 2
         let y = screenRect.minY - Self.panelSize.height - 6
         setFrameOrigin(NSPoint(x: x, y: y))
-        makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        makeKeyAndOrderFront(nil)
     }
 
     override var canBecomeKey: Bool { true }

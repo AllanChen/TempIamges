@@ -302,11 +302,11 @@ function canonicalJSON(value: unknown): string {
   }
   return JSON.stringify(value);
 }
-async function signDeveloperManifest(env: Env, manifest: Manifest): Promise<Manifest> {
+async function signDeveloperManifest(env: Env, manifest: Manifest, preserveUpdatedAt = false): Promise<Manifest> {
   if (!env.GLANCE_SIGNING_KEY_PKCS8) throw new Error("Signing key is not configured");
   const bytes = Uint8Array.from(atob(env.GLANCE_SIGNING_KEY_PKCS8), (char) => char.charCodeAt(0));
   const key = await crypto.subtle.importKey("pkcs8", bytes, "Ed25519", false, ["sign"]);
-  const unsigned = { ...manifest, official: false, updatedAt: now() } as Record<string, unknown>;
+  const unsigned = { ...manifest, official: false, updatedAt: preserveUpdatedAt ? manifest.updatedAt || now() : now() } as Record<string, unknown>;
   delete unsigned.signature;
   const signature = new Uint8Array(await crypto.subtle.sign("Ed25519", key, new TextEncoder().encode(canonicalJSON(unsigned))));
   const encoded = btoa(String.fromCharCode(...signature)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -345,7 +345,15 @@ async function audit(env: Env, widgetID: string, versionID: string | null, actor
   await env.DB.prepare("INSERT INTO widget_audit_logs (id,widget_id,version_id,actor_id,action,previous_status,next_status,note,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
     .bind(id("audit"), widgetID, versionID, actor, action, previous, next, note, now()).run();
 }
-function publicManifest(row: { manifest_json: string }) { return JSON.parse(row.manifest_json); }
+async function publicManifest(env: Env, row: { manifest_json: string }): Promise<Manifest> {
+  const manifest = JSON.parse(row.manifest_json) as Manifest;
+  // Versions published before the signing fix still need a valid signature
+  // for the macOS client to decode and install them.
+  if (!manifest.official && !manifest.signature) {
+    return signDeveloperManifest(env, manifest, true);
+  }
+  return manifest;
+}
 
 async function ensureOfficialWidgets(env: Env) {
   const timestamp = now();
@@ -519,13 +527,14 @@ async function developerWidgetAction(env: Env, request: Request, widgetID: strin
 async function listWidgets(env: Env) {
   await ensureOfficialWidgets(env);
   const rows = await env.DB.prepare("SELECT v.manifest_json FROM widget_versions v JOIN widgets w ON w.id=v.widget_id AND w.current_version=v.version WHERE w.status='published' AND v.status='published' ORDER BY v.updated_at DESC").all<{ manifest_json: string }>();
-  return ok({ widgets: rows.results.map(publicManifest), pagination: { page: 1, limit: rows.results.length, total: rows.results.length, totalPages: rows.results.length ? 1 : 0 } }, 200, { "Cache-Control": "public, max-age=60" });
+  const widgets = await Promise.all(rows.results.map((row) => publicManifest(env, row)));
+  return ok({ widgets, pagination: { page: 1, limit: widgets.length, total: widgets.length, totalPages: widgets.length ? 1 : 0 } }, 200, { "Cache-Control": "public, max-age=60" });
 }
 
 async function widgetDetail(env: Env, widgetID: string) {
   await ensureOfficialWidgets(env);
   const row = await env.DB.prepare("SELECT v.manifest_json FROM widget_versions v JOIN widgets w ON w.id=v.widget_id AND w.current_version=v.version WHERE v.widget_id=? AND w.status='published' AND v.status='published' LIMIT 1").bind(widgetID).first<{ manifest_json: string }>();
-  return row ? ok(publicManifest(row), 200, { "Cache-Control": "public, max-age=60" }) : fail("widget_not_found", "Widget not found.", 404);
+  return row ? ok(await publicManifest(env, row), 200, { "Cache-Control": "public, max-age=60" }) : fail("widget_not_found", "Widget not found.", 404);
 }
 
 async function taskStatus(env: Env, request: Request, taskID: string) {
@@ -872,9 +881,10 @@ async function adminAction(env: Env, request: Request, submissionID: string, act
   }
   if (action === "promote" && row.status !== "gray_release") return fail("not_gray", "Only gray releases can be published.", 409);
   let signedManifest = row.manifest_json;
-  if (action === "approve" && row.owner_id.startsWith("google:")) {
+  const currentManifest = JSON.parse(row.manifest_json) as Manifest;
+  if ((action === "approve" || action === "promote") && !currentManifest.official && !currentManifest.signature) {
     if (!env.GLANCE_SIGNING_KEY_PKCS8) return fail("signing_unavailable", "Platform signing key is not configured.", 503);
-    signedManifest = JSON.stringify(await signDeveloperManifest(env, JSON.parse(row.manifest_json) as Manifest));
+    signedManifest = JSON.stringify(await signDeveloperManifest(env, currentManifest));
   }
   const shouldChangeWidget = action === "promote" || action === "suspend" ||
     ((action === "approve" || action === "reject") && widgetState.status !== "published");

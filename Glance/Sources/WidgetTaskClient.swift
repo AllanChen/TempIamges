@@ -1,7 +1,6 @@
 import Foundation
 import CFNetwork
 import ImageIO
-import Security
 import UniformTypeIdentifiers
 
 enum WidgetTaskPhase: String, Codable {
@@ -37,7 +36,6 @@ final class WidgetTaskClient {
         return URLSession(configuration: configuration)
     }()
     private let taskTokenKey = "glance.widgetTaskToken"
-    private let freeimageKeyKey = "glance.freeimageAPIKey"
 
     private func authorizedRequest(_ url: URL) -> URLRequest {
         var request = URLRequest(url: url)
@@ -126,7 +124,7 @@ final class WidgetTaskClient {
                   let envelope = try? JSONDecoder().decode(UploadConfigEnvelope.self, from: data),
                   envelope.success, let config = envelope.result else {
                 Logger.warning("Widget upload config unavailable; using R2")
-                completion(UploadConfig(locationBasedUpload: false))
+                completion(UploadConfig(locationBasedUpload: false, freeimageKey: nil))
                 return
             }
             completion(config)
@@ -148,7 +146,7 @@ final class WidgetTaskClient {
                                                  completion: completion)
                         }
                         let china = ["CN", "CHINA"].contains(country.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
-                        let key = self.localFreeimageKey()?
+                        let key = config.freeimageKey?
                             .trimmingCharacters(in: .whitespacesAndNewlines)
                         guard config.locationBasedUpload, china, mime.hasPrefix("image/") else {
                             Logger.info("Widget upload using R2 (country: \(country), location routing: \(config.locationBasedUpload))")
@@ -156,7 +154,7 @@ final class WidgetTaskClient {
                             return
                         }
                         guard let key, !key.isEmpty else {
-                            Logger.warning("Freeimage API key missing from local Keychain; falling back to R2")
+                            Logger.warning("Freeimage API key missing from config; falling back to R2")
                             uploadToR2()
                             return
                         }
@@ -198,24 +196,6 @@ final class WidgetTaskClient {
     private static let freeimageMIMETypes: Set<String> = [
         "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"
     ]
-
-    private func localFreeimageKey() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "com.glance.app.freeimage",
-            kSecAttrAccount as String: "api-key",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var item: CFTypeRef?
-        if SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-           let data = item as? Data,
-           let key = String(data: data, encoding: .utf8), !key.isEmpty {
-            return key
-        }
-        return UserDefaults.standard.string(forKey: freeimageKeyKey)
-            ?? ProcessInfo.processInfo.environment["FREEIMAGEKEY"]
-    }
 
     private static func freeimageImage(data: Data, mime: String) -> (data: Data, mime: String)? {
         if freeimageMIMETypes.contains(mime) { return (data, mime) }
@@ -409,7 +389,10 @@ final class WidgetTaskClient {
                     }
                     completion(.failure(WidgetError.unavailable)); return
                 }
-                if result.status == "failed" { completion(.failure(WidgetError.unavailable)); return }
+                if result.status == "failed" {
+                    completion(.failure(WidgetTaskExecutionError(message: result.error)))
+                    return
+                }
                 progress(.processing, result.processCount ?? 0)
             } catch { /* transient query errors retry until the overall timeout */ }
             DispatchQueue.global().asyncAfter(deadline: .now() + 5) { self.poll(taskID: taskID, started: started, progress: progress, completion: completion) }
@@ -470,13 +453,29 @@ final class WidgetTaskClient {
     }
     private struct UploadEnvelope: Codable { let success: Bool; let result: UploadResult? }
     private struct UploadResult: Codable { let url: String }
-    private struct UploadConfig: Codable { let locationBasedUpload: Bool }
+    private struct UploadConfig: Codable { let locationBasedUpload: Bool; let freeimageKey: String? }
     private struct UploadConfigEnvelope: Codable { let success: Bool; let result: UploadConfig? }
     private struct LocationEnvelope: Codable { let success: Bool; let result: LocationResult }
     private struct LocationResult: Codable { let location: String }
     private struct TaskEnvelope: Codable { let success: Bool; let result: TaskResult? }
-    private struct TaskResult: Codable { let taskID: String; let status: String; let processCount: Int?; let resultURL: String?; let result: [TaskArtifact]? }
+    private struct TaskResult: Codable {
+        let taskID: String
+        let status: String
+        let processCount: Int?
+        let resultURL: String?
+        let result: [TaskArtifact]?
+        let error: String?
+    }
     private struct TaskArtifact: Codable { let type: String?; let text: String?; let url: String? }
+}
+
+private struct WidgetTaskExecutionError: LocalizedError {
+    let message: String?
+
+    var errorDescription: String? {
+        let detail = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return detail.isEmpty ? "The Widget task failed without reporting a reason." : detail
+    }
 }
 
 private struct WidgetTaskRequestError: LocalizedError {
