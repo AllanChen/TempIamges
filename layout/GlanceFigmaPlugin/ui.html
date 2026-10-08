@@ -16,12 +16,18 @@
     button.primary { flex: 1; border: 0; background: #e8a87c; color: #21130d; font-weight: 700; }
     button.export, button.generate-screens { width: 100%; border-color: rgba(232,168,124,.35); color: #e8a87c; }
     button.generate-screens { margin-top: 8px; background: rgba(232,168,124,.10); font-weight: 700; }
+    button.featured { min-height: 44px; margin-bottom: 18px; background: #e8a87c; border: 0; color: #21130d; }
+    #mode { margin: 0 0 12px; color: #aaa4a0; font-size: 11px; }
+    #mode.dev { color: #f18b86; }
     #status { min-height: 18px; margin-top: 14px; color: #8fd0af; }
   </style>
 </head>
 <body>
-  <h1>Glance Image Inspect <span style="color:#e8a87c">v2</span></h1>
-  <p>Creates a fully editable Image Inspect screen and reusable components. The reference PNG is optional but recommended.</p>
+  <h1>Glance UI Builder <span style="color:#e8a87c">v2</span></h1>
+  <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages.</p>
+  <div id="mode">Checking Figma mode…</div>
+  <button id="generate-widget-oss-result" class="generate-screens featured">Refine OSS Result Page</button>
+  <button id="generate-widget-flow" class="generate-screens featured">Generate Revised Widget Pages (7 Screens)</button>
   <label for="reference">Reference image</label>
   <input id="reference" type="file" accept="image/png,image/jpeg">
   <div class="hint">Choose <code>layout/image-inspect-ui.png</code> to place a locked reference beside the editable design.</div>
@@ -113,6 +119,18 @@
       status.textContent = 'Building Image Compression Flow...';
       parent.postMessage({ pluginMessage: { type: 'generate-image-compression-flow' } }, '*');
     };
+    document.getElementById('generate-widget-flow').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building seven revised Widget pages...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-flow', bytes } }, '*');
+    };
+    document.getElementById('generate-widget-oss-result').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Refining the Widget OSS result page...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-oss-result', bytes } }, '*');
+    };
     document.getElementById('export').onclick = () => {
       status.textContent = 'Exporting selected frame...';
       parent.postMessage({ pluginMessage: { type: 'export-selection' } }, '*');
@@ -151,6 +169,14 @@
     onmessage = event => {
       const message = event.data.pluginMessage;
       if (!message) return;
+      if (message.type === 'editor-mode') {
+        const mode = document.getElementById('mode');
+        mode.className = message.editorType === 'dev' ? 'dev' : '';
+        mode.textContent = message.editorType === 'dev'
+          ? 'Dev Mode: switch to Design before generating screens.'
+          : 'Design Mode: ready to generate editable screens.';
+        return;
+      }
       if (message.type === 'export-ready') {
         download(message.basename + '.json', new Blob([message.json], { type: 'application/json' }));
         download(message.basename + '.png', new Blob([new Uint8Array(message.png)], { type: 'image/png' }));
@@ -159,6 +185,7 @@
       }
       status.textContent = message.message || '';
     };
+    parent.postMessage({ pluginMessage: { type: 'get-editor-mode' } }, '*');
   </script>
 </body>
 </html>

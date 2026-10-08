@@ -10,6 +10,11 @@ This local development plugin creates a fully editable Glance Image Inspect desi
 4. Select `layout/GlanceFigmaPlugin/manifest.json`.
 5. Run `Plugins > Development > Glance UI Builder v2`.
 
+The manifest allows import from both Figma Design and Dev Mode. Creation still
+requires **Design Mode** because Dev Mode plugins cannot edit canvas contents.
+If the plugin reports `Switch to Design Mode`, use the toolbar mode toggle or
+`Shift+D`, then run the generator in Design Mode.
+
 ## Generate
 
 1. Optionally select `layout/image-inspect-ui.png` in the plugin window.
@@ -120,6 +125,36 @@ Flow` frame containing three scenes placed side by side:
 The flow matches the current Swift implementation and reuses the existing
 Glance color palette, floating toolbar, compare chrome, and typography. Running
 the action again selects the existing frame instead of duplicating it.
+
+## Review the Widget input and output pages
+
+For the Widget that returns an OSS image URL, click **Refine OSS Result Page** in
+Figma Design Mode. The action updates an existing `Widget Output / Image URL /
+OSS Result / Refined` frame, or copies the user's edited `Widget Output / Image
+URL / OSS Result` frame when the refined one does not exist. The result has a
+plain **OSS RESULT** label and a compact **Copy URL** button. The image and
+bottom filmstrip are left unchanged. Running the button again selects the
+refined frame without replacing later edits. If the edited source frame is
+absent, the plugin builds the same minimal layout; the optional Reference image
+fills its generated image preview.
+
+Open the plugin in Figma **Design Mode** and click
+**Generate Revised Widget Pages (7 Screens)** at the top of the plugin
+window. The optional **Reference image** supplies preview artwork; otherwise
+the plugin uses Glance gradients.
+
+The action creates seven separate editable frames: image + text input,
+image + text + mask input, image + mask input with the prompt disabled, a draw
+mask editor, direct text output alongside the source image, a video URL preview,
+and an audio URL player. Video and audio results show a **Copy URL** action.
+The inputs form one row and the outputs form another. The existing plain image
+and video input flows and plain image result flow remain the reference for
+those cases.
+
+The older one-page overview, five-screen study, and eight-page draft are hidden and archived,
+preserving any edits. Running the button again selects the first input page
+without duplicating the others. These are design review pages; the Glance
+client is unchanged.
 
 ## Generate the remaining production screens
 

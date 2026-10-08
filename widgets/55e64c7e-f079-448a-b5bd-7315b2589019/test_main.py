@@ -20,7 +20,7 @@ class WidgetTest(unittest.TestCase):
         open_url.side_effect = [io.BytesIO(PNG), io.BytesIO(json.dumps(RESULT).encode())]
         result = widget.main({"input": {"url": "https://example.com/photo.png"},
                               "parameters": {"location": "China"}})
-        self.assertEqual(result, {"outputs": [{"type": "text", "text": RESULT["image"]["url"]}]})
+        self.assertEqual(result, {"outputs": [{"type": "image", "url": RESULT["image"]["url"]}]})
         download, upload = [call.args[0] for call in open_url.call_args_list]
         self.assertEqual(download.full_url, "https://example.com/photo.png")
         self.assertEqual(upload.full_url, widget.UPLOAD_URL)
@@ -41,7 +41,7 @@ class WidgetTest(unittest.TestCase):
             result = widget.main({"input": {"url": "https://example.com/photo.png",
                                             "path": str(image)},
                                   "parameters": {"location": "CN"}})
-        self.assertEqual(result["outputs"][0]["text"], RESULT["image"]["url"])
+        self.assertEqual(result["outputs"][0]["url"], RESULT["image"]["url"])
         self.assertEqual(open_url.call_count, 1)
 
     @patch("main.urlopen")
@@ -50,10 +50,11 @@ class WidgetTest(unittest.TestCase):
             ("china", "https://iili.io/example.png"),
             ("US", "https://pub-example.r2.dev/example.png"),
             ("US", "https://glance-service.allanchanni.workers.dev/api/v2/assets/asset_1?sig=x"),
+            ("US", "https://api.glance.mcreator.ai/api/v2/assets/asset_1?sig=x"),
         ]:
             with self.subTest(location=location, url=url):
                 result = widget.main({"task_params": {"url": url, "location": location}})
-                self.assertEqual(result["outputs"], [{"type": "text", "text": url}])
+                self.assertEqual(result["outputs"], [{"type": "image", "url": url}])
         open_url.assert_not_called()
 
     @patch.dict(os.environ, {"FREEIMAGEKEY": "test-key"})
@@ -62,7 +63,7 @@ class WidgetTest(unittest.TestCase):
         source = "https://pub-example.r2.dev/example.png"
         open_url.side_effect = [io.BytesIO(PNG), io.BytesIO(json.dumps(RESULT).encode())]
         result = widget.main({"task_params": {"url": source, "location": "China"}})
-        self.assertEqual(result["outputs"][0]["text"], RESULT["image"]["url"])
+        self.assertEqual(result["outputs"][0]["url"], RESULT["image"]["url"])
         self.assertEqual(open_url.call_args_list[0].args[0].full_url, source)
         self.assertEqual(open_url.call_args_list[1].args[0].full_url, widget.UPLOAD_URL)
 
@@ -75,7 +76,7 @@ class WidgetTest(unittest.TestCase):
             result = widget.main({"task_params": {"url": source, "location": "US"}})
             output = result["outputs"][0]
             self.assertEqual(output["type"], "image")
-            self.assertTrue(output["returnURL"])
+            self.assertNotIn("returnURL", output)
             self.assertEqual(Path(output["path"]).read_bytes(), PNG)
         self.assertEqual(open_url.call_args_list[0].args[0].full_url, source)
 
@@ -88,7 +89,8 @@ class WidgetTest(unittest.TestCase):
                 os.environ, {"GLANCE_TASK_OUTPUT_DIR": directory}):
             result = widget.main({"task_params": {"url": "https://example.com/image.png",
                                                    "location": "China"}})
-            self.assertTrue(result["outputs"][0]["returnURL"])
+            self.assertEqual(result["outputs"][0]["type"], "image")
+            self.assertNotIn("returnURL", result["outputs"][0])
         upload.assert_called_once()
 
     def test_private_url_is_rejected(self):

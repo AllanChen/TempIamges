@@ -12,7 +12,7 @@ import uuid
 from . import __version__
 from .api import APIError, request
 from .auth import login, logout
-from .registry import cache_manifest, connect, read_session, rows, update, upsert
+from .registry import cache_manifest, connect, read_token, rows, update, upsert
 from .runtime import execute, resolve_python
 from .worker import run_worker
 from .worker_logs import show_worker_logs
@@ -170,7 +170,7 @@ def command_add(args: argparse.Namespace) -> None:
 
     remote = None
     denied = False
-    if read_session():
+    if read_token():
         try:
             detail = request("GET", f"/api/v2/developer/widgets/{manifest['id']}")
             version = next((item for item in detail.get("versions", [])
@@ -202,7 +202,7 @@ def command_add(args: argparse.Namespace) -> None:
     if denied:
         print("当前账号无权领取该版本任务；已挂载供本地 test 使用。")
     elif remote is None and status == "local":
-        print("服务端任务权限尚未确认；可本地 test。登录后再次 add 可同步已授权版本。")
+        print("服务端任务权限尚未确认；可本地 test。配置测试 token 或登录后再次 add 可同步已授权版本。")
 
 
 def command_publish(args: argparse.Namespace) -> None:
@@ -360,6 +360,9 @@ def main(argv: list[str] | None = None) -> int:
                     row["requesting"] = active
                 if args.json:
                     print(json.dumps(data, indent=2, ensure_ascii=False))
+                elif not data:
+                    print("本机尚未挂载 Widget。运行 glance widget add <Widget 目录或 UUID> 添加；"
+                          "也可运行 glance widget init 创建新 Widget。")
                 else:
                     for row in data:
                         print(f"{row['widget_id']} v{row['version']} {row['server_status']} "

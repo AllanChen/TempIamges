@@ -1627,6 +1627,490 @@ async function generateImageCompressionFlow() {
   figma.notify('Image Compression Flow created');
 }
 
+// Seven focused Widget screens. The existing image/video input and image
+// result flows stay in place; older studies are hidden so edits remain available.
+const SIMPLE_WIDGET_NAME = 'Widget / Simple Input + Output / Clean Editable';
+const OLD_WIDGET_FLOW_PREFIX = 'Widget Flow v1 / ';
+const OLD_WIDGET_PAGE_NAMES = [
+  'Widget Input / 01 / Image',
+  'Widget Input / 02 / Image + Text',
+  'Widget Input / 03 / Image + Text + Mask',
+  'Widget Input / 04 / Video',
+  'Widget Output / 01 / Image',
+  'Widget Output / 02 / Text',
+  'Widget Output / 03 / Video',
+  'Widget Output / 04 / Audio'
+];
+
+function simpleWidgetArt(parent, name, x, y, width, height, imageHash, colors) {
+  const art = rect(name, parent, x, y, width, height, null, 8, COLORS.line);
+  if (imageHash) art.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  else artworkFill(art, colors);
+  return art;
+}
+
+function simpleWidgetAction(parent, label, x, y, width, primary = false) {
+  const action = frame(label + ' Action', x, y, width, 36,
+                       primary ? COLORS.accent : COLORS.raised, 8);
+  parent.appendChild(action);
+  text('Action Label', action, label, 0, 10, 12,
+       primary ? '#21130D' : COLORS.text, 'semibold', width, 'CENTER');
+  return action;
+}
+
+const WIDGET_PAGE_NAMES = [
+  'Widget Input / 02 / Image + Text / Revised',
+  'Widget Input / 03 / Image + Text + Mask / Revised',
+  'Widget Input / 03B / Image + Mask Only',
+  'Widget Input / Draw Mask',
+  'Widget Output / 02 / Text in Preview',
+  'Widget Output / 03 / Video URL Preview',
+  'Widget Output / 04 / Audio URL Player'
+];
+
+function widgetPageShell(name, x, y, section, hint) {
+  const { screen, root, toolbar } = createScreenShell(name, x, 'Widget', section);
+  screen.y = y;
+  text('Section', toolbar, section.toUpperCase(), 44, 24, 12, COLORS.accent, 'semibold');
+  text('Hint', toolbar, hint, 700, 24, 12, COLORS.secondary,
+       'regular', 808, 'RIGHT');
+  const body = frame('03 / Widget Canvas', 0, 128, 1554, 847, '#0C0D11');
+  root.appendChild(body);
+  return { screen, root, body };
+}
+
+function widgetPagePanel(body, title, subtitle, x, width) {
+  const card = panel(body, '04 / Widget Panel', x, 42, width, 740, COLORS.surface, 14);
+  text('Title', card, title, 32, 26, 24, COLORS.text, 'semibold');
+  text('Subtitle', card, subtitle, 32, 63, 12, COLORS.secondary);
+  rect('Header Divider', card, 32, 94, width - 64, 1, COLORS.line);
+  return card;
+}
+
+function widgetPromptField(parent, x, y, width, height, value, disabled = false) {
+  text('Prompt Label', parent, 'PROMPT', x, y, 11,
+       disabled ? COLORS.muted : COLORS.secondary, 'semibold');
+  const field = panel(parent, disabled ? 'Prompt Field / disabled' : 'Prompt Field',
+                      x, y + 23, width, height,
+                      disabled ? '#17181C' : '#101115', 9);
+  field.strokes = [fill(disabled ? '#303137' : COLORS.line)];
+  field.strokeWeight = 1;
+  paragraph(disabled ? 'Prompt Text / disabled' : 'Prompt Text', field, value,
+            17, 18, width - 34, 13,
+            disabled ? COLORS.muted : COLORS.text);
+  return field;
+}
+
+function widgetPageImageTextInput(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(WIDGET_PAGE_NAMES[0], x, y,
+    'Input  ·  Image + text', 'Add a prompt to the selected image');
+  const card = widgetPagePanel(body, 'Image and prompt',
+    'The prompt tells the Widget what to make or change.', 350, 854);
+  simpleWidgetArt(card, 'Selected Image', 32, 113, 790, 339, imageHash,
+                  ['#25323A', '#A47761', '#293B33']);
+  text('Image Filename', card, 'portrait.jpg  ·  6.8 MB', 32, 464, 12, COLORS.secondary);
+  widgetPromptField(card, 32, 498, 790, 117,
+    'Warm light, natural color, soft background');
+  simpleWidgetAction(card, 'Change image', 32, 671, 150);
+  simpleWidgetAction(card, 'Run Widget', 616, 671, 206, true);
+  createStatusbar(root, 'Input  ·  image + text', 'Prompt and one picture');
+  return screen;
+}
+
+function widgetPageImageMaskInput(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(WIDGET_PAGE_NAMES[1], x, y,
+    'Input  ·  Image + text + mask', 'The mask selects the area to change');
+  const card = widgetPagePanel(body, 'Image, prompt and mask',
+    'Choose the image, describe the edit, then add a mask.', 250, 1054);
+  simpleWidgetArt(card, 'Selected Image', 32, 113, 470, 488, imageHash,
+                  ['#25323A', '#A47761', '#293B33']);
+  text('Image Filename', card, 'portrait.jpg  ·  6.8 MB', 32, 616, 12, COLORS.secondary);
+  widgetPromptField(card, 526, 113, 496, 145,
+    'Replace the background with a garden');
+  text('Mask Label', card, 'MASK', 526, 318, 11, COLORS.muted, 'semibold');
+  const mask = panel(card, 'Mask Field', 526, 342, 496, 223, '#101115', 9);
+  simpleWidgetArt(mask, 'Mask Preview', 17, 17, 169, 145, null,
+                  ['#24252A', '#E8A87C', '#24252A']);
+  text('Mask Help', mask, 'Select the area to change', 204, 31, 12, COLORS.text, 'medium');
+  text('Mask File', mask, 'Transparent PNG', 204, 57, 11, COLORS.muted);
+  simpleWidgetAction(mask, 'Upload mask', 17, 178, 220);
+  simpleWidgetAction(mask, 'Draw mask', 254, 178, 225);
+  simpleWidgetAction(card, 'Change image', 32, 671, 150);
+  simpleWidgetAction(card, 'Run Widget', 816, 671, 206, true);
+  createStatusbar(root, 'Input  ·  image + text + mask',
+                  'The mask can be uploaded or drawn');
+  return screen;
+}
+
+function widgetPageMaskOnlyInput(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(WIDGET_PAGE_NAMES[2], x, y,
+    'Input  ·  Image + mask', 'This Widget does not accept a prompt');
+  const card = widgetPagePanel(body, 'Image and mask',
+    'Choose an image, then mark the area to change.', 250, 1054);
+  simpleWidgetArt(card, 'Selected Image', 32, 113, 470, 488, imageHash,
+                  ['#25323A', '#A47761', '#293B33']);
+  text('Image Filename', card, 'portrait.jpg  ·  6.8 MB', 32, 616, 12, COLORS.secondary);
+  widgetPromptField(card, 526, 113, 496, 98,
+    'Prompt unavailable for this Widget', true);
+  text('Mask Label', card, 'MASK', 526, 265, 11, COLORS.muted, 'semibold');
+  const mask = panel(card, 'Mask Field', 526, 289, 496, 276, '#101115', 9);
+  simpleWidgetArt(mask, 'Mask Preview', 17, 17, 169, 198, null,
+                  ['#24252A', '#E8A87C', '#24252A']);
+  text('Mask Help', mask, 'Select the area to change', 204, 31, 12, COLORS.text, 'medium');
+  text('Mask File', mask, 'Transparent PNG', 204, 57, 11, COLORS.muted);
+  simpleWidgetAction(mask, 'Upload mask', 17, 231, 220);
+  simpleWidgetAction(mask, 'Draw mask', 254, 231, 225);
+  simpleWidgetAction(card, 'Change image', 32, 671, 150);
+  simpleWidgetAction(card, 'Run Widget', 816, 671, 206, true);
+  createStatusbar(root, 'Input  ·  image + mask', 'Prompt disabled by Widget manifest');
+  return screen;
+}
+
+function widgetPageDrawMask(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(WIDGET_PAGE_NAMES[3], x, y,
+    'Input  ·  Draw mask', 'Paint the area the Widget should change');
+  const editor = panel(body, '04 / Mask Editor', 172, 42, 1210, 740, COLORS.surface, 14);
+  text('Title', editor, 'Draw mask', 32, 26, 24, COLORS.text, 'semibold');
+  text('Subtitle', editor, 'Paint over the area you want to change.', 32, 63, 12, COLORS.secondary);
+  rect('Header Divider', editor, 32, 94, 1146, 1, COLORS.line);
+  const canvas = panel(editor, 'Image Canvas', 32, 113, 821, 537, '#101115', 9);
+  simpleWidgetArt(canvas, 'Source Image', 10, 10, 801, 517, imageHash,
+                  ['#25323A', '#A47761', '#293B33']);
+  const painted = frame('Painted Mask Overlay', 296, 113, 306, 274, null, 0);
+  painted.fills = [];
+  canvas.appendChild(painted);
+  for (let i = 0; i < 7; i++) {
+    const stroke = ellipse('Mask Brush Stroke', painted,
+      24 + (i % 3) * 72, 12 + i * 30, 76, '#F4B58E');
+    stroke.opacity = .42;
+  }
+  const controls = panel(editor, 'Mask Tools', 877, 113, 301, 537, '#101115', 9);
+  text('Tools Label', controls, 'TOOLS', 20, 22, 11, COLORS.muted, 'semibold');
+  simpleWidgetAction(controls, 'Brush', 20, 55, 124, true);
+  simpleWidgetAction(controls, 'Erase', 157, 55, 124);
+  text('Brush Size Label', controls, 'BRUSH SIZE', 20, 119, 11, COLORS.muted, 'semibold');
+  rect('Brush Size Track', controls, 20, 152, 261, 5, COLORS.line, 3);
+  rect('Brush Size Fill', controls, 20, 152, 113, 5, COLORS.accent, 3);
+  ellipse('Brush Size Knob', controls, 126, 146, 17, '#F3EEE8');
+  text('Brush Size Value', controls, '32 px', 20, 173, 11, COLORS.secondary);
+  rect('Tools Divider', controls, 20, 210, 261, 1, COLORS.line);
+  simpleWidgetAction(controls, 'Undo', 20, 232, 124);
+  simpleWidgetAction(controls, 'Clear mask', 157, 232, 124);
+  text('Mask Guide', controls, 'Orange shows the selected area.', 20, 291, 12, COLORS.secondary);
+  text('Source Guide', controls, 'The source image stays visible while you draw.',
+       20, 318, 11, COLORS.muted, 'regular', 260);
+  simpleWidgetAction(editor, 'Cancel', 902, 671, 124);
+  simpleWidgetAction(editor, 'Use mask', 1038, 671, 140, true);
+  text('Canvas Filename', editor, 'portrait.jpg  ·  mask preview', 32, 681, 12, COLORS.secondary);
+  createStatusbar(root, 'Input  ·  draw mask', 'Brush · Erase · Undo · Clear');
+  return screen;
+}
+
+function widgetPageTextOutput(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(WIDGET_PAGE_NAMES[4], x, y,
+    'Output  ·  Text', 'Read the answer next to the source image');
+  const card = widgetPagePanel(body, 'Widget result',
+    'The Widget returned a prompt as plain text.', 244, 1066);
+  simpleWidgetArt(card, 'Source Image', 32, 113, 380, 535, imageHash,
+                  ['#25323A', '#A47761', '#293B33']);
+  const result = panel(card, 'Output Text Preview', 436, 113, 598, 535, '#101115', 9);
+  text('Result Type', result, 'TEXT RESULT', 24, 24, 11, COLORS.accent, 'semibold');
+  text('Result Title', result, 'Generated prompt', 24, 56, 20, COLORS.text, 'semibold');
+  rect('Result Divider', result, 24, 92, 550, 1, COLORS.line);
+  paragraph('Result Text', result,
+    'A cinematic portrait in warm afternoon light. Natural skin tones, soft depth of field, muted green background, and calm expression. Shot at eye level with gentle contrast and subtle film grain.',
+    24, 121, 550, 15, COLORS.text);
+  text('Plain Text Note', result, 'Plain text returned by this Widget',
+       24, 468, 11, COLORS.muted);
+  text('Source Filename', card, 'portrait.jpg', 32, 681, 12, COLORS.secondary);
+  simpleWidgetAction(card, 'Copy text', 886, 671, 148, true);
+  createStatusbar(root, 'Output  ·  text', 'Copy the generated prompt');
+  return screen;
+}
+
+function widgetPageVideoOutput(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(WIDGET_PAGE_NAMES[5], x, y,
+    'Output  ·  Video URL', 'The video loads from its returned URL');
+  const card = widgetPagePanel(body, 'Widget result',
+    'Preview the video and keep the link.', 244, 1066);
+  simpleWidgetArt(card, 'Source Image', 32, 113, 312, 535, imageHash,
+                  ['#25323A', '#A47761', '#293B33']);
+  const result = panel(card, 'Output Video Preview', 368, 113, 666, 535, '#101115', 9);
+  text('Result Type', result, 'VIDEO RESULT  ·  URL', 20, 21, 11, COLORS.accent, 'semibold');
+  simpleWidgetArt(result, 'Video Frame', 20, 54, 626, 327, null,
+                  ['#182532', '#73584F', '#23312E']);
+  iconButton(result, 'Play Output Video', 'play', 311, 197, true);
+  iconButton(result, 'Play Control', 'play', 20, 399);
+  rect('Timeline Track', result, 76, 418, 444, 4, COLORS.line, 2);
+  rect('Timeline Progress', result, 76, 418, 171, 4, COLORS.accent, 2);
+  text('Duration', result, '00:05 / 00:12', 536, 410, 11, COLORS.secondary);
+  rect('URL Divider', result, 20, 456, 626, 1, COLORS.line);
+  text('URL Label', result, 'SOURCE URL', 20, 475, 11, COLORS.muted, 'semibold');
+  text('URL Value', result, 'https://cdn.example.com/video/result.mp4',
+       20, 497, 12, COLORS.secondary, 'regular', 626);
+  text('Source Filename', card, 'portrait.jpg', 32, 681, 12, COLORS.secondary);
+  simpleWidgetAction(card, 'Copy URL', 748, 671, 132);
+  simpleWidgetAction(card, 'Save video', 892, 671, 142, true);
+  createStatusbar(root, 'Output  ·  video URL', 'Play the video or copy its URL');
+  return screen;
+}
+
+function widgetPageAudioOutput(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(WIDGET_PAGE_NAMES[6], x, y,
+    'Output  ·  Audio URL', 'Listen without reading a raw OSS link');
+  const card = widgetPagePanel(body, 'Widget result',
+    'Play the audio and keep the link.', 244, 1066);
+  simpleWidgetArt(card, 'Source Image', 32, 113, 312, 535, imageHash,
+                  ['#25323A', '#A47761', '#293B33']);
+  const player = panel(card, 'Audio Player', 368, 113, 666, 535, '#101115', 9);
+  text('Result Type', player, 'AUDIO RESULT  ·  URL', 24, 24, 11, COLORS.accent, 'semibold');
+  text('Audio Filename', player, 'result.m4a', 24, 57, 20, COLORS.text, 'semibold');
+  text('Audio Length', player, '00:18  ·  stereo', 24, 91, 12, COLORS.muted);
+  for (let i = 0; i < 26; i++) {
+    const height = 25 + ((i * 37) % 105);
+    rect('Waveform Bar', player, 36 + i * 23, 237 - height / 2,
+         9, height, COLORS.accent, 4);
+  }
+  iconButton(player, 'Play Audio', 'play', 24, 336, true);
+  rect('Audio Track', player, 80, 353, 433, 4, COLORS.line, 2);
+  rect('Audio Progress', player, 80, 353, 146, 4, COLORS.accent, 2);
+  text('Audio Time', player, '00:07 / 00:18', 526, 346, 11, COLORS.secondary);
+  rect('URL Divider', player, 24, 425, 618, 1, COLORS.line);
+  text('URL Label', player, 'SOURCE URL', 24, 446, 11, COLORS.muted, 'semibold');
+  text('URL Value', player, 'https://cdn.example.com/audio/result.m4a',
+       24, 470, 12, COLORS.secondary, 'regular', 618);
+  text('Source Filename', card, 'portrait.jpg', 32, 681, 12, COLORS.secondary);
+  simpleWidgetAction(card, 'Copy URL', 748, 671, 132);
+  simpleWidgetAction(card, 'Save audio', 892, 671, 142, true);
+  createStatusbar(root, 'Output  ·  audio URL', 'Play the audio or copy its URL');
+  return screen;
+}
+
+async function generateWidgetFlow(bytes) {
+  await loadFonts();
+  await createStyles();
+  const page = figma.currentPage;
+  for (const old of page.children.filter(node =>
+    node.name.startsWith(OLD_WIDGET_FLOW_PREFIX) &&
+    !node.name.startsWith(OLD_WIDGET_FLOW_PREFIX + 'Archived / '))) {
+    old.name = OLD_WIDGET_FLOW_PREFIX + 'Archived / ' +
+      old.name.slice(OLD_WIDGET_FLOW_PREFIX.length);
+    old.visible = false;
+  }
+  const onePage = page.children.find(node => node.name === SIMPLE_WIDGET_NAME);
+  if (onePage) {
+    onePage.name = 'Widget / Archived / Simple Input + Output';
+    onePage.visible = false;
+  }
+  for (const oldName of OLD_WIDGET_PAGE_NAMES) {
+    const old = page.children.find(node => node.name === oldName);
+    if (!old) continue;
+    old.name = 'Widget / Archived / v1 / ' + oldName;
+    old.visible = false;
+  }
+  const present = WIDGET_PAGE_NAMES.map(name =>
+    page.children.find(node => node.name === name));
+  if (present.every(Boolean)) {
+    page.selection = [present[0]];
+    figma.viewport.scrollAndZoomIntoView([present[0]]);
+    figma.ui.postMessage({ message: 'All 7 revised Widget pages already exist. Showing the first input page.' });
+    return;
+  }
+  const firstIndex = present.findIndex(Boolean);
+  let startX;
+  if (firstIndex >= 0) {
+    startX = present[firstIndex].x - (firstIndex % 4) * 1750;
+  } else {
+    let maxX = 0;
+    for (const child of page.children) maxX = Math.max(maxX, child.x + child.width);
+    startX = maxX + 196;
+  }
+  const imageHash = bytes && bytes.length ? figma.createImage(new Uint8Array(bytes)).hash : null;
+  const creators = [widgetPageImageTextInput, widgetPageImageMaskInput,
+    widgetPageMaskOnlyInput, widgetPageDrawMask, widgetPageTextOutput,
+    widgetPageVideoOutput, widgetPageAudioOutput];
+  let created = 0;
+  for (let index = 0; index < WIDGET_PAGE_NAMES.length; index++) {
+    if (present[index]) continue;
+    const x = startX + (index % 4) * 1750;
+    const y = index < 4 ? 0 : 1160;
+    creators[index](x, y, imageHash);
+    created++;
+  }
+  const first = page.children.find(node => node.name === WIDGET_PAGE_NAMES[0]);
+  page.selection = [first];
+  figma.viewport.scrollAndZoomIntoView([first]);
+  figma.ui.postMessage({ message: 'Created ' + created +
+    ' revised Widget pages. Four inputs are above three outputs; showing the first input.' });
+  figma.notify('Revised Widget input and output pages created');
+}
+
+const WIDGET_OSS_RESULT_SOURCE_NAME = 'Widget Output / Image URL / OSS Result';
+const WIDGET_OSS_RESULT_NAME = 'Widget Output / Image URL / OSS Result / Refined';
+
+function createWidgetOSSResultPage(x, imageHash) {
+  const screen = frame(WIDGET_OSS_RESULT_NAME, x, 0, 1554, 1012, COLORS.bg, 16);
+  screen.strokes = [fill(COLORS.line)];
+  screen.strokeWeight = 1;
+  figma.currentPage.appendChild(screen);
+  const root = frame('Editable Content', 0, 0, 1554, 1012, null, 0);
+  root.fills = [];
+  screen.appendChild(root);
+  const titlebar = frame('01 / Titlebar', 0, 0, 1554, 58, COLORS.chrome);
+  root.appendChild(titlebar);
+  ellipse('Close', titlebar, 24, 23, 12, '#ED6A5E');
+  ellipse('Minimize', titlebar, 44, 23, 12, '#F4BF4F');
+  ellipse('Zoom', titlebar, 64, 23, 12, '#61C554');
+  text('Window Title', titlebar, 'Widget', 0, 14, 15,
+       COLORS.text, 'semibold', 1554, 'CENTER');
+  text('Subtitle', titlebar, 'Widget result  ·  Image', 0, 38, 11,
+       COLORS.muted, 'regular', 1554, 'CENTER');
+  const body = frame('03 / Widget Canvas', 0, 58, 1554, 954, '#0C0D11');
+  root.appendChild(body);
+
+  // The source frame intentionally clips the top of the stage and the bottom
+  // of the image. These coordinates match the user's edited Figma layout.
+  const stage = panel(body, '06 / Generated Image Stage', 32, -47, 1522, 868,
+                      COLORS.canvas, 9);
+  const preview = rect('Generated Image Preview', stage, 208, 52, 1073, 942,
+                       null, 8, COLORS.line);
+  if (imageHash) {
+    preview.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FIT' }];
+  } else {
+    artworkFill(preview, ['#2C3440', '#B27D61', '#2C4136']);
+  }
+  text('OSS Result Label', stage, 'OSS RESULT',
+       20, 58, 12, COLORS.accent, 'semibold');
+
+  const copy = frame('Copy Result URL Action', 1350, 56, 148, 34,
+                     COLORS.raised, 8);
+  copy.strokes = [fill(COLORS.accent, .72)];
+  copy.strokeWeight = 1;
+  stage.appendChild(copy);
+  const copyIcon = figma.createNodeFromSvg(ICONS.copy.replaceAll('CURRENT', COLORS.accent));
+  copyIcon.name = 'Copy URL Icon';
+  copyIcon.resize(16, 16);
+  copyIcon.x = 14;
+  copyIcon.y = 9;
+  copy.appendChild(copyIcon);
+  text('Copy Result URL Label', copy, 'Copy URL',
+       36, 9, 12, COLORS.accent, 'semibold', 100, 'CENTER');
+
+  const strip = frame('07 / Original and Result Filmstrip', 669, 831, 216, 106,
+                      null, 0);
+  strip.fills = [];
+  body.appendChild(strip);
+  const original = frame('Original Thumbnail', 0, 0, 96, 96,
+                         COLORS.surface, 8);
+  original.strokes = [fill(COLORS.line)];
+  original.strokeWeight = 1;
+  strip.appendChild(original);
+  simpleWidgetArt(original, 'Original Image', 4, 4, 88, 88, null,
+                  ['#25323A', '#A47761', '#293B33']);
+  const originalLabel = frame('Original Label Background', 4, 69, 88, 23,
+                              '#101115', 5);
+  original.appendChild(originalLabel);
+  text('Original Label', originalLabel, 'ORIGINAL',
+       0, 6, 10, COLORS.text, 'semibold', 88, 'CENTER');
+
+  const result = frame('Generated Result Thumbnail / selected', 120, 0, 96, 96,
+                       COLORS.surface, 8);
+  result.strokes = [fill(COLORS.accent)];
+  result.strokeWeight = 2;
+  strip.appendChild(result);
+  simpleWidgetArt(result, 'Result Image', 4, 4, 88, 88, imageHash,
+                  ['#2C3440', '#B27D61', '#2C4136']);
+  const resultLabel = frame('Result Label Background', 4, 69, 88, 23,
+                            '#30231F', 5);
+  result.appendChild(resultLabel);
+  text('Result Label', resultLabel, 'RESULT · OSS',
+       0, 6, 10, COLORS.accent, 'semibold', 88, 'CENTER');
+  return screen;
+}
+
+function refineWidgetOSSResultControls(screen) {
+  const stage = screen.findOne(node => node.name === '06 / Generated Image Stage');
+  if (!stage) throw new Error('OSS result page has no generated image stage');
+  let copy = stage.findOne(node => node.name === 'Copy Result URL Action');
+  const existingLabel = stage.findOne(node => node.name === 'OSS Result Label');
+  const copyText = copy && copy.findOne(node => node.name === 'Copy Result URL Label');
+  if (existingLabel && copy && copy.width === 148 && copy.height === 34 && copyText) {
+    return false;
+  }
+
+  const oldBadge = stage.findOne(node => node.name === 'Preview Result Badge');
+  if (oldBadge) oldBadge.remove();
+  if (!existingLabel) {
+    text('OSS Result Label', stage, 'OSS RESULT',
+         20, 58, 12, COLORS.accent, 'semibold');
+  }
+
+  if (!copy) {
+    copy = frame('Copy Result URL Action', 1350, 56, 148, 34,
+                 COLORS.raised, 8);
+    stage.appendChild(copy);
+  }
+  copy.x = 1350;
+  copy.y = 56;
+  copy.resize(148, 34);
+  copy.cornerRadius = 8;
+  copy.fills = [fill(COLORS.raised)];
+  copy.strokes = [fill(COLORS.accent, .72)];
+  copy.strokeWeight = 1;
+  for (const oldText of stage.findAll(node => node.name === 'Copy Result URL Label')) {
+    oldText.remove();
+  }
+  for (const oldIcon of copy.findAll(node => node.name === 'Copy URL Icon')) {
+    oldIcon.remove();
+  }
+  const copyIcon = figma.createNodeFromSvg(ICONS.copy.replaceAll('CURRENT', COLORS.accent));
+  copyIcon.name = 'Copy URL Icon';
+  copyIcon.resize(16, 16);
+  copyIcon.x = 14;
+  copyIcon.y = 9;
+  copy.appendChild(copyIcon);
+  text('Copy Result URL Label', copy, 'Copy URL',
+       36, 9, 12, COLORS.accent, 'semibold', 100, 'CENTER');
+  return true;
+}
+
+async function generateWidgetOSSResult(bytes) {
+  await loadFonts();
+  await createStyles();
+  const page = figma.currentPage;
+  const existing = page.children.find(child => child.name === WIDGET_OSS_RESULT_NAME);
+  if (existing) {
+    const updated = refineWidgetOSSResultControls(existing);
+    page.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: updated
+      ? 'Updated OSS result label and compact Copy URL button. Thumbnails left unchanged.'
+      : 'Refined OSS result page already exists. Showing it without changing edits.' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of page.children) maxX = Math.max(maxX, child.x + child.width);
+  const source = page.children.find(child => child.name === WIDGET_OSS_RESULT_SOURCE_NAME);
+  let screen;
+  if (source) {
+    screen = source.clone();
+    screen.name = WIDGET_OSS_RESULT_NAME;
+    screen.x = maxX + 196;
+    screen.y = source.y;
+    refineWidgetOSSResultControls(screen);
+  } else {
+    const imageHash = bytes && bytes.length
+      ? figma.createImage(new Uint8Array(bytes)).hash : null;
+    screen = createWidgetOSSResultPage(maxX + 196, imageHash);
+  }
+  page.selection = [screen];
+  figma.viewport.scrollAndZoomIntoView([screen]);
+  figma.ui.postMessage({ message: source
+    ? 'Created refined OSS result page from your edited Figma frame; thumbnails preserved.'
+    : 'Created refined OSS result page.' });
+  figma.notify('Refined Widget OSS result page created');
+}
+
 // A single round icon button used in the Preview-style top chrome bar.
 function previewRoundButton(parent, name, iconName, x, y, tint = '#F3F3F3', fillHex = '#2A2B2F') {
   const node = frame(name, x, y, 28, 28, null, 14);
@@ -2576,6 +3060,14 @@ figma.ui.onmessage = async message => {
     figma.closePlugin();
     return;
   }
+  if (message.type === 'get-editor-mode') {
+    figma.ui.postMessage({ type: 'editor-mode', editorType: figma.editorType || 'figma' });
+    return;
+  }
+  if (figma.editorType === 'dev') {
+    figma.ui.postMessage({ message: 'Plugin imported. Switch to Design Mode before generating editable screens.' });
+    return;
+  }
   if (message.type === 'generate') {
     try {
       await generate(message.bytes);
@@ -2717,6 +3209,25 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Image Compression Flow failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Image Compression Flow failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-widget-flow') {
+    try {
+      await generateWidgetFlow(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Widget flow generation failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Widget flow generation failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-widget-oss-result') {
+    try {
+      await generateWidgetOSSResult(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Widget OSS result generation failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Widget OSS result generation failed', { error: true });
     }
   }
   if (message.type === 'export-selection') {

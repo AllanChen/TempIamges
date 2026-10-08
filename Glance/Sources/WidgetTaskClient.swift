@@ -1,4 +1,5 @@
 import Foundation
+import CFNetwork
 import ImageIO
 import Security
 import UniformTypeIdentifiers
@@ -10,11 +11,23 @@ enum WidgetTaskPhase: String, Codable {
 
 final class WidgetTaskClient {
     static let shared = WidgetTaskClient()
-    private let apiBase = URL(string: "https://glance-service.allanchanni.workers.dev/api/v2")!
+    private let apiBase = URL(string: "https://api.glance.mcreator.ai/api/v2")!
     private let session: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 40
-        configuration.timeoutIntervalForResource = 60
+        configuration.timeoutIntervalForResource = 180
+        return URLSession(configuration: configuration)
+    }()
+    private let directAPISession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 40
+        configuration.timeoutIntervalForResource = 180
+        configuration.connectionProxyDictionary = [
+            kCFNetworkProxiesHTTPEnable as String: 0,
+            kCFNetworkProxiesHTTPSEnable as String: 0,
+            kCFNetworkProxiesSOCKSEnable as String: 0,
+            kCFNetworkProxiesProxyAutoConfigEnable as String: 0
+        ]
         return URLSession(configuration: configuration)
     }()
     private let freeimageSession: URLSession = {
@@ -34,6 +47,22 @@ final class WidgetTaskClient {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         return request
+    }
+
+    /// Prefer the local network for the Glance API so a system proxy cannot
+    /// change the detected country. Fall back to the user's proxy when direct
+    /// access is unavailable.
+    private func apiDataTask(with request: URLRequest,
+                             completion: @escaping (Data?, URLResponse?, Error?) -> Void) {
+        directAPISession.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else { return }
+            if let issue = error as NSError?, issue.domain == NSURLErrorDomain {
+                Logger.warning("Direct Glance API request failed; trying system network: \(issue.localizedDescription)")
+                self.session.dataTask(with: request, completionHandler: completion).resume()
+            } else {
+                completion(data, response, error)
+            }
+        }.resume()
     }
 
     func run(widgetID: String, commandID: String, mediaURL: URL,
@@ -69,19 +98,39 @@ final class WidgetTaskClient {
         poll(taskID: taskID, started: Date(), progress: progress, completion: completion)
     }
 
+    /// Fetch a fresh URL when the user copies a result. Glance R2 asset links
+    /// are signed for one hour and are renewed by the task status endpoint.
+    func fetchResultURL(taskID: String, completion: @escaping (Result<URL, Error>) -> Void) {
+        let request = authorizedRequest(apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
+        apiDataTask(with: request) { data, response, error in
+            do {
+                if let error { throw error }
+                let envelope: TaskEnvelope = try Self.decode(data, response)
+                guard envelope.success, let result = envelope.result,
+                      result.status == "completed" || result.status == "succeeded",
+                      let raw = result.result?.first?.url ?? result.resultURL,
+                      let url = URL(string: raw), url.scheme == "https" else {
+                    throw WidgetError.unavailable
+                }
+                completion(.success(url))
+            } catch { completion(.failure(error)) }
+        }
+    }
+
     private func fetchUploadConfig(completion: @escaping (UploadConfig) -> Void) {
         var request = authorizedRequest(apiBase.appendingPathComponent("glance_config"))
         request.timeoutInterval = 5
-        session.dataTask(with: request) { data, response, error in
+        apiDataTask(with: request) { data, response, error in
             guard error == nil, let data, let http = response as? HTTPURLResponse,
                   (200..<300).contains(http.statusCode),
                   let envelope = try? JSONDecoder().decode(UploadConfigEnvelope.self, from: data),
                   envelope.success, let config = envelope.result else {
+                Logger.warning("Widget upload config unavailable; using R2")
                 completion(UploadConfig(locationBasedUpload: false))
                 return
             }
             completion(config)
-        }.resume()
+        }
     }
 
     private func uploadIfNeeded(_ url: URL, country: String, config: UploadConfig,
@@ -101,15 +150,27 @@ final class WidgetTaskClient {
                         let china = ["CN", "CHINA"].contains(country.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
                         let key = self.localFreeimageKey()?
                             .trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard config.locationBasedUpload, china, mime.hasPrefix("image/"),
-                              let key, !key.isEmpty,
-                              let image = Self.freeimageImage(data: data, mime: mime) else {
+                        guard config.locationBasedUpload, china, mime.hasPrefix("image/") else {
+                            Logger.info("Widget upload using R2 (country: \(country), location routing: \(config.locationBasedUpload))")
                             uploadToR2()
                             return
                         }
+                        guard let key, !key.isEmpty else {
+                            Logger.warning("Freeimage API key missing from local Keychain; falling back to R2")
+                            uploadToR2()
+                            return
+                        }
+                        guard let image = Self.freeimageImage(data: data, mime: mime) else {
+                            Logger.warning("Image cannot be prepared for Freeimage; falling back to R2")
+                            uploadToR2()
+                            return
+                        }
+                        Logger.info("Widget upload using Freeimage (country: \(country))")
                         self.uploadToFreeimage(data: image.data, mime: image.mime, key: key) { result in
                             switch result {
-                            case .success: completion(result)
+                            case .success:
+                                Logger.info("Widget upload completed via Freeimage")
+                                completion(result)
                             case .failure(let error):
                                 Logger.warning("Freeimage upload failed; falling back to R2: \(error.localizedDescription)")
                                 uploadToR2()
@@ -207,7 +268,7 @@ final class WidgetTaskClient {
 
     private func upload(_ request: URLRequest, attempt: Int,
                         completion: @escaping (Result<String, Error>) -> Void) {
-        session.dataTask(with: request) { [weak self] data, response, error in
+        apiDataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
             if let error = error as NSError?, error.domain == NSURLErrorDomain,
                [NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost, NSURLErrorNotConnectedToInternet].contains(error.code),
@@ -221,9 +282,13 @@ final class WidgetTaskClient {
                 if let error { throw error }
                 let envelope: UploadEnvelope = try Self.decode(data, response)
                 guard envelope.success, let value = envelope.result?.url else { throw WidgetError.unavailable }
+                Logger.info("Widget upload completed via R2")
                 completion(.success(value))
-            } catch { completion(.failure(error)) }
-        }.resume()
+            } catch {
+                Logger.warning("R2 upload failed: \(error.localizedDescription)")
+                completion(.failure(error))
+            }
+        }
     }
 
     /// Materialize clipboard images and remote image URLs in the user's local
@@ -272,32 +337,35 @@ final class WidgetTaskClient {
     }
 
     private func fetchCountry(completion: @escaping (String) -> Void) {
+        var request = authorizedRequest(apiBase.appendingPathComponent("location"))
+        request.timeoutInterval = 5
+        apiDataTask(with: request) { [weak self] data, response, error in
+            if error == nil, let data, let http = response as? HTTPURLResponse,
+               (200..<300).contains(http.statusCode),
+               let envelope = try? JSONDecoder().decode(LocationEnvelope.self, from: data),
+               envelope.success, !envelope.result.location.isEmpty,
+               envelope.result.location != "Unknown" {
+                completion(envelope.result.location)
+            } else {
+                Logger.warning("GlanceService location unavailable; trying ipapi")
+                self?.fetchIPAPICountry(completion: completion)
+            }
+        }
+    }
+
+    private func fetchIPAPICountry(completion: @escaping (String) -> Void) {
         var request = URLRequest(url: URL(string: "https://ipapi.co/country/")!)
         request.timeoutInterval = 5
-        session.dataTask(with: request) { [weak self] data, response, error in
+        session.dataTask(with: request) { data, response, error in
             if error == nil, let data, let http = response as? HTTPURLResponse,
                (200..<300).contains(http.statusCode),
                let code = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                code.count == 2, code.allSatisfy({ $0 >= "A" && $0 <= "Z" }), code != "XX" {
                 completion(code)
             } else {
-                self?.fetchCloudflareCountry(completion: completion)
-            }
-        }.resume()
-    }
-
-    private func fetchCloudflareCountry(completion: @escaping (String) -> Void) {
-        var request = authorizedRequest(apiBase.appendingPathComponent("location"))
-        request.timeoutInterval = 5
-        session.dataTask(with: request) { data, response, error in
-            guard error == nil, let data, let http = response as? HTTPURLResponse,
-                  (200..<300).contains(http.statusCode),
-                  let envelope = try? JSONDecoder().decode(LocationEnvelope.self, from: data),
-                  envelope.success, !envelope.result.location.isEmpty else {
+                Logger.warning("Country lookup unavailable; using R2")
                 completion("Unknown")
-                return
             }
-            completion(envelope.result.location)
         }.resume()
     }
 
@@ -310,14 +378,14 @@ final class WidgetTaskClient {
             "commandID": commandID,
             "taskParams": ["url": mediaURL, "prompt": "", "mask": NSNull(), "location": location]
         ])
-        session.dataTask(with: request) { data, response, error in
+        apiDataTask(with: request) { data, response, error in
             do {
                 if let error { throw error }
                 let envelope: TaskEnvelope = try Self.decode(data, response)
                 guard envelope.success, let taskID = envelope.result?.taskID else { throw WidgetError.unavailable }
                 completion(.success(taskID))
             } catch { completion(.failure(error)) }
-        }.resume()
+        }
     }
 
     private func poll(taskID: String, started: Date,
@@ -325,7 +393,7 @@ final class WidgetTaskClient {
                       completion: @escaping (Result<URL, Error>) -> Void) {
         guard Date().timeIntervalSince(started) <= 1800 else { completion(.failure(WidgetError.unavailable)); return }
         let request = authorizedRequest(apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
-        session.dataTask(with: request) { [weak self] data, response, error in
+        apiDataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
             do {
                 if let error { throw error }
@@ -345,7 +413,7 @@ final class WidgetTaskClient {
                 progress(.processing, result.processCount ?? 0)
             } catch { /* transient query errors retry until the overall timeout */ }
             DispatchQueue.global().asyncAfter(deadline: .now() + 5) { self.poll(taskID: taskID, started: started, progress: progress, completion: completion) }
-        }.resume()
+        }
     }
 
     private func prepareResults(_ artifacts: [TaskArtifact], taskID: String,

@@ -16,6 +16,7 @@ struct WidgetTaskRecord: Codable, Identifiable {
     var phase: WidgetTaskPhase
     var progress: Int
     var outputPath: String?
+    var outputURLString: String?
     var errorMessage: String?
     var source: URL? { URL(string: sourceURL) }
     var output: URL? { outputPath.map { URL(fileURLWithPath: $0) } }
@@ -58,7 +59,7 @@ final class WidgetTaskManager {
         records.insert(WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.name,
             commandID: command.id, commandName: command.name, sourceURL: media.url.absoluteString,
             createdAt: Date(), updatedAt: Date(), remoteTaskID: nil, phase: .uploading,
-            progress: 0, outputPath: nil, errorMessage: nil), at: 0)
+            progress: 0, outputPath: nil, outputURLString: nil, errorMessage: nil), at: 0)
         changed()
         WidgetTaskClient.shared.run(widgetID: widget.id, commandID: command.id, mediaURL: media.url,
             progress: { [weak self] phase, value in self?.update(id, phase: phase, progress: value) },
@@ -71,7 +72,8 @@ final class WidgetTaskManager {
         guard let record = records.first(where: { $0.id == id }), let source = record.source,
               let widget = WidgetRegistry.shared.installed.first(where: { $0.id == record.widgetID }),
               let command = widget.commands.first(where: { $0.id == record.commandID }) else { return }
-        if record.phase == .completed, record.output.map({ !FileManager.default.fileExists(atPath: $0.path) }) == true,
+        if (record.phase == .failed || record.phase == .completed), record.outputURLString != nil,
+           (record.output == nil || record.output.map({ !FileManager.default.fileExists(atPath: $0.path) }) == true),
            let remoteID = record.remoteTaskID {
             update(id, phase: .processing, progress: 100)
             WidgetTaskClient.shared.resume(taskID: remoteID,
@@ -118,8 +120,13 @@ final class WidgetTaskManager {
 
     private func download(_ id: UUID, from url: URL) {
         if url.isFileURL {
-            finish(id, output: url)
+            finish(id, output: url, remoteURL: nil)
             return
+        }
+        DispatchQueue.main.async {
+            guard let index = self.records.firstIndex(where: { $0.id == id }) else { return }
+            self.records[index].outputURLString = url.absoluteString
+            self.changed()
         }
         update(id, phase: .downloading, progress: 100)
         URLSession.shared.downloadTask(with: url) { [weak self] temporary, response, error in
@@ -128,7 +135,7 @@ final class WidgetTaskManager {
             do {
                 let destination = try self.destinationURL(for: id, response: response, fallback: url)
                 try FileManager.default.moveItem(at: temporary, to: destination)
-                self.finish(id, output: destination)
+                self.finish(id, output: destination, remoteURL: url)
             } catch { self.update(id, phase: .failed, progress: 0, error: error.localizedDescription) }
         }.resume()
     }
@@ -146,11 +153,13 @@ final class WidgetTaskManager {
         return destination
     }
 
-    private func finish(_ id: UUID, output: URL) {
+    private func finish(_ id: UUID, output: URL, remoteURL: URL?) {
         DispatchQueue.main.async {
             guard let index = self.records.firstIndex(where: { $0.id == id }) else { return }
             self.records[index].phase = .completed; self.records[index].progress = 100
-            self.records[index].outputPath = output.path; self.records[index].updatedAt = Date(); self.changed()
+            self.records[index].outputPath = output.path
+            self.records[index].outputURLString = remoteURL?.absoluteString
+            self.records[index].updatedAt = Date(); self.changed()
             let content = UNMutableNotificationContent(); content.title = "Widget completed".localized; content.body = output.lastPathComponent
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id.uuidString, content: content, trigger: nil))
         }

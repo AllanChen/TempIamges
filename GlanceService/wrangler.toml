@@ -19,6 +19,7 @@ binding = "ASSETS"
 [vars]
 PUBLIC_ORIGIN = "https://glance-service.allanchanni.workers.dev"
 # Set ADMIN_PATH as a secret, e.g. "ops-7f3c9a2e". The admin UI is only served at that path.
-# Allow the configured FLOW_TEST_TOKEN on Worker endpoints while still requiring
-# Authorization: Bearer for every request. Widget Worker tokens remain valid.
-WORKER_AUTH_DISABLED = "true"
+# Production tasks must be claimed by an authorized Widget Worker. The
+# FLOW_TEST_TOKEN remains available for task-status checks, but cannot act as
+# a legacy Worker and take jobs away from the local glance worker.
+WORKER_AUTH_DISABLED = "false"

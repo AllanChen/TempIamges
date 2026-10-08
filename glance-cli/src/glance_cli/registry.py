@@ -148,5 +148,20 @@ def read_session() -> dict | None:
         return None
 
 
+def read_mock_token() -> str | None:
+    """Use a temporary developer token without persisting a login session."""
+    value = os.environ.get("GLANCE_MOCK_TOKEN", "").strip()
+    if value:
+        return value
+    path = config_dir() / "mock-token"
+    if path.is_file():
+        return path.read_text(encoding="utf-8").strip() or None
+    return None
+
+
+def read_token() -> str | None:
+    return read_mock_token() or (read_session() or {}).get("token")
+
+
 def clear_session() -> None:
     session_path().unlink(missing_ok=True)

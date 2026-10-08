@@ -73,6 +73,11 @@ const figma = {
 };
 
 const source = fs.readFileSync(__dirname + '/code.js', 'utf8');
+const uiSource = fs.readFileSync(__dirname + '/ui.html', 'utf8');
+assert.ok(uiSource.indexOf('<button id="generate-widget-flow"') < uiSource.indexOf('<label for="reference">'),
+  'Widget flow action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-widget-oss-result"') < uiSource.indexOf('<label for="reference">'),
+  'OSS result action must be visible near the top of the plugin');
 vm.runInNewContext(source, { figma, __html__: '' }, { filename: 'code.js' });
 
 const names = [
@@ -388,5 +393,204 @@ const names = [
     assert.equal(board.findAll(child => child.name === '04 / Video Filmstrip / fixed 96 × 96').length, 1,
       'Rerunning must not duplicate the video filmstrip');
   }
-  console.log('All screen generators pass, including Video Inspect v4: consistent Focus/Compare sizes, no clipped controls, and idempotent generation');
+  const oldWidgetNames = [
+    'Widget Flow v1 / 01 / Image + Prompt + Mask',
+    'Widget Flow v1 / 02 / Paint Mask',
+    'Widget Flow v1 / 03 / Prompt Only',
+    'Widget Flow v1 / 04 / Video + Audio Inputs',
+    'Widget Flow v1 / 05 / Mixed Results'
+  ];
+  for (const name of oldWidgetNames) {
+    const prior = node('FRAME');
+    prior.name = name;
+    prior.x = 30000 + page.children.length * 100;
+    prior.resize(1554, 1012);
+    page.appendChild(prior);
+  }
+  const overview = node('FRAME');
+  overview.name = 'Widget / Simple Input + Output / Clean Editable';
+  overview.x = 40000;
+  overview.resize(1554, 1012);
+  page.appendChild(overview);
+  for (const name of [
+    'Widget Input / 01 / Image',
+    'Widget Input / 02 / Image + Text',
+    'Widget Input / 03 / Image + Text + Mask',
+    'Widget Input / 04 / Video',
+    'Widget Output / 01 / Image',
+    'Widget Output / 02 / Text',
+    'Widget Output / 03 / Video',
+    'Widget Output / 04 / Audio'
+  ]) {
+    const prior = node('FRAME');
+    prior.name = name;
+    prior.x = 42000 + page.children.length * 100;
+    prior.resize(1554, 1012);
+    page.appendChild(prior);
+  }
+  const beforeWidgetFlow = page.children.length;
+  figma.editorType = 'dev';
+  await figma.ui.onmessage({ type: 'get-editor-mode' });
+  assert.equal(figma.ui.lastMessage.editorType, 'dev');
+  await figma.ui.onmessage({ type: 'generate-widget-flow', bytes: null });
+  assert.equal(page.children.length, beforeWidgetFlow, 'Dev Mode must not write to the Figma canvas');
+  assert.match(figma.ui.lastMessage.message, /Switch to Design Mode/);
+  figma.editorType = 'figma';
+  await figma.ui.onmessage({ type: 'generate-widget-flow', bytes: null });
+  const widgetPageNames = [
+    'Widget Input / 02 / Image + Text / Revised',
+    'Widget Input / 03 / Image + Text + Mask / Revised',
+    'Widget Input / 03B / Image + Mask Only',
+    'Widget Input / Draw Mask',
+    'Widget Output / 02 / Text in Preview',
+    'Widget Output / 03 / Video URL Preview',
+    'Widget Output / 04 / Audio URL Player'
+  ];
+  const boards = widgetPageNames.map(name => page.children.find(child => child.name === name));
+  assert.ok(boards.every(Boolean), 'Four input and three output pages must be generated: ' +
+    figma.ui.lastMessage.message + ' / missing ' +
+    widgetPageNames.filter((_, index) => !boards[index]).join(', '));
+  assert.equal(page.children.length, beforeWidgetFlow + 7);
+  assert.equal(page.selection.length, 1);
+  assert.equal(page.selection[0], boards[0]);
+  assert.equal(overview.visible, false, 'Old one-page overview is hidden');
+  assert.equal(overview.name, 'Widget / Archived / Simple Input + Output');
+  assert.equal(page.children.filter(child => child.name.startsWith('Widget Flow v1 / Archived / ')).length, 5);
+  const archivedWidgetPages = page.children.filter(child => child.name.startsWith('Widget / Archived / v1 / '));
+  assert.equal(archivedWidgetPages.length, 8);
+  assert.ok(archivedWidgetPages.every(child => !child.visible), 'Old Widget pages must remain hidden');
+  for (const [index, board] of boards.entries()) {
+    assert.equal(board.width, 1554);
+    assert.equal(board.height, 1012);
+    assert.equal(board.y, index < 4 ? 0 : 1160);
+    assert.equal(board.x, boards[0].x + (index % 4) * 1750);
+    function assertContained(parent) {
+      for (const child of parent.children) {
+        assert.ok(child.x >= -0.001 && child.y >= -0.001, board.name + ': ' + child.name + ' starts outside parent');
+        assert.ok(child.x + child.width <= parent.width + 0.001, board.name + ': ' + child.name + ' clips horizontally');
+        assert.ok(child.y + child.height <= parent.height + 0.001, board.name + ': ' + child.name + ' clips vertically');
+        assertContained(child);
+      }
+    }
+    assertContained(board);
+  }
+  assert.ok(boards[0].findOne(child => child.name === 'Selected Image'));
+  assert.ok(boards[1].findOne(child => child.name === 'Prompt Field'));
+  assert.ok(boards[2].findOne(child => child.name === 'Mask Field'));
+  assert.ok(boards[2].findOne(child => child.name === 'Prompt Field / disabled'));
+  assert.ok(boards[3].findOne(child => child.name === 'Painted Mask Overlay'));
+  assert.ok(boards[3].findOne(child => child.name === 'Brush Action'));
+  assert.ok(boards[4].findOne(child => child.name === 'Output Text Preview'));
+  assert.ok(boards[4].findOne(child => child.name === 'Copy text Action'));
+  assert.ok(boards[5].findOne(child => child.name === 'Output Video Preview'));
+  assert.ok(boards[5].findOne(child => child.name === 'Copy URL Action'));
+  assert.ok(boards[6].findOne(child => child.name === 'Audio Player'));
+  assert.ok(boards[6].findOne(child => child.name === 'Copy URL Action'));
+  const title = boards[0].findOne(child => child.name === '04 / Widget Panel').findOne(child => child.name === 'Title');
+  title.characters = 'User edited input title';
+  await figma.ui.onmessage({ type: 'generate-widget-flow', bytes: null });
+  assert.equal(page.children.length, beforeWidgetFlow + 7, 'Rerun must preserve the seven pages');
+  assert.equal(title.characters, 'User edited input title');
+  boards[5].remove();
+  await figma.ui.onmessage({ type: 'generate-widget-flow', bytes: [1, 2, 3] });
+  const regenerated = page.children.find(child => child.name === 'Widget Output / 03 / Video URL Preview');
+  assert.equal(regenerated.findOne(child => child.name === 'Source Image').fills[0].type, 'IMAGE',
+    'Optional reference image should fill the newly generated source preview');
+  assert.equal(page.children.length, beforeWidgetFlow + 7);
+  assert.equal(regenerated.x, boards[0].x + 1750, 'Missing output should return to its original grid position');
+  const beforeOSSResult = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-widget-oss-result', bytes: [1, 2, 3] });
+  assert.equal(page.children.length, beforeOSSResult + 1, 'OSS result action creates one page');
+  const ossResult = page.children.find(child => child.name === 'Widget Output / Image URL / OSS Result / Refined');
+  assert.equal(page.selection[0], ossResult);
+  assert.equal(ossResult.width, 1554);
+  assert.equal(ossResult.height, 1012);
+  assert.ok(ossResult.findOne(child => child.name === '01 / Titlebar'));
+  assert.equal(ossResult.findOne(child => child.name === '02 / Icon Toolbar'), null);
+  assert.equal(ossResult.findOne(child => child.name === '04 / Result Identity Banner'), null);
+  assert.equal(ossResult.findOne(child => child.name === '05 / Returned OSS URL'), null);
+  assert.equal(ossResult.findOne(child => child.name === '06 / Statusbar'), null);
+  const ossCanvas = ossResult.findOne(child => child.name === '03 / Widget Canvas');
+  assert.equal(ossCanvas.y, 58);
+  assert.equal(ossCanvas.height, 954);
+  const ossStage = ossResult.findOne(child => child.name === '06 / Generated Image Stage');
+  assert.equal(ossStage.y, -47, 'Stage matches the user-edited Figma position');
+  assert.equal(ossStage.width, 1522);
+  assert.equal(ossStage.height, 868);
+  assert.equal(ossResult.findOne(child => child.name === 'Preview Result Badge'), null);
+  assert.equal(ossResult.findOne(child => child.name === 'OSS Result Label').characters, 'OSS RESULT');
+  const compactCopy = ossResult.findOne(child => child.name === 'Copy Result URL Action');
+  assert.equal(compactCopy.width, 148);
+  assert.equal(compactCopy.height, 34);
+  assert.equal(compactCopy.findOne(child => child.name === 'Copy Result URL Label').characters, 'Copy URL');
+  const ossStrip = ossResult.findOne(child => child.name === '07 / Original and Result Filmstrip');
+  assert.equal(ossStrip.x, 669);
+  assert.equal(ossStrip.y, 831);
+  assert.ok(ossStrip.findOne(child => child.name === 'Original Thumbnail'));
+  assert.ok(ossStrip.findOne(child => child.name === 'Generated Result Thumbnail / selected'));
+  assert.equal(ossResult.findOne(child => child.name === 'Generated Image Preview').fills[0].type, 'IMAGE');
+  const copyLabel = ossResult.findOne(child => child.name === 'Copy Result URL Label');
+  copyLabel.characters = 'User edited URL action';
+  await figma.ui.onmessage({ type: 'generate-widget-oss-result', bytes: null });
+  assert.equal(page.children.length, beforeOSSResult + 1, 'Rerun must not duplicate OSS result page');
+  assert.equal(copyLabel.characters, 'User edited URL action');
+  const existingStrip = ossResult.findOne(child => child.name === '07 / Original and Result Filmstrip');
+  ossResult.findOne(child => child.name === 'OSS Result Label').remove();
+  const existingBadge = node('FRAME');
+  existingBadge.name = 'Preview Result Badge';
+  existingBadge.resize(151, 30);
+  ossStage.appendChild(existingBadge);
+  compactCopy.resize(107, 52);
+  const existingCopyText = compactCopy.findOne(child => child.name === 'Copy Result URL Label');
+  existingCopyText.remove();
+  ossStage.appendChild(existingCopyText);
+  await figma.ui.onmessage({ type: 'generate-widget-oss-result', bytes: null });
+  assert.equal(page.children.length, beforeOSSResult + 1, 'Existing refined frame is updated in place');
+  assert.equal(ossResult.findOne(child => child.name === '07 / Original and Result Filmstrip'), existingStrip,
+    'Updating the controls must leave the thumbnail strip untouched');
+  assert.equal(ossResult.findOne(child => child.name === 'Preview Result Badge'), null);
+  assert.equal(ossResult.findOne(child => child.name === 'OSS Result Label').characters, 'OSS RESULT');
+  assert.equal(compactCopy.width, 148);
+  assert.equal(compactCopy.height, 34);
+  assert.equal(compactCopy.findOne(child => child.name === 'Copy Result URL Label').characters, 'Copy URL');
+  const userEditedSource = ossResult.clone();
+  userEditedSource.name = 'Widget Output / Image URL / OSS Result';
+  userEditedSource.x += 1750;
+  userEditedSource.findOne(child => child.name === 'Original Label').characters = 'USER ORIGINAL';
+  const sourceStage = userEditedSource.findOne(child => child.name === '06 / Generated Image Stage');
+  sourceStage.findOne(child => child.name === 'OSS Result Label').remove();
+  const oldBadge = node('FRAME');
+  oldBadge.name = 'Preview Result Badge';
+  oldBadge.x = 31;
+  oldBadge.y = 52;
+  oldBadge.resize(151, 30);
+  sourceStage.appendChild(oldBadge);
+  const oldCopy = sourceStage.findOne(child => child.name === 'Copy Result URL Action');
+  oldCopy.x = 1353;
+  oldCopy.resize(107, 52);
+  const detachedText = oldCopy.findOne(child => child.name === 'Copy Result URL Label');
+  detachedText.remove();
+  detachedText.characters = 'Copy result URL';
+  sourceStage.appendChild(detachedText);
+  ossResult.remove();
+  const beforeClone = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-widget-oss-result', bytes: null });
+  const refinedClone = page.children.find(child => child.name === 'Widget Output / Image URL / OSS Result / Refined');
+  assert.equal(page.children.length, beforeClone + 1, 'Edited source creates one separate refined frame');
+  assert.notEqual(refinedClone, userEditedSource, 'The edited source must remain available');
+  assert.equal(refinedClone.findOne(child => child.name === 'Original Label').characters, 'USER ORIGINAL');
+  assert.ok(userEditedSource.findOne(child => child.name === 'Preview Result Badge'),
+    'The source frame remains untouched');
+  assert.equal(refinedClone.findOne(child => child.name === 'Preview Result Badge'), null);
+  assert.equal(refinedClone.findOne(child => child.name === 'OSS Result Label').characters, 'OSS RESULT');
+  const refinedCopy = refinedClone.findOne(child => child.name === 'Copy Result URL Action');
+  assert.equal(refinedCopy.width, 148);
+  assert.equal(refinedCopy.height, 34);
+  assert.equal(refinedCopy.findOne(child => child.name === 'Copy Result URL Label').characters, 'Copy URL');
+  assert.equal(refinedClone.findAll(child => child.name === 'Copy Result URL Label').length, 1,
+    'The detached old copy label must be removed');
+  assert.equal(refinedClone.findOne(child => child.name === '07 / Original and Result Filmstrip').children.length,
+    userEditedSource.findOne(child => child.name === '07 / Original and Result Filmstrip').children.length,
+    'Cloning preserves the thumbnail hierarchy exactly');
+  console.log('All screen generators pass, including seven revised Widget pages and the refined OSS result page');
 })().catch(error => { console.error(error); process.exitCode = 1; });

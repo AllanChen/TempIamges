@@ -13,9 +13,9 @@ from unittest.mock import patch
 import venv
 
 from glance_cli.cli import main
-from glance_cli.api import APIError
-from glance_cli.registry import connect, eligible, read_session, rows, update
-from glance_cli.runtime import execute, validate_outputs
+from glance_cli.api import APIError, request, upload_task_file
+from glance_cli.registry import connect, eligible, read_session, read_token, rows, update
+from glance_cli.runtime import execute, prepare_input, validate_outputs
 from glance_cli.worker import _run_task
 from glance_cli.worker_logs import configure_worker_logging, logger
 
@@ -25,7 +25,8 @@ class CLITest(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        patcher = patch.dict(os.environ, {"GLANCE_CLI_HOME": str(self.root / "config")})
+        patcher = patch.dict(os.environ, {"GLANCE_CLI_HOME": str(self.root / "config"),
+                                          "GLANCE_MOCK_TOKEN": ""})
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -33,6 +34,25 @@ class CLITest(unittest.TestCase):
         self.assertEqual(main(["widget", "init", "--directory", str(self.root)]), 0)
         widget = next(path for path in self.root.iterdir() if path.name != "config")
         return widget, json.loads((widget / "widget.json").read_text())
+
+    def test_list_explains_empty_registry_without_changing_json_output(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(["widget", "list"]), 0)
+        self.assertIn("本机尚未挂载 Widget", output.getvalue())
+        self.assertIn("glance widget add", output.getvalue())
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(["widget", "list", "--json"]), 0)
+        self.assertEqual(json.loads(output.getvalue()), [])
+
+        _, manifest = self.create_widget()
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(["widget", "list"]), 0)
+        self.assertIn(manifest["id"], output.getvalue())
+        self.assertNotIn("本机尚未挂载 Widget", output.getvalue())
 
     def test_init_creates_uuid_folder_and_local_row(self):
         folder, manifest = self.create_widget()
@@ -60,14 +80,57 @@ class CLITest(unittest.TestCase):
             with execute(folder, task, download_input=False):
                 pass
 
-    def test_image_return_url_is_uploaded_as_text_asset(self):
+    def test_worker_receives_widget_output_while_result_is_validated(self):
+        folder, manifest = self.create_widget()
+        (folder / "main.py").write_text(
+            "import sys\n"
+            "def main(task):\n"
+            "    print('upload started', flush=True)\n"
+            "    print('query completed', file=sys.stderr, flush=True)\n"
+            "    return {'outputs': [{'type': 'text', 'text': 'done'}]}\n")
+        task = {"taskId": "task_log", "widgetId": manifest["id"],
+                "version": manifest["version"], "commandId": "run", "input": {}, "parameters": {}}
+        messages = []
+        with execute(folder, task, download_input=False, on_log=messages.append) as outputs:
+            self.assertEqual(outputs, [{"type": "text", "text": "done"}])
+        self.assertTrue(any("Widget: upload started" in message for message in messages))
+        self.assertTrue(any("Widget: query completed" in message for message in messages))
+        self.assertTrue(any("输出校验通过" in message for message in messages))
+
+    def test_worker_keeps_widget_error_in_live_logs(self):
+        folder, manifest = self.create_widget()
+        (folder / "main.py").write_text(
+            "def main(task):\n"
+            "    print('before failure', flush=True)\n"
+            "    raise RuntimeError('provider failed')\n")
+        task = {"taskId": "task_error", "widgetId": manifest["id"],
+                "version": manifest["version"], "commandId": "run", "input": {}, "parameters": {}}
+        messages = []
+        with self.assertRaisesRegex(RuntimeError, "provider failed"):
+            with execute(folder, task, download_input=False, on_log=messages.append):
+                pass
+        self.assertTrue(any("Widget: before failure" in message for message in messages))
+        self.assertTrue(any("provider failed" in message for message in messages))
+
+    def test_input_download_logs_progress_without_signed_query(self):
+        class FakeResponse(io.BytesIO):
+            status = 200
+
+        messages = []
+        task = {"input": {"url": "https://example.com/input.png?sig=private"}}
+        with patch("glance_cli.runtime.urlopen", return_value=FakeResponse(b"image")):
+            prepared = prepare_input(task, self.root, on_log=messages.append)
+        self.assertEqual(Path(prepared["input"]["path"]).read_bytes(), b"image")
+        self.assertTrue(any("输入图片下载完成" in message for message in messages))
+        self.assertNotIn("sig=private", "\n".join(messages))
+
+    def test_image_file_upload_keeps_its_media_type(self):
         widget = self.root / "widget"
         widget.mkdir()
         image = widget / "result.png"
         image.write_bytes(b"\x89PNG\r\n\x1a\n")
-        outputs = validate_outputs({"outputs": [{"type": "image", "path": str(image),
-                                                   "returnURL": True}]}, widget)
-        self.assertTrue(outputs[0]["returnURL"])
+        outputs = validate_outputs({"outputs": [{"type": "image", "path": str(image)}]}, widget)
+        self.assertEqual(outputs[0]["type"], "image")
 
         @contextmanager
         def fake_execute(*args, **kwargs):
@@ -80,7 +143,31 @@ class CLITest(unittest.TestCase):
             _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
         result_call = next(call for call in api.call_args_list if call.args[1].endswith("/result"))
         self.assertEqual(result_call.args[2]["artifacts"],
-                         [{"type": "text", "assetID": "asset_1"}])
+                         [{"type": "image", "assetID": "asset_1"}])
+
+    def test_image_url_is_passed_through_as_image_result(self):
+        widget = self.root / "widget"
+        widget.mkdir()
+        url = "https://iili.io/result.png?token=private"
+        outputs = validate_outputs({"outputs": [{"type": "image", "url": url}]}, widget)
+        self.assertEqual(outputs, [{"type": "image", "url": url}])
+
+        @contextmanager
+        def fake_execute(*args, **kwargs):
+            yield outputs
+
+        task = {"taskId": "task_1", "claimToken": "claim_1"}
+        with patch("glance_cli.worker.execute", side_effect=fake_execute), \
+             patch("glance_cli.worker.upload_task_file") as upload, \
+             patch("glance_cli.worker.request") as api:
+            _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
+        upload.assert_not_called()
+        result_call = next(call for call in api.call_args_list if call.args[1].endswith("/result"))
+        self.assertEqual(result_call.args[2]["artifacts"], [{"type": "image", "url": url}])
+
+    def test_media_url_rejects_private_address(self):
+        with self.assertRaisesRegex(ValueError, "IP 地址"):
+            validate_outputs({"outputs": [{"type": "image", "url": "https://127.0.0.1/result.png"}]}, self.root)
 
     def test_widget_uses_its_own_virtual_environment(self):
         folder, manifest = self.create_widget()
@@ -132,6 +219,39 @@ class CLITest(unittest.TestCase):
         self.assertEqual(session["token"], "temporary-test-token")
         self.assertEqual(session["email"], "mock@glance.local")
 
+    def test_test_token_works_without_login_for_add_requests_and_uploads(self):
+        folder, manifest = self.create_widget()
+        detail = {"status": "published", "versions": [
+            {"version": manifest["version"], "status": "published"}]}
+        with patch.dict(os.environ, {"GLANCE_MOCK_TOKEN": "temporary-test-token"}), \
+             patch("glance_cli.cli.request", return_value=detail):
+            self.assertEqual(main(["widget", "add", str(folder)]), 0)
+            self.assertEqual(read_token(), "temporary-test-token")
+            with patch("glance_cli.api.urlopen", return_value=io.BytesIO(
+                    b'{"success":true,"result":{}}')) as opener:
+                self.assertEqual(request("GET", "/api/v2/developer/auth/me"), {})
+                self.assertEqual(opener.call_args.args[0].get_header("Authorization"),
+                                 "Bearer temporary-test-token")
+            artifact = self.root / "output.txt"
+            artifact.write_text("test", encoding="utf-8")
+            with patch("glance_cli.api.urlopen", return_value=io.BytesIO(
+                    b'{"success":true,"result":{"assetID":"test-asset"}}')) as opener:
+                self.assertEqual(upload_task_file("task-1", artifact, claim_token="claim-1"),
+                                 {"assetID": "test-asset"})
+                self.assertEqual(opener.call_args.args[0].get_header("Authorization"),
+                                 "Bearer temporary-test-token")
+        with closing(connect()) as db:
+            self.assertEqual(rows(db)[0]["server_status"], "published")
+            self.assertEqual(rows(db)[0]["enabled"], 1)
+        self.assertFalse((self.root / "config" / "session.json").exists())
+
+    def test_test_token_file_works_without_login(self):
+        config = self.root / "config"
+        config.mkdir()
+        (config / "mock-token").write_text(" file-test-token\n", encoding="utf-8")
+        self.assertEqual(read_token(), "file-test-token")
+        self.assertFalse((config / "session.json").exists())
+
     def test_add_shared_directory_offline_and_readd_preserves_state(self):
         folder, manifest = self.create_widget()
         shared = self.root / "shared-widget"
@@ -159,13 +279,13 @@ class CLITest(unittest.TestCase):
         folder, manifest = self.create_widget()
         detail = {"status": "published", "versions": [
             {"version": manifest["version"], "status": "published"}]}
-        with patch("glance_cli.cli.read_session", return_value={"token": "test"}), \
+        with patch("glance_cli.cli.read_token", return_value="test"), \
              patch("glance_cli.cli.request", return_value=detail):
             self.assertEqual(main(["widget", "add", str(folder)]), 0)
         with closing(connect()) as db:
             self.assertEqual(rows(db)[0]["server_status"], "published")
             self.assertEqual(rows(db)[0]["enabled"], 1)
-        with patch("glance_cli.cli.read_session", return_value={"token": "test"}), \
+        with patch("glance_cli.cli.read_token", return_value="test"), \
              patch("glance_cli.cli.request", side_effect=APIError("Widget not found", 404)):
             self.assertEqual(main(["widget", "add", str(folder)]), 0)
         with closing(connect()) as db:

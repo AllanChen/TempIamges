@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -181,8 +181,8 @@
 			children = (
 				1338215DA649C2E61029E245 /* Assets.xcassets */,
 				D1444931654A6366A56B7972 /* Info.plist */,
-				A17EB469CA1EFA300ED02DA6 /* Fonts */,
 				AA4B6E6699F8CFDA864D2F8A /* Localizable.strings */,
+				A17EB469CA1EFA300ED02DA6 /* Fonts */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -245,6 +245,7 @@
 				};
 			};
 			buildConfigurationList = 13F7C570AC1AD3FDBC42720D /* Build configuration list for PBXProject "Glance" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -258,8 +259,7 @@
 				3E7FDE13AEF45801E7B5C411 /* XCRemoteSwiftPackageReference "Highlightr" */,
 				149AA6524917E18339DB3519 /* XCRemoteSwiftPackageReference "libwebp-Xcode" */,
 			);
-			preferredProjectObjectVersion = 77;
-			productRefGroup = 897E7B5C0E3778F8AD681930 /* Products */;
+			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (

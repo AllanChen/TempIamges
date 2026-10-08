@@ -47,6 +47,16 @@ function now() { return new Date().toISOString(); }
 function id(prefix: string) { return `${prefix}_${crypto.randomUUID()}`; }
 function bearer(request: Request) { const value = request.headers.get("Authorization") || ""; return value.startsWith("Bearer ") ? value.slice(7).trim() : ""; }
 function pathParts(url: URL) { return url.pathname.split("/").filter(Boolean); }
+function validRemoteMediaURL(value: unknown): value is string {
+  if (typeof value !== "string" || value.length > 8192) return false;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/\.$/, "");
+    return url.protocol === "https:" && !!host && !url.username && !url.password &&
+      host !== "localhost" && !host.endsWith(".localhost") && !host.endsWith(".local") &&
+      !host.startsWith("[") && !/^(?:\d{1,3}\.){3}\d{1,3}$/.test(host);
+  } catch { return false; }
+}
 function countryName(code: unknown) {
   if (typeof code !== "string" || !/^[A-Z]{2}$/.test(code) || code === "XX") return null;
   return new Intl.DisplayNames(["en"], { type: "region" }).of(code) || null;
@@ -784,6 +794,12 @@ async function taskResult(env: Env, request: Request, taskID: string) {
         return fail("invalid_text", "Invalid text output.", 422);
       }
     } else if (["image", "video", "audio"].includes(String(artifact.type))) {
+      if (artifact.url !== undefined) {
+        if (artifact.assetID !== undefined || !validRemoteMediaURL(artifact.url)) {
+          return fail("invalid_url", "Output needs a public HTTPS media URL.", 422);
+        }
+        continue;
+      }
       if (typeof artifact.assetID !== "string") return fail("invalid_asset", "Output asset is required.", 422);
       const asset = await env.DB.prepare("SELECT mime_type FROM widget_assets WHERE id=? AND widget_id=? AND owner_id=? AND object_key=?")
         .bind(artifact.assetID, task.widget_id, task.owner_id, `results/${taskID}/${artifact.assetID}`).first<{ mime_type: string }>();
@@ -929,7 +945,7 @@ export default {
           .bind(...(global ? [now(), parts[3]] : [now(), parts[3], actor])).run();
         return cancelled.meta.changes ? ok({ taskID: parts[3], status: "cancelled" }) : fail("task_not_found", "Task not found or cannot be cancelled.", 404);
       }
-      if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "uploads") return await uploadAsset(env, request);
+      if (request.method === "POST" && url.pathname === "/api/v2/uploads") return await uploadAsset(env, request);
       if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "assets" && parts[3]) return await assetDownload(env, request, parts[3]);
       if (request.method === "GET" && url.pathname === "/api/v2/widget-tasks/pull") return await pullTask(env, request, url);
       if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-tasks" && parts[4] === "result") return await taskResult(env, request, parts[3]);

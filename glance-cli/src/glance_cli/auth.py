@@ -4,7 +4,6 @@ import base64
 from hashlib import sha256
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
-import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -12,14 +11,11 @@ from urllib.request import Request, urlopen
 import webbrowser
 
 from .api import BASE_URL, USER_AGENT, APIError, request
-from .registry import clear_session, config_dir, read_session, save_session
+from .registry import clear_session, read_mock_token, read_session, save_session
 
 
 def login() -> dict:
-    mock_token = os.environ.get("GLANCE_MOCK_TOKEN")
-    mock_file = config_dir() / "mock-token"
-    if mock_token is None and mock_file.is_file():
-        mock_token = mock_file.read_text(encoding="utf-8").strip()
+    mock_token = read_mock_token()
     if mock_token:
         session = {
             "token": mock_token,

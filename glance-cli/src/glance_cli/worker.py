@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
 import threading
 import time
+from urllib.parse import urlparse
 
 from .api import APIError, request, upload_task_file
 from .registry import connect, eligible, rows, update, utc_now
@@ -19,6 +20,10 @@ def _run_task(row: dict, task: dict) -> None:
     task_id = task["taskId"]
     claim = task["claimToken"]
     stopped = threading.Event()
+    started = time.monotonic()
+
+    def task_log(message: str) -> None:
+        logger.info("[%s] %s", task_id, message)
 
     def heartbeat() -> None:
         while not stopped.wait(60):
@@ -31,18 +36,27 @@ def _run_task(row: dict, task: dict) -> None:
     thread = threading.Thread(target=heartbeat, daemon=True)
     thread.start()
     try:
-        with execute(Path(row["code_path"]), task, python_path=row["python_path"]) as outputs:
+        with execute(Path(row["code_path"]), task, python_path=row["python_path"],
+                     on_log=task_log) as outputs:
             artifacts = []
-            for output in outputs:
+            for index, output in enumerate(outputs, start=1):
                 if output["type"] == "text":
+                    task_log(f"结果 {index}/{len(outputs)}：文本，{len(output['text'].encode())} 字节")
                     artifacts.append(output)
+                elif "url" in output:
+                    task_log(f"结果 {index}/{len(outputs)}：类型={output['type']}，远端来源={urlparse(output['url']).hostname}")
+                    artifacts.append({"type": output["type"], "url": output["url"]})
                 else:
-                    uploaded = upload_task_file(task_id, Path(output["path"]), claim_token=claim)
-                    artifacts.append({"type": "text" if output.get("returnURL") else output["type"],
-                                      "assetID": uploaded["assetID"]})
-        request("POST", f"/api/v2/widget-tasks/{task_id}/result",
-                {"status": "succeeded", "artifacts": artifacts}, headers={"X-Task-Claim": claim})
-        logger.info("[%s] 完成：%s 个输出", task_id, len(artifacts))
+                    path = Path(output["path"])
+                    task_log(f"上传结果 {index}/{len(outputs)}：类型={output['type']}，文件={path.name}，大小={path.stat().st_size} 字节")
+                    uploaded = upload_task_file(task_id, path, claim_token=claim)
+                    task_log(f"结果上传完成：assetID={uploaded['assetID']}，类型={uploaded.get('type', output['type'])}")
+                    artifacts.append({"type": output["type"], "assetID": uploaded["assetID"]})
+        task_log(f"回传任务结果：状态=succeeded，输出={len(artifacts)} 个")
+        response = request("POST", f"/api/v2/widget-tasks/{task_id}/result",
+                           {"status": "succeeded", "artifacts": artifacts}, headers={"X-Task-Claim": claim})
+        task_log(f"服务端确认：状态={response.get('status', 'unknown')}，taskID={response.get('taskID', task_id)}")
+        task_log(f"任务完成：输出={len(artifacts)} 个，总耗时={time.monotonic() - started:.1f} 秒")
     except Exception as error:
         try:
             request("POST", f"/api/v2/widget-tasks/{task_id}/result",

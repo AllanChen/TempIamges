@@ -23,7 +23,7 @@ def image_provider(url: str) -> str | None:
     host = (parsed.hostname or "").lower()
     if host in {"iili.io", "freeimage.host"} or host.endswith((".iili.io", ".freeimage.host")):
         return "freeimage"
-    if host.endswith(".r2.dev") or (host == "glance-service.allanchanni.workers.dev"
+    if host.endswith(".r2.dev") or (host in {"glance-service.allanchanni.workers.dev", "api.glance.mcreator.ai"}
                                     and parsed.path.startswith("/api/v2/assets/")):
         return "r2"
     return None
@@ -142,7 +142,7 @@ def r2_output(data: bytes, extension: str) -> dict:
         raise RuntimeError("上传 R2 需要通过 glance worker 执行任务")
     path = Path(output_dir) / f"uploaded-image.{extension}"
     path.write_bytes(data)
-    return {"outputs": [{"type": "image", "path": str(path), "returnURL": True}]}
+    return {"outputs": [{"type": "image", "path": str(path)}]}
 
 
 def main(task: dict | str) -> dict:
@@ -157,7 +157,7 @@ def main(task: dict | str) -> dict:
     target = "freeimage" if china else "r2"
     url = parameters.get("url") or input_info.get("url")
     if url and image_provider(url) == target:
-        return {"outputs": [{"type": "text", "text": url}]}
+        return {"outputs": [{"type": "image", "url": url}]}
     local_path = input_info.get("path")
     if local_path and (not parameters.get("url") or parameters.get("url") == input_info.get("url")):
         with Path(local_path).open("rb") as source:
@@ -172,7 +172,7 @@ def main(task: dict | str) -> dict:
         if key:
             try:
                 uploaded_url = upload_image(key, data, mime, extension)
-                return {"outputs": [{"type": "text", "text": uploaded_url}]}
+                return {"outputs": [{"type": "image", "url": uploaded_url}]}
             except RuntimeError:
                 pass  # Freeimage 不可用时交给 Worker 上传 R2。
     return r2_output(data, extension)

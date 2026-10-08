@@ -29,6 +29,11 @@ class FileOutput(TypedDict):
     path: str
 
 
+class MediaURLOutput(TypedDict):
+    type: Literal["image", "video", "audio"]
+    url: str
+
+
 def text(value: str) -> TextOutput:
     return {"type": "text", "text": value}
 
@@ -45,5 +50,5 @@ def audio(path: str | Path) -> FileOutput:
     return {"type": "audio", "path": str(path)}
 
 
-def result(*outputs: TextOutput | FileOutput) -> dict:
+def result(*outputs: TextOutput | FileOutput | MediaURLOutput) -> dict:
     return {"outputs": list(outputs)}

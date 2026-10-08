@@ -53,7 +53,7 @@ def main(task: WidgetTask) -> dict:
     return result(text("处理完成"), image("output.png"))
 ```
 
-一台机器运行一个 `glance worker` 即可。它每次向 GlanceService 批量请求任务前都会重读本机表，并在对应版本目录里执行 `main.py` 的 `main(task)`。函数返回 `{"outputs":[{"type":"text","text":"..."}]}`；图片、视频或音频输出使用 `{"type":"image|video|audio","path":"输出文件路径"}`。单个文件最大 50 MB。
+一台机器运行一个 `glance worker` 即可。它每次向 GlanceService 批量请求任务前都会重读本机表，并在对应版本目录里执行 `main.py` 的 `main(task)`。函数返回 `{"outputs":[{"type":"text","text":"..."}]}`；图片、视频或音频输出可以使用 `{"type":"image|video|audio","path":"输出文件路径"}`，也可以使用 `{"type":"image|video|audio","url":"https://..."}` 返回已经托管的资源。单个文件最大 50 MB。
 
 Worker 启动后同时把日志写到终端和 `~/.config/glance/worker.log`。另开终端可以查看最近日志，或持续跟踪：
 
@@ -63,10 +63,10 @@ glance worker logs --lines 50
 glance worker logs --follow
 ```
 
-日志会显示每次拉取、暂无任务、执行和完成。临时网络错误会注明下次重试时间；Worker 会继续运行。
+日志会显示每次拉取、暂无任务、输入下载进度、Widget 子进程输出、结果文件上传、任务回传和完成耗时。RunningHub 超分 Widget 还会逐步记录输入上传、任务提交、轮询状态及结果下载；正常日志不会打印 API Key 或结果 URL 的查询参数。临时网络错误会注明下次重试时间；Worker 会继续运行。
 
 日志文件最多 5 MB，保留 3 份轮换文件。`glance worker logs` 只读取日志，不会启动 Worker。
 
 CLI 数据放在 `~/.config/glance/`，可通过 `GLANCE_CLI_HOME` 调整。开发或本地联调可通过 `GLANCE_API_URL` 指向其他 GlanceService。这个包尚未上传到 PyPI。
 
-联调期间，可将临时开发者 token 放在 `~/.config/glance/mock-token`（权限 `0600`），或通过 `GLANCE_MOCK_TOKEN` 环境变量提供。此时 `glance login` 会保存一个本地模拟会话，跳过浏览器登录；`glance whoami` 等后续命令仍向 Service 发送该 token。移除 token 文件或环境变量后，`glance login` 恢复正常登录流程。
+联调期间，可将临时开发者 token 放在 `~/.config/glance/mock-token`（权限 `0600`），或通过 `GLANCE_MOCK_TOKEN` 环境变量提供。`glance whoami`、`glance widget add`、发布和 Worker 请求会直接使用该 token，无须执行 `glance login`。测试 token 必须与 Service 中的 `DEVELOPER_TEST_TOKEN` 一致；未配置服务端 Secret 时仍会被拒绝。移除 token 文件或环境变量后，CLI 恢复使用已有登录会话。

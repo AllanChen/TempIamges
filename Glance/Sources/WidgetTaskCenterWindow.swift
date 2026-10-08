@@ -18,6 +18,8 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     private lazy var clearButton = makeIconButton("trash", "Clear History".localized, #selector(clearAll), tint: PanelStyle.failure)
     private lazy var infoButton = makeIconButton("info.circle", "Task information".localized, #selector(toggleDetails))
     private lazy var revealButton = makeIconButton("folder", "Reveal in Finder".localized, #selector(revealSelected))
+    private lazy var copyURLButton = PanelStyle.makeQuietButton(title: "Copy URL".localized,
+                                                                target: self, action: #selector(copyResultURL))
     private lazy var retryButton = makeIconButton("arrow.clockwise", "Retry".localized, #selector(retrySelected))
     private lazy var removeButton = makeIconButton("trash", "Remove Record".localized, #selector(removeSelected), tint: PanelStyle.failure)
 
@@ -161,6 +163,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         configureLabel(detailStatus, size: 12, color: PanelStyle.accent, weight: .medium)
         detail.addSubview(detailTitle)
         detail.addSubview(detailStatus)
+        detail.addSubview(copyURLButton)
         detail.addSubview(revealButton)
         detail.addSubview(retryButton)
         detail.addSubview(removeButton)
@@ -288,6 +291,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         detailStatus.font = PanelStyle.inspectFont(ofSize: 12 * sy, weight: .medium)
         detailTitle.frame = NSRect(x: 32 * dx, y: detail.bounds.height - 46 * dy, width: 500 * dx, height: 22 * dy)
         detailStatus.frame = NSRect(x: 32 * dx, y: detail.bounds.height - 69 * dy, width: 500 * dx, height: 15 * dy)
+        copyURLButton.frame = NSRect(x: detail.bounds.width - 280 * dx, y: detail.bounds.height - 59 * dy, width: 98 * dx, height: 36 * dy)
         revealButton.frame = NSRect(x: detail.bounds.width - 162 * dx, y: detail.bounds.height - 60 * dy, width: 38 * dx, height: 38 * dy)
         retryButton.frame = NSRect(x: detail.bounds.width - 114 * dx, y: detail.bounds.height - 60 * dy, width: 38 * dx, height: 38 * dy)
         removeButton.frame = NSRect(x: detail.bounds.width - 66 * dx, y: detail.bounds.height - 60 * dy, width: 38 * dx, height: 38 * dy)
@@ -410,6 +414,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
             propertyValues.forEach { $0.stringValue = "—" }
             centerStatus.stringValue = "Select a task to inspect details".localized
             inspectButton.isEnabled = false
+            copyURLButton.isHidden = true
             revealButton.isEnabled = false
             retryButton.isEnabled = false
             removeButton.isEnabled = false
@@ -438,6 +443,8 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         propertyValues[4].stringValue = record.phase.isActive ? "2 seconds".localized : "—"
         centerStatus.stringValue = record.errorMessage ?? detailText(record)
         inspectButton.isEnabled = selectedOutputExists
+        copyURLButton.isHidden = record.outputURLString == nil
+        copyURLButton.isEnabled = !copyURLButton.isHidden
         revealButton.isEnabled = selectedOutputExists
         retryButton.isEnabled = record.phase == .failed || record.phase == .interrupted || (record.phase == .completed && !selectedOutputExists)
         removeButton.isEnabled = !record.phase.isActive
@@ -482,6 +489,37 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         if let url = selected?.output, FileManager.default.fileExists(atPath: url.path) {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         }
+    }
+
+    @objc private func copyResultURL() {
+        guard let record = selected, let storedURL = record.outputURLString else { return }
+        guard let taskID = record.remoteTaskID else {
+            copyURLToPasteboard(storedURL)
+            return
+        }
+        copyURLButton.isEnabled = false
+        WidgetTaskClient.shared.fetchResultURL(taskID: taskID) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self, self.selected?.id == record.id else { return }
+                self.copyURLButton.isEnabled = true
+                switch result {
+                case .success(let url): self.copyURLToPasteboard(url.absoluteString)
+                case .failure:
+                    if let url = URL(string: storedURL),
+                       url.host != "api.glance.mcreator.ai" {
+                        self.copyURLToPasteboard(storedURL)
+                    } else {
+                        self.centerStatus.stringValue = "Could not refresh result URL".localized
+                    }
+                }
+            }
+        }
+    }
+
+    private func copyURLToPasteboard(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+        centerStatus.stringValue = "Result URL copied".localized
     }
 
     @objc private func retrySelected() { if let id = selected?.id { WidgetTaskManager.shared.retry(id) } }

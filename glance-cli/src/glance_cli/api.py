@@ -9,7 +9,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from . import __version__
-from .registry import read_session
+from .registry import read_token
 
 
 BASE_URL = os.environ.get("GLANCE_API_URL", "https://glance-service.allanchanni.workers.dev").rstrip("/")
@@ -27,9 +27,9 @@ def request(method: str, path: str, body: dict | None = None, *,
             headers: dict[str, str] | None = None,
             authenticated: bool = True) -> dict:
     if authenticated:
-        token = token or (read_session() or {}).get("token")
+        token = token or read_token()
         if not token:
-            raise APIError("请先运行 glance login")
+            raise APIError("请先运行 glance login，或配置 GLANCE_MOCK_TOKEN 测试 token")
     payload = json.dumps(body).encode() if body is not None else None
     headers = {"User-Agent": USER_AGENT,
                **({"Authorization": f"Bearer {token}"} if authenticated else {}),
@@ -56,9 +56,9 @@ def request(method: str, path: str, body: dict | None = None, *,
 
 def upload_task_file(task_id: str, path: Path, *, token: str | None = None,
                      claim_token: str) -> dict:
-    token = token or (read_session() or {}).get("token")
+    token = token or read_token()
     if not token:
-        raise APIError("请先运行 glance login")
+        raise APIError("请先运行 glance login，或配置 GLANCE_MOCK_TOKEN 测试 token")
     boundary = f"glance-{uuid.uuid4().hex}"
     mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     filename = path.name.replace('"', "_").replace("\r", "_").replace("\n", "_")

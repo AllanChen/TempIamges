@@ -8,7 +8,7 @@
 
 开发者 Google 登录需要设置 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`，并在 Google OAuth 客户端中登记重定向地址：`<PUBLIC_ORIGIN>/api/v2/developer/auth/google/callback`。发布前还需要配置 `GLANCE_SIGNING_KEY_PKCS8`，值是与 Glance 客户端内 `glance-market-2026-02` 公钥对应的 Ed25519 PKCS#8 DER 的 Base64。此机器上的开发用私钥保存在 `~/.config/glance-service/signing-key.pem`，**不要提交私钥到仓库**；生产环境应通过 Wrangler Secret 配置并安全备份。配置命令示例：
 
-当前联调可把临时开发者 token 配为 Wrangler Secret `DEVELOPER_TEST_TOKEN`，CLI 本机将相同 token 写入 `~/.config/glance/mock-token` 后运行 `glance login`。Service 将其映射为固定的模拟开发者 `mock:glance-cli`；这个 token 只用于开发者 API，不授予 Admin Console 权限。完成真实 Google 登录后应删除此 Secret 和本机 mock-token 文件。
+当前联调可把临时开发者 token 配为 Wrangler Secret `DEVELOPER_TEST_TOKEN`，CLI 本机将相同 token 写入 `~/.config/glance/mock-token`（权限 `0600`），无须运行 `glance login`。Service 将其映射为固定的模拟开发者 `mock:glance-cli`；这个 token 只用于开发者 API，不授予 Admin Console 权限。完成真实 Google 登录后应删除此 Secret 和本机 mock-token 文件。
 
 ```bash
 openssl pkey -in ~/.config/glance-service/signing-key.pem -outform DER | base64 | tr -d '\n' | wrangler secret put GLANCE_SIGNING_KEY_PKCS8
@@ -18,6 +18,7 @@ wrangler d1 migrations apply glance-service-db --remote
 ```
 
 2026-09-30 已将当前 Service 部署到 `https://glance-service.allanchanni.workers.dev`，并应用 `0002_developers.sql`；线上已配置临时开发者 token 和 Manifest 签名密钥。Google OAuth 仍需配置客户端凭据。Gray release 只供审核，不进入公开 Market；管理员执行 `promote` 后才公开。
+
 登录使用 Google 官方的 [Web Server OAuth 流程](https://developers.google.com/identity/protocols/oauth2/web-server)和 [OpenID Connect UserInfo 接口](https://developers.google.com/identity/openid-connect/reference)。
 
 ## 本地配置
@@ -195,12 +196,12 @@ Content-Type: application/json
 如果需要上传文件，先调用：
 
 ```http
-POST https://glance-service.allanchanni.workers.dev/api/v2/uploads
+POST https://api.glance.mcreator.ai/api/v2/uploads
 Authorization: Bearer <user_token>
 Content-Type: multipart/form-data
 ```
 
-表单字段为 `file` 和 `location`（如 `CN`）；旧客户端未提供 `location` 时，Service 使用 Cloudflare 请求地区。上传接口返回图片 `url`，再将其放入任务的 `input`。当 `provider` 为 `r2` 时，还返回 `assetID`。
+表单字段为 `file`，Service 始终上传到 R2。接口返回 `assetID`、`url` 和 `provider: r2`；客户端将 URL 放入任务参数。中国地区图片由 Glance 在本机直接上传到 Freeimage，不经过此接口。
 
 ### 2. Widget Worker 拉取任务
 
