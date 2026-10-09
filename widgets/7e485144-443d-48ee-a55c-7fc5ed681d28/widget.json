@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "7e485144-443d-48ee-a55c-7fc5ed681d28",
+  "version": "0.1.0",
+  "name": "洗图",
+  "summary": "洗图工具",
+  "author": "Allan",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "洗图",
+      "description": "Process an input.",
+      "inputTypes": [
+        "image",
+        "text"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/webp",
+        "image/jpeg"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.7e485144-443d-48ee-a55c-7fc5ed681d28.run",
+      "requiresUpload": true,
+      "parameterSchema": {}
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "The selected media is uploaded to Glance for processing."
+  },
+  "minimumGlanceVersion": "2.0.0"
+}
