@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "55e64c7e-f079-448a-b5bd-7315b2589019",
+  "version": "1.0.0",
+  "name": "免费图床",
+  "summary": "免费图床",
+  "author": "Glance",
+  "official": true,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "c8446b13-f54b-4a1f-aaba-156996118d60",
+      "name": "上传图片",
+      "description": "免费图床，让用户可以免费获得图床。",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/heic",
+        "image/heif"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.55e64c7e-f079-448a-b5bd-7315b2589019.c8446b13-f54b-4a1f-aaba-156996118d60",
+      "requiresUpload": true,
+      "parameterSchema": {}
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "免费图床，让用户可以免费获得图床。"
+  },
+  "minimumGlanceVersion": "2.0.0",
+  "updatedAt": "2026-09-29T10:18:11.244Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "keyID": "admin-console",
+    "value": "admin-created"
+  }
+}
