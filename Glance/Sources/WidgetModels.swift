@@ -30,6 +30,21 @@ struct WidgetCommand: Codable, Hashable {
         let acceptsMultipleImages = imageList != nil ||
             inputTypes.contains("multiple_images") || inputTypes.contains("multi_image") ||
             inputTypes.contains("multiple-images") || inputTypes.contains("multi-image")
+        let imageBounds: [String: JSONValue]
+        if case .object(let value)? = imageList { imageBounds = value }
+        else { imageBounds = [:] }
+        let maxImages: Int
+        if case .number(let value)? = imageBounds["maxItems"], value.isFinite {
+            maxImages = Int(min(4, max(1, value)))
+        } else {
+            maxImages = acceptsMultipleImages ? 4 : 1
+        }
+        let minImages: Int
+        if case .number(let value)? = imageBounds["minItems"], value.isFinite {
+            minImages = Int(min(Double(maxImages), max(1, value)))
+        } else {
+            minImages = 1
+        }
         let videoList = properties["videos"] ?? properties["videoUrls"] ??
             properties["multipleVideos"]
         let acceptsMultipleVideos = videoList != nil ||
@@ -37,7 +52,8 @@ struct WidgetCommand: Codable, Hashable {
             inputTypes.contains("multiple-videos") || inputTypes.contains("multi-video")
         return WidgetInputCapabilities(acceptsPrompt: acceptsPrompt,
                                        acceptsMask: acceptsMask,
-                                       maxImages: acceptsMultipleImages ? 4 : 1,
+                                       minImages: minImages,
+                                       maxImages: maxImages,
                                        maxVideos: acceptsMultipleVideos ? 4 : 1)
     }
 }
@@ -45,6 +61,7 @@ struct WidgetCommand: Codable, Hashable {
 struct WidgetInputCapabilities {
     let acceptsPrompt: Bool
     let acceptsMask: Bool
+    let minImages: Int
     let maxImages: Int
     let maxVideos: Int
 

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "754acd48-5029-4f8f-b4a4-b750903767bb",
+  "version": "0.1.0",
+  "name": "换装",
+  "summary": "换装",
+  "author": "Allan",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "换装",
+      "description": "Process an input.",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.754acd48-5029-4f8f-b4a4-b750903767bb.run",
+      "requiresUpload": true,
+      "parameterSchema": {
+        "type": "object",
+        "properties": {
+          "images": {
+            "type": "array",
+            "items": { "type": "string", "format": "uri" },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "The selected media is uploaded to Glance for processing."
+  },
+  "minimumGlanceVersion": "2.0.0"
+}

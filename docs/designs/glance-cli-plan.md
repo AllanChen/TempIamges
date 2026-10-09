@@ -14,7 +14,7 @@
 2. 开发者自行管理 `main.py`、依赖和各版本代码。`glance widget test` 在本机调用 `main(task)`，检查返回结果。
 3. `glance widget publish --code <代码目录>` 提交 Manifest，并将 Widget ID、版本和代码目录的绝对路径登记到本机表。提交成功后，版本进入待审核状态，可以接收管理员测试任务。
 4. 一台机器只需运行一个 `glance worker` 进程。它从本机表读取所有可接任务的 Widget 版本，向服务器批量请求任务，并调用对应目录的 `main.py`。
-5. 管理员查看实际输出后手动批准，先灰度再正式发布。新版本审核期间，旧版仍可继续处理线上任务；开发者负责保留各版本代码。
+5. 管理员查看实际输出后手动批准，先灰度再正式发布。Worker 按 Widget ID 运行本机选定代码；若需要两套代码分别接任务，应创建不同 Widget ID。
 
 ## 命令与本机表
 
@@ -22,17 +22,17 @@ CLI 提供 `glance login`、`logout`、`whoami`、`glance widget init|add|bind|v
 
 本机 SQLite 表位于用户配置目录，不放在 Widget 项目中。每条记录包含 Widget ID、版本、Manifest 路径、代码目录、该版本使用的 Python 解释器路径、本机启用状态、服务端状态、最近请求时间和错误。认证凭据单独保存。`init` 时登记本地版本；`publish` 时更新状态；`bind` 可以修改开发者自己管理的代码路径和解释器。Worker 每次请求前重读表；单次请求最多等待 5 秒，因此表的变化无需重启即可生效。Worker 每分钟同步服务端状态。
 
-`add` 校验目录后登记绝对路径和解释器；同一 ID 与版本重复添加会更新路径。本地 `widget.json` 优先；没有时，UUID 模式从公开接口获取 Manifest，仅写入 CLI 私有缓存，不会伪造 `main.py`；无代码版本保持禁用。`widget test` 和 `widget validate` 可从本机表找到该缓存，因此旧源码目录不需要 Manifest。`init` 创建的目录仍包含 Manifest；首次发布必须能提供 Manifest。当前账号拥有该服务端版本时，CLI 同步审核状态并允许 Worker 请求任务；没有任务权限的朋友分享目录仅供本地测试。跨账号协作领取需要服务端单独授予权限，不能仅凭共享代码目录绕过所有权校验。
+`add` 校验目录后登记绝对路径和解释器；同一 ID 与版本重复添加会更新路径。本地 `widget.json` 优先；没有时，UUID 模式从公开接口获取 Manifest，仅写入 CLI 私有缓存，不会伪造 `main.py`；无代码版本保持禁用。`widget test` 和 `widget validate` 可从本机表找到该缓存，因此旧源码目录不需要 Manifest。`init` 创建的目录仍包含 Manifest；首次发布必须能提供 Manifest。当前账号拥有该 Widget 的服务端执行权限时，CLI 同步 Widget 状态并允许 Worker 请求任务；没有任务权限的朋友分享目录仅供本地测试。跨账号协作领取需要服务端单独授予权限，不能仅凭共享代码目录绕过所有权校验。
 
-Worker 是独立常驻进程，只有一条批量长轮询请求。每次请求最多等待 5 秒，使本机表的变化很快生效。Python 任务在子进程中执行，主进程仍可请求任务；默认全机最多 4 个并发任务、每个 Widget 版本最多 1 个。停止 Worker 时不再领取新任务，并等待在运行的任务结束。
+Worker 是独立常驻进程，只有一条批量长轮询请求。每次请求最多等待 5 秒，使本机表的变化很快生效。Python 任务在子进程中执行，主进程仍可请求任务；默认全机最多 4 个并发任务、每个 Widget ID 最多 1 个。停止 Worker 时不再领取新任务，并等待在运行的任务结束。
 
 Worker 将带时间戳的运行、任务和错误日志同时输出到终端与本机 `worker.log`。`glance worker logs` 显示最近 100 行；`--lines` 指定行数，`--follow` 持续跟踪。日志轮换限制单文件 5 MB 并保留 3 份旧文件。
 
 ## 批量请求与执行协议
 
-- `POST /api/v2/widget-tasks/pull-batch` 携带已授权的 `{widgetId, version}` 列表。服务端核对所有权，在最多 25 秒内原子领取一个匹配任务；无任务返回 `task: null`。Worker 收到响应后重读本机表。
-- 管理员测试任务及生产任务都绑定明确的 Widget 版本。Worker 按 Widget ID 和版本查找本机代码目录，找不到时报告配置错误，不使用其他版本的代码。
-- Worker 下载输入到任务临时目录，使用对应版本登记的 Python 解释器调用 `main.py` 的 `main(task: dict) -> dict`。`task` 包含任务 ID、Command ID、参数和本地输入路径。返回 `outputs` 数组：文本为 `{"type":"text","text":"..."}`，图片、视频或音频为 `{"type":"image|video|audio","path":"本地文件路径"}`，一次任务可以返回多个输出。
+- `POST /api/v2/widget-tasks/pull-batch` 携带已授权的 `{widgetId}` 列表。服务端核对 Widget 所有权，在最多 25 秒内原子领取一个匹配任务；无任务返回 `task: null`。旧 Worker 仍可携带 `version`，服务端忽略它的路由含义。
+- 管理员测试任务及生产任务保留提交时的版本作为审核与历史信息。Worker 按 Widget ID 领取任务，同一 ID 在本机有多个已启用绑定时，选择版本号最高的本机代码目录。
+- Worker 下载输入到任务临时目录，使用所选本机绑定的 Python 解释器调用 `main.py` 的 `main(task: dict) -> dict`。`task` 包含任务 ID、Command ID、参数和本地输入路径。返回 `outputs` 数组：文本为 `{"type":"text","text":"..."}`，图片、视频或音频为 `{"type":"image|video|audio","path":"本地文件路径"}`，一次任务可以返回多个输出。
 - Worker 约每 60 秒发送心跳，续期 120 秒租约；完成后上传文件并回传结果或错误。租约过期的任务可以重新领取，所以开发者代码应允许重试。
 - 执行成功只表示测试任务完成；管理员仍须检查结果并手动批准。CLI、审核后台和 Glance 客户端最终都应支持文本、图片、视频及音频结果。
 

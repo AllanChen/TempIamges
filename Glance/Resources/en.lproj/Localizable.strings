@@ -355,6 +355,7 @@
 "Image and mask" = "Image and mask";
 "Image and prompt" = "Image and prompt";
 "Use up to four images. The first image is the base." = "Use up to four images. The first image is the base.";
+"Use two images. The first image is the base." = "Use two images. The first image is the base.";
 "Choose the image, describe the edit, then add a mask." = "Choose the image, describe the edit, then add a mask.";
 "Choose an image, then mark the area to change." = "Choose an image, then mark the area to change.";
 "The prompt tells the Widget what to make or change." = "The prompt tells the Widget what to make or change.";
@@ -368,7 +369,9 @@
 "＋  Add image" = "＋  Add image";
 "4 images maximum · remove one to add another" = "4 images maximum · remove one to add another";
 "Images are sent from left to right · up to 4" = "Images are sent from left to right · up to 4";
+"This Widget requires exactly two images." = "This Widget requires exactly two images.";
 "A Widget accepts at most four images." = "A Widget accepts at most four images.";
+"This Widget accepts at most two images." = "This Widget accepts at most two images.";
 "The source image is still loading." = "The source image is still loading.";
 "Use mask" = "Use mask";
 "Paint the area the Widget should change." = "Paint the area the Widget should change.";

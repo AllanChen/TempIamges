@@ -358,6 +358,7 @@
 "Image and mask" = "图片与遮罩";
 "Image and prompt" = "图片与提示词";
 "Use up to four images. The first image is the base." = "最多使用四张图片，第一张为基础图。";
+"Use two images. The first image is the base." = "使用两张图片，第一张为基础图。";
 "Choose the image, describe the edit, then add a mask." = "选择图片，描述修改内容，然后添加遮罩。";
 "Choose an image, then mark the area to change." = "选择图片，然后标记需要修改的区域。";
 "The prompt tells the Widget what to make or change." = "用提示词告诉 Widget 要生成或修改什么。";
@@ -371,7 +372,9 @@
 "＋  Add image" = "＋  添加图片";
 "4 images maximum · remove one to add another" = "最多四张图片 · 移除一张后可继续添加";
 "Images are sent from left to right · up to 4" = "图片从左到右依次提交 · 最多四张";
+"This Widget requires exactly two images." = "此 Widget 需要恰好两张图片。";
 "A Widget accepts at most four images." = "一个 Widget 任务最多使用四张图片。";
+"This Widget accepts at most two images." = "此 Widget 最多使用两张图片。";
 "The source image is still loading." = "原图仍在加载中。";
 "Use mask" = "使用遮罩";
 "Paint the area the Widget should change." = "涂抹希望 Widget 修改的区域。";

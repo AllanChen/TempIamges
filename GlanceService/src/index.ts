@@ -766,41 +766,50 @@ async function pullBatch(env: Env, request: Request) {
   const actor = await developerSession(env, request);
   const body = await readJSON(request);
   const raw = Array.isArray(body.widgets) ? body.widgets : [];
-  if (raw.length === 0 || raw.length > 50) return fail("invalid_widgets", "Supply 1–50 Widget versions.", 400);
-  const requested: Array<{ widgetId: string; version: string; versionId: string }> = [];
+  if (raw.length === 0 || raw.length > 50) return fail("invalid_widgets", "Supply 1–50 Widgets.", 400);
+  // Accept older Workers that still send a version, but route by Widget ID.
+  // Retain their chosen local version in the response so they can find code.
+  const requested = new Map<string, { widgetId: string; localVersion?: string }>();
   for (const item of raw) {
     if (!item || typeof item !== "object") return fail("invalid_widgets", "Invalid Widget list.", 400);
     const fields = item as Record<string, unknown>;
-    if (typeof fields.widgetId !== "string" || typeof fields.version !== "string") return fail("invalid_widgets", "Widget ID and version are required.", 400);
-    const row = await env.DB.prepare(`SELECT v.id,v.status,w.status AS widget_status FROM widget_versions v JOIN widgets w ON w.id=v.widget_id
-      WHERE v.widget_id=? AND v.version=? AND (w.owner_id=? OR EXISTS
+    if (typeof fields.widgetId !== "string" || !fields.widgetId ||
+        (fields.version !== undefined && typeof fields.version !== "string")) {
+      return fail("invalid_widgets", "Widget ID is required.", 400);
+    }
+    const row = await env.DB.prepare(`SELECT w.status FROM widgets w WHERE w.id=? AND (w.owner_id=? OR EXISTS
       (SELECT 1 FROM widget_worker_grants g WHERE g.widget_id=w.id AND g.developer_id=?))`)
-      .bind(fields.widgetId, fields.version, actor.owner_id, actor.owner_id).first<{ id: string; status: string; widget_status: string }>();
+      .bind(fields.widgetId, actor.owner_id, actor.owner_id).first<{ status: string }>();
     // A developer may still have a locally registered version after an Admin
     // deletes its Widget or revokes access. Ignore that entry so it cannot
     // block every other Widget in this worker's batch.
     if (!row) continue;
-    if (!["manual_review", "test_passed", "gray_release", "published"].includes(row.status) || ["suspended", "archived"].includes(row.widget_status)) continue;
-    requested.push({ widgetId: fields.widgetId, version: fields.version, versionId: row.id });
+    if (!["manual_review", "test_passed", "gray_release", "published"].includes(row.status)) continue;
+    requested.set(fields.widgetId, {
+      widgetId: fields.widgetId,
+      localVersion: typeof fields.version === "string" ? fields.version : undefined
+    });
   }
   const wait = Math.min(25, Math.max(0, Number(body.wait) || 0));
   const deadline = Date.now() + wait * 1000;
-  if (!requested.length) return ok({ task: null }, 200, { "Cache-Control": "no-store" });
-  const placeholders = requested.map(() => "?").join(",");
-  const versionIDs = requested.map((item) => item.versionId);
+  if (!requested.size) return ok({ task: null }, 200, { "Cache-Control": "no-store" });
+  const widgetIDs = [...requested.keys()];
+  const placeholders = widgetIDs.map(() => "?").join(",");
   do {
-    await env.DB.prepare(`UPDATE widget_tasks SET status='queued',worker_id=NULL,lease_expires_at=NULL,claim_token_hash=NULL WHERE version_id IN (${placeholders}) AND status IN ('claimed','running') AND lease_expires_at IS NOT NULL AND lease_expires_at<?`)
-      .bind(...versionIDs, now()).run();
-    const row = await env.DB.prepare(`SELECT * FROM widget_tasks WHERE version_id IN (${placeholders}) AND status='queued' ORDER BY created_at LIMIT 1`)
-      .bind(...versionIDs).first<Record<string, unknown>>();
+    await env.DB.prepare(`UPDATE widget_tasks SET status='queued',worker_id=NULL,lease_expires_at=NULL,claim_token_hash=NULL WHERE widget_id IN (${placeholders}) AND status IN ('claimed','running') AND lease_expires_at IS NOT NULL AND lease_expires_at<?`)
+      .bind(...widgetIDs, now()).run();
+    const row = await env.DB.prepare(`SELECT t.*,v.version AS submitted_version FROM widget_tasks t LEFT JOIN widget_versions v ON v.id=t.version_id WHERE t.widget_id IN (${placeholders}) AND t.status='queued' ORDER BY t.created_at LIMIT 1`)
+      .bind(...widgetIDs).first<Record<string, unknown>>();
     if (row) {
-      const item = requested.find((entry) => entry.versionId === row.version_id)!;
+      const item = requested.get(String(row.widget_id))!;
       const lease = new Date(Date.now() + 120_000).toISOString();
       const claimToken = `${crypto.randomUUID()}${crypto.randomUUID()}`;
       const claim = await env.DB.prepare("UPDATE widget_tasks SET status='claimed',lease_expires_at=?,claim_token_hash=?,claimed_at=?,attempts=attempts+1 WHERE id=? AND status='queued'")
         .bind(lease, await digest(claimToken), now(), row.id).run();
       if (claim.meta.changes === 1) return ok({ task: {
-        taskId: row.id, widgetId: item.widgetId, version: item.version, versionId: item.versionId,
+        taskId: row.id, widgetId: item.widgetId,
+        version: item.localVersion || row.submitted_version, taskVersion: row.submitted_version,
+        versionId: row.version_id,
         commandId: row.command_id, type: row.type, input: JSON.parse(String(row.input_json)),
         parameters: JSON.parse(String(row.parameters_json)), leaseExpiresAt: lease, claimToken
       } }, 200, { "Cache-Control": "no-store" });
@@ -923,14 +932,76 @@ async function adminAction(env: Env, request: Request, submissionID: string, act
   const body = await readJSON(request).catch(() => ({} as Record<string, unknown>));
   if (action === "test") {
     if (!["manual_review", "test_passed"].includes(row.status)) return fail("not_reviewable", "Only pending versions can be tested.", 409);
-    const manifest = await env.DB.prepare("SELECT manifest_json FROM widget_versions WHERE id=?").bind(row.version_id).first<{ manifest_json: string }>();
-    const parsed = manifest ? JSON.parse(manifest.manifest_json) as Manifest : null;
-    const commandID = typeof body.commandID === "string" ? body.commandID : parsed?.commands?.[0]?.id || "";
-    const input = body.input && typeof body.input === "object" ? body.input : { url: body.url || null };
-    if (typeof (input as { url?: unknown }).url === "string" && !String((input as { url?: unknown }).url).startsWith("https://")) return fail("invalid_test_url", "Test input must use HTTPS.", 422);
+    const manifest = JSON.parse(row.manifest_json) as Manifest;
+    const commandID = typeof body.commandID === "string" ? body.commandID : manifest.commands?.[0]?.id || "";
+    const command = manifest.commands?.find(entry => entry.id === commandID);
+    if (!command) return fail("unknown_command", "Widget command was not found in this version.", 422);
+    const schema = command.parameterSchema && typeof command.parameterSchema === "object" && !Array.isArray(command.parameterSchema)
+      ? command.parameterSchema as Record<string, unknown> : {};
+    const properties = schema.properties && typeof schema.properties === "object" && !Array.isArray(schema.properties)
+      ? schema.properties as Record<string, unknown> : schema;
+    const types = command.inputTypes || [];
+    const suppliedInput = body.input && typeof body.input === "object" && !Array.isArray(body.input)
+      ? body.input as Record<string, unknown> : { url: body.url };
+    const parameters = body.parameters && typeof body.parameters === "object" && !Array.isArray(body.parameters)
+      ? { ...body.parameters as Record<string, unknown> } : {} as Record<string, unknown>;
+    const imageAliases = ["multiple_images", "multi_image", "multiple-images", "multi-image"];
+    const videoAliases = ["multiple_videos", "multi_video", "multiple-videos", "multi-video"];
+    const imageList = properties.images || properties.imageUrls || properties.multipleImages;
+    const videoList = properties.videos || properties.videoUrls || properties.multipleVideos;
+    const acceptsImage = types.includes("image") || !!imageList || imageAliases.some(type => types.includes(type));
+    const acceptsVideo = types.includes("video") || !!videoList || videoAliases.some(type => types.includes(type));
+    const requestedKind = suppliedInput.type;
+    const kind = requestedKind === "image" || requestedKind === "video" ? requestedKind
+      : suppliedInput.videos || parameters.videos ? "video"
+      : suppliedInput.images || parameters.images ? "image"
+      : acceptsImage ? "image" : acceptsVideo ? "video" : null;
+    if (kind === "image" && !acceptsImage || kind === "video" && !acceptsVideo ||
+        requestedKind && requestedKind !== kind) return fail("invalid_test_input", "This command does not accept that media type.", 422);
+    const input: Record<string, unknown> = {};
+    if (kind) {
+      const list = kind === "image" ? imageList : videoList;
+      const aliases = kind === "image" ? imageAliases : videoAliases;
+      const multiple = !!list || aliases.some(type => types.includes(type));
+      const bounds = list && typeof list === "object" && !Array.isArray(list) ? list as Record<string, unknown> : {};
+      const max = multiple ? Math.max(1, Math.min(4, Number.isInteger(bounds.maxItems) ? Number(bounds.maxItems) : 4)) : 1;
+      const min = multiple ? Math.max(1, Math.min(max, Number.isInteger(bounds.minItems) ? Number(bounds.minItems) : 1)) : 1;
+      const key = kind === "image" ? "images" : "videos";
+      const suppliedList = suppliedInput[key] ?? parameters[key];
+      const urls = suppliedList === undefined ? [suppliedInput.url ?? body.url ?? parameters.url] : suppliedList;
+      if (!Array.isArray(urls) || urls.length < min || urls.length > max || urls.some(url => !validRemoteMediaURL(url))) {
+        return fail("invalid_test_media", `Test requires ${min} to ${max} valid HTTPS ${kind} URL(s).`, 422);
+      }
+      input.type = kind;
+      input.url = urls[0];
+      parameters.url = urls[0];
+      if (multiple) { input[key] = urls; parameters[key] = urls; }
+      else delete parameters[key];
+      delete parameters[kind === "image" ? "videos" : "images"];
+    } else if (suppliedInput.url || body.url || suppliedInput.images || suppliedInput.videos) {
+      return fail("invalid_test_input", "This command does not accept media input.", 422);
+    }
+    const acceptsPrompt = !!properties.prompt || ["text", "txt", "prompt"].some(type => types.includes(type));
+    const promptValue = parameters.prompt ?? body.prompt;
+    if (promptValue !== undefined && typeof promptValue !== "string") return fail("invalid_test_prompt", "Prompt must be text.", 422);
+    const prompt = typeof promptValue === "string" ? promptValue.trim() : "";
+    const promptRequired = acceptsPrompt && ((Array.isArray(schema.required) && schema.required.includes("prompt")) || !kind);
+    if ((!acceptsPrompt && prompt) || (promptRequired && !prompt)) {
+      return fail("invalid_test_prompt", acceptsPrompt ? "Prompt is required." : "This command does not accept a prompt.", 422);
+    }
+    if (acceptsPrompt) parameters.prompt = prompt;
+    else delete parameters.prompt;
+    const acceptsMask = kind === "image" && (!!properties.mask || types.includes("mask"));
+    const maskValue = parameters.mask ?? body.mask;
+    if (maskValue !== undefined && maskValue !== null && typeof maskValue !== "string") return fail("invalid_test_mask", "Mask must be a URL.", 422);
+    const mask = typeof maskValue === "string" ? maskValue.trim() : "";
+    if (mask && (!acceptsMask || !validRemoteMediaURL(mask))) return fail("invalid_test_mask", "Mask must be an allowed HTTPS URL.", 422);
+    if (acceptsMask && !mask) return fail("invalid_test_mask", "Mask is required for this command.", 422);
+    if (acceptsMask) parameters.mask = mask || null;
+    else delete parameters.mask;
     const taskID = id("task");
     await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
-      .bind(taskID, row.widget_id, row.version_id, commandID, "admin", "review_test", JSON.stringify(input), JSON.stringify(body.parameters || {}), "queued", now()).run();
+      .bind(taskID, row.widget_id, row.version_id, commandID, "admin", "review_test", JSON.stringify(input), JSON.stringify(parameters), "queued", now()).run();
     return ok({ taskID, status: "queued", processCount: 0 }, 202, { "Cache-Control": "no-store" });
   }
   const next = action === "approve" ? "gray_release" : action === "promote" ? "published" : action === "reject" ? "rejected" : action === "suspend" ? "suspended" : null;

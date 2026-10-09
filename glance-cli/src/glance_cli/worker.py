@@ -28,15 +28,10 @@ def _sync_widget_status(db, widget_id: str) -> None:
             logger.warning("[%s] Widget 已删除或无权访问；已停止本机拉取", widget_id)
             return
         raise
-    versions = {version["version"]: version["status"] for version in detail.get("versions", [])}
+    # Task routing is per Widget ID. A server-side version edit must not
+    # disable the code already bound to this Widget on the developer's machine.
     for row in registered:
-        version = row["version"]
-        if version not in versions:
-            update(db, widget_id, version, server_status="removed", enabled=0)
-            logger.warning("[%s] v%s 已不在服务器；已停止本机拉取", widget_id, version)
-            continue
-        state = detail["status"] if detail["status"] in ("suspended", "archived") else versions[version]
-        update(db, widget_id, version, server_status=state)
+        update(db, widget_id, row["version"], server_status=detail["status"])
 
 
 def _run_task(row: dict, task: dict) -> None:
@@ -121,7 +116,7 @@ def run_worker() -> None:
                             update(db, *key, last_error=None)
                         except Exception as error:
                             update(db, *key, last_error=str(error)[:1000])
-                busy = set(active.values())
+                busy = {widget_id for widget_id, _ in active.values()}
                 candidates = eligible(db, busy)
                 if not candidates or len(active) >= MAX_CONCURRENT:
                     time.sleep(1)
@@ -130,8 +125,7 @@ def run_worker() -> None:
                     start = batch_offset % len(candidates)
                     candidates = (candidates[start:] + candidates[:start])[:50]
                     batch_offset += 50
-                widgets = [{"widgetId": row["widget_id"], "version": row["version"]}
-                           for row in candidates]
+                widgets = [{"widgetId": row["widget_id"]} for row in candidates]
                 logger.info("请求任务：%s 个 Widget，最长等待 %s 秒", len(widgets), PULL_WAIT)
                 try:
                     result = request("POST", "/api/v2/widget-tasks/pull-batch",
@@ -150,16 +144,14 @@ def run_worker() -> None:
                 if not task:
                     logger.info("暂无任务，继续等待")
                     continue
-                key = (task["widgetId"], task["version"])
-                row = next((item for item in candidates if
-                            (item["widget_id"], item["version"]) == key), None)
+                row = next((item for item in candidates if item["widget_id"] == task["widgetId"]), None)
                 if row is None:
                     request("POST", f"/api/v2/widget-tasks/{task['taskId']}/result",
-                            {"status": "failed", "errorCode": "version_not_registered"},
+                            {"status": "failed", "errorCode": "widget_not_registered"},
                             headers={"X-Task-Claim": task["claimToken"]})
                     continue
-                logger.info("[%s] 执行 %s v%s", task["taskId"], key[0], key[1])
-                active[pool.submit(_run_task, row, task)] = key
+                logger.info("[%s] 执行 %s（本机代码 v%s）", task["taskId"], row["widget_id"], row["version"])
+                active[pool.submit(_run_task, row, task)] = (row["widget_id"], row["version"])
     except KeyboardInterrupt:
         logger.info("正在等待运行中的任务结束…")
     finally:

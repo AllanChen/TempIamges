@@ -4,6 +4,7 @@ import json
 from hashlib import sha256
 import os
 from pathlib import Path
+import re
 import sqlite3
 import sys
 import uuid
@@ -90,11 +91,23 @@ def rows(db: sqlite3.Connection) -> list[dict]:
         "SELECT * FROM widgets ORDER BY widget_id, version")]
 
 
-def eligible(db: sqlite3.Connection, busy: set[tuple[str, str]]) -> list[dict]:
+def _version_key(value: str) -> tuple:
+    """Choose one local code binding per Widget using natural version order."""
+    return tuple((1, int(part)) if part.isdecimal() else (0, part.casefold())
+                 for part in re.split(r"(\d+)", value))
+
+
+def eligible(db: sqlite3.Connection, busy: set[str]) -> list[dict]:
     allowed = {"manual_review", "test_passed", "gray_release", "published"}
-    return [row for row in rows(db) if row["enabled"] and
-            row["server_status"] in allowed and
-            (row["widget_id"], row["version"]) not in busy]
+    selected: dict[str, dict] = {}
+    for row in rows(db):
+        widget_id = row["widget_id"]
+        if not row["enabled"] or row["server_status"] not in allowed or widget_id in busy:
+            continue
+        previous = selected.get(widget_id)
+        if previous is None or _version_key(row["version"]) > _version_key(previous["version"]):
+            selected[widget_id] = row
+    return [selected[widget_id] for widget_id in sorted(selected)]
 
 
 def session_path() -> Path:

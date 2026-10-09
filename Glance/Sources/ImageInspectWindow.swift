@@ -24,7 +24,6 @@ final class ImageInspectSession {
     /// Results created in this inspect session keep their NEW tag even if
     /// their task history changes or is cleared.
     var generatedResultPaths = Set<String>()
-    var widgetResultSourceKeys = Set<String>()
 
     init(infos: [MediaInfo], images: [NSImage?], focusedIndex: Int, mode: Mode? = nil) {
         self.infos = infos
@@ -1454,8 +1453,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
         filmstrip.configure(infos: session.infos, images: session.images,
                             selectedIndex: session.focusedIndex, compareIndices: session.compareIndices,
-                            generatedResultPaths: session.generatedResultPaths,
-                            widgetResultSourceKeys: session.widgetResultSourceKeys)
+                            generatedResultPaths: session.generatedResultPaths)
 
         // Default glow marks the active compare slot so the user sees which
         // side a filmstrip tap will replace; hover overrides this.
@@ -2172,7 +2170,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session.images.insert(nil, at: insertionIndex)
         session.metadata.insert(nil, at: insertionIndex)
         session.generatedResultPaths.insert(info.url.standardizedFileURL.path)
-        session.widgetResultSourceKeys.insert(source.isFileURL ? source.standardizedFileURL.path : source.absoluteString)
         session.failedIndices = Set(session.failedIndices.map {
             $0 >= insertionIndex ? $0 + 1 : $0
         })
@@ -5516,7 +5513,6 @@ final class ImageFilmstripView: NSView {
     private var infos: [MediaInfo] = []
     private var images: [NSImage?] = []
     private var generatedResultPaths = Set<String>()
-    private var widgetResultSourceKeys = Set<String>()
     private var selectedIndex = 0
     private var compareIndices: (Int, Int)?
     /// Generated type icons for non-image items (mixed sessions), by index.
@@ -5564,8 +5560,7 @@ final class ImageFilmstripView: NSView {
     }
 
     func configure(infos: [MediaInfo], images: [NSImage?], selectedIndex: Int,
-                   compareIndices: (Int, Int)?, generatedResultPaths: Set<String>,
-                   widgetResultSourceKeys: Set<String>) {
+                   compareIndices: (Int, Int)?, generatedResultPaths: Set<String>) {
         let previousInfos = self.infos
         let previousURLs = Set(self.infos.map { $0.url.standardizedFileURL })
         let previousSelection = self.selectedIndex
@@ -5575,7 +5570,6 @@ final class ImageFilmstripView: NSView {
         self.infos = infos
         self.images = images
         self.generatedResultPaths = generatedResultPaths
-        self.widgetResultSourceKeys = widgetResultSourceKeys
         self.selectedIndex = selectedIndex
         self.compareIndices = compareIndices
         iconCache.removeAll()
@@ -5658,12 +5652,6 @@ final class ImageFilmstripView: NSView {
             : nil
         let ossResultTask = selectedResultTask?.widgetID == ossImageHostingWidgetID
             ? selectedResultTask : nil
-        var completedSourceKeys = widgetResultSourceKeys
-        for info in infos {
-            if let source = WidgetTaskManager.shared.completedRecord(for: info.url)?.source {
-                completedSourceKeys.insert(filmstripKey(for: source))
-            }
-        }
         for index in 0..<count {
             let key = filmstripKey(for: infos[index].url)
             let item: ImageFilmstripItem
@@ -5685,8 +5673,6 @@ final class ImageFilmstripView: NSView {
             let caption: String?
             if ossResultTask?.outputURLString != nil && index == selectedIndex {
                 caption = "RESULT · OSS"
-            } else if completedSourceKeys.contains(key) {
-                caption = "ORIGINAL"
             } else {
                 caption = nil
             }
@@ -5874,18 +5860,21 @@ private final class ImageFilmstripItem: NSView {
         layer?.cornerRadius = 9 * scale
         tagBackground.layer?.cornerRadius = 4 * scale
         // Figma 176:90 / 176:92: 48×22 at the top-right of a 96×96 tile,
-        // with a 48×12 Inter Semibold text frame 5pt below the badge top.
+        // with a centered 48×12 Inter Semibold text frame. At small window
+        // sizes the font stops shrinking at 9pt, so keep its badge and text
+        // frame large enough to show all of NEW without resizing the tile.
         tagLabel.font = PanelStyle.inspectFont(ofSize: max(9, 10 * scale), weight: .semibold)
         taskBadge.cornerRadius = 3.5 * scale
         imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
         taskBadge.frame = NSRect(x: bounds.maxX - 9 * scale, y: bounds.maxY - 9 * scale,
                                  width: 7 * scale, height: 7 * scale)
-        let tagSize = CGSize(width: 48 * scale, height: 22 * scale)
+        let tagSize = CGSize(width: max(28, 48 * scale), height: max(14, 22 * scale))
         tagBackground.frame = CGRect(x: bounds.maxX - tagSize.width,
                                      y: bounds.maxY - tagSize.height,
                                      width: tagSize.width, height: tagSize.height)
-        tagLabel.frame = NSRect(x: 0, y: 5 * scale,
-                                width: tagSize.width, height: 12 * scale)
+        let tagTextHeight = max(8, 12 * scale)
+        tagLabel.frame = NSRect(x: 0, y: (tagSize.height - tagTextHeight) / 2,
+                                width: tagSize.width, height: tagTextHeight)
         ossCaptionBackground.layer?.cornerRadius = 5 * scale
         ossCaptionBackground.frame = NSRect(x: 4 * scale, y: 4 * scale,
                                              width: bounds.width - 8 * scale, height: 23 * scale)

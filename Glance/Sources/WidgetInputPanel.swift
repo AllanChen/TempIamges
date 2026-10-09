@@ -101,7 +101,9 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
         title.frame = NSRect(x: 32, y: 677, width: layout.width - 64, height: 30)
         body.addSubview(title)
         let subtitle = label(layout == .multipleImages
-                             ? "Use up to four images. The first image is the base.".localized
+                             ? (capabilities.minImages == 2 && capabilities.maxImages == 2
+                                ? "Use two images. The first image is the base.".localized
+                                : "Use up to four images. The first image is the base.".localized)
                              : layout == .imageMask
                              ? (capabilities.acceptsPrompt
                                 ? "Choose the image, describe the edit, then add a mask."
@@ -251,9 +253,9 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
                               color: PanelStyle.textSecondary)
             title.frame = NSRect(x: 32, y: 609, width: 300, height: 15)
             imageSection.addSubview(title)
-            countLabel.stringValue = "\(mediaURLs.count) / 4"
+            countLabel.stringValue = "\(mediaURLs.count) / \(capabilities.maxImages)"
             countLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold)
-            countLabel.textColor = mediaURLs.count == 4 ? PanelStyle.accent : PanelStyle.textPrimary
+            countLabel.textColor = mediaURLs.count == capabilities.maxImages ? PanelStyle.accent : PanelStyle.textPrimary
             countLabel.alignment = .right
             countLabel.frame = NSRect(x: 956, y: 609, width: 76, height: 17)
             imageSection.addSubview(countLabel)
@@ -292,14 +294,16 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
                 order.frame = NSRect(x: 12, y: 11, width: 214, height: 14)
                 tile.addSubview(order)
             }
-            if mediaURLs.count < 4 {
+            if mediaURLs.count < capabilities.maxImages {
                 let add = actionButton("＋  Add image".localized,
                                        x: CGFloat(32 + mediaURLs.count * 254), y: 298,
                                        width: 238, action: #selector(addImagesTapped))
                 add.frame.size.height = 296
                 imageSection.addSubview(add)
             }
-            let hint = label(mediaURLs.count == 4
+            let hint = label(capabilities.maxImages == 2
+                             ? "This Widget requires exactly two images.".localized
+                             : mediaURLs.count == 4
                              ? "4 images maximum · remove one to add another".localized
                              : "Images are sent from left to right · up to 4".localized,
                              size: 11, color: PanelStyle.textSecondary)
@@ -371,7 +375,9 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
     }
 
     private func updateRunState() {
-        runButton.isEnabled = !capabilities.acceptsMask || maskURL != nil
+        runButton.isEnabled = mediaURLs.count >= capabilities.minImages &&
+            mediaURLs.count <= capabilities.maxImages &&
+            (!capabilities.acceptsMask || maskURL != nil)
     }
 
     func present(over parentWindow: NSWindow) {
@@ -417,7 +423,7 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
     }
 
     @objc private func runTapped() {
-        guard !capabilities.acceptsMask || maskURL != nil else { return }
+        guard runButton.isEnabled else { return }
         let input = WidgetTaskInput(mediaURLs: mediaURLs,
                                     prompt: capabilities.acceptsPrompt
                                         ? promptView.string.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -446,11 +452,13 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
                 self.maskStatus.stringValue = "No mask selected".localized
                 self.maskPreview.image = nil
             } else {
-                let available = max(0, 4 - self.mediaURLs.count)
+                let available = max(0, self.capabilities.maxImages - self.mediaURLs.count)
                 let additions = picker.urls.filter { !self.mediaURLs.contains($0) }
                 self.mediaURLs.append(contentsOf: additions.prefix(available))
                 self.errorLabel.stringValue = additions.count > available
-                    ? "A Widget accepts at most four images.".localized : ""
+                    ? (self.capabilities.maxImages == 2
+                       ? "This Widget accepts at most two images.".localized
+                       : "A Widget accepts at most four images.".localized) : ""
             }
             self.renderImages()
             self.updateRunState()

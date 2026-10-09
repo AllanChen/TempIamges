@@ -29,7 +29,7 @@ glance widget test --python .venv/bin/python
 glance widget publish --code . --python .venv/bin/python
 ```
 
-若 `main.py` 导入 `glance_cli` 提供的辅助函数，还需在该 Widget 虚拟环境中安装本包。发布后的版本可用 `glance widget bind --version <版本> --code <目录> --python <Python 路径>` 更新解释器。Worker 会使用本机表里该版本记录的解释器；更换后无须重启 Worker。
+若 `main.py` 导入 `glance_cli` 提供的辅助函数，还需在该 Widget 虚拟环境中安装本包。可用 `glance widget bind --version <本机登记版本> --code <目录> --python <Python 路径>` 更新解释器。Worker 对同一 Widget ID 使用本机已启用的最高版本代码绑定；更换后无须重启 Worker。
 
 `glance widget init` 会在当前目录生成以 Widget UUID 命名的文件夹，内含 `widget.json` 和 `main.py`。开发者自行管理自己的 Python 代码和依赖。修改版本号后，用 `glance widget publish --code <该版本代码目录>` 提交审核；本机 SQLite 表记录版本与代码目录、Python 解释器的对应关系。`glance widget bind --version <版本> --code <目录>` 可更新路径。
 
@@ -43,9 +43,9 @@ glance widget list
 glance worker
 ```
 
-`glance widget list` 中应能看到同一个 Widget ID 和版本，状态为 `manual_review`、`enabled=True`，代码目录和 Python 路径也应正确。Worker 必须使用提交该版本的开发者账号登录；它会自动轮询已登记、已授权的版本，按任务指定的版本执行对应目录的 `main.py`，再将结果回传供管理员审核。测试成功不等于正式发布，仍需管理员批准。提交新版本或修改本机绑定后，运行中的 Worker 会重读登记表，无需重启。
+`glance widget list` 中应能看到对应 Widget ID、`enabled=True`，代码目录和 Python 路径也应正确。Worker 必须使用该 Widget 的所有者或获授权的开发者账号登录。任务按 **Widget ID** 领取，与服务端任务记录的版本号无关；同一 Widget ID 在本机有多个已启用绑定时，Worker 使用版本号最高的本机代码目录。版本号仍用于发布、审核和历史记录。若需要两套代码分别接任务，应创建两个 Widget ID。提交新版本或修改本机绑定后，运行中的 Worker 会重读登记表，无需重启。
 
-后台直接创建的 Widget 属于后台账号。开发者即使拿到代码目录或后台显示的一次性 Worker Token，也不能仅凭这些信息让当前 `glance worker` 领取测试任务：批量 Worker 使用开发者登录凭据，须先由后台授予该开发者执行权限。授权后，开发者用 `glance widget add <Widget 目录>` 登记相同版本并启动 Worker。当前后台尚无自助授权入口；未获授权时，`add` 只允许本地测试，不会领取服务端任务。
+后台直接创建的 Widget 属于后台账号。开发者即使拿到代码目录或后台显示的一次性 Worker Token，也不能仅凭这些信息让当前 `glance worker` 领取测试任务：批量 Worker 使用开发者登录凭据，须先由后台授予该开发者执行权限。授权后，开发者用 `glance widget add <Widget 目录>` 登记代码并启动 Worker；本机版本号无需与服务端一致。当前后台尚无自助授权入口；未获授权时，`add` 只允许本地测试，不会领取服务端任务。
 
 已有 Widget 目录（包括朋友分享的目录）可以直接挂载，不复制代码：
 
@@ -55,7 +55,7 @@ glance widget add /path/to/widget --python /path/to/widget/.venv/bin/python
 glance widget add <已发布的 Widget UUID>
 ```
 
-`widget.json` 是 Widget 目录中的可选文件：`init` 创建的新目录会包含它，旧目录可以没有。`add` 和 `test` 优先读取本地文件；没有时，`add` 根据 UUID 目录名从 Service 获取已公开发布的 Manifest，并缓存在 CLI 配置目录。已登记且有缓存的目录在 Service 暂时不可用时也能再次 `add`。首次添加时若本地没有文件、Service 没有公开 Manifest，也没有已有缓存，CLI 无法确定版本与命令，此时需要提供 Manifest。Service 不保存开发者的 `main.py`，所以还需从分享者获取代码。目录缺少 `main.py` 时可以登记，但 Worker 不会领取它的任务。代码放入目录后，可再次 `add`，再用 `glance widget test` 本地测试；`test` 会读取本地 Manifest 或已登记的缓存。重复 `add` 同一 Widget 版本会更新本机代码路径；`--python` 可切换该版本的解释器。登录后，CLI 会查询当前账号是否拥有该版本的服务端任务权限。未获授权的分享目录仍可本地测试，但不会参与 Worker 领取任务。当前 Service 允许 Widget 所有者或经后台明确授权的开发者账号领取任务；分享代码目录本身不会授予服务端权限。
+`widget.json` 是 Widget 目录中的可选文件：`init` 创建的新目录会包含它，旧目录可以没有。`add` 和 `test` 优先读取本地文件；没有时，`add` 根据 UUID 目录名从 Service 获取已公开发布的 Manifest，并缓存在 CLI 配置目录。已登记且有缓存的目录在 Service 暂时不可用时也能再次 `add`。首次添加时若本地没有文件、Service 没有公开 Manifest，也没有已有缓存，CLI 无法确定版本与命令，此时需要提供 Manifest。Service 不保存开发者的 `main.py`，所以还需从分享者获取代码。目录缺少 `main.py` 时可以登记，但 Worker 不会领取它的任务。代码放入目录后，可再次 `add`，再用 `glance widget test` 本地测试；`test` 会读取本地 Manifest 或已登记的缓存。重复 `add` 同一 Widget 版本会更新本机代码路径；`--python` 可切换该版本的解释器。登录后，CLI 会查询当前账号是否拥有该 Widget 的服务端任务权限。未获授权的分享目录仍可本地测试，但不会参与 Worker 领取任务。当前 Service 允许 Widget 所有者或经后台明确授权的开发者账号领取任务；分享代码目录本身不会授予服务端权限。
 
 开发者可以直接返回标准 Python 字典，也可以使用库里的类型和辅助函数：
 

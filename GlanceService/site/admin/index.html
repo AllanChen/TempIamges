@@ -33,6 +33,9 @@
     .config-editor{display:block;width:100%;min-height:340px;padding:16px;border:1px solid var(--line);border-radius:8px;background:#f8fbfa;color:var(--ink);font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;tab-size:2}
     .config-editor:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px #bcebe5}
     .config-actions{display:flex;align-items:center;gap:12px;margin-top:14px}.config-actions .primary-btn:disabled{opacity:.55;cursor:wait}.config-note{color:var(--muted);font-size:13px;line-height:1.6}.config-feedback{font-size:13px;font-weight:700}
+    .test-media-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.test-media-fields .field{margin:8px 0}.test-media-fields .field:first-child:last-child{grid-column:span 2}
+    .test-media-fields input{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}.test-media-note{font-size:12px;color:var(--muted);margin:4px 0 10px}
+    @media(max-width:600px){.test-media-fields{grid-template-columns:1fr}.test-media-fields .field:first-child:last-child{grid-column:auto}}
   </style>
 </head>
 <body>
@@ -65,8 +68,21 @@
       <div class="modal-actions"><button type="button" class="ghost-btn" onclick="closeCreateWidget()">取消</button><button id="cw-submit" class="primary-btn" type="submit">创建 Widget</button></div>
     </form>
   </div>
+  <div id="testWidgetModal" class="modal-mask hidden" role="dialog" aria-modal="true" aria-labelledby="tw-title">
+    <form id="testWidgetForm" class="modal">
+      <h2 id="tw-title">发送 Widget 测试</h2>
+      <p id="tw-subtitle" class="hint"></p>
+      <div id="tw-command-wrap" class="field"><label for="tw-command">测试命令</label><select id="tw-command"></select></div>
+      <div id="tw-media-kind-wrap" class="field hidden"><label for="tw-media-kind">输入类型</label><select id="tw-media-kind"></select></div>
+      <div id="tw-media-wrap"><div id="tw-media-fields" class="test-media-fields"></div><p id="tw-media-note" class="test-media-note"></p></div>
+      <div id="tw-prompt-wrap" class="field hidden"><label for="tw-prompt">文字 prompt</label><textarea id="tw-prompt" rows="4" placeholder="输入测试提示词"></textarea></div>
+      <div id="tw-mask-wrap" class="field hidden"><label for="tw-mask">Mask HTTPS URL</label><input id="tw-mask" type="url" placeholder="https://example.com/mask.png"></div>
+      <div id="tw-error" class="create-error hidden" role="alert"></div>
+      <div class="modal-actions"><button type="button" class="ghost-btn" onclick="closeTestWidget()">取消</button><button id="tw-submit" class="primary-btn" type="submit">发送测试任务</button></div>
+    </form>
+  </div>
   <script>
-    const $=s=>document.querySelector(s), state={overview:null,tasks:[],widgets:[],versions:[],uploadSettings:null,glanceConfig:null}; let currentView='overview',editingWidgetId=null,loadSeq=0,loadController=null;
+    const $=s=>document.querySelector(s), state={overview:null,tasks:[],widgets:[],versions:[],uploadSettings:null,glanceConfig:null}; let currentView='overview',editingWidgetId=null,testVersion=null,loadSeq=0,loadController=null;
     const api=async(path,options={})=>{const r=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const b=await r.json().catch(()=>({}));if(!r.ok)throw Error(b.error?.message||'请求失败');return b.result};
     const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     const count=(rows,statuses)=>rows.filter(x=>statuses.includes(x.status)).reduce((n,x)=>n+Number(x.count||0),0);
@@ -168,7 +184,83 @@
         clearTimeout(timer);if(current())loadController=null;
       }
     }
-    async function sendTest(id){const url=prompt('测试输入的 HTTPS URL：');if(!url)return;try{const result=await api('/api/admin/v2/widget-submissions/'+id+'/test',{method:'POST',body:JSON.stringify({url})});alert('测试任务已发送：'+result.taskID+'。开发者 Worker 在线时会领取。');await load('widgets')}catch(e){alert(e.message)}}
+    function testInputSpec(command,kind){
+      const types=command.inputTypes||[],schema=command.parameterSchema||{},properties=schema.properties||schema;
+      const list=kind==='image'
+        ? properties.images||properties.imageUrls||properties.multipleImages
+        : properties.videos||properties.videoUrls||properties.multipleVideos;
+      const aliases=kind==='image'?['multiple_images','multi_image','multiple-images','multi-image']:['multiple_videos','multi_video','multiple-videos','multi-video'];
+      const multiple=!!list||aliases.some(type=>types.includes(type));
+      const max=multiple?Math.max(1,Math.min(4,Number.isInteger(list?.maxItems)?list.maxItems:4)):1;
+      const min=multiple?Math.max(1,Math.min(max,Number.isInteger(list?.minItems)?list.minItems:1)):1;
+      return {min,max,multiple,properties,requiresPrompt:Array.isArray(schema.required)&&schema.required.includes('prompt')};
+    }
+    function testMediaKinds(command){
+      const types=command.inputTypes||[];
+      return ['image','video'].filter(kind=>types.includes(kind)||testInputSpec(command,kind).multiple);
+    }
+    function currentTestCommand(){return testVersion?.manifest?.commands?.find(command=>command.id===$('#tw-command').value)}
+    function renderTestMedia(){
+      const command=currentTestCommand();if(!command)return;
+      const kinds=testMediaKinds(command);
+      $('#tw-media-kind-wrap').classList.toggle('hidden',kinds.length<2);
+      $('#tw-media-kind').innerHTML=kinds.map(kind=>`<option value="${kind}">${kind==='image'?'图片':'视频'}</option>`).join('');
+      renderTestFields();
+    }
+    function renderTestFields(){
+      const command=currentTestCommand();if(!command)return;
+      const kinds=testMediaKinds(command),kind=kinds.length>1?$('#tw-media-kind').value:kinds[0];
+      const spec=kind?testInputSpec(command,kind):null;
+      const properties=command.parameterSchema?.properties||command.parameterSchema||{};
+      $('#tw-media-wrap').classList.toggle('hidden',!kind);
+      $('#tw-media-fields').innerHTML=spec?Array.from({length:spec.max},(_,index)=>`<div class="field"><label for="tw-media-${index}">${kind==='image'?'图片':'视频'} ${index+1}${index<spec.min?' · 必填':' · 可选'}</label><input id="tw-media-${index}" type="url" inputmode="url" placeholder="https://example.com/${kind==='image'?'image.png':'video.mp4'}" ${index<spec.min?'required':''}></div>`).join(''):'';
+      $('#tw-media-note').textContent=spec?`按顺序填写 HTTPS URL · 至少 ${spec.min} ${kind==='image'?'张图片':'段视频'}，最多 ${spec.max} ${kind==='image'?'张':'段'}`:'';
+      const acceptsPrompt=!!properties.prompt||(command.inputTypes||[]).some(type=>['text','txt','prompt'].includes(type));
+      $('#tw-prompt-wrap').classList.toggle('hidden',!acceptsPrompt);
+      $('#tw-prompt').required=acceptsPrompt&&(spec?.requiresPrompt||!kind);
+      const acceptsMask=kind==='image'&&(!!properties.mask||(command.inputTypes||[]).includes('mask'));
+      $('#tw-mask-wrap').classList.toggle('hidden',!acceptsMask);
+      $('#tw-mask').required=acceptsMask;
+      if(!acceptsMask)$('#tw-mask').value='';
+    }
+    function sendTest(id){
+      testVersion=state.versions.find(version=>version.version_id===id);
+      if(!testVersion?.manifest?.commands?.length){alert('无法读取该版本的命令配置，请刷新后重试。');return}
+      $('#testWidgetForm').reset();$('#tw-error').classList.add('hidden');
+      $('#tw-subtitle').textContent=`${testVersion.name} · v${testVersion.version} · 按此待审核版本的输入要求发送测试`;
+      $('#tw-command').innerHTML=testVersion.manifest.commands.map(command=>`<option value="${esc(command.id)}">${esc(command.name||command.id)}</option>`).join('');
+      $('#tw-command-wrap').classList.toggle('hidden',testVersion.manifest.commands.length<2);
+      renderTestMedia();$('#testWidgetModal').classList.remove('hidden');$('#tw-media-0')?.focus();
+    }
+    function closeTestWidget(){testVersion=null;$('#testWidgetModal').classList.add('hidden')}
+    $('#tw-command').addEventListener('change',renderTestMedia);
+    $('#tw-media-kind').addEventListener('change',renderTestFields);
+    $('#testWidgetForm').addEventListener('submit',async event=>{
+      event.preventDefault();
+      const command=currentTestCommand();if(!command||!testVersion)return;
+      const kinds=testMediaKinds(command),kind=kinds.length>1?$('#tw-media-kind').value:kinds[0];
+      const spec=kind?testInputSpec(command,kind):null;
+      const values=[...document.querySelectorAll('#tw-media-fields input')].map(field=>field.value.trim());
+      const urls=values.filter(Boolean);
+      const error=$('#tw-error');
+      const failTest=message=>{error.textContent=message;error.classList.remove('hidden')};
+      error.classList.add('hidden');
+      if(spec&&(urls.length<spec.min||urls.length>spec.max||values.slice(0,urls.length).some(value=>!value))){failTest(`请按顺序填写 ${spec.min}–${spec.max} 个${kind==='image'?'图片':'视频'} URL。`);return}
+      const promptText=$('#tw-prompt').value.trim(),mask=$('#tw-mask').value.trim();
+      const allURLs=[...urls,...(mask?[mask]:[])];
+      if(allURLs.some(value=>{try{const url=new URL(value);return url.protocol!=='https:'||!url.hostname}catch{return true}})){failTest('所有媒体和 mask URL 都必须是有效的 HTTPS 地址。');return}
+      if($('#tw-prompt').required&&!promptText){failTest('请填写文字 prompt。');return}
+      if($('#tw-mask').required&&!mask){failTest('请填写 mask 的 HTTPS URL。');return}
+      const input=kind?{type:kind,url:urls[0]}:{},parameters={};
+      if(kind){parameters.url=urls[0];if(spec.multiple){const key=kind==='image'?'images':'videos';input[key]=urls;parameters[key]=urls}}
+      if(!$('#tw-prompt-wrap').classList.contains('hidden'))parameters.prompt=promptText;
+      if(!$('#tw-mask-wrap').classList.contains('hidden'))parameters.mask=mask||null;
+      const button=$('#tw-submit');button.disabled=true;button.textContent='发送中…';
+      try{
+        const result=await api('/api/admin/v2/widget-submissions/'+encodeURIComponent(testVersion.version_id)+'/test',{method:'POST',body:JSON.stringify({commandID:command.id,input,parameters})});
+        closeTestWidget();alert('测试任务已发送：'+result.taskID+'。开发者 Worker 在线时会领取。');load('widgets');
+      }catch(e){failTest(e.message)}finally{button.disabled=false;button.textContent='发送测试任务'}
+    });
     async function review(id,action){const message={approve:'确认已检查测试输出，将此版本灰度发布？',reject:'确认拒绝此版本？',promote:'确认将灰度版本正式发布？'}[action];if(!confirm(message))return;try{await api('/api/admin/v2/widget-submissions/'+id+'/'+action,{method:'POST',body:JSON.stringify({note:'Admin Console action'})});await load('widgets')}catch(e){alert(e.message)}}
     function updateInputControls(){
       const image=$('#cw-input-image').checked,video=$('#cw-input-video').checked;

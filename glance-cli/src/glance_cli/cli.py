@@ -177,13 +177,7 @@ def command_add(args: argparse.Namespace) -> None:
     if read_token():
         try:
             detail = request("GET", f"/api/v2/developer/widgets/{manifest['id']}")
-            version = next((item for item in detail.get("versions", [])
-                            if item["version"] == manifest["version"]), None)
-            if version:
-                remote = (detail["status"] if detail["status"] in ("suspended", "archived")
-                          else version["status"])
-            else:
-                denied = True
+            remote = detail["status"]
         except APIError as error:
             denied = error.status in (401, 403, 404)
 
@@ -204,7 +198,7 @@ def command_add(args: argparse.Namespace) -> None:
                submission_id=(old or {}).get("submission_id"))
     print(f"已挂载 {manifest['id']} v{manifest['version']} → {code}（{status}）")
     if denied:
-        print("当前账号无权领取该版本任务；已挂载供本地 test 使用。")
+        print("当前账号无权领取该 Widget 任务；已挂载供本地 test 使用。")
     elif remote is None and status == "local":
         print("服务端任务权限尚未确认；可本地 test。配置测试 token 或登录后再次 add 可同步已授权版本。")
 

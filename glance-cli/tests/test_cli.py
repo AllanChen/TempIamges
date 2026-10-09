@@ -66,7 +66,7 @@ class CLITest(unittest.TestCase):
             update(db, manifest["id"], manifest["version"],
                    server_status="manual_review", enabled=1)
             self.assertEqual(len(eligible(db, set())), 1)
-            self.assertEqual(eligible(db, {(manifest["id"], manifest["version"])}), [])
+            self.assertEqual(eligible(db, {manifest["id"]}), [])
 
     def test_result_url_preference_requires_image_output(self):
         _, manifest = self.create_widget()
@@ -95,7 +95,7 @@ class CLITest(unittest.TestCase):
             self.assertEqual({row["server_status"] for row in rows(db)}, {"removed"})
             self.assertTrue(all(row["enabled"] == 0 for row in rows(db)))
 
-    def test_worker_stops_polling_version_missing_from_server(self):
+    def test_worker_keeps_widget_binding_when_server_version_changes(self):
         folder, manifest = self.create_widget()
         with closing(connect()) as db:
             update(db, manifest["id"], manifest["version"],
@@ -109,8 +109,20 @@ class CLITest(unittest.TestCase):
                 _sync_widget_status(db, manifest["id"])
             self.assertEqual([(row["version"], row["server_status"], row["enabled"])
                               for row in rows(db)],
-                             [(manifest["version"], "removed", 0), ("0.2.0", "published", 1)])
-            self.assertEqual(len(eligible(db, set())), 1)
+                             [(manifest["version"], "published", 1), ("0.2.0", "published", 1)])
+            self.assertEqual([row["version"] for row in eligible(db, set())], ["0.2.0"])
+            self.assertEqual(eligible(db, {manifest["id"]}), [])
+
+    def test_worker_uses_newest_numeric_local_version_for_a_widget(self):
+        folder, manifest = self.create_widget()
+        with closing(connect()) as db:
+            update(db, manifest["id"], manifest["version"],
+                   server_status="published", enabled=1)
+            for version in ("0.1.9", "0.1.10"):
+                upsert(db, widget_id=manifest["id"], version=version,
+                       manifest_path=str(folder / "widget.json"), code_path=str(folder),
+                       enabled=True, server_status="published")
+            self.assertEqual([row["version"] for row in eligible(db, set())], ["0.1.10"])
 
     def test_local_main_runs_and_validates_output(self):
         folder, manifest = self.create_widget()
@@ -341,10 +353,10 @@ class CLITest(unittest.TestCase):
             self.assertEqual(saved["server_status"], "published")
             self.assertEqual(saved["enabled"], 1)
 
-    def test_add_syncs_authorized_version_and_disables_denied_version(self):
+    def test_add_syncs_authorized_widget_and_disables_denied_widget(self):
         folder, manifest = self.create_widget()
         detail = {"status": "published", "versions": [
-            {"version": manifest["version"], "status": "published"}]}
+            {"version": "9.9.9", "status": "published"}]}
         with patch("glance_cli.cli.read_token", return_value="test"), \
              patch("glance_cli.cli.request", return_value=detail):
             self.assertEqual(main(["widget", "add", str(folder)]), 0)

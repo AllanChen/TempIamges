@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "图片反推文字",
   "summary": "使用 RunningHub 从图片生成文字描述。",
   "author": "Your name",

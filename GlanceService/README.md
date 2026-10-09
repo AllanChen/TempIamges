@@ -4,7 +4,7 @@
 
 ## 开发者 CLI
 
-仓库中的 `glance-cli/` 是 Python 包。开发者安装后运行 `glance widget init` 创建 UUID 文件夹，`glance widget publish` 提交审核，并在自己的机器上运行一个 `glance worker`。该 Worker 用一次 `POST /api/v2/widget-tasks/pull-batch` 请求本机表里多个 Widget 版本的任务，执行对应目录的 `main.py`，上传结果并发送心跳。管理员在 Admin Console 发送测试任务、检查结果、手动灰度及正式发布。
+仓库中的 `glance-cli/` 是 Python 包。开发者安装后运行 `glance widget init` 创建 UUID 文件夹，`glance widget publish` 提交审核，并在自己的机器上运行一个 `glance worker`。该 Worker 用一次 `POST /api/v2/widget-tasks/pull-batch` 按 Widget ID 请求任务；服务端按 Widget ID 授权和分配，任务的版本号仅保留用于发布、审核和历史记录。Worker 对每个 Widget ID 运行一份本机代码，上传结果并发送心跳。管理员在 Admin Console 发送测试任务、检查结果、手动灰度及正式发布。
 
 开发者 Google 登录需要设置 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET`，并在 Google OAuth 客户端中登记重定向地址：`<PUBLIC_ORIGIN>/api/v2/developer/auth/google/callback`。发布前还需要配置 `GLANCE_SIGNING_KEY_PKCS8`，值是与 Glance 客户端内 `glance-market-2026-02` 公钥对应的 Ed25519 PKCS#8 DER 的 Base64。此机器上的开发用私钥保存在 `~/.config/glance-service/signing-key.pem`，**不要提交私钥到仓库**；生产环境应通过 Wrangler Secret 配置并安全备份。配置命令示例：
 
@@ -96,6 +96,8 @@ PUT  /api/admin/v2/upload-settings
 `PUT /api/admin/v2/widgets/:widget_id` 用于编辑 Widget。编辑沿用 URL 中的已有 Widget ID，并沿用已有命令 ID；请求的 manifest 无需填写这些 ID。版本号不变时更新当前 manifest；版本号变化时创建新版本并将其设为当前版本。`GET /api/admin/v2/widget-versions` 保留按版本查看全部历史提交的能力。已有 ID 不会因这次改动而变化。
 
 后台表单支持单图、多图（最多 4 张）、单视频、多视频（最多 4 段），并可声明文字 `prompt`；单图还可声明 `mask`。多图和多视频分别写入 `commands[].parameterSchema.properties.images`、`videos`，文字和遮罩写入 `prompt`、`mask`。选中图片和视频表示两个可触发的媒体类型，不表示一次任务混合两类媒体。
+
+Widget Review 的「发送测试」弹窗读取**待审核版本**的 Manifest，可选择命令及媒体类型，并按 `images` / `videos` 的 `minItems`、`maxItems` 收集 1–4 个 HTTPS URL；仅在命令声明时显示 `prompt` 和 `mask`。提交时图片写入 `input.images`、视频写入 `input.videos`，首个媒体同时作为 `input.url`，文字和遮罩写入 `parameters`。服务端按同一版本的命令配置再次校验，避免测试任务缺少第二张图或将未声明的输入送给 Worker。线上版本的输入声明需先随 Widget 版本提交，改动本地 `widget.json` 不会改变审核弹窗。
 
 `DELETE /api/admin/v2/widgets/:widget_id` 删除非内置 Widget 的市场记录、版本和 Worker 绑定。存在排队或运行中任务时返回 `409`；历史任务、产物和审计记录保留。内置 Widget 不可删除。
 
