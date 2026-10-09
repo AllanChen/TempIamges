@@ -59,7 +59,14 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     private let footerCountLabel = NSTextField(labelWithString: "")
     private let footerHintLabel = NSTextField(labelWithString: "Scroll for more".localized)
     private let loadingOverlay = NSView()
-    private let loadingSpinner = FocusSweepLoadingView(frame: .zero)
+    private let loadingSpinner: NSProgressIndicator = {
+        let indicator = NSProgressIndicator(frame: .zero)
+        indicator.style = .spinning
+        indicator.controlSize = .regular
+        indicator.isIndeterminate = true
+        indicator.isDisplayedWhenStopped = false
+        return indicator
+    }()
 
     private init() {
         super.init(contentRect: NSRect(origin: .zero, size: Self.designSize),
@@ -247,6 +254,12 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         catalogCount.alignment = .right
         catalogPane.addSubview(catalogCount)
 
+        if let defaultCell = searchField.cell as? NSSearchFieldCell {
+            let cell = WidgetMarketSearchFieldCell(textCell: "")
+            cell.searchButtonCell = defaultCell.searchButtonCell
+            cell.cancelButtonCell = defaultCell.cancelButtonCell
+            searchField.cell = cell
+        }
         searchField.delegate = self
         searchField.font = PanelStyle.inspectFont(ofSize: 12)
         searchField.textColor = PanelStyle.textPrimary
@@ -295,7 +308,6 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
 
         loadingOverlay.wantsLayer = true
         loadingOverlay.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground.withAlphaComponent(0.94))
-        loadingSpinner.setLoading(true)
         loadingOverlay.addSubview(loadingSpinner)
         rootView.addSubview(loadingOverlay)
         setLoading(false)
@@ -336,9 +348,9 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         footerCountLabel.frame = NSRect(x: 16, y: 8, width: 230, height: 14)
         footerHintLabel.frame = NSRect(x: catalogWidth - 142, y: 8, width: 126, height: 14)
         loadingOverlay.frame = bounds
-        loadingSpinner.frame = NSRect(x: (width - FocusSweepLoadingView.preferredSize.width) / 2,
-            y: (height - FocusSweepLoadingView.preferredSize.height) / 2,
-            width: FocusSweepLoadingView.preferredSize.width, height: FocusSweepLoadingView.preferredSize.height)
+        let spinnerSize: CGFloat = 20
+        loadingSpinner.frame = NSRect(x: (width - spinnerSize) / 2,
+            y: (height - spinnerSize) / 2, width: spinnerSize, height: spinnerSize)
         updateScrollIndicator()
     }
 
@@ -393,7 +405,8 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
 
     private func setLoading(_ loading: Bool) {
         loadingOverlay.isHidden = !loading
-        loadingSpinner.setLoading(loading)
+        if loading { loadingSpinner.startAnimation(nil) }
+        else { loadingSpinner.stopAnimation(nil) }
     }
 
     func controlTextDidChange(_ obj: Notification) { refreshCatalog(resetScroll: true) }
@@ -448,6 +461,26 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
 }
 
 // MARK: - Layout and chrome
+
+private final class WidgetMarketSearchFieldCell: NSSearchFieldCell {
+    override func searchTextRect(forBounds rect: NSRect) -> NSRect {
+        var textRect = super.searchTextRect(forBounds: rect)
+        let searchIconRect = searchButtonRect(forBounds: rect)
+        let textLeadingEdge = searchIconRect.maxX + 7
+        if textRect.minX < textLeadingEdge {
+            let offset = textLeadingEdge - textRect.minX
+            textRect.origin.x += offset
+            textRect.size.width = max(0, textRect.width - offset)
+        }
+        return textRect
+    }
+
+    override func titleRect(forBounds rect: NSRect) -> NSRect {
+        var titleRect = super.titleRect(forBounds: rect)
+        titleRect.origin.y = rect.minY + (rect.height - titleRect.height) / 2
+        return titleRect
+    }
+}
 
 private final class WidgetMarketRootView: NSView {
     var onLayout: ((NSRect) -> Void)?

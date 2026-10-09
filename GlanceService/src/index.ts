@@ -347,12 +347,22 @@ async function audit(env: Env, widgetID: string, versionID: string | null, actor
 }
 async function publicManifest(env: Env, row: { manifest_json: string }): Promise<Manifest> {
   const manifest = JSON.parse(row.manifest_json) as Manifest;
+  // Backfill catalog fields for older Admin Console records at the API edge.
+  // The macOS catalog decoder requires these keys even when older D1 rows omit them.
+  const normalized = {
+    ...manifest,
+    minimumGlanceVersion: manifest.minimumGlanceVersion || "2.0.0",
+    updatedAt: manifest.updatedAt || now(),
+    signature: manifest.signature || (manifest.official ? {
+      algorithm: "Ed25519", keyID: "admin-console", value: "admin-created"
+    } : undefined)
+  } as Manifest;
   // Versions published before the signing fix still need a valid signature
   // for the macOS client to decode and install them.
-  if (!manifest.official && !manifest.signature) {
-    return signDeveloperManifest(env, manifest, true);
+  if (!normalized.official && !normalized.signature) {
+    return signDeveloperManifest(env, normalized, true);
   }
-  return manifest;
+  return normalized;
 }
 
 async function ensureOfficialWidgets(env: Env) {

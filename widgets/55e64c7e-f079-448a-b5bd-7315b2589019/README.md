@@ -20,4 +20,4 @@ export FREEIMAGEKEY=<你的 Freeimage API Key>
   --input /path/to/image.png
 ```
 
-旧目录仍不需要 `widget.json`。服务端 Manifest 的 `outputs: ["image"]` 与现在的实际结果类型一致。当前账号还需获得该官方 Widget 的任务权限，Worker 才能替它接单。
+`widget.json` 是仓库中的本地 Manifest 副本，方便 CLI 和后续维护。线上 Marketplace 读取的是服务端数据库 `widget_versions.manifest_json`；修改此文件不会自动更新线上目录，需要在管理后台编辑并保存该 Widget。服务端 Manifest 的 `outputs: ["image"]` 与现在的实际结果类型一致。当前账号还需获得该官方 Widget 的任务权限，Worker 才能替它接单。
