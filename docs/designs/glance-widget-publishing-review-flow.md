@@ -61,10 +61,25 @@ Content-Type: application/json
 - `description`
 - `inputTypes`：`image` 或 `video`
 - `inputMimeTypes`
-- `outputs`：`image`、`video`、`text` 或 `metadata`
+- `outputs`：`image`、`video`、`text` 或 `audio`
 - `taskType`
 - `requiresUpload`
 - `parameterSchema`
+
+Widget 输入窗口按 `parameterSchema.properties` 声明的字段选择：
+
+- 没有 `prompt`、`mask`、`images`、`videos`：当前单图或单视频直接提交。
+- 有 `prompt`：显示可编辑的文字输入框。
+- 有 `mask`：显示上传和绘制 mask 的入口；提交前必须提供 mask。
+- 有 `images`：显示多图输入，包含当前图片，最多 4 张；无 `prompt` 时文字区只读。
+- 有 `videos`：显示多视频输入，包含当前视频，最多 4 段；无 `prompt` 时文字区只读。
+
+`inputTypes` 仍用于图片或视频菜单的兼容筛选。多图任务将第一张图放在
+`input.url`，完整有序列表放在 `input.images` 和 `taskParams.images`；
+多视频同理放在 `input.videos` 和 `taskParams.videos`。
+`taskParams.prompt` 与 `taskParams.mask` 分别传递文字和 mask URL。Worker
+为每个媒体生成本地路径：主媒体在 `task.input.path`，完整列表在
+`task.input.imagePaths` 或 `task.input.videoPaths`。
 
 如果只有一个 Command，客户端只显示一级 Command，不再生成多余的三级菜单。
 

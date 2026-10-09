@@ -5,6 +5,8 @@ import libwebp
 import WebKit
 import Vision
 
+private let ossImageHostingWidgetID = "55e64c7e-f079-448a-b5bd-7315b2589019"
+
 final class ImageInspectSession {
     enum Mode { case focus, browse, compare }
     enum ComparisonStyle { case sideBySide, slider }
@@ -22,6 +24,7 @@ final class ImageInspectSession {
     /// Results created in this inspect session keep their NEW tag even if
     /// their task history changes or is cleared.
     var generatedResultPaths = Set<String>()
+    var widgetResultSourceKeys = Set<String>()
 
     init(infos: [MediaInfo], images: [NSImage?], focusedIndex: Int, mode: Mode? = nil) {
         self.infos = infos
@@ -379,12 +382,10 @@ private final class CompressionDialogPanel: NSPanel {
     }
 }
 
-/// The two controls in the Figma OSS result stage remain separate from the
-/// generated bitmap, so copying the URL never alters the image itself.
-private final class WidgetOSSURLButton: NSControl {
+/// A Widget's optional result URL action stays separate from the generated bitmap.
+private final class WidgetResultURLButton: NSControl {
     var onPress: (() -> Void)?
     private let icon = NSImageView()
-    private let label = NSTextField(labelWithString: "Copy URL".localized)
     private var tracking: NSTrackingArea?
 
     override init(frame frameRect: NSRect) {
@@ -397,17 +398,12 @@ private final class WidgetOSSURLButton: NSControl {
         icon.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
         icon.contentTintColor = PanelStyle.accent
         icon.imageScaling = .scaleProportionallyUpOrDown
-        icon.frame = NSRect(x: 14, y: 9, width: 16, height: 16)
+        icon.frame = NSRect(x: 9, y: 9, width: 16, height: 16)
         addSubview(icon)
-        label.font = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
-        label.textColor = PanelStyle.accent
-        label.alignment = .center
-        label.frame = NSRect(x: 36, y: 9, width: 100, height: 16)
-        addSubview(label)
         toolTip = "Copy result URL".localized
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
-        setAccessibilityLabel("Copy URL".localized)
+        setAccessibilityLabel("Copy result URL".localized)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -494,8 +490,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let runningImageLabel = InspectNonHitTestingView()
     private let runningImageDot = PanelStyle.makeStatusDot(color: PanelStyle.accent)
     private let runningImageText = NSTextField(labelWithString: "Task running".localized)
-    private let ossResultLabel = NSTextField(labelWithString: "OSS RESULT")
-    private let copyOSSURLButton = WidgetOSSURLButton()
+    private let copyResultURLButton = WidgetResultURLButton()
     /// Themed action menu panel (frosted dark, warm-cue selection); rebuilt
     /// per presentation so enabled states and titles are always fresh.
     private var actionsPanel: ActionMenuPanel?
@@ -530,10 +525,17 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private lazy var ocrWindow = OCRResultWindow()
     private var ocrVisible = false
     private var ocrGeneration = UUID()
-    /// Widget plain-text results open beside the source image instead of being
-    /// treated as image thumbnails in the filmstrip.
-    private lazy var widgetTextResultWindow = WidgetTextResultWindow()
-    private var widgetTextResultGeneration = UUID()
+    private struct WidgetTextResultKey: Hashable {
+        let taskID: UUID
+        let outputPath: String
+    }
+    /// Each text artifact keeps its own result window beside the image.
+    private var widgetTextResultWindows: [WidgetTextResultKey: WidgetTextResultWindow] = [:]
+    private var widgetTextResultOrder: [WidgetTextResultKey] = []
+    private var widgetTextResultSessionGeneration = UUID()
+    private let widgetTextResultQueue = DispatchQueue(label: "Glance.WidgetTextResults", qos: .userInitiated)
+    private var isRaisingWidgetTextResult = false
+    private var widgetInputPanel: WidgetInputPanel?
     private var handledWidgetTaskIDs = Set<UUID>()
 
     init(imageLoader: ImageLoader) {
@@ -573,6 +575,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                                                name: .languageDidChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(widgetTasksDidChange),
                                                name: WidgetTaskManager.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(imageWindowGeometryDidChange),
+                                               name: NSWindow.didMoveNotification, object: self)
+        NotificationCenter.default.addObserver(self, selector: #selector(imageWindowGeometryDidChange),
+                                               name: NSWindow.didResizeNotification, object: self)
     }
 
     private static let designSize = NSSize(width: 1554, height: 1012)
@@ -661,8 +667,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         infoVisible = false
         infoButton.isActive = false
         infoWindow.dismiss()
-        widgetTextResultWindow.dismiss()
-        widgetTextResultGeneration = UUID()
+        dismissWidgetTextResults()
+        widgetInputPanel?.close()
+        widgetInputPanel = nil
         // Re-fit the window to the next image that resolves.
         fittedImageSize = nil
         // If the focused image is already loaded (e.g. reopened), fit now so the
@@ -706,8 +713,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         ocrWindow.orderOut(nil)
         ocrVisible = false
         ocrGeneration = UUID()
-        widgetTextResultWindow.dismiss()
-        widgetTextResultGeneration = UUID()
+        dismissWidgetTextResults()
+        widgetInputPanel?.close()
+        widgetInputPanel = nil
         let closedSources = session?.infos.map(\.url) ?? []
         session = nil
         loadGeneration = UUID()
@@ -1148,13 +1156,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         runningImageLabel.setAccessibilityElement(true)
         runningImageLabel.setAccessibilityLabel("Task running".localized)
         canvasContainer.addSubview(runningImageLabel, positioned: .above, relativeTo: nil)
-        ossResultLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
-        ossResultLabel.textColor = PanelStyle.accent
-        ossResultLabel.isHidden = true
-        copyOSSURLButton.isHidden = true
-        copyOSSURLButton.onPress = { [weak self] in self?.copyOSSResultURL() }
-        canvasContainer.addSubview(ossResultLabel, positioned: .above, relativeTo: nil)
-        canvasContainer.addSubview(copyOSSURLButton, positioned: .above, relativeTo: nil)
+        copyResultURLButton.isHidden = true
+        copyResultURLButton.onPress = { [weak self] in self?.copyWidgetResultURL() }
+        canvasContainer.addSubview(copyResultURLButton, positioned: .above, relativeTo: nil)
 
         // The same themed action menu serves the toolbar ⋯ button and
         // right-clicks on every image surface.
@@ -1244,17 +1248,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         runningImageLabel.frame = NSRect(x: max(8, width - 24 - 160),
                                          y: height - runningLabelTop - 34,
                                          width: 160, height: 34)
-        // Figma result stage: label x=32+20 and top=58-47+58;
-        // Copy URL x=32+1350, top=58-47+56, size=148×34.
-        // Pin the action to the right edge when the inspect window is smaller.
-        let resultTop: CGFloat = 67
-        ossResultLabel.frame = NSRect(x: min(52, max(16, width - 120)),
-                                      y: height - 69 - 16,
-                                      width: 104, height: 16)
-        copyOSSURLButton.frame = NSRect(x: max(8, width - 24 - 148),
-                                        y: height - resultTop - 34,
-                                        width: 148, height: 34)
-        ossResultLabel.isHidden = copyOSSURLButton.isHidden || width < 330
+        // Keep the icon-only result URL action aligned with the floating toolbar.
+        let toolbarCenterY = toolbarBar.frame.midY
+        copyResultURLButton.frame = NSRect(x: max(8, width - 24 - 34),
+                                        y: toolbarCenterY - 17,
+                                        width: 34, height: 34)
 
         // Image Information is presented as a separate child window (see
         // toggleInfo / ImageInfoPanel), so it no longer occupies canvas space.
@@ -1387,9 +1385,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         updateRevealButtonState()
         updateTaskChrome()
         updateRunningImageIndicator(for: session)
-        let showsOSSResult = session.mode != .compare && currentOSSResultURLString != nil
-        copyOSSURLButton.isHidden = !showsOSSResult
-        ossResultLabel.isHidden = !showsOSSResult
+        copyResultURLButton.isHidden = session.mode == .compare || currentWidgetResultURLString == nil
 
         primaryViewport.isHidden = true
         secondaryViewport.isHidden = true
@@ -1458,7 +1454,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
         filmstrip.configure(infos: session.infos, images: session.images,
                             selectedIndex: session.focusedIndex, compareIndices: session.compareIndices,
-                            generatedResultPaths: session.generatedResultPaths)
+                            generatedResultPaths: session.generatedResultPaths,
+                            widgetResultSourceKeys: session.widgetResultSourceKeys)
 
         // Default glow marks the active compare slot so the user sees which
         // side a filmstrip tap will replace; hover overrides this.
@@ -1926,7 +1923,29 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         guard let info = currentRevealInfo, info.kind == .image,
               let widget = WidgetRegistry.shared.installed.first(where: { $0.id == widgetID }),
               let command = widget.commands.first(where: { $0.id == commandID }) else { return }
-        _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info)
+        let capabilities = command.inputCapabilities
+        guard capabilities.needsImageDialog else {
+            _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info)
+            return
+        }
+        widgetInputPanel?.close()
+        let sourceImage = session.flatMap { session in
+            session.infos.firstIndex(where: { $0.url == info.url })
+                .flatMap { session.images[safe: $0] ?? nil }
+        }
+        let panel = WidgetInputPanel(widgetName: widget.name, sourceURL: info.url,
+                                     sourceImage: sourceImage, capabilities: capabilities)
+        panel.onSubmit = { [weak self] input in
+            guard self != nil, let source = input.mediaURLs.first else { return }
+            let media = MediaInfo(url: source, isLocal: source.isFileURL, kind: .image)
+            _ = WidgetTaskManager.shared.start(widget: widget, command: command,
+                                               media: media, input: input)
+        }
+        panel.onDismiss = { [weak self, weak panel] in
+            if self?.widgetInputPanel === panel { self?.widgetInputPanel = nil }
+        }
+        widgetInputPanel = panel
+        panel.present(over: self)
     }
 
     @objc private func widgetTasksDidChange() {
@@ -1962,9 +1981,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func isPlainTextWidgetResult(_ task: WidgetTaskRecord, output: URL) -> Bool {
         let textExtensions = Set(["txt", "text", "md", "markdown"])
         if textExtensions.contains(output.pathExtension.lowercased()) { return true }
+        if UTType(filenameExtension: output.pathExtension)?.conforms(to: .image) == true { return false }
+        if task.outputTypes?.contains("text") == true { return true }
         guard let widget = WidgetRegistry.shared.installed.first(where: { $0.id == task.widgetID }),
               let command = widget.commands.first(where: { $0.id == task.commandID }) else { return false }
-        return command.outputs == ["text"]
+        return command.outputs.contains("text")
     }
 
     private func presentWidgetTextResult(_ task: WidgetTaskRecord, output: URL, source: URL) {
@@ -1975,10 +1996,43 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let sourceInfo = session.infos[sourceIndex]
         let sourceImage = session.images.indices.contains(sourceIndex)
             ? session.images[sourceIndex] : nil
-        let token = UUID()
-        widgetTextResultGeneration = token
+        let generation = widgetTextResultSessionGeneration
+        widgetTextResultQueue.async { [weak self] in
+            let textOutputs = Self.textResultFiles(in: output)
+            DispatchQueue.main.async {
+                guard let self, self.widgetTextResultSessionGeneration == generation else { return }
+                for textOutput in textOutputs {
+                    self.presentWidgetTextArtifact(task, output: textOutput,
+                                                   sourceInfo: sourceInfo, sourceImage: sourceImage)
+                }
+            }
+        }
+    }
 
-        // The dedicated result window owns the right side while it is open.
+    private static func textResultFiles(in output: URL) -> [URL] {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: output.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else { return [output] }
+        let files = (try? FileManager.default.contentsOfDirectory(at: output,
+            includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
+        let textExtensions = Set(["txt", "text", "md", "markdown"])
+        return files.filter { textExtensions.contains($0.pathExtension.lowercased()) }
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+    }
+
+    private func presentWidgetTextArtifact(_ task: WidgetTaskRecord, output: URL,
+                                           sourceInfo: MediaInfo, sourceImage: NSImage?) {
+        let key = WidgetTextResultKey(taskID: task.id, outputPath: output.standardizedFileURL.path)
+        guard widgetTextResultWindows[key] == nil else { return }
+        let resultWindow = WidgetTextResultWindow()
+        widgetTextResultWindows[key] = resultWindow
+        widgetTextResultOrder.append(key)
+        resultWindow.onDismiss = { [weak self] in
+            self?.widgetTextResultWindows.removeValue(forKey: key)
+            self?.widgetTextResultOrder.removeAll { $0 == key }
+            self?.positionWidgetTextResults()
+        }
+        // The result stack owns the right side while it is open.
         infoVisible = false
         infoButton.isActive = false
         infoWindow.dismiss()
@@ -1986,30 +2040,71 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         ocrWindow.orderOut(nil)
         ocrVisible = false
         ocrGeneration = UUID()
-        widgetTextResultWindow.showLoading(task: task, source: sourceInfo,
-                                           sourceImage: sourceImage)
-        widgetTextResultWindow.present(alongside: self)
+        resultWindow.showLoading(task: task, source: sourceInfo,
+                                 sourceImage: sourceImage)
+        positionWidgetTextResults()
+        resultWindow.present(alongside: self)
+        resultWindow.onBecomeKey = { [weak self, weak resultWindow] in
+            guard let self, let resultWindow else { return }
+            self.raiseWidgetTextResult(resultWindow)
+        }
 
         if sourceImage == nil {
-            imageLoader.loadImage(from: sourceInfo.url) { [weak self] image in
-                guard let self, self.widgetTextResultGeneration == token,
+            imageLoader.loadImage(from: sourceInfo.url) { [weak self, weak resultWindow] image in
+                guard let self, let resultWindow,
+                      self.widgetTextResultWindows[key] === resultWindow,
                       let image else { return }
-                self.widgetTextResultWindow.updateSourceImage(image)
+                resultWindow.updateSourceImage(image)
             }
         }
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        DispatchQueue.global(qos: .userInitiated).async { [weak self, weak resultWindow] in
             let result = Result { try String(contentsOf: output, encoding: .utf8) }
             DispatchQueue.main.async {
-                guard let self, self.widgetTextResultGeneration == token else { return }
+                guard let self, let resultWindow,
+                      self.widgetTextResultWindows[key] === resultWindow else { return }
                 switch result {
-                case .success(let text): self.widgetTextResultWindow.showResult(text)
+                case .success(let text): resultWindow.showResult(text)
                 case .failure(let error):
                     Logger.error("Widget text result read failed: \(error.localizedDescription)")
-                    self.widgetTextResultWindow.showError("Unable to read Widget text result".localized)
+                    resultWindow.showError("Unable to read Widget text result".localized)
                 }
             }
         }
+    }
+
+    private func dismissWidgetTextResults() {
+        widgetTextResultSessionGeneration = UUID()
+        for window in Array(widgetTextResultWindows.values) {
+            window.onDismiss = nil
+            window.dismiss()
+        }
+        widgetTextResultWindows.removeAll()
+        widgetTextResultOrder.removeAll()
+    }
+
+    private func positionWidgetTextResults() {
+        let count = widgetTextResultOrder.count
+        for (index, id) in widgetTextResultOrder.enumerated() {
+            widgetTextResultWindows[id]?.position(alongside: self, stackIndex: index,
+                                                  stackCount: count)
+        }
+    }
+
+    @objc private func imageWindowGeometryDidChange(_ notification: Notification) {
+        positionWidgetTextResults()
+    }
+
+    private func raiseWidgetTextResult(_ window: WidgetTextResultWindow) {
+        guard !isRaisingWidgetTextResult,
+              widgetTextResultWindows.values.contains(where: { $0 === window }) else { return }
+        isRaisingWidgetTextResult = true
+        defer { isRaisingWidgetTextResult = false }
+        if window.parent === self {
+            removeChildWindow(window)
+            addChildWindow(window, ordered: .above)
+        }
+        window.makeKeyAndOrderFront(nil)
     }
 
     private func updateTaskChrome() {
@@ -2077,6 +2172,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session.images.insert(nil, at: insertionIndex)
         session.metadata.insert(nil, at: insertionIndex)
         session.generatedResultPaths.insert(info.url.standardizedFileURL.path)
+        session.widgetResultSourceKeys.insert(source.isFileURL ? source.standardizedFileURL.path : source.absoluteString)
         session.failedIndices = Set(session.failedIndices.map {
             $0 >= insertionIndex ? $0 + 1 : $0
         })
@@ -2300,8 +2396,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// Dock the OCR panel beside the main window, sliding in from the right
     /// on first presentation.
     private func presentOCRWindow() {
-        widgetTextResultGeneration = UUID()
-        widgetTextResultWindow.dismiss()
         let gap: CGFloat = 2
         var origin = NSPoint(x: frame.maxX + gap, y: frame.minY)
         let size = NSSize(width: 320, height: frame.height)
@@ -2483,17 +2577,18 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         return session.infos[index]
     }
 
-    private var currentOSSResultURLString: String? {
+    private var currentWidgetResultRecord: WidgetTaskRecord? {
         guard let session, session.mode != .compare,
               session.infos.indices.contains(session.focusedIndex) else { return nil }
         let info = session.infos[session.focusedIndex]
         guard info.kind == .image, info.isLocal,
               let record = WidgetTaskManager.shared.completedRecord(for: info.url),
-              let rawURL = record.outputURLString,
-              let parsed = URL(string: rawURL),
-              ["http", "https"].contains(parsed.scheme?.lowercased() ?? ""),
-              parsed.host != nil else { return nil }
-        return rawURL
+              record.copyableImageResultURL != nil else { return nil }
+        return record
+    }
+
+    private var currentWidgetResultURLString: String? {
+        currentWidgetResultRecord?.copyableImageResultURL
     }
 
     private var isFocusedWidgetResult: Bool {
@@ -2505,8 +2600,30 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             || WidgetTaskManager.shared.completedRecord(for: info.url) != nil
     }
 
-    private func copyOSSResultURL() {
-        guard let url = currentOSSResultURLString else { return }
+    private func copyWidgetResultURL() {
+        guard let record = currentWidgetResultRecord,
+              let storedURL = record.copyableImageResultURL else { return }
+        guard let taskID = record.remoteTaskID else {
+            copyWidgetResultURLToPasteboard(storedURL)
+            return
+        }
+        WidgetTaskClient.shared.fetchResultURL(taskID: taskID) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self, self.currentWidgetResultRecord?.id == record.id else { return }
+                switch result {
+                case .success(let url): self.copyWidgetResultURLToPasteboard(url.absoluteString)
+                case .failure:
+                    if let url = URL(string: storedURL), url.host != "api.glance.mcreator.ai" {
+                        self.copyWidgetResultURLToPasteboard(storedURL)
+                    } else {
+                        self.toastWindow.show(message: "Could not refresh result URL".localized, over: self)
+                    }
+                }
+            }
+        }
+    }
+
+    private func copyWidgetResultURLToPasteboard(_ url: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         if pasteboard.setString(url, forType: .string) {
@@ -2524,8 +2641,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // The information panel is a child window attached to the right edge,
         // shown outside the image (like the Widget Market panel).
         if infoVisible {
-            widgetTextResultGeneration = UUID()
-            widgetTextResultWindow.dismiss()
             infoWindow.setContent(infoPanel)
             infoWindow.present(alongside: self)
             renderSession()   // populate before it appears
@@ -3091,8 +3206,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 /// stays visible at its current size while the generated text remains readable.
 private final class WidgetTextResultWindow: NSPanel {
     private static let designSize = NSSize(width: 456, height: 720)
-    private static let sideGap: CGFloat = 16
-    private static let topOffset: CGFloat = 84
+    private static let sideGap: CGFloat = 2
+    private static let stackStep: CGFloat = 20
+
+    var onDismiss: (() -> Void)?
+    var onBecomeKey: (() -> Void)?
 
     private let rootView = WidgetTextResultRootView()
     private let titlebar = WidgetTextResultTitlebar()
@@ -3139,6 +3257,8 @@ private final class WidgetTextResultWindow: NSPanel {
         appearance = NSAppearance(named: .darkAqua)
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         animationBehavior = .none
+        NotificationCenter.default.addObserver(self, selector: #selector(didBecomeKey),
+                                               name: NSWindow.didBecomeKeyNotification, object: self)
 
         let windowContainer = NSView()
         windowContainer.wantsLayer = true
@@ -3370,6 +3490,10 @@ private final class WidgetTextResultWindow: NSPanel {
             parent?.removeChildWindow(self)
             parentWindow.addChildWindow(self, ordered: .above)
         }
+        makeKeyAndOrderFront(nil)
+    }
+
+    func position(alongside parentWindow: NSWindow, stackIndex: Int, stackCount: Int) {
         let parentFrame = parentWindow.frame
         let screen = parentWindow.screen
             ?? ScreenManager.shared.screenForMouseLocation(NSPoint(x: parentFrame.midX, y: parentFrame.midY))
@@ -3377,36 +3501,36 @@ private final class WidgetTextResultWindow: NSPanel {
         let available = screen?.visibleFrame ?? parentFrame
         let size = NSSize(width: min(Self.designSize.width, available.width),
                           height: min(Self.designSize.height, available.height))
-        let rightX = parentFrame.maxX + Self.sideGap
-        let leftX = parentFrame.minX - Self.sideGap - size.width
-        let rightSpace = available.maxX - rightX
-        let leftSpace = leftX - available.minX
-        let originX: CGFloat
-        if rightSpace >= size.width {
-            originX = rightX
-        } else if leftSpace >= size.width {
-            originX = leftX
-        } else {
-            // On smaller displays the two windows cannot fit side by side.
-            // Keep the result on the side with more visible space and let the
-            // screen clamp overlap the source window without resizing it.
-            originX = rightSpace >= leftSpace ? available.maxX - size.width : available.minX
-        }
-        let originY = parentFrame.maxY - Self.topOffset - size.height
+        let step = min(Self.stackStep,
+                       max(0, available.width - size.width) / CGFloat(max(1, stackCount - 1)))
+        let rightmostOffset = CGFloat(max(0, stackCount - 1)) * step
+        let baseX = max(available.minX,
+                        min(parentFrame.maxX + Self.sideGap,
+                            available.maxX - size.width - rightmostOffset))
+        let originX = baseX + CGFloat(stackIndex) * step
+        let originY = max(available.minY,
+                          min(parentFrame.maxY - size.height, available.maxY - size.height))
         let proposed = NSRect(origin: NSPoint(x: originX, y: originY), size: size)
-        setFrame(ScreenManager.shared.clampedToVisible(proposed), display: true)
-        makeKeyAndOrderFront(nil)
+        if frame != proposed { setFrame(proposed, display: true) }
     }
 
     func dismiss() {
         copyRevertWorkItem?.cancel()
         parent?.removeChildWindow(self)
         orderOut(nil)
+        let callback = onDismiss
+        onDismiss = nil
+        onBecomeKey = nil
+        callback?()
     }
 
     override func close() {
         dismiss()
     }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    @objc private func didBecomeKey(_ notification: Notification) { onBecomeKey?() }
 
     private static func metadataText(for source: MediaInfo) -> String {
         let format = source.formatName.isEmpty
@@ -5392,6 +5516,7 @@ final class ImageFilmstripView: NSView {
     private var infos: [MediaInfo] = []
     private var images: [NSImage?] = []
     private var generatedResultPaths = Set<String>()
+    private var widgetResultSourceKeys = Set<String>()
     private var selectedIndex = 0
     private var compareIndices: (Int, Int)?
     /// Generated type icons for non-image items (mixed sessions), by index.
@@ -5439,7 +5564,8 @@ final class ImageFilmstripView: NSView {
     }
 
     func configure(infos: [MediaInfo], images: [NSImage?], selectedIndex: Int,
-                   compareIndices: (Int, Int)?, generatedResultPaths: Set<String>) {
+                   compareIndices: (Int, Int)?, generatedResultPaths: Set<String>,
+                   widgetResultSourceKeys: Set<String>) {
         let previousInfos = self.infos
         let previousURLs = Set(self.infos.map { $0.url.standardizedFileURL })
         let previousSelection = self.selectedIndex
@@ -5449,6 +5575,7 @@ final class ImageFilmstripView: NSView {
         self.infos = infos
         self.images = images
         self.generatedResultPaths = generatedResultPaths
+        self.widgetResultSourceKeys = widgetResultSourceKeys
         self.selectedIndex = selectedIndex
         self.compareIndices = compareIndices
         iconCache.removeAll()
@@ -5526,10 +5653,17 @@ final class ImageFilmstripView: NSView {
         addTile = nil
         let count = infos.count
         var updatedViews: [ImageFilmstripItem] = []
-        let ossResultTask: WidgetTaskRecord? = infos.indices.contains(selectedIndex)
+        let selectedResultTask: WidgetTaskRecord? = infos.indices.contains(selectedIndex)
             ? WidgetTaskManager.shared.completedRecord(for: infos[selectedIndex].url)
             : nil
-        let ossSource = ossResultTask?.outputURLString == nil ? nil : ossResultTask?.source
+        let ossResultTask = selectedResultTask?.widgetID == ossImageHostingWidgetID
+            ? selectedResultTask : nil
+        var completedSourceKeys = widgetResultSourceKeys
+        for info in infos {
+            if let source = WidgetTaskManager.shared.completedRecord(for: info.url)?.source {
+                completedSourceKeys.insert(filmstripKey(for: source))
+            }
+        }
         for index in 0..<count {
             let key = filmstripKey(for: infos[index].url)
             let item: ImageFilmstripItem
@@ -5551,7 +5685,7 @@ final class ImageFilmstripView: NSView {
             let caption: String?
             if ossResultTask?.outputURLString != nil && index == selectedIndex {
                 caption = "RESULT · OSS"
-            } else if let ossSource, infos[index].url.absoluteString == ossSource.absoluteString {
+            } else if completedSourceKeys.contains(key) {
                 caption = "ORIGINAL"
             } else {
                 caption = nil
@@ -5612,9 +5746,9 @@ private final class ImageFilmstripItem: NSView {
     private let imageView = NonHitTestingImageView()
     private let taskBadge = CALayer()
     private let tagBackground = InspectNonHitTestingView()
-    private let tagLabel = NSTextField(labelWithString: "NEW")
+    private let tagLabel = PanelCenteredTextView()
     private let ossCaptionBackground = InspectNonHitTestingView()
-    private let ossCaptionLabel = NSTextField(labelWithString: "")
+    private let ossCaptionLabel = PanelCenteredTextView()
     private let plusLabel = CATextLayer()
     private var previewInset: CGFloat = 4
 
@@ -5623,7 +5757,7 @@ private final class ImageFilmstripItem: NSView {
         wantsLayer = true
         layer?.cornerRadius = 9
         layer?.masksToBounds = true
-        layer?.backgroundColor = PanelStyle.inspectToolbar.cgColor
+        layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
         addSubview(imageView)
         taskBadge.cornerRadius = 3.5
         taskBadge.isHidden = true
@@ -5633,20 +5767,19 @@ private final class ImageFilmstripItem: NSView {
         tagBackground.wantsLayer = true
         tagBackground.layer?.backgroundColor = PanelStyle.success.cgColor
         tagBackground.layer?.cornerRadius = 4
+        tagBackground.layer?.masksToBounds = true
         tagBackground.isHidden = true
         addSubview(tagBackground, positioned: .above, relativeTo: imageView)
+        tagLabel.string = "NEW"
         tagLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
         tagLabel.textColor = PanelStyle.accentInk
-        tagLabel.alignment = .center
-        tagLabel.lineBreakMode = .byClipping
-        tagLabel.maximumNumberOfLines = 1
         tagBackground.addSubview(tagLabel)
         ossCaptionBackground.wantsLayer = true
         ossCaptionBackground.layer?.cornerRadius = 5
+        ossCaptionBackground.layer?.masksToBounds = true
         ossCaptionBackground.isHidden = true
         addSubview(ossCaptionBackground, positioned: .above, relativeTo: imageView)
         ossCaptionLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
-        ossCaptionLabel.alignment = .center
         ossCaptionBackground.addSubview(ossCaptionLabel)
         // "+" glyph for the add tile.
         plusLabel.font = NSFont.systemFont(ofSize: 19, weight: .regular)
@@ -5703,7 +5836,7 @@ private final class ImageFilmstripItem: NSView {
         taskBadge.backgroundColor = PanelStyle.failure.cgColor
         // The filled corner badge identifies a Widget result without relying on the border.
         tagBackground.isHidden = !completedResult
-        if completedResult { tagLabel.stringValue = "NEW" }
+        if completedResult { tagLabel.string = "NEW" }
         ossCaptionBackground.isHidden = ossCaption == nil
         if let ossCaption {
             let isOSSResult = ossCaption == "RESULT · OSS"
@@ -5714,7 +5847,7 @@ private final class ImageFilmstripItem: NSView {
                 alpha: 1
             ).cgColor
             ossCaptionLabel.textColor = isOSSResult ? PanelStyle.accent : PanelStyle.textPrimary
-            ossCaptionLabel.stringValue = ossCaption
+            ossCaptionLabel.string = ossCaption
         }
         if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             if layer?.animation(forKey: "widgetBreathing") == nil {
@@ -5740,27 +5873,26 @@ private final class ImageFilmstripItem: NSView {
         let scale = min(bounds.width, bounds.height) / 96
         layer?.cornerRadius = 9 * scale
         tagBackground.layer?.cornerRadius = 4 * scale
-        // Figma's badge uses 10pt semibold at 96pt. Keep the glyphs at least
-        // 10pt when the existing filmstrip shrinks to 61.44pt, so NEW remains
-        // legible without changing the thumbnail geometry.
-        tagLabel.font = PanelStyle.inspectFont(ofSize: max(10, 10 * scale), weight: .semibold)
+        // Figma 176:90 / 176:92: 48×22 at the top-right of a 96×96 tile,
+        // with a 48×12 Inter Semibold text frame 5pt below the badge top.
+        tagLabel.font = PanelStyle.inspectFont(ofSize: max(9, 10 * scale), weight: .semibold)
         taskBadge.cornerRadius = 3.5 * scale
         imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
         taskBadge.frame = NSRect(x: bounds.maxX - 9 * scale, y: bounds.maxY - 9 * scale,
                                  width: 7 * scale, height: 7 * scale)
-        let tagSize = CGSize(width: max(38, 48 * scale), height: max(18, 22 * scale))
+        let tagSize = CGSize(width: 48 * scale, height: 22 * scale)
         tagBackground.frame = CGRect(x: bounds.maxX - tagSize.width,
                                      y: bounds.maxY - tagSize.height,
                                      width: tagSize.width, height: tagSize.height)
-        tagLabel.frame = NSRect(x: 0, y: (tagSize.height - 14) / 2,
-                                width: tagSize.width, height: 14)
+        tagLabel.frame = NSRect(x: 0, y: 5 * scale,
+                                width: tagSize.width, height: 12 * scale)
         ossCaptionBackground.layer?.cornerRadius = 5 * scale
         ossCaptionBackground.frame = NSRect(x: 4 * scale, y: 4 * scale,
                                              width: bounds.width - 8 * scale, height: 23 * scale)
         ossCaptionLabel.font = PanelStyle.inspectFont(ofSize: max(8, 10 * scale), weight: .semibold)
-        ossCaptionLabel.frame = NSRect(x: 0, y: 4 * scale,
+        ossCaptionLabel.frame = NSRect(x: 0, y: 5 * scale,
                                        width: ossCaptionBackground.bounds.width,
-                                       height: ossCaptionBackground.bounds.height - 8 * scale)
+                                       height: 12 * scale)
         plusLabel.frame = CGRect(x: 0, y: bounds.height / 2 - 14, width: bounds.width, height: 28)
     }
 }

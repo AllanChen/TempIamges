@@ -11,7 +11,9 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     private static let rowHeight: CGFloat = 84
 
     private weak var attachedParent: NSWindow?
+    private var isRaising = false
     private var manifests: [WidgetManifest] = []
+    private var catalogIDs = Set<String>()
     private var installedIDs = Set<String>()
     private var isLoading = false
     private var hasAttemptedLoad = false
@@ -85,6 +87,8 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         refreshInstalledState()
         NotificationCenter.default.addObserver(self, selector: #selector(registryDidChange),
                                                name: WidgetRegistry.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(didBecomeKey),
+                                               name: NSWindow.didBecomeKeyNotification, object: self)
     }
 
     override var canBecomeKey: Bool { true }
@@ -92,8 +96,12 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
 
     func toggle(from parent: NSWindow) {
         if isVisible, attachedParent === parent { close(); return }
-        if let attachedParent { attachedParent.removeChildWindow(self) }
+        detachFromParent()
         attachedParent = parent
+        NotificationCenter.default.addObserver(self, selector: #selector(parentGeometryDidChange),
+                                               name: NSWindow.didMoveNotification, object: parent)
+        NotificationCenter.default.addObserver(self, selector: #selector(parentGeometryDidChange),
+                                               name: NSWindow.didResizeNotification, object: parent)
         position(alongside: parent)
         parent.addChildWindow(self, ordered: .above)
         makeKeyAndOrderFront(nil)
@@ -102,15 +110,40 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     }
 
     override func close() {
-        if let attachedParent { attachedParent.removeChildWindow(self) }
-        attachedParent = nil
+        detachFromParent()
         orderOut(nil)
+    }
+
+    private func detachFromParent() {
+        guard let attachedParent else { return }
+        NotificationCenter.default.removeObserver(self, name: NSWindow.didMoveNotification,
+                                                   object: attachedParent)
+        NotificationCenter.default.removeObserver(self, name: NSWindow.didResizeNotification,
+                                                   object: attachedParent)
+        attachedParent.removeChildWindow(self)
+        self.attachedParent = nil
+    }
+
+    @objc private func parentGeometryDidChange(_ notification: Notification) {
+        guard let attachedParent else { return }
+        position(alongside: attachedParent)
+    }
+
+    @objc private func didBecomeKey(_ notification: Notification) {
+        guard !isRaising, let attachedParent else { return }
+        isRaising = true
+        defer { isRaising = false }
+        attachedParent.removeChildWindow(self)
+        attachedParent.addChildWindow(self, ordered: .above)
+        makeKeyAndOrderFront(nil)
     }
 
     private func loadCatalog() {
         guard !hasAttemptedLoad else { return }
         hasAttemptedLoad = true
-        manifests = Self.mergeInstalled(into: Self.makeOfflineManifests())
+        let offlineManifests = Self.makeOfflineManifests()
+        catalogIDs = Set(offlineManifests.map(\.id))
+        manifests = Self.mergeInstalled(into: offlineManifests)
         refreshCatalog(resetScroll: true)
         refreshFromServer(showLoading: false)
     }
@@ -126,6 +159,7 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
             switch result {
             case .success(let remoteManifests):
                 Logger.info("WidgetMarketPanel: refreshed \(remoteManifests.count) widgets from server")
+                self.catalogIDs = Set(remoteManifests.map(\.id))
                 self.manifests = Self.mergeInstalled(into: remoteManifests)
                 self.refreshCatalog(resetScroll: true)
             case .failure(let error):
@@ -149,7 +183,7 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
                 commands: [WidgetCommand(id: $0.id, name: $0.commandName,
                     description: $0.commandDescription, inputTypes: ["image"],
                     inputMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"],
-                    outputs: ["image"], taskType: $0.taskType, requiresUpload: true,
+                    outputs: ["image"], showResultURL: nil, taskType: $0.taskType, requiresUpload: true,
                     parameterSchema: [:])],
                 privacy: WidgetPrivacy(uploadsMedia: true, notice: $0.privacy),
                 minimumGlanceVersion: "2.0.0", updatedAt: "",
@@ -168,8 +202,14 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     private var updatesAvailable: Set<String> {
         var result = Set<String>()
         for remote in manifests {
+            guard catalogIDs.contains(remote.id) else { continue }
             guard let local = WidgetRegistry.shared.installed.first(where: { $0.id == remote.id }) else { continue }
-            if local.version != remote.version { result.insert(remote.id) }
+            if local.version != remote.version || local.commands != remote.commands ||
+                local.name != remote.name || local.summary != remote.summary ||
+                local.author != remote.author || local.iconURL != remote.iconURL ||
+                local.privacy.notice != remote.privacy.notice {
+                result.insert(remote.id)
+            }
         }
         return result
     }
@@ -179,7 +219,7 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         let updates = updatesAvailable
         var result = manifests.filter { manifest in
             switch catalogFilter {
-            case .marketplace: break
+            case .marketplace: guard catalogIDs.contains(manifest.id) else { return false }
             case .installed: guard installedIDs.contains(manifest.id) else { return false }
             case .updates: guard updates.contains(manifest.id) else { return false }
             }
@@ -366,16 +406,18 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         let updates = updatesAvailable
         for (index, manifest) in visible.enumerated() {
             let row = WidgetMarketRowView(manifest: manifest,
-                isInstalled: installedIDs.contains(manifest.id), hasUpdate: updates.contains(manifest.id))
+                isInstalled: installedIDs.contains(manifest.id), hasUpdate: updates.contains(manifest.id),
+                isRemovedFromCatalog: !catalogIDs.contains(manifest.id))
             row.frame = NSRect(x: 0, y: CGFloat(index) * Self.rowHeight,
                                width: catalogContainer.frame.width, height: Self.rowHeight)
             row.onInstall = { [weak self] in self?.install(manifest) }
+            row.onRemove = { WidgetRegistry.shared.uninstall(id: manifest.id) }
             catalogContainer.addSubview(row)
         }
-        catalogCount.stringValue = String(format: "%d available".localized, manifests.count)
+        catalogCount.stringValue = String(format: "%d available".localized, catalogIDs.count)
         footerCountLabel.stringValue = String(format: "%d widgets  •  %@".localized, visible.count, filterTitle)
-        searchField.placeholderString = String(format: "Search %d widgets".localized, manifests.count)
-        marketplaceFilterButton.count = manifests.count
+        searchField.placeholderString = String(format: "Search %d widgets".localized, catalogIDs.count)
+        marketplaceFilterButton.count = catalogIDs.count
         installedFilterButton.count = installedIDs.count
         updatesFilterButton.count = updates.count
         updateFilterButtons()
@@ -443,20 +485,12 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         let visibleFrame = (parent.screen ?? NSScreen.main)?.visibleFrame ?? parent.frame
         let size = NSSize(width: min(Self.designSize.width, visibleFrame.width),
                           height: min(Self.designSize.height, visibleFrame.height))
-        let rightX = parent.frame.maxX + gap
-        let leftX = parent.frame.minX - gap - size.width
-        let rightSpace = visibleFrame.maxX - rightX
-        let leftSpace = leftX - visibleFrame.minX
-        let x: CGFloat
-        if rightSpace >= size.width {
-            x = rightX
-        } else if leftSpace >= size.width {
-            x = leftX
-        } else {
-            x = rightSpace >= leftSpace ? visibleFrame.maxX - size.width : visibleFrame.minX
-        }
-        let frame = NSRect(x: x, y: parent.frame.maxY - size.height, width: size.width, height: size.height)
-        setFrame(ScreenManager.shared.clampedToVisible(frame), display: true)
+        let x = max(visibleFrame.minX,
+                    min(parent.frame.maxX + gap, visibleFrame.maxX - size.width))
+        let y = max(visibleFrame.minY,
+                    min(parent.frame.maxY - size.height, visibleFrame.maxY - size.height))
+        let proposed = NSRect(x: x, y: y, width: size.width, height: size.height)
+        if frame != proposed { setFrame(proposed, display: true) }
     }
 }
 
@@ -633,9 +667,11 @@ private final class WidgetMarketScrollIndicator: NSView {
 
 private final class WidgetMarketRowView: NSView {
     var onInstall: (() -> Void)?
+    var onRemove: (() -> Void)?
     private let manifest: WidgetManifest
     private let isInstalled: Bool
     private let hasUpdate: Bool
+    private let isRemovedFromCatalog: Bool
     private let divider = NSView()
     private let iconView = WidgetMarketIconView()
     private let nameLabel = NSTextField(labelWithString: "")
@@ -649,10 +685,11 @@ private final class WidgetMarketRowView: NSView {
     private var trackingAreaRef: NSTrackingArea?
     private var hovering = false
 
-    init(manifest: WidgetManifest, isInstalled: Bool, hasUpdate: Bool) {
+    init(manifest: WidgetManifest, isInstalled: Bool, hasUpdate: Bool, isRemovedFromCatalog: Bool) {
         self.manifest = manifest
         self.isInstalled = isInstalled
         self.hasUpdate = hasUpdate
+        self.isRemovedFromCatalog = isRemovedFromCatalog
         super.init(frame: .zero)
         wantsLayer = true
         setAccessibilityElement(true)
@@ -696,7 +733,12 @@ private final class WidgetMarketRowView: NSView {
         addSubview(metadataLabel)
         updateBadge.isHidden = !hasUpdate
         addSubview(updateBadge)
-        if isInstalled && !hasUpdate {
+        if isRemovedFromCatalog {
+            installButton.style = .remove
+            installButton.target = self
+            installButton.action = #selector(removeTapped)
+            addSubview(installButton)
+        } else if isInstalled && !hasUpdate {
             addSubview(installedBadge)
         } else {
             installButton.style = hasUpdate ? .update : .install
@@ -710,7 +752,7 @@ private final class WidgetMarketRowView: NSView {
         super.layout()
         divider.frame = NSRect(x: 16, y: 0, width: max(0, bounds.width - 32), height: 1)
         iconView.frame = NSRect(x: 16, y: 22, width: 48, height: 48)
-        let showsInstalledBadge = isInstalled && !hasUpdate
+        let showsInstalledBadge = isInstalled && !hasUpdate && !isRemovedFromCatalog
         let actionWidth: CGFloat = showsInstalledBadge ? 82 : 68
         let actionX = bounds.width - actionWidth - 18
         nameLabel.frame = NSRect(x: 78, y: 59, width: max(70, actionX - 90), height: 16)
@@ -735,7 +777,7 @@ private final class WidgetMarketRowView: NSView {
     override func mouseExited(with event: NSEvent) { hovering = false; applyAppearance() }
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
-        if (!isInstalled || hasUpdate), installButton.frame.contains(local) { return installButton }
+        if (isRemovedFromCatalog || !isInstalled || hasUpdate), installButton.frame.contains(local) { return installButton }
         return nil
     }
     private func applyAppearance() {
@@ -743,6 +785,7 @@ private final class WidgetMarketRowView: NSView {
         layer?.backgroundColor = PanelStyle.resolvedCG(color)
     }
     @objc private func installTapped() { onInstall?() }
+    @objc private func removeTapped() { onRemove?() }
     private static func initials(for name: String) -> String {
         let words = name.split(separator: " ")
         if words.count > 1 { return words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased() }
@@ -792,7 +835,7 @@ private final class WidgetMarketBadgeView: NSView {
 }
 
 private final class WidgetMarketActionButton: NSButton {
-    enum Style { case install, installed, update }
+    enum Style { case install, installed, update, remove }
     var style: Style = .install { didSet { applyAppearance() } }
     private let titleView = PanelCenteredTextView()
     override init(frame frameRect: NSRect) {
@@ -825,6 +868,11 @@ private final class WidgetMarketActionButton: NSButton {
             titleView.textColor = PanelStyle.accentInk
             layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
             layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.5))
+        case .remove:
+            titleView.string = "Remove".localized
+            titleView.textColor = PanelStyle.textSecondary
+            layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
+            layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
         }
         setAccessibilityLabel(titleView.string)
     }

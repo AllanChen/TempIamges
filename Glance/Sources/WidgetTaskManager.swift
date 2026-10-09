@@ -3,6 +3,23 @@ import Foundation
 import UserNotifications
 import UniformTypeIdentifiers
 
+struct WidgetTaskInput: Codable {
+    let mediaURLs: [URL]
+    let prompt: String?
+    let maskURL: URL?
+    let usesMultipleImages: Bool?
+    let usesMultipleVideos: Bool?
+
+    init(mediaURLs: [URL], prompt: String?, maskURL: URL?,
+         usesMultipleImages: Bool? = nil, usesMultipleVideos: Bool? = nil) {
+        self.mediaURLs = mediaURLs
+        self.prompt = prompt
+        self.maskURL = maskURL
+        self.usesMultipleImages = usesMultipleImages
+        self.usesMultipleVideos = usesMultipleVideos
+    }
+}
+
 struct WidgetTaskRecord: Codable, Identifiable {
     let id: UUID
     let widgetID: String
@@ -10,7 +27,9 @@ struct WidgetTaskRecord: Codable, Identifiable {
     let commandID: String
     let commandName: String
     let outputTypes: [String]?
+    let showResultURL: Bool?
     let sourceURL: String
+    let sourceKind: String?
     let createdAt: Date
     var updatedAt: Date
     var remoteTaskID: String?
@@ -19,8 +38,23 @@ struct WidgetTaskRecord: Codable, Identifiable {
     var outputPath: String?
     var outputURLString: String?
     var errorMessage: String?
+    var input: WidgetTaskInput?
     var source: URL? { URL(string: sourceURL) }
     var output: URL? { outputPath.map { URL(fileURLWithPath: $0) } }
+    var copyableImageResultURL: String? {
+        // Older saved tasks have no output snapshot; use the installed command.
+        let installedCommand = WidgetRegistry.shared.installed
+            .first(where: { $0.id == widgetID })?
+            .commands.first(where: { $0.id == commandID })
+        let displaysURL = showResultURL ?? installedCommand?.showResultURL ?? false
+        let outputsImage = outputTypes?.contains("image") ?? installedCommand?.outputs.contains("image") ?? false
+        guard phase == .completed, outputsImage, displaysURL,
+              let rawURL = outputURLString,
+              let parsed = URL(string: rawURL),
+              ["http", "https"].contains(parsed.scheme?.lowercased() ?? ""),
+              parsed.host != nil else { return nil }
+        return rawURL
+    }
 }
 
 final class WidgetTaskManager {
@@ -45,7 +79,8 @@ final class WidgetTaskManager {
     }
 
     @discardableResult
-    func start(widget: WidgetManifest, command: WidgetCommand, media: MediaInfo) -> UUID? {
+    func start(widget: WidgetManifest, command: WidgetCommand, media: MediaInfo,
+               input: WidgetTaskInput? = nil) -> UUID? {
         let matching = records.filter { $0.phase.isActive && $0.source?.taskKey == media.url.taskKey && $0.widgetID == widget.id && $0.commandID == command.id }
         if !matching.isEmpty {
             // A task that never received a remote ID cannot be running. Older
@@ -59,11 +94,16 @@ final class WidgetTaskManager {
         requestNotificationPermissionIfNeeded()
         records.insert(WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.name,
             commandID: command.id, commandName: command.name, outputTypes: command.outputs,
+            showResultURL: command.showResultURL,
             sourceURL: media.url.absoluteString,
+            sourceKind: media.kind == .video ? "video" : "image",
             createdAt: Date(), updatedAt: Date(), remoteTaskID: nil, phase: .uploading,
-            progress: 0, outputPath: nil, outputURLString: nil, errorMessage: nil), at: 0)
+            progress: 0, outputPath: nil, outputURLString: nil, errorMessage: nil,
+            input: input), at: 0)
         changed()
         WidgetTaskClient.shared.run(widgetID: widget.id, commandID: command.id, mediaURL: media.url,
+            mediaKind: media.kind,
+            input: input,
             progress: { [weak self] phase, value in self?.update(id, phase: phase, progress: value) },
             submitted: { [weak self] remoteID in self?.setRemoteID(id, remoteID) },
             completion: { [weak self] result in self?.handleRemoteResult(id, result) })
@@ -83,8 +123,12 @@ final class WidgetTaskManager {
                 completion: { [weak self] result in self?.handleRemoteResult(id, result) })
             return
         }
-        let kind: MediaInfo.Kind = command.inputTypes.contains("video") ? .video : .image
-        _ = start(widget: widget, command: command, media: MediaInfo(url: source, isLocal: source.isFileURL, kind: kind))
+        let kind: MediaInfo.Kind = record.sourceKind == "video" ||
+            (record.sourceKind == nil && UTType(filenameExtension: source.pathExtension)?.conforms(to: .movie) == true)
+            ? .video : .image
+        _ = start(widget: widget, command: command,
+                  media: MediaInfo(url: source, isLocal: source.isFileURL, kind: kind),
+                  input: record.input)
     }
 
     func remove(_ id: UUID) { records.removeAll { $0.id == id && !$0.phase.isActive }; changed() }

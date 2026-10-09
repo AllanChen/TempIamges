@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -27,6 +27,7 @@
 		5C57991C681CC89FE3AA2E07 /* FileNameResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945E891D8DC06977A9604F98 /* FileNameResolver.swift */; };
 		6517E9498999A7FDDDDD7727 /* PathDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94DBC9997333D10A429AA36 /* PathDetector.swift */; };
 		658F3924B4A5D228C2B2CC90 /* WidgetTaskCenterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 332A43C95D49B704CAD48FCC /* WidgetTaskCenterWindow.swift */; };
+		66970483054E1BC17944A5F9 /* WidgetVideoInputPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F82E165251F706C727584FA7 /* WidgetVideoInputPanel.swift */; };
 		6CDFBE0A9C72E5FF9D433488 /* PeekDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C2064EDFFD2CC7D536C6DDA /* PeekDiagnostics.swift */; };
 		711669664890100154B6D2A9 /* WidgetMarketPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9416C486847F99F54B9ACC6 /* WidgetMarketPanel.swift */; };
 		71331F7B62DF6B17CACBD94B /* TrayPopoverPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 207B6A5A2D3E895CC2A33A4D /* TrayPopoverPanel.swift */; };
@@ -39,6 +40,7 @@
 		952C5E9281519A7B08197C1F /* Inter-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 0E09672CB631A5A45A61A047 /* Inter-Regular.otf */; };
 		97A7BA68F1D07BEB8F70615D /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D1444931654A6366A56B7972 /* Info.plist */; };
 		A3D9A994F16BE9F0E7CE7072 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39E9F1A079DAD3F9EB65919E /* AppDelegate.swift */; };
+		A432BA705AC8D46EA504DDED /* WidgetInputPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2369F43B5D88597B48AEA2B7 /* WidgetInputPanel.swift */; };
 		A951F5B48F61E5B78E433F24 /* WidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AC684C2865F0513FABF2A2E /* WidgetModels.swift */; };
 		AA5BDE8FB2A97259B0116087 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE03B0D47694EA64670432E /* StatusBarController.swift */; };
 		AAE02EAD160CC4F1385DF930 /* ScreenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658FDB8BCED20C2ECE359B84 /* ScreenManager.swift */; };
@@ -66,6 +68,7 @@
 		1433E6467F5201FE5A730FEC /* PreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanel.swift; sourceTree = "<group>"; };
 		1D1FEF81F349C3468DF46A45 /* HistoryWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryWindow.swift; sourceTree = "<group>"; };
 		207B6A5A2D3E895CC2A33A4D /* TrayPopoverPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayPopoverPanel.swift; sourceTree = "<group>"; };
+		2369F43B5D88597B48AEA2B7 /* WidgetInputPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetInputPanel.swift; sourceTree = "<group>"; };
 		2467CA448DEEDDB0CC11F607 /* LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 		2A683F6DB94CE572022B5AA0 /* PreviewPanelPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanelPreview.swift; sourceTree = "<group>"; };
 		332A43C95D49B704CAD48FCC /* WidgetTaskCenterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTaskCenterWindow.swift; sourceTree = "<group>"; };
@@ -104,6 +107,7 @@
 		E2E2F8F90A0A7276E70FA93C /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
 		E6681C13BACBBD0D74A80EB4 /* Glance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glance.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB0B876EC3A74C500D1246A6 /* WidgetTaskClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTaskClient.swift; sourceTree = "<group>"; };
+		F82E165251F706C727584FA7 /* WidgetVideoInputPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetVideoInputPanel.swift; sourceTree = "<group>"; };
 		FE55BDC72E73C79AA2510706 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		FEF6EE7C0B59774DEC290C5D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -157,11 +161,13 @@
 				1226FC2E8B5B461B9BE59026 /* String+Localization.swift */,
 				207B6A5A2D3E895CC2A33A4D /* TrayPopoverPanel.swift */,
 				43C26EE249858E0FF034FEFB /* VideoCompareWindow.swift */,
+				2369F43B5D88597B48AEA2B7 /* WidgetInputPanel.swift */,
 				D9416C486847F99F54B9ACC6 /* WidgetMarketPanel.swift */,
 				3AC684C2865F0513FABF2A2E /* WidgetModels.swift */,
 				332A43C95D49B704CAD48FCC /* WidgetTaskCenterWindow.swift */,
 				EB0B876EC3A74C500D1246A6 /* WidgetTaskClient.swift */,
 				772E7081C1D15212B9C596E4 /* WidgetTaskManager.swift */,
+				F82E165251F706C727584FA7 /* WidgetVideoInputPanel.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -181,8 +187,8 @@
 			children = (
 				1338215DA649C2E61029E245 /* Assets.xcassets */,
 				D1444931654A6366A56B7972 /* Info.plist */,
-				AA4B6E6699F8CFDA864D2F8A /* Localizable.strings */,
 				A17EB469CA1EFA300ED02DA6 /* Fonts */,
+				AA4B6E6699F8CFDA864D2F8A /* Localizable.strings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -245,7 +251,6 @@
 				};
 			};
 			buildConfigurationList = 13F7C570AC1AD3FDBC42720D /* Build configuration list for PBXProject "Glance" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -259,7 +264,8 @@
 				3E7FDE13AEF45801E7B5C411 /* XCRemoteSwiftPackageReference "Highlightr" */,
 				149AA6524917E18339DB3519 /* XCRemoteSwiftPackageReference "libwebp-Xcode" */,
 			);
-			preferredProjectObjectVersion = 54;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 897E7B5C0E3778F8AD681930 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -323,11 +329,13 @@
 				EEDBCB39C263989AF783FAE6 /* String+Localization.swift in Sources */,
 				71331F7B62DF6B17CACBD94B /* TrayPopoverPanel.swift in Sources */,
 				DA16731AF957758F1AB545E7 /* VideoCompareWindow.swift in Sources */,
+				A432BA705AC8D46EA504DDED /* WidgetInputPanel.swift in Sources */,
 				711669664890100154B6D2A9 /* WidgetMarketPanel.swift in Sources */,
 				A951F5B48F61E5B78E433F24 /* WidgetModels.swift in Sources */,
 				658F3924B4A5D228C2B2CC90 /* WidgetTaskCenterWindow.swift in Sources */,
 				56F3AFEBB92382001DEBF25B /* WidgetTaskClient.swift in Sources */,
 				73CCE1618C03F0513470401A /* WidgetTaskManager.swift in Sources */,
+				66970483054E1BC17944A5F9 /* WidgetVideoInputPanel.swift in Sources */,
 				E2E05277AA71ABA7538D1E89 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

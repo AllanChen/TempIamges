@@ -27,6 +27,7 @@
       "outputs": [
         "image"
       ],
+      "showResultURL": true,
       "taskType": "widget.55e64c7e-f079-448a-b5bd-7315b2589019.c8446b13-f54b-4a1f-aaba-156996118d60",
       "requiresUpload": true,
       "parameterSchema": {}

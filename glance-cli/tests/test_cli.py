@@ -12,11 +12,11 @@ import unittest
 from unittest.mock import patch
 import venv
 
-from glance_cli.cli import main
+from glance_cli.cli import main, validate
 from glance_cli.api import APIError, request, upload_task_file
-from glance_cli.registry import connect, eligible, read_session, read_token, rows, update
+from glance_cli.registry import connect, eligible, read_session, read_token, rows, update, upsert
 from glance_cli.runtime import execute, prepare_input, validate_outputs
-from glance_cli.worker import _run_task
+from glance_cli.worker import _run_task, _sync_widget_status
 from glance_cli.worker_logs import configure_worker_logging, logger
 
 
@@ -67,6 +67,50 @@ class CLITest(unittest.TestCase):
                    server_status="manual_review", enabled=1)
             self.assertEqual(len(eligible(db, set())), 1)
             self.assertEqual(eligible(db, {(manifest["id"], manifest["version"])}), [])
+
+    def test_result_url_preference_requires_image_output(self):
+        _, manifest = self.create_widget()
+        command = manifest["commands"][0]
+        command["outputs"] = ["image"]
+        command["showResultURL"] = True
+        validate(manifest)
+        command["outputs"] = ["text"]
+        with self.assertRaisesRegex(ValueError, "只有图片输出"):
+            validate(manifest)
+        command["showResultURL"] = "true"
+        with self.assertRaisesRegex(ValueError, "必须是布尔值"):
+            validate(manifest)
+
+    def test_worker_stops_polling_widget_removed_from_server(self):
+        folder, manifest = self.create_widget()
+        with closing(connect()) as db:
+            update(db, manifest["id"], manifest["version"],
+                   server_status="published", enabled=1)
+            upsert(db, widget_id=manifest["id"], version="0.2.0",
+                   manifest_path=str(folder / "widget.json"), code_path=str(folder),
+                   enabled=True, server_status="published")
+            with patch("glance_cli.worker.request", side_effect=APIError("Widget not found.", 404)):
+                _sync_widget_status(db, manifest["id"])
+            self.assertEqual(eligible(db, set()), [])
+            self.assertEqual({row["server_status"] for row in rows(db)}, {"removed"})
+            self.assertTrue(all(row["enabled"] == 0 for row in rows(db)))
+
+    def test_worker_stops_polling_version_missing_from_server(self):
+        folder, manifest = self.create_widget()
+        with closing(connect()) as db:
+            update(db, manifest["id"], manifest["version"],
+                   server_status="published", enabled=1)
+            upsert(db, widget_id=manifest["id"], version="0.2.0",
+                   manifest_path=str(folder / "widget.json"), code_path=str(folder),
+                   enabled=True, server_status="published")
+            detail = {"status": "published", "versions": [
+                {"version": "0.2.0", "status": "published"}]}
+            with patch("glance_cli.worker.request", return_value=detail):
+                _sync_widget_status(db, manifest["id"])
+            self.assertEqual([(row["version"], row["server_status"], row["enabled"])
+                              for row in rows(db)],
+                             [(manifest["version"], "removed", 0), ("0.2.0", "published", 1)])
+            self.assertEqual(len(eligible(db, set())), 1)
 
     def test_local_main_runs_and_validates_output(self):
         folder, manifest = self.create_widget()
@@ -123,6 +167,28 @@ class CLITest(unittest.TestCase):
         self.assertEqual(Path(prepared["input"]["path"]).read_bytes(), b"image")
         self.assertTrue(any("输入图片下载完成" in message for message in messages))
         self.assertNotIn("sig=private", "\n".join(messages))
+
+    def test_multiple_media_inputs_are_downloaded_in_order(self):
+        class FakeResponse(io.BytesIO):
+            status = 200
+
+        for kind, suffix in (("images", ".png"), ("videos", ".mp4")):
+            with self.subTest(kind=kind):
+                urls = [f"https://example.com/first{suffix}",
+                        f"https://example.com/second{suffix}?sig=private"]
+                calls = []
+
+                def fake_urlopen(request, timeout):
+                    calls.append(request.full_url)
+                    return FakeResponse(request.full_url.encode())
+
+                with patch("glance_cli.runtime.urlopen", side_effect=fake_urlopen):
+                    prepared = prepare_input({"input": {"url": urls[0], kind: urls}}, self.root)
+                paths = prepared["input"]["imagePaths" if kind == "images" else "videoPaths"]
+                self.assertEqual(len(paths), 2)
+                self.assertEqual(prepared["input"]["path"], paths[0])
+                self.assertEqual([Path(path).read_bytes().decode() for path in paths], urls)
+                self.assertEqual(calls, urls)
 
     def test_image_file_upload_keeps_its_media_type(self):
         widget = self.root / "widget"

@@ -23,7 +23,7 @@ export interface Env {
 type Manifest = {
   schemaVersion?: number; id?: string; version?: string; name?: string; summary?: string;
   author?: string; iconURL?: string; official?: boolean; execution?: { mode?: string };
-  commands?: Array<{ id?: string; name?: string; description?: string; inputTypes?: string[]; inputMimeTypes?: string[]; outputs?: string[]; taskType?: string; requiresUpload?: boolean; parameterSchema?: unknown }>;
+  commands?: Array<{ id?: string; name?: string; description?: string; inputTypes?: string[]; inputMimeTypes?: string[]; outputs?: string[]; showResultURL?: boolean; taskType?: string; requiresUpload?: boolean; parameterSchema?: unknown }>;
   privacy?: { uploadsMedia?: boolean; notice?: string };
   minimumGlanceVersion?: string; updatedAt?: string;
   signature?: { algorithm: string; keyID: string; value: string };
@@ -250,10 +250,12 @@ async function adminAllWidgets(env: Env, request: Request) {
   await requireAdmin(env, request);
   await ensureOfficialWidgets(env);
   const rows = await env.DB.prepare(
-    "SELECT w.id AS widget_id,w.name,w.summary,w.author,w.icon_url,w.current_version,w.status,w.created_at,w.updated_at,v.id AS version_id,v.manifest_json,v.status AS version_status FROM widgets w LEFT JOIN widget_versions v ON v.widget_id=w.id AND v.version=w.current_version ORDER BY w.updated_at DESC"
+    "SELECT w.id AS widget_id,w.owner_id,w.name,w.summary,w.author,w.icon_url,w.current_version,w.status,w.created_at,w.updated_at,v.id AS version_id,v.manifest_json,v.status AS version_status FROM widgets w LEFT JOIN widget_versions v ON v.widget_id=w.id AND v.version=w.current_version ORDER BY w.updated_at DESC"
   ).all<Record<string, unknown>>();
   return ok({ widgets: rows.results.map((row) => ({
     widgetId: row.widget_id,
+    ownerId: row.owner_id,
+    deletable: row.owner_id !== "glance-official" && !OFFICIAL_MANIFESTS.some((manifest) => manifest.id === row.widget_id),
     name: row.name,
     summary: row.summary,
     author: row.author,
@@ -284,6 +286,8 @@ function validationIssues(manifest: Manifest) {
     if (!Array.isArray(command.inputTypes) || command.inputTypes.length === 0) issues.push(`command ${command.id || "unknown"} needs inputTypes`);
     if (!Array.isArray(command.inputMimeTypes) || command.inputMimeTypes.length === 0) issues.push(`command ${command.id || "unknown"} needs inputMimeTypes`);
     if (!Array.isArray(command.outputs) || command.outputs.length === 0) issues.push(`command ${command.id || "unknown"} needs outputs`);
+    if (command.showResultURL !== undefined && typeof command.showResultURL !== "boolean") issues.push(`command ${command.id || "unknown"} has invalid showResultURL`);
+    if (command.showResultURL === true && !command.outputs?.includes("image")) issues.push(`command ${command.id || "unknown"} can show a result URL only for image output`);
     if (typeof command.taskType !== "string" || !command.taskType.trim()) issues.push(`command ${command.id || "unknown"} needs taskType`);
     if (typeof command.requiresUpload !== "boolean" || !command.parameterSchema || typeof command.parameterSchema !== "object" || Array.isArray(command.parameterSchema)) issues.push(`command ${command.id || "unknown"} needs requiresUpload and parameterSchema`);
   }
@@ -347,6 +351,13 @@ async function audit(env: Env, widgetID: string, versionID: string | null, actor
 }
 async function publicManifest(env: Env, row: { manifest_json: string }): Promise<Manifest> {
   const manifest = JSON.parse(row.manifest_json) as Manifest;
+  // Older image-hosting versions predate this explicit command preference.
+  if (manifest.id === "55e64c7e-f079-448a-b5bd-7315b2589019") {
+    manifest.commands = manifest.commands?.map((command) => ({
+      ...command,
+      showResultURL: command.showResultURL ?? command.outputs?.includes("image") ?? false
+    }));
+  }
   // Backfill catalog fields for older Admin Console records at the API edge.
   // The macOS catalog decoder requires these keys even when older D1 rows omit them.
   const normalized = {
@@ -368,13 +379,21 @@ async function publicManifest(env: Env, row: { manifest_json: string }): Promise
 async function ensureOfficialWidgets(env: Env) {
   const timestamp = now();
   for (const manifest of OFFICIAL_MANIFESTS) {
-    const exists = await env.DB.prepare("SELECT id FROM widget_versions WHERE widget_id=? AND version=?").bind(manifest.id, manifest.version).first();
+    const serialized = JSON.stringify(manifest);
+    const exists = await env.DB.prepare(
+      "SELECT v.id,v.manifest_json,v.status AS version_status,w.id AS widget_row,w.name,w.summary,w.author,w.icon_url,w.current_version,w.status AS widget_status FROM widget_versions v LEFT JOIN widgets w ON w.id=v.widget_id WHERE v.widget_id=? AND v.version=?"
+    ).bind(manifest.id, manifest.version).first<Record<string, unknown>>();
     if (exists) {
+      if (exists.widget_row && exists.manifest_json === serialized &&
+          exists.version_status === "published" && exists.widget_status === "published" &&
+          exists.current_version === manifest.version && exists.name === manifest.name &&
+          exists.summary === manifest.summary && exists.author === manifest.author &&
+          exists.icon_url === manifest.iconURL) continue;
       // Keep the catalog manifest in sync when a widget row was migrated from
       // a legacy string ID to its immutable UUID.
       await env.DB.batch([
         env.DB.prepare("UPDATE widget_versions SET manifest_json=?,status='published',updated_at=? WHERE widget_id=? AND version=?")
-          .bind(JSON.stringify(manifest), timestamp, manifest.id, manifest.version),
+          .bind(serialized, timestamp, manifest.id, manifest.version),
         env.DB.prepare("UPDATE widgets SET name=?,summary=?,author=?,icon_url=?,current_version=?,status='published',updated_at=? WHERE id=?")
           .bind(manifest.name, manifest.summary, manifest.author, manifest.iconURL, manifest.version, timestamp, manifest.id)
       ]);
@@ -383,7 +402,7 @@ async function ensureOfficialWidgets(env: Env) {
     const versionID = id("version");
     await env.DB.batch([
       env.DB.prepare("INSERT OR IGNORE INTO widgets (id,owner_id,name,summary,author,icon_url,current_version,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(manifest.id, "glance-official", manifest.name, manifest.summary, manifest.author, manifest.iconURL, manifest.version, "published", timestamp, timestamp),
-      env.DB.prepare("INSERT OR IGNORE INTO widget_versions (id,widget_id,version,manifest_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(versionID, manifest.id, manifest.version, JSON.stringify(manifest), "published", timestamp, timestamp)
+      env.DB.prepare("INSERT OR IGNORE INTO widget_versions (id,widget_id,version,manifest_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(versionID, manifest.id, manifest.version, serialized, "published", timestamp, timestamp)
     ]);
   }
 }
@@ -475,6 +494,31 @@ async function adminUpdateWidget(env: Env, request: Request, widgetID: string) {
   return ok({ widgetId: widgetID, commandIds: manifest.commands?.map((command) => command.id), versionId: versionID, version: manifest.version, status }, 200, { "Cache-Control": "no-store" });
 }
 
+async function adminDeleteWidget(env: Env, request: Request, widgetID: string) {
+  await requireAdmin(env, request);
+  const widget = await env.DB.prepare("SELECT owner_id,status FROM widgets WHERE id=?")
+    .bind(widgetID).first<{ owner_id: string; status: string }>();
+  if (!widget) return fail("widget_not_found", "Widget not found.", 404);
+  if (widget.owner_id === "glance-official" || OFFICIAL_MANIFESTS.some((manifest) => manifest.id === widgetID)) {
+    return fail("protected_widget", "Built-in Widgets cannot be deleted.", 403);
+  }
+  const active = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM widget_tasks WHERE widget_id=? AND status IN ('queued','claimed','running')"
+  ).bind(widgetID).first<{ count: number }>();
+  if (Number(active?.count || 0) > 0) {
+    return fail("widget_has_active_tasks", "Wait for active Widget tasks to finish before deleting it.", 409);
+  }
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM widget_worker_grants WHERE widget_id=?").bind(widgetID),
+    env.DB.prepare("DELETE FROM widget_workers WHERE widget_id=?").bind(widgetID),
+    env.DB.prepare("DELETE FROM widget_versions WHERE widget_id=?").bind(widgetID),
+    env.DB.prepare("DELETE FROM widgets WHERE id=?").bind(widgetID),
+    env.DB.prepare("INSERT INTO widget_audit_logs (id,widget_id,version_id,actor_id,action,previous_status,next_status,note,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
+      .bind(id("audit"), widgetID, null, "admin", "admin_delete", widget.status, "deleted", "Deleted from Admin Console", now())
+  ]);
+  return ok({ widgetId: widgetID, deleted: true }, 200, { "Cache-Control": "no-store" });
+}
+
 async function createSubmission(env: Env, request: Request) {
   const owner = (await developerSession(env, request)).owner_id;
   const body = await readJSON(request);
@@ -538,13 +582,13 @@ async function listWidgets(env: Env) {
   await ensureOfficialWidgets(env);
   const rows = await env.DB.prepare("SELECT v.manifest_json FROM widget_versions v JOIN widgets w ON w.id=v.widget_id AND w.current_version=v.version WHERE w.status='published' AND v.status='published' ORDER BY v.updated_at DESC").all<{ manifest_json: string }>();
   const widgets = await Promise.all(rows.results.map((row) => publicManifest(env, row)));
-  return ok({ widgets, pagination: { page: 1, limit: widgets.length, total: widgets.length, totalPages: widgets.length ? 1 : 0 } }, 200, { "Cache-Control": "public, max-age=60" });
+  return ok({ widgets, pagination: { page: 1, limit: widgets.length, total: widgets.length, totalPages: widgets.length ? 1 : 0 } }, 200, { "Cache-Control": "no-store" });
 }
 
 async function widgetDetail(env: Env, widgetID: string) {
   await ensureOfficialWidgets(env);
   const row = await env.DB.prepare("SELECT v.manifest_json FROM widget_versions v JOIN widgets w ON w.id=v.widget_id AND w.current_version=v.version WHERE v.widget_id=? AND w.status='published' AND v.status='published' LIMIT 1").bind(widgetID).first<{ manifest_json: string }>();
-  return row ? ok(await publicManifest(env, row), 200, { "Cache-Control": "public, max-age=60" }) : fail("widget_not_found", "Widget not found.", 404);
+  return row ? ok(await publicManifest(env, row), 200, { "Cache-Control": "no-store" }) : fail("widget_not_found", "Widget not found.", 404);
 }
 
 async function taskStatus(env: Env, request: Request, taskID: string) {
@@ -672,7 +716,18 @@ async function createTask(env: Env, request: Request, admin = false) {
   if (!("prompt" in taskParams)) taskParams.prompt = "";
   if (!("mask" in taskParams)) taskParams.mask = null;
   taskParams.location = isChinaLocation(taskParams.location) ? "China" : countryName(taskParams.location) || requestCountry(request);
-  const input = (body.input && typeof body.input === "object") ? body.input : { url: taskParams.url || body.url || null };
+  const input = (body.input && typeof body.input === "object" && !Array.isArray(body.input))
+    ? body.input as Record<string, unknown> : { url: taskParams.url || body.url || null };
+  for (const kind of ["images", "videos"] as const) {
+    const values = taskParams[kind] ?? input[kind];
+    if (values === undefined) continue;
+    if (!Array.isArray(values) || values.length < 1 || values.length > 4 ||
+        values.some((value) => typeof value !== "string" || !value.trim())) {
+      return fail(`invalid_${kind}`, `A Widget task accepts between one and four ${kind} URLs.`, 400);
+    }
+    taskParams[kind] = values;
+    input[kind] = values;
+  }
   await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
     .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", now()).run();
   return ok({ taskID, status: "queued", processCount: 0, pollAfterMs: 1000 }, 202, { "Cache-Control": "no-store" });
@@ -721,7 +776,10 @@ async function pullBatch(env: Env, request: Request) {
       WHERE v.widget_id=? AND v.version=? AND (w.owner_id=? OR EXISTS
       (SELECT 1 FROM widget_worker_grants g WHERE g.widget_id=w.id AND g.developer_id=?))`)
       .bind(fields.widgetId, fields.version, actor.owner_id, actor.owner_id).first<{ id: string; status: string; widget_status: string }>();
-    if (!row) return fail("worker_unauthorized", "Widget version is not owned by this developer.", 403);
+    // A developer may still have a locally registered version after an Admin
+    // deletes its Widget or revokes access. Ignore that entry so it cannot
+    // block every other Widget in this worker's batch.
+    if (!row) continue;
     if (!["manual_review", "test_passed", "gray_release", "published"].includes(row.status) || ["suspended", "archived"].includes(row.widget_status)) continue;
     requested.push({ widgetId: fields.widgetId, version: fields.version, versionId: row.id });
   }
@@ -928,6 +986,7 @@ export default {
       if (request.method === "GET" && url.pathname === "/api/admin/v2/widget-versions") return await adminWidgets(env, request);
       if (request.method === "POST" && url.pathname === "/api/admin/v2/widgets") return await adminCreateWidget(env, request);
       if (request.method === "PUT" && parts[0] === "api" && parts[1] === "admin" && parts[2] === "v2" && parts[3] === "widgets" && parts[4]) return await adminUpdateWidget(env, request, parts[4]);
+      if (request.method === "DELETE" && parts[0] === "api" && parts[1] === "admin" && parts[2] === "v2" && parts[3] === "widgets" && parts[4]) return await adminDeleteWidget(env, request, parts[4]);
       if (request.method === "GET" && url.pathname === "/health") return ok({ service: "glance-service", time: now() });
       if (request.method === "GET" && url.pathname === "/api/v2/glance_config") return await glanceConfig(env);
       if (request.method === "GET" && url.pathname === "/api/v2/widgets") return await listWidgets(env);

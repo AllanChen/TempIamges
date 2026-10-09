@@ -39,40 +39,65 @@ def prepare_input(task: dict, temporary: Path,
                   on_log: Callable[[str], None] | None = None) -> dict:
     task = dict(task)
     input_info = dict(task.get("input") or {})
-    url = input_info.get("url")
-    if url:
-        parsed = urlparse(url)
+    image_urls = input_info.get("images")
+    video_urls = input_info.get("videos")
+    for label, urls in (("images", image_urls), ("videos", video_urls)):
+        if urls is not None and (not isinstance(urls, list) or not 1 <= len(urls) <= 4
+                                 or any(not isinstance(url, str) or not url.strip() for url in urls)):
+            raise ValueError(f"任务输入 {label} 必须包含 1 至 4 个 URL")
+    url = input_info.get("url") or (image_urls or video_urls or [None])[0]
+    downloaded: dict[str, str] = {}
+
+    def download(source: str, name: str, label: str) -> str:
+        parsed = urlparse(source)
         if parsed.scheme != "https":
             raise ValueError("任务输入必须是 HTTPS 地址")
         suffix = Path(parsed.path).suffix[:12]
-        destination = temporary / f"input{suffix}"
+        destination = temporary / f"{name}{suffix}"
         started = time.monotonic()
         if on_log:
-            on_log(f"下载输入图片：来源={parsed.hostname}，目标={destination.name}")
+            on_log(f"下载输入{label}：来源={parsed.hostname}，目标={destination.name}")
         try:
-            with urlopen(Request(url, headers={"User-Agent": USER_AGENT}), timeout=60) as response, destination.open("wb") as output:
+            with urlopen(Request(source, headers={"User-Agent": USER_AGENT}), timeout=60) as response, destination.open("wb") as output:
                 remaining = MAX_FILE
-                downloaded = 0
+                downloaded_bytes = 0
                 next_report = 5 * 1024 * 1024
                 while chunk := response.read(min(1024 * 1024, remaining + 1)):
                     remaining -= len(chunk)
                     if remaining < 0:
                         raise ValueError("输入文件超过 50 MB")
                     output.write(chunk)
-                    downloaded += len(chunk)
-                    if on_log and downloaded >= next_report:
-                        on_log(f"输入图片下载进度：{downloaded / (1024 * 1024):.1f} MB")
+                    downloaded_bytes += len(chunk)
+                    if on_log and downloaded_bytes >= next_report:
+                        on_log(f"输入{label}下载进度：{downloaded_bytes / (1024 * 1024):.1f} MB")
                         next_report += 5 * 1024 * 1024
                 if on_log:
-                    on_log(f"输入图片下载完成：HTTP {response.status}，{downloaded} 字节，耗时 {time.monotonic() - started:.1f} 秒")
+                    on_log(f"输入{label}下载完成：HTTP {response.status}，{downloaded_bytes} 字节，耗时 {time.monotonic() - started:.1f} 秒")
         except HTTPError as error:
-            raise RuntimeError(f"输入图片下载失败：HTTP {error.code}，来源={parsed.hostname}") from None
+            raise RuntimeError(f"输入{label}下载失败：HTTP {error.code}，来源={parsed.hostname}") from None
         except (URLError, TimeoutError) as error:
-            raise RuntimeError(f"输入图片下载失败：来源={parsed.hostname}，错误={type(error).__name__}") from None
-        input_info["path"] = str(destination)
+            raise RuntimeError(f"输入{label}下载失败：来源={parsed.hostname}，错误={type(error).__name__}") from None
+        return str(destination)
+
+    if url:
+        if not isinstance(url, str):
+            raise ValueError("任务输入 URL 无效")
+        label = "视频" if video_urls and not image_urls else "图片"
+        input_info["url"] = url
+        input_info["path"] = download(url, "input", label)
+        downloaded[url] = input_info["path"]
     elif on_log and input_info.get("path"):
         path = Path(input_info["path"])
         on_log(f"使用本地输入：{path.name}，{path.stat().st_size} 字节")
+    for kind, urls, label in (("image", image_urls, "图片"), ("video", video_urls, "视频")):
+        if urls is None:
+            continue
+        paths = []
+        for index, source in enumerate(urls, start=1):
+            if source not in downloaded:
+                downloaded[source] = download(source, f"{kind}-{index}", label)
+            paths.append(downloaded[source])
+        input_info[f"{kind}Paths"] = paths
     task["input"] = input_info
     return task
 

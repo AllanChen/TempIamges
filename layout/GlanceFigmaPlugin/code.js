@@ -1997,6 +1997,134 @@ function widgetPageImageTextInput(x, y, imageHash) {
   return screen;
 }
 
+const WIDGET_MULTI_IMAGE_NAMES = [
+  'Widget Input / 04 / Multi Image + Text / Add Image',
+  'Widget Input / 04 / Multi Image + Text / Four Images'
+];
+
+function widgetMultiImageTile(parent, index, x, imageHash) {
+  const names = ['portrait.jpg', 'garden.jpg', 'fabric.png', 'window.jpg'];
+  const sizes = ['6.8 MB', '4.2 MB', '2.1 MB', '3.4 MB'];
+  const palettes = [
+    ['#25323A', '#A47761', '#293B33'],
+    ['#172D30', '#6C927F', '#C0AD85'],
+    ['#322E31', '#A58776', '#524751'],
+    ['#1B2936', '#8A9C9D', '#CEB391']
+  ];
+  const tile = frame('Image ' + (index + 1) + ' / ' + names[index], x, 146,
+                     238, 296, '#101115', 10);
+  tile.strokes = [fill(COLORS.line)];
+  tile.strokeWeight = 1;
+  parent.appendChild(tile);
+  simpleWidgetArt(tile, 'Image Preview', 8, 8, 222, 224,
+                  index === 0 ? imageHash : null, palettes[index]);
+  if (index === 0) {
+    const base = frame('Base Image Badge', 18, 18, 56, 24, '#241C19', 6);
+    base.strokes = [fill(COLORS.accent, .65)];
+    base.strokeWeight = 1;
+    tile.appendChild(base);
+    text('Base Label', base, 'BASE', 0, 5, 10, COLORS.accent,
+         'semibold', 56, 'CENTER');
+  }
+  const remove = frame('Remove Image ' + (index + 1), 194, 16, 28, 28,
+                       '#17181D', 7);
+  remove.strokes = [fill(COLORS.line)];
+  remove.strokeWeight = 1;
+  tile.appendChild(remove);
+  const close = figma.createNodeFromSvg(ICONS.close.replaceAll('CURRENT', COLORS.text));
+  close.name = 'Remove Icon';
+  close.resize(16, 16);
+  close.x = 6;
+  close.y = 6;
+  remove.appendChild(close);
+  text('Filename', tile, names[index], 12, 245, 12, COLORS.text,
+       'medium', 214);
+  text('File Size', tile, sizes[index], 12, 269, 11, COLORS.muted);
+  return tile;
+}
+
+function widgetMultiImageAddTile(parent) {
+  const tile = frame('Add Image / fourth slot', 794, 146, 238, 296,
+                     '#111216', 10);
+  tile.strokes = [fill(COLORS.accent, .52)];
+  tile.strokeWeight = 1.5;
+  tile.dashPattern = [7, 5];
+  parent.appendChild(tile);
+  const circle = frame('Add Icon Circle', 92, 86, 54, 54, COLORS.accentSoft, 27);
+  circle.strokes = [fill(COLORS.accent, .45)];
+  circle.strokeWeight = 1;
+  tile.appendChild(circle);
+  rect('Plus / horizontal', circle, 17, 26, 20, 2, COLORS.accent, 1);
+  rect('Plus / vertical', circle, 26, 17, 2, 20, COLORS.accent, 1);
+  text('Add Image Label', tile, 'Add image', 0, 161, 14,
+       COLORS.text, 'semibold', 238, 'CENTER');
+  text('Add Image Hint', tile, 'Drop or browse · 1 slot left', 0, 188, 11,
+       COLORS.secondary, 'regular', 238, 'CENTER');
+  return tile;
+}
+
+function widgetPageMultiImageInput(name, x, imageHash, count) {
+  const full = count === 4;
+  const { screen, root, body } = widgetPageShell(name, x, 0,
+    'Input  ·  Up to 4 images + text',
+    full ? 'Four images selected · maximum reached' : 'Add one more image or run with three');
+  const card = widgetPagePanel(body, 'Images and prompt',
+    'Use up to four images. The first image is the base; drag cards to change their order.',
+    244, 1066);
+  text('Images Label', card, 'IMAGES', 32, 115, 11,
+       COLORS.secondary, 'semibold');
+  text('Image Count', card, count + ' / 4', 956, 112, 13,
+       full ? COLORS.accent : COLORS.text, 'semibold', 76, 'RIGHT');
+  for (let index = 0; index < count; index++) {
+    widgetMultiImageTile(card, index, 32 + index * 254, imageHash);
+  }
+  if (!full) widgetMultiImageAddTile(card);
+  widgetPromptField(card, 32, 474, 1002, 134,
+    'Combine the portrait, garden and fabric references into a warm editorial scene. Keep the face natural and use the fourth image only if needed.');
+  text('Prompt Help', card,
+       'Describe how the images should work together. Each image keeps its place in the order above.',
+       32, 647, 11, COLORS.muted, 'regular', 900);
+  if (full) {
+    text('Limit Note', card, '4 images maximum · remove one to add another',
+         32, 687, 12, COLORS.secondary);
+  } else {
+    text('Limit Note', card, '1 slot available', 32, 687, 12, COLORS.secondary);
+  }
+  simpleWidgetAction(card, 'Run Widget', 828, 671, 206, true);
+  createStatusbar(root, 'Input  ·  multi-image + text',
+                  full ? '4 of 4 images selected' : '3 of 4 images selected');
+  return screen;
+}
+
+async function generateWidgetMultiImageInput(bytes) {
+  await loadFonts();
+  await createStyles();
+  const page = figma.currentPage;
+  const present = WIDGET_MULTI_IMAGE_NAMES.map(name =>
+    page.children.find(node => node.name === name));
+  if (present.every(Boolean)) {
+    page.selection = present;
+    figma.viewport.scrollAndZoomIntoView(present);
+    figma.ui.postMessage({ message: 'The multi-image Widget input study already exists. Showing both editable states.' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of page.children) maxX = Math.max(maxX, child.x + child.width);
+  const startX = present[0] ? present[0].x
+    : present[1] ? present[1].x - 1750 : maxX + 196;
+  const imageHash = bytes && bytes.length
+    ? figma.createImage(new Uint8Array(bytes)).hash : null;
+  if (!present[0]) widgetPageMultiImageInput(WIDGET_MULTI_IMAGE_NAMES[0],
+                                               startX, imageHash, 3);
+  if (!present[1]) widgetPageMultiImageInput(WIDGET_MULTI_IMAGE_NAMES[1],
+                                               startX + 1750, imageHash, 4);
+  const screens = WIDGET_MULTI_IMAGE_NAMES.map(name =>
+    page.children.find(node => node.name === name));
+  page.selection = screens;
+  figma.viewport.scrollAndZoomIntoView(screens);
+  figma.ui.postMessage({ message: 'Created the 3/4 and 4/4 multi-image + prompt Widget input states.' });
+}
+
 function widgetPageImageMaskInput(x, y, imageHash) {
   const { screen, root, body } = widgetPageShell(WIDGET_PAGE_NAMES[1], x, y,
     'Input  ·  Image + text + mask', 'The mask selects the area to change');
@@ -3809,6 +3937,16 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Widget flow generation failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Widget flow generation failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-widget-multi-image-input') {
+    try {
+      await generateWidgetMultiImageInput(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Multi-image Widget input generation failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Multi-image Widget input generation failed', { error: true });
     }
   }
   if (message.type === 'generate-widget-oss-result') {

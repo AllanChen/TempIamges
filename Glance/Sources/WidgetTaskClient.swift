@@ -64,30 +64,67 @@ final class WidgetTaskClient {
     }
 
     func run(widgetID: String, commandID: String, mediaURL: URL,
+             mediaKind: MediaInfo.Kind,
+             input: WidgetTaskInput? = nil,
              progress: @escaping (WidgetTaskPhase, Int) -> Void,
              submitted: @escaping (String) -> Void,
              completion: @escaping (Result<URL, Error>) -> Void) {
+        let mediaURLs = input?.mediaURLs ?? [mediaURL]
+        guard (1...4).contains(mediaURLs.count) else {
+            completion(.failure(WidgetTaskInputError.invalidImageCount))
+            return
+        }
         progress(.uploading, 0)
         fetchCountry { [weak self] country in
             guard let self else { return }
             self.fetchUploadConfig { config in
-                self.uploadIfNeeded(mediaURL, country: country, config: config) { upload in
+                self.uploadMedia(mediaURLs, country: country, config: config) { upload in
                     switch upload {
                     case .failure(let error): completion(.failure(error))
-                    case .success(let url):
-                        progress(.submitting, 0)
-                        self.submit(widgetID: widgetID, commandID: commandID, mediaURL: url, location: country) { submission in
-                            switch submission {
+                    case .success(let urls):
+                        let submitTask: (String?) -> Void = { mask in
+                            progress(.submitting, 0)
+                            self.submit(widgetID: widgetID, commandID: commandID,
+                                        mediaURLs: urls, prompt: input?.prompt,
+                                        maskURL: mask,
+                                        usesMultipleImages: input?.usesMultipleImages == true,
+                                        usesMultipleVideos: input?.usesMultipleVideos == true,
+                                        mediaType: mediaKind == .video ? "video" : "image",
+                                        location: country) { submission in
+                                switch submission {
+                                case .failure(let error): completion(.failure(error))
+                                case .success(let taskID):
+                                    submitted(taskID); progress(.processing, 0)
+                                    self.poll(taskID: taskID, started: Date(), progress: progress,
+                                              completion: completion)
+                                }
+                            }
+                        }
+                        guard let maskURL = input?.maskURL else { submitTask(nil); return }
+                        self.uploadIfNeeded(maskURL, country: country, config: config) { mask in
+                            switch mask {
                             case .failure(let error): completion(.failure(error))
-                            case .success(let taskID):
-                                submitted(taskID); progress(.processing, 0)
-                                self.poll(taskID: taskID, started: Date(), progress: progress, completion: completion)
+                            case .success(let url): submitTask(url)
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    private func uploadMedia(_ urls: [URL], country: String, config: UploadConfig,
+                             completion: @escaping (Result<[String], Error>) -> Void) {
+        func next(_ index: Int, _ uploaded: [String]) {
+            guard index < urls.count else { completion(.success(uploaded)); return }
+            uploadIfNeeded(urls[index], country: country, config: config) { result in
+                switch result {
+                case .failure(let error): completion(.failure(error))
+                case .success(let url): next(index + 1, uploaded + [url])
+                }
+            }
+        }
+        next(0, [])
     }
 
     func resume(taskID: String, progress: @escaping (WidgetTaskPhase, Int) -> Void,
@@ -349,14 +386,36 @@ final class WidgetTaskClient {
         }.resume()
     }
 
-    private func submit(widgetID: String, commandID: String, mediaURL: String, location: String,
+    private func submit(widgetID: String, commandID: String, mediaURLs: [String],
+                        prompt: String?, maskURL: String?, usesMultipleImages: Bool,
+                        usesMultipleVideos: Bool, mediaType: String,
+                        location: String,
                         completion: @escaping (Result<String, Error>) -> Void) {
+        guard let primaryURL = mediaURLs.first else {
+            completion(.failure(WidgetTaskInputError.invalidImageCount))
+            return
+        }
         var request = authorizedRequest(apiBase.appendingPathComponent("tasks")); request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var taskParams: [String: Any] = [
+            "url": primaryURL,
+            "prompt": prompt ?? "",
+            "mask": maskURL.map { $0 as Any } ?? NSNull(),
+            "location": location
+        ]
+        var taskInput: [String: Any] = ["url": primaryURL, "type": mediaType]
+        if usesMultipleVideos {
+            taskParams["videos"] = mediaURLs
+            taskInput["videos"] = mediaURLs
+        } else if usesMultipleImages || mediaURLs.count > 1 {
+            taskParams["images"] = mediaURLs
+            taskInput["images"] = mediaURLs
+        }
         request.httpBody = try? JSONSerialization.data(withJSONObject: [
             "widgetID": widgetID,
             "commandID": commandID,
-            "taskParams": ["url": mediaURL, "prompt": "", "mask": NSNull(), "location": location]
+            "input": taskInput,
+            "taskParams": taskParams
         ])
         apiDataTask(with: request) { data, response, error in
             do {
@@ -467,6 +526,14 @@ final class WidgetTaskClient {
         let error: String?
     }
     private struct TaskArtifact: Codable { let type: String?; let text: String?; let url: String? }
+}
+
+private enum WidgetTaskInputError: LocalizedError {
+    case invalidImageCount
+
+    var errorDescription: String? {
+        "A Widget task needs between one and four media inputs.".localized
+    }
 }
 
 private struct WidgetTaskExecutionError: LocalizedError {

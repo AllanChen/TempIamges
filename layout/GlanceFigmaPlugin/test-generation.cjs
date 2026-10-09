@@ -91,6 +91,8 @@ assert.ok(uiSource.indexOf('<button id="generate-widget-task-running-study"') < 
   'Widget task running study action must be visible near the top of the plugin');
 assert.ok(uiSource.indexOf('<button id="generate-widget-text-result-window"') < uiSource.indexOf('<label for="reference">'),
   'Widget text result side-window action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-widget-multi-image-input"') < uiSource.indexOf('<label for="reference">'),
+  'Multi-image Widget input action must be visible near the top of the plugin');
 assert.ok(uiSource.indexOf('<button id="generate-home-folder-scroll-study"') < uiSource.indexOf('<label for="reference">'),
   'Home folder scroll study action must be visible near the top of the plugin');
 vm.runInNewContext(source, { figma, __html__: '' }, { filename: 'code.js' });
@@ -122,6 +124,30 @@ const names = [
   assert.equal(badge.fills[0].color.r, 0x8F / 255);
   assert.ok(badgeStudy.findOne(child => child.name === 'Widget Result Thumbnail / 2x detail'));
   badgeStudy.remove();
+
+  await figma.ui.onmessage({ type: 'generate-widget-multi-image-input', bytes: [1, 2, 3] });
+  const multiAdd = page.children.find(child => child.name === 'Widget Input / 04 / Multi Image + Text / Add Image');
+  const multiFull = page.children.find(child => child.name === 'Widget Input / 04 / Multi Image + Text / Four Images');
+  assert.ok(multiAdd && multiFull, 'both multi-image input states must be created');
+  assert.equal(multiAdd.width, 1554);
+  assert.equal(multiFull.width, 1554);
+  assert.equal(multiAdd.findOne(child => child.name === 'Image Count').characters, '3 / 4');
+  assert.equal(multiFull.findOne(child => child.name === 'Image Count').characters, '4 / 4');
+  assert.ok(multiAdd.findOne(child => child.name === 'Add Image / fourth slot'));
+  assert.equal(multiFull.findOne(child => child.name === 'Add Image / fourth slot'), null,
+    'the add control disappears when four images are selected');
+  assert.equal(multiAdd.findAll(child => child.name.startsWith('Remove Image ')).length, 3);
+  assert.equal(multiFull.findAll(child => child.name.startsWith('Remove Image ')).length, 4);
+  assert.ok(multiAdd.findOne(child => child.name === 'Prompt Field'));
+  assert.ok(multiFull.findOne(child => child.name === 'Run Widget Action'));
+  multiAdd.findOne(child => child.name === 'Prompt Text').characters = 'User-edited prompt';
+  const multiCount = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-widget-multi-image-input', bytes: null });
+  assert.equal(page.children.length, multiCount, 'rerun must not duplicate multi-image frames');
+  assert.equal(multiAdd.findOne(child => child.name === 'Prompt Text').characters, 'User-edited prompt',
+    'rerun must preserve edited prompt text');
+  multiAdd.remove();
+  multiFull.remove();
 
   await figma.ui.onmessage({ type: 'generate-widget-task-running-study', bytes: [1, 2, 3] });
   const focusedRunning = page.children.find(child => child.name === 'Image Inspect / Widget Task Running / Focused Source');

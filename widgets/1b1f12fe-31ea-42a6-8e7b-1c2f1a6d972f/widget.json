@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f",
+  "version": "0.1.2",
+  "name": "图片去水印",
+  "summary": "图片去水印",
+  "author": "Glance",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "去水印",
+      "description": "Process an input.",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f.run",
+      "requiresUpload": true,
+      "parameterSchema": {}
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "The selected media is uploaded to Glance for processing."
+  },
+  "minimumGlanceVersion": "2.0.0"
+}

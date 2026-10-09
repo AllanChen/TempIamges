@@ -177,6 +177,15 @@ The inputs form one row and the outputs form another. The existing plain image
 and video input flows and plain image result flow remain the reference for
 those cases.
 
+For the multi-image input study, click **Generate Multi-Image Widget Input (4 Max)**
+in Figma Design Mode. It adds two editable 1554 × 1012 frames: `Widget Input / 04 /
+Multi Image + Text / Add Image` shows three selected images and a fourth add slot;
+`Widget Input / 04 / Multi Image + Text / Four Images` shows the four-image limit.
+Both include the prompt field, image order, individual remove controls and the
+Run Widget action. The optional Reference image fills the first image preview.
+Running the action again selects the existing frames without replacing edits.
+This is a design study; the Glance client is unchanged.
+
 The older one-page overview, five-screen study, and eight-page draft are hidden and archived,
 preserving any edits. Running the button again selects the first input page
 without duplicating the others. These are design review pages; the Glance

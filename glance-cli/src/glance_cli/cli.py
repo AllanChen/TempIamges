@@ -59,6 +59,10 @@ def validate(manifest: dict, code_path: Path | None = None) -> None:
             raise ValueError(f"Command {command.get('id')} 的 requiresUpload 和 parameterSchema 无效")
         if any(kind not in ("text", "image", "video", "audio") for kind in command["outputs"]):
             raise ValueError(f"Command {command.get('id')} 的输出类型无效")
+        if "showResultURL" in command and not isinstance(command["showResultURL"], bool):
+            raise ValueError(f"Command {command.get('id')} 的 showResultURL 必须是布尔值")
+        if command.get("showResultURL") and "image" not in command["outputs"]:
+            raise ValueError(f"Command {command.get('id')} 只有图片输出才能显示结果 URL")
     if code_path and not (code_path / "main.py").is_file():
         raise ValueError(f"找不到 {code_path / 'main.py'}")
 

@@ -39,7 +39,8 @@
 | `description` | 是 | 用户在选择功能时看到的行为说明 |
 | `inputTypes` | 是 | 当前可用：`image`、`video` |
 | `inputMimeTypes` | 是 | 上传接口接受的具体 MIME 类型 |
-| `outputs` | 是 | 当前通常为 `["image"]` 或 `["video"]` |
+| `outputs` | 是 | 输出类型，如 `["image"]`、`["video"]`、`["text"]` 或 `["audio"]` |
+| `showResultURL` | 否 | 图片输出是否显示复制结果 URL 按钮；默认 `false` |
 | `taskType` | 是 | 后端任务路由类型，如 `image.remove-background.v1` |
 | `requiresUpload` | 是 | 云端任务通常为 `true` |
 | `parameterSchema` | 是 | 可参数化选项；没有时使用 `{}` |
@@ -55,6 +56,17 @@
   "image/heif"
 ]
 ```
+
+### 图片结果 URL 按钮
+
+需要让用户复制结果图片地址时，在对应 command 中配置：
+
+```json
+"outputs": ["image"],
+"showResultURL": true
+```
+
+`showResultURL` 仅接受布尔值；设为 `true` 时，`outputs` 必须包含 `image`。Glance 在图片任务完成且结果含 HTTP(S) URL 时，在主图与任务中心显示复制按钮。Worker 可返回 `{"outputs":[{"type":"image","url":"https://example.com/result.png"}]}`。若返回本地文件 `path`，Service 上传后提供的 URL 可能带有效期，适合长期分享的 Widget 应返回稳定托管的 URL。后台 Widget 可在输出类型旁勾选“显示复制 URL 按钮”；开发者修改已发布 Manifest 时需提交新版本，用户更新安装后生效。
 
 ## 4. 隐私说明
 

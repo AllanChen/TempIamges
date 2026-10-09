@@ -30,6 +30,7 @@
   <button id="generate-widget-oss-result" class="generate-screens featured">Refine OSS Result Page</button>
   <button id="generate-widget-task-running-study" class="generate-screens featured">Generate Widget Task Running Study</button>
   <button id="generate-widget-text-result-window" class="generate-screens featured">Generate Widget Text Result Side Window</button>
+  <button id="generate-widget-multi-image-input" class="generate-screens featured">Generate Multi-Image Widget Input (4 Max)</button>
   <button id="generate-widget-flow" class="generate-screens featured">Generate Revised Widget Pages (7 Screens)</button>
   <button id="generate-result-badge-study" class="generate-screens featured">Generate Widget Result Badge Study</button>
   <label for="reference">Reference image</label>
@@ -128,6 +129,12 @@
       status.textContent = 'Building seven revised Widget pages...';
       const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
       parent.postMessage({ pluginMessage: { type: 'generate-widget-flow', bytes } }, '*');
+    };
+    document.getElementById('generate-widget-multi-image-input').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the 3/4 and 4/4 multi-image Widget input states...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-multi-image-input', bytes } }, '*');
     };
     document.getElementById('generate-widget-oss-result').onclick = async () => {
       const file = document.getElementById('reference').files[0];

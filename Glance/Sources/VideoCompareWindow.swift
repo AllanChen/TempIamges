@@ -122,6 +122,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     var onOpenImage: ((MediaInfo) -> Void)?
     /// Themed right-click menu (mute controls), rebuilt per presentation.
     private var actionsPanel: ActionMenuPanel?
+    private var widgetInputPanel: WidgetVideoInputPanel?
 
     init?(infos: [MediaInfo], focusedIndex: Int = 0, startsInCompare: Bool = false) {
         let videos = infos.filter { $0.kind == .video }
@@ -941,7 +942,26 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private func runWidget(widget: WidgetManifest, command: WidgetCommand) {
         guard let index = activeIndices[safe: mode == .compare ? activeCompareSlot : 0],
               infos.indices.contains(index) else { return }
-        _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: infos[index])
+        let info = infos[index]
+        let capabilities = command.inputCapabilities
+        guard capabilities.needsVideoDialog else {
+            _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info)
+            return
+        }
+        widgetInputPanel?.close()
+        let panel = WidgetVideoInputPanel(widgetName: widget.name, sourceURL: info.url,
+                                          capabilities: capabilities)
+        panel.onSubmit = { input in
+            guard let first = input.mediaURLs.first else { return }
+            let media = MediaInfo(url: first, isLocal: first.isFileURL, kind: .video)
+            _ = WidgetTaskManager.shared.start(widget: widget, command: command,
+                                               media: media, input: input)
+        }
+        panel.onDismiss = { [weak self, weak panel] in
+            if self?.widgetInputPanel === panel { self?.widgetInputPanel = nil }
+        }
+        widgetInputPanel = panel
+        panel.present(over: self)
     }
 
     private func handleDroppedVideo(url: URL, at point: NSPoint) {
@@ -1017,6 +1037,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     }
     private func removeObservers() { if let observer = timeObserver, let player = viewports.first?.player { player.removeTimeObserver(observer) }; timeObserver = nil; if let observer = endObserver { NotificationCenter.default.removeObserver(observer) }; endObserver = nil }
     func windowWillClose(_ notification: Notification) {
+        widgetInputPanel?.close(); widgetInputPanel = nil
         pausePlayback(); removeObservers(); actionsPanel?.dismissChain(); actionsPanel = nil
         infoVisible = false; generation = UUID()
         frameCaptureGeneration = UUID()

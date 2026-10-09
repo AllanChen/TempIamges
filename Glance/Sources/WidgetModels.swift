@@ -9,9 +9,47 @@ struct WidgetCommand: Codable, Hashable {
     let inputTypes: [String]
     let inputMimeTypes: [String]
     let outputs: [String]
+    let showResultURL: Bool?
     let taskType: String
     let requiresUpload: Bool
     let parameterSchema: [String: JSONValue]
+
+    var inputCapabilities: WidgetInputCapabilities {
+        let properties: [String: JSONValue]
+        if case .object(let value)? = parameterSchema["properties"] {
+            properties = value
+        } else {
+            properties = parameterSchema
+        }
+        let acceptsPrompt = properties["prompt"] != nil ||
+            inputTypes.contains("text") || inputTypes.contains("txt") ||
+            inputTypes.contains("prompt")
+        let acceptsMask = properties["mask"] != nil || inputTypes.contains("mask")
+        let imageList = properties["images"] ?? properties["imageUrls"] ??
+            properties["multipleImages"]
+        let acceptsMultipleImages = imageList != nil ||
+            inputTypes.contains("multiple_images") || inputTypes.contains("multi_image") ||
+            inputTypes.contains("multiple-images") || inputTypes.contains("multi-image")
+        let videoList = properties["videos"] ?? properties["videoUrls"] ??
+            properties["multipleVideos"]
+        let acceptsMultipleVideos = videoList != nil ||
+            inputTypes.contains("multiple_videos") || inputTypes.contains("multi_video") ||
+            inputTypes.contains("multiple-videos") || inputTypes.contains("multi-video")
+        return WidgetInputCapabilities(acceptsPrompt: acceptsPrompt,
+                                       acceptsMask: acceptsMask,
+                                       maxImages: acceptsMultipleImages ? 4 : 1,
+                                       maxVideos: acceptsMultipleVideos ? 4 : 1)
+    }
+}
+
+struct WidgetInputCapabilities {
+    let acceptsPrompt: Bool
+    let acceptsMask: Bool
+    let maxImages: Int
+    let maxVideos: Int
+
+    var needsImageDialog: Bool { acceptsPrompt || acceptsMask || maxImages > 1 }
+    var needsVideoDialog: Bool { acceptsPrompt || maxVideos > 1 }
 }
 
 enum JSONValue: Codable, Hashable {
@@ -72,6 +110,9 @@ struct WidgetManifest: Codable, Hashable {
             if !commandIDs.insert(command.id).inserted { issues.append("duplicate command id: \(command.id)") }
             if command.inputTypes.isEmpty { issues.append("command \(command.id) must declare an input type") }
             if command.outputs.isEmpty { issues.append("command \(command.id) must declare an output type") }
+            if command.showResultURL == true && !command.outputs.contains("image") {
+                issues.append("command \(command.id) can show a result URL only for image output")
+            }
             if command.taskType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("command \(command.id) must declare taskType") }
         }
         if privacy.notice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("privacy notice is required") }
@@ -128,7 +169,7 @@ final class WidgetRegistry {
         installed = cached.compactMap { manifest in
             let productionID = legacyToProduction[manifest.id] ?? manifest.id
             guard migratedIDs.insert(productionID).inserted else { return nil }
-            return Self.canonicalManifest(manifest, id: productionID)
+            return Self.migrateResultURLPreference(Self.canonicalManifest(manifest, id: productionID))
         }
         if installed.count != cached.count || installed != cached, let data = try? encoder.encode(installed) {
             UserDefaults.standard.set(data, forKey: storageKey)
@@ -152,12 +193,36 @@ final class WidgetRegistry {
             WidgetCommand(id: definition.commandID, name: definition.name,
                           description: definition.description, inputTypes: command.inputTypes,
                           inputMimeTypes: command.inputMimeTypes, outputs: command.outputs,
+                          showResultURL: command.showResultURL,
                           taskType: definition.taskType, requiresUpload: command.requiresUpload,
                           parameterSchema: command.parameterSchema)
         }
         return WidgetManifest(schemaVersion: manifest.schemaVersion, id: id,
                               version: manifest.version, name: definition.name,
                               summary: definition.summary, author: manifest.author,
+                              iconURL: manifest.iconURL, official: manifest.official,
+                              execution: manifest.execution, commands: commands,
+                              privacy: manifest.privacy, minimumGlanceVersion: manifest.minimumGlanceVersion,
+                              updatedAt: manifest.updatedAt, signature: manifest.signature)
+    }
+
+    private static func migrateResultURLPreference(_ manifest: WidgetManifest) -> WidgetManifest {
+        // Existing image-hosting installs predate the explicit output preference.
+        guard manifest.id == "55e64c7e-f079-448a-b5bd-7315b2589019",
+              manifest.commands.contains(where: { $0.showResultURL == nil && $0.outputs.contains("image") }) else {
+            return manifest
+        }
+        let commands = manifest.commands.map { command in
+            WidgetCommand(id: command.id, name: command.name,
+                          description: command.description, inputTypes: command.inputTypes,
+                          inputMimeTypes: command.inputMimeTypes, outputs: command.outputs,
+                          showResultURL: command.showResultURL ?? command.outputs.contains("image"),
+                          taskType: command.taskType, requiresUpload: command.requiresUpload,
+                          parameterSchema: command.parameterSchema)
+        }
+        return WidgetManifest(schemaVersion: manifest.schemaVersion, id: manifest.id,
+                              version: manifest.version, name: manifest.name,
+                              summary: manifest.summary, author: manifest.author,
                               iconURL: manifest.iconURL, official: manifest.official,
                               execution: manifest.execution, commands: commands,
                               privacy: manifest.privacy, minimumGlanceVersion: manifest.minimumGlanceVersion,
@@ -189,6 +254,7 @@ final class WidgetCatalogClient {
     func fetch(widgetID: String, completion: @escaping (Result<WidgetManifest, Error>) -> Void) {
         let url = baseURL.appendingPathComponent(widgetID)
         var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 8
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
@@ -209,6 +275,7 @@ final class WidgetCatalogClient {
     /// deferred to the per-widget install path.
     func fetchAll(completion: @escaping (Result<[WidgetManifest], Error>) -> Void) {
         var request = URLRequest(url: baseURL)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 8
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error { DispatchQueue.main.async { completion(.failure(error)) }; return }

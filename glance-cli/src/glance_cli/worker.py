@@ -16,6 +16,29 @@ MAX_CONCURRENT = 4
 PULL_WAIT = 5  # Short long-poll keeps registry edits visible within five seconds.
 
 
+def _sync_widget_status(db, widget_id: str) -> None:
+    registered = [row for row in rows(db) if row["widget_id"] == widget_id
+                  and row["server_status"] != "removed"]
+    try:
+        detail = request("GET", f"/api/v2/developer/widgets/{widget_id}")
+    except APIError as error:
+        if error.status == 404:
+            for row in registered:
+                update(db, widget_id, row["version"], server_status="removed", enabled=0)
+            logger.warning("[%s] Widget 已删除或无权访问；已停止本机拉取", widget_id)
+            return
+        raise
+    versions = {version["version"]: version["status"] for version in detail.get("versions", [])}
+    for row in registered:
+        version = row["version"]
+        if version not in versions:
+            update(db, widget_id, version, server_status="removed", enabled=0)
+            logger.warning("[%s] v%s 已不在服务器；已停止本机拉取", widget_id, version)
+            continue
+        state = detail["status"] if detail["status"] in ("suspended", "archived") else versions[version]
+        update(db, widget_id, version, server_status=state)
+
+
 def _run_task(row: dict, task: dict) -> None:
     task_id = task["taskId"]
     claim = task["claimToken"]
@@ -83,12 +106,10 @@ def run_worker() -> None:
         with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
             while True:
                 if time.monotonic() - last_sync > 60:
-                    for widget_id in {row["widget_id"] for row in rows(db) if row["server_status"] != "local"}:
+                    for widget_id in {row["widget_id"] for row in rows(db)
+                                      if row["server_status"] not in ("local", "removed")}:
                         try:
-                            detail = request("GET", f"/api/v2/developer/widgets/{widget_id}")
-                            for version in detail.get("versions", []):
-                                state = detail["status"] if detail["status"] in ("suspended", "archived") else version["status"]
-                                update(db, widget_id, version["version"], server_status=state)
+                            _sync_widget_status(db, widget_id)
                         except APIError as error:
                             logger.warning("[%s] 状态同步失败：%s", widget_id, error)
                     last_sync = time.monotonic()
