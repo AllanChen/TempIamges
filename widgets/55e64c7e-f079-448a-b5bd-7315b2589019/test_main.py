@@ -10,6 +10,9 @@ import main as widget
 
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"sample-image-data"
+MP4 = b"\x00\x00\x00\x18ftypisom" + b"sample-video-data"
+MOV = b"\x00\x00\x00\x18ftypqt  " + b"sample-video-data"
+WEBM = b"\x1a\x45\xdf\xa3" + b"sample-video-data"
 RESULT = {"status_code": 200, "image": {"url": "https://iili.io/example.png"}}
 
 
@@ -92,6 +95,43 @@ class WidgetTest(unittest.TestCase):
             self.assertEqual(result["outputs"][0]["type"], "image")
             self.assertNotIn("returnURL", result["outputs"][0])
         upload.assert_called_once()
+
+    @patch.dict(os.environ, {"FREEIMAGEKEY": "test-key"})
+    @patch("main.upload_image")
+    def test_video_inputs_keep_video_type_and_use_r2_even_in_china(self, upload):
+        for extension, data in (("mp4", MP4), ("mov", MOV), ("webm", WEBM)):
+            with self.subTest(extension=extension), tempfile.TemporaryDirectory() as directory, \
+                 patch.dict(os.environ, {"GLANCE_TASK_OUTPUT_DIR": directory}):
+                source = Path(directory) / f"source.{extension}"
+                source.write_bytes(data)
+                result = widget.main({"input": {"type": "video", "path": str(source)},
+                                      "parameters": {"location": "China"}})
+                output = result["outputs"][0]
+                self.assertEqual(output["type"], "video")
+                self.assertEqual(Path(output["path"]).suffix, f".{extension}")
+                self.assertEqual(Path(output["path"]).read_bytes(), data)
+        upload.assert_not_called()
+
+    @patch("main.urlopen")
+    def test_existing_r2_video_url_becomes_a_new_task_asset(self, open_url):
+        url = "https://pub-example.r2.dev/clip.webm"
+        open_url.return_value = io.BytesIO(WEBM)
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+                os.environ, {"GLANCE_TASK_OUTPUT_DIR": directory}):
+            result = widget.main({"input": {"type": "video", "url": url},
+                                  "parameters": {"location": "China"}})
+            output = result["outputs"][0]
+            self.assertEqual(output["type"], "video")
+            self.assertEqual(Path(output["path"]).read_bytes(), WEBM)
+        self.assertEqual(open_url.call_args.args[0].full_url, url)
+
+    def test_video_input_rejects_image_bytes(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+                os.environ, {"GLANCE_TASK_OUTPUT_DIR": directory}):
+            source = Path(directory) / "wrong.mp4"
+            source.write_bytes(PNG)
+            with self.assertRaisesRegex(ValueError, "MP4、MOV 和 WebM"):
+                widget.main({"input": {"type": "video", "path": str(source)}})
 
     def test_private_url_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "内网地址"):

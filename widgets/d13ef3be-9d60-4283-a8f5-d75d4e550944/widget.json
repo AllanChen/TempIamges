@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "d13ef3be-9d60-4283-a8f5-d75d4e550944",
+  "version": "0.1.0",
+  "name": "扩图",
+  "summary": "根据输入图片扩展画面。",
+  "author": "Allan",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "扩图",
+      "description": "输入一张图片，扩展画面并返回一张新图片。",
+      "inputTypes": ["image"],
+      "inputMimeTypes": ["image/png", "image/jpeg", "image/webp"],
+      "outputs": ["image"],
+      "taskType": "widget.d13ef3be-9d60-4283-a8f5-d75d4e550944.run",
+      "requiresUpload": true,
+      "parameterSchema": {"type": "object", "properties": {}}
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "The selected image is uploaded to Glance and RunningHub for processing."
+  },
+  "minimumGlanceVersion": "2.0.0"
+}

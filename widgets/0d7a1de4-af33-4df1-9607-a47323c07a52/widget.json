@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "0d7a1de4-af33-4df1-9607-a47323c07a52",
+  "version": "0.1.1",
+  "name": "洗图2",
+  "summary": "洗图2",
+  "author": "Allan",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "洗图2",
+      "description": "输入一张图片，生成指定比例的新图片。",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.0d7a1de4-af33-4df1-9607-a47323c07a52.run",
+      "requiresUpload": true,
+      "parameterSchema": {
+        "type": "object",
+        "properties": {
+          "aspectRatio": {
+            "type": "string",
+            "enum": ["empty", "1:1", "2:3", "3:2", "4:5", "5:4", "4:3", "3:4", "16:9", "9:16", "21:9", "9:21", "2:1", "1:2", "3:1", "1:3"],
+            "default": "3:4"
+          }
+        }
+      }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "The selected image is uploaded to Glance and RunningHub for processing."
+  },
+  "minimumGlanceVersion": "2.0.0"
+}

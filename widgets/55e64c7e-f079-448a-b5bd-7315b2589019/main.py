@@ -1,4 +1,4 @@
-"""Route image URLs to Freeimage or Glance R2 according to task location."""
+"""Route images to Freeimage or R2, and videos to R2."""
 
 import argparse
 import ipaddress
@@ -15,7 +15,8 @@ import uuid
 
 
 UPLOAD_URL = "https://freeimage.host/api/1/upload"
-MAX_IMAGE_BYTES = 50 * 1024 * 1024
+MAX_MEDIA_BYTES = 50 * 1024 * 1024
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm"}
 
 
 def image_provider(url: str) -> str | None:
@@ -32,30 +33,30 @@ def image_provider(url: str) -> str | None:
 def image_url(value: str) -> str:
     parsed = urlparse(value)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise ValueError("需要有效的 HTTP 或 HTTPS 图片 URL")
+        raise ValueError("需要有效的 HTTP 或 HTTPS 媒体 URL")
     host = parsed.hostname.lower()
     if host == "localhost" or host.endswith(".localhost"):
-        raise ValueError("图片 URL 不能指向本机")
+        raise ValueError("媒体 URL 不能指向本机")
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
         pass
     else:
         if not address.is_global:
-            raise ValueError("图片 URL 不能指向内网地址")
+            raise ValueError("媒体 URL 不能指向内网地址")
     return value
 
 
 def read_image(stream) -> bytes:
     chunks = []
     size = 0
-    while chunk := stream.read(min(1024 * 1024, MAX_IMAGE_BYTES - size + 1)):
+    while chunk := stream.read(min(1024 * 1024, MAX_MEDIA_BYTES - size + 1)):
         size += len(chunk)
-        if size > MAX_IMAGE_BYTES:
-            raise ValueError("图片超过 50 MB")
+        if size > MAX_MEDIA_BYTES:
+            raise ValueError("媒体文件超过 50 MB")
         chunks.append(chunk)
     if not size:
-        raise ValueError("图片内容为空")
+        raise ValueError("媒体文件为空")
     return b"".join(chunks)
 
 
@@ -75,6 +76,19 @@ def detect_image(data: bytes) -> tuple[str, str]:
     raise ValueError("仅支持 PNG、JPEG、GIF、WebP、BMP 和 HEIC 图片")
 
 
+def detect_video(data: bytes) -> tuple[str, str]:
+    if data.startswith(b"\x1a\x45\xdf\xa3"):
+        return "video/webm", "webm"
+    if data[4:8] == b"ftyp":
+        brand = data[8:12]
+        if brand == b"qt  ":
+            return "video/quicktime", "mov"
+        if brand not in {b"heic", b"heix", b"hevc", b"heif", b"mif1", b"msf1",
+                         b"avif", b"avis", b"miaf", b"ma1a", b"ma1b"}:
+            return "video/mp4", "mp4"
+    raise ValueError("仅支持 MP4、MOV 和 WebM 视频")
+
+
 def compatible_image(data: bytes) -> tuple[bytes, str, str]:
     mime, extension = detect_image(data)
     if mime != "image/heic":
@@ -90,7 +104,7 @@ def compatible_image(data: bytes) -> tuple[bytes, str, str]:
         if process.returncode or not output.is_file():
             raise RuntimeError(f"HEIC 转换失败：{process.stderr.strip()}")
         converted = output.read_bytes()
-    if len(converted) > MAX_IMAGE_BYTES:
+    if len(converted) > MAX_MEDIA_BYTES:
         raise ValueError("转换后的图片超过 50 MB")
     return converted, "image/png", "png"
 
@@ -101,7 +115,7 @@ def download_image(url: str) -> bytes:
         with urlopen(request, timeout=60) as response:
             return read_image(response)
     except (HTTPError, URLError) as error:
-        raise RuntimeError(f"下载图片失败：{error}") from error
+        raise RuntimeError(f"下载媒体文件失败：{error}") from error
 
 
 def upload_image(key: str, data: bytes, mime: str, extension: str) -> str:
@@ -136,13 +150,13 @@ def upload_image(key: str, data: bytes, mime: str, extension: str) -> str:
     return uploaded_url
 
 
-def r2_output(data: bytes, extension: str) -> dict:
+def r2_output(data: bytes, extension: str, kind: str = "image") -> dict:
     output_dir = os.environ.get("GLANCE_TASK_OUTPUT_DIR")
     if not output_dir:
         raise RuntimeError("上传 R2 需要通过 glance worker 执行任务")
-    path = Path(output_dir) / f"uploaded-image.{extension}"
+    path = Path(output_dir) / f"uploaded-{kind}.{extension}"
     path.write_bytes(data)
-    return {"outputs": [{"type": "image", "path": str(path)}]}
+    return {"outputs": [{"type": kind, "path": str(path)}]}
 
 
 def main(task: dict | str) -> dict:
@@ -150,15 +164,23 @@ def main(task: dict | str) -> dict:
     if isinstance(task, str):
         task = {"input": {"url": task}, "parameters": {"location": "China"}}
     if not isinstance(task, dict):
-        raise ValueError("task 必须是对象或图片 URL")
+        raise ValueError("task 必须是对象或媒体 URL")
     input_info = task.get("input") or {}
     parameters = task.get("task_params") or task.get("parameters") or {}
     china = str(parameters.get("location") or task.get("location") or "").strip().upper() in {"CN", "CHINA"}
-    target = "freeimage" if china else "r2"
     url = parameters.get("url") or input_info.get("url")
-    if url and image_provider(url) == target:
-        return {"outputs": [{"type": "image", "url": url}]}
     local_path = input_info.get("path")
+    kind = input_info.get("type") or parameters.get("inputType")
+    if kind is None:
+        source_name = urlparse(url).path if isinstance(url, str) else str(local_path or "")
+        kind = "video" if Path(source_name).suffix.lower() in VIDEO_EXTENSIONS else "image"
+    if kind not in {"image", "video"}:
+        raise ValueError("输入类型必须是 image 或 video")
+    target = "freeimage" if china and kind == "image" else "r2"
+    # A video result must become its own task asset. Reusing the signed input
+    # URL would leave Copy URL pointing at an expiring upload link.
+    if kind == "image" and url and image_provider(url) == target:
+        return {"outputs": [{"type": kind, "url": url}]}
     if local_path and (not parameters.get("url") or parameters.get("url") == input_info.get("url")):
         with Path(local_path).open("rb") as source:
             data = read_image(source)
@@ -166,6 +188,9 @@ def main(task: dict | str) -> dict:
         data = download_image(url)
     else:
         raise ValueError("请提供 input.url、parameters.url 或 input.path")
+    if kind == "video":
+        _, extension = detect_video(data)
+        return r2_output(data, extension, kind="video")
     data, mime, extension = compatible_image(data)
     if china:
         key = os.environ.get("FREEIMAGEKEY", "").strip()
@@ -179,7 +204,7 @@ def main(task: dict | str) -> dict:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Upload an image URL to Freeimage")
-    parser.add_argument("url", help="需要上传的图片 URL")
+    parser = argparse.ArgumentParser(description="Upload an image or video URL to Freeimage or Glance R2")
+    parser.add_argument("url", help="需要上传的图片或视频 URL")
     arguments = parser.parse_args()
     print(json.dumps(main(arguments.url), ensure_ascii=False))

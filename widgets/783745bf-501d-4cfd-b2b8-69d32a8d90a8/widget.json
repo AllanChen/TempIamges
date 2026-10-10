@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "783745bf-501d-4cfd-b2b8-69d32a8d90a8",
+  "version": "0.1.0",
+  "name": "视频去水印",
+  "summary": "将较长视频分段去水印，并按原顺序合成为一个视频。",
+  "author": "Allan",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "视频去水印",
+      "description": "输入一个视频；每段最长 8 秒，经 RunningHub 去水印后按顺序合并。",
+      "inputTypes": ["video"],
+      "inputMimeTypes": ["video/mp4", "video/quicktime", "video/webm", "video/x-matroska"],
+      "outputs": ["video"],
+      "taskType": "widget.783745bf-501d-4cfd-b2b8-69d32a8d90a8.run",
+      "requiresUpload": true,
+      "parameterSchema": {"type": "object", "properties": {}}
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "所选视频将上传到 Glance，并按最长 8 秒分段上传至 RunningHub 去水印；结果会合并并上传回 Glance。"
+  },
+  "minimumGlanceVersion": "2.0.0"
+}

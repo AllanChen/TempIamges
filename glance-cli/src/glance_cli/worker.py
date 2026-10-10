@@ -8,12 +8,42 @@ from urllib.parse import urlparse
 
 from .api import APIError, request, upload_task_file
 from .registry import connect, eligible, rows, update, utc_now
+from .result_spool import discard as discard_results, load as load_results, save as save_results
 from .runtime import execute
 from .worker_logs import configure_worker_logging, logger
 
 
 MAX_CONCURRENT = 4
 PULL_WAIT = 5  # Short long-poll keeps registry edits visible within five seconds.
+DELIVERY_ATTEMPTS = 4
+
+
+class DeliveryDeferredError(RuntimeError):
+    """Keep the generated output so the next task claim can deliver it."""
+
+
+def _deliver(operation, label: str, task_log):
+    for attempt in range(1, DELIVERY_ATTEMPTS + 1):
+        try:
+            return operation()
+        except APIError as error:
+            status = error.status
+            if status is not None and 400 <= status < 500 and status not in (
+                401, 403, 404, 408, 409, 429,
+            ):
+                raise
+            if status in (401, 403, 404, 409):
+                raise DeliveryDeferredError(
+                    f"{label}无法使用当前任务凭证：{error}"
+                ) from error
+            if attempt == DELIVERY_ATTEMPTS:
+                raise DeliveryDeferredError(
+                    f"{label}连续 {attempt} 次失败：{error}"
+                ) from error
+            delay = min(2 ** attempt, 30)
+            task_log(f"{label}失败（{attempt}/{DELIVERY_ATTEMPTS}）：{error}；{delay} 秒后重试")
+            time.sleep(delay)
+    raise AssertionError("unreachable")
 
 
 def _sync_widget_status(db, widget_id: str) -> None:
@@ -44,7 +74,7 @@ def _run_task(row: dict, task: dict) -> None:
         logger.info("[%s] %s", task_id, message)
 
     def heartbeat() -> None:
-        while not stopped.wait(60):
+        while not stopped.wait(30):
             try:
                 request("POST", f"/api/v2/widget-tasks/{task_id}/heartbeat", {},
                         headers={"X-Task-Claim": claim})
@@ -54,27 +84,45 @@ def _run_task(row: dict, task: dict) -> None:
     thread = threading.Thread(target=heartbeat, daemon=True)
     thread.start()
     try:
-        with execute(Path(row["code_path"]), task, python_path=row["python_path"],
-                     on_log=task_log) as outputs:
-            artifacts = []
-            for index, output in enumerate(outputs, start=1):
-                if output["type"] == "text":
-                    task_log(f"结果 {index}/{len(outputs)}：文本，{len(output['text'].encode())} 字节")
-                    artifacts.append(output)
-                elif "url" in output:
-                    task_log(f"结果 {index}/{len(outputs)}：类型={output['type']}，远端来源={urlparse(output['url']).hostname}")
-                    artifacts.append({"type": output["type"], "url": output["url"]})
-                else:
-                    path = Path(output["path"])
-                    task_log(f"上传结果 {index}/{len(outputs)}：类型={output['type']}，文件={path.name}，大小={path.stat().st_size} 字节")
-                    uploaded = upload_task_file(task_id, path, claim_token=claim)
-                    task_log(f"结果上传完成：assetID={uploaded['assetID']}，类型={uploaded.get('type', output['type'])}")
-                    artifacts.append({"type": output["type"], "assetID": uploaded["assetID"]})
+        outputs = load_results(task_id)
+        if outputs is None:
+            with execute(Path(row["code_path"]), task, python_path=row["python_path"],
+                         on_log=task_log) as generated:
+                outputs = save_results(task_id, generated)
+            task_log(f"已在本机保存 {len(outputs)} 个结果，等待服务端确认")
+        else:
+            task_log(f"复用本机已生成的 {len(outputs)} 个结果，跳过重复生成")
+        artifacts = []
+        for index, output in enumerate(outputs, start=1):
+            if output["type"] == "text":
+                task_log(f"结果 {index}/{len(outputs)}：文本，{len(output['text'].encode())} 字节")
+                artifacts.append(output)
+            elif "url" in output:
+                task_log(f"结果 {index}/{len(outputs)}：类型={output['type']}，远端来源={urlparse(output['url']).hostname}")
+                artifacts.append({"type": output["type"], "url": output["url"]})
+            else:
+                path = Path(output["path"])
+                task_log(f"上传结果 {index}/{len(outputs)}：类型={output['type']}，文件={path.name}，大小={path.stat().st_size} 字节")
+                uploaded = _deliver(
+                    lambda: upload_task_file(task_id, path, claim_token=claim),
+                    f"结果 {index} 上传", task_log,
+                )
+                task_log(f"结果上传完成：assetID={uploaded['assetID']}，类型={uploaded.get('type', output['type'])}")
+                artifacts.append({"type": output["type"], "assetID": uploaded["assetID"]})
         task_log(f"回传任务结果：状态=succeeded，输出={len(artifacts)} 个")
-        response = request("POST", f"/api/v2/widget-tasks/{task_id}/result",
-                           {"status": "succeeded", "artifacts": artifacts}, headers={"X-Task-Claim": claim})
+        response = _deliver(
+            lambda: request("POST", f"/api/v2/widget-tasks/{task_id}/result",
+                            {"status": "succeeded", "artifacts": artifacts},
+                            headers={"X-Task-Claim": claim}),
+            "成功状态回报", task_log,
+        )
         task_log(f"服务端确认：状态={response.get('status', 'unknown')}，taskID={response.get('taskID', task_id)}")
+        discard_results(task_id)
         task_log(f"任务完成：输出={len(artifacts)} 个，总耗时={time.monotonic() - started:.1f} 秒")
+    except DeliveryDeferredError as error:
+        logger.warning("[%s] 结果仍保存在本机；等待服务器重新分配任务后继续上传：%s",
+                       task_id, error)
+        raise
     except Exception as error:
         try:
             request("POST", f"/api/v2/widget-tasks/{task_id}/result",

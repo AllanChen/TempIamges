@@ -93,15 +93,17 @@ PUT  /api/admin/v2/upload-settings
 
 `GET /api/admin/v2/widgets` 返回 D1 中的全部 Widget，每个 Widget 只返回当前线上版本；`GET /api/admin/v2/widget-versions` 返回待审核和历史版本。公开的 `GET /api/v2/widgets` 只返回正式 `published` 的当前版本，不泄露待审核或灰度版本。
 
-`PUT /api/admin/v2/widgets/:widget_id` 用于编辑 Widget。编辑沿用 URL 中的已有 Widget ID，并沿用已有命令 ID；请求的 manifest 无需填写这些 ID。版本号不变时更新当前 manifest；版本号变化时创建新版本并将其设为当前版本。`GET /api/admin/v2/widget-versions` 保留按版本查看全部历史提交的能力。已有 ID 不会因这次改动而变化。
+`PUT /api/admin/v2/widgets/:widget_id` 用于编辑 Widget，包括开发者发布的文字输出 Widget。编辑沿用 URL 中的已有 Widget ID，并沿用已有命令 ID；请求的 manifest 无需填写这些 ID。版本号不变时更新当前 manifest；版本号变化时创建新版本并将其设为当前版本。开发者 Widget 仍保持开发者归属，后台修改后由服务端重新签名；官方 Widget 保持官方归属。`GET /api/admin/v2/widget-versions` 保留按版本查看全部历史提交的能力。已有 ID 不会因这次改动而变化。
 
-后台表单支持单图、多图（最多 4 张）、单视频、多视频（最多 4 段），并可声明文字 `prompt`；单图还可声明 `mask`。多图和多视频分别写入 `commands[].parameterSchema.properties.images`、`videos`，文字和遮罩写入 `prompt`、`mask`。选中图片和视频表示两个可触发的媒体类型，不表示一次任务混合两类媒体。
+Widget 的展示名称以当前版本 Manifest 的 `name` 为准。开发者提交新版本时不会提前覆盖已发布名称；审核将新版本设为当前版本时，同步更新 `widgets` 表的名称、摘要、作者和图标。后台列表也从对应版本 Manifest 读取这些字段，避免列表旧标题与编辑表单不一致。
+
+后台表单支持单图、多图（最多 4 张）、单视频、多视频（最多 4 段），并可声明文字 `prompt`；单图还可声明 `mask`。多图和多视频分别写入 `commands[].parameterSchema.properties.images`、`videos`，文字和遮罩写入 `prompt`、`mask`。选中图片和视频表示两个可触发的媒体类型，不表示一次任务混合两类媒体。输出类型可同时选择多个；编辑时保留表单未展示的其他命令和参数字段。
 
 Widget Review 的「发送测试」弹窗读取**待审核版本**的 Manifest，可选择命令及媒体类型，并按 `images` / `videos` 的 `minItems`、`maxItems` 收集 1–4 个 HTTPS URL；仅在命令声明时显示 `prompt` 和 `mask`。提交时图片写入 `input.images`、视频写入 `input.videos`，首个媒体同时作为 `input.url`，文字和遮罩写入 `parameters`。服务端按同一版本的命令配置再次校验，避免测试任务缺少第二张图或将未声明的输入送给 Worker。线上版本的输入声明需先随 Widget 版本提交，改动本地 `widget.json` 不会改变审核弹窗。
 
-`DELETE /api/admin/v2/widgets/:widget_id` 删除非内置 Widget 的市场记录、版本和 Worker 绑定。存在排队或运行中任务时返回 `409`；历史任务、产物和审计记录保留。内置 Widget 不可删除。
+`DELETE /api/admin/v2/widgets/:widget_id` 删除任意 Widget（包括预置官方 Widget）的市场记录、版本和 Worker 绑定。存在排队或运行中任务时返回 `409`；历史任务、产物和审计记录保留。预置 Widget 只在首次初始化时写入数据库；管理员编辑或删除后不会被初始化流程覆盖或重新创建。
 
-Python CLI Worker 使用开发者会话批量领取属于自己或经 `widget_worker_grants` 显式授权的 Widget 任务，并在心跳、上传和回传时附带本次领取的 `X-Task-Claim`。授权只允许执行任务；取消发布和归档仍只有所有者可操作。`0005_widget_worker_grants.sql` 暂时为模拟开发者授权本仓库的四个既有 Widget；正式账号需要单独授权。旧版单 Widget Worker 仍使用原有 Worker Token。生产用户和 Glance 客户端使用用户 Bearer token，管理员使用 Admin 会话或 `ADMIN_TOKEN`。
+Python CLI Worker 使用开发者会话批量领取属于自己或经 `widget_worker_grants` 显式授权的 Widget 任务，并在心跳、上传和回传时附带本次领取的 `X-Task-Claim`。执行授权只允许领取任务。`widget_publish_grants` 则单独授权开发者向已有的管理员 Widget 提交新版本：`glance widget publish` 创建 `manual_review` 版本，管理员测试、审核并执行 `promote` 后才上线；管理员 Widget 的官方标记会保留。该授权不允许开发者自行上线、取消发布或归档。`0007_widget_publish_grants.sql` 为当前模拟开发者配置 OSS Widget 的提交权限，真实 Google 账号上线时需单独配置授权。`0005_widget_worker_grants.sql` 暂时为模拟开发者授权本仓库的四个既有 Widget 执行任务。旧版单 Widget Worker 仍使用原有 Worker Token。生产用户和 Glance 客户端使用用户 Bearer token，管理员使用 Admin 会话或 `ADMIN_TOKEN`。
 
 旧版任务链路仍支持受控调试用的 `FLOW_TEST_TOKEN`；它不授予开发者提交、批量领取或管理后台权限。`WORKER_AUTH_DISABLED=true` 只影响旧版单 Widget Worker 接口。开发者 API 通常使用 Google 登录后取得的会话；联调期间也接受独立配置的 `DEVELOPER_TEST_TOKEN`。管理后台网页登录仍使用会话 Cookie。
 
@@ -209,7 +211,7 @@ Content-Type: multipart/form-data
 
 表单字段为 `file`，Service 始终上传到 R2。接口返回 `assetID`、`url` 和 `provider: r2`；客户端将 URL 放入任务参数。中国地区图片由 Glance 在本机直接上传到 Freeimage，不经过此接口。
 
-Widget command 可在图片输出声明旁设置 `"showResultURL": true`。后台 Widget 表单提供“显示复制 URL 按钮”选项；Service 仅允许图片输出开启。客户端在成功返回可用 HTTP(S) URL 后显示复制按钮。需要长期分享链接时，Worker 应直接返回公开托管的图片 `url`，因为通过 `path` 上传到 Service 的资源链接可能带有效期。
+Widget command 可在图片或视频输出声明旁设置 `"showResultURL": true`。后台 Widget 表单提供“显示复制 URL 按钮”选项；Service 仅允许媒体输出开启。客户端在成功返回可用 HTTP(S) URL 后显示复制按钮。需要长期分享链接时，Worker 应直接返回公开托管的媒体 `url`，因为通过 `path` 上传到 Service 的资源链接可能带有效期。
 
 ### 2. Widget Worker 拉取任务
 

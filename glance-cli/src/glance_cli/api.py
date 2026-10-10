@@ -22,6 +22,13 @@ class APIError(RuntimeError):
         self.status = status
 
 
+def _error_message(envelope: dict, fallback: str) -> str:
+    error = envelope.get("error")
+    if isinstance(error, dict) and isinstance(error.get("message"), str):
+        return error["message"]
+    return fallback
+
+
 def request(method: str, path: str, body: dict | None = None, *,
             token: str | None = None, timeout: float = 35,
             headers: dict[str, str] | None = None,
@@ -43,15 +50,20 @@ def request(method: str, path: str, body: dict | None = None, *,
     except HTTPError as error:
         try:
             detail = json.load(error)
-            message = detail.get("error", {}).get("message", str(error))
-        except (ValueError, AttributeError):
+            message = _error_message(detail, str(error)) if isinstance(detail, dict) else str(error)
+        except (ValueError, OSError):
             message = str(error)
         raise APIError(message, error.code) from error
-    except (URLError, TimeoutError) as error:
+    except (URLError, TimeoutError, OSError, ValueError) as error:
         raise APIError(str(error)) from error
+    if not isinstance(envelope, dict):
+        raise APIError("Invalid API response")
     if not envelope.get("success"):
-        raise APIError(envelope.get("error", {}).get("message", "API request failed"))
-    return envelope.get("result", {})
+        raise APIError(_error_message(envelope, "API request failed"))
+    result = envelope.get("result", {})
+    if not isinstance(result, dict):
+        raise APIError("Invalid API result")
+    return result
 
 
 def upload_task_file(task_id: str, path: Path, *, token: str | None = None,
@@ -76,10 +88,18 @@ def upload_task_file(task_id: str, path: Path, *, token: str | None = None,
             envelope = json.load(response)
     except HTTPError as error:
         try:
-            message = json.load(error).get("error", {}).get("message", str(error))
-        except ValueError:
+            detail = json.load(error)
+            message = _error_message(detail, str(error)) if isinstance(detail, dict) else str(error)
+        except (ValueError, OSError):
             message = str(error)
         raise APIError(message, error.code) from error
+    except (URLError, TimeoutError, OSError, ValueError) as error:
+        raise APIError(str(error)) from error
+    if not isinstance(envelope, dict):
+        raise APIError("Invalid upload response")
     if not envelope.get("success"):
-        raise APIError(envelope.get("error", {}).get("message", "Upload failed"))
-    return envelope["result"]
+        raise APIError(_error_message(envelope, "Upload failed"))
+    result = envelope.get("result")
+    if not isinstance(result, dict) or not isinstance(result.get("assetID"), str):
+        raise APIError("Invalid upload result")
+    return result

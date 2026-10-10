@@ -16,7 +16,8 @@ from glance_cli.cli import main, validate
 from glance_cli.api import APIError, request, upload_task_file
 from glance_cli.registry import connect, eligible, read_session, read_token, rows, update, upsert
 from glance_cli.runtime import execute, prepare_input, validate_outputs
-from glance_cli.worker import _run_task, _sync_widget_status
+from glance_cli.result_spool import load as load_results
+from glance_cli.worker import DeliveryDeferredError, _run_task, _sync_widget_status
 from glance_cli.worker_logs import configure_worker_logging, logger
 
 
@@ -68,14 +69,16 @@ class CLITest(unittest.TestCase):
             self.assertEqual(len(eligible(db, set())), 1)
             self.assertEqual(eligible(db, {manifest["id"]}), [])
 
-    def test_result_url_preference_requires_image_output(self):
+    def test_result_url_preference_requires_media_output(self):
         _, manifest = self.create_widget()
         command = manifest["commands"][0]
         command["outputs"] = ["image"]
         command["showResultURL"] = True
         validate(manifest)
+        command["outputs"] = ["video"]
+        validate(manifest)
         command["outputs"] = ["text"]
-        with self.assertRaisesRegex(ValueError, "只有图片输出"):
+        with self.assertRaisesRegex(ValueError, "只有图片或视频输出"):
             validate(manifest)
         command["showResultURL"] = "true"
         with self.assertRaisesRegex(ValueError, "必须是布尔值"):
@@ -223,6 +226,90 @@ class CLITest(unittest.TestCase):
         self.assertEqual(result_call.args[2]["artifacts"],
                          [{"type": "image", "assetID": "asset_1"}])
 
+    def test_temporary_upload_failure_retries_without_failing_the_task(self):
+        widget = self.root / "widget"
+        widget.mkdir()
+        image = widget / "result.png"
+        image.write_bytes(b"\x89PNG\r\n\x1a\n")
+        outputs = validate_outputs({"outputs": [{"type": "image", "path": str(image)}]}, widget)
+
+        @contextmanager
+        def fake_execute(*args, **kwargs):
+            yield outputs
+
+        task = {"taskId": "task_retry", "claimToken": "claim_1"}
+        with patch("glance_cli.worker.execute", side_effect=fake_execute), \
+             patch("glance_cli.worker.upload_task_file",
+                   side_effect=[APIError("Broken pipe"), {"assetID": "asset_1"}]) as upload, \
+             patch("glance_cli.worker.request") as api, \
+             patch("glance_cli.worker.time.sleep"):
+            _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
+        self.assertEqual(upload.call_count, 2)
+        result_calls = [call for call in api.call_args_list if call.args[1].endswith("/result")]
+        self.assertEqual(len(result_calls), 1)
+        self.assertEqual(result_calls[0].args[2]["status"], "succeeded")
+
+    def test_generated_image_survives_exhausted_upload_retries_and_new_claim(self):
+        widget = self.root / "widget"
+        widget.mkdir()
+        image = widget / "result.png"
+        image.write_bytes(b"\x89PNG\r\n\x1a\n")
+        outputs = validate_outputs({"outputs": [{"type": "image", "path": str(image)}]}, widget)
+
+        @contextmanager
+        def fake_execute(*args, **kwargs):
+            yield outputs
+
+        task = {"taskId": "task_resume", "claimToken": "claim_1"}
+        with patch("glance_cli.worker.execute", side_effect=fake_execute) as execute_widget, \
+             patch("glance_cli.worker.upload_task_file", side_effect=APIError("Broken pipe")) as upload, \
+             patch("glance_cli.worker.request") as api, \
+             patch("glance_cli.worker.time.sleep"):
+            with self.assertRaises(DeliveryDeferredError):
+                _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
+        execute_widget.assert_called_once()
+        self.assertEqual(upload.call_count, 4)
+        self.assertFalse(any(call.args[1].endswith("/result") for call in api.call_args_list))
+        stored = load_results("task_resume")
+        self.assertEqual(len(stored), 1)
+        self.assertEqual(Path(stored[0]["path"]).read_bytes(), image.read_bytes())
+
+        image.unlink()
+        next_claim = {"taskId": "task_resume", "claimToken": "claim_2"}
+        with patch("glance_cli.worker.execute", side_effect=AssertionError("Widget ran twice")) as execute_widget, \
+             patch("glance_cli.worker.upload_task_file", return_value={"assetID": "asset_1"}) as upload, \
+             patch("glance_cli.worker.request", return_value={"status": "succeeded"}) as api:
+            _run_task({"code_path": str(widget), "python_path": sys.executable}, next_claim)
+        execute_widget.assert_not_called()
+        self.assertEqual(upload.call_args.kwargs["claim_token"], "claim_2")
+        self.assertEqual(load_results("task_resume"), None)
+        result_call = next(call for call in api.call_args_list if call.args[1].endswith("/result"))
+        self.assertEqual(result_call.args[2]["artifacts"],
+                         [{"type": "image", "assetID": "asset_1"}])
+
+    def test_success_report_retries_without_marking_generated_output_failed(self):
+        widget = self.root / "widget"
+        widget.mkdir()
+        image = widget / "result.png"
+        image.write_bytes(b"\x89PNG\r\n\x1a\n")
+        outputs = validate_outputs({"outputs": [{"type": "image", "path": str(image)}]}, widget)
+
+        @contextmanager
+        def fake_execute(*args, **kwargs):
+            yield outputs
+
+        task = {"taskId": "task_report", "claimToken": "claim_1"}
+        with patch("glance_cli.worker.execute", side_effect=fake_execute), \
+             patch("glance_cli.worker.upload_task_file", return_value={"assetID": "asset_1"}), \
+             patch("glance_cli.worker.request",
+                   side_effect=[APIError("SSL EOF"), {"status": "succeeded"}]) as api, \
+             patch("glance_cli.worker.time.sleep"):
+            _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
+        self.assertEqual(api.call_count, 2)
+        self.assertTrue(all(call.args[2]["status"] == "succeeded"
+                            for call in api.call_args_list))
+        self.assertEqual(load_results("task_report"), None)
+
     def test_image_url_is_passed_through_as_image_result(self):
         widget = self.root / "widget"
         widget.mkdir()
@@ -312,6 +399,9 @@ class CLITest(unittest.TestCase):
                                  "Bearer temporary-test-token")
             artifact = self.root / "output.txt"
             artifact.write_text("test", encoding="utf-8")
+            with patch("glance_cli.api.urlopen", side_effect=OSError("Broken pipe")):
+                with self.assertRaisesRegex(APIError, "Broken pipe"):
+                    upload_task_file("task-1", artifact, claim_token="claim-1")
             with patch("glance_cli.api.urlopen", return_value=io.BytesIO(
                     b'{"success":true,"result":{"assetID":"test-asset"}}')) as opener:
                 self.assertEqual(upload_task_file("task-1", artifact, claim_token="claim-1"),

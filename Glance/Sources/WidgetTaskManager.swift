@@ -41,14 +41,15 @@ struct WidgetTaskRecord: Codable, Identifiable {
     var input: WidgetTaskInput?
     var source: URL? { URL(string: sourceURL) }
     var output: URL? { outputPath.map { URL(fileURLWithPath: $0) } }
-    var copyableImageResultURL: String? {
+    var copyableMediaResultURL: String? {
         // Older saved tasks have no output snapshot; use the installed command.
         let installedCommand = WidgetRegistry.shared.installed
             .first(where: { $0.id == widgetID })?
             .commands.first(where: { $0.id == commandID })
         let displaysURL = showResultURL ?? installedCommand?.showResultURL ?? false
-        let outputsImage = outputTypes?.contains("image") ?? installedCommand?.outputs.contains("image") ?? false
-        guard phase == .completed, outputsImage, displaysURL,
+        let outputsMedia = outputTypes?.contains(where: { $0 == "image" || $0 == "video" })
+            ?? (installedCommand?.outputs.contains(where: { $0 == "image" || $0 == "video" }) ?? false)
+        guard phase == .completed, outputsMedia, displaysURL,
               let rawURL = outputURLString,
               let parsed = URL(string: rawURL),
               ["http", "https"].contains(parsed.scheme?.lowercased() ?? ""),

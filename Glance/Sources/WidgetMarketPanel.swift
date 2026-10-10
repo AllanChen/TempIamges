@@ -20,21 +20,6 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     private var catalogFilter: CatalogFilter = .marketplace
     private var sortsByName = false
 
-    private static let officialWidgets: [(id: String, name: String, summary: String, commandName: String, commandDescription: String, taskType: String, privacy: String)] = [
-        ("a0d3311a-b952-4831-8ee4-69f72c381a88", "Remove Background",
-         "Remove an image background while preserving fine subject edges.",
-         "Remove Background", "Create a transparent-background copy of the selected image.",
-         "image.remove-background.v1", "The selected image will be uploaded to Glance for cloud processing."),
-        ("ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f", "超分",
-         "图生图超分辨率，提升图片清晰度与细节。", "超分",
-         "上传一张图片，生成更高分辨率的清晰版本。", "image.upscale.v1",
-         "The selected image will be uploaded to Glance for cloud processing."),
-        ("7cc3967a-60ac-4677-9817-72f57f5ef5fa", "RemoveBG 高级",
-         "图生图高级背景移除，保留精细主体边缘。", "RemoveBG 高级",
-         "上传一张图片，高级移除背景并生成透明背景副本。", "image.remove-bg-pro.v1",
-         "The selected image will be uploaded to Glance for cloud processing.")
-    ]
-
     private let rootView = WidgetMarketRootView()
     private let titlebar = WidgetMarketTitlebar()
     private let closeTrafficButton = WidgetMarketTrafficButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1))
@@ -141,9 +126,10 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     private func loadCatalog() {
         guard !hasAttemptedLoad else { return }
         hasAttemptedLoad = true
-        let offlineManifests = Self.makeOfflineManifests()
-        catalogIDs = Set(offlineManifests.map(\.id))
-        manifests = Self.mergeInstalled(into: offlineManifests)
+        // The server owns the catalog, including removal of former built-ins.
+        // Keep installed entries available offline without inventing catalog rows.
+        catalogIDs = []
+        manifests = Self.mergeInstalled(into: [])
         refreshCatalog(resetScroll: true)
         refreshFromServer(showLoading: false)
     }
@@ -173,22 +159,6 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         let known = Set(catalog.map(\.id))
         merged.append(contentsOf: WidgetRegistry.shared.installed.filter { !known.contains($0.id) })
         return merged
-    }
-
-    private static func makeOfflineManifests() -> [WidgetManifest] {
-        officialWidgets.map {
-            WidgetManifest(schemaVersion: 1, id: $0.id, version: "1.0.0", name: $0.name,
-                summary: $0.summary, author: "Glance Labs", iconURL: URL(string: "about:blank")!,
-                official: true, execution: WidgetExecution(mode: "cloud"),
-                commands: [WidgetCommand(id: $0.id, name: $0.commandName,
-                    description: $0.commandDescription, inputTypes: ["image"],
-                    inputMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"],
-                    outputs: ["image"], showResultURL: nil, taskType: $0.taskType, requiresUpload: true,
-                    parameterSchema: [:])],
-                privacy: WidgetPrivacy(uploadsMedia: true, notice: $0.privacy),
-                minimumGlanceVersion: "2.0.0", updatedAt: "",
-                signature: WidgetSignature(algorithm: "Ed25519", keyID: "", value: ""))
-        }
     }
 
     private func refreshInstalledState() {

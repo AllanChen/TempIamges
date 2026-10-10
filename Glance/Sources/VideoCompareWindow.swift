@@ -82,6 +82,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private var generation = UUID()
     private var fittedVideoSignature = ""
     private var resizeLayoutScheduled = false
+    private var handledWidgetTaskIDs = Set<UUID>()
+    private var generatedResultPaths = Set<String>()
 
     private static let designSize = NSSize(width: 1554, height: 1012)
     private let canvas = MediaDropCanvasView()
@@ -115,6 +117,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private let separatorLabel = VideoTimeLabel("/")
     private let durationLabel = VideoTimeLabel("00:00")
     private let filmstrip = VideoFilmstripView()
+    private let copyResultURLButton = WidgetResultURLButton()
+    private let toastWindow = InspectToastWindow()
     /// Fired with the temp-file URL of a captured frame; AppDelegate routes it
     /// into the image inspect window.
     var onCaptureFrame: ((URL) -> Void)?
@@ -143,7 +147,10 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         compareIndices = videos.count > 1 ? (0, 1) : nil
         mode = startsInCompare && videos.count > 1 ? .compare : .focus
+        handledWidgetTaskIDs = Set(WidgetTaskManager.shared.records.filter { $0.phase == .completed }.map(\.id))
         buildUI()
+        NotificationCenter.default.addObserver(self, selector: #selector(widgetTasksDidChange),
+                                               name: WidgetTaskManager.didChange, object: nil)
         standardWindowButton(.closeButton)?.isHidden = true
         standardWindowButton(.miniaturizeButton)?.isHidden = true
         standardWindowButton(.zoomButton)?.isHidden = true
@@ -300,6 +307,9 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         captureThumbnail.action = #selector(captureThumbnailTapped)
         captureThumbnail.isHidden = true
         canvas.addSubview(captureThumbnail, positioned: .above, relativeTo: nil)
+        copyResultURLButton.isHidden = true
+        copyResultURLButton.onPress = { [weak self] in self?.copyWidgetResultURL() }
+        canvas.addSubview(copyResultURLButton, positioned: .above, relativeTo: nil)
         render()
     }
 
@@ -336,6 +346,9 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         let geometry = VideoInspectChromeLayout(size: NSSize(width: canvasW, height: b.height),
                                                videoCount: infos.count)
         inspectToolbar.frame = geometry.toolbar
+        copyResultURLButton.frame = NSRect(x: max(8, canvasW - 24 - 34),
+                                           y: geometry.toolbar.midY - 17,
+                                           width: 34, height: 34)
         func place(_ button: InspectToolbarButton, x: CGFloat) {
             button.frame = NSRect(x: x, y: 8, width: 38, height: 38)
             button.layer?.cornerRadius = 9
@@ -384,6 +397,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         } else {
             viewports[safe: 0]?.frame = videoRect
             viewports[safe: 1]?.frame = .zero
+        }
+        for viewport in viewports {
+            let toolbarCenter = geometry.toolbar.midY - viewport.frame.minY
+            viewport.setWidgetIndicatorCenterY(
+                toolbarCenter >= 18 && toolbarCenter <= viewport.bounds.maxY - 18
+                    ? toolbarCenter : nil)
         }
 
         playbackBar.frame = geometry.playback
@@ -487,13 +506,18 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         canvas.addSubview(inspectToolbar, positioned: .above, relativeTo: nil)
         canvas.addSubview(captureFeedback, positioned: .above, relativeTo: nil)
         canvas.addSubview(captureThumbnail, positioned: .above, relativeTo: nil)
+        canvas.addSubview(copyResultURLButton, positioned: .above, relativeTo: nil)
         focusButton.isEnabled = true
         compareButton.isEnabled = infos.count > 1
         focusButton.isActive = mode == .focus
         compareButton.isActive = mode == .compare
         revealButton.isEnabled = activeIndices.contains { infos[$0].isLocal }
         filmstrip.isHidden = infos.count < 2
-        filmstrip.configure(infos: infos, selectedIndex: focusedIndex, compareIndices: mode == .compare ? compareIndices : nil)
+        filmstrip.configure(infos: infos, selectedIndex: focusedIndex,
+                            compareIndices: mode == .compare ? compareIndices : nil,
+                            generatedResultPaths: generatedResultPaths)
+        copyResultURLButton.isHidden = currentWidgetResultRecord == nil
+        updateWidgetTaskIndicators()
         refreshInfoPanel()
         fitWindowToActiveVideosIfNeeded()
         updateTimeline(); layoutContent(); loadDurations(); startPlaybackImmediately()
@@ -964,6 +988,92 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         panel.present(over: self)
     }
 
+    @objc private func widgetTasksDidChange() {
+        let completed = WidgetTaskManager.shared.records.filter {
+            $0.phase == .completed && !handledWidgetTaskIDs.contains($0.id)
+        }
+        completed.forEach { handledWidgetTaskIDs.insert($0.id) }
+        for task in completed.sorted(by: { $0.updatedAt < $1.updatedAt }) {
+            guard let source = task.source, let output = task.output,
+                  infos.contains(where: { $0.url.absoluteString == source.absoluteString }) else { continue }
+            let detected = MediaInfo.from(pathDetector.localKind(for: output.path))
+            let unknownResult = detected == nil || detected?.kind == .other
+            if detected?.kind == .video ||
+                (unknownResult && task.outputTypes?.contains("video") == true) {
+                insertWidgetResult(output, after: source)
+            } else if detected?.kind == .image ||
+                        (unknownResult && task.outputTypes?.contains("image") == true) {
+                onOpenImage?(MediaInfo(url: output, isLocal: true, kind: .image))
+            }
+        }
+        updateWidgetTaskIndicators()
+    }
+
+    private func insertWidgetResult(_ output: URL, after source: URL) {
+        guard let sourceIndex = infos.firstIndex(where: { $0.url.absoluteString == source.absoluteString }) else { return }
+        if let existingIndex = infos.firstIndex(where: { $0.url.standardizedFileURL == output.standardizedFileURL }) {
+            focusedIndex = existingIndex
+        } else {
+            let index = sourceIndex + 1
+            infos.insert(MediaInfo(url: output, isLocal: true, kind: .video), at: index)
+            durations.insert(0, at: index)
+            videoMetadata.insert(nil, at: index)
+            generatedResultPaths.insert(output.standardizedFileURL.path)
+            focusedIndex = index
+        }
+        mode = .focus
+        pausePlayback()
+        render()
+    }
+
+    private func updateWidgetTaskIndicators() {
+        for viewport in viewports {
+            guard let info = infos[safe: viewport.index] else { continue }
+            viewport.setWidgetProcessing(!WidgetTaskManager.shared.activeRecords(for: info.url).isEmpty)
+        }
+        filmstrip.updateTaskStates(infos: infos, generatedResultPaths: generatedResultPaths)
+        copyResultURLButton.isHidden = currentWidgetResultRecord == nil
+    }
+
+    private var currentWidgetResultRecord: WidgetTaskRecord? {
+        guard mode == .focus, let info = infos[safe: focusedIndex], info.isLocal,
+              WidgetTaskManager.shared.activeRecords(for: info.url).isEmpty,
+              let record = WidgetTaskManager.shared.completedRecord(for: info.url),
+              record.copyableMediaResultURL != nil else { return nil }
+        return record
+    }
+
+    private func copyWidgetResultURL() {
+        guard let record = currentWidgetResultRecord,
+              let storedURL = record.copyableMediaResultURL else { return }
+        guard let taskID = record.remoteTaskID else {
+            copyWidgetResultURLToPasteboard(storedURL)
+            return
+        }
+        WidgetTaskClient.shared.fetchResultURL(taskID: taskID) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self, self.currentWidgetResultRecord?.id == record.id else { return }
+                switch result {
+                case .success(let url): self.copyWidgetResultURLToPasteboard(url.absoluteString)
+                case .failure:
+                    if let url = URL(string: storedURL), url.host != "api.glance.mcreator.ai" {
+                        self.copyWidgetResultURLToPasteboard(storedURL)
+                    } else {
+                        self.toastWindow.show(message: "Could not refresh result URL".localized, over: self)
+                    }
+                }
+            }
+        }
+    }
+
+    private func copyWidgetResultURLToPasteboard(_ url: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if pasteboard.setString(url, forType: .string) {
+            toastWindow.show(message: "URL copied ✓".localized, over: self)
+        }
+    }
+
     private func handleDroppedVideo(url: URL, at point: NSPoint) {
         let path: DetectedPath = url.isFileURL
             ? .localVideo(url.standardizedFileURL) : .remoteVideo(url)
@@ -1037,6 +1147,10 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     }
     private func removeObservers() { if let observer = timeObserver, let player = viewports.first?.player { player.removeTimeObserver(observer) }; timeObserver = nil; if let observer = endObserver { NotificationCenter.default.removeObserver(observer) }; endObserver = nil }
     func windowWillClose(_ notification: Notification) {
+        NotificationCenter.default.removeObserver(self, name: WidgetTaskManager.didChange, object: nil)
+        WidgetTaskManager.shared.clearFailed(for: infos.map(\.url))
+        removeChildWindow(toastWindow)
+        toastWindow.orderOut(nil)
         widgetInputPanel?.close(); widgetInputPanel = nil
         pausePlayback(); removeObservers(); actionsPanel?.dismissChain(); actionsPanel = nil
         infoVisible = false; generation = UUID()
@@ -1100,6 +1214,10 @@ private final class VideoInspectViewport: NSView {
     private let compareDimmer = CALayer()
     private let loadingView = FocusSweepLoadingView(frame: .zero)
     private let failureView = LoadFailedAnimationView(frame: .zero)
+    private let widgetProcessingBorder = VideoNonHitTestingView()
+    private let widgetProcessingIndicator = VideoNonHitTestingView()
+    private let widgetProcessingDot = PanelStyle.makeStatusDot(color: PanelStyle.success)
+    private var widgetIndicatorCenterY: CGFloat?
     private var statusObservation: NSKeyValueObservation?
     var onActivate: (() -> Void)?
     var onReady: (() -> Void)?
@@ -1207,6 +1325,27 @@ private final class VideoInspectViewport: NSView {
         muteButton.updateTooltip("Mute".localized)
         muteButton.isHidden = true
         addSubview(muteButton)
+        widgetProcessingBorder.wantsLayer = true
+        widgetProcessingBorder.layer?.borderWidth = 2
+        widgetProcessingBorder.layer?.borderColor = PanelStyle.accent.withAlphaComponent(0.8).cgColor
+        widgetProcessingBorder.layer?.cornerRadius = 12
+        widgetProcessingBorder.layer?.shadowColor = PanelStyle.accent.cgColor
+        widgetProcessingBorder.layer?.shadowOpacity = 0.28
+        widgetProcessingBorder.layer?.shadowOffset = .zero
+        widgetProcessingBorder.layer?.shadowRadius = 16
+        widgetProcessingBorder.isHidden = true
+        addSubview(widgetProcessingBorder, positioned: .above, relativeTo: nil)
+        widgetProcessingDot.wantsLayer = true
+        widgetProcessingDot.layer?.cornerRadius = 8
+        widgetProcessingDot.layer?.shadowColor = PanelStyle.success.cgColor
+        widgetProcessingDot.layer?.shadowOpacity = 0.85
+        widgetProcessingDot.layer?.shadowOffset = .zero
+        widgetProcessingDot.layer?.shadowRadius = 10
+        widgetProcessingIndicator.addSubview(widgetProcessingDot)
+        widgetProcessingIndicator.setAccessibilityElement(true)
+        widgetProcessingIndicator.setAccessibilityLabel("Task running".localized)
+        widgetProcessingIndicator.isHidden = true
+        addSubview(widgetProcessingIndicator, positioned: .above, relativeTo: nil)
         if player != nil { observePlayerItem() }
         else { loadingView.setLoading(true) }
     }
@@ -1227,6 +1366,54 @@ private final class VideoInspectViewport: NSView {
         failureView.frame = NSRect(x: bounds.midX - failed.width / 2,
                                    y: bounds.midY - failed.height / 2,
                                    width: failed.width, height: failed.height)
+        widgetProcessingBorder.frame = bounds.insetBy(dx: 2, dy: 2)
+        widgetProcessingIndicator.frame = NSRect(x: max(0, bounds.maxX - 48),
+                                                  y: max(0, (widgetIndicatorCenterY ?? bounds.maxY - 30) - 18),
+                                                  width: 36, height: 36)
+        widgetProcessingDot.frame = NSRect(x: 10, y: 10, width: 16, height: 16)
+    }
+    func setWidgetIndicatorCenterY(_ centerY: CGFloat?) {
+        guard widgetIndicatorCenterY != centerY else { return }
+        widgetIndicatorCenterY = centerY
+        needsLayout = true
+    }
+    func setWidgetProcessing(_ processing: Bool) {
+        widgetProcessingBorder.isHidden = !processing
+        widgetProcessingIndicator.isHidden = !processing
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if let layer = widgetProcessingBorder.layer {
+            if processing && !reduceMotion && layer.animation(forKey: "widgetMainBreathing") == nil {
+                let animation = CABasicAnimation(keyPath: "borderColor")
+                animation.fromValue = PanelStyle.accent.withAlphaComponent(0.35).cgColor
+                animation.toValue = PanelStyle.accent.withAlphaComponent(0.8).cgColor
+                animation.duration = 0.75
+                animation.autoreverses = true
+                animation.repeatCount = .infinity
+                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                layer.add(animation, forKey: "widgetMainBreathing")
+            } else if !processing || reduceMotion {
+                layer.removeAnimation(forKey: "widgetMainBreathing")
+            }
+        }
+        if let layer = widgetProcessingDot.layer {
+            if processing && !reduceMotion && layer.animation(forKey: "widgetRunningDotBreathing") == nil {
+                let glow = CABasicAnimation(keyPath: "shadowOpacity")
+                glow.fromValue = 0.3
+                glow.toValue = 1.0
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = 0.55
+                fade.toValue = 1.0
+                let animation = CAAnimationGroup()
+                animation.animations = [glow, fade]
+                animation.duration = 0.9
+                animation.autoreverses = true
+                animation.repeatCount = .infinity
+                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                layer.add(animation, forKey: "widgetRunningDotBreathing")
+            } else if !processing || reduceMotion {
+                layer.removeAnimation(forKey: "widgetRunningDotBreathing")
+            }
+        }
     }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { dropTarget?.acceptsDragging(sender) == true ? .copy : [] }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { dropTarget?.acceptsDragging(sender) == true ? .copy : [] }
@@ -2149,7 +2336,8 @@ private final class VideoFilmstripView: NSView {
 
     override func scrollWheel(with event: NSEvent) { scrollView.scrollWheel(with: event) }
 
-    func configure(infos: [MediaInfo], selectedIndex: Int, compareIndices: (Int, Int)?) {
+    func configure(infos: [MediaInfo], selectedIndex: Int, compareIndices: (Int, Int)?,
+                   generatedResultPaths: Set<String>) {
         let previousSelection = self.selectedIndex
         let previousURLs = itemURLs
         self.selectedIndex = selectedIndex
@@ -2170,8 +2358,21 @@ private final class VideoFilmstripView: NSView {
             return item
         }
         itemURLs = infos.map(\.url)
+        updateTaskStates(infos: infos, generatedResultPaths: generatedResultPaths)
         revealSelection = previousSelection != selectedIndex || previousURLs != itemURLs
         needsLayout = true
+    }
+
+    func updateTaskStates(infos: [MediaInfo], generatedResultPaths: Set<String>) {
+        for (index, item) in items.enumerated() {
+            guard let info = infos[safe: index] else { continue }
+            let active = WidgetTaskManager.shared.activeRecords(for: info.url)
+            let task = active.first ?? WidgetTaskManager.shared.latestRecord(for: info.url)
+            let result = WidgetTaskManager.shared.completedRecord(for: info.url) != nil ||
+                generatedResultPaths.contains(info.url.standardizedFileURL.path)
+            item.setWidgetTaskState(phase: task?.phase, isResult: result,
+                                    activeTaskCount: active.count, title: info.filename)
+        }
     }
 
     func setThumbnail(_ image: NSImage, at index: Int) {
@@ -2214,7 +2415,10 @@ private final class VideoFilmstripScrollView: NSScrollView {
 private final class VideoFilmstripItem: NSView {
     var onClick: (() -> Void)?
     private let imageView = VideoThumbnailImageView()
+    private let newBadge = VideoNonHitTestingView()
+    private let newLabel = PanelCenteredTextView()
     private var previewInset: CGFloat = 3
+    private var emphasized = false
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
@@ -2225,12 +2429,22 @@ private final class VideoFilmstripItem: NSView {
         imageView.image = NSImage(systemSymbolName: "film", accessibilityDescription: nil)
         imageView.contentTintColor = PanelStyle.textTertiary
         addSubview(imageView)
+        newBadge.wantsLayer = true
+        newBadge.layer?.backgroundColor = PanelStyle.success.cgColor
+        newBadge.layer?.cornerRadius = 4
+        newBadge.layer?.masksToBounds = true
+        newBadge.isHidden = true
+        newLabel.string = "NEW"
+        newLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
+        newLabel.textColor = PanelStyle.accentInk
+        newBadge.addSubview(newLabel)
+        addSubview(newBadge, positioned: .above, relativeTo: imageView)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     // Selection is communicated by the warm-cue border only (mirrors the image
     // filmstrip); the frosted background stays the same either way.
     func configure(selected: Bool, compared: Bool) {
-        let emphasized = selected || compared
+        emphasized = selected || compared
         layer?.borderWidth = emphasized ? 2 : 1
         layer?.borderColor = (emphasized ? PanelStyle.warmCue : PanelStyle.inspectLine).cgColor
         previewInset = emphasized ? 2 : 3
@@ -2239,6 +2453,35 @@ private final class VideoFilmstripItem: NSView {
         setAccessibilityRole(.button)
         setAccessibilityValue(selected || compared ? 1 : 0)
     }
+    func setWidgetTaskState(phase: WidgetTaskPhase?, isResult: Bool,
+                            activeTaskCount: Int, title: String) {
+        let processing = phase?.isActive == true
+        let failed = phase == .failed || phase == .interrupted
+        layer?.borderWidth = emphasized || processing ? 2 : 1
+        previewInset = emphasized || processing ? 2 : 3
+        layer?.borderColor = (failed ? PanelStyle.failure :
+            (emphasized || processing ? PanelStyle.warmCue : PanelStyle.inspectLine)).cgColor
+        newBadge.isHidden = !isResult
+        if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            if layer?.animation(forKey: "widgetBreathing") == nil {
+                let animation = CABasicAnimation(keyPath: "borderColor")
+                animation.fromValue = PanelStyle.warmCue.withAlphaComponent(0.30).cgColor
+                animation.toValue = PanelStyle.warmCue.cgColor
+                animation.duration = 0.75
+                animation.autoreverses = true
+                animation.repeatCount = .infinity
+                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                layer?.add(animation, forKey: "widgetBreathing")
+            }
+        } else {
+            layer?.removeAnimation(forKey: "widgetBreathing")
+        }
+        if processing { setAccessibilityLabel("\(title), \(activeTaskCount) Widget task running") }
+        else if failed { setAccessibilityLabel("\(title), Widget task failed") }
+        else if isResult { setAccessibilityLabel("\(title), Widget result just completed") }
+        else { setAccessibilityLabel(title) }
+        needsLayout = true
+    }
     func setThumbnail(_ image: NSImage) { imageView.image = image }
     func loadThumbnail(from url: URL) { DispatchQueue.global(qos: .userInitiated).async { [weak self] in let generator = AVAssetImageGenerator(asset: AVAsset(url: url)); generator.appliesPreferredTrackTransform = true; guard let image = try? generator.copyCGImage(at: .zero, actualTime: nil) else { return }; DispatchQueue.main.async { self?.imageView.image = NSImage(cgImage: image, size: NSSize(width: CGFloat(image.width), height: CGFloat(image.height))) } } }
     override func layout() {
@@ -2246,10 +2489,22 @@ private final class VideoFilmstripItem: NSView {
         let scale = bounds.height / 96
         layer?.cornerRadius = 9 * scale
         imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
+        newBadge.layer?.cornerRadius = 4 * scale
+        newLabel.font = PanelStyle.inspectFont(ofSize: max(9, 10 * scale), weight: .semibold)
+        let badgeSize = CGSize(width: max(28, 48 * scale), height: max(14, 22 * scale))
+        newBadge.frame = NSRect(x: bounds.maxX - badgeSize.width, y: bounds.maxY - badgeSize.height,
+                                width: badgeSize.width, height: badgeSize.height)
+        let textHeight = max(8, 12 * scale)
+        newLabel.frame = NSRect(x: 0, y: (badgeSize.height - textHeight) / 2,
+                                width: badgeSize.width, height: textHeight)
     }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { onClick?() }
     override func accessibilityPerformPress() -> Bool { onClick?(); return true }
+}
+
+private final class VideoNonHitTestingView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 private final class VideoThumbnailImageView: NSImageView {

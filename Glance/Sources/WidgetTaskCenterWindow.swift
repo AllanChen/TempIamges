@@ -463,7 +463,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         propertyValues[5].toolTip = failed ? propertyValues[5].stringValue : nil
         centerStatus.stringValue = record.errorMessage ?? detailText(record)
         inspectButton.isEnabled = selectedOutputExists
-        copyURLButton.isHidden = record.copyableImageResultURL == nil
+        copyURLButton.isHidden = record.copyableMediaResultURL == nil
         copyURLButton.isEnabled = !copyURLButton.isHidden
         revealButton.isEnabled = selectedOutputExists
         retryButton.isEnabled = record.phase == .failed || record.phase == .interrupted || (record.phase == .completed && !selectedOutputExists)
@@ -512,7 +512,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     }
 
     @objc private func copyResultURL() {
-        guard let record = selected, let storedURL = record.copyableImageResultURL else { return }
+        guard let record = selected, let storedURL = record.copyableMediaResultURL else { return }
         guard let taskID = record.remoteTaskID else {
             copyURLToPasteboard(storedURL)
             return

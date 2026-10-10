@@ -21,6 +21,7 @@
     .check-row{display:flex;gap:16px;align-items:center;padding-top:22px;font-size:13px;font-weight:600;color:var(--ink)}
     .check-row label{display:flex;gap:7px;align-items:center;font-weight:600}
     .input-choice{display:flex;gap:18px;align-items:center;min-height:40px;font-size:13px;font-weight:600}
+    .output-choice{flex-wrap:wrap}
     .input-choice label{display:flex;gap:7px;align-items:center;margin:0;color:var(--ink)}
     .input-choice input[type=checkbox]{width:16px;height:16px;margin:0;padding:0;flex:none;accent-color:var(--teal)}
     .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
@@ -53,9 +54,9 @@
         <div class="field span2"><label for="cw-icon">图标 URL（可选）</label><input id="cw-icon" placeholder="https://example.com/icon.png"></div>
         <div class="field"><label for="cw-command-name">命令名称</label><input id="cw-command-name" required placeholder="Blur Background"></div>
         <div class="field span2"><label for="cw-command-desc">命令说明</label><input id="cw-command-desc" required placeholder="Upload an image and blur its background."></div>
-        <div class="field"><label for="cw-output">输出类型</label><select id="cw-output"><option value="image">image</option><option value="video">video</option><option value="text">text</option><option value="audio">audio</option></select></div>
-        <div class="field"><label>图片结果</label><div class="input-choice"><label><input type="checkbox" id="cw-show-result-url"> 显示复制 URL 按钮</label></div></div>
-        <div class="field"><label for="cw-status">初始状态</label><select id="cw-status"><option value="manual_review">manual_review（走审核流程）</option><option value="gray_release">gray_release（灰度可见）</option><option value="published">published（立即发布）</option></select></div>
+        <div class="field"><label>输出类型</label><div class="input-choice output-choice"><label><input type="checkbox" id="cw-output-image" checked> image</label><label><input type="checkbox" id="cw-output-video"> video</label><label><input type="checkbox" id="cw-output-text"> text</label><label><input type="checkbox" id="cw-output-audio"> audio</label></div></div>
+        <div class="field"><label>媒体结果</label><div class="input-choice"><label><input type="checkbox" id="cw-show-result-url"> 显示复制 URL 按钮</label></div></div>
+        <div class="field"><label for="cw-status">状态</label><select id="cw-status"><option value="manual_review">manual_review（走审核流程）</option><option value="gray_release">gray_release（灰度可见）</option><option value="published">published（立即发布）</option><option value="suspended">suspended（暂停）</option><option value="rejected">rejected（拒绝）</option></select></div>
         <div class="field span2"><label for="cw-privacy">隐私说明（必填，用户可读）</label><textarea id="cw-privacy" required placeholder="The selected image is uploaded to the Widget service for processing."></textarea></div>
         <div class="field"><label>输入媒体</label><div class="input-choice"><label><input type="checkbox" id="cw-input-image" checked> image</label><label><input type="checkbox" id="cw-input-video"> video</label></div></div>
         <div class="field"><label for="cw-image-count">图片输入</label><select id="cw-image-count"><option value="1">单图</option><option value="4">多图（最多 4 张）</option></select></div>
@@ -269,12 +270,13 @@
     }
     $('#cw-input-image').addEventListener('change',updateInputControls);
     $('#cw-input-video').addEventListener('change',updateInputControls);
+    function selectedOutputTypes(){return ['image','video','text','audio'].filter(type=>$('#cw-output-'+type).checked)}
     function updateOutputControls(){
-      const image=$('#cw-output').value==='image';
-      $('#cw-show-result-url').disabled=!image;
-      if(!image)$('#cw-show-result-url').checked=false;
+      const media=$('#cw-output-image').checked||$('#cw-output-video').checked;
+      $('#cw-show-result-url').disabled=!media;
+      if(!media)$('#cw-show-result-url').checked=false;
     }
-    $('#cw-output').addEventListener('change',updateOutputControls);
+    ['image','video','text','audio'].forEach(type=>$('#cw-output-'+type).addEventListener('change',updateOutputControls));
     function openCreateWidget(widgetId=null){
       editingWidgetId=widgetId;$('#createWidgetForm').reset();$('#cw-error').classList.add('hidden');$('#cw-result').classList.add('hidden');
       $('#cw-title').textContent=widgetId?'编辑 Widget':'新建 Widget';$('#cw-submit').textContent=widgetId?'保存修改':'创建 Widget';
@@ -285,7 +287,8 @@
           $('#cw-version').value=m.version||'';$('#cw-name').value=m.name||'';$('#cw-author').value=m.author||'';
           $('#cw-summary').value=m.summary||'';$('#cw-icon').value=m.iconURL||'';
           $('#cw-command-name').value=c?.name||'';$('#cw-command-desc').value=c?.description||'';
-          $('#cw-output').value=c?.outputs?.[0]||'image';$('#cw-status').value=x.status||'manual_review';
+          ['image','video','text','audio'].forEach(type=>$('#cw-output-'+type).checked=c?.outputs?.includes(type)||false);
+          $('#cw-status').value=x.status||'manual_review';
           $('#cw-show-result-url').checked=c?.showResultURL===true||
             (c?.showResultURL===undefined&&widgetId==='55e64c7e-f079-448a-b5bd-7315b2589019'&&c?.outputs?.includes('image'));
           $('#cw-privacy').value=m.privacy?.notice||'';
@@ -302,18 +305,32 @@
     function closeCreateWidget(){ editingWidgetId=null;$('#createWidgetModal').classList.add('hidden') }
     $('#createWidgetForm').addEventListener('submit',async e=>{
       e.preventDefault();
+      const outputs=selectedOutputTypes();
+      if(!outputs.length){$('#cw-error').textContent='至少选择一种输出类型。';$('#cw-error').classList.remove('hidden');return}
       const inputTypes=[$('#cw-input-image').checked&&'image',$('#cw-input-video').checked&&'video'].filter(Boolean);
       if(!inputTypes.length){$('#cw-error').textContent='至少选择一种输入类型。';$('#cw-error').classList.remove('hidden');return}
       if(inputTypes.includes('video')&&$('#cw-input-mask').checked){$('#cw-error').textContent='mask 只能用于图片输入；请取消视频输入或 mask。';$('#cw-error').classList.remove('hidden');return}
       if($('#cw-image-count').value==='4'&&$('#cw-input-mask').checked){$('#cw-error').textContent='mask 目前仅支持单图输入。';$('#cw-error').classList.remove('hidden');return}
       const imageMimes=['image/jpeg','image/png','image/webp','image/heic','image/heif'];
       const videoMimes=['video/mp4','video/quicktime','video/webm'];
-      const properties={};
+      const previous=editingWidgetId?state.widgets.find(w=>w.widgetId===editingWidgetId)?.manifest:null;
+      const previousCommand=previous?.commands?.[0];
+      const previousSchema=previousCommand?.parameterSchema||{};
+      const properties={...(previousSchema.properties||previousSchema)};
       if($('#cw-input-prompt').checked)properties.prompt={type:'string'};
+      else delete properties.prompt;
       if($('#cw-input-mask').checked)properties.mask={type:'string',format:'uri'};
+      else delete properties.mask;
       if(inputTypes.includes('image')&&$('#cw-image-count').value==='4')properties.images={type:'array',items:{type:'string',format:'uri'},minItems:1,maxItems:4};
+      else {delete properties.images;delete properties.imageUrls;delete properties.multipleImages}
       if(inputTypes.includes('video')&&$('#cw-video-count').value==='4')properties.videos={type:'array',items:{type:'string',format:'uri'},minItems:1,maxItems:4};
+      else {delete properties.videos;delete properties.videoUrls;delete properties.multipleVideos}
+      const parameterSchema=previousSchema.properties?{...previousSchema,properties}:{type:'object',properties,additionalProperties:false};
+      const selectedInputs=[...inputTypes,...(previousCommand?.inputTypes||[]).filter(type=>!['image','video','text','txt','prompt','mask','multiple_images','multi_image','multiple-images','multi-image','multiple_videos','multi_video','multiple-videos','multi-video'].includes(type))];
+      const originalMimes=previousCommand?.inputMimeTypes||[];
+      const inputMimeTypes=[...new Set([...(inputTypes.includes('image')?imageMimes:[]),...(inputTypes.includes('video')?videoMimes:[]),...originalMimes.filter(mime=>inputTypes.some(type=>mime.startsWith(type+'/')))])];
       const manifest={
+        ...previous,
         schemaVersion:1,
         ...(editingWidgetId?{id:editingWidgetId}:{}),
         version:$('#cw-version').value.trim(),
@@ -321,22 +338,21 @@
         summary:$('#cw-summary').value.trim(),
         author:$('#cw-author').value.trim(),
         iconURL:$('#cw-icon').value.trim()||undefined,
-        official:true,
         execution:{mode:'cloud'},
         commands:[{
+          ...previousCommand,
           name:$('#cw-command-name').value.trim(),
           description:$('#cw-command-desc').value.trim(),
-          inputTypes,
-          inputMimeTypes:[...(inputTypes.includes('image')?imageMimes:[]),...(inputTypes.includes('video')?videoMimes:[])],
-          outputs:[$('#cw-output').value],
-          showResultURL:$('#cw-output').value==='image'&&$('#cw-show-result-url').checked,
+          inputTypes:selectedInputs,
+          inputMimeTypes,
+          outputs,
+          showResultURL:outputs.some(type=>type==='image'||type==='video')&&$('#cw-show-result-url').checked,
           requiresUpload:true,
-          parameterSchema:{type:'object',properties,additionalProperties:false}
-        }],
-        privacy:{uploadsMedia:true,notice:$('#cw-privacy').value.trim()},
+          parameterSchema
+        },...(previous?.commands?.slice(1)||[])],
+        privacy:{...previous?.privacy,uploadsMedia:true,notice:$('#cw-privacy').value.trim()},
         minimumGlanceVersion:'2.0.0',
-        updatedAt:new Date().toISOString(),
-        signature:{algorithm:'Ed25519',keyID:'admin-console',value:'admin-created'}
+        updatedAt:new Date().toISOString()
       };
       $('#cw-error').classList.add('hidden'); $('#cw-result').classList.add('hidden');
       try{

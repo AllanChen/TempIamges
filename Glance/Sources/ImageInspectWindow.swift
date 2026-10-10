@@ -382,7 +382,7 @@ private final class CompressionDialogPanel: NSPanel {
 }
 
 /// A Widget's optional result URL action stays separate from the generated bitmap.
-private final class WidgetResultURLButton: NSControl {
+final class WidgetResultURLButton: NSControl {
     var onPress: (() -> Void)?
     private let icon = NSImageView()
     private var tracking: NSTrackingArea?
@@ -486,9 +486,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let taskToast = TaskToastView()
     private let taskOverlayShade = InspectNonHitTestingView()
     private let runningImageBorder = InspectNonHitTestingView()
-    private let runningImageLabel = InspectNonHitTestingView()
-    private let runningImageDot = PanelStyle.makeStatusDot(color: PanelStyle.accent)
-    private let runningImageText = NSTextField(labelWithString: "Task running".localized)
+    private let runningImageIndicator = InspectNonHitTestingView()
+    private let runningImageDot = PanelStyle.makeStatusDot(color: PanelStyle.success)
     private let copyResultURLButton = WidgetResultURLButton()
     /// Themed action menu panel (frosted dark, warm-cue selection); rebuilt
     /// per presentation so enabled states and titles are always fresh.
@@ -1126,8 +1125,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         canvasContainer.addSubview(taskSummaryLabel, positioned: .above, relativeTo: nil)
         taskToast.isHidden = true
         canvasContainer.addSubview(taskToast, positioned: .above, relativeTo: nil)
-        // Figma: Image Inspect / Widget Task Running / Focused Source.
-        // The cue sits above the image and stays visible when chrome hides.
+        // The processing cues sit above the image and stay visible when chrome hides.
         runningImageBorder.wantsLayer = true
         runningImageBorder.layer?.borderWidth = 2
         runningImageBorder.layer?.borderColor = PanelStyle.accent.withAlphaComponent(0.8).cgColor
@@ -1138,23 +1136,17 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         runningImageBorder.layer?.shadowRadius = 16
         runningImageBorder.isHidden = true
         canvasContainer.addSubview(runningImageBorder, positioned: .above, relativeTo: nil)
-        runningImageLabel.wantsLayer = true
-        runningImageLabel.layer?.backgroundColor = PanelStyle.inspectToolbar.cgColor
-        runningImageLabel.layer?.borderWidth = 1
-        runningImageLabel.layer?.borderColor = PanelStyle.accent.withAlphaComponent(0.72).cgColor
-        runningImageLabel.layer?.cornerRadius = 8
-        runningImageLabel.isHidden = true
-        runningImageDot.frame = NSRect(x: 14, y: 13, width: 8, height: 8)
-        runningImageDot.layer?.cornerRadius = 4
-        runningImageLabel.addSubview(runningImageDot)
-        runningImageText.font = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
-        runningImageText.textColor = PanelStyle.accent
-        runningImageText.alignment = .center
-        runningImageText.frame = NSRect(x: 30, y: 9, width: 118, height: 16)
-        runningImageLabel.addSubview(runningImageText)
-        runningImageLabel.setAccessibilityElement(true)
-        runningImageLabel.setAccessibilityLabel("Task running".localized)
-        canvasContainer.addSubview(runningImageLabel, positioned: .above, relativeTo: nil)
+        runningImageIndicator.isHidden = true
+        runningImageDot.frame = NSRect(x: 9, y: 9, width: 16, height: 16)
+        runningImageDot.layer?.cornerRadius = 8
+        runningImageDot.layer?.shadowColor = PanelStyle.success.cgColor
+        runningImageDot.layer?.shadowOpacity = 0.85
+        runningImageDot.layer?.shadowOffset = .zero
+        runningImageDot.layer?.shadowRadius = 10
+        runningImageIndicator.addSubview(runningImageDot)
+        runningImageIndicator.setAccessibilityElement(true)
+        runningImageIndicator.setAccessibilityLabel("Task running".localized)
+        canvasContainer.addSubview(runningImageIndicator, positioned: .above, relativeTo: nil)
         copyResultURLButton.isHidden = true
         copyResultURLButton.onPress = { [weak self] in self?.copyWidgetResultURL() }
         canvasContainer.addSubview(copyResultURLButton, positioned: .above, relativeTo: nil)
@@ -1198,7 +1190,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // icons remain legible on ordinary image window sizes.
         let scale = min(max(min(width / Self.designSize.width,
                                 height / Self.designSize.height), 0.62), 1.25)
-        let toolbarScale = max(0.1, min(1, min((width - 16) / 274,
+        // The running dot is pinned to the window's right inset. Keep the
+        // toolbar clear of it on narrow windows without changing idle layout.
+        let runningIndicatorX = max(8, width - 24 - 34)
+        let toolbarAvailableW = runningImageIndicator.isHidden
+            ? width - 16 : runningIndicatorX - 20
+        let toolbarScale = max(0.1, min(1, min(toolbarAvailableW / 274,
                                                (height - 16) / 77)))
         // Rounded frosted panel: the media is inset 8pt so the frosted base
         // reads as a dark frame; a hairline edge finishes the window.
@@ -1229,7 +1226,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // room between them instead of a cramped 6pt.
         let toolbarW = 274 * toolbarScale
         let toolbarH = 54 * toolbarScale
-        toolbarBar.frame = NSRect(x: (width - toolbarW) / 2,
+        let centeredToolbarX = (width - toolbarW) / 2
+        let toolbarX = runningImageIndicator.isHidden
+            ? centeredToolbarX : min(centeredToolbarX, runningIndicatorX - 12 - toolbarW)
+        toolbarBar.frame = NSRect(x: toolbarX,
                                   y: height - (23 * toolbarScale) - toolbarH,
                                   width: toolbarW, height: toolbarH)
         layoutToolbar(width: toolbarW)
@@ -1243,13 +1243,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let canvasRect = canvasContainer.bounds.insetBy(dx: mediaInsetX, dy: mediaInsetY)
         runningImageBorder.frame = canvasRect
         runningImageBorder.layer?.cornerRadius = 12 * scale
-        let runningLabelTop: CGFloat = width < 520 ? 86 : 67
-        runningImageLabel.frame = NSRect(x: max(8, width - 24 - 160),
-                                         y: height - runningLabelTop - 34,
-                                         width: 160, height: 34)
-        // Keep the icon-only result URL action aligned with the floating toolbar.
         let toolbarCenterY = toolbarBar.frame.midY
-        copyResultURLButton.frame = NSRect(x: max(8, width - 24 - 34),
+        runningImageIndicator.frame = NSRect(x: runningIndicatorX,
+                                             y: toolbarCenterY - 17,
+                                             width: 34, height: 34)
+        // Keep the icon-only result URL action aligned with the floating toolbar.
+        copyResultURLButton.frame = NSRect(x: runningIndicatorX,
                                         y: toolbarCenterY - 17,
                                         width: 34, height: 34)
 
@@ -2140,8 +2139,29 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         if runningImageBorder.isHidden != !isRunning {
             runningImageBorder.isHidden = !isRunning
         }
-        if runningImageLabel.isHidden != !isRunning {
-            runningImageLabel.isHidden = !isRunning
+        if runningImageIndicator.isHidden != !isRunning {
+            runningImageIndicator.isHidden = !isRunning
+        }
+        if let dotLayer = runningImageDot.layer {
+            if isRunning && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                if dotLayer.animation(forKey: "widgetRunningDotBreathing") == nil {
+                    let glow = CABasicAnimation(keyPath: "shadowOpacity")
+                    glow.fromValue = 0.3
+                    glow.toValue = 1.0
+                    let fade = CABasicAnimation(keyPath: "opacity")
+                    fade.fromValue = 0.55
+                    fade.toValue = 1.0
+                    let breathing = CAAnimationGroup()
+                    breathing.animations = [glow, fade]
+                    breathing.duration = 0.9
+                    breathing.autoreverses = true
+                    breathing.repeatCount = .infinity
+                    breathing.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                    dotLayer.add(breathing, forKey: "widgetRunningDotBreathing")
+                }
+            } else {
+                dotLayer.removeAnimation(forKey: "widgetRunningDotBreathing")
+            }
         }
         guard let layer = runningImageBorder.layer else { return }
         if isRunning && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
@@ -2580,12 +2600,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let info = session.infos[session.focusedIndex]
         guard info.kind == .image, info.isLocal,
               let record = WidgetTaskManager.shared.completedRecord(for: info.url),
-              record.copyableImageResultURL != nil else { return nil }
+              record.copyableMediaResultURL != nil else { return nil }
         return record
     }
 
     private var currentWidgetResultURLString: String? {
-        currentWidgetResultRecord?.copyableImageResultURL
+        currentWidgetResultRecord?.copyableMediaResultURL
     }
 
     private var isFocusedWidgetResult: Bool {
@@ -2599,7 +2619,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     private func copyWidgetResultURL() {
         guard let record = currentWidgetResultRecord,
-              let storedURL = record.copyableImageResultURL else { return }
+              let storedURL = record.copyableMediaResultURL else { return }
         guard let taskID = record.remoteTaskID else {
             copyWidgetResultURLToPasteboard(storedURL)
             return
@@ -3800,7 +3820,7 @@ private final class OCRResultWindow: NSPanel {
 /// Short centered acknowledgement for successful save/export operations.
 /// A child panel is used instead of a canvas subview so layer-backed image,
 /// WebKit, and AV surfaces can never render above it.
-private final class InspectToastWindow: NSPanel {
+final class InspectToastWindow: NSPanel {
     private let label = NSTextField(wrappingLabelWithString: "")
     private var hideWorkItem: DispatchWorkItem?
 

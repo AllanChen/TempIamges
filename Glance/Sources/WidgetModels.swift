@@ -127,8 +127,8 @@ struct WidgetManifest: Codable, Hashable {
             if !commandIDs.insert(command.id).inserted { issues.append("duplicate command id: \(command.id)") }
             if command.inputTypes.isEmpty { issues.append("command \(command.id) must declare an input type") }
             if command.outputs.isEmpty { issues.append("command \(command.id) must declare an output type") }
-            if command.showResultURL == true && !command.outputs.contains("image") {
-                issues.append("command \(command.id) can show a result URL only for image output")
+            if command.showResultURL == true && !command.outputs.contains(where: { $0 == "image" || $0 == "video" }) {
+                issues.append("command \(command.id) can show a result URL only for image or video output")
             }
             if command.taskType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("command \(command.id) must declare taskType") }
         }
@@ -186,7 +186,9 @@ final class WidgetRegistry {
         installed = cached.compactMap { manifest in
             let productionID = legacyToProduction[manifest.id] ?? manifest.id
             guard migratedIDs.insert(productionID).inserted else { return nil }
-            return Self.migrateResultURLPreference(Self.canonicalManifest(manifest, id: productionID))
+            let migrated = manifest.id == productionID
+                ? manifest : Self.canonicalManifest(manifest, id: productionID)
+            return Self.migrateResultURLPreference(migrated)
         }
         if installed.count != cached.count || installed != cached, let data = try? encoder.encode(installed) {
             UserDefaults.standard.set(data, forKey: storageKey)

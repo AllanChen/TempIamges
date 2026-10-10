@@ -71,7 +71,7 @@ def main(task: WidgetTask) -> dict:
 
 ## 图片结果的复制 URL 按钮
 
-在 `widget.json` 的**命令输出配置**中设置 `showResultURL`，由 Widget 开发者决定是否让用户复制结果图片的 URL：
+在 `widget.json` 的**命令输出配置**中设置 `showResultURL`，由 Widget 开发者决定是否让用户复制结果图片或视频的 URL：
 
 ```json
 {
@@ -80,7 +80,7 @@ def main(task: WidgetTask) -> dict:
 }
 ```
 
-`showResultURL` 是可选布尔字段，省略或设为 `false` 时不显示按钮；设为 `true` 时，命令的 `outputs` 必须包含 `image`。后台创建或编辑 Widget 时，可在输出类型旁勾选“显示复制 URL 按钮”。Glance 仅在图片任务成功且实际取得 HTTP(S) 结果 URL 后，在主图和任务中心显示复制按钮；普通图片处理 Widget 可以保持默认值。
+`showResultURL` 是可选布尔字段，省略或设为 `false` 时不显示按钮；设为 `true` 时，命令的 `outputs` 必须包含 `image` 或 `video`。后台创建或编辑 Widget 时，可在输出类型旁勾选“显示复制 URL 按钮”。Glance 仅在媒体任务成功且实际取得 HTTP(S) 结果 URL 后，在图片或视频主窗口及任务中心显示复制按钮；普通处理 Widget 可以保持默认值。
 
 Worker 返回已托管图片的示例：
 
