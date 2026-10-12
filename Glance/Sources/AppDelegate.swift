@@ -1,8 +1,9 @@
 import AppKit
+import UserNotifications
 import Carbon
 
-class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate {
-    private var statusBarController: StatusBarController?
+class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate, UNUserNotificationCenterDelegate {
+    var statusBarController: StatusBarController?
     private var keyboardMonitor: KeyboardMonitor?
     private var selectedTextExtractor: SelectedTextExtractor?
     private var pathDetector: PathDetector?
@@ -57,7 +58,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
         applyLanguage()
         applyTheme()
+        setupMainMenu()
         setupComponents()
+        UNUserNotificationCenter.current().delegate = self
         setupNotifications()
         setupDeepLinkHandler()
         checkPermissions()
@@ -167,6 +170,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             }
         guard !paths.isEmpty else { return }
 
+        // Opening from Finder counts as viewing: it belongs in Recent like Home opens do.
+        HistoryManager.shared.record(selectedText: "", detectedPaths: paths)
         Logger.info("AppDelegate: opening \(paths.count) Finder media item(s) as one batch")
         activeRequestID &+= 1
         activeRequestStartedAt = Date()
@@ -198,6 +203,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onboardingDidClose),
+            name: OnboardingWindow.didClose,
+            object: nil
+        )
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(previewModeActivated),
@@ -260,8 +272,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         }
     }
 
+    private var peekWasEnabled = false
+
     private func checkPermissions() {
         let permissionManager = PermissionManager.shared
+
+        Preferences.shared.migratePeekOptIn(
+            alreadySetUp: permissionManager.isInputMonitoringGranted && permissionManager.isAccessibilityGranted)
+        peekWasEnabled = Preferences.shared.peekEnabled
+        // Peek is opt-in. Until it is switched on Glance is a plain viewer and
+        // must not ask for (or nag about) any permission.
+        guard peekWasEnabled else {
+            Logger.info("AppDelegate: Peek is off - no permissions requested")
+            return
+        }
 
         let needsOnboarding = !permissionManager.isInputMonitoringGranted
             || !permissionManager.isAccessibilityGranted
@@ -343,7 +367,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     /// flows that want to exercise PathDetector with a known input.
     private func activatePreview(injectedText: String?) {
         Logger.info("AppDelegate: Preview mode activated\(injectedText != nil ? " (debug)" : "")")
-        guard Preferences.shared.enabled else {
+        guard Preferences.shared.peekEnabled else {
             Logger.info("AppDelegate: Preview disabled in preferences")
             return
         }
@@ -532,7 +556,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     /// Renders a short hint for the tile metadata, e.g.
-    /// `/Users/lily/Desktop/work/HoopCut/img.png` → `~/Desktop/work/HoopCut`.
+    /// `/Users/me/Desktop/work/Project/img.png` → `~/Desktop/work/Project`.
     /// Truncates to the last 2 components if the tildified path is long.
     private static func disambiguationHint(for url: URL) -> String {
         let parent = url.deletingLastPathComponent().path
@@ -691,7 +715,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             return
         }
 
-        Logger.info("AppDelegate: single-hit shortcut → opening \(info.url.absoluteString)")
+        Logger.info("AppDelegate: single-hit shortcut → opening \(Logger.redact(info.url.absoluteString))")
         switch info.kind {
         case .image, .markdown, .text, .pdf, .webPage:
             openInContentPanel(info: info)
@@ -740,11 +764,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
                     preferredMode: preferredMode)
     }
 
-    private func openVideoCompare(infos: [MediaInfo], focusedIndex: Int = 0) {
+    private func openVideoCompare(infos: [MediaInfo], focusedIndex: Int = 0, startsInCompare: Bool? = nil) {
         guard !infos.isEmpty, infos.allSatisfy({ $0.kind == .video }) else { return }
         previewPanel?.closeWithoutAffectingContent()
         videoCompareWindow?.close()
-        let window = VideoCompareWindow(infos: infos, focusedIndex: focusedIndex, startsInCompare: infos.count == 2)
+        let window = VideoCompareWindow(infos: infos, focusedIndex: focusedIndex,
+                                        startsInCompare: startsInCompare ?? (infos.count == 2))
         // Clicking a captured-frame thumbnail hands it to Image Inspect:
         // the first opens the window and later clicks append to its filmstrip.
         window?.onCaptureFrame = { [weak self] url in
@@ -853,10 +878,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     @objc private func preferencesChanged() {
-        if !Preferences.shared.enabled {
+        if !Preferences.shared.peekEnabled {
             previewModeDeactivated()
         }
+        applyPeekState()
         applyTheme()
+    }
+
+    /// Reacts only when Peek is switched on or off, not on every preference
+    /// change: switching on explains and requests the permissions it needs,
+    /// switching off releases the global keyboard tap.
+    private func applyPeekState() {
+        let enabled = Preferences.shared.peekEnabled
+        guard enabled != peekWasEnabled else { return }
+        peekWasEnabled = enabled
+        if enabled {
+            let permissionManager = PermissionManager.shared
+            if permissionManager.isInputMonitoringGranted && permissionManager.isAccessibilityGranted {
+                startKeyboardMonitoring()
+            } else {
+                showOnboardingWindow()
+            }
+        } else {
+            keyboardMonitor?.stopMonitoring()
+        }
+    }
+
+    /// The permission guide was dismissed; if Peek is on and the permission
+    /// arrived, the hotkey starts working without a relaunch.
+    @objc private func onboardingDidClose() {
+        guard Preferences.shared.peekEnabled, PermissionManager.shared.isInputMonitoringGranted else { return }
+        startKeyboardMonitoring()
     }
 
     @objc private func languageChanged() {
@@ -961,7 +1013,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
         closeHomeIfVisible()
     }
 
-    private func openMediaFromHome(_ urls: [URL]) {
+    func openMediaFromHome(_ urls: [URL]) {
         let detector = pathDetector ?? PathDetector()
         let infos = urls.compactMap { MediaInfo.from(detector.localKind(for: $0.path)) }
             .filter { $0.kind == .image || $0.kind == .video }
@@ -1021,7 +1073,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
     }
 
     /// Read every image inside a folder (one level deep) and present them.
-    private func openFolder(_ folder: URL) {
+    func openFolder(_ folder: URL) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let urls = Self.imageURLs(inFolder: folder)
             DispatchQueue.main.async {
@@ -1047,9 +1099,50 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
             .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
+    /// Opens a finished Widget result in Inspect. When the original is still
+    /// available it opens alongside the result (original first), with the
+    /// result showing; the user enters Compare themselves.
     func openTaskOutputInInspect(_ url: URL) {
-        let info = MediaInfo(url: url, isLocal: url.isFileURL, kind: .image)
-        openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
+        let kind = Self.mediaKind(of: url)
+        var infos = [MediaInfo(url: url, isLocal: url.isFileURL, kind: kind)]
+        var focusedIndex = 0
+        if let source = WidgetTaskManager.shared.sourceURL(forResult: url),
+           Self.mediaKind(of: source) == kind,
+           !source.isFileURL || FileManager.default.fileExists(atPath: source.path) {
+            infos.insert(MediaInfo(url: source, isLocal: source.isFileURL, kind: kind), at: 0)
+            focusedIndex = 1
+        }
+        if kind == .video {
+            openVideoCompare(infos: infos, focusedIndex: focusedIndex, startsInCompare: false)
+        } else {
+            openImageInspect(infos: infos, loaded: Array(repeating: nil, count: infos.count),
+                             focusedIndex: focusedIndex, preferredMode: .focus)
+        }
+    }
+
+    private static func mediaKind(of url: URL) -> MediaInfo.Kind {
+        MediaDropCanvasView.videoExtensions.contains(url.pathExtension.lowercased()) ? .video : .image
+    }
+
+    // MARK: - UNUserNotificationCenterDelegate
+
+    /// Widget-completed banners also show while Glance is frontmost.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
+    }
+
+    /// Clicking a "Widget completed" banner opens the result (with its original).
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        defer { completionHandler() }
+        guard let idString = response.notification.request.content.userInfo["recordID"] as? String,
+              let id = UUID(uuidString: idString),
+              let output = WidgetTaskManager.shared.records.first(where: { $0.id == id })?.output else { return }
+        DispatchQueue.main.async { [weak self] in
+            NSApp.activate(ignoringOtherApps: true)
+            self?.openTaskOutputInInspect(output)
+        }
     }
 
     func openLogin(at point: NSPoint) {
@@ -1077,7 +1170,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
         https://cdn.v2ex.com/avatar/8b6e/2852/785555_xlarge.png
 
-        orn-frontend % '/Users/lily/Desktop/work/HoopCut/data/debug/frame_00375.jpg'
+        orn-frontend % '/tmp/glance-sample/debug/frame_00375.jpg'
 
         org_img = "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/572ac945-2e08-4629-b179-f62a388b2f70.jpg"
             target_img = "https://pub-69ca10693ab14c1c8f42d54f13c55810.r2.dev/f3e5e1d6-d223-4219-bd4f-67ad0231a578.webp"
@@ -1098,7 +1191,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate 
 
             xporn/base_image.json
 
-            /Users/lily/Desktop/work/xporn/base_video.json
+            /tmp/glance-sample/xporn/base_video.json
 
         ❯ 那我现在每天的工作计划是看哪一个markdown ？
 

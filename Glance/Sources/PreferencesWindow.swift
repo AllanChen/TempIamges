@@ -151,7 +151,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         container.addSubview(card2)
         container.addSubview(makeSectionHeader("General".localized, at: NSRect(x: 36, y: 234, width: 408, height: 14)))
 
-        enabledCheckbox = makeCheckbox("Enable Image Hover Preview".localized, action: #selector(enabledToggled))
+        enabledCheckbox = makeCheckbox("Enable Peek (preview selected text)".localized, action: #selector(enabledToggled))
         enabledCheckbox.frame = NSRect(x: 36, y: 264, width: 408, height: 22)
         container.addSubview(enabledCheckbox)
 
@@ -256,7 +256,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
 
     private func loadSettings() {
         let prefs = Preferences.shared
-        enabledCheckbox.state = prefs.enabled ? .on : .off
+        enabledCheckbox.state = prefs.peekEnabled ? .on : .off
         readClipboardCheckbox.state = prefs.readClipboard ? .on : .off
         launchAtLoginCheckbox.state = prefs.launchAtLogin ? .on : .off
         updateModePopup()
@@ -529,7 +529,7 @@ class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     }
 
     @objc private func enabledToggled(_ sender: NSButton) {
-        Preferences.shared.enabled = sender.state == .on
+        Preferences.shared.peekEnabled = sender.state == .on
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 

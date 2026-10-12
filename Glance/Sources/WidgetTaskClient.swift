@@ -4,8 +4,39 @@ import ImageIO
 import UniformTypeIdentifiers
 
 enum WidgetTaskPhase: String, Codable {
-    case uploading, submitting, processing, downloading, completed, failed, interrupted
+    case uploading, submitting, processing, downloading, completed, failed, interrupted, cancelled, expired
     var isActive: Bool { [.uploading, .submitting, .processing, .downloading].contains(self) }
+    /// Ended without a result and not because the user stopped it; shown as a failure.
+    var isFailure: Bool { [.failed, .interrupted, .expired].contains(self) }
+}
+
+/// Lets the user stop a Widget task. The stages before submission and the
+/// polling loop check it; the remote task is cancelled separately.
+final class WidgetTaskCancellation {
+    private let lock = NSLock()
+    private var cancelled = false
+    var isCancelled: Bool { lock.lock(); defer { lock.unlock() }; return cancelled }
+    func cancel() { lock.lock(); cancelled = true; lock.unlock() }
+}
+
+/// Where a queued task stands; shown so the user knows how long to wait.
+struct WidgetQueueInfo: Equatable {
+    let position: Int
+    let estimatedWaitSeconds: Int?
+}
+
+/// The service refused the task because its queue is full (HTTP 429 queue_full).
+struct WidgetServiceBusyError: LocalizedError {
+    var errorDescription: String? { "The service is busy right now. Please try again later.".localized }
+}
+
+struct WidgetTaskCancelledError: LocalizedError {
+    var errorDescription: String? { "Cancelled".localized }
+}
+
+/// The task waited too long in the queue and the service gave up on it.
+struct WidgetTaskExpiredError: LocalizedError {
+    var errorDescription: String? { "The task expired before a worker picked it up.".localized }
 }
 
 final class WidgetTaskClient {
@@ -66,7 +97,9 @@ final class WidgetTaskClient {
     func run(widgetID: String, commandID: String, mediaURL: URL,
              mediaKind: MediaInfo.Kind,
              input: WidgetTaskInput? = nil,
+             cancellation: WidgetTaskCancellation? = nil,
              progress: @escaping (WidgetTaskPhase, Int) -> Void,
+             queue: @escaping (WidgetQueueInfo?) -> Void = { _ in },
              submitted: @escaping (String) -> Void,
              completion: @escaping (Result<URL, Error>) -> Void) {
         let mediaURLs = input?.mediaURLs ?? [mediaURL]
@@ -78,10 +111,12 @@ final class WidgetTaskClient {
         fetchCountry { [weak self] country in
             guard let self else { return }
             self.fetchUploadConfig { config in
+                if cancellation?.isCancelled == true { completion(.failure(WidgetTaskCancelledError())); return }
                 self.uploadMedia(mediaURLs, country: country, config: config) { upload in
                     switch upload {
                     case .failure(let error): completion(.failure(error))
                     case .success(let urls):
+                        if cancellation?.isCancelled == true { completion(.failure(WidgetTaskCancelledError())); return }
                         let submitTask: (String?) -> Void = { mask in
                             progress(.submitting, 0)
                             self.submit(widgetID: widgetID, commandID: commandID,
@@ -93,10 +128,18 @@ final class WidgetTaskClient {
                                         location: country) { submission in
                                 switch submission {
                                 case .failure(let error): completion(.failure(error))
-                                case .success(let taskID):
-                                    submitted(taskID); progress(.processing, 0)
-                                    self.poll(taskID: taskID, started: Date(), progress: progress,
-                                              completion: completion)
+                                case .success(let accepted):
+                                    let taskID = accepted.taskID
+                                    submitted(taskID)
+                                    queue(accepted.queue)
+                                    if cancellation?.isCancelled == true {
+                                        // Cancelled while the submit request was in flight.
+                                        self.cancel(taskID: taskID)
+                                        completion(.failure(WidgetTaskCancelledError())); return
+                                    }
+                                    progress(.processing, 0)
+                                    self.poll(taskID: taskID, started: Date(), cancellation: cancellation,
+                                              progress: progress, queue: queue, completion: completion)
                                 }
                             }
                         }
@@ -127,10 +170,23 @@ final class WidgetTaskClient {
         next(0, [])
     }
 
-    func resume(taskID: String, progress: @escaping (WidgetTaskPhase, Int) -> Void,
+    func resume(taskID: String, cancellation: WidgetTaskCancellation? = nil,
+                progress: @escaping (WidgetTaskPhase, Int) -> Void,
+                queue: @escaping (WidgetQueueInfo?) -> Void = { _ in },
                 completion: @escaping (Result<URL, Error>) -> Void) {
         progress(.processing, 0)
-        poll(taskID: taskID, started: Date(), progress: progress, completion: completion)
+        poll(taskID: taskID, started: Date(), cancellation: cancellation, progress: progress, queue: queue, completion: completion)
+    }
+
+    /// Asks the service to cancel a queued or running task. Best effort: a task
+    /// that already finished (or is unknown) simply stays as it is.
+    func cancel(taskID: String) {
+        var request = authorizedRequest(apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
+        request.httpMethod = "DELETE"
+        apiDataTask(with: request) { _, response, error in
+            if let error { Logger.warning("Widget task cancel request failed: \(error.localizedDescription)") }
+            else if let http = response as? HTTPURLResponse { Logger.info("Widget task cancel answered HTTP \(http.statusCode)") }
+        }
     }
 
     /// Fetch a fresh URL when the user copies a result. Glance R2 asset links
@@ -390,7 +446,7 @@ final class WidgetTaskClient {
                         prompt: String?, maskURL: String?, usesMultipleImages: Bool,
                         usesMultipleVideos: Bool, mediaType: String,
                         location: String,
-                        completion: @escaping (Result<String, Error>) -> Void) {
+                        completion: @escaping (Result<AcceptedTask, Error>) -> Void) {
         guard let primaryURL = mediaURLs.first else {
             completion(.failure(WidgetTaskInputError.invalidImageCount))
             return
@@ -421,19 +477,31 @@ final class WidgetTaskClient {
             do {
                 if let error { throw error }
                 let envelope: TaskEnvelope = try Self.decode(data, response)
-                guard envelope.success, let taskID = envelope.result?.taskID else { throw WidgetError.unavailable }
-                completion(.success(taskID))
+                guard envelope.success, let result = envelope.result else { throw WidgetError.unavailable }
+                completion(.success(AcceptedTask(taskID: result.taskID, queue: result.queueInfo)))
+            } catch let failure as WidgetTaskRequestError where failure.statusCode == 429 {
+                completion(.failure(WidgetServiceBusyError()))
             } catch { completion(.failure(error)) }
         }
     }
 
-    private func poll(taskID: String, started: Date,
+    struct AcceptedTask { let taskID: String; let queue: WidgetQueueInfo? }
+
+    private func poll(taskID: String, started: Date, cancellation: WidgetTaskCancellation?,
                       progress: @escaping (WidgetTaskPhase, Int) -> Void,
+                      queue: @escaping (WidgetQueueInfo?) -> Void,
                       completion: @escaping (Result<URL, Error>) -> Void) {
-        guard Date().timeIntervalSince(started) <= 1800 else { completion(.failure(WidgetError.unavailable)); return }
+        if cancellation?.isCancelled == true { completion(.failure(WidgetTaskCancelledError())); return }
+        guard Date().timeIntervalSince(started) <= 1800 else {
+            // Giving up locally must also stop the remote task; otherwise a
+            // worker still runs it and bills for a result nobody will see.
+            cancel(taskID: taskID)
+            completion(.failure(WidgetError.unavailable)); return
+        }
         let request = authorizedRequest(apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
         apiDataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
+            var delay: TimeInterval = 5
             do {
                 if let error { throw error }
                 let envelope: TaskEnvelope = try Self.decode(data, response)
@@ -452,9 +520,20 @@ final class WidgetTaskClient {
                     completion(.failure(WidgetTaskExecutionError(message: result.error)))
                     return
                 }
-                progress(.processing, result.processCount ?? 0)
+                if result.status == "cancelled" { completion(.failure(WidgetTaskCancelledError())); return }
+                if result.status == "expired" { completion(.failure(WidgetTaskExpiredError())); return }
+                progress(.processing, result.progress ?? result.processCount ?? 0)
+                queue(result.status == "queued" ? result.queueInfo : nil)
+                // The service says how soon a change is likely; stay within sane bounds.
+                if let suggested = result.pollAfterMs { delay = min(10, max(1, Double(suggested) / 1000)) }
+            } catch let failure as WidgetTaskRequestError where failure.statusCode == 401 || failure.statusCode == 404 {
+                // Signed out or unknown task: retrying cannot help.
+                completion(.failure(failure)); return
             } catch { /* transient query errors retry until the overall timeout */ }
-            DispatchQueue.global().asyncAfter(deadline: .now() + 5) { self.poll(taskID: taskID, started: started, progress: progress, completion: completion) }
+            DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
+                self.poll(taskID: taskID, started: started, cancellation: cancellation,
+                          progress: progress, queue: queue, completion: completion)
+            }
         }
     }
 
@@ -521,12 +600,21 @@ final class WidgetTaskClient {
         let taskID: String
         let status: String
         let processCount: Int?
+        let progress: Int?
+        let pollAfterMs: Int?
+        let queuePosition: Int?
+        let estimatedWaitSeconds: Int?
+        var queueInfo: WidgetQueueInfo? {
+            guard let queuePosition, queuePosition > 0 else { return nil }
+            return WidgetQueueInfo(position: queuePosition, estimatedWaitSeconds: estimatedWaitSeconds)
+        }
         let resultURL: String?
         let result: [TaskArtifact]?
         let error: String?
     }
     private struct TaskArtifact: Codable { let type: String?; let text: String?; let url: String? }
 }
+
 
 private enum WidgetTaskInputError: LocalizedError {
     case invalidImageCount

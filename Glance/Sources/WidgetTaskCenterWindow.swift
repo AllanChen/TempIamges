@@ -351,7 +351,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         switch filter.selectedSegment {
         case 1: filtered = records.filter { $0.phase.isActive }
         case 2: filtered = records.filter { $0.phase == .completed }
-        case 3: filtered = records.filter { $0.phase == .failed || $0.phase == .interrupted }
+        case 3: filtered = records.filter { $0.phase.isFailure }
         default: filtered = records
         }
         visibleRecords = query.isEmpty ? filtered : filtered.filter {
@@ -442,7 +442,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         case .processing: phaseIndex = 2
         case .downloading: phaseIndex = 3
         case .completed: phaseIndex = 4
-        case .failed, .interrupted: phaseIndex = 2
+        case .failed, .interrupted, .cancelled, .expired: phaseIndex = 2
         }
         for index in timelineRows.indices {
             let state: TaskTimelineRow.State = index < phaseIndex ? .complete : (index == phaseIndex ? .current : .pending)
@@ -453,7 +453,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         propertyValues[2].stringValue = record.remoteTaskID == nil ? "—" : "Remote"
         propertyValues[3].stringValue = "\(record.progress)%"
         propertyValues[4].stringValue = record.phase.isActive ? "2 seconds".localized : "—"
-        let failed = record.phase == .failed || record.phase == .interrupted
+        let failed = record.phase.isFailure
         let failureReason = record.errorMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
         propertyValues[5].stringValue = failed
             ? ((failureReason?.isEmpty == false ? failureReason : nil)
@@ -466,7 +466,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         copyURLButton.isHidden = record.copyableMediaResultURL == nil
         copyURLButton.isEnabled = !copyURLButton.isHidden
         revealButton.isEnabled = selectedOutputExists
-        retryButton.isEnabled = record.phase == .failed || record.phase == .interrupted || (record.phase == .completed && !selectedOutputExists)
+        retryButton.isEnabled = record.phase.isFailure || record.phase == .cancelled || (record.phase == .completed && !selectedOutputExists)
         removeButton.isEnabled = !record.phase.isActive
     }
 
@@ -475,6 +475,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     }
 
     private func stateText(_ record: WidgetTaskRecord) -> String {
+        if let queued = record.queueText { return queued }
         switch record.phase {
         case .processing: return record.progress > 0 ? "\(record.progress)%" : "Processing".localized
         case .uploading: return "Uploading".localized
@@ -483,6 +484,8 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         case .completed: return "Completed".localized
         case .failed: return "Failed".localized
         case .interrupted: return "Interrupted".localized
+        case .cancelled: return "Cancelled".localized
+        case .expired: return "Expired".localized
         }
     }
 
@@ -616,7 +619,7 @@ private final class TaskCenterCellView: NSTableCellView {
                           accessibilityDescription: nil)
         titleLabel.stringValue = record.commandName
         detailLabel.stringValue = "\(relativeDate(record.createdAt))  •  \(record.source?.lastPathComponent ?? "Media")"
-        let color: NSColor = record.phase.isActive ? PanelStyle.accent : ((record.phase == .failed || record.phase == .interrupted) ? PanelStyle.failure : PanelStyle.success)
+        let color: NSColor = record.phase.isActive ? PanelStyle.accent : (record.phase.isFailure ? PanelStyle.failure : (record.phase == .cancelled ? PanelStyle.textSecondary : PanelStyle.success))
         stateLabel.string = taskState(record)
         stateLabel.textColor = color
         stateBadge.layer?.backgroundColor = color.withAlphaComponent(0.16).cgColor
@@ -644,7 +647,8 @@ private final class TaskCenterCellView: NSTableCellView {
     }
 
     private func taskState(_ record: WidgetTaskRecord) -> String {
-        switch record.phase { case .processing: return record.progress > 0 ? "\(record.progress)%" : "Running"; case .uploading: return "Uploading"; case .submitting: return "Submitting"; case .downloading: return "Downloading"; case .completed: return "Done"; case .failed: return "Failed"; case .interrupted: return "Interrupted" }
+        if let queued = record.queueText { return queued }
+        switch record.phase { case .processing: return record.progress > 0 ? "\(record.progress)%" : "Running"; case .uploading: return "Uploading"; case .submitting: return "Submitting"; case .downloading: return "Downloading"; case .completed: return "Done"; case .failed: return "Failed"; case .interrupted: return "Interrupted"; case .cancelled: return "Cancelled"; case .expired: return "Expired" }
     }
 
     private func relativeDate(_ date: Date) -> String {

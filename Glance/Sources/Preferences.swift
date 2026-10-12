@@ -71,9 +71,24 @@ class Preferences {
         }
     }
 
-    var enabled: Bool {
+    /// Peek (select text anywhere, press the hotkey, see what it points at).
+    /// It needs Input Monitoring and Accessibility, so it is opt-in. The stored
+    /// key keeps its original name so existing choices carry over.
+    var peekEnabled: Bool {
         get { defaults.bool(forKey: "\(suiteName).enabled") }
         set { defaults.set(newValue, forKey: "\(suiteName).enabled") }
+    }
+
+    /// Peek used to be on by default and asked for permissions at first launch.
+    /// Run once: someone who never touched the setting but already had Peek
+    /// working keeps it on; an explicit choice is never overridden.
+    func migratePeekOptIn(alreadySetUp: Bool) {
+        let migratedKey = "\(suiteName).peekOptInMigrated"
+        guard !defaults.bool(forKey: migratedKey) else { return }
+        defaults.set(true, forKey: migratedKey)
+        let storedChoice = Bundle.main.bundleIdentifier
+            .flatMap { defaults.persistentDomain(forName: $0)?["\(suiteName).enabled"] }
+        if storedChoice == nil, alreadySetUp { peekEnabled = true }
     }
 
     var launchAtLogin: Bool {
@@ -148,7 +163,7 @@ class Preferences {
 
     private func registerDefaults() {
         let defaultValues: [String: Any] = [
-            "\(suiteName).enabled": true,
+            "\(suiteName).enabled": false,
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
             "\(suiteName).theme": Theme.dark.rawValue,
@@ -160,7 +175,7 @@ class Preferences {
     }
 
     func resetToDefaults() {
-        enabled = true
+        peekEnabled = false
         launchAtLogin = false
         readClipboard = true
         loginURL = nil

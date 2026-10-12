@@ -56,7 +56,6 @@
 "Light" = "Light";
 "Dark" = "Dark";
 "General" = "General";
-"Enable Image Hover Preview" = "Enable Image Hover Preview";
 "Read clipboard when no text is selected" = "Read clipboard when no text is selected";
 "Launch at Login" = "Launch at Login";
 "Activation Hotkey" = "Activation Hotkey";
@@ -82,7 +81,6 @@
 "Account" = "Account";
 "About Glance" = "About Glance";
 "Quit Glance" = "Quit Glance";
-"Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews." = "Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews.";
 "OK" = "OK";
 "Permissions ✅" = "Permissions ✅";
 "Permissions ⚠️" = "Permissions ⚠️";
@@ -336,8 +334,6 @@
 "Search by filename, inspect again with one click" = "Search by filename, inspect again with one click";
 
 // MARK: - Tray popover
-"Preview is on" = "Preview is on";
-"Preview is off" = "Preview is off";
 "Open Glance Home" = "Open Glance Home";
 "Permissions" = "Permissions";
 "All set" = "All set";
@@ -391,3 +387,33 @@
 "Video" = "Video";
 "Select the video to process." = "Select the video to process.";
 "Remove" = "Remove";
+"Widget Market…" = "Widget Market…";
+"Cancelled" = "Cancelled";
+"Expired" = "Expired";
+"Cancel %@" = "Cancel %@";
+"The task expired before a worker picked it up." = "The task expired before a worker picked it up.";
+"Enable Peek (preview selected text)" = "Enable Peek (preview selected text)";
+"Peek is on" = "Peek is on";
+"Peek is off" = "Peek is off";
+"Version %@\n\nThe Preview for the AI era: view images and videos, fix them with AI in place, and compare the result." = "Version %@\n\nThe Preview for the AI era: view images and videos, fix them with AI in place, and compare the result.";
+"File" = "File";
+"Window" = "Window";
+"Open…" = "Open…";
+"Close Window" = "Close Window";
+"Redo" = "Redo";
+"Cut" = "Cut";
+"Copy" = "Copy";
+"Paste" = "Paste";
+"Select All" = "Select All";
+"Hide Glance" = "Hide Glance";
+"Hide Others" = "Hide Others";
+"Show All" = "Show All";
+"Set as Default Viewer…" = "Set as Default Viewer…";
+"Set Glance as the default viewer?" = "Set Glance as the default viewer?";
+"Images and videos you open from Finder will open in Glance." = "Images and videos you open from Finder will open in Glance.";
+"Set as Default" = "Set as Default";
+"Could not set the default viewer" = "Could not set the default viewer";
+"Glance is now the default viewer" = "Glance is now the default viewer";
+"Queued · %d ahead · ~%@" = "Queued · %d ahead · ~%@";
+"Queued · %d ahead" = "Queued · %d ahead";
+"The service is busy right now. Please try again later." = "The service is busy right now. Please try again later.";

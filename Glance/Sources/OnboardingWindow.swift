@@ -1,6 +1,8 @@
 import AppKit
 
 final class OnboardingWindow: NSWindow {
+    /// Posted when the permission guide is dismissed, whichever way.
+    static let didClose = Notification.Name("GlanceOnboardingDidClose")
     private static let designSize = NSSize(width: 580, height: 650)
 
     private let root = NSView()
@@ -227,6 +229,7 @@ final class OnboardingWindow: NSWindow {
     override func close() {
         permissionCheckGeneration = UUID()
         super.close()
+        NotificationCenter.default.post(name: Self.didClose, object: nil)
     }
 }
 

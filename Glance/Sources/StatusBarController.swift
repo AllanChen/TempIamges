@@ -45,7 +45,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func preferencesDidChange() {
-        enableMenuItem?.state = Preferences.shared.enabled ? .on : .off
+        enableMenuItem?.state = Preferences.shared.peekEnabled ? .on : .off
         trayPanel?.refreshState()
         updateMenuBarIcon()
     }
@@ -109,7 +109,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     private func updateMenuBarIcon() {
         guard let button = statusItem.button else { return }
-        let enabled = Preferences.shared.enabled
+        let enabled = Preferences.shared.peekEnabled
         let symbolName = enabled ? "eye.fill" : "eye.slash"
         let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
         let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Glance")?
@@ -121,65 +121,6 @@ class StatusBarController: NSObject, NSMenuDelegate {
         button.contentTintColor = enabled ? PanelStyle.warmCue : PanelStyle.textSecondary
     }
 
-    private func createMenu() -> NSMenu {
-        menu = NSMenu()
-        menu.delegate = self
-        // Keep the menu on the app's darkroom chrome even when the system is
-        // in light mode: dark frosted material instead of a light menu.
-        menu.appearance = NSAppearance(named: .darkAqua)
-
-        let homeItem = NSMenuItem(title: "Open Home".localized, action: #selector(openHome), keyEquivalent: "n")
-        homeItem.target = self
-        menu.addItem(homeItem)
-
-        let preferencesItem = NSMenuItem(title: "Preferences...".localized, action: #selector(openPreferences), keyEquivalent: ",")
-        preferencesItem.target = self
-        menu.addItem(preferencesItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        enableMenuItem = NSMenuItem(title: "Enable Preview".localized, action: #selector(toggleEnable), keyEquivalent: "")
-        enableMenuItem.target = self
-        enableMenuItem.state = Preferences.shared.enabled ? .on : .off
-        menu.addItem(enableMenuItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        permissionMenuItem = NSMenuItem(title: "Permissions...".localized, action: #selector(openPermissions), keyEquivalent: "")
-        permissionMenuItem.target = self
-        menu.addItem(permissionMenuItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let historyItem = NSMenuItem(title: "History".localized, action: #selector(openHistory), keyEquivalent: "")
-        historyItem.target = self
-        menu.addItem(historyItem)
-
-        tasksMenuItem = NSMenuItem(title: tasksTitle, action: #selector(openTasks), keyEquivalent: "")
-        tasksMenuItem.target = self
-        menu.addItem(tasksMenuItem)
-
-        let clearCacheItem = NSMenuItem(title: "Clear Cache".localized, action: #selector(clearCache), keyEquivalent: "")
-        clearCacheItem.target = self
-        menu.addItem(clearCacheItem)
-
-        loginMenuItem = NSMenuItem(title: "Login".localized, action: #selector(openLogin), keyEquivalent: "")
-        loginMenuItem.target = self
-        menu.addItem(loginMenuItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let aboutItem = NSMenuItem(title: "About Glance".localized, action: #selector(showAbout), keyEquivalent: "")
-        aboutItem.target = self
-        menu.addItem(aboutItem)
-
-        let quitItem = NSMenuItem(title: "Quit Glance".localized, action: #selector(quitApp), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
-
-        return menu
-    }
-
     @objc private func openHome() {
         delegate?.openHome()
     }
@@ -189,8 +130,8 @@ class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func toggleEnable() {
-        Preferences.shared.enabled.toggle()
-        enableMenuItem.state = Preferences.shared.enabled ? .on : .off
+        Preferences.shared.peekEnabled.toggle()
+        enableMenuItem.state = Preferences.shared.peekEnabled ? .on : .off
         updateMenuBarIcon()
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
@@ -218,10 +159,11 @@ class StatusBarController: NSObject, NSMenuDelegate {
         delegate?.openLogin(at: loginPanelAnchorPoint())
     }
 
-    @objc private func showAbout() {
+    @objc func showAbout() {
         let alert = NSAlert()
         alert.messageText = "Glance".localized
-        alert.informativeText = "Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews.".localized
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        alert.informativeText = String(format: "Version %@\n\nThe Preview for the AI era: view images and videos, fix them with AI in place, and compare the result.".localized, version)
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK".localized)
         alert.runModal()

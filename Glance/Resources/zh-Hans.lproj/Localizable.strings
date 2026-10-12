@@ -56,7 +56,6 @@
 "Light" = "浅色";
 "Dark" = "深色";
 "General" = "通用";
-"Enable Image Hover Preview" = "启用悬停图片预览";
 "Read clipboard when no text is selected" = "未选中文本时读取剪贴板";
  "Launch at Login" = "登录时启动";
 "Activation Hotkey" = "激活热键";
@@ -82,7 +81,6 @@
 "Account" = "账户";
 "About Glance" = "关于 Glance";
 "Quit Glance" = "退出 Glance";
-"Version 1.0\n\nHold Cmd+Shift and hover over image URLs or file paths to see instant previews." = "版本 1.0\n\n按住 Cmd+Shift 并将鼠标悬停在图片 URL 或文件路径上即可查看即时预览。";
 "OK" = "好";
 "Permissions ✅" = "权限 ✅";
 "Permissions ⚠️" = "权限 ⚠️";
@@ -339,8 +337,6 @@
 "Search by filename, inspect again with one click" = "按文件名搜索，一键重新查看";
 
 // MARK: - Tray popover
-"Preview is on" = "预览已开启";
-"Preview is off" = "预览已关闭";
 "Open Glance Home" = "打开 Glance 主页";
 "Permissions" = "权限";
 "All set" = "已就绪";
@@ -394,3 +390,33 @@
 "Video" = "视频";
 "Select the video to process." = "选择要处理的视频。";
 "Remove" = "移除";
+"Widget Market…" = "Widget 市场…";
+"Cancelled" = "已取消";
+"Expired" = "已过期";
+"Cancel %@" = "取消%@";
+"The task expired before a worker picked it up." = "任务排队过久，已过期。";
+"Enable Peek (preview selected text)" = "启用 Peek（选中文本秒开预览）";
+"Peek is on" = "Peek 已开启";
+"Peek is off" = "Peek 已关闭";
+"Version %@\n\nThe Preview for the AI era: view images and videos, fix them with AI in place, and compare the result." = "版本 %@\n\nAI 时代的 Preview：看图看视频，不满意就地用 AI 改，改完对比确认。";
+"File" = "文件";
+"Window" = "窗口";
+"Open…" = "打开…";
+"Close Window" = "关闭窗口";
+"Redo" = "重做";
+"Cut" = "剪切";
+"Copy" = "拷贝";
+"Paste" = "粘贴";
+"Select All" = "全选";
+"Hide Glance" = "隐藏 Glance";
+"Hide Others" = "隐藏其他";
+"Show All" = "全部显示";
+"Set as Default Viewer…" = "设为默认看图器…";
+"Set Glance as the default viewer?" = "将 Glance 设为默认看图器？";
+"Images and videos you open from Finder will open in Glance." = "在访达中打开的图片和视频将使用 Glance 打开。";
+"Set as Default" = "设为默认";
+"Could not set the default viewer" = "无法设为默认看图器";
+"Glance is now the default viewer" = "Glance 已成为默认看图器";
+"Queued · %d ahead · ~%@" = "排队中 · 前面 %d 个 · 约 %@";
+"Queued · %d ahead" = "排队中 · 前面 %d 个";
+"The service is busy right now. Please try again later." = "服务繁忙，请稍后再试。";

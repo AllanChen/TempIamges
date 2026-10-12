@@ -356,30 +356,6 @@ struct WidgetSubmission: Codable, Hashable, Identifiable {
     }
 }
 
-struct WidgetReviewDecision: Codable, Hashable {
-    let decision: String
-    let note: String
-    let testPassed: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case decision, note, testPassed = "test_passed"
-    }
-}
-
-struct WidgetRelease: Codable, Hashable, Identifiable {
-    let id: String
-    let widgetID: String
-    let version: String
-    let channel: String
-    let rolloutPercent: Int
-    let status: WidgetSubmissionStatus
-
-    enum CodingKeys: String, CodingKey {
-        case id, widgetID = "widget_id", version, channel
-        case rolloutPercent = "rollout_percent", status
-    }
-}
-
 /// Authenticated API surface for the developer and reviewer portals. The
 /// server remains authoritative: this client only submits declarations and
 /// displays workflow state; it never executes third-party code locally.
@@ -404,23 +380,6 @@ final class WidgetPlatformClient {
 
     func fetchSubmission(id: String, completion: @escaping (Result<WidgetSubmission, Error>) -> Void) {
         request(path: "widget-submissions/\(id.pathComponentEscaped)", method: "GET", completion: completion)
-    }
-
-    func review(submissionID: String, decision: WidgetReviewDecision,
-                completion: @escaping (Result<WidgetSubmission, Error>) -> Void) {
-        request(path: "widget-submissions/\(submissionID.pathComponentEscaped)/review", method: "POST", body: decision, completion: completion)
-    }
-
-    func promote(releaseID: String, rolloutPercent: Int,
-                 completion: @escaping (Result<WidgetRelease, Error>) -> Void) {
-        request(path: "widget-releases/\(releaseID.pathComponentEscaped)/promote", method: "POST",
-                body: RolloutRequest(rolloutPercent: max(0, min(100, rolloutPercent))), completion: completion)
-    }
-
-    func suspend(releaseID: String, reason: String,
-                 completion: @escaping (Result<WidgetRelease, Error>) -> Void) {
-        request(path: "widget-releases/\(releaseID.pathComponentEscaped)/suspend", method: "POST",
-                body: SuspendRequest(reason: reason), completion: completion)
     }
 
     private func request<Response: Decodable, Body: Encodable>(path: String, method: String,
@@ -449,8 +408,6 @@ final class WidgetPlatformClient {
     }
 
     private struct SubmissionRequest: Codable { let manifest: WidgetManifest; let testAssetIDs: [String]; enum CodingKeys: String, CodingKey { case manifest; case testAssetIDs = "test_asset_ids" } }
-    private struct RolloutRequest: Codable { let rolloutPercent: Int; enum CodingKeys: String, CodingKey { case rolloutPercent = "rollout_percent" } }
-    private struct SuspendRequest: Codable { let reason: String }
     private struct EmptyBody: Codable {}
     private struct PlatformEnvelope<Result: Decodable>: Decodable { let success: Bool; let result: Result?; let error: PlatformError? }
     private struct PlatformError: Decodable { let message: String? }

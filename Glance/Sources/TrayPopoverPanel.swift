@@ -153,9 +153,9 @@ final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
     // MARK: Show / state
 
     func refreshState() {
-        let on = Preferences.shared.enabled
+        let on = Preferences.shared.peekEnabled
         previewToggle.setOn(on)
-        previewSubLabel.stringValue = on ? "Preview is on".localized : "Preview is off".localized
+        previewSubLabel.stringValue = on ? "Peek is on".localized : "Peek is off".localized
         previewSubLabel.textColor = on ? PanelStyle.success : PanelStyle.textTertiary
 
         let taskCount = WidgetTaskManager.shared.activeCount
