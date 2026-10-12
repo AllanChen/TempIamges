@@ -56,7 +56,15 @@ final class WidgetTaskClient {
             guard let self else { return }
             if let issue = error as NSError?, issue.domain == NSURLErrorDomain {
                 Logger.warning("Direct Glance API request failed; trying system network: \(issue.localizedDescription)")
-                self.session.dataTask(with: request, completionHandler: completion).resume()
+                self.session.dataTask(with: request) { data, response, error in
+                    // A dead system proxy (CFNetwork 310) must not be the last attempt.
+                    if let proxyIssue = error as NSError?, proxyIssue.domain == kCFErrorDomainCFNetwork as String {
+                        Logger.warning("System network failed (\(proxyIssue.code)); retrying direct")
+                        self.directAPISession.dataTask(with: request, completionHandler: completion).resume()
+                    } else {
+                        completion(data, response, error)
+                    }
+                }.resume()
             } else {
                 completion(data, response, error)
             }
@@ -227,6 +235,9 @@ final class WidgetTaskClient {
         body.append(data)
         body.append(Data("\r\n--\(boundary)--\r\n".utf8))
         request.httpBody = body
+        // Give up on a stalled connection after 30 s so the retry can start,
+        // instead of waiting out the 180 s session limit on a dead proxy.
+        request.timeoutInterval = 30
         upload(request, attempt: 0, completion: completion)
     }
 
@@ -283,14 +294,23 @@ final class WidgetTaskClient {
         }.resume()
     }
 
+    /// Dropped connections, TLS resets and proxy failures (CFNetwork 310) are
+    /// usually momentary, so the upload is retried instead of failing the task.
+    private static func isTransientNetworkError(_ error: NSError) -> Bool {
+        if error.domain == kCFErrorDomainCFNetwork as String { return true }
+        guard error.domain == NSURLErrorDomain else { return false }
+        return [NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost, NSURLErrorNotConnectedToInternet,
+                NSURLErrorCannotConnectToHost, NSURLErrorSecureConnectionFailed,
+                NSURLErrorDNSLookupFailed].contains(error.code)
+    }
+
     private func upload(_ request: URLRequest, attempt: Int,
                         completion: @escaping (Result<String, Error>) -> Void) {
         apiDataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
-            if let error = error as NSError?, error.domain == NSURLErrorDomain,
-               [NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost, NSURLErrorNotConnectedToInternet].contains(error.code),
-               attempt < 2 {
-                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Double(attempt + 1)) {
+            if let error = error as NSError?, Self.isTransientNetworkError(error), attempt < 3 {
+                Logger.warning("R2 upload attempt \(attempt + 1)/4 failed (\(error.domain) \(error.code)); retrying")
+                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Double(attempt + 1) * 3) {
                     self.upload(request, attempt: attempt + 1, completion: completion)
                 }
                 return
@@ -427,10 +447,14 @@ final class WidgetTaskClient {
         }
     }
 
+    /// Long video jobs can legitimately run for hours; the Worker reports
+    /// failures itself, so polling only needs a generous safety bound.
+    private static let pollTimeout: TimeInterval = 24 * 60 * 60
+
     private func poll(taskID: String, started: Date,
                       progress: @escaping (WidgetTaskPhase, Int) -> Void,
                       completion: @escaping (Result<URL, Error>) -> Void) {
-        guard Date().timeIntervalSince(started) <= 1800 else { completion(.failure(WidgetError.unavailable)); return }
+        guard Date().timeIntervalSince(started) <= Self.pollTimeout else { completion(.failure(WidgetError.unavailable)); return }
         let request = authorizedRequest(apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
         apiDataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }

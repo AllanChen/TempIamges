@@ -391,3 +391,5 @@
 "Video" = "Video";
 "Select the video to process." = "Select the video to process.";
 "Remove" = "Remove";
+"File exceeds 100 MB" = "File exceeds 100 MB";
+"Glance can upload files up to 100 MB. Please compress or trim “%@” and try again." = "Glance can upload files up to 100 MB. Please compress or trim “%@” and try again.";

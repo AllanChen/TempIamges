@@ -1,5 +1,6 @@
 """One machine-wide worker with one batch pull request at a time."""
 
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, Future
 from pathlib import Path
 import threading
@@ -15,7 +16,10 @@ from .worker_logs import configure_worker_logging, logger
 
 MAX_CONCURRENT = 4
 PULL_WAIT = 5  # Short long-poll keeps registry edits visible within five seconds.
-DELIVERY_ATTEMPTS = 4
+HEARTBEAT_INTERVAL = 15
+HEARTBEAT_RETRY_INTERVAL = 3
+HEARTBEAT_TIMEOUT = 10
+DELIVERY_ATTEMPTS = 8  # ~2 minutes of backoff rides out brief network drops.
 
 
 class DeliveryDeferredError(RuntimeError):
@@ -74,20 +78,26 @@ def _run_task(row: dict, task: dict) -> None:
         logger.info("[%s] %s", task_id, message)
 
     def heartbeat() -> None:
-        while not stopped.wait(30):
+        # The server lease lasts 120 s. Beat often with a short timeout, and retry
+        # quickly after a failure so one dropped connection cannot lose the lease.
+        delay = HEARTBEAT_INTERVAL
+        while not stopped.wait(delay):
             try:
                 request("POST", f"/api/v2/widget-tasks/{task_id}/heartbeat", {},
-                        headers={"X-Task-Claim": claim})
+                        headers={"X-Task-Claim": claim}, timeout=HEARTBEAT_TIMEOUT)
+                delay = HEARTBEAT_INTERVAL
             except APIError as error:
                 logger.warning("[%s] 心跳失败：%s", task_id, error)
+                delay = HEARTBEAT_RETRY_INTERVAL
 
     thread = threading.Thread(target=heartbeat, daemon=True)
     thread.start()
     try:
         outputs = load_results(task_id)
         if outputs is None:
+            # No runtime limit: long Widgets (e.g. multi-clip video) run until they finish.
             with execute(Path(row["code_path"]), task, python_path=row["python_path"],
-                         on_log=task_log) as generated:
+                         timeout=None, on_log=task_log) as generated:
                 outputs = save_results(task_id, generated)
             task_log(f"已在本机保存 {len(outputs)} 个结果，等待服务端确认")
         else:
@@ -164,8 +174,8 @@ def run_worker() -> None:
                             update(db, *key, last_error=None)
                         except Exception as error:
                             update(db, *key, last_error=str(error)[:1000])
-                busy = {widget_id for widget_id, _ in active.values()}
-                candidates = eligible(db, busy)
+                busy = Counter(widget_id for widget_id, _ in active.values())
+                candidates = eligible(db, dict(busy))
                 if not candidates or len(active) >= MAX_CONCURRENT:
                     time.sleep(1)
                     continue

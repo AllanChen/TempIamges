@@ -97,12 +97,26 @@ def _version_key(value: str) -> tuple:
                  for part in re.split(r"(\d+)", value))
 
 
-def eligible(db: sqlite3.Connection, busy: set[str]) -> list[dict]:
+def concurrency_limit(row: dict) -> int:
+    """How many tasks of this Widget one Worker may run at once (manifest maxConcurrentTasks)."""
+    try:
+        manifest = json.loads(Path(row["manifest_path"]).read_text(encoding="utf-8"))
+        value = manifest.get("maxConcurrentTasks", 1)
+    except (OSError, ValueError, AttributeError):
+        return 1
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 1 else 1
+
+
+def eligible(db: sqlite3.Connection, busy: "set[str] | dict[str, int]") -> list[dict]:
+    """Widgets that may receive a task; `busy` counts tasks already running per Widget."""
+    running = busy if isinstance(busy, dict) else {widget_id: 1 for widget_id in busy}
     allowed = {"manual_review", "test_passed", "gray_release", "published"}
     selected: dict[str, dict] = {}
     for row in rows(db):
         widget_id = row["widget_id"]
-        if not row["enabled"] or row["server_status"] not in allowed or widget_id in busy:
+        if not row["enabled"] or row["server_status"] not in allowed:
+            continue
+        if running.get(widget_id, 0) >= concurrency_limit(row):
             continue
         previous = selected.get(widget_id)
         if previous is None or _version_key(row["version"]) > _version_key(previous["version"]):

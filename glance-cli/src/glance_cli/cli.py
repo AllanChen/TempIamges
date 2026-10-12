@@ -51,6 +51,9 @@ def validate(manifest: dict, code_path: Path | None = None) -> None:
         raise ValueError("execution.mode 必须为 cloud")
     if not manifest.get("minimumGlanceVersion") or not isinstance(privacy, dict) or not privacy.get("notice"):
         raise ValueError("minimumGlanceVersion 和 privacy.notice 必填")
+    limit = manifest.get("maxConcurrentTasks", 1)
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 64:
+        raise ValueError("maxConcurrentTasks 必须是 1 到 64 的整数")
     for command in manifest["commands"]:
         for field in ("name", "description", "inputTypes", "inputMimeTypes", "outputs", "taskType"):
             if not command.get(field):
@@ -255,7 +258,7 @@ def command_test(args: argparse.Namespace) -> None:
         outputs = []
         destination = code / ".glance-test-output"
         for output in results:
-            if output["type"] == "text":
+            if output["type"] == "text" or "url" in output:
                 outputs.append(output)
             else:
                 destination.mkdir(exist_ok=True)

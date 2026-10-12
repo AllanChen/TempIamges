@@ -17,7 +17,7 @@ from glance_cli.api import APIError, request, upload_task_file
 from glance_cli.registry import connect, eligible, read_session, read_token, rows, update, upsert
 from glance_cli.runtime import execute, prepare_input, validate_outputs
 from glance_cli.result_spool import load as load_results
-from glance_cli.worker import DeliveryDeferredError, _run_task, _sync_widget_status
+from glance_cli.worker import DELIVERY_ATTEMPTS, DeliveryDeferredError, _run_task, _sync_widget_status
 from glance_cli.worker_logs import configure_worker_logging, logger
 
 
@@ -68,6 +68,20 @@ class CLITest(unittest.TestCase):
                    server_status="manual_review", enabled=1)
             self.assertEqual(len(eligible(db, set())), 1)
             self.assertEqual(eligible(db, {manifest["id"]}), [])
+
+    def test_worker_runs_widget_tasks_up_to_manifest_concurrency(self):
+        folder, manifest = self.create_widget()
+        manifest["maxConcurrentTasks"] = 2
+        (folder / "widget.json").write_text(json.dumps(manifest))
+        with closing(connect()) as db:
+            update(db, manifest["id"], manifest["version"],
+                   server_status="published", enabled=1)
+            self.assertEqual(len(eligible(db, {manifest["id"]: 1})), 1)
+            self.assertEqual(eligible(db, {manifest["id"]: 2}), [])
+            self.assertEqual(len(eligible(db, set())), 1)
+        manifest["maxConcurrentTasks"] = 0
+        with self.assertRaisesRegex(ValueError, "maxConcurrentTasks"):
+            validate(manifest)
 
     def test_result_url_preference_requires_media_output(self):
         _, manifest = self.create_widget()
@@ -268,7 +282,7 @@ class CLITest(unittest.TestCase):
             with self.assertRaises(DeliveryDeferredError):
                 _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
         execute_widget.assert_called_once()
-        self.assertEqual(upload.call_count, 4)
+        self.assertEqual(upload.call_count, DELIVERY_ATTEMPTS)
         self.assertFalse(any(call.args[1].endswith("/result") for call in api.call_args_list))
         stored = load_results("task_resume")
         self.assertEqual(len(stored), 1)

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "783745bf-501d-4cfd-b2b8-69d32a8d90a8",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "视频去水印",
-  "summary": "将较长视频分段去水印，并按原顺序合成为一个视频。",
+  "summary": "将视频按 8 秒分段去水印，按原顺序合并并保留原音轨。",
   "author": "Allan",
   "official": false,
   "execution": {
@@ -13,18 +13,63 @@
     {
       "id": "run",
       "name": "视频去水印",
-      "description": "输入一个视频；每段最长 8 秒，经 RunningHub 去水印后按顺序合并。",
-      "inputTypes": ["video"],
-      "inputMimeTypes": ["video/mp4", "video/quicktime", "video/webm", "video/x-matroska"],
-      "outputs": ["video"],
+      "description": "输入一个视频（最大 100 MB）；每段最长 8 秒，按分段提交到 pppron vision-tasks，完成后按顺序合并并换回原视频音轨。",
+      "inputTypes": [
+        "video"
+      ],
+      "inputMimeTypes": [
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+        "video/x-matroska"
+      ],
+      "outputs": [
+        "video"
+      ],
+      "showResultURL": false,
       "taskType": "widget.783745bf-501d-4cfd-b2b8-69d32a8d90a8.run",
       "requiresUpload": true,
-      "parameterSchema": {"type": "object", "properties": {}}
+      "parameterSchema": {
+        "type": "object",
+        "properties": {
+          "valid_token": {
+            "type": "string",
+            "description": "留空则读取 Worker 的 PPPRON_VALID_TOKEN"
+          },
+          "team_id": {
+            "type": "integer"
+          },
+          "team_creator_id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "widget_name": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "task_type": {
+            "type": "integer",
+            "default": 2
+          },
+          "with_logo": {
+            "type": "boolean",
+            "default": false
+          },
+          "extra_params": {
+            "type": "object",
+            "description": "合并进 task_params 的额外字段"
+          }
+        }
+      }
     }
   ],
   "privacy": {
     "uploadsMedia": true,
-    "notice": "所选视频将上传到 Glance，并按最长 8 秒分段上传至 RunningHub 去水印；结果会合并并上传回 Glance。"
+    "notice": "所选视频将上传到 Glance，由 Worker 按最长 8 秒分段上传至 pppron 临时存储并提交去水印；合并后的结果经 pppron 临时存储返回，Glance 下载到本机。"
   },
   "minimumGlanceVersion": "2.0.0"
 }

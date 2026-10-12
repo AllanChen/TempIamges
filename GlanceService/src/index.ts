@@ -23,6 +23,7 @@ export interface Env {
 type Manifest = {
   schemaVersion?: number; id?: string; version?: string; name?: string; summary?: string;
   author?: string; iconURL?: string; official?: boolean; execution?: { mode?: string };
+  maxConcurrentTasks?: number;
   commands?: Array<{ id?: string; name?: string; description?: string; inputTypes?: string[]; inputMimeTypes?: string[]; outputs?: string[]; showResultURL?: boolean; taskType?: string; requiresUpload?: boolean; parameterSchema?: unknown }>;
   privacy?: { uploadsMedia?: boolean; notice?: string };
   minimumGlanceVersion?: string; updatedAt?: string;
@@ -30,7 +31,9 @@ type Manifest = {
 };
 
 const MAX_BODY = 2 * 1024 * 1024;
-const MAX_ASSET = 50 * 1024 * 1024;
+// Cloudflare Workers cap a single request body at 100 MB, so uploads cannot go higher.
+const MAX_ASSET = 100 * 1024 * 1024;
+const MAX_RESULT_ASSET = 50 * 1024 * 1024;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Widget-Id, X-Task-Claim",
@@ -178,6 +181,28 @@ async function signedAssetURL(env: Env, request: Request, assetID: string, ttlSe
   url.searchParams.set("exp", String(exp)); url.searchParams.set("sig", sig);
   return url.toString();
 }
+/// Clip tasks can wait in the queue for hours, long after the one-hour signature
+/// on their input URL expired. Re-sign our own asset links when a Worker claims.
+async function refreshAssetURLs(env: Env, value: unknown): Promise<unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const refreshed: Record<string, unknown> = { ...value as Record<string, unknown> };
+  const refresh = async (entry: unknown) => {
+    if (typeof entry !== "string") return entry;
+    const match = /^https:\/\/[^/]+\/api\/v2\/assets\/(asset_[A-Za-z0-9-]+)(?:\?|$)/.exec(entry);
+    if (!match) return entry;
+    // Keep the host the client used (custom domain or workers.dev); the
+    // signature itself only covers the asset ID and expiry.
+    const url = new URL(entry);
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+    url.searchParams.set("exp", String(exp)); url.searchParams.set("sig", await hmac(env, `${match[1]}.${exp}`));
+    return url.toString();
+  };
+  for (const key of ["url", "mask"]) if (key in refreshed) refreshed[key] = await refresh(refreshed[key]);
+  for (const key of ["images", "videos"]) {
+    if (Array.isArray(refreshed[key])) refreshed[key] = await Promise.all((refreshed[key] as unknown[]).map(refresh));
+  }
+  return refreshed;
+}
 async function validAssetSignature(env: Env, assetID: string, exp: string, sig: string) {
   if (!/^\d+$/.test(exp) || Number(exp) < Math.floor(Date.now() / 1000) || !/^[a-f0-9]{64}$/.test(sig)) return false;
   const expected = await hmac(env, `${assetID}.${exp}`);
@@ -298,6 +323,7 @@ function validationIssues(manifest: Manifest) {
     if (typeof command.taskType !== "string" || !command.taskType.trim()) issues.push(`command ${command.id || "unknown"} needs taskType`);
     if (typeof command.requiresUpload !== "boolean" || !command.parameterSchema || typeof command.parameterSchema !== "object" || Array.isArray(command.parameterSchema)) issues.push(`command ${command.id || "unknown"} needs requiresUpload and parameterSchema`);
   }
+  if (manifest.maxConcurrentTasks !== undefined && (!Number.isInteger(manifest.maxConcurrentTasks) || manifest.maxConcurrentTasks < 1 || manifest.maxConcurrentTasks > 64)) issues.push("maxConcurrentTasks must be an integer from 1 to 64");
   if (typeof manifest.privacy?.notice !== "string" || !manifest.privacy.notice.trim()) issues.push("privacy.notice is required");
   for (const command of commands) {
     if (!command || typeof command !== "object") continue;
@@ -682,7 +708,7 @@ async function uploadAsset(env: Env, request: Request) {
   if (!(file instanceof File)) return fail("file_required", "A media file is required.", 400);
   const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif", "video/mp4", "video/quicktime", "video/webm"]);
   if (!allowed.has(file.type)) return fail("unsupported_media", "Unsupported media type.", 400);
-  if (file.size > MAX_ASSET) return fail("file_too_large", "Media must be 50 MB or smaller.", 413);
+  if (file.size > MAX_ASSET) return fail("file_too_large", "Media must be 100 MB or smaller.", 413);
   const assetID = id("asset"); const key = `glance/${owner}/${assetID}`; const created = now();
   await env.BUCKET.put(key, file.stream(), { httpMetadata: { contentType: file.type, cacheControl: "private, max-age=300" } });
   await env.DB.prepare("INSERT INTO widget_assets (id,owner_id,object_key,mime_type,size_bytes,created_at) VALUES (?,?,?,?,?,?)").bind(assetID, owner, key, file.type, file.size, created).run();
@@ -848,8 +874,10 @@ async function pullBatch(env: Env, request: Request) {
         taskId: row.id, widgetId: item.widgetId,
         version: item.localVersion || row.submitted_version, taskVersion: row.submitted_version,
         versionId: row.version_id,
-        commandId: row.command_id, type: row.type, input: JSON.parse(String(row.input_json)),
-        parameters: JSON.parse(String(row.parameters_json)), leaseExpiresAt: lease, claimToken
+        commandId: row.command_id, type: row.type,
+        input: await refreshAssetURLs(env, JSON.parse(String(row.input_json))),
+        parameters: await refreshAssetURLs(env, JSON.parse(String(row.parameters_json))),
+        leaseExpiresAt: lease, claimToken
       } }, 200, { "Cache-Control": "no-store" });
     }
     if (Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 500));
@@ -873,7 +901,7 @@ async function uploadTaskArtifact(env: Env, request: Request, taskID: string) {
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return fail("file_required", "A result file is required.", 400);
-  if (file.size > MAX_ASSET) return fail("file_too_large", "Result file must be 50 MB or smaller.", 413);
+  if (file.size > MAX_RESULT_ASSET) return fail("file_too_large", "Result file must be 50 MB or smaller.", 413);
   if (!/^(image|video|audio)\//.test(file.type)) return fail("unsupported_media", "Only image, video, or audio results are supported.", 400);
   const assetID = id("asset");
   const objectKey = `results/${taskID}/${assetID}`;

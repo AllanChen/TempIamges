@@ -394,3 +394,5 @@
 "Video" = "视频";
 "Select the video to process." = "选择要处理的视频。";
 "Remove" = "移除";
+"File exceeds 100 MB" = "文件超过 100 MB";
+"Glance can upload files up to 100 MB. Please compress or trim “%@” and try again." = "Glance 单个文件最多上传 100 MB。请先压缩或裁剪“%@”后再试。";

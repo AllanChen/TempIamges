@@ -22,7 +22,8 @@ from .api import USER_AGENT
 
 
 SUPPORTED = {"text", "image", "video", "audio"}
-MAX_FILE = 50 * 1024 * 1024
+MAX_FILE = 50 * 1024 * 1024  # Result files uploaded back to Glance.
+MAX_INPUT_FILE = 100 * 1024 * 1024  # Matches the Glance upload limit.
 
 
 def resolve_python(value: str | Path | None = None) -> Path:
@@ -59,13 +60,13 @@ def prepare_input(task: dict, temporary: Path,
             on_log(f"下载输入{label}：来源={parsed.hostname}，目标={destination.name}")
         try:
             with urlopen(Request(source, headers={"User-Agent": USER_AGENT}), timeout=60) as response, destination.open("wb") as output:
-                remaining = MAX_FILE
+                remaining = MAX_INPUT_FILE
                 downloaded_bytes = 0
                 next_report = 5 * 1024 * 1024
                 while chunk := response.read(min(1024 * 1024, remaining + 1)):
                     remaining -= len(chunk)
                     if remaining < 0:
-                        raise ValueError("输入文件超过 50 MB")
+                        raise ValueError("输入文件超过 100 MB")
                     output.write(chunk)
                     downloaded_bytes += len(chunk)
                     if on_log and downloaded_bytes >= next_report:
@@ -152,7 +153,7 @@ def validate_outputs(result: dict, code_path: Path) -> list[dict]:
 
 
 @contextmanager
-def execute(code_path: Path, task: dict, *, timeout: int = 1500,
+def execute(code_path: Path, task: dict, *, timeout: int | None = 1500,
             download_input: bool = True, python_path: str | Path | None = None,
             on_log: Callable[[str], None] | None = None):
     code_path = code_path.resolve(strict=True)

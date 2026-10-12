@@ -79,9 +79,18 @@ final class WidgetTaskManager {
         }
     }
 
+    /// Glance uploads a file in one request; Cloudflare Workers cap request
+    /// bodies at 100 MB, so larger media must be compressed or trimmed first.
+    static let maxUploadBytes: Int64 = 100 * 1024 * 1024
+
     @discardableResult
     func start(widget: WidgetManifest, command: WidgetCommand, media: MediaInfo,
                input: WidgetTaskInput? = nil) -> UUID? {
+        let uploads = (input?.mediaURLs ?? [media.url]) + (input?.maskURL.map { [$0] } ?? [])
+        if let oversized = uploads.first(where: { Self.isOversized($0) }) {
+            presentOversizedAlert(for: oversized)
+            return nil
+        }
         let matching = records.filter { $0.phase.isActive && $0.source?.taskKey == media.url.taskKey && $0.widgetID == widget.id && $0.commandID == command.id }
         if !matching.isEmpty {
             // A task that never received a remote ID cannot be running. Older
@@ -130,6 +139,25 @@ final class WidgetTaskManager {
         _ = start(widget: widget, command: command,
                   media: MediaInfo(url: source, isLocal: source.isFileURL, kind: kind),
                   input: record.input)
+    }
+
+    private static func isOversized(_ url: URL) -> Bool {
+        guard url.isFileURL,
+              let size = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? NSNumber else {
+            return false  // Remote sources are checked by the server when it downloads them.
+        }
+        return size.int64Value > maxUploadBytes
+    }
+
+    private func presentOversizedAlert(for url: URL) {
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "File exceeds 100 MB".localized
+            alert.informativeText = String(format: "Glance can upload files up to 100 MB. Please compress or trim “%@” and try again.".localized,
+                                           url.lastPathComponent)
+            alert.addButton(withTitle: "OK".localized)
+            alert.runModal()
+        }
     }
 
     func remove(_ id: UUID) { records.removeAll { $0.id == id && !$0.phase.isActive }; changed() }
