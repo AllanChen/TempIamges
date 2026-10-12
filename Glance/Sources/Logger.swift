@@ -25,6 +25,7 @@ final class Logger {
     private let dateFormatter: DateFormatter
     private let osLog: OSLog
     private let queue = DispatchQueue(label: "com.glance.logger")
+    private let maxLogFileSize: UInt64 = 5 * 1024 * 1024
 
     private init() {
         self.osLog = OSLog(subsystem: Bundle.main.bundleIdentifier ?? "com.glance", category: "App")
@@ -76,13 +77,29 @@ final class Logger {
         shared.log(message, level: .error, file: file, function: function, line: line)
     }
 
+    /// Selected text, clipboard contents, paths and URLs must pass through this.
+    /// Release builds keep only the length; Debug builds keep the value.
+    static func redact(_ value: String) -> String {
+        #if DEBUG
+        return value
+        #else
+        return "<redacted \(value.count) chars>"
+        #endif
+    }
+
     private func log(_ message: String, level: LogLevel, file: String = #file, function: String = #function, line: Int = #line) {
+        #if !DEBUG
+        if level == .debug { return }
+        #endif
+
         let timestamp = dateFormatter.string(from: Date())
         let fileName = (file as NSString).lastPathComponent
         let logMessage = "[\(timestamp)] [\(level.rawValue)] [\(fileName):\(line)] \(function) - \(message)"
 
-        os_log("%{public}@", log: osLog, type: level.osLogType, logMessage)
+        os_log("%{private}@", log: osLog, type: level.osLogType, logMessage)
+        #if DEBUG
         Swift.print(logMessage)
+        #endif
 
         queue.async {
             self.writeToFile(logMessage)
@@ -90,6 +107,7 @@ final class Logger {
     }
 
     private func writeToFile(_ message: String) {
+        rotateIfNeeded()
         let fullMessage = message + "\n"
         if let data = fullMessage.data(using: .utf8) {
             do {
@@ -105,6 +123,17 @@ final class Logger {
                 os_log("Failed to write log: %{public}@", log: osLog, type: .error, error.localizedDescription)
             }
         }
+    }
+
+    /// Keeps one previous generation (app.log.1) once app.log exceeds maxLogFileSize.
+    private func rotateIfNeeded() {
+        let fileManager = FileManager.default
+        guard let attributes = try? fileManager.attributesOfItem(atPath: logFileURL.path),
+              let size = attributes[.size] as? UInt64,
+              size > maxLogFileSize else { return }
+        let rotatedURL = logFileURL.appendingPathExtension("1")
+        try? fileManager.removeItem(at: rotatedURL)
+        try? fileManager.moveItem(at: logFileURL, to: rotatedURL)
     }
 
     static func revealLogFile() {

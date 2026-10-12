@@ -498,7 +498,7 @@ class ImageLoader {
             )
             QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { thumbnail, error in
                 if let error {
-                    Logger.info("Quick Look image fallback failed for \(url.lastPathComponent): \(error.localizedDescription)")
+                    Logger.info("Quick Look image fallback failed for \(Logger.redact(url.lastPathComponent)): \(error.localizedDescription)")
                 }
                 completion(thumbnail?.nsImage)
             }
@@ -589,12 +589,12 @@ class ImageLoader {
 
         let task = remoteSession.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self, let data = data, error == nil else {
-                Logger.warning("Remote image request failed: \(url.absoluteString) — \(error?.localizedDescription ?? "no data")")
+                Logger.warning("Remote image request failed: \(Logger.redact(url.absoluteString)) — \(error?.localizedDescription ?? "no data")")
                 finish(nil)
                 return
             }
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode >= 400 {
-                Logger.warning("Remote image HTTP \(httpResponse.statusCode): \(url.absoluteString)")
+                Logger.warning("Remote image HTTP \(httpResponse.statusCode): \(Logger.redact(url.absoluteString))")
                 finish(nil)
                 return
             }

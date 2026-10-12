@@ -248,7 +248,7 @@ class PathDetector {
         // Comma is excluded so comma-separated lists of paths (e.g.
         // "/a/x.png,/b/y.png") are split cleanly into separate matches.
         // Whitespace inside the character class is intentionally allowed
-        // (no `\s` exclusion) so paths like "/Users/lily/Desktop/Project
+        // (no `\s` exclusion) so paths like "/Users/me/Desktop/Project
         // Access Guide.pdf" still match. The lazy `+?` minimises greediness
         // and `isValidLocalMedia` filters any over-extended candidate via
         // file-existence check. Newlines and tabs remain excluded so
@@ -305,7 +305,7 @@ class PathDetector {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
 
-        Logger.info("PathDetector: scanning text='\(truncate(trimmed))'")
+        Logger.info("PathDetector: scanning text='\(Logger.redact(truncate(trimmed)))'")
 
         var results = collectAll(in: trimmed)
         if results.isEmpty {
@@ -314,7 +314,7 @@ class PathDetector {
             // surrounding spaces removed.
             let unwrapped = unwrapLines(trimmed)
             if unwrapped != trimmed {
-                Logger.info("PathDetector: retrying unwrapped='\(truncate(unwrapped))'")
+                Logger.info("PathDetector: retrying unwrapped='\(Logger.redact(truncate(unwrapped)))'")
                 results = collectAll(in: unwrapped)
             }
         }
@@ -406,7 +406,7 @@ class PathDetector {
             let key = path.url?.absoluteString ?? path.unresolvedToken ?? ""
             if key.isEmpty { continue }
             if seen.insert(key).inserted {
-                Logger.info("PathDetector: matched '\(hit.str)' -> '\(key)'")
+                Logger.info("PathDetector: matched '\(Logger.redact(hit.str))' -> '\(Logger.redact(key))'")
                 results.append(path)
             }
         }
@@ -418,7 +418,7 @@ class PathDetector {
                 if let path = resolveFolderCandidate(hit.str) {
                     let key = path.url?.absoluteString ?? ""
                     if !key.isEmpty && seen.insert(key).inserted {
-                        Logger.info("PathDetector: folder match '\(hit.str)' -> '\(key)'")
+                        Logger.info("PathDetector: folder match '\(Logger.redact(hit.str))' -> '\(Logger.redact(key))'")
                         results.append(path)
                         lastEnd = hit.range.location + hit.range.length
                     }
@@ -432,7 +432,7 @@ class PathDetector {
             guard let m = m else { return }
             let token = ns.substring(with: m.range)
             if seen.insert(token).inserted {
-                Logger.info("PathDetector: bare filename candidate '\(token)'")
+                Logger.info("PathDetector: bare filename candidate '\(Logger.redact(token))'")
                 results.append(.unresolvedFilename(token))
                 bareCount += 1
                 if bareCount >= maxBareCandidates {
@@ -448,7 +448,7 @@ class PathDetector {
                 guard let m = m else { return }
                 let token = ns.substring(with: m.range)
                 if token.count >= 3 && token.count <= 30 && seen.insert(token).inserted {
-                    Logger.info("PathDetector: no-ext candidate '\(token)'")
+                    Logger.info("PathDetector: no-ext candidate '\(Logger.redact(token))'")
                     results.append(.unresolvedFilename(token))
                     noExtCount += 1
                     if noExtCount >= maxNoExtCandidates {
@@ -666,7 +666,7 @@ class PathDetector {
         let fileManager = FileManager.default
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: path, isDirectory: &isDirectory) else {
-            Logger.info("PathDetector: file does not exist at '\(path)'")
+            Logger.info("PathDetector: file does not exist at '\(Logger.redact(path))'")
             return false
         }
         if isDirectory.boolValue {

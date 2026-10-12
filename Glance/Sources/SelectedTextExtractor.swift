@@ -50,19 +50,6 @@ class SelectedTextExtractor {
         }
     }
 
-    func extractSelection() -> SelectionResult? {
-        if let result = readViaAX() {
-            return result
-        }
-        Logger.info("SelectedTextExtractor: AX yielded nothing, trying clipboard")
-        return readViaClipboard()
-    }
-
-    // Convenience kept for callers that only need the string.
-    func extractSelectedText() -> String? {
-        return extractSelection()?.text
-    }
-
     func readClipboardDirectly(completion: @escaping (SelectionResult?) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else {
@@ -134,7 +121,7 @@ class SelectedTextExtractor {
         }
 
         let bounds = readSelectionBounds(element: element)
-        Logger.info("SelectedTextExtractor: AX selected='\(trimmed)' bounds=\(bounds.map { "\($0)" } ?? "nil")")
+        Logger.info("SelectedTextExtractor: AX selected='\(Logger.redact(trimmed))' bounds=\(bounds.map { "\($0)" } ?? "nil")")
         return SelectionResult(text: trimmed, bounds: bounds)
     }
 
@@ -190,7 +177,7 @@ class SelectedTextExtractor {
             Logger.info("SelectedTextExtractor: Clipboard text is empty")
             return nil
         }
-        Logger.info("SelectedTextExtractor: Direct clipboard read='\(trimmed)' (no bounds)")
+        Logger.info("SelectedTextExtractor: Direct clipboard read='\(Logger.redact(trimmed))' (no bounds)")
         return SelectionResult(text: trimmed, bounds: nil)
     }
 
@@ -208,7 +195,6 @@ class SelectedTextExtractor {
         // Cmd+C, not Cmd+Shift+C.
         guard sendCmdC() else {
             Logger.info("SelectedTextExtractor: Failed to synthesize Cmd+C")
-            restorePasteboard(pb, items: savedItems)
             return nil
         }
 
@@ -224,7 +210,14 @@ class SelectedTextExtractor {
         }
 
         let postChangeCount = pb.changeCount
-        restorePasteboard(pb, items: savedItems)
+        if postChangeCount != oldChangeCount {
+            // Only rewrite the pasteboard when our Cmd+C actually replaced it;
+            // an unconditional rewrite bumps changeCount for clipboard managers
+            // and drops lazily-provided types.
+            restorePasteboard(pb, items: savedItems)
+        } else {
+            guardAgainstLateCopy(pb, expectedChangeCount: oldChangeCount, items: savedItems)
+        }
 
         guard let text = copied else {
             Logger.info("SelectedTextExtractor: Clipboard unchanged after Cmd+C (pre=\(oldChangeCount), post=\(postChangeCount)). Likely no selection or app didn't honour Cmd+C.")
@@ -235,7 +228,7 @@ class SelectedTextExtractor {
             Logger.info("SelectedTextExtractor: Clipboard text empty")
             return nil
         }
-        Logger.info("SelectedTextExtractor: Clipboard selected='\(trimmed)' (no bounds)")
+        Logger.info("SelectedTextExtractor: Clipboard selected='\(Logger.redact(trimmed))' (no bounds)")
         return SelectionResult(text: trimmed, bounds: nil)
     }
 
@@ -265,6 +258,22 @@ class SelectedTextExtractor {
             snapshot.append(copy)
         }
         return snapshot
+    }
+
+    /// Some apps honour Cmd+C after our 250 ms poll window. Watch briefly and
+    /// put the user's clipboard back if that late write lands.
+    private func guardAgainstLateCopy(_ pb: NSPasteboard, expectedChangeCount: Int, items: [NSPasteboardItem]) {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let deadline = Date().addingTimeInterval(1.0)
+            while Date() < deadline {
+                if pb.changeCount != expectedChangeCount {
+                    Logger.info("SelectedTextExtractor: late Cmd+C write detected, restoring clipboard")
+                    self?.restorePasteboard(pb, items: items)
+                    return
+                }
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+        }
     }
 
     private func restorePasteboard(_ pb: NSPasteboard, items: [NSPasteboardItem]) {

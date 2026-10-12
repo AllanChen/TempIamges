@@ -59,7 +59,7 @@ final class FileNameResolver {
         }
 
         if let cachedURL = FilenameCache.shared.lookup(token: normalizedToken) {
-            Logger.info("FileNameResolver: cache hit for '\(token)'")
+            Logger.info("FileNameResolver: cache hit for '\(Logger.redact(token))'")
             completion([Match(url: cachedURL, lastModified: nil,
                               isInUserHome: cachedURL.path.hasPrefix(NSHomeDirectory()))])
             return
@@ -79,7 +79,7 @@ final class FileNameResolver {
                 if let best = quickMatches.first {
                     FilenameCache.shared.store(token: normalizedToken, url: best.url)
                 }
-                Logger.info("FileNameResolver: quick hit for '\(token)' -> \(quickMatches.count)")
+                Logger.info("FileNameResolver: quick hit for '\(Logger.redact(token))' -> \(quickMatches.count)")
                 DispatchQueue.main.async { completion(quickMatches) }
                 return
             }
@@ -167,7 +167,7 @@ final class FileNameResolver {
         resolutionLock.unlock()
 
         let sorted = deduplicateAndSort(matches: matches, limit: limit)
-        Logger.info("FileNameResolver: '\(token)' -> \(sorted.count) [\(reason)]")
+        Logger.info("FileNameResolver: '\(Logger.redact(token))' -> \(sorted.count) [\(reason)]")
 
         if let best = sorted.first {
             FilenameCache.shared.store(token: token, url: best.url)
