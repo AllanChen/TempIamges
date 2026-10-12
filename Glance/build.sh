@@ -125,3 +125,20 @@ fi
 echo ""
 echo "Build complete!"
 echo "  Released: $DEST_APP"
+
+# Optional: GLANCE_DMG=1 also packs the signed bundle into dist/Glance-<version>.dmg
+# with an Applications shortcut. Until the app is notarized with a Developer ID,
+# Gatekeeper blocks first launch; INSTALL.md tells users how to allow it.
+if [ "${GLANCE_DMG:-0}" = "1" ]; then
+    VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$DEST_APP/Contents/Info.plist")"
+    DIST_DIR="$PROJECT_ROOT/dist"
+    DMG_PATH="$DIST_DIR/Glance-$VERSION.dmg"
+    STAGING="$(mktemp -d "${TMPDIR:-/tmp}/glance-dmg.XXXXXX")"
+    mkdir -p "$DIST_DIR"
+    rm -f "$DMG_PATH"
+    cp -R "$DEST_APP" "$STAGING/Glance.app"
+    ln -s /Applications "$STAGING/Applications"
+    hdiutil create -quiet -volname "Glance $VERSION" -srcfolder "$STAGING" -ov -format UDZO "$DMG_PATH"
+    rm -rf "$STAGING"
+    echo "  DMG: $DMG_PATH"
+fi
