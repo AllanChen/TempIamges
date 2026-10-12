@@ -53,3 +53,6 @@ __pycache__/
 
 # Local upload provider credentials
 docs/designs/upload_info.txt
+
+# Release artifacts (publish via GitHub Releases / Sparkle, not git)
+*.dmg
