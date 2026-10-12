@@ -14,9 +14,11 @@ from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://www.runninghub.ai"
+BASE_URL = "https://www.runninghub.cn"
 UPLOAD_URL = f"{BASE_URL}/task/openapi/upload"
-RUN_URL = f"{BASE_URL}/openapi/v2/run/ai-app/2108809728910839809"
+RUN_URL = f"{BASE_URL}/openapi/v2/run/ai-app/2109591136061976577"
+# The ai-app's image input node (RunningHub sample: nodeId 18, fieldName image).
+NODE_ID = "18"
 QUERY_URL = f"{BASE_URL}/openapi/v2/query"
 POLL_INTERVAL = 5
 POLL_TIMEOUT = 600
@@ -198,8 +200,8 @@ def upload_image(image_path: Path, api_key: str, deadline: float) -> str:
 
 def submit_task(api_key: str, image_name: str, deadline: float) -> str:
     nodes = [
-        {"nodeId": "286", "fieldName": "image", "fieldValue": image_name,
-         "description": None},
+        {"nodeId": NODE_ID, "fieldName": "image", "fieldValue": image_name,
+         "description": "image"},
     ]
     result = post_json(RUN_URL, {
         "nodeInfoList": nodes,
@@ -301,13 +303,14 @@ def download_image(url: str, output_dir: Path, deadline: float) -> Path:
 
 
 def main(task: dict) -> dict:
-    """Use the selected Glance image for RunningHub node 286."""
+    """Use the selected Glance image as the ai-app's image input."""
     input_path = (task.get("input") or {}).get("path")
     if not isinstance(input_path, str) or not input_path or not Path(input_path).is_file():
         raise ValueError("task.input.path must point to one existing image")
-    api_key = os.environ.get("RUNNINGHUB_API_KEY_AI", "").strip()
+    # runninghub.cn key; the old .ai name still works for workers not yet updated.
+    api_key = (os.environ.get("RUNNINGHUB_API_KEY") or os.environ.get("RUNNINGHUB_API_KEY_AI", "")).strip()
     if not api_key:
-        raise ValueError("RUNNINGHUB_API_KEY_AI is required")
+        raise ValueError("RUNNINGHUB_API_KEY is required")
     output_dir = Path(os.environ.get("GLANCE_TASK_OUTPUT_DIR") or tempfile.mkdtemp(prefix="glance-widget-"))
     output_dir.mkdir(parents=True, exist_ok=True)
     deadline = time.monotonic() + TOTAL_TIMEOUT

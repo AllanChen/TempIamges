@@ -1,10 +1,10 @@
 # 视频去水印 Widget
 
-输入一个视频。Worker 使用 FFmpeg 将它分成时长不超过 8 秒的 MP4 片段，把每段上传到 RunningHub AI 应用 `2098906395704819714` 的 `5099.video` 节点，等待全部生成完成后按原顺序合并为一个 MP4。Glance Worker 将最终文件上传到 Glance 服务端。
+输入一个视频。Worker 使用 FFmpeg 将它分成时长不超过 8 秒的 MP4 片段，把每段上传到 RunningHub（runninghub.cn）workflow `2109559022260154369` 的视频输入节点，等待全部生成完成后按原顺序合并为一个 MP4。Glance Worker 将最终文件上传到 Glance 服务端。
 
 ## Worker 环境
 
-- 设置 `RUNNINGHUB_API_KEY_AI`。不要将密钥写入代码、Manifest 或日志。
+- 设置 `RUNNINGHUB_API_KEY`（runninghub.cn 的 key；旧的 `RUNNINGHUB_API_KEY_AI` 仍可作为回退）。不要将密钥写入代码、Manifest 或日志。
 - 安装 `ffmpeg` 和 `ffprobe`，并确保它们位于 Worker 的 `PATH` 中。
 - Python 仅使用标准库；无需 `requests`。
 

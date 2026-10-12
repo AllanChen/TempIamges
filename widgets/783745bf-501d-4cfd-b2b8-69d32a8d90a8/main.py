@@ -18,11 +18,13 @@ from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://www.runninghub.ai"
+BASE_URL = "https://www.runninghub.cn"
 UPLOAD_URL = f"{BASE_URL}/task/openapi/upload"
-RUN_URL = f"{BASE_URL}/openapi/v2/run/ai-app/2098906395704819714"
+RUN_URL = f"{BASE_URL}/openapi/v2/run/workflow/2109559022260154369"
 QUERY_URL = f"{BASE_URL}/openapi/v2/query"
-NODE_ID = "5099"
+# The "load video" node of workflow 2109559022260154369 that receives each
+# uploaded clip (RunningHub sample: nodeId 184, fieldName video).
+NODE_ID = "184"
 MAX_CLIP_SECONDS = 8.0
 SPLIT_TARGET_SECONDS = 7.8  # Leave room for MP4 frame/audio packet rounding.
 MAX_SEGMENTS = 24  # Glance runs one Widget for at most 25 minutes.
@@ -245,8 +247,9 @@ def upload_video(path: Path, api_key: str, deadline: float) -> str:
 
 def submit_task(api_key: str, uploaded_name: str, deadline: float) -> str:
     result = post_json(RUN_URL, {
+        "addMetadata": True,
         "nodeInfoList": [{"nodeId": NODE_ID, "fieldName": "video",
-                          "fieldValue": uploaded_name, "description": None}],
+                          "fieldValue": uploaded_name, "description": "video"}],
         "instanceType": "default", "usePersonalQueue": "false",
     }, api_key, "submit", deadline, retry_transient=False)
     task_id = result.get("taskId")
@@ -400,9 +403,10 @@ def main(task: dict) -> dict:
     source = Path(input_path)
     if not 0 < source.stat().st_size <= MAX_INPUT_BYTES:
         raise ValueError("The input video must be nonempty and at most 50 MB")
-    api_key = os.environ.get("RUNNINGHUB_API_KEY_AI", "").strip()
+    # runninghub.cn key; the old .ai name still works for workers not yet updated.
+    api_key = (os.environ.get("RUNNINGHUB_API_KEY") or os.environ.get("RUNNINGHUB_API_KEY_AI", "")).strip()
     if not api_key:
-        raise ValueError("RUNNINGHUB_API_KEY_AI is required")
+        raise ValueError("RUNNINGHUB_API_KEY is required")
     for program in ("ffmpeg", "ffprobe"):
         if shutil.which(program) is None:
             raise RuntimeError(f"{program} is required on the Widget Worker")

@@ -51,12 +51,12 @@ class WidgetTests(unittest.TestCase):
         submission = post.call_args_list[0].args[1]
         self.assertEqual(post.call_args_list[0].args[0], widget.RUN_URL)
         self.assertEqual(widget.RUN_URL,
-                         "https://www.runninghub.ai/openapi/v2/run/ai-app/2108809728910839809")
+                         "https://www.runninghub.cn/openapi/v2/run/ai-app/2109591136061976577")
         self.assertEqual(submission["nodeInfoList"], [{
-            "nodeId": "286",
+            "nodeId": "18",
             "fieldName": "image",
             "fieldValue": "uploaded.png",
-            "description": None,
+            "description": "image",
         }])
         self.assertEqual(post.call_args_list[1].args[1], {"taskId": "generation-1"})
 
@@ -107,17 +107,24 @@ class WidgetTests(unittest.TestCase):
             filename = widget.upload_image(self.input_path, "test-key", float("inf"))
         self.assertEqual(filename, "api/uploaded.png")
         upload = request.call_args.args[0]
-        self.assertEqual(upload.full_url, "https://www.runninghub.ai/task/openapi/upload")
+        self.assertEqual(upload.full_url, "https://www.runninghub.cn/task/openapi/upload")
         self.assertIn(b'name="apiKey"\r\n\r\ntest-key', upload.data)
         self.assertIn(b'name="fileType"\r\n\r\ninput', upload.data)
         self.assertIn(b'name="file"; filename="input.png"', upload.data)
 
-    def test_cn_key_is_not_used_for_ai_requests(self):
-        with patch.dict(os.environ, {"RUNNINGHUB_API_KEY_AI": "", "RUNNINGHUB_API_KEY": "cn-key"}), \
+    def test_missing_key_fails_before_upload(self):
+        with patch.dict(os.environ, {"RUNNINGHUB_API_KEY_AI": "", "RUNNINGHUB_API_KEY": ""}), \
              patch.object(widget, "upload_image") as upload:
-            with self.assertRaisesRegex(ValueError, "RUNNINGHUB_API_KEY_AI"):
+            with self.assertRaisesRegex(ValueError, "RUNNINGHUB_API_KEY"):
                 widget.main(self.task)
         upload.assert_not_called()
+
+    def test_legacy_ai_key_still_works_as_fallback(self):
+        with patch.dict(os.environ, {"RUNNINGHUB_API_KEY": "", "RUNNINGHUB_API_KEY_AI": "legacy-key"}), \
+             patch.object(widget, "upload_image", side_effect=RuntimeError("stop")) as upload:
+            with self.assertRaises(RuntimeError):
+                widget.main(self.task)
+        self.assertEqual(upload.call_args.args[1], "legacy-key")
 
 
 if __name__ == "__main__":

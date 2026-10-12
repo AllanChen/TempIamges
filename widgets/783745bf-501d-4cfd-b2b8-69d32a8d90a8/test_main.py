@@ -23,9 +23,11 @@ class ProviderContractTests(unittest.TestCase):
                              "remote-123")
         args, kwargs = post.call_args
         self.assertEqual(args[0], widget.RUN_URL)
+        self.assertIn("/openapi/v2/run/workflow/", widget.RUN_URL)
+        self.assertTrue(args[1]["addMetadata"])
         self.assertEqual(args[1]["nodeInfoList"], [
-            {"nodeId": "5099", "fieldName": "video", "fieldValue": "api/uploaded.mp4",
-             "description": None}
+            {"nodeId": "184", "fieldName": "video", "fieldValue": "api/uploaded.mp4",
+             "description": "video"}
         ])
         self.assertFalse(kwargs["retry_transient"])
 
