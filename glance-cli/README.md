@@ -67,7 +67,16 @@ def main(task: WidgetTask) -> dict:
     return result(text("处理完成"), image("output.png"))
 ```
 
-一台机器运行一个 `glance worker` 即可。它每次向 GlanceService 批量请求任务前都会重读本机表，并在对应版本目录里执行 `main.py` 的 `main(task)`。函数返回 `{"outputs":[{"type":"text","text":"..."}]}`；图片、视频或音频输出可以使用 `{"type":"image|video|audio","path":"输出文件路径"}`，也可以使用 `{"type":"image|video|audio","url":"https://..."}` 返回已经托管的资源。单个文件最大 50 MB。
+一台机器运行一个 `glance worker` 即可。它每次向 GlanceService 批量请求任务前都会重读本机表，并在对应版本目录里执行 `main.py` 的 `main(task)`。Worker 默认最多同时运行 4 个任务，且每个 Widget 同时只跑 1 个；需要更高吞吐（例如 Widget 背后的服务本身支持大量并发）时，启动前设置环境变量：
+
+```bash
+GLANCE_WORKER_MAX_CONCURRENT=100 GLANCE_WORKER_PER_WIDGET_CONCURRENT=0 glance worker
+```
+
+- `GLANCE_WORKER_MAX_CONCURRENT`：整台机器同时运行的任务数上限，默认 4，允许 1–200，超出会被调整到范围内。
+- `GLANCE_WORKER_PER_WIDGET_CONCURRENT`：同一 Widget ID 同时运行的任务数上限，默认 1；设为 0 表示不限制，由总上限决定。
+
+两个变量在 Worker 启动时读取一次，修改后需重启 Worker。并发数应与 Widget 实际能承受的下游并发一致，否则任务会在 Widget 内部排队或失败。函数返回 `{"outputs":[{"type":"text","text":"..."}]}`；图片、视频或音频输出可以使用 `{"type":"image|video|audio","path":"输出文件路径"}`，也可以使用 `{"type":"image|video|audio","url":"https://..."}` 返回已经托管的资源。单个文件最大 50 MB。
 
 ## 图片结果的复制 URL 按钮
 

@@ -1,5 +1,7 @@
 """Optional typed helpers for Widget authors."""
 
+import json
+import os
 from pathlib import Path
 from typing import Literal, TypedDict
 
@@ -52,3 +54,24 @@ def audio(path: str | Path) -> FileOutput:
 
 def result(*outputs: TextOutput | FileOutput | MediaURLOutput) -> dict:
     return {"outputs": list(outputs)}
+
+
+def report_progress(progress: int, phase: str = "") -> None:
+    """Tell Glance how far along the task is; sent with the next heartbeat.
+
+    Does nothing outside a Glance worker. Safe to call often.
+    """
+    target = os.environ.get("GLANCE_TASK_PROGRESS_FILE")
+    if not target:
+        return
+    value = max(0, min(100, int(progress)))
+    temporary = f"{target}.{os.getpid()}.tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump({"progress": value, "phase": str(phase)[:40]}, handle, ensure_ascii=False)
+        os.replace(temporary, target)
+    except OSError:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass

@@ -8,6 +8,8 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from unittest.mock import patch
 import venv
@@ -15,9 +17,11 @@ import venv
 from glance_cli.cli import main, validate
 from glance_cli.api import APIError, request, upload_task_file
 from glance_cli.registry import connect, eligible, read_session, read_token, rows, update, upsert
-from glance_cli.runtime import execute, prepare_input, validate_outputs
+from glance_cli.runtime import TaskCancelledError, execute, prepare_input, validate_outputs
 from glance_cli.result_spool import load as load_results
-from glance_cli.worker import DeliveryDeferredError, _run_task, _sync_widget_status
+import glance_cli
+from glance_cli.worker import (DeliveryDeferredError, _concurrency_settings, _read_progress,
+                               _run_task, _sync_widget_status, run_worker)
 from glance_cli.worker_logs import configure_worker_logging, logger
 
 
@@ -63,11 +67,11 @@ class CLITest(unittest.TestCase):
             saved = rows(db)
             self.assertEqual(len(saved), 1)
             self.assertEqual(saved[0]["server_status"], "local")
-            self.assertEqual(eligible(db, set()), [])
+            self.assertEqual(eligible(db, {}), [])
             update(db, manifest["id"], manifest["version"],
                    server_status="manual_review", enabled=1)
-            self.assertEqual(len(eligible(db, set())), 1)
-            self.assertEqual(eligible(db, {manifest["id"]}), [])
+            self.assertEqual(len(eligible(db, {})), 1)
+            self.assertEqual(eligible(db, {manifest["id"]: 1}), [])
 
     def test_result_url_preference_requires_media_output(self):
         _, manifest = self.create_widget()
@@ -94,7 +98,7 @@ class CLITest(unittest.TestCase):
                    enabled=True, server_status="published")
             with patch("glance_cli.worker.request", side_effect=APIError("Widget not found.", 404)):
                 _sync_widget_status(db, manifest["id"])
-            self.assertEqual(eligible(db, set()), [])
+            self.assertEqual(eligible(db, {}), [])
             self.assertEqual({row["server_status"] for row in rows(db)}, {"removed"})
             self.assertTrue(all(row["enabled"] == 0 for row in rows(db)))
 
@@ -113,8 +117,8 @@ class CLITest(unittest.TestCase):
             self.assertEqual([(row["version"], row["server_status"], row["enabled"])
                               for row in rows(db)],
                              [(manifest["version"], "published", 1), ("0.2.0", "published", 1)])
-            self.assertEqual([row["version"] for row in eligible(db, set())], ["0.2.0"])
-            self.assertEqual(eligible(db, {manifest["id"]}), [])
+            self.assertEqual([row["version"] for row in eligible(db, {})], ["0.2.0"])
+            self.assertEqual(eligible(db, {manifest["id"]: 1}), [])
 
     def test_worker_uses_newest_numeric_local_version_for_a_widget(self):
         folder, manifest = self.create_widget()
@@ -125,7 +129,7 @@ class CLITest(unittest.TestCase):
                 upsert(db, widget_id=manifest["id"], version=version,
                        manifest_path=str(folder / "widget.json"), code_path=str(folder),
                        enabled=True, server_status="published")
-            self.assertEqual([row["version"] for row in eligible(db, set())], ["0.1.10"])
+            self.assertEqual([row["version"] for row in eligible(db, {})], ["0.1.10"])
 
     def test_local_main_runs_and_validates_output(self):
         folder, manifest = self.create_widget()
@@ -537,6 +541,233 @@ class CLITest(unittest.TestCase):
         self.assertIn("second task", output.getvalue())
         self.assertNotIn("first task", output.getvalue())
         self.assertTrue((self.root / "config" / "worker.log").is_file())
+
+    def _sleeping_widget(self, grandchild_pid_file=None):
+        folder, manifest = self.create_widget()
+        spawn = ""
+        if grandchild_pid_file:
+            spawn = (
+                "import subprocess, sys\n"
+                "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+                f"open({str(grandchild_pid_file)!r}, 'w').write(str(child.pid))\n")
+        (folder / "main.py").write_text(
+            "import time\n" + spawn + "def main(task):\n    time.sleep(60)\n")
+        return folder
+
+    def _wait_gone(self, pid, seconds=3):
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return True
+            time.sleep(0.05)
+        return False
+
+    @unittest.skipUnless(os.name == "posix", "process groups are POSIX only")
+    def test_heartbeat_409_kills_widget_and_grandchild_without_posting_result(self):
+        pid_file = self.root / "grandchild.pid"
+        folder = self._sleeping_widget(pid_file)
+        heartbeats = []
+
+        def fake_request(method, path, body=None, **kwargs):
+            if path.endswith("/heartbeat"):
+                heartbeats.append(body)
+                if len(heartbeats) >= 2:
+                    raise APIError("not active", 409)
+            return {}
+
+        task = {"taskId": "task_cancel", "claimToken": "claim_1", "input": {}}
+        started = time.monotonic()
+        with patch("glance_cli.worker.HEARTBEAT_INTERVAL", 0.2), \
+             patch("glance_cli.worker.request", side_effect=fake_request) as api, \
+             patch("glance_cli.worker.discard_results") as discard:
+            _run_task({"code_path": str(folder), "python_path": sys.executable}, task)
+        self.assertLess(time.monotonic() - started, 5)
+        self.assertFalse([call for call in api.call_args_list if call.args[1].endswith("/result")])
+        discard.assert_called_with("task_cancel")
+        grandchild = int(pid_file.read_text())
+        self.assertTrue(self._wait_gone(grandchild))
+
+    def test_execute_without_on_log_is_cancellable(self):
+        folder = self._sleeping_widget()
+        cancel = threading.Event()
+        threading.Timer(0.3, cancel.set).start()
+        started = time.monotonic()
+        with self.assertRaises(TaskCancelledError):
+            with execute(folder, {"input": {}}, download_input=False, cancel_event=cancel):
+                pass
+        self.assertLess(time.monotonic() - started, 4)
+
+    def test_report_progress_reaches_next_heartbeat_body(self):
+        folder, manifest = self.create_widget()
+        (folder / "main.py").write_text(
+            "import time\n"
+            "from glance_cli import report_progress\n"
+            "def main(task):\n"
+            "    report_progress(42, 'processing' + 'x' * 60)\n"
+            "    time.sleep(1)\n"
+            "    return {'outputs': [{'type': 'text', 'text': 'ok'}]}\n")
+        bodies = []
+
+        def fake_request(method, path, body=None, **kwargs):
+            if path.endswith("/heartbeat"):
+                bodies.append(body)
+            return {"status": "succeeded"}
+
+        task = {"taskId": "task_progress", "claimToken": "claim_1", "input": {}}
+        source = str(Path(glance_cli.__file__).parent.parent)
+        with patch.dict(os.environ, {"PYTHONPATH": source}), \
+             patch("glance_cli.worker.HEARTBEAT_INTERVAL", 0.3), \
+             patch("glance_cli.worker.request", side_effect=fake_request):
+            _run_task({"code_path": str(folder), "python_path": sys.executable}, task)
+        reported = [body for body in bodies if body.get("progress") == 42]
+        self.assertTrue(reported, bodies)
+        self.assertEqual(len(reported[0]["phase"]), 40)
+        self.assertTrue(reported[0]["phase"].startswith("processing"))
+
+    def test_report_progress_clamps_and_ignores_missing_environment(self):
+        target = self.root / "progress.json"
+        glance_cli.report_progress(5, "no env")
+        self.assertFalse(target.exists())
+        with patch.dict(os.environ, {"GLANCE_TASK_PROGRESS_FILE": str(target)}):
+            glance_cli.report_progress(250, "x")
+        self.assertEqual(json.loads(target.read_text()), {"progress": 100, "phase": "x"})
+        target.write_text("not json")
+        self.assertEqual(_read_progress(target), {})
+        self.assertEqual(_read_progress(self.root / "missing.json"), {})
+
+    def test_unregistered_widget_report_failure_does_not_stop_worker(self):
+        with closing(connect()) as db:
+            upsert(db, widget_id="known", version="1.0.0",
+                   manifest_path=str(self.root / "widget.json"), code_path=str(self.root),
+                   enabled=True, server_status="published")
+        pulls = []
+
+        def fake_request(method, path, body=None, **kwargs):
+            if path.endswith("/pull-batch"):
+                pulls.append(1)
+                if len(pulls) == 1:
+                    return {"task": {"taskId": "t1", "widgetId": "other", "claimToken": "c"}}
+                if len(pulls) == 2:
+                    raise ValueError("unexpected")
+                raise KeyboardInterrupt
+            raise APIError("report failed", 500)
+
+        def close_logs():
+            for handler in logger.handlers[:]:
+                logger.removeHandler(handler)
+                handler.close()
+        self.addCleanup(close_logs)
+        with patch("glance_cli.worker.request", side_effect=fake_request), \
+             patch("glance_cli.worker.time.sleep") as sleep:
+            run_worker()
+        self.assertEqual(len(pulls), 3)
+        sleep.assert_any_call(5)
+
+    def test_eligible_filters_by_running_count_and_per_widget_limit(self):
+        _, manifest = self.create_widget()
+        with closing(connect()) as db:
+            update(db, manifest["id"], manifest["version"],
+                   server_status="published", enabled=1)
+            widget_id = manifest["id"]
+            self.assertEqual(len(eligible(db, {})), 1)
+            self.assertEqual(eligible(db, {widget_id: 1}), [])  # default limit 1
+            self.assertEqual(len(eligible(db, {widget_id: 2}, 3)), 1)
+            self.assertEqual(eligible(db, {widget_id: 3}, 3), [])
+            self.assertEqual(len(eligible(db, {widget_id: 50}, 0)), 1)  # 0 = unlimited
+
+    def test_concurrency_settings_read_environment_with_defaults_and_clamping(self):
+        cases = [
+            ({}, (4, 1)),
+            ({"GLANCE_WORKER_MAX_CONCURRENT": "3",
+              "GLANCE_WORKER_PER_WIDGET_CONCURRENT": "3"}, (3, 3)),
+            ({"GLANCE_WORKER_MAX_CONCURRENT": "0"}, (1, 1)),
+            ({"GLANCE_WORKER_MAX_CONCURRENT": "999"}, (200, 1)),
+            ({"GLANCE_WORKER_MAX_CONCURRENT": "abc",
+              "GLANCE_WORKER_PER_WIDGET_CONCURRENT": "-2"}, (4, 0)),
+            ({"GLANCE_WORKER_PER_WIDGET_CONCURRENT": "0"}, (4, 0)),
+        ]
+        for environment, expected in cases:
+            with self.subTest(environment=environment), \
+                 patch.dict(os.environ, environment, clear=False):
+                for name in ("GLANCE_WORKER_MAX_CONCURRENT", "GLANCE_WORKER_PER_WIDGET_CONCURRENT"):
+                    if name not in environment:
+                        os.environ.pop(name, None)
+                self.assertEqual(_concurrency_settings(), expected)
+
+    def _run_worker_for_one_widget(self, environment: dict, expected_parallel: int):
+        """Pull tasks for one Widget until ``expected_parallel`` run at once.
+
+        Fake tasks block on a gate that opens only once the worker has had to
+        wait, so the peak concurrency is deterministic. Returns
+        ``(pull_count_at_first_wait, peak_concurrency, total_tasks)``.
+        """
+        with closing(connect()) as db:
+            upsert(db, widget_id="w", version="1.0.0",
+                   manifest_path=str(self.root / "widget.json"), code_path=str(self.root),
+                   enabled=True, server_status="published")
+        gate = threading.Event()
+        lock = threading.Lock()
+        state = {"started": 0, "running": 0, "peak": 0, "pulls": 0, "first_wait": None}
+
+        def fake_request(method, path, body=None, **kwargs):
+            if path.endswith("/pull-batch"):
+                state["pulls"] += 1
+                if state["pulls"] > expected_parallel + 1:
+                    raise KeyboardInterrupt
+                return {"task": {"taskId": f"t{state['pulls']}", "widgetId": "w", "claimToken": "c"}}
+            return {"status": "published"}
+
+        def fake_run_task(row, task):
+            with lock:
+                state["started"] += 1
+                state["running"] += 1
+                state["peak"] = max(state["peak"], state["running"])
+            gate.wait(timeout=10)
+            with lock:
+                state["running"] -= 1
+
+        def fake_sleep(seconds):
+            if state["first_wait"] is None:
+                state["first_wait"] = state["pulls"]
+            with lock:
+                ready = state["started"] >= expected_parallel
+            if ready:
+                gate.set()
+
+        def close_logs():
+            for handler in logger.handlers[:]:
+                logger.removeHandler(handler)
+                handler.close()
+        self.addCleanup(close_logs)
+        with patch.dict(os.environ, environment), \
+             patch("glance_cli.worker.request", side_effect=fake_request), \
+             patch("glance_cli.worker._run_task", side_effect=fake_run_task), \
+             patch("glance_cli.worker.time.sleep", side_effect=fake_sleep):
+            run_worker()
+        return state["first_wait"], state["peak"], state["started"]
+
+    def test_worker_runs_three_tasks_of_one_widget_when_limit_is_three(self):
+        first_wait, peak, total = self._run_worker_for_one_widget(
+            {"GLANCE_WORKER_PER_WIDGET_CONCURRENT": "3"}, expected_parallel=3)
+        self.assertEqual(first_wait, 3)  # the fourth task waited for a free slot
+        self.assertEqual(peak, 3)
+        self.assertEqual(total, 4)
+
+    def test_worker_per_widget_limit_zero_uses_every_slot(self):
+        first_wait, peak, total = self._run_worker_for_one_widget(
+            {"GLANCE_WORKER_PER_WIDGET_CONCURRENT": "0",
+             "GLANCE_WORKER_MAX_CONCURRENT": "5"}, expected_parallel=5)
+        self.assertEqual(first_wait, 5)  # only the global limit stopped pulling
+        self.assertEqual(peak, 5)
+        self.assertEqual(total, 6)
+
+    def test_worker_default_runs_one_task_per_widget(self):
+        first_wait, peak, total = self._run_worker_for_one_widget({}, expected_parallel=1)
+        self.assertEqual(first_wait, 1)
+        self.assertEqual(peak, 1)
+        self.assertEqual(total, 2)
 
 
 if __name__ == "__main__":

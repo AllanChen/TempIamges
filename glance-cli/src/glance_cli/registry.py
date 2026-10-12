@@ -1,5 +1,6 @@
 """Machine-local widget/version table. No Widget project files are stored here."""
 
+from collections.abc import Mapping
 import json
 from hashlib import sha256
 import os
@@ -97,12 +98,21 @@ def _version_key(value: str) -> tuple:
                  for part in re.split(r"(\d+)", value))
 
 
-def eligible(db: sqlite3.Connection, busy: set[str]) -> list[dict]:
+def eligible(db: sqlite3.Connection, running: Mapping[str, int],
+             per_widget_limit: int = 1) -> list[dict]:
+    """Widgets the worker may pull for right now, one newest-version row each.
+
+    ``running`` maps widget_id -> number of tasks currently executing for it.
+    A widget stays eligible while that count is below ``per_widget_limit``;
+    ``0`` means no per-widget limit.
+    """
     allowed = {"manual_review", "test_passed", "gray_release", "published"}
     selected: dict[str, dict] = {}
     for row in rows(db):
         widget_id = row["widget_id"]
-        if not row["enabled"] or row["server_status"] not in allowed or widget_id in busy:
+        if not row["enabled"] or row["server_status"] not in allowed:
+            continue
+        if per_widget_limit > 0 and running.get(widget_id, 0) >= per_widget_limit:
             continue
         previous = selected.get(widget_id)
         if previous is None or _version_key(row["version"]) > _version_key(previous["version"]):

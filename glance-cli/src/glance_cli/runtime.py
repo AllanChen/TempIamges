@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import signal
 import tempfile
 import threading
 import time
@@ -151,10 +152,45 @@ def validate_outputs(result: dict, code_path: Path) -> list[dict]:
     return checked
 
 
+class TaskCancelledError(RuntimeError):
+    """The server no longer wants this task; the widget process was stopped."""
+
+
+def terminate_process(process: subprocess.Popen, grace: float = 5) -> None:
+    """Stop the widget and its descendants: SIGTERM, wait, then SIGKILL."""
+    if os.name != "posix":
+        process.kill()
+        try:
+            process.wait(timeout=grace)
+        except subprocess.TimeoutExpired:
+            pass
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        pass
+    try:
+        process.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass
+    # The leader may exit on SIGTERM while a child ignores it; always finish
+    # the group with SIGKILL.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    try:
+        process.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass
+
+
 @contextmanager
 def execute(code_path: Path, task: dict, *, timeout: int = 1500,
             download_input: bool = True, python_path: str | Path | None = None,
-            on_log: Callable[[str], None] | None = None):
+            on_log: Callable[[str], None] | None = None,
+            cancel_event: threading.Event | None = None,
+            progress_file: Path | None = None):
     code_path = code_path.resolve(strict=True)
     if not (code_path / "main.py").is_file():
         raise ValueError(f"找不到 {code_path / 'main.py'}")
@@ -166,41 +202,55 @@ def execute(code_path: Path, task: dict, *, timeout: int = 1500,
         task_path.write_text(json.dumps(prepared, ensure_ascii=False), encoding="utf-8")
         command = [str(resolve_python(python_path)), str(Path(__file__).with_name("runner.py")),
                    str(code_path), str(task_path), str(result_path)]
-        environment = {**os.environ, "GLANCE_TASK_OUTPUT_DIR": str(temporary)}
-        if on_log is None:
-            try:
-                process = subprocess.run(command, cwd=code_path, env=environment,
-                                         capture_output=True, text=True, timeout=timeout, check=False)
-            except subprocess.TimeoutExpired as error:
-                raise RuntimeError(f"main.py 运行超过 {timeout} 秒") from error
-            if process.returncode:
-                raise RuntimeError(process.stderr.strip()[-4000:] or "main.py 执行失败")
-        else:
+        progress_path = progress_file or (temporary / "progress.json")
+        environment = {**os.environ, "GLANCE_TASK_OUTPUT_DIR": str(temporary),
+                       "GLANCE_TASK_PROGRESS_FILE": str(progress_path)}
+        if cancel_event is not None and cancel_event.is_set():
+            raise TaskCancelledError("任务已被取消")
+        if on_log:
             on_log(f"启动 Widget 进程：{code_path.name}，Python={command[0]}")
-            recent_lines: deque[str] = deque(maxlen=80)
-            with subprocess.Popen(command, cwd=code_path, env=environment,
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                  text=True, bufsize=1) as process:
-                def forward_output() -> None:
-                    assert process.stdout is not None
-                    for line in process.stdout:
-                        message = line.rstrip("\r\n")
-                        if message:
-                            recent_lines.append(message[:2000])
-                            on_log(f"Widget: {message[:2000]}")
+        recent_lines: deque[str] = deque(maxlen=80)
+        # A new session makes the widget the leader of its own process group so
+        # cancellation can also reach grandchildren it spawned.
+        process = subprocess.Popen(command, cwd=code_path, env=environment,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                   text=True, bufsize=1,
+                                   start_new_session=(os.name == "posix"))
 
-                reader = threading.Thread(target=forward_output, daemon=True)
-                reader.start()
+        def forward_output() -> None:
+            assert process.stdout is not None
+            for line in process.stdout:
+                message = line.rstrip("\r\n")
+                if message:
+                    recent_lines.append(message[:2000])
+                    if on_log:
+                        on_log(f"Widget: {message[:2000]}")
+
+        reader = threading.Thread(target=forward_output, daemon=True)
+        reader.start()
+        deadline = time.monotonic() + timeout
+        try:
+            while True:
                 try:
-                    returncode = process.wait(timeout=timeout)
-                except subprocess.TimeoutExpired as error:
-                    process.kill()
-                    process.wait()
-                    raise RuntimeError(f"main.py 运行超过 {timeout} 秒") from error
-                finally:
-                    reader.join(timeout=2)
-            if returncode:
-                raise RuntimeError("\n".join(recent_lines)[-4000:] or "main.py 执行失败")
+                    returncode = process.wait(timeout=0.5)
+                    break
+                except subprocess.TimeoutExpired:
+                    pass
+                if cancel_event is not None and cancel_event.is_set():
+                    terminate_process(process)
+                    raise TaskCancelledError("任务已被取消")
+                if time.monotonic() >= deadline:
+                    terminate_process(process)
+                    raise RuntimeError(f"main.py 运行超过 {timeout} 秒")
+        finally:
+            if process.poll() is None:
+                terminate_process(process)
+            reader.join(timeout=2)
+            if process.stdout is not None:
+                process.stdout.close()
+        if returncode:
+            raise RuntimeError("\n".join(recent_lines)[-4000:] or "main.py 执行失败")
+        if on_log:
             on_log("Widget 进程完成，开始校验输出")
         outputs = validate_outputs(json.loads(result_path.read_text(encoding="utf-8")), code_path)
         if on_log:
