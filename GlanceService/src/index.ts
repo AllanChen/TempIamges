@@ -42,7 +42,7 @@ function json(data: unknown, status = 200, extra: HeadersInit = {}) {
   return new Response(JSON.stringify(data), { status, headers: { ...CORS, "Content-Type": "application/json", ...extra } });
 }
 function ok(result: unknown, status = 200, extra: HeadersInit = {}) { return json({ success: true, result }, status, extra); }
-function fail(code: string, message: string, status = 400) { return json({ success: false, error: { code, message } }, status); }
+function fail(code: string, message: string, status = 400, extra: HeadersInit = {}) { return json({ success: false, error: { code, message } }, status, extra); }
 function now() { return new Date().toISOString(); }
 function id(prefix: string) { return `${prefix}_${crypto.randomUUID()}`; }
 function bearer(request: Request) { const value = request.headers.get("Authorization") || ""; return value.startsWith("Bearer ") ? value.slice(7).trim() : ""; }
@@ -347,10 +347,17 @@ function widgetManifestWithID(input: unknown, widgetID: string, existingCommands
 function newWidgetManifest(input: unknown): Manifest {
   return widgetManifestWithID(input, crypto.randomUUID());
 }
+class HttpError extends Error {
+  constructor(readonly status: number, readonly code: string, message: string) { super(message); }
+}
 async function readJSON(request: Request) {
   const length = Number(request.headers.get("content-length") || 0);
-  if (length > MAX_BODY) throw new Error("Request body is too large");
-  return await request.json() as Record<string, unknown>;
+  if (length > MAX_BODY) throw new HttpError(413, "payload_too_large", "Request body is too large.");
+  try {
+    return await request.json() as Record<string, unknown>;
+  } catch {
+    throw new HttpError(400, "invalid_json", "Request body must be valid JSON.");
+  }
 }
 async function audit(env: Env, widgetID: string, versionID: string | null, actor: string, action: string, previous: string | null, next: string | null, note: string | null) {
   await env.DB.prepare("INSERT INTO widget_audit_logs (id,widget_id,version_id,actor_id,action,previous_status,next_status,note,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
@@ -600,10 +607,16 @@ async function widgetDetail(env: Env, widgetID: string) {
 async function taskStatus(env: Env, request: Request, taskID: string) {
   const actor = await requireUser(request, env);
   const row = isFlowTestToken(env, bearer(request))
-    ? await env.DB.prepare("SELECT id,owner_id,status,result_json,error_code,attempts FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
-    : await env.DB.prepare("SELECT id,owner_id,status,result_json,error_code,attempts FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
+    ? await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
+    : await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
   if (!row) return fail("task_not_found", "Task not found.", 404);
   const result: Record<string, unknown> = { taskID: row.id, status: row.status === "succeeded" ? "completed" : row.status, processCount: row.status === "succeeded" ? 100 : 0, attempts: row.attempts };
+  if (typeof row.progress === "number") result.progress = row.progress;
+  if (typeof row.phase === "string" && row.phase) result.phase = row.phase;
+  if (row.status === "queued") {
+    result.pollAfterMs = 3000;
+    Object.assign(result, await queueEstimate(env, String(row.widget_id), String(row.created_at)));
+  } else if (row.status === "claimed" || row.status === "running") result.pollAfterMs = 2000;
   if (row.result_json) {
     const artifacts = await publicTaskArtifacts(env, request, JSON.parse(String(row.result_json)));
     result.result = artifacts;
@@ -766,10 +779,65 @@ async function createTask(env: Env, request: Request, admin = false) {
     taskParams[kind] = values;
     input[kind] = values;
   }
+  const queued = await env.DB.prepare("SELECT COUNT(*) AS n FROM widget_tasks WHERE status='queued'").first<{ n: number }>();
+  if ((queued?.n ?? 0) >= await readTaskQueueLimit(env)) {
+    return fail("queue_full", "The task queue is full. Please try again later.", 429, { "Retry-After": "60", "Cache-Control": "no-store" });
+  }
+  const createdAt = now();
   await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
-    .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", now()).run();
-  return ok({ taskID, status: "queued", processCount: 0, pollAfterMs: 1000 }, 202, { "Cache-Control": "no-store" });
+    .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt).run();
+  const estimate = await queueEstimate(env, widgetID, createdAt);
+  return ok({ taskID, status: "queued", processCount: 0, pollAfterMs: 1000, ...estimate }, 202, { "Cache-Control": "no-store" });
 }
+
+const TASK_QUEUE_LIMIT_SETTING = "task_queue_limit";
+const DEFAULT_TASK_QUEUE_LIMIT = 300;
+
+async function readTaskQueueLimit(env: Env) {
+  const row = await env.DB.prepare("SELECT value FROM service_settings WHERE key=?").bind(TASK_QUEUE_LIMIT_SETTING).first<{ value: string }>();
+  const value = row ? Number.parseInt(row.value, 10) : NaN;
+  return Number.isInteger(value) && value > 0 ? value : DEFAULT_TASK_QUEUE_LIMIT;
+}
+
+// Contract 1.8: queuePosition = earlier queued tasks for the same Widget + 1;
+// estimatedWaitSeconds = position × mean duration of the last 20 successes
+// ÷ max(1, peak concurrently running tasks in the last 10 minutes). Omitted without history.
+async function queueEstimate(env: Env, widgetID: string, createdAt: string): Promise<{ queuePosition: number; estimatedWaitSeconds?: number }> {
+  const ahead = await env.DB.prepare("SELECT COUNT(*) AS n FROM widget_tasks WHERE widget_id=? AND status='queued' AND created_at<?").bind(widgetID, createdAt).first<{ n: number }>();
+  const queuePosition = (ahead?.n ?? 0) + 1;
+  const history = await env.DB.prepare("SELECT AVG((julianday(completed_at)-julianday(claimed_at))*86400) AS seconds FROM (SELECT claimed_at,completed_at FROM widget_tasks WHERE widget_id=? AND status='succeeded' AND claimed_at IS NOT NULL AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 20)")
+    .bind(widgetID).first<{ seconds: number | null }>();
+  if (typeof history?.seconds !== "number" || !(history.seconds > 0)) return { queuePosition };
+  const windowStart = new Date(Date.now() - 600_000).toISOString();
+  const recent = await env.DB.prepare("SELECT claimed_at,completed_at FROM widget_tasks WHERE widget_id=? AND claimed_at IS NOT NULL AND (status IN ('claimed','running') OR completed_at>=?) LIMIT 500")
+    .bind(widgetID, windowStart).all<{ claimed_at: string; completed_at: string | null }>();
+  const events: Array<[number, number]> = [];
+  for (const row of recent.results) {
+    const start = Math.max(Date.parse(row.claimed_at), Date.parse(windowStart));
+    const end = row.completed_at ? Date.parse(row.completed_at) : Date.now();
+    if (Number.isNaN(start) || Number.isNaN(end) || end < start) continue;
+    events.push([start, 1], [end, -1]);
+  }
+  events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let active = 0, concurrency = 0;
+  for (const [, delta] of events) { active += delta; concurrency = Math.max(concurrency, active); }
+  const estimatedWaitSeconds = Math.max(1, Math.round(queuePosition * history.seconds / Math.max(1, concurrency)));
+  return { queuePosition, estimatedWaitSeconds };
+}
+
+async function cancelTask(env: Env, request: Request, taskID: string) {
+  const actor = await requireUser(request, env);
+  const global = isFlowTestToken(env, bearer(request));
+  const scope = global ? "" : " AND owner_id=?";
+  const scopeArgs = global ? [] : [actor];
+  const cancelled = await env.DB.prepare(`UPDATE widget_tasks SET status='cancelled',completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL WHERE id=?${scope} AND status IN ('queued','claimed','running')`)
+    .bind(now(), taskID, ...scopeArgs).run();
+  if (cancelled.meta.changes) return ok({ taskID, status: "cancelled" }, 200, { "Cache-Control": "no-store" });
+  const existing = await env.DB.prepare(`SELECT status FROM widget_tasks WHERE id=?${scope}`).bind(taskID, ...scopeArgs).first<{ status: string }>();
+  if (!existing) return fail("task_not_found", "Task not found.", 404);
+  return json({ success: false, error: { code: "task_not_active", message: "Task is no longer active." }, status: publicTaskStatus(existing.status) }, 409);
+}
+function publicTaskStatus(status: unknown) { return status === "succeeded" ? "completed" : status; }
 
 async function pullTask(env: Env, request: Request, url: URL) {
   const token = bearer(request);
@@ -785,7 +853,7 @@ async function pullTask(env: Env, request: Request, url: URL) {
   const deadline = Date.now() + wait * 1000;
   let task: Record<string, unknown> | null = null;
   while (!task && Date.now() <= deadline) {
-    await env.DB.prepare("UPDATE widget_tasks SET status='queued',worker_id=NULL,lease_expires_at=NULL WHERE widget_id=? AND status IN ('claimed','running') AND lease_expires_at IS NOT NULL AND lease_expires_at<?").bind(widgetID, now()).run();
+    await env.DB.prepare("UPDATE widget_tasks SET status='queued',worker_id=NULL,lease_expires_at=NULL,claim_token_hash=NULL WHERE widget_id=? AND status IN ('claimed','running') AND lease_expires_at IS NOT NULL AND lease_expires_at<?").bind(widgetID, now()).run();
     const row = await env.DB.prepare("SELECT * FROM widget_tasks WHERE widget_id=? AND status='queued' ORDER BY created_at LIMIT 1").bind(widgetID).first<Record<string, unknown>>();
     if (row) {
       const lease = new Date(Date.now() + 120_000).toISOString();
@@ -867,6 +935,22 @@ async function taskForDeveloper(env: Env, request: Request, taskID: string) {
     .bind(taskID, actor.owner_id, actor.owner_id, await digest(claimToken), now()).first<Record<string, unknown>>();
 }
 
+// A developer Worker whose claim was invalidated (cancel clears the claim hash)
+// still needs a definite answer instead of "not found". Only reveals the status
+// to developers who own or are granted the task's Widget.
+async function inactiveTaskStatusForDeveloper(env: Env, request: Request, taskID: string) {
+  if (!request.headers.get("X-Task-Claim")) return null;
+  const actor = await developerSession(env, request).catch(() => null);
+  if (!actor) return null;
+  const row = await env.DB.prepare(`SELECT t.status FROM widget_tasks t JOIN widgets w ON w.id=t.widget_id WHERE t.id=?
+    AND (w.owner_id=? OR EXISTS (SELECT 1 FROM widget_worker_grants g WHERE g.widget_id=w.id AND g.developer_id=?))`)
+    .bind(taskID, actor.owner_id, actor.owner_id).first<{ status: string }>();
+  return row ? row.status : null;
+}
+function taskNotActive(status: unknown) {
+  return json({ success: false, error: { code: "task_not_active", message: "Task is not active." }, status: publicTaskStatus(status) }, 409, { "Cache-Control": "no-store" });
+}
+
 async function uploadTaskArtifact(env: Env, request: Request, taskID: string) {
   const task = await taskForDeveloper(env, request, taskID);
   if (!task) return fail("task_not_found", "Task is not assigned to this developer.", 404);
@@ -900,8 +984,11 @@ async function taskResult(env: Env, request: Request, taskID: string) {
   const developerTask = await taskForDeveloper(env, request, taskID).catch(() => null);
   const task = developerTask || (isFlowTestWorkerToken(env, token)
     ? await env.DB.prepare("SELECT * FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
-    : await env.DB.prepare("SELECT t.*, w.widget_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=?").bind(taskID, await tokenHash(env, token)).first<Record<string, unknown>>());
-  if (!task) return fail("task_not_found", "Task not found or Worker is not authorized.", 404);
+    : await env.DB.prepare("SELECT t.*, w.widget_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=? AND w.status='active'").bind(taskID, await tokenHash(env, token)).first<Record<string, unknown>>());
+  if (!task) {
+    const inactive = await inactiveTaskStatusForDeveloper(env, request, taskID);
+    return inactive ? taskNotActive(inactive) : fail("task_not_found", "Task not found or Worker is not authorized.", 404);
+  }
   const body = await readJSON(request);
   const status = body.status === "succeeded" ? "succeeded" : body.status === "failed" ? "failed" : "failed";
   const artifacts = Array.isArray(body.artifacts) ? body.artifacts : Array.isArray(body.result) ? body.result : [];
@@ -932,7 +1019,10 @@ async function taskResult(env: Env, request: Request, taskID: string) {
   }
   const updated = await env.DB.prepare("UPDATE widget_tasks SET status=?,result_json=?,error_code=?,completed_at=?,lease_expires_at=NULL WHERE id=? AND status IN ('claimed','running')")
     .bind(status, JSON.stringify(artifacts), typeof body.errorCode === "string" ? body.errorCode : null, now(), taskID).run();
-  if (!updated.meta.changes) return fail("task_not_active", "Task is not active.", 409);
+  if (!updated.meta.changes) {
+    const current = await env.DB.prepare("SELECT status FROM widget_tasks WHERE id=?").bind(taskID).first<{ status: string }>();
+    return taskNotActive(current?.status);
+  }
   if (task.type === "review_test") {
     await env.DB.prepare("INSERT INTO widget_review_results(id,task_id,widget_id,version_id,status,result_json,created_at) VALUES(?,?,?,?,?,?,?)")
       .bind(id("review"), taskID, task.widget_id, task.version_id, status, JSON.stringify(artifacts), now()).run();
@@ -946,11 +1036,25 @@ async function taskHeartbeat(env: Env, request: Request, taskID: string) {
   const developerTask = await taskForDeveloper(env, request, taskID).catch(() => null);
   const task = developerTask || (isFlowTestWorkerToken(env, token)
     ? await env.DB.prepare("SELECT id,worker_id FROM widget_tasks WHERE id=?").bind(taskID).first<{ id: string; worker_id: string | null }>()
-    : await env.DB.prepare("SELECT t.id,t.worker_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=?").bind(taskID, await tokenHash(env, token)).first<{ id: string; worker_id: string }>());
-  if (!task) return fail("task_not_found", "Task not found or Worker is not authorized.", 404);
-  await env.DB.prepare("UPDATE widget_tasks SET status='running',lease_expires_at=? WHERE id=? AND status IN ('claimed','running')").bind(new Date(Date.now() + 120_000).toISOString(), taskID).run();
+    : await env.DB.prepare("SELECT t.id,t.worker_id FROM widget_tasks t JOIN widget_workers w ON w.id=t.worker_id WHERE t.id=? AND w.token_hash=? AND w.status='active'").bind(taskID, await tokenHash(env, token)).first<{ id: string; worker_id: string }>());
+  if (!task) {
+    const inactive = await inactiveTaskStatusForDeveloper(env, request, taskID);
+    return inactive ? taskNotActive(inactive) : fail("task_not_found", "Task not found or Worker is not authorized.", 404);
+  }
+  // Optional body (older Workers send none): progress 0-100, phase up to 40 chars.
+  const body = await readJSON(request).catch(() => ({} as Record<string, unknown>));
+  const progress = typeof body.progress === "number" && Number.isFinite(body.progress)
+    ? Math.min(100, Math.max(0, Math.round(body.progress))) : null;
+  const phase = typeof body.phase === "string" ? body.phase.slice(0, 40) : null;
+  const leaseExpiresAt = new Date(Date.now() + 120_000).toISOString();
+  const updated = await env.DB.prepare("UPDATE widget_tasks SET status='running',lease_expires_at=?,progress=COALESCE(?,progress),phase=COALESCE(?,phase) WHERE id=? AND status IN ('claimed','running')")
+    .bind(leaseExpiresAt, progress, phase, taskID).run();
+  if (!updated.meta.changes) {
+    const current = await env.DB.prepare("SELECT status FROM widget_tasks WHERE id=?").bind(taskID).first<{ status: string }>();
+    return taskNotActive(current?.status);
+  }
   if (task.worker_id) await env.DB.prepare("UPDATE widget_workers SET last_seen_at=? WHERE id=?").bind(now(), task.worker_id).run();
-  return ok({ taskID, status: "running" }, 200, { "Cache-Control": "no-store" });
+  return ok({ taskID, status: "running", leaseExpiresAt }, 200, { "Cache-Control": "no-store" });
 }
 
 async function submissionDetail(env: Env, request: Request, submissionID: string) {
@@ -1132,11 +1236,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/v2/tasks") return await createTask(env, request);
       if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) return await taskStatus(env, request, parts[3]);
       if (request.method === "DELETE" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) {
-        const actor = await requireUser(request, env);
-        const global = isFlowTestToken(env, bearer(request));
-        const cancelled = await env.DB.prepare(`UPDATE widget_tasks SET status='cancelled',completed_at=? WHERE id=?${global ? "" : " AND owner_id=?"} AND status IN ('queued','claimed','running')`)
-          .bind(...(global ? [now(), parts[3]] : [now(), parts[3], actor])).run();
-        return cancelled.meta.changes ? ok({ taskID: parts[3], status: "cancelled" }) : fail("task_not_found", "Task not found or cannot be cancelled.", 404);
+        return await cancelTask(env, request, parts[3]);
       }
       if (request.method === "POST" && url.pathname === "/api/v2/uploads") return await uploadAsset(env, request);
       if ((request.method === "GET" || request.method === "HEAD") && parts[0] === "api" && parts[1] === "v2" && parts[2] === "assets" && parts[3]) return await assetDownload(env, request, parts[3]);
@@ -1148,8 +1248,10 @@ export default {
       if (parts[0] === "api" && parts[1] === "admin" && parts[2] === "v2" && parts[3] === "widget-submissions" && request.method === "GET") { await requireAdmin(env, request); const rows = await env.DB.prepare("SELECT * FROM widget_versions ORDER BY updated_at DESC").all(); return ok(rows.results); }
       return fail("not_found", "Not found.", 404);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Request failed.";
-      return fail(message === "Unauthorized" ? "unauthorized" : "request_failed", message, message === "Unauthorized" ? 401 : 500);
+      if (error instanceof HttpError) return fail(error.code, error.message, error.status);
+      if (error instanceof Error && error.message === "Unauthorized") return fail("unauthorized", "Unauthorized", 401);
+      console.error("Unhandled request error", error);
+      return fail("internal_error", "Internal server error.", 500);
     }
   }
 };
