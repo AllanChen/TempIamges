@@ -1,0 +1,49 @@
+name: Publish glance-cli to PyPI
+
+# Push a tag like `glance-cli-v0.1.0` (matching glance_cli.__version__) to release.
+# Uses PyPI Trusted Publishing: no token is stored in the repository. One-time
+# setup on pypi.org: Project settings → Publishing → add a GitHub publisher for
+# this repository, workflow `publish-glance-cli.yml`, environment `pypi`.
+on:
+  push:
+    tags: ["glance-cli-v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: glance-cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test
+        run: PYTHONPATH=src python -m unittest discover -s tests
+      - name: Tag matches the package version
+        run: |
+          version="$(python -c 'import re,pathlib;print(re.search(r"__version__ = \"(.+?)\"", pathlib.Path("src/glance_cli/__init__.py").read_text()).group(1))')"
+          test "glance-cli-v${version}" = "${GITHUB_REF_NAME}"
+      - name: Build
+        run: |
+          python -m pip install build twine
+          python -m build
+          twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: glance-cli/dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

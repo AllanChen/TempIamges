@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 import uuid
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.parse import urlsplit
+from urllib.request import ProxyHandler, Request, build_opener, getproxies, urlopen
 
 from . import __version__
 from .registry import read_token
@@ -14,6 +15,31 @@ from .registry import read_token
 
 BASE_URL = os.environ.get("GLANCE_API_URL", "https://glance-service.allanchanni.workers.dev").rstrip("/")
 USER_AGENT = f"glance-cli/{__version__}"
+
+
+_direct_opener = build_opener(ProxyHandler({}))
+
+
+def _open(req: Request, timeout: float):
+    """Use the direct route for the custom API domain, otherwise the default route.
+
+    The custom domain works directly on this network while workers.dev needs
+    the configured proxy. Trying direct first for workers.dev stalls the initial
+    per-Widget status sync before the worker can pull any tasks. An explicit
+    GLANCE_API_DIRECT=1 forces direct first; 0 uses the default route.
+    """
+    direct_setting = os.environ.get("GLANCE_API_DIRECT")
+    direct_first = (direct_setting == "1" or
+                    (direct_setting is None and
+                     urlsplit(req.full_url).hostname == "api.glance.mcreator.ai"))
+    if direct_first and getproxies():
+        try:
+            return _direct_opener.open(req, timeout=timeout)
+        except HTTPError:
+            raise
+        except URLError:
+            pass
+    return urlopen(req, timeout=timeout)
 
 
 class APIError(RuntimeError):
@@ -45,7 +71,7 @@ def request(method: str, path: str, body: dict | None = None, *,
         headers["Content-Type"] = "application/json"
     req = Request(BASE_URL + path, data=payload, headers=headers, method=method)
     try:
-        with urlopen(req, timeout=timeout) as response:
+        with _open(req, timeout=timeout) as response:
             envelope = json.load(response)
     except HTTPError as error:
         try:
@@ -84,7 +110,7 @@ def upload_task_file(task_id: str, path: Path, *, token: str | None = None,
                       "X-Task-Claim": claim_token,
                       "Content-Type": f"multipart/form-data; boundary={boundary}"})
     try:
-        with urlopen(req, timeout=120) as response:
+        with _open(req, timeout=120) as response:
             envelope = json.load(response)
     except HTTPError as error:
         try:

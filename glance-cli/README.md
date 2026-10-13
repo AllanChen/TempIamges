@@ -2,6 +2,19 @@
 
 供 Widget 开发者安装的 Python 包。需要 Python 3.11 或更新版本。
 
+## 安装
+
+```bash
+pipx install glance-cli        # 推荐：独立环境，glance 命令直接可用
+# 或
+python3 -m venv .venv && source .venv/bin/activate && pip install glance-cli
+glance --help
+```
+
+默认连接 `https://glance-service.allanchanni.workers.dev`；需要连接其他服务时设置环境变量 `GLANCE_API_URL`。
+
+下面的步骤适用于在本仓库里开发 CLI 本身。
+
 在仓库根目录可直接运行 `./glance-cli-run.sh`。脚本每次都会在 `.venv` 中重新安装当前源码，然后退出；不会自动启动 Worker。需要运行命令时可传入参数，例如 `./glance-cli-run.sh widget list`；脚本保留当前工作目录，因此也能从 `widgets/` 目录运行 `../glance-cli-run.sh widget init`。需要 Worker 时，开发者自行运行 `.venv/bin/glance worker`。
 
 在仓库根目录创建虚拟环境后安装当前源码：

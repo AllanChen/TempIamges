@@ -1,6 +1,7 @@
 import json
 from contextlib import closing, contextmanager, redirect_stdout
 import io
+from urllib.error import HTTPError, URLError
 import os
 from pathlib import Path
 import shutil
@@ -31,7 +32,9 @@ class CLITest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         patcher = patch.dict(os.environ, {"GLANCE_CLI_HOME": str(self.root / "config"),
-                                          "GLANCE_MOCK_TOKEN": ""})
+                                          "GLANCE_MOCK_TOKEN": "",
+                                          # Tests mock urlopen; keep the direct-first path out of them.
+                                          "GLANCE_API_DIRECT": "0"})
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -768,6 +771,72 @@ class CLITest(unittest.TestCase):
         self.assertEqual(first_wait, 1)
         self.assertEqual(peak, 1)
         self.assertEqual(total, 2)
+
+
+class DirectFirstAPITests(unittest.TestCase):
+    """The API is reached without the environment proxy first; see api._open."""
+
+    ENVELOPE = b'{"success": true, "result": {"ok": true}}'
+
+    def setUp(self):
+        patcher = patch.dict(os.environ, {"GLANCE_API_DIRECT": "1"})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        proxies = patch("glance_cli.api.getproxies", return_value={"https": "http://127.0.0.1:7890"})
+        proxies.start()
+        self.addCleanup(proxies.stop)
+
+    def call(self):
+        return request("GET", "/api/v2/x", token="t")
+
+    def test_direct_success_never_touches_the_proxy_route(self):
+        with patch("glance_cli.api._direct_opener") as direct, \
+             patch("glance_cli.api.urlopen") as proxied:
+            direct.open.return_value = io.BytesIO(self.ENVELOPE)
+            self.assertEqual(self.call(), {"ok": True})
+        direct.open.assert_called_once()
+        proxied.assert_not_called()
+
+    def test_failed_connection_falls_back_to_the_default_route(self):
+        with patch("glance_cli.api._direct_opener") as direct, \
+             patch("glance_cli.api.urlopen", return_value=io.BytesIO(self.ENVELOPE)) as proxied:
+            direct.open.side_effect = URLError("connect failed")
+            self.assertEqual(self.call(), {"ok": True})
+        proxied.assert_called_once()
+
+    def test_http_answer_is_not_retried_through_the_proxy(self):
+        error = HTTPError("https://x", 401, "Unauthorized", {}, io.BytesIO(b'{"error":{"message":"no"}}'))
+        with patch("glance_cli.api._direct_opener") as direct, \
+             patch("glance_cli.api.urlopen") as proxied:
+            direct.open.side_effect = error
+            with self.assertRaises(APIError) as caught:
+                self.call()
+        self.assertEqual(caught.exception.status, 401)
+        proxied.assert_not_called()
+
+    def test_read_timeout_is_not_repeated(self):
+        # A pull-batch that timed out may already have claimed a task.
+        with patch("glance_cli.api._direct_opener") as direct, \
+             patch("glance_cli.api.urlopen") as proxied:
+            direct.open.side_effect = TimeoutError("timed out")
+            with self.assertRaises(APIError):
+                self.call()
+        proxied.assert_not_called()
+
+    def test_switch_turns_direct_first_off(self):
+        with patch.dict(os.environ, {"GLANCE_API_DIRECT": "0"}), \
+             patch("glance_cli.api._direct_opener") as direct, \
+             patch("glance_cli.api.urlopen", return_value=io.BytesIO(self.ENVELOPE)):
+            self.assertEqual(self.call(), {"ok": True})
+        direct.open.assert_not_called()
+
+    def test_without_a_proxy_the_default_route_is_used_directly(self):
+        with patch("glance_cli.api.getproxies", return_value={}), \
+             patch("glance_cli.api._direct_opener") as direct, \
+             patch("glance_cli.api.urlopen", return_value=io.BytesIO(self.ENVELOPE)):
+            self.assertEqual(self.call(), {"ok": True})
+        direct.open.assert_not_called()
+
 
 
 if __name__ == "__main__":
