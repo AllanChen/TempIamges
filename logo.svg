@@ -1,61 +1,76 @@
-<svg viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Glance brand mark (Figma "App Logo / Tangible", concept B): the peeker —
+       a round amber character looking over a photo print that is developed on
+       the left and still grey on the right, hands on the frame edge.
+       Full-bleed 1024 version; scripts/render-app-icon.swift renders the
+       Dock icon set from the same geometry (squircle at 80% of the canvas). -->
   <defs>
-    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0e0e10"/>
-      <stop offset="100%" stop-color="#070708"/>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1b1f"/><stop offset="1" stop-color="#0a0a0c"/>
     </linearGradient>
-    <linearGradient id="amber" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#e8a87c"/>
-      <stop offset="50%" stop-color="#d4a574"/>
-      <stop offset="100%" stop-color="#c8aa82"/>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0b896"/><stop offset="0.5" stop-color="#e8c87c"/><stop offset="1" stop-color="#d4a574"/>
     </linearGradient>
-    <linearGradient id="amber-light" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f0b896"/>
-      <stop offset="100%" stop-color="#e8c87c"/>
+    <linearGradient id="print" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2c9a2"/><stop offset="0.5" stop-color="#c98a62"/><stop offset="1" stop-color="#5a3226"/>
     </linearGradient>
-    
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#000" flood-opacity="0.45"/>
     </filter>
-    
-    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="30" result="blur"/>
-      <feFlood flood-color="#e8a87c" flood-opacity="0.15"/>
-      <feComposite in2="blur" operator="in"/>
-      <feComposite in2="SourceGraphic" operator="over"/>
+    <filter id="drop-small" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#000" flood-opacity="0.4"/>
     </filter>
+    <clipPath id="photo-clip"><rect x="153.6" y="471" width="716.8" height="409.6" rx="71.7"/></clipPath>
+    <clipPath id="developed-clip"><rect x="153.6" y="471" width="394.2" height="409.6"/></clipPath>
   </defs>
-  
-  <rect x="0" y="0" width="1080" height="1080" rx="240" fill="url(#bg-grad)"/>
-  
-  <rect x="60" y="60" width="960" height="960" rx="216" fill="none" stroke="url(#amber)" stroke-width="6" opacity="0.25"/>
-  
-  <path d="M 160 540
-           C 160 330, 330 160, 540 160
-           C 750 160, 920 330, 920 540
-           C 920 750, 750 920, 540 920
-           C 330 920, 160 750, 160 540 Z" 
-        fill="none" 
-        stroke="url(#amber)" 
-        stroke-width="48" 
-        stroke-linecap="round" 
-        stroke-linejoin="round"
-        filter="url(#glow)"/>
-  
-  <circle cx="540" cy="540" r="220" fill="none" stroke="url(#amber)" stroke-width="32" opacity="0.5" filter="url(#glow)"/>
-  
-  <circle cx="540" cy="540" r="120" fill="url(#amber)"/>
-  
-  <circle cx="540" cy="540" r="120" fill="none" stroke="url(#amber-light)" stroke-width="4" opacity="0.6"/>
-  
-  <circle cx="588" cy="492" r="36" fill="#ffffff" opacity="0.95"/>
-  
-  <path d="M 540 340 L 540 400 M 540 680 L 540 740 M 340 540 L 400 540 M 680 540 L 740 540" 
-        stroke="url(#amber-light)" 
-        stroke-width="20" 
-        stroke-linecap="round" 
-        opacity="0.35"/>
-  
-  <circle cx="540" cy="540" r="340" fill="none" stroke="url(#amber)" stroke-width="2" opacity="0.12" stroke-dasharray="20 20"/>
-  </svg>
+
+  <!-- Matte body -->
+  <rect width="1024" height="1024" rx="229" fill="url(#body)"/>
+  <rect x="4" y="4" width="1016" height="1016" rx="227" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="8"/>
+
+  <!-- Head (behind the frame) -->
+  <circle cx="512" cy="430" r="256" fill="url(#amber)" filter="url(#drop)"/>
+  <ellipse cx="435" cy="261" rx="87" ry="36" fill="#fff" fill-opacity="0.35"/>
+  <!-- Eyes -->
+  <g>
+    <ellipse cx="435" cy="430" rx="59" ry="69" fill="#fff8f0"/>
+    <ellipse cx="435" cy="434" rx="35" ry="43" fill="#15110f"/>
+    <circle cx="422" cy="418" r="13" fill="#fff"/><circle cx="447" cy="451" r="6" fill="#fff"/>
+    <ellipse cx="589" cy="430" rx="59" ry="69" fill="#fff8f0"/>
+    <ellipse cx="589" cy="434" rx="35" ry="43" fill="#15110f"/>
+    <circle cx="576" cy="418" r="13" fill="#fff"/><circle cx="601" cy="451" r="6" fill="#fff"/>
+  </g>
+  <!-- Blush and mouth -->
+  <ellipse cx="338" cy="490" rx="46" ry="26" fill="#f07a6a" fill-opacity="0.35"/>
+  <ellipse cx="686" cy="490" rx="46" ry="26" fill="#f07a6a" fill-opacity="0.35"/>
+  <ellipse cx="512" cy="521" rx="22" ry="15" fill="#2a1614"/>
+  <ellipse cx="512" cy="534" rx="12" ry="7" fill="#e8705f"/>
+
+  <!-- Photo well and print -->
+  <rect x="141.3" y="458.8" width="741.4" height="434.2" rx="84" fill="#060607"/>
+  <g clip-path="url(#photo-clip)">
+    <rect x="153.6" y="471" width="716.8" height="409.6" fill="#2b2d33"/>
+    <circle cx="651" cy="597" r="53" fill="#4a4c53"/>
+    <ellipse cx="368" cy="819" rx="323" ry="123" fill="#24262b"/>
+    <ellipse cx="763" cy="880" rx="358" ry="123" fill="#1b1d21"/>
+    <g clip-path="url(#developed-clip)">
+      <rect x="153.6" y="471" width="716.8" height="409.6" fill="url(#print)"/>
+      <circle cx="651" cy="597" r="53" fill="#ffe3b8"/>
+      <ellipse cx="368" cy="819" rx="323" ry="123" fill="#8c4f3a"/>
+      <ellipse cx="763" cy="880" rx="358" ry="123" fill="#3b221c"/>
+    </g>
+  </g>
+  <rect x="153.6" y="471" width="716.8" height="409.6" rx="71.7" fill="none" stroke="#fff" stroke-opacity="0.10" stroke-width="4"/>
+  <!-- Slider line -->
+  <rect x="541.7" y="471" width="12.3" height="409.6" rx="6" fill="#fff" fill-opacity="0.85" filter="url(#drop-small)"/>
+
+  <!-- Hands on the frame edge -->
+  <g filter="url(#drop-small)">
+    <ellipse cx="307" cy="461" rx="61" ry="46" fill="url(#amber)"/>
+    <ellipse cx="717" cy="461" rx="61" ry="46" fill="url(#amber)"/>
+  </g>
+  <g fill="#f0b896">
+    <circle cx="281" cy="481" r="15"/><circle cx="316" cy="481" r="15"/><circle cx="351" cy="481" r="15"/>
+    <circle cx="691" cy="481" r="15"/><circle cx="726" cy="481" r="15"/><circle cx="761" cy="481" r="15"/>
+  </g>
+</svg>
