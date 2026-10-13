@@ -3150,6 +3150,185 @@ async function generateToast() {
   figma.notify('Toast created');
 }
 
+// ---------------------------------------------------------------------------
+// Task Running Motion — "the peeker is working on it". A playable Figma
+// prototype (Smart Animate, looping) plus its storyboard. Select the first
+// frame and press Present (▶). Click any running frame to see the finish.
+//
+// Layer names are identical in every frame so Smart Animate can tween them:
+// the eyes glance left → centre → right, blink, the hands take turns lifting,
+// three sparkles twinkle, the ellipsis counts up and a highlight sweeps along
+// the progress track. 6 frames × 350 ms = a 2.1 s loop.
+// ---------------------------------------------------------------------------
+
+const TASK_MOTION_FRAME = 'Task Running Motion';
+const TASK_MOTION_STEP = 0.35;   // seconds per frame
+const SPARK_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 0 9.6 6.4 16 8 9.6 9.6 8 16 6.4 9.6 0 8 6.4 6.4Z" fill="#E8A87C"/></svg>';
+
+// One entry per frame: 0–5 loop, 6 = finished.
+const TASK_MOTION_KEYS = [
+  { name: '1 · look left',   eye: -0.9, blink: 0, handL: 0,    handR: 0,    lift: 0,   dots: [1, .25, .25], shimmer: -90, shimmerOpacity: 0,
+    sparks: [[1, .6], [.35, .4], [.7, .5]] },
+  { name: '2 · centre',      eye: 0,    blink: 0, handL: -.7,  handR: 0,    lift: -.3, dots: [1, 1, .25],   shimmer: 0,   shimmerOpacity: 1,
+    sparks: [[.4, .5], [1, 1], [.3, .4]] },
+  { name: '3 · look right',  eye: 0.9,  blink: 0, handL: 0,    handR: -.7,  lift: 0,   dots: [1, 1, 1],     shimmer: 90,  shimmerOpacity: 1,
+    sparks: [[.25, .4], [.5, .6], [1, 1]] },
+  { name: '4 · blink',       eye: 0.9,  blink: 1, handL: -.7,  handR: 0,    lift: -.3, dots: [.25, 1, 1],   shimmer: 165, shimmerOpacity: 1,
+    sparks: [[.8, .8], [.3, .4], [.5, .5]] },
+  { name: '5 · centre',      eye: 0,    blink: 0, handL: 0,    handR: -.7,  lift: 0,   dots: [.25, .25, 1], shimmer: 240, shimmerOpacity: 1,
+    sparks: [[1, 1], [.7, .7], [.25, .4]] },
+  { name: '6 · glance back', eye: -0.9, blink: 0, handL: -.7,  handR: 0,    lift: -.3, dots: [.25, .25, .25], shimmer: 320, shimmerOpacity: 0,
+    sparks: [[.5, .6], [.3, .4], [1, 1]] },
+  { name: '7 · done',        eye: 0,    blink: 2, handL: -1.6, handR: -1.6, lift: -.6, dots: [0, 0, 0],     shimmer: 0,   shimmerOpacity: 0,
+    sparks: [[1, 1.15], [1, 1.15], [1, 1.15]], done: true }
+];
+
+function taskMotionStage(parent, index, x, y, key) {
+  const stage = frame('Task Running Motion / ' + key.name, x, y, 420, 160, '#0B0C0F', 16);
+  historyStroke(stage, '#FFFFFF', .12);
+  parent.appendChild(stage);
+
+  const chip = frame('Chip', 30, 42, 360, 76, null, 20);
+  chip.fills = [fill('#18191D', 1)];
+  historyStroke(chip, '#FFFFFF', .12);
+  chip.effects = toastShadow();
+  chip.clipsContent = false;
+  stage.appendChild(chip);
+
+  // Peeker, drawn from separate layers (not a flattened glyph) so it can animate.
+  const size = 44, u = size / 18;
+  const body = frame('Character', 16, 16 + key.lift * u, size, size, null, 0);
+  body.fills = []; body.clipsContent = false;
+  chip.appendChild(body);
+  const ink = '#F3EEE8';
+  const disc = (name, cx, cy, d, color) => ellipse(name, body, cx * u - d * u / 2, cy * u - d * u / 2, d * u, color);
+  disc('Head', 9, 8, 11, ink);
+  rect('Frame Edge', body, 1.5 * u, 12.25 * u, 15 * u, 2.25 * u, ink, 1.125 * u);
+  const eyeY = 7.6;
+  [['Eye L', 6.8], ['Eye R', 11.2]].forEach(([name, cx]) => {
+    const eye = disc(name, cx + key.eye, eyeY, 2.2, '#161719');
+    if (key.blink === 1) {          // blink: squash to a sliver
+      eye.resize(2.2 * u, 0.6 * u); eye.y = eyeY * u - 0.3 * u;
+    } else if (key.blink === 2) {   // happy squint
+      eye.resize(2.4 * u, 1.1 * u); eye.y = eyeY * u - 0.55 * u;
+    }
+  });
+  disc('Hand L', 5.2, 12.3 + key.handL, 3.2, key.done ? '#8FD0AF' : COLORS.accent);
+  disc('Hand R', 12.8, 12.3 + key.handR, 3.2, key.done ? '#8FD0AF' : COLORS.accent);
+
+  // Sparkles: twinkle by opacity and scale. [opacity, scale]
+  [['Spark A', 62, 10], ['Spark B', 6, 8], ['Spark C', 64, 50]].forEach(([name, cx, cy], i) => {
+    const [opacity, scale] = key.sparks[i];
+    const s = figma.createNodeFromSvg(SPARK_SVG);
+    s.name = name;
+    const d = 14 * scale;
+    s.resize(d, d); s.x = cx - d / 2; s.y = cy - d / 2; s.opacity = opacity;
+    chip.appendChild(s);
+  });
+
+  text('Title', chip, key.done ? 'Done' : 'Generating', 84, 14, 14, COLORS.text, 'semibold');
+  [0, 1, 2].forEach(i => {
+    const dot = ellipse('Dot ' + (i + 1), chip, 166 + i * 8, 26, 4, COLORS.text);
+    dot.opacity = key.dots[i];
+  });
+  const check = historyIcon(chip, 'check', 128, 14, 16, '#8FD0AF');
+  check.name = 'Check'; check.opacity = key.done ? 1 : 0;
+  text('Detail', chip, key.done ? 'Remove Background · 12.4 s' : 'Remove Background', 84, 36, 12, COLORS.secondary, 'regular', 250);
+
+  // Progress track with a sweeping highlight (clipped to the track).
+  const track = frame('Track', 84, 60, 252, 4, null, 2);
+  track.fills = [fill('#FFFFFF', .08)];
+  chip.appendChild(track);
+  const shimmer = rect('Shimmer', track, key.shimmer, 0, 90, 4, null, 2);
+  shimmer.fills = [{
+    type: 'GRADIENT_LINEAR', gradientTransform: [[1, 0, 0], [0, 1, 0]],
+    gradientStops: [{ position: 0, color: { ...rgb(COLORS.accent), a: 0 } },
+                    { position: .5, color: { ...rgb(COLORS.accent), a: 1 } },
+                    { position: 1, color: { ...rgb(COLORS.accent), a: 0 } }]
+  }];
+  shimmer.opacity = key.shimmerOpacity;
+  const fillBar = rect('Bar Fill', track, 0, 0, 252, 4, '#8FD0AF', 2);
+  fillBar.opacity = key.done ? 1 : 0;
+
+  text('Frame Label', stage, key.name + (key.done ? ' · click-through, then back to 1' : ' · ' + Math.round(TASK_MOTION_STEP * 1000) + ' ms'),
+    0, 134, 11, COLORS.muted, 'regular', 420, 'CENTER');
+  return stage;
+}
+
+/// Loop 1→6→1 after 350 ms (Smart Animate); click any running frame for "done",
+/// which returns to frame 1 after 1.6 s.
+async function setTaskMotionReactions(stages) {
+  const go = (target, timeout, trigger, duration) => ({
+    trigger: trigger || { type: 'AFTER_TIMEOUT', timeout },
+    actions: [{ type: 'NODE', destinationId: target.id, navigation: 'NAVIGATE', preserveScrollPosition: false,
+                transition: { type: 'SMART_ANIMATE', easing: { type: 'EASE_IN_OUT' }, duration } }]
+  });
+  const loop = stages.slice(0, 6), done = stages[6];
+  const apply = async (node, reactions) => {
+    try {
+      if (typeof node.setReactionsAsync === 'function') await node.setReactionsAsync(reactions);
+      else node.reactions = reactions;
+    } catch (error) { console.error('reactions', error); }
+  };
+  for (let i = 0; i < loop.length; i++) {
+    await apply(loop[i], [go(loop[(i + 1) % loop.length], TASK_MOTION_STEP, null, TASK_MOTION_STEP),
+                          go(done, 0, { type: 'ON_CLICK' }, 0.4)]);
+  }
+  await apply(done, [go(loop[0], 1.6, null, 0.4)]);
+  try {
+    const point = [{ nodeId: loop[0].id, name: 'Task Running' }];
+    if (typeof figma.currentPage.setFlowStartingPointsAsync === 'function') await figma.currentPage.setFlowStartingPointsAsync(point);
+    else figma.currentPage.flowStartingPoints = point;
+  } catch (error) { console.error('flow start', error); }
+}
+
+async function generateTaskRunningMotion() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === TASK_MOTION_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Task Running Motion already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+
+  const gap = 40, width = 40 + TASK_MOTION_KEYS.length * (420 + gap);
+  let holder;
+  if (typeof figma.createSection === 'function') {
+    holder = figma.createSection();
+    holder.name = TASK_MOTION_FRAME;
+    holder.x = maxX + 196; holder.y = 0;
+    holder.resizeWithoutConstraints(width, 330);
+  } else {
+    holder = frame(TASK_MOTION_FRAME, maxX + 196, 0, width, 330, null, 0);
+    holder.fills = []; holder.clipsContent = false;
+    figma.currentPage.appendChild(holder);
+  }
+  const stages = TASK_MOTION_KEYS.map((key, i) => taskMotionStage(holder, i, 40 + i * (420 + gap), 110, key));
+  if (typeof figma.createSection !== 'function') {
+    text('Heading', holder, 'Task Running Motion', 40, 24, 20, COLORS.text, 'semibold');
+    text('How To Play', holder, 'Select frame 1, press Present (▶). Smart Animate loops 6 frames × 350 ms = 2.1 s. Click a running frame to see "Done".', 40, 58, 12, COLORS.muted, 'regular', 1500);
+  } else {
+    const heading = figma.createText();
+    heading.fontName = fontSemibold; heading.fontSize = 20; heading.characters = 'Task Running Motion';
+    heading.fills = [fill(COLORS.text)]; heading.x = 40; heading.y = 24; heading.name = 'Heading'; holder.appendChild(heading);
+    const how = figma.createText();
+    how.fontName = fontRegular; how.fontSize = 12;
+    how.characters = 'Select frame 1, press Present (▶). Smart Animate loops 6 frames × 350 ms = 2.1 s. Click a running frame to see "Done".';
+    how.fills = [fill(COLORS.muted)]; how.x = 40; how.y = 58; how.name = 'How To Play'; holder.appendChild(how);
+  }
+  text('Spec', holder, 'Eyes glance L → C → R and blink on frame 4 · hands take turns lifting 0.7 pt · sparkles twinkle (opacity .25–1, scale .3–1) · ellipsis counts 1→3 · highlight sweeps the track and fades out before it wraps. Ease in-out, 350 ms. Reduce Motion: show frame 1 static with the ellipsis only.',
+    40, 290, 11, COLORS.muted, 'regular', 1500);
+  await setTaskMotionReactions(stages);
+  figma.currentPage.selection = [holder];
+  figma.viewport.scrollAndZoomIntoView([holder]);
+  figma.ui.postMessage({ message: 'Created Task Running Motion: 6-frame loop + done, with Smart Animate prototype links. Select frame 1 and press Present.' });
+  figma.notify('Task Running Motion created');
+}
+
 // Seven focused Widget screens. The existing image/video input and image
 // result flows stay in place; older studies are hidden so edits remain available.
 const SIMPLE_WIDGET_NAME = 'Widget / Simple Input + Output / Clean Editable';
@@ -5162,6 +5341,15 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Market redesign failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Market redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-task-running-motion') {
+    try {
+      await generateTaskRunningMotion();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Task Running Motion failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Task Running Motion failed', { error: true });
     }
   }
   if (message.type === 'generate-toast') {

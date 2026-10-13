@@ -440,6 +440,23 @@ const names = [
     'Regeneration must leave exactly one current compression flow');
   assert.equal(page.children.filter(child => child.name === 'Image Compression Flow / Previous').length, 1,
     'Regeneration must preserve the previous compression flow for review');
+  const beforeMotion = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-task-running-motion' });
+  const motion = page.children.find(child => child.name === 'Task Running Motion');
+  assert.ok(motion, 'Task Running Motion must be generated');
+  assert.equal(page.children.length, beforeMotion + 1);
+  const motionStages = motion.findAll(child => child.name.startsWith('Task Running Motion / '));
+  assert.equal(motionStages.length, 7, 'six loop frames plus the done frame');
+  for (const stage of motionStages) {
+    for (const layer of ['Eye L', 'Eye R', 'Hand L', 'Hand R', 'Spark A', 'Spark B', 'Spark C', 'Dot 1', 'Dot 2', 'Dot 3', 'Shimmer', 'Bar Fill', 'Check', 'Title']) {
+      assert.ok(stage.findOne(child => child.name === layer), `${stage.name} has ${layer} (Smart Animate matches by name)`);
+    }
+  }
+  const eyeX = motionStages.slice(0, 3).map(stage => stage.findOne(child => child.name === 'Eye L').x);
+  assert.ok(eyeX[0] < eyeX[1] && eyeX[1] < eyeX[2], 'eyes glance left to right across the first three frames');
+  assert.ok(motionStages[0].reactions && motionStages[0].reactions.length === 2, 'loop + click-through reactions');
+  await figma.ui.onmessage({ type: 'generate-task-running-motion' });
+  assert.equal(page.children.length, beforeMotion + 1, 'motion regeneration is idempotent');
   const beforeToast = page.children.length;
   await figma.ui.onmessage({ type: 'generate-toast' });
   const toastBoard = page.children.find(child => child.name === 'Toast');
