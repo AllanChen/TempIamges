@@ -26,6 +26,11 @@
   <h1>Glance UI Builder <span style="color:#e8a87c">v2.1</span></h1>
   <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages. Includes the Result Badge Study.</p>
   <div id="mode">Checking Figma mode…</div>
+  <button id="generate-capture-editor" class="generate-screens featured">Generate Capture Editor</button>
+  <button id="generate-menu-bar-icon" class="generate-screens featured">Generate Menu Bar Icon</button>
+  <button id="generate-app-logo" class="generate-screens featured">Generate App Logo</button>
+  <button id="generate-app-logo-tangible" class="generate-screens featured">Generate App Logo / Tangible (A object, B character)</button>
+  <button id="generate-menu-bar-icon-character" class="generate-screens featured">Generate Tray Icon / Character (states + animation)</button>
   <button id="generate-home-folder-scroll-study" class="generate-screens featured">Generate Home Folder Scroll Study</button>
   <button id="generate-widget-oss-result" class="generate-screens featured">Refine OSS Result Page</button>
   <button id="generate-widget-task-running-study" class="generate-screens featured">Generate Widget Task Running Study</button>
@@ -119,6 +124,26 @@
       status.textContent = 'Building Video Inspect v4 with consistent controls...';
       const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
       parent.postMessage({ pluginMessage: { type: 'generate-video-inspect-controls-study', bytes } }, '*');
+    };
+    document.getElementById('generate-menu-bar-icon-character').onclick = () => {
+      status.textContent = 'Building Tray Icon / Character...';
+      parent.postMessage({ pluginMessage: { type: 'generate-menu-bar-icon-character' } }, '*');
+    };
+    document.getElementById('generate-app-logo-tangible').onclick = () => {
+      status.textContent = 'Building App Logo / Tangible...';
+      parent.postMessage({ pluginMessage: { type: 'generate-app-logo-tangible' } }, '*');
+    };
+    document.getElementById('generate-app-logo').onclick = () => {
+      status.textContent = 'Building App Logo...';
+      parent.postMessage({ pluginMessage: { type: 'generate-app-logo' } }, '*');
+    };
+    document.getElementById('generate-capture-editor').onclick = () => {
+      status.textContent = 'Building Capture Editor...';
+      parent.postMessage({ pluginMessage: { type: 'generate-capture-editor' } }, '*');
+    };
+    document.getElementById('generate-menu-bar-icon').onclick = () => {
+      status.textContent = 'Building Menu Bar Icon...';
+      parent.postMessage({ pluginMessage: { type: 'generate-menu-bar-icon' } }, '*');
     };
     document.getElementById('generate-image-compression-flow').onclick = () => {
       status.textContent = 'Building Image Compression Flow...';

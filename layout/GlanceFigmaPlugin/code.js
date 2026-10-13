@@ -47,6 +47,7 @@ const ICONS = {
   folder: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 4h5l1.5 2h6.5v8.5h-13V4Z" stroke="CURRENT" stroke-width="1.4" stroke-linejoin="round"/></svg>',
   shield: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2.5 14.5 5v4c0 3-2.2 5.4-5.5 6.5C5.7 14.4 3.5 12 3.5 9V5L9 2.5Z" stroke="CURRENT" stroke-width="1.4"/><path d="m6.5 9 1.7 1.7 3.3-3.4" stroke="CURRENT" stroke-width="1.4" stroke-linecap="round"/></svg>',
   settings: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 5.5h12M3 12.5h12" stroke="CURRENT" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="5.5" r="2" fill="#17181D" stroke="CURRENT" stroke-width="1.4"/><circle cx="11" cy="12.5" r="2" fill="#17181D" stroke="CURRENT" stroke-width="1.4"/></svg>',
+  chevronDown: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m5 7 4 4 4-4" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   chevron: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m7 4 5 5-5 5" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   check: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m3.5 9 3.5 3.5L14.5 5" stroke="CURRENT" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   warning: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2 16 15H2L9 2Z" stroke="CURRENT" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 7v3.5M9 13v.2" stroke="CURRENT" stroke-width="1.4" stroke-linecap="round"/></svg>'
@@ -1905,6 +1906,821 @@ async function generateImageCompressionFlow() {
     ? 'Updated Image Compression Flow. Previous frame kept to the right.'
     : 'Created Image Compression Flow (3 scenes).' });
   figma.notify('Image Compression Flow created');
+}
+
+// ---------------------------------------------------------------------------
+// Menu Bar (tray) Icon
+// A template glyph for NSStatusItem: 18 pt canvas, 1.5 pt strokes, single
+// colour (macOS tints it for light/dark bars). It shows the product's core
+// move — compare before/after — as a picture frame split by a slider whose
+// handle is the lens dot from the app icon. Running tasks add a 4 pt dot.
+// ---------------------------------------------------------------------------
+
+const MENU_BAR_GLYPH = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">'
+  + '<rect x="1.75" y="3.25" width="14.5" height="11.5" rx="2.5" stroke="CURRENT" stroke-width="1.5"/>'
+  + '<path fill-rule="evenodd" clip-rule="evenodd" fill="CURRENT" d="M4.25 3.25H9V14.75H4.25A2.5 2.5 0 0 1 1.75 12.25V5.75A2.5 2.5 0 0 1 4.25 3.25ZM9 6.5A2.5 2.5 0 1 0 9 11.5A2.5 2.5 0 1 0 9 6.5Z"/>'
+  + '<path d="M9 1.5V5.75M9 12.25V16.5" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round"/>'
+  + '<circle cx="9" cy="9" r="2.5" stroke="CURRENT" stroke-width="1.5"/>'
+  + '</svg>';
+
+const MENU_BAR_ICON_FRAME = 'Menu Bar Icon';
+
+function menuBarGlyph(parent, name, x, y, size, color, withTaskDot = false) {
+  const holder = frame(name, x, y, size, size, null, 0);
+  holder.fills = [];
+  parent.appendChild(holder);
+  const svg = figma.createNodeFromSvg(MENU_BAR_GLYPH.replaceAll('CURRENT', color));
+  svg.name = 'Glyph'; svg.resize(size, size); svg.x = 0; svg.y = 0;
+  holder.appendChild(svg);
+  if (withTaskDot) {
+    const dot = size * 4 / 18;
+    ellipse('Task Running Dot / 4pt', holder, size - dot - size / 18, size / 18, dot, color);
+  }
+  return holder;
+}
+
+function menuBarSample(parent, name, x, y, barColor, glyphColor, label) {
+  const bar = frame(name, x, y, 360, 24, barColor, 6);
+  parent.appendChild(bar);
+  // Neighbouring system items as neutral blocks: battery and clock stand-ins.
+  rect('Neighbour / battery', bar, 300, 7, 26, 10, glyphColor, 2).opacity = .55;
+  text('Neighbour / clock', bar, '9:41', 334, 5, 11, glyphColor, 'medium');
+  menuBarGlyph(bar, 'Glance / 18pt', 268, 3, 18, glyphColor);
+  text('Label', parent, label, x, y + 30, 11, COLORS.muted, 'regular');
+  return bar;
+}
+
+function createMenuBarIconScreen(x) {
+  const board = frame(MENU_BAR_ICON_FRAME, x, 0, 1200, 720, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)]; board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+
+  text('Title', board, 'Menu Bar Icon — compare frame', 40, 36, 22, COLORS.text, 'semibold');
+  text('Rationale', board,
+       'Glance is the Preview for the AI era: view, fix with AI in place, confirm by comparing. The tray mark shows that last step — '
+       + 'a picture frame split by a slider, processed side filled, original side outlined, with the lens dot from the app icon as the handle. '
+       + 'Template image: one colour, macOS tints it. Peek no longer defines the icon.',
+       40, 70, 12, COLORS.secondary, 'regular', 1120);
+
+  // 1. Construction at 8× on a grid
+  text('01 · Construction (18 pt canvas, 8×)', board, '01 · Construction — 18 pt canvas, 1.5 pt strokes, shown at 8×', 40, 130, 12, COLORS.muted, 'medium');
+  const zoom = frame('Construction / 8x', 40, 152, 144, 144, '#1D1E22', 12); board.appendChild(zoom);
+  for (let i = 1; i < 18; i++) {
+    rect(`Grid V ${i}`, zoom, i * 8, 0, 1, 144, '#FFFFFF').opacity = i === 9 ? .18 : .06;
+    rect(`Grid H ${i}`, zoom, 0, i * 8, 144, 1, '#FFFFFF').opacity = i === 9 ? .18 : .06;
+  }
+  menuBarGlyph(zoom, 'Glyph / 18pt @8x', 0, 0, 144, '#F3F3F3');
+  const specs = [
+    'Canvas 18 × 18 pt (1× = 18 px, 2× = 36 px)',
+    'Frame: rounded rect 14.5 × 11.5, radius 2.5, stroke 1.5',
+    'Processed half: solid fill from frame left edge to x = 9',
+    'Slider: 1.5 pt line, extends 1.75 pt above/below the frame',
+    'Handle: ring r = 2.5, stroke 1.5, interior knocked out',
+    'Export as template (isTemplate = true); never tint in code'
+  ];
+  specs.forEach((line, i) => text(`Spec ${i + 1}`, board, '•  ' + line, 210, 156 + i * 22, 12, COLORS.text, 'regular', 520));
+
+  // 2. Actual size on light and dark menu bars
+  text('02 · In place', board, '02 · Actual size on light and dark menu bars', 40, 330, 12, COLORS.muted, 'medium');
+  menuBarSample(board, 'Menu Bar / Light', 40, 352, '#ECECEC', '#1D1D1F', 'Light menu bar — system tints the template near-black');
+  menuBarSample(board, 'Menu Bar / Dark', 430, 352, '#2B2B2E', '#F2F2F2', 'Dark menu bar — system tints it near-white');
+
+  // 3. States at 4×
+  text('03 · States', board, '03 · States at 4× — state is a dot, never a colour', 40, 430, 12, COLORS.muted, 'medium');
+  const states = [
+    ['Default', false, 1],
+    ['Task running', true, 1],
+    ['Disabled / no account', false, .45]
+  ];
+  states.forEach(([label, dot, opacity], i) => {
+    const tile = frame(`State / ${label}`, 40 + i * 160, 452, 120, 120, '#1D1E22', 12); board.appendChild(tile);
+    const glyph = menuBarGlyph(tile, 'Glyph / 18pt @4x', 24, 24, 72, '#F3F3F3', dot);
+    glyph.opacity = opacity;
+    text('State Label', board, label, 40 + i * 160, 580, 11, COLORS.secondary, 'regular', 120, 'CENTER');
+  });
+
+  // 4. Current icon for comparison
+  text('04 · Current', board, '04 · Current icon (SF Symbol eye.fill, tinted) for comparison', 560, 430, 12, COLORS.muted, 'medium');
+  const current = frame('Current / eye.fill', 560, 452, 120, 120, '#1D1E22', 12); board.appendChild(current);
+  const eye = figma.createNodeFromSvg(ICONS.focus.replaceAll('CURRENT', COLORS.accent));
+  eye.name = 'Current Glyph'; eye.resize(72, 72); eye.x = 24; eye.y = 24; current.appendChild(eye);
+  text('Current Label', board, 'eye.fill · says "Peek", which is now optional', 560, 580, 11, COLORS.secondary, 'regular', 320);
+
+  text('Footer', board, 'Next step after approval: export 18 pt and 36 pt PNGs (or keep the vector) into Assets.xcassets as a template image set and replace eye.fill in StatusBarController.',
+       40, 650, 11, COLORS.muted, 'regular', 1120);
+  return board;
+}
+
+async function generateMenuBarIcon() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === MENU_BAR_ICON_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Menu Bar Icon already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = createMenuBarIconScreen(maxX + 196);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created the Menu Bar Icon board.' });
+  figma.notify('Menu Bar Icon created');
+}
+
+// ---------------------------------------------------------------------------
+// App Logo
+// The menu bar glyph grown into the brand mark: the same 18-unit geometry on
+// the app icon's dark squircle, drawn in the amber gradient of the current
+// logo.svg. Everything is parametric so the 1024 icon, the size ladder and
+// the lockups share one source of truth with the tray icon.
+// ---------------------------------------------------------------------------
+
+const APP_LOGO_FRAME = 'App Logo';
+const LOGO_DARK_TOP = '#0E0E10';
+const LOGO_DARK_BOTTOM = '#070708';
+const LOGO_AMBER = ['#E8A87C', '#D4A574', '#C8AA82'];
+const LOGO_AMBER_LIGHT = ['#F0B896', '#E8C87C'];
+
+function gradientPaint(hexStops, opacity = 1) {
+  const stops = hexStops.map((hex, index) => ({
+    position: hexStops.length === 1 ? 0 : index / (hexStops.length - 1),
+    color: { ...rgb(hex), a: 1 }
+  }));
+  // Top-left to bottom-right, matching logo.svg's gradients.
+  return { type: 'GRADIENT_LINEAR', gradientTransform: [[0.7, 0.7, 0], [-0.7, 0.7, 0.5]], gradientStops: stops, opacity };
+}
+
+/// Draws the compare-frame glyph into `parent` at `size`, on the 18-unit grid.
+/// `paint` colours the processed half and the frame; `ringPaint` the handle.
+function logoGlyph(parent, name, x, y, size, paint, ringPaint, interiorHex) {
+  const u = size / 18;
+  const glyph = frame(name, x, y, size, size, null, 0);
+  glyph.fills = []; glyph.clipsContent = false;
+  parent.appendChild(glyph);
+  // Processed (left) half, clipped to the rounded frame.
+  const clip = frame('Processed Half / clip', 1.75 * u, 3.25 * u, 14.5 * u, 11.5 * u, null, 2.5 * u);
+  clip.fills = []; glyph.appendChild(clip);
+  const half = rect('Processed Half', clip, 0, 0, 7.25 * u, 11.5 * u, null, 0);
+  half.fills = [paint];
+  // Frame outline.
+  const outline = rect('Frame Outline', glyph, 1.75 * u, 3.25 * u, 14.5 * u, 11.5 * u, null, 2.5 * u);
+  outline.fills = []; outline.strokes = [paint]; outline.strokeWeight = 1.5 * u; outline.strokeAlign = 'CENTER';
+  // Slider track above and below the frame.
+  rect('Slider / top', glyph, 8.25 * u, 1.5 * u, 1.5 * u, 4.25 * u, null, 0.75 * u).fills = [paint];
+  rect('Slider / bottom', glyph, 8.25 * u, 12.25 * u, 1.5 * u, 4.25 * u, null, 0.75 * u).fills = [paint];
+  // Handle: knocked-out interior, ring, lens dot.
+  ellipse('Handle Interior', glyph, 6.5 * u, 6.5 * u, 5 * u, interiorHex);
+  const ring = ellipse('Handle Ring', glyph, 6.5 * u, 6.5 * u, 5 * u, interiorHex);
+  ring.fills = []; ring.strokes = [ringPaint]; ring.strokeWeight = 1.5 * u; ring.strokeAlign = 'CENTER';
+  const dot = ellipse('Lens Dot', glyph, 8.1 * u, 8.1 * u, 1.8 * u, '#FFFFFF');
+  dot.fills = [ringPaint];
+  return glyph;
+}
+
+/// macOS app icon at `size`: dark squircle, faint amber inner rim (from
+/// logo.svg), glyph inside Apple's 824/1024 safe area.
+function appIconMark(parent, name, x, y, size) {
+  const icon = frame(name, x, y, size, size, null, size * 0.2237);
+  icon.fills = [{ type: 'GRADIENT_LINEAR', gradientTransform: [[0.7, 0.7, 0], [-0.7, 0.7, 0.5]],
+                  gradientStops: [{ position: 0, color: { ...rgb(LOGO_DARK_TOP), a: 1 } },
+                                  { position: 1, color: { ...rgb(LOGO_DARK_BOTTOM), a: 1 } }] }];
+  icon.cornerSmoothing = 0.6;
+  parent.appendChild(icon);
+  const rimInset = size * 60 / 1080;
+  const rim = rect('Inner Rim', icon, rimInset, rimInset, size - rimInset * 2, size - rimInset * 2, null, (size - rimInset * 2) * 0.2237);
+  rim.fills = []; rim.strokes = [gradientPaint(LOGO_AMBER, 0.25)]; rim.strokeWeight = Math.max(1, size * 6 / 1080);
+  rim.cornerSmoothing = 0.6;
+  const inner = size * 824 / 1024;
+  logoGlyph(icon, 'Glyph', (size - inner) / 2, (size - inner) / 2, inner,
+            gradientPaint(LOGO_AMBER), gradientPaint(LOGO_AMBER_LIGHT), '#0B0B0D');
+  return icon;
+}
+
+function logoLockup(parent, name, x, y, dark) {
+  const bg = dark ? '#0B0B0D' : '#F6F3EF';
+  const tile = frame(name, x, y, 460, 160, bg, 16);
+  tile.strokes = [fill(dark ? '#FFFFFF' : '#000000', .08)]; tile.strokeWeight = 1;
+  parent.appendChild(tile);
+  appIconMark(tile, 'Mark / 96', 32, 32, 96);
+  text('Wordmark', tile, 'Glance', 152, 46, 40, dark ? COLORS.text : '#1D1D1F', 'semibold');
+  text('Tagline', tile, 'AI 时代的 Preview', 154, 98, 15, dark ? COLORS.secondary : '#6E6A66', 'medium');
+  return tile;
+}
+
+function createAppLogoScreen(x) {
+  const board = frame(APP_LOGO_FRAME, x, 0, 1700, 1200, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)]; board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+
+  text('Title', board, 'App Logo — the compare frame as the brand mark', 40, 36, 22, COLORS.text, 'semibold');
+  text('Rationale', board,
+       'One geometry, three jobs: menu bar glyph (template), app icon (amber on the dark squircle from the current logo) and wordmark lockup. '
+       + 'The frame says "image", the split slider says "compare", the lens dot keeps the current logo\'s focus motif. '
+       + 'All sizes below are generated from the same 18-unit grid, so nothing drifts between the tray and the Dock.',
+       40, 70, 12, COLORS.secondary, 'regular', 1600);
+
+  // 01 · App icon at 1024 inside the macOS grid safe area.
+  text('01', board, '01 · App icon 1024 × 1024 — glyph inside the 824 pt safe area, squircle radius 22.37%', 40, 130, 12, COLORS.muted, 'medium');
+  appIconMark(board, 'App Icon / 1024', 40, 152, 1024);
+
+  // 02 · Size ladder.
+  text('02', board, '02 · Size ladder — check the handle and slider still read at 32 and 16', 1110, 130, 12, COLORS.muted, 'medium');
+  const ladder = [512, 256, 128, 64, 32, 16];
+  let ly = 152;
+  for (const size of ladder) {
+    appIconMark(board, `App Icon / ${size}`, 1110, ly, size);
+    text(`Size ${size}`, board, `${size} px`, 1110 + size + 16, ly + size / 2 - 7, 11, COLORS.muted, 'regular');
+    ly += size + 20;
+  }
+
+  // 03 · Lockups.
+  text('03', board, '03 · Lockup — mark + wordmark, dark and light', 1110, 760, 12, COLORS.muted, 'medium');
+  logoLockup(board, 'Lockup / Dark', 1110, 782, true);
+  logoLockup(board, 'Lockup / Light', 1110, 962, false);
+
+  // 04 · Monochrome marks for favicon / social / print.
+  text('04', board, '04 · Monochrome — amber on dark, dark on amber, single colour on white', 40, 1196 - 16, 12, COLORS.muted, 'medium');
+  const monoTiles = [
+    ['Mono / amber on dark', '#0B0B0D', LOGO_AMBER[0]],
+    ['Mono / dark on amber', LOGO_AMBER[0], '#0B0B0D'],
+    ['Mono / ink on white', '#FFFFFF', '#1D1D1F']
+  ];
+  monoTiles.forEach(([name, bg, ink], index) => {
+    const tile = frame(name, 40 + index * 180, 1196 + 8, 160, 160, bg, 24);
+    board.appendChild(tile);
+    logoGlyph(tile, 'Glyph', 20, 20, 120, fill(ink), fill(ink), bg);
+  });
+  board.resize(1700, 1196 + 8 + 160 + 40);
+  return board;
+}
+
+async function generateAppLogo() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === APP_LOGO_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'App Logo already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = createAppLogoScreen(maxX + 196);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created the App Logo board (1024 icon, size ladder, lockups, monochrome).' });
+  figma.notify('App Logo created');
+}
+
+// ---------------------------------------------------------------------------
+// App Logo / Tangible — two skeuomorphic takes on the same frame-and-slider
+// skeleton: an object (darkroom slider over a photo print) and a character
+// (the lens dot peeking over the frame). Depth comes from gradients, inner
+// shadows and highlights, so everything stays editable in Figma.
+// ---------------------------------------------------------------------------
+
+const APP_LOGO_TANGIBLE_FRAME = 'App Logo / Tangible';
+
+function shadow(hex, a, y, blur, inner = false) {
+  return { type: inner ? 'INNER_SHADOW' : 'DROP_SHADOW', color: { ...rgb(hex), a },
+           offset: { x: 0, y }, radius: blur, spread: 0, visible: true, blendMode: 'NORMAL' };
+}
+
+function vGradient(hexStops, opacity = 1) {
+  const paint = gradientPaint(hexStops, opacity);
+  paint.gradientTransform = [[0, 1, 0], [-1, 0, 1]];  // top → bottom
+  return paint;
+}
+
+function tangibleBody(parent, name, x, y, s) {
+  const icon = frame(name, x, y, s, s, null, s * 0.2237);
+  icon.cornerSmoothing = 0.6;
+  icon.fills = [vGradient(['#1A1B1F', '#0A0A0C'])];
+  // A hairline of light on the top edge sells the matte body.
+  icon.effects = [shadow('#FFFFFF', .07, s * .004, s * .004, true), shadow('#000000', .6, -s * .006, s * .01, true)];
+  parent.appendChild(icon);
+  return icon;
+}
+
+/// A small landscape so the "photo" reads as a photo: sun, two hills.
+function miniScene(parent, w, h, sun, farHill, nearHill) {
+  ellipse('Sun', parent, w * .62, h * .18, h * .26, sun);
+  const far = ellipse('Hill / far', parent, -w * .15, h * .55, w * .9, farHill);
+  far.resize(w * .9, h * .6);
+  const near = ellipse('Hill / near', parent, w * .35, h * .7, w * 1.0, nearHill);
+  near.resize(w * 1.0, h * .6);
+}
+
+// Concept A — object: a darkroom slider knob over a photo print.
+function tangibleObjectIcon(parent, name, x, y, s) {
+  const icon = tangibleBody(parent, name, x, y, s);
+  const px = s * .18, py = s * .24, pw = s * .64, ph = s * .52, pr = s * .055;
+  const split = .56;
+  // Photo well: inset into the body.
+  const well = frame('Photo Well', px - s * .012, py - s * .012, pw + s * .024, ph + s * .024, '#060607', pr + s * .012);
+  well.effects = [shadow('#000000', .7, s * .01, s * .02, true)];
+  icon.appendChild(well);
+  // Undeveloped print (right side shows this).
+  const photo = frame('Photo / undeveloped', px, py, pw, ph, '#2B2D33', pr);
+  photo.strokes = [fill('#FFFFFF', .10)]; photo.strokeWeight = Math.max(1, s * .004);
+  icon.appendChild(photo);
+  miniScene(photo, pw, ph, '#4A4C53', '#24262B', '#1B1D21');
+  // Developed half, clipped at the slider.
+  const dev = frame('Photo / developed', px, py, pw * split, ph, null, 0);
+  dev.fills = []; dev.clipsContent = true; icon.appendChild(dev);
+  const devPrint = frame('Print', 0, 0, pw, ph, null, pr);
+  devPrint.fills = [vGradient(['#F2C9A2', '#C98A62', '#5A3226'])];
+  dev.appendChild(devPrint);
+  miniScene(devPrint, pw, ph, '#FFE3B8', '#8C4F3A', '#3B221C');
+  // Gloss on the print.
+  const gloss = rect('Gloss', photo, 0, 0, pw, ph * .45, '#FFFFFF', pr); gloss.opacity = .07;
+  // Rail.
+  const rx = px + pw * split;
+  const rail = rect('Rail', icon, rx - s * .014, py - s * .07, s * .028, ph + s * .14, null, s * .014);
+  rail.fills = [gradientPaint(['#8A8C92', '#D9DBE0', '#6D6F75'])];
+  rail.effects = [shadow('#000000', .5, s * .006, s * .012)];
+  // Knob: brushed amber with a dark grip dot (the brand lens dot).
+  const kd = s * .17, ky = py + ph / 2 - kd / 2;
+  const knob = ellipse('Knob', icon, rx - kd / 2, ky, kd, LOGO_AMBER[0]);
+  knob.fills = [gradientPaint(LOGO_AMBER_LIGHT.concat([LOGO_AMBER[2]]))];
+  knob.strokes = [fill('#7A4A2E', .6)]; knob.strokeWeight = Math.max(1, s * .004);
+  knob.effects = [shadow('#000000', .5, s * .014, s * .028), shadow('#FFFFFF', .35, s * .004, s * .004, true)];
+  const grip = ellipse('Grip', icon, rx - kd * .22, ky + kd * .28, kd * .44, '#0B0B0D');
+  grip.effects = [shadow('#000000', .6, s * .003, s * .006, true)];
+  ellipse('Grip Dot', icon, rx - kd * .08, ky + kd * .42, kd * .16, LOGO_AMBER_LIGHT[0]);
+  const hi = ellipse('Knob Highlight', icon, rx - kd * .34, ky + kd * .08, kd * .3, '#FFFFFF');
+  hi.resize(kd * .36, kd * .18); hi.opacity = .35;
+  return icon;
+}
+
+// Concept B — character: the lens dot as a cute little peeker.
+// Cuteness rules applied: big round head, large eyes set low and close
+// together, blush, a tiny mouth, soft rounded hands. No accessories.
+function tangibleCharacterIcon(parent, name, x, y, s) {
+  const icon = tangibleBody(parent, name, x, y, s);
+  const fx = s * .15, fy = s * .46, fw = s * .70, fh = s * .40, fr = s * .07;
+  const split = .55;
+
+  // Head, behind the frame (bigger and lower than before so it reads as a body).
+  const hd = s * .50;
+  const hx = s * .5 - hd / 2, hy = s * .17;
+  const head = ellipse('Head', icon, hx, hy, hd, LOGO_AMBER[0]);
+  head.fills = [gradientPaint(LOGO_AMBER_LIGHT.concat([LOGO_AMBER[1]]))];
+  head.effects = [shadow('#000000', .45, s * .02, s * .04), shadow('#FFFFFF', .3, s * .006, s * .008, true)];
+  const headHi = ellipse('Head Highlight', icon, hx + hd * .18, hy + hd * .10, hd * .3, '#FFFFFF');
+  headHi.resize(hd * .34, hd * .14); headHi.opacity = .35;
+
+  // Eyes: large, low on the face, close together, two glints each.
+  const ey = hy + hd * .50, ew = s * .115, eh = s * .135;
+  for (const [name, cx] of [['Eye / left', s * .5 - s * .075], ['Eye / right', s * .5 + s * .075]]) {
+    const white = ellipse(name, icon, cx - ew / 2, ey - eh / 2, ew, '#FFF8F0');
+    white.resize(ew, eh);
+    white.effects = [shadow('#000000', .3, s * .003, s * .006, true)];
+    const pupil = ellipse(name + ' / pupil', icon, cx - ew * .30, ey - eh * .22, ew * .60, '#15110F');
+    pupil.resize(ew * .60, eh * .62);
+    ellipse(name + ' / glint', icon, cx - ew * .22, ey - eh * .18, ew * .22, '#FFFFFF');
+    ellipse(name + ' / glint small', icon, cx + ew * .06, ey + eh * .12, ew * .10, '#FFFFFF');
+  }
+  // Blush and a tiny open-mouth smile.
+  for (const [name, cx] of [['Blush / left', s * .5 - s * .17], ['Blush / right', s * .5 + s * .17]]) {
+    const blush = ellipse(name, icon, cx - s * .045, ey + eh * .25, s * .09, '#F07A6A');
+    blush.resize(s * .09, s * .05); blush.opacity = .35;
+  }
+  const mouth = ellipse('Mouth', icon, s * .5 - s * .022, ey + eh * .55, s * .044, '#2A1614');
+  mouth.resize(s * .044, s * .03);
+  const tongue = ellipse('Mouth / tongue', icon, s * .5 - s * .012, ey + eh * .55 + s * .013, s * .024, '#E8705F');
+  tongue.resize(s * .024, s * .014);
+
+  // Frame with its photo: opaque so the lower head hides behind it.
+  const well = frame('Frame Well', fx - s * .012, fy - s * .012, fw + s * .024, fh + s * .024, '#060607', fr + s * .012);
+  well.effects = [shadow('#000000', .7, s * .01, s * .02, true)];
+  icon.appendChild(well);
+  const photo = frame('Photo / undeveloped', fx, fy, fw, fh, '#2B2D33', fr);
+  photo.strokes = [fill('#FFFFFF', .10)]; photo.strokeWeight = Math.max(1, s * .004);
+  icon.appendChild(photo);
+  miniScene(photo, fw, fh, '#4A4C53', '#24262B', '#1B1D21');
+  const dev = frame('Photo / developed', fx, fy, fw * split, fh, null, 0);
+  dev.fills = []; dev.clipsContent = true; icon.appendChild(dev);
+  const devPrint = frame('Print', 0, 0, fw, fh, null, fr);
+  devPrint.fills = [vGradient(['#F2C9A2', '#C98A62', '#5A3226'])];
+  dev.appendChild(devPrint);
+  miniScene(devPrint, fw, fh, '#FFE3B8', '#8C4F3A', '#3B221C');
+  const line = rect('Slider', icon, fx + fw * split - s * .006, fy, s * .012, fh, '#FFFFFF', s * .006);
+  line.opacity = .85; line.effects = [shadow('#000000', .5, 0, s * .008)];
+
+  // Hands: soft rounded mittens hooked over the frame edge, with finger bumps.
+  for (const [name, cx] of [['Hand / left', s * .5 - s * .20], ['Hand / right', s * .5 + s * .20]]) {
+    const hand = ellipse(name, icon, cx - s * .06, fy - s * .055, s * .12, LOGO_AMBER[0]);
+    hand.resize(s * .12, s * .09);
+    hand.fills = [gradientPaint(LOGO_AMBER_LIGHT.concat([LOGO_AMBER[1]]))];
+    hand.effects = [shadow('#000000', .4, s * .008, s * .014)];
+    for (let i = 0; i < 3; i++) {
+      const bump = ellipse(name + ' / finger ' + (i + 1), icon, cx - s * .045 + i * s * .034, fy - s * .005, s * .03, LOGO_AMBER_LIGHT[0]);
+      bump.effects = [shadow('#000000', .25, s * .003, s * .006)];
+    }
+  }
+  return icon;
+}
+
+function createAppLogoTangibleScreen(x) {
+  const board = frame(APP_LOGO_TANGIBLE_FRAME, x, 0, 2240, 1420, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)]; board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+  text('Title', board, 'App Logo / Tangible — two skeuomorphic takes on the compare frame', 40, 36, 22, COLORS.text, 'semibold');
+  text('Rationale', board,
+       'Same skeleton as the flat mark (a picture split by a slider), now with material: a matte body, an inset photo print that is developed on the left and still grey on the right, '
+       + 'and a physical control. A: a darkroom slider knob you could flick. B: the lens dot as a character peeking over the frame, hands on the edge. '
+       + 'Pick one; the menu bar keeps the flat template glyph either way.',
+       40, 70, 12, COLORS.secondary, 'regular', 2160);
+
+  text('A', board, 'A · Object — darkroom slider over a photo print', 40, 130, 13, COLORS.muted, 'medium');
+  tangibleObjectIcon(board, 'Tangible A / Object / 1024', 40, 156, 1024);
+  text('B', board, 'B · Character — the lens dot peeks over the frame', 1176, 130, 13, COLORS.muted, 'medium');
+  tangibleCharacterIcon(board, 'Tangible B / Character / 1024', 1176, 156, 1024);
+
+  text('Ladder', board, 'Size ladder — faces and knobs must still read at 64; below 32 use the flat mark', 40, 1210, 12, COLORS.muted, 'medium');
+  let lx = 40;
+  for (const size of [256, 128, 64, 32]) {
+    tangibleObjectIcon(board, `Tangible A / ${size}`, lx, 1236 + (256 - size), size);
+    lx += size + 24;
+  }
+  lx = 1176;
+  for (const size of [256, 128, 64, 32]) {
+    tangibleCharacterIcon(board, `Tangible B / ${size}`, lx, 1236 + (256 - size), size);
+    lx += size + 24;
+  }
+  board.resize(2240, 1236 + 256 + 40);
+  return board;
+}
+
+async function generateAppLogoTangible() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === APP_LOGO_TANGIBLE_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'App Logo / Tangible already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = createAppLogoTangibleScreen(maxX + 196);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created App Logo / Tangible: A object (slider knob), B character (peeking lens).' });
+  figma.notify('App Logo / Tangible created');
+}
+
+// ---------------------------------------------------------------------------
+// Menu Bar Icon / Character — concept B as the tray glyph. Single-colour
+// template, 18-unit grid: the round head peeks over the frame's top edge with
+// two hands on it. Eyes are knocked out of the head with boolean subtract so
+// the glyph stays one editable vector. States: default, Peek off (hands over
+// the eyes), and a four-frame "looking around" loop for running tasks.
+// ---------------------------------------------------------------------------
+
+const MENU_BAR_CHARACTER_FRAME = 'Menu Bar Icon / Character';
+
+/// state: 'default' | 'peek-off' | 'look-left' | 'look-right' | 'blink'
+function trayCharacter(parent, name, x, y, size, color, state = 'default') {
+  const u = size / 18;
+  const g = frame(name, x, y, size, size, null, 0);
+  g.fills = []; g.clipsContent = false;
+  parent.appendChild(g);
+  const paint = fill(color);
+  const disc = (n, cx, cy, d, p) => { const e = ellipse(n, p, cx * u - d * u / 2, cy * u - d * u / 2, d * u, color); return e; };
+
+  // Head and the frame's top edge the character peeks over.
+  const head = disc('Head', 9, 8, 11, g);
+  const bar = rect('Frame Edge', g, 1.5 * u, 12.25 * u, 15 * u, 2.25 * u, color, 1.125 * u);
+  let base = figma.union([head, bar], g);
+  base.name = 'Silhouette';
+
+  const covered = state === 'peek-off';
+  if (!covered) {
+    // Eyes: holes in the head. Running frames shift them; blink squints them.
+    const dx = state === 'look-left' ? -0.9 : state === 'look-right' ? 0.9 : 0;
+    const holes = [];
+    for (const cx of [6.8, 11.2]) {
+      if (state === 'blink') {
+        const lid = rect('Eye', g, (cx + dx) * u - 1.1 * u, 7.3 * u, 2.2 * u, 0.7 * u, color, 0.35 * u);
+        holes.push(lid);
+      } else {
+        holes.push(disc('Eye', cx + dx, 7.6, 2.2, g));
+      }
+    }
+    base = figma.subtract([base, ...holes], g);
+    base.name = 'Silhouette';
+  }
+
+  // Hands: on the frame edge, or raised over the eyes when Peek is off. A
+  // thin knocked-out ring separates each hand from whatever is behind it.
+  const hands = covered
+    ? [[6.8, 8.0, 4.4], [11.2, 8.0, 4.4]]
+    : [[5.2, 12.3, 3.2], [12.8, 12.3, 3.2]];
+  const rings = hands.map(([cx, cy, d], i) => disc(`Hand Gap ${i + 1}`, cx, cy, d + 1.0, g));
+  base = figma.subtract([base, ...rings], g);
+  base.name = 'Silhouette';
+  hands.forEach(([cx, cy, d], i) => disc(`Hand / ${i === 0 ? 'left' : 'right'}`, cx, cy, d, g));
+  return g;
+}
+
+function characterMenuBarSample(parent, name, x, y, barColor, glyphColor, label) {
+  const bar = frame(name, x, y, 360, 24, barColor, 6);
+  parent.appendChild(bar);
+  rect('Neighbour / battery', bar, 300, 7, 26, 10, glyphColor, 2).opacity = .55;
+  text('Neighbour / clock', bar, '9:41', 334, 5, 11, glyphColor, 'medium');
+  trayCharacter(bar, 'Glance / 18pt', 268, 3, 18, glyphColor);
+  text('Label', parent, label, x, y + 30, 11, COLORS.muted, 'regular');
+  return bar;
+}
+
+function createMenuBarCharacterScreen(x) {
+  const board = frame(MENU_BAR_CHARACTER_FRAME, x, 0, 1240, 820, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)]; board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+
+  text('Title', board, 'Menu Bar Icon / Character — the peeker as a template glyph', 40, 36, 22, COLORS.text, 'semibold');
+  text('Rationale', board,
+       'Concept B reduced to one colour on the 18 pt grid: a round head over the frame edge, hands on the edge, eyes knocked out. '
+       + 'Peek off = the hands come up and cover the eyes (no eyes drawn). Task running = a four-frame loop where the eyes glance left, centre, right, then blink — '
+       + '"glancing" is the brand. Template image: macOS tints it; the states carry meaning through shape, not colour.',
+       40, 70, 12, COLORS.secondary, 'regular', 1160);
+
+  // 01 construction
+  text('01', board, '01 · Construction — 18 pt canvas, shown at 8×', 40, 130, 12, COLORS.muted, 'medium');
+  const zoom = frame('Construction / 8x', 40, 152, 144, 144, '#1D1E22', 12); board.appendChild(zoom);
+  for (let i = 1; i < 18; i++) {
+    rect(`Grid V ${i}`, zoom, i * 8, 0, 1, 144, '#FFFFFF').opacity = i === 9 ? .18 : .06;
+    rect(`Grid H ${i}`, zoom, 0, i * 8, 144, 1, '#FFFFFF').opacity = i === 9 ? .18 : .06;
+  }
+  trayCharacter(zoom, 'Glyph / 18pt @8x', 0, 0, 144, '#F3F3F3');
+  const specs = [
+    'Head: circle ⌀11 at (9, 8); eyes: ⌀2.2 holes at (6.8, 7.6) and (11.2, 7.6)',
+    'Frame edge: 15 × 2.25 rounded bar at y 12.25 — the photo the character peeks over',
+    'Hands: ⌀3.2 on the edge at (5.2, 12.3) and (12.8, 12.3), 0.5 pt knocked-out gap around each',
+    'Peek off: hands ⌀4.4 move to the eyes; eyes are not drawn',
+    'Running: eyes shift ±0.9 (look left / right) and squint to 2.2 × 0.7 (blink)',
+    'Export as template (isTemplate = true); never tint in code'
+  ];
+  specs.forEach((line, i) => text(`Spec ${i + 1}`, board, '•  ' + line, 210, 156 + i * 22, 12, COLORS.text, 'regular', 980));
+
+  // 02 states
+  text('02', board, '02 · States at 4×', 40, 330, 12, COLORS.muted, 'medium');
+  const states = [['Default', 'default'], ['Peek off', 'peek-off']];
+  states.forEach(([label, state], i) => {
+    const tile = frame(`State / ${label}`, 40 + i * 160, 352, 120, 120, '#1D1E22', 12); board.appendChild(tile);
+    trayCharacter(tile, 'Glyph', 24, 24, 72, '#F3F3F3', state);
+    text('State Label', board, label, 40 + i * 160, 480, 11, COLORS.secondary, 'regular', 120, 'CENTER');
+  });
+
+  // 03 running animation frames
+  text('03', board, '03 · Task running — loop 1 → 2 → 3 → 2 at 280 ms, insert frame 4 (blink) once every ~3 s; static Default when Reduce Motion is on', 400, 330, 12, COLORS.muted, 'medium');
+  const frames = [['look-left', 'look left'], ['default', 'centre'], ['look-right', 'look right'], ['blink', 'blink']];
+  frames.forEach(([state, label], i) => {
+    const tile = frame(`Frame ${i + 1}`, 400 + i * 160, 352, 120, 120, '#1D1E22', 12); board.appendChild(tile);
+    trayCharacter(tile, 'Glyph', 24, 24, 72, '#F3F3F3', state);
+    text('Frame Label', board, `${i + 1} · ${label}`, 400 + i * 160, 480, 11, COLORS.secondary, 'regular', 120, 'CENTER');
+  });
+
+  // 04 in place
+  text('04', board, '04 · Actual size on light and dark menu bars', 40, 530, 12, COLORS.muted, 'medium');
+  characterMenuBarSample(board, 'Menu Bar / Light', 40, 552, '#ECECEC', '#1D1D1F', 'Light menu bar');
+  characterMenuBarSample(board, 'Menu Bar / Dark', 430, 552, '#2B2B2E', '#F2F2F2', 'Dark menu bar');
+
+  text('Footer', board,
+       'Implementation: one template image set per state (default, peek-off, frames 1–4); StatusBarController swaps button.image on a Timer only while a task is active and stops it when none is.',
+       40, 640, 11, COLORS.muted, 'regular', 1160);
+  board.resize(1240, 700);
+  return board;
+}
+
+async function generateMenuBarCharacter() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === MENU_BAR_CHARACTER_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Menu Bar Icon / Character already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = createMenuBarCharacterScreen(maxX + 196);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created Menu Bar Icon / Character: default, Peek off (hands over eyes), 4 running frames.' });
+  figma.notify('Menu Bar Icon / Character created');
+}
+
+// ---------------------------------------------------------------------------
+// Capture Editor — in-app screenshot of what Image / Video Inspect shows:
+// freeze the view, dim outside a crop box, pick a ratio from a dropdown,
+// press Capture: the image is saved and opens in a new Glance window.
+// No annotation tools in this version.
+// ---------------------------------------------------------------------------
+
+const CAPTURE_EDITOR_FRAME = 'Capture Editor';
+const CAPTURE_RATIOS = ['Free', '1:1', '3:4', '4:3', '9:16', '16:9'];
+
+/// Six-button Inspect toolbar: the existing five plus Capture after Slider.
+function captureToolbar(parent, width, active) {
+  const w = 274 + 52;
+  const toolbar = frame('01 / Floating Toolbar (6)', Math.round((width - w) / 2), 24, w, 54, null, 15);
+  toolbar.fills = [fill('#161719', .90)];
+  toolbar.strokes = [fill('#FFFFFF', .12)];
+  toolbar.strokeWeight = 1;
+  toolbar.effects = [{ type: 'BACKGROUND_BLUR', radius: 18, visible: true }, {
+    type: 'DROP_SHADOW', color: { r: .08, g: .09, b: .10, a: .24 },
+    offset: { x: 0, y: 8 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL'
+  }];
+  parent.appendChild(toolbar);
+  [['Focus', 'focus'], ['Compare', 'compare'], ['Slider', 'slider'], ['Capture', 'capture'],
+   ['Widget', 'grid'], ['Information', 'info']].forEach(([name, icon], i) =>
+    lightIconButton(toolbar, name, icon, 14 + i * 52, name === active));
+  return toolbar;
+}
+
+function captureSceneBoard(flow, name, x, colors) {
+  const board = frame(name, x, 0, 1554, 1012, '#060709', 16);
+  board.strokes = [fill('#5A5B62')]; board.strokeWeight = 2;
+  flow.appendChild(board);
+  // Frozen side-by-side compare: two halves with a 2 pt divider.
+  const half = (1554 - 2) / 2;
+  artworkFill(rect('Frozen / A', board, 0, 0, half, 1012, null, 0), colors[0]);
+  artworkFill(rect('Frozen / B', board, half + 2, 0, half, 1012, null, 0), colors[1]);
+  rect('Frozen / Divider', board, half, 0, 2, 1012, '#0B0C0E');
+  createBareSystemControls(board);
+  return board;
+}
+
+/// Dim mask outside the selection, crop frame with handles and thirds,
+/// pixel readout above it. `sel` is in board coordinates.
+function captureSelection(board, sel, pixelLabel) {
+  const dim = '#000000', a = .55;
+  const W = board.width, H = board.height;
+  [['Mask / top', 0, 0, W, sel.y], ['Mask / bottom', 0, sel.y + sel.h, W, H - sel.y - sel.h],
+   ['Mask / left', 0, sel.y, sel.x, sel.h], ['Mask / right', sel.x + sel.w, sel.y, W - sel.x - sel.w, sel.h]]
+    .forEach(([n, x, y, w, h]) => { if (w > 0 && h > 0) rect(n, board, x, y, w, h, dim).opacity = a; });
+  const box = frame('Crop Box', sel.x, sel.y, sel.w, sel.h, null, 0);
+  box.fills = []; box.clipsContent = false;
+  box.strokes = [fill('#FFFFFF', .95)]; box.strokeWeight = 1.5;
+  board.appendChild(box);
+  for (const t of [1, 2]) {
+    rect(`Thirds / V${t}`, box, sel.w * t / 3, 0, 1, sel.h, '#FFFFFF').opacity = .28;
+    rect(`Thirds / H${t}`, box, 0, sel.h * t / 3, sel.w, 1, '#FFFFFF').opacity = .28;
+  }
+  const hs = 10;
+  [[0, 0], [.5, 0], [1, 0], [0, .5], [1, .5], [0, 1], [.5, 1], [1, 1]].forEach(([fx, fy], i) => {
+    const handle = rect(`Handle ${i + 1}`, box, sel.w * fx - hs / 2, sel.h * fy - hs / 2, hs, hs, '#FFFFFF', 2);
+    handle.effects = [{ type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .45 }, offset: { x: 0, y: 1 }, radius: 3, spread: 0, visible: true, blendMode: 'NORMAL' }];
+  });
+  const tag = frame('Size Readout', sel.x, Math.max(8, sel.y - 30), 96, 22, null, 6);
+  tag.fills = [fill('#161719', .9)]; board.appendChild(tag);
+  text('Size', tag, pixelLabel, 0, 4, 11, '#F3F3F3', 'medium', 96, 'CENTER');
+  return box;
+}
+
+/// Bottom floating bar: a ratio dropdown, Cancel (also Esc) and Capture.
+/// Capturing saves the image and opens it in a new Glance window (scene 05).
+/// `menuOpen` also draws the dropdown's option list, opening upward.
+function captureBar(board, activeRatio, menuOpen = false) {
+  const ddW = 132, cancelW = 78, capW = 112;
+  const barW = 8 + ddW + 16 + cancelW + 8 + capW + 8;
+  const barX = Math.round((board.width - barW) / 2);
+  const barY = board.height - 24 - 52;
+  const bar = frame('02 / Capture Bar', barX, barY, barW, 52, null, 15);
+  bar.fills = [fill('#161719', .92)];
+  bar.strokes = [fill('#FFFFFF', .12)]; bar.strokeWeight = 1;
+  bar.effects = [{ type: 'BACKGROUND_BLUR', radius: 18, visible: true }, {
+    type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .35 }, offset: { x: 0, y: 8 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL'
+  }];
+  board.appendChild(bar);
+
+  const dd = frame('Ratio Dropdown', 8, 8, ddW, 36, menuOpen ? '#34251F' : '#1D1E22', 9);
+  dd.strokes = [fill(menuOpen ? COLORS.accent : '#FFFFFF', menuOpen ? .78 : .12)]; dd.strokeWeight = 1;
+  bar.appendChild(dd);
+  text('Caption', dd, 'Ratio', 12, 11, 11, COLORS.muted, 'medium');
+  text('Value', dd, activeRatio, 50, 10, 12, menuOpen ? COLORS.accent : '#F3F3F3', 'semibold', 56);
+  const chev = figma.createNodeFromSvg(ICONS.chevronDown.replaceAll('CURRENT', menuOpen ? COLORS.accent : '#D8D3CE'));
+  chev.name = 'Icon / chevronDown'; chev.resize(16, 16); chev.x = ddW - 26; chev.y = 10; dd.appendChild(chev);
+
+  rect('Divider', bar, 8 + ddW + 8, 12, 1, 28, '#FFFFFF').opacity = .12;
+  const cancel = frame('Action / Cancel', 8 + ddW + 16, 8, cancelW, 36, '#1D1E22', 9);
+  cancel.strokes = [fill('#FFFFFF', .12)]; cancel.strokeWeight = 1;
+  bar.appendChild(cancel);
+  text('Label', cancel, 'Cancel', 0, 10, 12, '#F3F3F3', 'medium', cancelW, 'CENTER');
+
+  const cap = frame('Action / Capture', 8 + ddW + 16 + cancelW + 8, 8, capW, 36, COLORS.accent, 9);
+  bar.appendChild(cap);
+  const icon = figma.createNodeFromSvg(ICONS.capture.replaceAll('CURRENT', '#21130D'));
+  icon.name = 'Icon / capture'; icon.resize(16, 16); icon.x = 18; icon.y = 10; cap.appendChild(icon);
+  text('Label', cap, 'Capture', 40, 10, 12, '#21130D', 'semibold', 60);
+
+  if (menuOpen) {
+    const rowH = 30, pad = 6;
+    const listH = pad * 2 + CAPTURE_RATIOS.length * rowH;
+    const list = frame('Ratio Menu', barX + 8, barY - 8 - listH, ddW, listH, null, 10);
+    list.fills = [fill('#1C1D21')];
+    list.strokes = [fill('#FFFFFF', .10)]; list.strokeWeight = 1;
+    list.effects = [{ type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .45 }, offset: { x: 0, y: 10 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL' }];
+    board.appendChild(list);
+    CAPTURE_RATIOS.forEach((ratio, i) => {
+      const on = ratio === activeRatio;
+      const row = frame(`Ratio / ${ratio}`, pad, pad + i * rowH, ddW - pad * 2, rowH, '#3D302B', 6);
+      row.fills = [fill('#3D302B', on ? .8 : 0)];
+      list.appendChild(row);
+      text('Label', row, ratio, 10, 8, 12, on ? COLORS.accent : '#EDE8E3', on ? 'semibold' : 'regular', 70);
+      if (on) {
+        const check = figma.createNodeFromSvg(ICONS.check.replaceAll('CURRENT', COLORS.accent));
+        check.name = 'Icon / check'; check.resize(14, 14); check.x = row.width - 24; check.y = 8; row.appendChild(check);
+      }
+    });
+  }
+  return bar;
+}
+
+/// Largest box of `ratio` (w/h) centred in `area`.
+function fitRatio(area, ratio) {
+  let w = area.w, h = w / ratio;
+  if (h > area.h) { h = area.h; w = h * ratio; }
+  return { x: Math.round(area.x + (area.w - w) / 2), y: Math.round(area.y + (area.h - h) / 2), w: Math.round(w), h: Math.round(h) };
+}
+
+function createCaptureEditorScreen(x) {
+  const gap = 196;
+  const flow = frame(CAPTURE_EDITOR_FRAME, x, 0, 1554 * 5 + gap * 4, 1012, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+  const warm = [['#24313B', '#A77B72', '#26352D'], ['#2F3747', '#C99A7A', '#35444B']];
+  // Usable area for the crop box: below the window controls, above the bar.
+  const area = { x: 120, y: 92, w: 1554 - 240, h: 1012 - 92 - 116 };
+
+  // 01 — entry point: the six-button toolbar on a live compare.
+  const s1 = captureSceneBoard(flow, '01 / Image Inspect / Toolbar 6', 0, warm);
+  captureToolbar(s1, 1554, 'Capture');
+  text('Note', s1, 'Capture (⌘⇧X) sits after Slider. Clicking it freezes this view and opens the editor.', 40, 960, 12, '#F3F3F3', 'medium', 900);
+
+  // 02 — free crop on a frozen compare, dropdown closed.
+  const s2 = captureSceneBoard(flow, '02 / Capture Editor / Image / Free', 1554 + gap, warm);
+  captureSelection(s2, { x: 300, y: 170, w: 954, h: 560 }, '2436 × 1430');
+  captureBar(s2, 'Free');
+
+  // 03 — 3:4 picked from the open dropdown.
+  const s3 = captureSceneBoard(flow, '03 / Capture Editor / Image / 3:4', (1554 + gap) * 2, warm);
+  captureSelection(s3, fitRatio(area, 3 / 4), '1080 × 1440');
+  captureBar(s3, '3:4', true);
+
+  // 04 — video frame (playback bar hidden).
+  const s4 = captureSceneBoard(flow, '04 / Capture Editor / Video', (1554 + gap) * 3,
+    [['#121C27', '#715041', '#1C2E28'], ['#1A2430', '#8A6450', '#22362F']]);
+  captureSelection(s4, fitRatio(area, 16 / 9), '1920 × 1080');
+  captureBar(s4, '16:9');
+
+  // 05 — after Capture: the image is saved, then shown in a new Glance window.
+  const s5 = frame('05 / Capture Result / New Window', (1554 + gap) * 4, 0, 1554, 1012, '#2A2C31', 16);
+  s5.strokes = [fill('#5A5B62')]; s5.strokeWeight = 2;
+  flow.appendChild(s5);
+  text('Desktop Note', s5, 'Desktop behind; the editor window has closed.', 40, 40, 12, COLORS.muted, 'regular', 600);
+  const winW = 660, winH = 880;
+  const win = frame('Glance Window / Capture', Math.round((1554 - winW) / 2), Math.round((1012 - winH) / 2), winW, winH, '#060709', 12);
+  win.strokes = [fill('#FFFFFF', .12)]; win.strokeWeight = 1;
+  win.effects = [{ type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .5 }, offset: { x: 0, y: 24 }, radius: 60, spread: 0, visible: true, blendMode: 'NORMAL' }];
+  s5.appendChild(win);
+  artworkFill(rect('Captured Image / 3:4', win, 0, 0, winW, winH, null, 0), warm[0]);
+  createBareSystemControls(win);
+  createFloatingInspectToolbar(win, winW, 'Focus');
+  const toast = frame('Toast / Saved', Math.round((winW - 360) / 2), Math.round(winH / 2 - 32), 360, 64, null, 12);
+  toast.fills = [fill('#161719', .92)]; toast.strokes = [fill('#FFFFFF', .12)]; toast.strokeWeight = 1;
+  win.appendChild(toast);
+  text('Title', toast, 'Capture saved ✓', 0, 12, 13, '#F3F3F3', 'semibold', 360, 'CENTER');
+  text('Path', toast, '~/Pictures/Glance/photo-capture-1080x1440.png', 0, 36, 11, COLORS.secondary, 'regular', 360, 'CENTER');
+  return flow;
+}
+
+async function generateCaptureEditor() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === CAPTURE_EDITOR_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Capture Editor already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createCaptureEditorScreen(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Capture Editor: toolbar (6), image Free, 3:4 with dropdown open, video, result window.' });
+  figma.notify('Capture Editor created');
 }
 
 // Seven focused Widget screens. The existing image/video input and image
@@ -3919,6 +4735,51 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Market redesign failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Market redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-capture-editor') {
+    try {
+      await generateCaptureEditor();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Capture Editor failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Capture Editor failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-menu-bar-icon-character') {
+    try {
+      await generateMenuBarCharacter();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Menu Bar Icon / Character failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Menu Bar Icon / Character failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-app-logo-tangible') {
+    try {
+      await generateAppLogoTangible();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'App Logo / Tangible failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('App Logo / Tangible failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-app-logo') {
+    try {
+      await generateAppLogo();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'App Logo failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('App Logo failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-menu-bar-icon') {
+    try {
+      await generateMenuBarIcon();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Menu Bar Icon failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Menu Bar Icon failed', { error: true });
     }
   }
   if (message.type === 'generate-image-compression-flow') {

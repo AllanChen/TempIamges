@@ -13,7 +13,7 @@ function node(type) {
     children: [],
     resize(width, height) { this.width = width; this.height = height; },
     appendChild(child) {
-      assert.ok(['PAGE', 'FRAME', 'GROUP', 'COMPONENT'].includes(this.type),
+      assert.ok(['PAGE', 'FRAME', 'GROUP', 'COMPONENT', 'BOOLEAN_OPERATION'].includes(this.type),
         `${this.type} cannot contain child layers`);
       this.children.push(child);
       child.parent = this;
@@ -56,6 +56,14 @@ function node(type) {
   };
 }
 
+function booleanOp(operation, nodes, parent) {
+  const result = node('BOOLEAN_OPERATION');
+  result.booleanOperation = operation;
+  for (const child of nodes) { child.remove(); result.appendChild(child); }
+  parent.appendChild(result);
+  return result;
+}
+
 const page = node('PAGE');
 const figma = {
   currentPage: page,
@@ -72,6 +80,8 @@ const figma = {
   createText: () => node('TEXT'),
   createVector: () => node('VECTOR'),
   createNodeFromSvg: () => node('SVG'),
+  union: (nodes, parent) => booleanOp('UNION', nodes, parent),
+  subtract: (nodes, parent) => booleanOp('SUBTRACT', nodes, parent),
   createImage: () => ({
     hash: 'test-image-hash',
     getSizeAsync: async () => ({ width: 1920, height: 1080 })
@@ -430,6 +440,108 @@ const names = [
     'Regeneration must leave exactly one current compression flow');
   assert.equal(page.children.filter(child => child.name === 'Image Compression Flow / Previous').length, 1,
     'Regeneration must preserve the previous compression flow for review');
+  const beforeCapture = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-capture-editor' });
+  const capture = page.children.find(child => child.name === 'Capture Editor');
+  assert.ok(capture, 'Capture Editor board must be generated');
+  assert.equal(page.children.length, beforeCapture + 1);
+  for (const scene of ['01 / Image Inspect / Toolbar 6', '02 / Capture Editor / Image / Free',
+                       '03 / Capture Editor / Image / 3:4', '04 / Capture Editor / Video']) {
+    assert.ok(capture.findOne(child => child.name === scene), `scene ${scene}`);
+  }
+  const toolbar6 = capture.findOne(child => child.name === '01 / Floating Toolbar (6)');
+  assert.equal(toolbar6.children.length, 6, 'toolbar has six buttons');
+  assert.ok(toolbar6.findOne(child => child.name === 'Capture'));
+  assert.ok(capture.findOne(child => child.name === '05 / Capture Result / New Window'), 'result window scene');
+  assert.equal(capture.findAll(child => child.name === 'Ratio Dropdown').length, 3, 'one dropdown per editor scene');
+  assert.equal(capture.findAll(child => child.name === 'Ratio Segment').length, 0, 'segmented control is gone');
+  const menu = capture.findOne(child => child.name === 'Ratio Menu');
+  assert.equal(menu.children.length, 6, 'open dropdown lists six ratios');
+  assert.equal(capture.findAll(child => child.name === 'Ratio Menu').length, 1, 'only the 3:4 scene shows the open list');
+  assert.equal(capture.findAll(child => child.name === 'Action / Cancel').length, 3, 'one Cancel button per editor scene');
+  for (const gone of ['Action / Copy', 'Action / Save…', 'Action / Open in Image Inspect']) {
+    assert.equal(capture.findOne(child => child.name === gone), null, `${gone} removed`);
+  }
+  assert.equal(capture.findAll(child => child.name === 'Action / Capture').length, 3, 'one Capture button per editor scene');
+  const crop34 = capture.findOne(child => child.name === '03 / Capture Editor / Image / 3:4').findOne(child => child.name === 'Crop Box');
+  assert.ok(Math.abs(crop34.width / crop34.height - 3 / 4) < 0.01, '3:4 crop box keeps its ratio');
+  assert.equal(crop34.findAll(child => child.name.startsWith('Handle ')).length, 8);
+  assert.ok(capture.findOne(child => child.name === 'Toast / Saved'), 'result window confirms the save');
+  await figma.ui.onmessage({ type: 'generate-capture-editor' });
+  assert.equal(page.children.filter(child => child.name === 'Capture Editor').length, 1, 'Capture Editor must be idempotent');
+
+  const beforeCharacterTray = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-menu-bar-icon-character' });
+  const characterTray = page.children.find(child => child.name === 'Menu Bar Icon / Character');
+  assert.ok(characterTray, 'Menu Bar Icon / Character board must be generated');
+  assert.equal(page.children.length, beforeCharacterTray + 1);
+  assert.ok(characterTray.findOne(child => child.name === 'State / Default'));
+  assert.ok(characterTray.findOne(child => child.name === 'State / Peek off'), 'Peek-off state exists');
+  const peekOff = characterTray.findOne(child => child.name === 'State / Peek off');
+  assert.equal(peekOff.findAll(child => child.name.startsWith('Hand / ')).length, 2, 'hands cover the eyes');
+  assert.equal(peekOff.findAll(child => child.name === 'Eye').length, 0, 'no eye holes when covered');
+  for (let i = 1; i <= 4; i++) assert.ok(characterTray.findOne(child => child.name === `Frame ${i}`), `running animation frame ${i}`);
+  assert.ok(characterTray.findOne(child => child.name === 'Menu Bar / Light'));
+  assert.ok(characterTray.findOne(child => child.booleanOperation === 'SUBTRACT'), 'eyes are knocked out with a boolean');
+  await figma.ui.onmessage({ type: 'generate-menu-bar-icon-character' });
+  assert.equal(page.children.filter(child => child.name === 'Menu Bar Icon / Character').length, 1, 'character tray board must be idempotent');
+
+  const beforeTangible = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-app-logo-tangible' });
+  const tangible = page.children.find(child => child.name === 'App Logo / Tangible');
+  assert.ok(tangible, 'App Logo / Tangible board must be generated');
+  assert.equal(page.children.length, beforeTangible + 1);
+  const objectIcon = tangible.findOne(child => child.name === 'Tangible A / Object / 1024');
+  assert.equal(objectIcon.width, 1024);
+  assert.ok(objectIcon.findOne(child => child.name === 'Knob'), 'object concept has the slider knob');
+  assert.ok(objectIcon.findOne(child => child.name === 'Photo / developed'));
+  const characterIcon = tangible.findOne(child => child.name === 'Tangible B / Character / 1024');
+  assert.ok(characterIcon.findOne(child => child.name === 'Head'));
+  assert.equal(characterIcon.findAll(child => child.name.startsWith('Eye / ') && !child.name.includes('/ pupil') && !child.name.includes('/ glint')).length, 2);
+  assert.equal(characterIcon.findAll(child => child.name.startsWith('Hand / ') && !child.name.includes('/ finger')).length, 2);
+  assert.equal(characterIcon.findOne(child => child.name.startsWith('Beret')), null, 'character has no hat');
+  assert.ok(characterIcon.findOne(child => child.name === 'Mouth'));
+  assert.equal(characterIcon.findAll(child => child.name.startsWith('Blush / ')).length, 2);
+  for (const size of [256, 128, 64, 32]) {
+    assert.ok(tangible.findOne(child => child.name === `Tangible A / ${size}`));
+    assert.ok(tangible.findOne(child => child.name === `Tangible B / ${size}`));
+  }
+  await figma.ui.onmessage({ type: 'generate-app-logo-tangible' });
+  assert.equal(page.children.filter(child => child.name === 'App Logo / Tangible').length, 1, 'Tangible board must be idempotent');
+
+  const beforeAppLogo = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-app-logo' });
+  const appLogo = page.children.find(child => child.name === 'App Logo');
+  assert.ok(appLogo, 'App Logo board must be generated');
+  assert.equal(page.children.length, beforeAppLogo + 1);
+  const icon1024 = appLogo.findOne(child => child.name === 'App Icon / 1024');
+  assert.equal(icon1024.width, 1024);
+  assert.equal(icon1024.cornerRadius, 1024 * 0.2237, 'macOS squircle radius');
+  const glyph = icon1024.findOne(child => child.name === 'Glyph');
+  assert.equal(glyph.width, 1024 * 824 / 1024, 'Glyph fills the 824/1024 safe area');
+  assert.ok(icon1024.findOne(child => child.name === 'Handle Ring'));
+  for (const size of [512, 256, 128, 64, 32, 16]) {
+    assert.ok(appLogo.findOne(child => child.name === `App Icon / ${size}`), `ladder has ${size}`);
+  }
+  assert.ok(appLogo.findOne(child => child.name === 'Lockup / Dark'));
+  assert.ok(appLogo.findOne(child => child.name === 'Lockup / Light'));
+  assert.equal(appLogo.findAll(child => child.name.startsWith('Mono / ')).length, 3);
+  await figma.ui.onmessage({ type: 'generate-app-logo' });
+  assert.equal(page.children.filter(child => child.name === 'App Logo').length, 1, 'App Logo must be idempotent');
+
+  const beforeMenuBarIcon = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-menu-bar-icon' });
+  const menuBarIcon = page.children.find(child => child.name === 'Menu Bar Icon');
+  assert.ok(menuBarIcon, 'Menu Bar Icon board must be generated');
+  assert.equal(page.children.length, beforeMenuBarIcon + 1);
+  const construction = menuBarIcon.findOne(child => child.name === 'Construction / 8x');
+  assert.equal(construction.width, 144, 'Construction tile shows the 18pt canvas at 8×');
+  assert.ok(menuBarIcon.findOne(child => child.name === 'Menu Bar / Light'));
+  assert.ok(menuBarIcon.findOne(child => child.name === 'Menu Bar / Dark'));
+  assert.ok(menuBarIcon.findOne(child => child.name === 'Task Running Dot / 4pt'), 'Running state carries the 4pt dot');
+  assert.equal(menuBarIcon.findAll(child => child.name === 'Glance / 18pt').length, 2, 'One actual-size glyph per menu bar sample');
+  await figma.ui.onmessage({ type: 'generate-menu-bar-icon' });
+  assert.equal(page.children.filter(child => child.name === 'Menu Bar Icon').length, 1, 'Menu Bar Icon must be idempotent');
   const beforeVideoStudy = page.children.length;
   await figma.ui.onmessage({ type: 'generate-video-inspect-controls-study', bytes: [1, 2, 3] });
   const videoStudies = page.children.filter(child => child.name.startsWith('Video Inspect v4 /'));
