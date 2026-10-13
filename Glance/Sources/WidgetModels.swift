@@ -156,7 +156,7 @@ struct WidgetSignature: Codable, Hashable { let algorithm: String; let keyID: St
 enum WidgetError: LocalizedError {
     case invalidManifest, invalidSignature, unavailable
     var errorDescription: String? {
-        switch self { case .invalidManifest: return "The Widget manifest is invalid."; case .invalidSignature: return "The Widget signature could not be verified."; case .unavailable: return "The Widget Market is unavailable." }
+        switch self { case .invalidManifest: return "The Widget manifest is invalid.".localized; case .invalidSignature: return "The Widget signature could not be verified.".localized; case .unavailable: return "The Widget Market is unavailable.".localized }
     }
 }
 

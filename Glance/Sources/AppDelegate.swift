@@ -177,6 +177,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         activeRequestStartedAt = Date()
         activeSourceAppName = nil
         loadAndShowMedia(paths: paths, at: NSEvent.mouseLocation, requestID: activeRequestID)
+        offerDefaultViewerIfNeeded()
     }
 
     private func setupComponents() {
@@ -917,6 +918,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             oldWindow.close()
             preferencesWindow = nil
         }
+        // Windows that bake their labels in at construction are discarded so
+        // the next open builds them in the new language.
+        widgetTaskCenterWindow?.close()
+        widgetTaskCenterWindow = nil
+        onboardingWindow?.close()
+        onboardingWindow = nil
+        WidgetMarketPanel.discardForLanguageChange()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self = self else { return }
             let newWindow = PreferencesWindow()
@@ -961,6 +969,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     func openHistory() {
         if historyWindow == nil {
             historyWindow = HistoryWindow()
+            historyWindow?.onOpenMedia = { [weak self] info in self?.openRecent(info) }
         }
         historyWindow?.refresh()
         historyWindow?.makeKeyAndOrderFront(nil)

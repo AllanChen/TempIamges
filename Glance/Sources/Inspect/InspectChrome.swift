@@ -183,43 +183,6 @@ final class FigmaInspectTitlebar: NSView {
     }
 }
 
-final class FigmaTrafficLightButton: NSControl {
-    private let dot = CALayer()
-
-    init(color: NSColor, target: AnyObject?, action: Selector) {
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
-        dot.backgroundColor = PanelStyle.resolvedCG(color)
-        dot.cornerRadius = 6
-        dot.shadowColor = NSColor.black.withAlphaComponent(0.18).cgColor
-        dot.shadowOpacity = 1
-        dot.shadowOffset = CGSize(width: 0, height: -1)
-        dot.shadowRadius = 1.5
-        layer?.addSublayer(dot)
-        self.target = target
-        self.action = action
-        setAccessibilityElement(true)
-        setAccessibilityRole(.button)
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        let local = convert(point, from: superview)
-        return bounds.contains(local) ? self : nil
-    }
-    override func layout() {
-        super.layout()
-        dot.frame = CGRect(x: (bounds.width - 12) / 2, y: (bounds.height - 12) / 2,
-                           width: 12, height: 12)
-    }
-    override func mouseDown(with event: NSEvent) {
-        guard isEnabled, bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
-        sendAction(action, to: target)
-    }
-}
-
 final class InspectIdentityBar: NSVisualEffectView {
     private let tintLayer = CALayer()
 

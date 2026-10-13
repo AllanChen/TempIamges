@@ -33,18 +33,20 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
     private let leftStatusLabel = NSTextField(labelWithString: "")
     private let centerHintLabel = NSTextField(labelWithString: "")
 
-    private lazy var closeTrafficButton = HistoryTrafficLightButton(
+    private lazy var closeTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1),
         target: self, action: #selector(closeTapped))
-    private lazy var minimizeTrafficButton = HistoryTrafficLightButton(
+    private lazy var minimizeTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1),
         target: self, action: #selector(minimizeTapped))
-    private lazy var zoomTrafficButton = HistoryTrafficLightButton(
+    private lazy var zoomTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1),
         target: self, action: #selector(zoomTapped))
 
     // Content
-    private let sectionTitle = NSTextField(labelWithString: "")
+    /// Drawn by PanelCenteredTextView, not NSTextField: single-line text fields clip
+    /// the taller CJK fallback glyphs of a 19 pt heading ("今天" lost its top half).
+    private let sectionTitle = PanelCenteredTextView()
     private let countLabel = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
     private let emptyLabel = NSTextField(labelWithString: "")
@@ -119,8 +121,10 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         bodyView.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
         contentContainer.addSubview(bodyView)
 
-        configureLabel(sectionTitle, size: 19, weight: .semibold, color: PanelStyle.textPrimary)
-        sectionTitle.stringValue = "Today".localized
+        sectionTitle.font = PanelStyle.inspectFont(ofSize: 19, weight: .semibold)
+        sectionTitle.textColor = PanelStyle.textPrimary
+        sectionTitle.alignment = .left
+        sectionTitle.string = "Today".localized
         bodyView.addSubview(sectionTitle)
         configureLabel(countLabel, size: 11, color: PanelStyle.textTertiary)
         bodyView.addSubview(countLabel)
@@ -321,10 +325,14 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
     @objc private func noop() {}
     @objc private func searchChanged() { applyFilter() }
 
+    /// Images and videos reopen inside Glance (Image / Video Inspect). Falls
+    /// back to the system app only when nobody wired the callback.
+    var onOpenMedia: ((MediaInfo) -> Void)?
+
     private func handleTileTap(info: MediaInfo) {
         switch info.kind {
         case .image, .video:
-            NSWorkspace.shared.open(info.url)
+            if let onOpenMedia { onOpenMedia(info) } else { NSWorkspace.shared.open(info.url) }
         case .other, .folder:
             if info.isLocal { NSWorkspace.shared.activateFileViewerSelecting([info.url]) }
             else { NSWorkspace.shared.open(info.url) }
@@ -366,7 +374,7 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
 
     @objc private func languageChanged() {
         windowTitleLabel.stringValue = "Preview History".localized
-        sectionTitle.stringValue = "Today".localized
+        sectionTitle.string = "Today".localized
         searchField.placeholderString = "Search filename".localized
         centerHintLabel.stringValue = "Search by filename, inspect again with one click".localized
         applyFilter()
@@ -386,20 +394,6 @@ private final class HistoryTitlebar: NSView {
     }
 }
 
-private final class HistoryTrafficLightButton: NSButton {
-    init(color: NSColor, target: AnyObject?, action: Selector) {
-        super.init(frame: .zero)
-        isBordered = false
-        title = ""
-        wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(color)
-        self.target = target
-        self.action = action
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layout() { super.layout(); layer?.cornerRadius = bounds.width / 2 }
-}
-
 /// Self-drawn history card: thumbnail + filename/type overlay + load states.
 private final class HistoryCardView: NSView {
     var onTap: (() -> Void)?
@@ -409,6 +403,8 @@ private final class HistoryCardView: NSView {
     private let nameLabel = NSTextField(labelWithString: "")
     private let typeLabel = NSTextField(labelWithString: "")
     private let stateLabel = NSTextField(labelWithString: "")
+    /// Sits above the artwork and caption so the whole card lightens on hover.
+    private let hoverTint = InspectNonHitTestingView()
 
     init(info: MediaInfo) {
         self.info = info
@@ -450,8 +446,22 @@ private final class HistoryCardView: NSView {
         typeLabel.alignment = .right
         typeLabel.stringValue = info.formatName
         overlay.addSubview(typeLabel)
+
+        hoverTint.wantsLayer = true
+        hoverTint.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.rowHover)
+        hoverTint.isHidden = true
+        addSubview(hoverTint, positioned: .above, relativeTo: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow],
+                                       owner: self, userInfo: nil))
+    }
+    override func mouseEntered(with event: NSEvent) { hoverTint.isHidden = false }
+    override func mouseExited(with event: NSEvent) { hoverTint.isHidden = true }
 
     func setImage(_ image: NSImage) {
         imageView.image = image
@@ -491,6 +501,7 @@ private final class HistoryCardView: NSView {
         nameLabel.frame = NSRect(x: 12, y: (overlayH - 16) / 2, width: bounds.width - 64, height: 16)
         typeLabel.frame = NSRect(x: bounds.width - 56, y: (overlayH - 14) / 2, width: 44, height: 14)
         stateLabel.frame = NSRect(x: 0, y: bounds.midY - 8, width: bounds.width, height: 16)
+        hoverTint.frame = bounds
     }
 
     override func mouseDown(with event: NSEvent) { onTap?() }

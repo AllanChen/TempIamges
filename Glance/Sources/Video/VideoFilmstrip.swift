@@ -63,13 +63,19 @@ final class VideoFilmstripView: NSView {
             let task = active.first ?? WidgetTaskManager.shared.latestRecord(for: info.url)
             let result = WidgetTaskManager.shared.completedRecord(for: info.url) != nil ||
                 generatedResultPaths.contains(info.url.standardizedFileURL.path)
-            item.setWidgetTaskState(phase: task?.phase, isResult: result,
-                                    activeTaskCount: active.count, title: info.filename)
+            item.setWidgetTaskState(phase: task?.phase, progress: active.first?.progress ?? 0,
+                                    isResult: result, activeTaskCount: active.count, title: info.filename)
         }
     }
 
     func setThumbnail(_ image: NSImage, at index: Int) {
         items[safe: index]?.setThumbnail(image)
+    }
+
+    /// Screen-space frame of a tile, for anchoring popovers to it.
+    func screenFrame(ofItemAt index: Int) -> NSRect? {
+        guard let item = items[safe: index], let window else { return nil }
+        return window.convertToScreen(item.convert(item.bounds, to: nil))
     }
 
     override func layout() {
@@ -146,15 +152,17 @@ final class VideoFilmstripItem: NSView {
         setAccessibilityRole(.button)
         setAccessibilityValue(selected || compared ? 1 : 0)
     }
-    func setWidgetTaskState(phase: WidgetTaskPhase?, isResult: Bool,
+    func setWidgetTaskState(phase: WidgetTaskPhase?, progress: Int = 0, isResult: Bool,
                             activeTaskCount: Int, title: String) {
         let processing = phase?.isActive == true
         let failed = phase?.isFailure == true
+        let showsProgress = processing && progress > 0 && !isResult
         layer?.borderWidth = emphasized || processing ? 2 : 1
         previewInset = emphasized || processing ? 2 : 3
         layer?.borderColor = (failed ? PanelStyle.failure :
             (emphasized || processing ? PanelStyle.warmCue : PanelStyle.inspectLine)).cgColor
-        newBadge.isHidden = !isResult
+        newBadge.isHidden = !(isResult || showsProgress)
+        newLabel.string = showsProgress ? "\(min(99, progress))%" : "NEW"
         if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             if layer?.animation(forKey: "widgetBreathing") == nil {
                 let animation = CABasicAnimation(keyPath: "borderColor")

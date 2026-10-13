@@ -62,13 +62,13 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     private let leftStatusLabel = NSTextField(labelWithString: "")
     private let centerHintLabel = NSTextField(labelWithString: "")
 
-    private lazy var closeTrafficButton = HomeTrafficLightButton(
+    private lazy var closeTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1),
         target: self, action: #selector(closeTapped))
-    private lazy var minimizeTrafficButton = HomeTrafficLightButton(
+    private lazy var minimizeTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1),
         target: self, action: #selector(minimizeTapped))
-    private lazy var zoomTrafficButton = HomeTrafficLightButton(
+    private lazy var zoomTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1),
         target: self, action: #selector(zoomTapped))
 
@@ -868,23 +868,6 @@ private final class HomeFolderScrollIndicator: NSView {
 private final class HomeTitlebar: NSView {
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 { window?.zoom(nil) } else { window?.performDrag(with: event) }
-    }
-}
-
-private final class HomeTrafficLightButton: NSButton {
-    init(color: NSColor, target: AnyObject?, action: Selector) {
-        super.init(frame: .zero)
-        isBordered = false
-        title = ""
-        wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(color)
-        self.target = target
-        self.action = action
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layout() {
-        super.layout()
-        layer?.cornerRadius = bounds.width / 2
     }
 }
 

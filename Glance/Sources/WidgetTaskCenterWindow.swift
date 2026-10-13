@@ -5,11 +5,11 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
 
     private let root = NSView()
     private let titlebar = TaskCenterTitlebar()
-    private let titleLabel = TaskPassthroughLabel(labelWithString: "Task Center")
+    private let titleLabel = TaskPassthroughLabel(labelWithString: "Task Center".localized)
     private let countLabel = TaskPassthroughLabel(labelWithString: "")
-    private lazy var closeButton = TaskTrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTapped))
-    private lazy var minimizeButton = TaskTrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTapped))
-    private lazy var zoomButton = TaskTrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTapped))
+    private lazy var closeButton = TrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTapped))
+    private lazy var minimizeButton = TrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTapped))
+    private lazy var zoomButton = TrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTapped))
 
     private let toolbarBar = NSView()
     private lazy var refreshButton = makeIconButton("arrow.clockwise", "Refresh".localized, #selector(refreshTapped))
@@ -359,8 +359,8 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
             $0.commandName.localizedCaseInsensitiveContains(query) ||
             ($0.source?.lastPathComponent.localizedCaseInsensitiveContains(query) ?? false)
         }
-        countLabel.stringValue = "\(records.count) tasks"
-        leftStatus.stringValue = "\(records.count) tasks  •  \(WidgetTaskManager.shared.activeCount) running"
+        countLabel.stringValue = String(format: "%d tasks".localized, records.count)
+        leftStatus.stringValue = String(format: "%d tasks  •  %d running".localized, records.count, WidgetTaskManager.shared.activeCount)
         rightDot.isHidden = WidgetTaskManager.shared.activeCount == 0
         rightStatus.isHidden = WidgetTaskManager.shared.activeCount == 0
         rightStatus.stringValue = "\(WidgetTaskManager.shared.activeCount) task" + (WidgetTaskManager.shared.activeCount == 1 ? " running" : "s running")
@@ -377,9 +377,13 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
 
     func numberOfRows(in tableView: NSTableView) -> Int { visibleRecords.count }
 
+    private static let cellIdentifier = NSUserInterfaceItemIdentifier("TaskCenterCell")
+
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let record = visibleRecords[row]
-        let cell = TaskCenterCellView()
+        let cell = (tableView.makeView(withIdentifier: Self.cellIdentifier, owner: nil) as? TaskCenterCellView)
+            ?? TaskCenterCellView()
+        cell.identifier = Self.cellIdentifier
         cell.configure(record: record, selected: row == table.selectedRow)
         return cell
     }
@@ -388,9 +392,16 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         TaskCenterRowView()
     }
 
+    private var previousSelectedRow = -1
+
     func tableViewSelectionDidChange(_ notification: Notification) {
         updateDetail(selected)
-        table.reloadData(forRowIndexes: IndexSet(integersIn: 0..<visibleRecords.count), columnIndexes: IndexSet(integer: 0))
+        // Only the rows whose highlight changed need a new cell; reloading every
+        // row re-decoded every visible thumbnail and made selection stutter.
+        var rows = IndexSet()
+        for row in [previousSelectedRow, table.selectedRow] where visibleRecords.indices.contains(row) { rows.insert(row) }
+        previousSelectedRow = table.selectedRow
+        table.reloadData(forRowIndexes: rows, columnIndexes: IndexSet(integer: 0))
     }
 
     func controlTextDidChange(_ obj: Notification) { refresh() }
@@ -432,7 +443,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
             return
         }
         detailTitle.stringValue = record.commandName
-        detailStatus.stringValue = "Task \(record.id.uuidString.prefix(4).uppercased())  •  \(stateText(record))"
+        detailStatus.stringValue = String(format: "Task %@  •  %@".localized, String(record.id.uuidString.prefix(4).uppercased()), stateText(record))
         sourcePreview.configure(url: record.source, waiting: false)
         resultPreview.configure(url: record.output, waiting: record.phase != .completed,
                                 displaysText: returnsText(record))
@@ -577,22 +588,19 @@ private final class TaskCenterTitlebar: NSView {
     override func mouseDown(with event: NSEvent) { event.clickCount == 2 ? window?.zoom(nil) : window?.performDrag(with: event) }
 }
 
-private final class TaskTrafficLightButton: NSButton {
-    init(color: NSColor, target: AnyObject?, action: Selector) {
-        super.init(frame: .zero)
-        isBordered = false; title = ""; wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(color); layer?.cornerRadius = 6
-        self.target = target; self.action = action
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-}
-
 private final class TaskCenterCellView: NSTableCellView {
     private let preview = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(labelWithString: "")
     private let stateBadge = NSView()
     private let stateLabel = PanelCenteredTextView()
+    /// Which thumbnail request this cell is waiting for; a reused cell ignores
+    /// results that arrive for the record it used to show.
+    private var thumbnailToken = UUID()
+    /// 56 pt tile at 2× Retina.
+    private static let thumbnailPixelSize = 112
+    private var isSelectedRow = false
+    private var isHovering = false
     override var isFlipped: Bool { true }
 
     override init(frame frameRect: NSRect) {
@@ -609,14 +617,20 @@ private final class TaskCenterCellView: NSTableCellView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func configure(record: WidgetTaskRecord, selected: Bool) {
-        layer?.backgroundColor = PanelStyle.resolvedCG(selected ? NSColor(srgbRed: 36 / 255, green: 34 / 255, blue: 41 / 255, alpha: 1) : PanelStyle.inspectChrome)
+        isSelectedRow = selected
+        applyBackground()
         layer?.borderColor = PanelStyle.resolvedCG(selected ? PanelStyle.accent.withAlphaComponent(0.42) : PanelStyle.inspectLine)
-        let candidates = [record.output, record.source].compactMap { $0 }
-        preview.image = candidates.lazy.compactMap { url -> NSImage? in
-            guard url.isFileURL, FileManager.default.fileExists(atPath: url.path) else { return nil }
-            return NSImage(contentsOf: url)
-        }.first ?? NSImage(systemSymbolName: record.phase.isActive ? "hourglass" : "photo",
-                          accessibilityDescription: nil)
+        let placeholder = NSImage(systemSymbolName: record.phase.isActive ? "hourglass" : "photo",
+                                  accessibilityDescription: nil)
+        let candidates = [record.output, record.source].compactMap { $0 }.filter(\.isFileURL)
+        let token = UUID()
+        thumbnailToken = token
+        if let hit = candidates.lazy.compactMap({ MediaThumbnailCache.shared.cached(for: $0, maxPixelSize: Self.thumbnailPixelSize) }).first {
+            preview.image = hit
+        } else {
+            preview.image = placeholder
+            loadThumbnail(candidates, token: token)
+        }
         titleLabel.stringValue = record.commandName
         detailLabel.stringValue = "\(relativeDate(record.createdAt))  •  \(record.source?.lastPathComponent ?? "Media")"
         let color: NSColor = record.phase.isActive ? PanelStyle.accent : (record.phase.isFailure ? PanelStyle.failure : (record.phase == .cancelled ? PanelStyle.textSecondary : PanelStyle.success))
@@ -644,6 +658,34 @@ private final class TaskCenterCellView: NSTableCellView {
         detailLabel.frame = NSRect(x: 82 * sx, y: 43 * sy, width: 160 * sx, height: 14 * sy)
         stateBadge.frame = NSRect(x: 250 * sx, y: 28 * sy, width: 70 * sx, height: 26 * sy)
         stateLabel.frame = stateBadge.bounds.insetBy(dx: 2 * sx, dy: 0)
+    }
+
+    private func applyBackground() {
+        let base = isSelectedRow
+            ? NSColor(srgbRed: 36 / 255, green: 34 / 255, blue: 41 / 255, alpha: 1)
+            : PanelStyle.inspectChrome
+        // Hover reads as a lighter row, never as strong as selection.
+        let color = isHovering && !isSelectedRow ? PanelStyle.hoverTinted(base) : base
+        layer?.backgroundColor = PanelStyle.resolvedCG(color)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow],
+                                       owner: self, userInfo: nil))
+    }
+    override func mouseEntered(with event: NSEvent) { isHovering = true; applyBackground() }
+    override func mouseExited(with event: NSEvent) { isHovering = false; applyBackground() }
+
+    /// Try the result first, then the source; stop at the first file that previews.
+    private func loadThumbnail(_ candidates: [URL], token: UUID) {
+        guard let url = candidates.first else { return }
+        MediaThumbnailCache.shared.load(url, maxPixelSize: Self.thumbnailPixelSize) { [weak self] image in
+            guard let self, self.thumbnailToken == token else { return }
+            if let image { self.preview.image = image }
+            else { self.loadThumbnail(Array(candidates.dropFirst()), token: token) }
+        }
     }
 
     private func taskState(_ record: WidgetTaskRecord) -> String {
@@ -744,9 +786,18 @@ private final class TaskPreviewView: NSView {
             }
             return
         }
-        if url.isFileURL, let image = NSImage(contentsOf: url) {
-            imageView.image = image
-            waitingLabel.isHidden = true
+        guard url.isFileURL else { return }
+        waitingLabel.stringValue = "Loading preview…".localized
+        // The pane is at most a few hundred points wide; 1600 px keeps Retina
+        // sharp without decoding the full-size result on the main thread.
+        MediaThumbnailCache.shared.load(url, maxPixelSize: 1600) { [weak self] image in
+            guard let self, self.loadGeneration == generation else { return }
+            if let image {
+                self.imageView.image = image
+                self.waitingLabel.isHidden = true
+            } else {
+                self.waitingLabel.stringValue = waiting ? "Waiting for result".localized : "Preview unavailable".localized
+            }
         }
     }
 

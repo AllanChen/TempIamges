@@ -458,13 +458,18 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     /// Load raw file/URL text into the editable text view. Assigning
     /// `textView.string` does not fire `textDidChange`, so the buffer starts
     /// clean (isDirty = false) until the user actually types.
+    private static let maxHighlightedBytes = 256 * 1024
+
     private func loadEditableText(url: URL) {
         isDirty = false
         Task.detached { [weak self] in
             let raw = await Self.fetchTextContent(from: url)
             await MainActor.run {
                 guard let self = self else { return }
-                (self.textView.textStorage as? CodeAttributedString)?.language = Self.hljsLanguage(for: url)
+                // Highlighting runs on the main thread; past a few hundred KB it
+                // freezes the app for seconds, so big files open as plain text.
+                let highlight = raw.utf8.count <= Self.maxHighlightedBytes
+                (self.textView.textStorage as? CodeAttributedString)?.language = highlight ? Self.hljsLanguage(for: url) : nil
                 self.textView.string = raw
                 self.isDirty = false
                 self.showTextView()

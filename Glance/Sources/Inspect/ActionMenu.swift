@@ -334,7 +334,8 @@ final class ActionMenuPanel: NSPanel {
 
     private func openSubmenu(_ entries: [ActionMenuEntry], from row: ActionMenuRow) {
         childPanel?.dismissChain()
-        let child = ActionMenuPanel(entries: entries)
+        // Inherit the parent's look: the ⋯ menu is .more, the right-click menu .context.
+        let child = ActionMenuPanel(entries: entries, style: style)
         childPanel = child
         let rowTopRight = row.convert(NSPoint(x: row.bounds.width, y: row.bounds.height), to: nil)
         let screenPoint = convertToScreen(NSRect(origin: rowTopRight, size: .zero)).origin

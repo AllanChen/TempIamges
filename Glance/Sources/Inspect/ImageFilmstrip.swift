@@ -92,6 +92,12 @@ final class ImageFilmstripView: NSView {
         layoutItems()
     }
 
+    /// Screen-space frame of a tile, for anchoring popovers to it.
+    func screenFrame(ofItemAt index: Int) -> NSRect? {
+        guard let item = itemViews[safe: index], let window else { return nil }
+        return window.convertToScreen(item.convert(item.bounds, to: nil))
+    }
+
     private func isGeneratedResult(_ url: URL) -> Bool {
         url.isFileURL && generatedResultPaths.contains(url.standardizedFileURL.path)
     }
@@ -177,6 +183,7 @@ final class ImageFilmstripView: NSView {
                            selected: isSelected,
                            compared: isCompared,
                            taskPhase: (task ?? resultTask)?.phase,
+                           taskProgress: task?.progress ?? 0,
                            isResult: resultTask != nil || isGeneratedResult(infos[index].url),
                            ossCaption: caption,
                            activeTaskCount: WidgetTaskManager.shared.activeRecords(for: infos[index].url).count)
@@ -299,7 +306,7 @@ final class ImageFilmstripItem: NSView {
     }
 
     func configure(image: NSImage?, title: String, selected: Bool, compared: Bool,
-                   taskPhase: WidgetTaskPhase?, isResult: Bool = false,
+                   taskPhase: WidgetTaskPhase?, taskProgress: Int = 0, isResult: Bool = false,
                    ossCaption: String? = nil,
                    activeTaskCount: Int) {
         imageView.image = image
@@ -317,9 +324,12 @@ final class ImageFilmstripItem: NSView {
         layer?.borderColor = (failed ? PanelStyle.failure : (emphasized ? PanelStyle.warmCue : PanelStyle.inspectLine)).cgColor
         taskBadge.isHidden = !failed
         taskBadge.backgroundColor = PanelStyle.failure.cgColor
-        // The filled corner badge identifies a Widget result without relying on the border.
-        tagBackground.isHidden = !completedResult
-        if completedResult { tagLabel.string = "NEW" }
+        // The same corner badge shows progress while a task runs on this image
+        // and NEW once a result arrived — one overlay, no extra geometry.
+        let showsProgress = processing && taskProgress > 0 && !completedResult
+        tagBackground.isHidden = !(completedResult || showsProgress)
+        if showsProgress { tagLabel.string = "\(min(99, taskProgress))%" }
+        else if completedResult { tagLabel.string = "NEW" }
         ossCaptionBackground.isHidden = ossCaption == nil
         if let ossCaption {
             let isOSSResult = ossCaption == "RESULT · OSS"

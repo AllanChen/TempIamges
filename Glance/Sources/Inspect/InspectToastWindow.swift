@@ -34,7 +34,7 @@ final class InspectToastWindow: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
-    func show(message: String, over parentWindow: NSWindow) {
+    func show(message: String, over parentWindow: NSWindow, duration: TimeInterval? = nil) {
         hideWorkItem?.cancel()
         let parts = message.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
         let paragraph = NSMutableParagraphStyle()
@@ -85,7 +85,7 @@ final class InspectToastWindow: NSPanel {
             })
         }
         hideWorkItem = item
-        let delay: TimeInterval = parts.count > 1 ? 2.5 : 1.2
+        let delay: TimeInterval = duration ?? (parts.count > 1 ? 2.5 : 1.2)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 }

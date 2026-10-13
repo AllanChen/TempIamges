@@ -70,7 +70,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     // Figma workbench chrome: titlebar / toolbar / canvas+overlays / inspector / statusbar.
     private lazy var backButton = PanelStyle.makeQuietButton(title: "‹", target: self, action: #selector(backTapped))
     private lazy var rotateButton = PanelStyle.makeQuietButton(title: "Rotate".localized, target: self, action: #selector(directionTapped))
-    private lazy var flipButton = PanelStyle.makeQuietButton(title: "A  Flip ▾", target: self, action: #selector(flipMenuTapped))
+    private lazy var flipButton = PanelStyle.makeQuietButton(title: "A  Flip ▾".localized, target: self, action: #selector(flipMenuTapped))
     private lazy var tasksTextButton = PanelStyle.makeQuietButton(title: "•  Tasks".localized, target: self, action: #selector(widgetTasksTapped))
     private lazy var widgetTextButton = PanelStyle.makeQuietButton(title: "Widget".localized, target: self, action: #selector(widgetMarketTapped))
     private let directionButton = InspectToolbarButton(symbol: "arrow.clockwise", tooltip: "Direction".localized)
@@ -81,16 +81,16 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let titlebar = FigmaInspectTitlebar()
     private let windowTitleLabel = NSTextField(labelWithString: "")
     private let windowFilenameLabel = NSTextField(labelWithString: "")
-    private lazy var closeTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTrafficTapped))
-    private lazy var minimizeTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTrafficTapped))
-    private lazy var zoomTrafficButton = FigmaTrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTrafficTapped))
+    private lazy var closeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTrafficTapped))
+    private lazy var minimizeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTrafficTapped))
+    private lazy var zoomTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTrafficTapped))
     /// The v3 operation chrome is deliberately a single floating five-action
     /// toolbar, leaving the image itself as the entire window surface.
     private let toolbarBar = NSView()
     private let modeSwitcher = CanvasModeSwitcher()
     private let statusbar = NSView()
     private let statusLeftLabel = NSTextField(labelWithString: "")
-    private let statusCenterLabel = NSTextField(labelWithString: "Scroll to zoom  •  Drag to pan")
+    private let statusCenterLabel = NSTextField(labelWithString: "Scroll to zoom  •  Drag to pan".localized)
     private let statusDot = PanelStyle.makeStatusDot(color: PanelStyle.accent)
     private let statusRightLabel = NSTextField(labelWithString: "")
     private let taskSummaryDot = PanelStyle.makeStatusDot(color: PanelStyle.accent)
@@ -375,8 +375,22 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             if key.lowercased() == "c", activeItemIsImage { copyActiveImage(); return true }
             if key.lowercased() == "s", activeItemIsImage { quickSaveActiveImage(); return true }
             if key.lowercased() == "v", pasteRemoteImageFromClipboard() { return true }
+        } else if activeItemIsImage, !event.modifierFlags.contains(.control), !event.modifierFlags.contains(.option) {
+            // Viewer keys without a modifier, like other image viewers. Only when
+            // an image is active so typing in an inline file preview still works.
+            switch key {
+            case "0": activeViewports.forEach { $0.fitToView() }; return true
+            case "1": activeViewports.forEach { $0.setActualSize() }; return true
+            case "+", "=": activeViewports.forEach { $0.zoomBy(1.25) }; return true
+            case "-", "_": activeViewports.forEach { $0.zoomBy(0.8) }; return true
+            case "?": showKeyboardHelp(); return true
+            default: break
+            }
         }
         switch event.keyCode {
+        case 53:  // Esc
+            handleEscape()
+            return true
         case 123:
             navigate(by: -1)
             return true
@@ -386,6 +400,49 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         default:
             return super.performKeyEquivalent(with: event)
         }
+    }
+
+    /// A red filmstrip tile explains itself when clicked: the failure reason
+    /// with Retry / Dismiss right there, instead of a trip to the Task Center.
+    private func offerFailureActions(forItemAt index: Int) {
+        guard let session, session.infos.indices.contains(index),
+              let record = WidgetTaskManager.shared.latestRecord(for: session.infos[index].url),
+              record.phase.isFailure,
+              let tile = filmstrip.screenFrame(ofItemAt: index) else { return }
+        let reason = (record.errorMessage ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let shown = reason.isEmpty ? "The task stopped without reporting a reason.".localized
+                                   : (reason.count > 60 ? String(reason.prefix(60)) + "…" : reason)
+        let id = record.id
+        let panel = ActionMenuPanel(entries: [
+            ActionMenuEntry(title: "\(record.commandName) · \("Failed".localized)", enabled: false),
+            ActionMenuEntry(title: shown, enabled: false),
+            .separator(),
+            ActionMenuEntry(title: "Retry".localized, action: { WidgetTaskManager.shared.retry(id) }),
+            ActionMenuEntry(title: "Dismiss".localized, action: { WidgetTaskManager.shared.remove(id) })
+        ])
+        actionsPanel?.dismissChain()
+        actionsPanel = panel
+        // Open upward from the tile so the menu never covers the filmstrip.
+        panel.present(at: NSPoint(x: tile.minX, y: tile.maxY + 8 + panel.frame.height))
+    }
+
+    /// Esc steps back one level: leave Compare, then close the info panel,
+    /// then the window itself.
+    private func handleEscape() {
+        if let session, session.mode == .compare {
+            session.mode = session.infos.count > 1 ? .browse : .focus
+            session.compareIndices = nil
+            renderSession()
+            return
+        }
+        if infoWindow.isVisible { infoWindow.dismiss(); return }
+        closeAndRestore()
+    }
+
+    private func showKeyboardHelp() {
+        toastWindow.show(message: "Keyboard Shortcuts".localized + "\n" +
+            "← →  Previous / next\n0  Fit to window    1  Actual size    + −  Zoom\nEsc  Exit compare / close    ⌥-click  Compare with\n⌘C Copy   ⌘S Save   ⌘L / ⌘R Rotate   ⌘I Info".localized,
+            over: self, duration: 7)
     }
 
     override func sendEvent(_ event: NSEvent) {
@@ -578,7 +635,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             self?.updateZoomLabel()
         }
         sliderViewport.viewport.onViewportChange = { [weak self] _ in self?.updateZoomLabel() }
-        filmstrip.onSelect = { [weak self] index in self?.focus(index: index) }
+        filmstrip.onSelect = { [weak self] index in
+            self?.focus(index: index)
+            self?.offerFailureActions(forItemAt: index)
+        }
         filmstrip.onCompare = { [weak self] index in self?.compare(focusedWith: index) }
         filmstrip.onAdd = { [weak self] in self?.presentAddImagesPanel() }
         canvasContainer.addSubview(filmstrip)
@@ -693,6 +753,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // Market panel), not overlaid on the picture. The hosting panel owns
         // `infoPanel`; nothing is added to the canvas here.
         infoPanel.autoresizingMask = [.width, .height]
+        infoPanel.onClose = { [weak self] in self?.dismissInfoPanel() }
 
         // MARK: Statusbar (26pt) — file summary left, task polling right.
         statusbar.wantsLayer = true
@@ -767,7 +828,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             guard let self, let window = event.window else { return }
             if let slot { self.selectCompareSlot(slot) }
             let origin = window.convertToScreen(NSRect(origin: event.locationInWindow, size: .zero)).origin
-            self.presentActionsMenu(atScreenPoint: origin, entries: self.buildContextActionEntries())
+            self.presentActionsMenu(atScreenPoint: origin, entries: self.buildActionEntries(includeWindowSettings: false))
         }
         primaryViewport.onActionMenu = { menuHandler($0, 0) }
         secondaryViewport.onActionMenu = { menuHandler($0, 1) }
@@ -1264,6 +1325,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     @objc private func localizationDidChange() {
         title = "Image Inspect".localized
         windowTitleLabel.stringValue = "Image Inspect".localized
+        statusCenterLabel.stringValue = "Scroll to zoom  •  Drag to pan".localized
         infoButton.updateTooltip("Image information".localized)
         directionButton.updateTooltip("Rotate".localized)
         flipIconButton.updateTooltip("Flip".localized)
@@ -1317,25 +1379,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     // MARK: - Image actions (rotate / export)
-
-    /// Compact menu for the toolbar ⋯ button.
-    private func buildMoreEntries() -> [ActionMenuEntry] {
-        let hasImageInfo = currentRevealInfo?.kind == .image
-        let hasImage: Bool = currentRevealInfo?.kind == .image
-        let canReveal = currentRevealInfo?.isLocal == true
-        return [
-            ActionMenuEntry(title: "Image information".localized, enabled: hasImageInfo,
-                            action: { [weak self] in self?.toggleInfo() }),
-            ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage,
-                            action: { [weak self] in self?.recognizeTextTapped() }),
-            ActionMenuEntry(title: "Compress Image".localized, enabled: hasImage,
-                            action: { [weak self] in self?.compressImageTapped() }),
-            ActionMenuEntry(title: "Reveal in Finder".localized, enabled: canReveal,
-                            action: { [weak self] in self?.revealInFinderTapped() }),
-            ActionMenuEntry(title: "Automatic hide".localized + (autoHideChromeEnabled ? " ✓" : ""),
-                            action: { [weak self] in self?.toggleAutoHideChrome() }),
-        ]
-    }
 
     private func toggleAutoHideChrome() {
         autoHideChromeEnabled.toggle()
@@ -1451,7 +1494,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     /// Full contextual menu for right-clicking an image surface.
-    private func buildContextActionEntries() -> [ActionMenuEntry] {
+    /// The one image menu, opened by right-click and by the toolbar ⋯ button.
+    /// Local tools are grouped by purpose (Edit / Export) so the top level stays
+    /// short; submenus are one level deep because ActionMenuPanel cascades once.
+    /// `includeWindowSettings` adds view settings that only make sense from ⋯.
+    private func buildActionEntries(includeWindowSettings: Bool) -> [ActionMenuEntry] {
         let activeTask = currentRevealInfo.map { !WidgetTaskManager.shared.activeRecords(for: $0.url).isEmpty } ?? false
         let hasImage: Bool = {
             guard let session, let index = currentActionIndex,
@@ -1461,32 +1508,42 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // A running Widget task only locks view transforms on its source; copy,
         // export, OCR, compress and other Widgets stay available.
         let canTransform = hasImage && !activeTask
+        let hasImageInfo = currentRevealInfo?.kind == .image
         var entries: [ActionMenuEntry] = [
             ActionMenuEntry(title: "Copy Image".localized, shortcut: "⌘C", enabled: hasImage, action: { [weak self] in self?.copyActiveImage() }),
-            .separator(),
-            ActionMenuEntry(title: "Direction".localized, enabled: canTransform, submenu: [
+            ActionMenuEntry(title: "Edit".localized, enabled: canTransform, submenu: [
                 ActionMenuEntry(title: "Rotate Left".localized, shortcut: "⌘L", action: { [weak self] in self?.rotateActive(byQuarters: -1) }),
                 ActionMenuEntry(title: "Rotate Right".localized, shortcut: "⌘R", action: { [weak self] in self?.rotateActive(byQuarters: 1) }),
                 ActionMenuEntry(title: "Flip Horizontally".localized, action: { [weak self] in self?.flipActive(horizontal: true) }),
                 ActionMenuEntry(title: "Flip Vertically".localized, action: { [weak self] in self?.flipActive(horizontal: false) })
             ]),
-            .separator(),
-            ActionMenuEntry(title: "Format Conversion".localized, enabled: hasImage, submenu: [
-                ActionMenuEntry(title: "To PNG".localized, action: { [weak self] in self?.exportActive(as: .png) }),
-                ActionMenuEntry(title: "To JPG".localized, action: { [weak self] in self?.exportActive(as: .jpeg) }),
-                ActionMenuEntry(title: "To WebP".localized, action: { [weak self] in self?.exportActive(as: .webP) }),
-                ActionMenuEntry(title: "To Icon".localized, action: { [weak self] in self?.exportActive(as: .icns) })
+            // Export is only "save this image as a format".
+            ActionMenuEntry(title: "Export".localized, enabled: hasImage, submenu: [
+                ActionMenuEntry(title: "Save as PNG…".localized, action: { [weak self] in self?.exportActive(as: .png) }),
+                ActionMenuEntry(title: "Save as JPG…".localized, action: { [weak self] in self?.exportActive(as: .jpeg) }),
+                ActionMenuEntry(title: "Save as WebP…".localized, action: { [weak self] in self?.exportActive(as: .webP) }),
+                ActionMenuEntry(title: "Save as Icon…".localized, action: { [weak self] in self?.exportActive(as: .icns) })
             ]),
-            ActionMenuEntry(title: "Base64".localized, submenu: [
-                ActionMenuEntry(title: "Image to Base64".localized, enabled: hasImage, action: { [weak self] in self?.copyActiveImageAsBase64() }),
-                ActionMenuEntry(title: "Base64 to Image".localized, action: { [weak self] in self?.presentBase64ImageInput() })
+            // Everything else that processes the image. Always openable:
+            // "Base64 → Image…" does not depend on the current item.
+            ActionMenuEntry(title: "Tools".localized, submenu: [
+                ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() }),
+                ActionMenuEntry(title: "Compress…".localized, enabled: hasImage, action: { [weak self] in self?.compressImageTapped() }),
+                .separator(),
+                ActionMenuEntry(title: "Copy as Base64".localized, enabled: hasImage, action: { [weak self] in self?.copyActiveImageAsBase64() }),
+                ActionMenuEntry(title: "Base64 → Image…".localized, action: { [weak self] in self?.presentBase64ImageInput() })
             ]),
             .separator(),
-            ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() }),
-            ActionMenuEntry(title: "Compress Image".localized, enabled: hasImage, action: { [weak self] in self?.compressImageTapped() }),
             ActionMenuEntry(title: "Reveal in Finder".localized, enabled: currentRevealInfo?.isLocal == true,
-                            action: { [weak self] in self?.revealInFinderTapped() })
+                            action: { [weak self] in self?.revealInFinderTapped() }),
+            ActionMenuEntry(title: "Image information".localized, shortcut: "⌘I", enabled: hasImageInfo,
+                            action: { [weak self] in self?.toggleInfo() })
         ]
+        if includeWindowSettings {
+            entries.append(.separator())
+            entries.append(ActionMenuEntry(title: "Automatic hide".localized + (autoHideChromeEnabled ? " ✓" : ""),
+                                           action: { [weak self] in self?.toggleAutoHideChrome() }))
+        }
         let widgets = WidgetRegistry.shared.compatible(with: "image")
         let marketEntry = ActionMenuEntry(title: "Widget Market…".localized,
                                           action: { [weak self] in self?.widgetMarketTapped() })
@@ -1523,7 +1580,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     private func presentActionsMenu(atScreenPoint point: NSPoint) {
-        presentActionsMenu(atScreenPoint: point, entries: buildMoreEntries())
+        presentActionsMenu(atScreenPoint: point, entries: buildActionEntries(includeWindowSettings: true))
     }
 
     private func presentActionsMenu(atScreenPoint point: NSPoint, entries: [ActionMenuEntry]) {
@@ -1549,7 +1606,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     private func presentActionsMenuBelowToolbar(atScreenPoint point: NSPoint) {
         actionsPanel?.dismissChain()
-        let panel = ActionMenuPanel(entries: buildMoreEntries(), style: .more)
+        let panel = ActionMenuPanel(entries: buildActionEntries(includeWindowSettings: true), style: .more)
         prepareActionsPanelForAutoHide(panel)
         actionsPanel = panel
         NSApp.activate(ignoringOtherApps: true)

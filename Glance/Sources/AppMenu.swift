@@ -106,7 +106,30 @@ extension AppDelegate {
         confirm.addButton(withTitle: "Cancel".localized)
         NSApp.activate(ignoringOtherApps: true)
         guard confirm.runModal() == .alertFirstButtonReturn else { return }
+        applyDefaultViewer()
+    }
 
+    /// Right after the first "Open With ▸ Glance" from Finder is the moment a
+    /// user is most likely to want this; the menu item alone is rarely found.
+    func offerDefaultViewerIfNeeded() {
+        let prefs = Preferences.shared
+        guard !prefs.hasOfferedDefaultViewer else { return }
+        prefs.hasOfferedDefaultViewer = true
+        let current = NSWorkspace.shared.urlForApplication(toOpen: UTType.image)?.standardizedFileURL
+        guard current != Bundle.main.bundleURL.standardizedFileURL else { return }
+        // Let the just-opened Inspect window settle on screen first.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            let alert = NSAlert()
+            alert.messageText = "Make Glance your default viewer?".localized
+            alert.informativeText = "Images and videos you open from Finder will open in Glance. You can change this anytime from the Glance menu.".localized
+            alert.addButton(withTitle: "Set as Default".localized)
+            alert.addButton(withTitle: "Not Now".localized)
+            NSApp.activate(ignoringOtherApps: true)
+            if alert.runModal() == .alertFirstButtonReturn { self?.applyDefaultViewer() }
+        }
+    }
+
+    private func applyDefaultViewer() {
         let types: [UTType] = [.image, .movie, UTType("org.webmproject.webm")].compactMap { $0 }
         let group = DispatchGroup()
         var firstError: Error?

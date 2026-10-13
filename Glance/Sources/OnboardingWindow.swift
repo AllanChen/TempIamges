@@ -76,16 +76,8 @@ final class OnboardingWindow: NSWindow {
             ("Minimize".localized, NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), #selector(minimizeTapped)),
             ("Zoom".localized, NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), #selector(zoomTapped))
         ]
-        for (label, color, action) in traffic {
-            let control = NSButton()
-            control.isBordered = false
-            control.title = ""
-            control.toolTip = label
-            control.setAccessibilityLabel(label)
-            control.target = self
-            control.action = action
-            control.wantsLayer = true
-            control.layer?.backgroundColor = PanelStyle.resolvedCG(color)
+        for (_, color, action) in traffic {
+            let control = TrafficLightButton(color: color, target: self, action: action)
             titlebar.addSubview(control)
         }
         root.addSubview(titlebar)
@@ -170,17 +162,22 @@ final class OnboardingWindow: NSWindow {
         markTile.layer?.cornerRadius = 8 * scale
         markIcon.frame = NSRect(x: 10 * sx, y: 10 * sy, width: 18 * sx, height: 18 * sy)
         heading.font = PanelStyle.inspectFont(ofSize: 20 * scale, weight: .semibold)
-        heading.frame = fromTop(0, 125, 580, 27)
+        heading.frame = fromTop(0, 125, 580, 24)
         explanation.font = PanelStyle.inspectFont(ofSize: 12 * scale)
-        explanation.frame = fromTop(75, 164, 430, 58)
-        permissionList.frame = fromTop(56, 230, 468, 240)
-        accessibilityRow.frame = NSRect(x: 0, y: 170 * sy, width: 468 * sx, height: 70 * sy)
-        inputMonitoringRow.frame = NSRect(x: 0, y: 90 * sy, width: 468 * sx, height: 70 * sy)
-        fullDiskAccessRow.frame = NSRect(x: 0, y: 10 * sy, width: 468 * sx, height: 70 * sy)
+        explanation.frame = fromTop(75, 164, 430, 30)
+        // Figma "Permission List": a 502 × 243 panel at (39, 227) whose rows are
+        // 468 × 70, inset 17 from the sides and 10 apart (top-origin y 0 / 80 / 160).
+        permissionList.frame = fromTop(39, 227, 502, 243)
+        func listRow(_ top: CGFloat) -> NSRect {
+            NSRect(x: 17 * sx, y: (243 - top - 70) * sy, width: 468 * sx, height: 70 * sy)
+        }
+        accessibilityRow.frame = listRow(0)
+        inputMonitoringRow.frame = listRow(80)
+        fullDiskAccessRow.frame = listRow(160)
         continueButton.frame = fromTop(76, 512, 428, 38)
         continueButton.layer?.cornerRadius = 8 * scale
         footnote.font = PanelStyle.inspectFont(ofSize: 10 * scale)
-        footnote.frame = fromTop(0, 565, 580, 15)
+        footnote.frame = fromTop(0, 565, 580, 12)
     }
 
     private func configureLabel(_ label: NSTextField, size: CGFloat, color: NSColor,
@@ -306,9 +303,9 @@ final class PermissionStatusView: NSView {
         symbolLabel.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
         symbolLabel.frame = NSRect(x: 0, y: 12 * sy, width: 40 * sx, height: 16 * sy)
         titleLabel.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
-        titleLabel.frame = NSRect(x: 54 * sx, y: 42 * sy, width: 284 * sx, height: 17 * sy)
+        titleLabel.frame = NSRect(x: 54 * sx, y: 42 * sy, width: 284 * sx, height: 16 * sy)
         detailLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale)
-        detailLabel.frame = NSRect(x: 54 * sx, y: 19 * sy, width: 284 * sx, height: 14 * sy)
+        detailLabel.frame = NSRect(x: 54 * sx, y: 20 * sy, width: 284 * sx, height: 13 * sy)
         statusButton.titleFont = PanelStyle.inspectFont(ofSize: 11 * scale, weight: .medium)
         statusButton.frame = NSRect(x: 354 * sx, y: 18 * sy, width: 114 * sx, height: 34 * sy)
         statusButton.layer?.cornerRadius = 8 * scale

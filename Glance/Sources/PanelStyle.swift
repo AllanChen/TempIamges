@@ -223,6 +223,13 @@ enum PanelStyle {
 
     /// Hairline that defines a bar edge / separator on the frost.
     static let hairline       = textPrimary.withAlphaComponent(0.10)
+    /// Pointer-over tint for list rows and cards (History, Task Center): a
+    /// touch of light over the darkroom surface, well below selection.
+    static let rowHover       = textPrimary.withAlphaComponent(0.06)
+    /// `base` with the hover tint laid over it, for opaque layer backgrounds.
+    static func hoverTinted(_ base: NSColor) -> NSColor {
+        base.blended(withFraction: 0.06, of: textPrimary) ?? base
+    }
     /// Translucent fill for a top/bottom bar sitting on the frost.
     static let barFill        = overlay.withAlphaComponent(0.72)
     /// Translucent fill for an inline control (button, field) on the frost.

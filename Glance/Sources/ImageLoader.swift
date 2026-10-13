@@ -458,12 +458,12 @@ class ImageLoader {
     }
 
     private func loadLocalImage(from url: URL, cacheKey: NSString, completion: @escaping (NSImage?) -> Void) {
-        decodeLocalImage(from: url, quickLookMaxDimension: 1600) { [weak self] image in
+        decodeLocalImage(from: url, quickLookMaxDimension: 1600, maxPixel: 800) { [weak self] image in
             guard let self, let image else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
-            self.cacheOriginal(image, key: cacheKey)
+            // `image` may be an 800 px preview, so it must not be cached as the original.
             let resized = self.resizeImage(image, maxDimension: 800)
             self.imageCache.setObject(resized, forKey: cacheKey, cost: self.cost(of: resized))
             DispatchQueue.main.async {
@@ -476,12 +476,55 @@ class ImageLoader {
     /// Quick Look for a bitmap representation. The fallback covers formats
     /// whose decoders live in macOS or an installed Quick Look extension,
     /// including many camera RAW and design formats.
-    private func decodeLocalImage(from url: URL, quickLookMaxDimension: CGFloat,
+    /// Decodes an image with ImageIO on the calling thread, which must not be the
+    /// main thread. `NSImage(contentsOf:)` is lazy: it returns at once and the
+    /// real decode happens the first time the image is drawn — on the main
+    /// thread — so a large HEIC, TIFF or PNG froze the whole app when opened.
+    /// ShouldCacheImmediately forces the decode here instead. `maxPixel` caps
+    /// the longest side (nil = full size). Returns nil for animated or
+    /// multi-image files and formats ImageIO cannot read; callers fall back to
+    /// NSImage for those.
+    static func decodeWithImageIO(from url: URL, maxPixel: Int?) -> NSImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+        return decodeWithImageIO(source: source, maxPixel: maxPixel)
+    }
+
+    static func decodeWithImageIO(data: Data, maxPixel: Int?) -> NSImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+        return decodeWithImageIO(source: source, maxPixel: maxPixel)
+    }
+
+    private static func decodeWithImageIO(source: CGImageSource, maxPixel: Int?) -> NSImage? {
+        guard CGImageSourceGetCount(source) == 1,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int,
+              width > 0, height > 0 else { return nil }
+        let longest = max(width, height)
+        let target = min(maxPixel ?? longest, longest)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,   // EXIF orientation, as NSImage applies it
+            kCGImageSourceShouldCacheImmediately: true,          // decode now, on this thread
+            kCGImageSourceThumbnailMaxPixelSize: target
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        // Keep NSImage's logical size: a 144 dpi Retina screenshot is half as many
+        // points as pixels, and window fitting depends on that.
+        let dpi = (properties[kCGImagePropertyDPIWidth] as? Double) ?? 72
+        let scale = dpi > 0 ? 72 / dpi : 1
+        let size = maxPixel == nil || target == longest
+            ? NSSize(width: CGFloat(cgImage.width) * scale, height: CGFloat(cgImage.height) * scale)
+            : NSSize(width: cgImage.width, height: cgImage.height)
+        return NSImage(cgImage: cgImage, size: size)
+    }
+
+    private func decodeLocalImage(from url: URL, quickLookMaxDimension: CGFloat, maxPixel: Int? = nil,
                                   completion: @escaping (NSImage?) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { completion(nil); return }
             self.loadSemaphore.wait()
-            let image = NSImage(contentsOf: url)
+            let image = Self.decodeWithImageIO(from: url, maxPixel: maxPixel) ?? NSImage(contentsOf: url)
             self.loadSemaphore.signal()
             if let image {
                 completion(image)
@@ -529,7 +572,8 @@ class ImageLoader {
             guard let self else { completion(nil); return }
             if let cachedURL {
                 DispatchQueue.global(qos: .userInitiated).async {
-                    guard let image = NSImage(contentsOf: cachedURL) else {
+                    guard let image = Self.decodeWithImageIO(from: cachedURL, maxPixel: fullResolution ? nil : 800)
+                            ?? NSImage(contentsOf: cachedURL) else {
                         DispatchQueue.main.async {
                             fullResolution
                                 ? self.loadRemoteOriginal(from: url, cacheKey: cacheKey, completion: completion)
@@ -537,7 +581,7 @@ class ImageLoader {
                         }
                         return
                     }
-                    self.cacheOriginal(image, key: cacheKey)
+                    if fullResolution { self.cacheOriginal(image, key: cacheKey) }
                     let output = fullResolution ? image : self.resizeImage(image, maxDimension: 800)
                     if !fullResolution {
                         self.imageCache.setObject(output, forKey: cacheKey, cost: self.cost(of: output))
@@ -602,7 +646,7 @@ class ImageLoader {
                 finish(nil)
                 return
             }
-            guard let image = NSImage(data: data) else {
+            guard let image = Self.decodeWithImageIO(data: data, maxPixel: nil) ?? NSImage(data: data) else {
                 // Some decoders are exposed through Quick Look rather than
                 // NSImage. Materialize the response in the persistent cache
                 // and let the same local fallback pipeline try it.

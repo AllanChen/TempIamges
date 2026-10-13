@@ -20,6 +20,9 @@ class StatusBarController: NSObject, NSMenuDelegate {
     private var loginMenuItem: NSMenuItem!
     private var tasksMenuItem: NSMenuItem!
     private var trayPanel: TrayPopoverPanel?
+    /// Runs only while a Widget task is active; plays the "glancing around" loop.
+    private var runningAnimation: Timer?
+    private var runningFrame = 0
     var isTrayVisible: Bool { trayPanel?.isVisible == true }
 
     override init() {
@@ -41,6 +44,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     deinit {
+        runningAnimation?.invalidate()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -107,18 +111,53 @@ class StatusBarController: NSObject, NSMenuDelegate {
         fallback.popUp(positioning: nil, at: NSPoint(x: 0, y: 0), in: button)
     }
 
+    /// The tray glyph is the Figma "Menu Bar Icon": a picture frame split by a
+    /// compare slider. It is a template image, so macOS tints it for light and
+    /// dark menu bars; state is a dot, never a colour. Peek no longer changes it.
+    /// Tray glyph states (Figma "Menu Bar Icon / Character"): Peek off → the
+    /// character covers its eyes; a running Widget task → it glances around;
+    /// otherwise it just peeks. Template image, so macOS tints it; state is
+    /// carried by shape, never by colour.
     private func updateMenuBarIcon() {
         guard let button = statusItem.button else { return }
-        let enabled = Preferences.shared.peekEnabled
-        let symbolName = enabled ? "eye.fill" : "eye.slash"
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Glance")?
-            .withSymbolConfiguration(config)
-        image?.isTemplate = true
         button.attributedTitle = NSAttributedString(string: "")
-        button.image = image
         button.imagePosition = .imageOnly
-        button.contentTintColor = enabled ? PanelStyle.warmCue : PanelStyle.textSecondary
+        button.contentTintColor = nil
+
+        let peekOff = !Preferences.shared.peekEnabled
+        let busy = WidgetTaskManager.shared.activeCount > 0
+        let animate = busy && !peekOff && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if animate {
+            startRunningAnimation()
+        } else {
+            stopRunningAnimation()
+            button.image = MenuBarCharacterIcon.image(for: peekOff ? .peekOff : .default)
+        }
+        button.setAccessibilityLabel(busy ? "Glance, Widget task running".localized
+                                     : (peekOff ? "Glance, Peek off".localized : "Glance"))
+    }
+
+    private func startRunningAnimation() {
+        guard runningAnimation == nil else { return }
+        runningFrame = 0
+        showRunningFrame()
+        let timer = Timer(timeInterval: MenuBarCharacterIcon.frameInterval, repeats: true) { [weak self] _ in
+            self?.showRunningFrame()
+        }
+        // .common so the frames keep moving while a menu or drag is tracking.
+        RunLoop.main.add(timer, forMode: .common)
+        runningAnimation = timer
+    }
+
+    private func stopRunningAnimation() {
+        runningAnimation?.invalidate()
+        runningAnimation = nil
+    }
+
+    private func showRunningFrame() {
+        let sequence = MenuBarCharacterIcon.runningSequence
+        statusItem.button?.image = MenuBarCharacterIcon.image(for: sequence[runningFrame % sequence.count])
+        runningFrame = (runningFrame + 1) % sequence.count
     }
 
     @objc private func openHome() {
@@ -146,6 +185,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func openTasks() { delegate?.openTasks() }
     @objc private func tasksDidChange() {
+        updateMenuBarIcon()
         tasksMenuItem?.title = tasksTitle
         trayPanel?.refreshState()
     }

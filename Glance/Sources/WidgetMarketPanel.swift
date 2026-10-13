@@ -3,7 +3,16 @@ import AppKit
 /// Compact Widget marketplace shown alongside the main Glance window.
 /// The panel stays focused on the searchable catalog and install actions.
 final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
-    static let shared = WidgetMarketPanel()
+    /// Recreated on language change: every label is set when the panel is built.
+    private(set) static var shared = WidgetMarketPanel()
+
+    static func discardForLanguageChange() {
+        let old = shared
+        old.detachFromParent()
+        old.close()
+        NotificationCenter.default.removeObserver(old)
+        shared = WidgetMarketPanel()
+    }
 
     private enum CatalogFilter: Int { case marketplace, installed, updates }
     private static let designSize = NSSize(width: 448, height: 824)
@@ -22,9 +31,9 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
 
     private let rootView = WidgetMarketRootView()
     private let titlebar = WidgetMarketTitlebar()
-    private let closeTrafficButton = WidgetMarketTrafficButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1))
-    private let minimizeTrafficButton = WidgetMarketTrafficButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1))
-    private let zoomTrafficButton = WidgetMarketTrafficButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1))
+    private let closeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1))
+    private let minimizeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1))
+    private let zoomTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1))
     private let titleLabel = PanelCenteredTextView()
     private let titlebarDivider = NSView()
     private let refreshButton = WidgetMarketIconButton(symbol: "arrow.clockwise", accessibilityLabel: "Refresh".localized)
@@ -498,40 +507,6 @@ private final class WidgetMarketTitlebar: NSView {
     }
 }
 
-private final class WidgetMarketTrafficButton: NSControl {
-    private let dot = CALayer()
-
-    init(color: NSColor) {
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
-        dot.backgroundColor = PanelStyle.resolvedCG(color)
-        dot.cornerRadius = 6
-        dot.shadowColor = NSColor.black.withAlphaComponent(0.18).cgColor
-        dot.shadowOpacity = 1
-        dot.shadowOffset = CGSize(width: 0, height: -1)
-        dot.shadowRadius = 1.5
-        layer?.addSublayer(dot)
-        setAccessibilityElement(true)
-        setAccessibilityRole(.button)
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        let local = convert(point, from: superview)
-        return bounds.contains(local) ? self : nil
-    }
-    override func layout() {
-        super.layout()
-        dot.frame = CGRect(x: (bounds.width - 12) / 2, y: (bounds.height - 12) / 2,
-                           width: 12, height: 12)
-    }
-    override func mouseDown(with event: NSEvent) {
-        guard isEnabled, bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
-        sendAction(action, to: target)
-    }
-}
-
 private final class WidgetMarketIconButton: NSButton {
     private let glyph = NSImageView()
     var isActive = false { didSet { applyAppearance() } }
@@ -649,7 +624,7 @@ private final class WidgetMarketRowView: NSView {
     private let publisherLabel = NSTextField(labelWithString: "")
     private let summaryLabel = NSTextField(labelWithString: "")
     private let metadataLabel = NSTextField(labelWithString: "")
-    private let updateBadge = WidgetMarketBadgeView(title: "UPDATE", color: PanelStyle.accent)
+    private let updateBadge = WidgetMarketBadgeView(title: "UPDATE".localized, color: PanelStyle.accent)
     private let installButton = WidgetMarketActionButton()
     private let installedBadge = WidgetMarketBadgeView(title: "Installed".localized, color: PanelStyle.success)
     private var trackingAreaRef: NSTrackingArea?

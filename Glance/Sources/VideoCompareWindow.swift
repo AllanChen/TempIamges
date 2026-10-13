@@ -89,9 +89,9 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private let canvas = MediaDropCanvasView()
     private let inspectToolbar = VideoPlaybackBar()
     private let identityBar = VideoTitlebar()
-    private let closeTrafficButton = NSButton()
-    private let minimizeTrafficButton = NSButton()
-    private let zoomTrafficButton = NSButton()
+    private lazy var closeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTapped))
+    private lazy var minimizeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTapped))
+    private lazy var zoomTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTapped))
     private let focusButton = InspectToolbarButton(symbol: "play.rectangle", tooltip: "Focus".localized)
     private let compareButton = InspectToolbarButton(symbol: "rectangle.split.2x1", tooltip: "Compare".localized)
     private let revealButton = InspectToolbarButton(symbol: "folder", tooltip: "Reveal in Finder".localized)
@@ -255,9 +255,6 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         canvas.onDrop = { [weak self] url, point in
             self?.handleDroppedResource(url: url, at: point)
         }
-        configureTraffic(closeTrafficButton, color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), tooltip: "Close".localized, action: #selector(closeTapped))
-        configureTraffic(minimizeTrafficButton, color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), tooltip: "Minimize".localized, action: #selector(minimizeTapped))
-        configureTraffic(zoomTrafficButton, color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), tooltip: "Zoom".localized, action: #selector(zoomTapped))
         [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].forEach(identityBar.addSubview)
         canvas.addSubview(identityBar)
         focusButton.target = self; focusButton.action = #selector(focusTapped)
@@ -292,7 +289,10 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         playButton.isActive = true
         [playButton, timeline, currentLabel, separatorLabel, durationLabel].forEach { playbackBar.addSubview($0) }
         canvas.addSubview(playbackBar)
-        filmstrip.onSelect = { [weak self] index in self?.selectVideo(index) }; canvas.addSubview(filmstrip)
+        filmstrip.onSelect = { [weak self] index in
+            self?.selectVideo(index)
+            self?.offerFailureActions(forItemAt: index)
+        }; canvas.addSubview(filmstrip)
         // The video fills the window; the controls float over it.
         inspectToolbar.isHidden = false; inspectToolbar.alphaValue = 1
         identityBar.isHidden = false; identityBar.alphaValue = 1
@@ -311,18 +311,6 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         copyResultURLButton.onPress = { [weak self] in self?.copyWidgetResultURL() }
         canvas.addSubview(copyResultURLButton, positioned: .above, relativeTo: nil)
         render()
-    }
-
-    private func configureTraffic(_ button: NSButton, color: NSColor, tooltip: String, action: Selector) {
-        button.isBordered = false
-        button.title = ""
-        button.toolTip = tooltip
-        button.setAccessibilityLabel(tooltip)
-        button.target = self
-        button.action = action
-        button.wantsLayer = true
-        button.layer?.backgroundColor = PanelStyle.resolvedCG(color)
-        button.layer?.cornerRadius = 6
     }
 
     private var activeIndices: [Int] {
@@ -991,6 +979,28 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             }
         }
         return entries
+    }
+
+    /// A red filmstrip tile explains itself when clicked: reason plus Retry / Dismiss.
+    private func offerFailureActions(forItemAt index: Int) {
+        guard let info = infos[safe: index],
+              let record = WidgetTaskManager.shared.latestRecord(for: info.url),
+              record.phase.isFailure,
+              let tile = filmstrip.screenFrame(ofItemAt: index) else { return }
+        let reason = (record.errorMessage ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let shown = reason.isEmpty ? "The task stopped without reporting a reason.".localized
+                                   : (reason.count > 60 ? String(reason.prefix(60)) + "…" : reason)
+        let id = record.id
+        let panel = ActionMenuPanel(entries: [
+            ActionMenuEntry(title: "\(record.commandName) · \("Failed".localized)", enabled: false),
+            ActionMenuEntry(title: shown, enabled: false),
+            .separator(),
+            ActionMenuEntry(title: "Retry".localized, action: { WidgetTaskManager.shared.retry(id) }),
+            ActionMenuEntry(title: "Dismiss".localized, action: { WidgetTaskManager.shared.remove(id) })
+        ])
+        actionsPanel?.dismissChain()
+        actionsPanel = panel
+        panel.present(at: NSPoint(x: tile.minX, y: tile.maxY + 8 + panel.frame.height))
     }
 
     private func presentMuteMenu(atScreenPoint point: NSPoint) {

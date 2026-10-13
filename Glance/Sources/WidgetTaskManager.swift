@@ -112,7 +112,7 @@ final class WidgetTaskManager {
             // clients could also leave a stale active record after a backend
             // migration; release the guard after a bounded recovery window.
             let stale = matching.filter { $0.remoteTaskID == nil || Date().timeIntervalSince($0.updatedAt) > 15 * 60 }
-            for record in stale { update(record.id, phase: .interrupted, progress: 0, error: "Task was reset and can be submitted again.") }
+            for record in stale { update(record.id, phase: .interrupted, progress: 0, error: "Task was reset and can be submitted again.".localized) }
             if stale.count < matching.count { return nil }
         }
         let id = UUID()

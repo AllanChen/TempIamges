@@ -70,7 +70,9 @@ final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
         mark.layer?.cornerRadius = 9
         root.addSubview(mark)
         let glyph = NSImageView(frame: NSRect(x: 8, y: 8, width: 18, height: 18))
-        glyph.image = NSImage(systemSymbolName: "eye.fill", accessibilityDescription: nil)
+        // Same character as the menu bar item (Figma "Menu Bar Icon / Character"),
+        // in the accent colour here because the mark sits on Glance's own chrome.
+        glyph.image = MenuBarCharacterIcon.image(for: .default)
         glyph.contentTintColor = PanelStyle.accent
         mark.addSubview(glyph)
 

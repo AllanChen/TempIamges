@@ -332,7 +332,7 @@ final class WidgetTaskClient {
                       let url = URL(string: rawURL), url.scheme == "https",
                       let host = url.host?.lowercased(),
                       host == "iili.io" || host.hasSuffix(".iili.io") || host == "freeimage.host" else {
-                    throw WidgetTaskRequestError(statusCode: http.statusCode, message: "Freeimage upload failed.")
+                    throw WidgetTaskRequestError(statusCode: http.statusCode, message: "Freeimage upload failed.".localized)
                 }
                 completion(.success(url.absoluteString))
             } catch { completion(.failure(error)) }
@@ -629,7 +629,7 @@ private struct WidgetTaskExecutionError: LocalizedError {
 
     var errorDescription: String? {
         let detail = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return detail.isEmpty ? "The Widget task failed without reporting a reason." : detail
+        return detail.isEmpty ? "The Widget task failed without reporting a reason.".localized : detail
     }
 }
 
@@ -638,6 +638,6 @@ private struct WidgetTaskRequestError: LocalizedError {
     let message: String?
 
     var errorDescription: String? {
-        message ?? "Widget request failed (HTTP \(statusCode))."
+        message ?? String(format: "Widget request failed (HTTP %d).".localized, statusCode)
     }
 }

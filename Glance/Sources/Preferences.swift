@@ -91,6 +91,13 @@ class Preferences {
         if storedChoice == nil, alreadySetUp { peekEnabled = true }
     }
 
+    /// Whether the one-time "make Glance the default viewer?" offer was shown
+    /// after a Finder open. Shown at most once, whatever the answer.
+    var hasOfferedDefaultViewer: Bool {
+        get { defaults.bool(forKey: "\(suiteName).offeredDefaultViewer") }
+        set { defaults.set(newValue, forKey: "\(suiteName).offeredDefaultViewer") }
+    }
+
     var launchAtLogin: Bool {
         get { defaults.bool(forKey: "\(suiteName).launchAtLogin") }
         set { defaults.set(newValue, forKey: "\(suiteName).launchAtLogin") }

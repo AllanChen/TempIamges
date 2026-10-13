@@ -12,13 +12,13 @@ final class WidgetTextResultWindow: NSPanel {
 
     private let rootView = WidgetTextResultRootView()
     private let titlebar = WidgetTextResultTitlebar()
-    private lazy var closeTrafficButton = FigmaTrafficLightButton(
+    private lazy var closeTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1),
         target: self, action: #selector(closeTrafficTapped))
-    private lazy var minimizeTrafficButton = FigmaTrafficLightButton(
+    private lazy var minimizeTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1),
         target: self, action: #selector(minimizeTrafficTapped))
-    private lazy var zoomTrafficButton = FigmaTrafficLightButton(
+    private lazy var zoomTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1),
         target: self, action: #selector(zoomTrafficTapped))
     private let titleLabel = PanelCenteredTextView()

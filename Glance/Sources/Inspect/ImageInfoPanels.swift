@@ -4,6 +4,10 @@ import AppKit
 /// "Dark Refresh v3 / Image Inspect / Clean Editable" image information panel:
 /// frosted dark card, title + filename hint, and two-column metadata rows.
 final class FigmaImageInspectorView: NSView {
+    /// The panel is a borderless child window, so it carries its own close control.
+    var onClose: (() -> Void)?
+    private lazy var closeButton = PanelStyle.makeIconButton(symbol: "xmark", tooltip: "Close".localized,
+                                                             target: self, action: #selector(closeTapped))
     private let titleLabel = NSTextField(labelWithString: "Image information".localized)
     private let subtitleLabel = NSTextField(labelWithString: "")
     // Figma panel shows six metadata rows; Alpha is omitted to match the design.
@@ -30,6 +34,7 @@ final class FigmaImageInspectorView: NSView {
         titleLabel.font = PanelStyle.inspectFont(ofSize: 17, weight: .semibold)
         titleLabel.textColor = PanelStyle.textPrimary
         addSubview(titleLabel)
+        addSubview(closeButton)
 
         subtitleLabel.font = PanelStyle.inspectFont(ofSize: 11)
         subtitleLabel.textColor = PanelStyle.textSecondary
@@ -75,8 +80,10 @@ final class FigmaImageInspectorView: NSView {
             NSRect(x: x, y: bounds.height - y - h, width: w, height: h)
         }
 
-        titleLabel.frame = topFrame(padX, headerTop, bounds.width - padX * 2, 21)
-        subtitleLabel.frame = topFrame(padX, headerTop + 28, bounds.width - padX * 2, 13)
+        let closeSize: CGFloat = 24
+        closeButton.frame = topFrame(bounds.width - padX - closeSize, headerTop - 2, closeSize, closeSize)
+        titleLabel.frame = topFrame(padX, headerTop, bounds.width - padX * 2 - closeSize - 8, 21)
+        subtitleLabel.frame = topFrame(padX, headerTop + 28, bounds.width - padX * 2 - closeSize - 8, 13)
 
         let headerDivider = dividers[0]
         headerDivider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.textPrimary.withAlphaComponent(0.12))
@@ -104,6 +111,8 @@ final class FigmaImageInspectorView: NSView {
         guard let index, let item = items.first(where: { $0.index == index }) else { return }
         display(item)
     }
+
+    @objc private func closeTapped() { onClose?() }
 
     private func display(_ item: (index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)) {
         let info = item.info
