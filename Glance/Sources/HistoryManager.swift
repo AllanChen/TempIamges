@@ -102,6 +102,17 @@ final class HistoryManager {
         NotificationCenter.default.post(name: HistoryManager.didChange, object: self)
     }
 
+    /// Drops one item (by its stored value) from every record; records left
+    /// empty disappear. Used by the history window's per-card remove button.
+    func remove(value: String) {
+        records = records.compactMap { record in
+            let kept = record.items.filter { $0.value != value }
+            return kept.isEmpty ? nil : HistoryRecord(timestamp: record.timestamp, selectedText: "", items: kept)
+        }
+        save()
+        NotificationCenter.default.post(name: HistoryManager.didChange, object: self)
+    }
+
     func clear() {
         records.removeAll()
         save()

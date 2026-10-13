@@ -17,6 +17,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     private var widgetTaskCenterWindow: WidgetTaskCenterWindow?
     private var fileNameResolver: FileNameResolver?
     private var imageInspectWindow: ImageInspectWindow?
+    /// Independent Image Inspect windows that show saved captures. They live
+    /// apart from `imageInspectWindow` so a capture never replaces the picture
+    /// it was taken from.
+    private var captureResultWindows: [ImageInspectWindow] = []
     private var videoCompareWindow: VideoCompareWindow?
     /// Finder/LaunchServices can split one multi-selection into several open
     /// callbacks (notably when extensions/UTIs differ). Coalesce the burst so
@@ -753,6 +757,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             window?.closeForViewerHandoff()
             self?.openInContentPanel(info: info)
         }
+        window.onCaptured = { [weak self, weak window] url in
+            self?.openCaptureResult(url: url, source: window)
+        }
         window.onClose = { [weak self, weak restoreApp] in
             self?.imageInspectWindow = nil
             if restoreApp?.processIdentifier != ProcessInfo.processInfo.processIdentifier {
@@ -765,6 +772,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                     preferredMode: preferredMode)
     }
 
+    /// Opens a saved capture in its own Image Inspect window, offset from the
+    /// window it came from, with a "Capture saved" toast showing the path.
+    private func openCaptureResult(url: URL, source: NSWindow?) {
+        let window = ImageInspectWindow(imageLoader: imageLoader ?? ImageLoader())
+        captureResultWindows.append(window)
+        window.onCaptured = { [weak self, weak window] url in
+            self?.openCaptureResult(url: url, source: window)
+        }
+        window.onOpenVideo = { [weak self] info in
+            self?.recordMediaInHistory([info])
+            self?.openVideoCompare(infos: [info], focusedIndex: 0)
+        }
+        window.onClose = { [weak self, weak window] in
+            guard let window else { return }
+            self?.captureResultWindows.removeAll { $0 === window }
+        }
+        let info = MediaInfo(url: url, isLocal: true, kind: .image)
+        window.show(infos: [info], loaded: [nil], focusedIndex: 0, preferredMode: .focus)
+        if let origin = source?.frame.origin {
+            window.setFrameOrigin(NSPoint(x: origin.x + 28, y: origin.y - 28))
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.showToast("Capture saved ✓".localized + "\n" + url.path)
+    }
+
     private func openVideoCompare(infos: [MediaInfo], focusedIndex: Int = 0, startsInCompare: Bool? = nil) {
         guard !infos.isEmpty, infos.allSatisfy({ $0.kind == .video }) else { return }
         previewPanel?.closeWithoutAffectingContent()
@@ -775,6 +808,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         // the first opens the window and later clicks append to its filmstrip.
         window?.onCaptureFrame = { [weak self] url in
             self?.openCapturedFrame(url: url)
+        }
+        window?.onCaptured = { [weak self, weak window] url in
+            self?.openCaptureResult(url: url, source: window)
         }
         window?.onOpenImage = { [weak self] info in
             self?.openImageInspect(infos: [info], loaded: [nil], focusedIndex: 0,

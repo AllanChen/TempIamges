@@ -9,6 +9,13 @@ final class ImageRevealView: NSView {
     private let divider = NSView()
     private var fraction: CGFloat = 0.5
     var revealFraction: CGFloat { fraction }
+    /// The two panes behind the slider: `base` (image A, shown on the right of
+    /// the divider) and `overlay` (image B, shown on the left). They share one
+    /// viewport state.
+    var capturePanes: (base: CapturePane, overlay: CapturePane)? {
+        guard let base = viewport.capturePane, let overlay = overlayViewport.capturePane else { return nil }
+        return (base, overlay)
+    }
     /// Right-click action-menu callback, shared with the plain viewports.
     var onActionMenu: ((NSEvent) -> Void)?
     weak var dropTarget: MediaDropCanvasView?

@@ -518,3 +518,33 @@
 "Copy as Base64" = "拷贝为 Base64";
 "Base64 → Image…" = "Base64 转图片…";
 "Tools" = "工具";
+
+/* Capture */
+"Capture" = "截图";
+"Ratio" = "比例";
+"Free" = "自由";
+"Capture…" = "截图…";
+"Capture saved ✓" = "截图已保存 ✓";
+"Could not save capture" = "无法保存截图";
+
+/* Preview History */
+"Yesterday" = "昨天";
+"Earlier" = "更早";
+"Documents" = "文档";
+"%d previews" = "%d 个预览";
+"%d results" = "%d 个结果";
+"Results for “%@”" = "“%@”的搜索结果";
+"No previews yet" = "还没有预览记录";
+"Select a file path or image link anywhere and use your Glance shortcut.\nEverything you preview shows up here." = "在任意位置选中文件路径或图片链接，按下 Glance 快捷键。\n你预览过的内容都会出现在这里。";
+"No matches" = "没有匹配项";
+"Try a different filename or filter." = "换个文件名或筛选条件试试。";
+"Remove from History" = "从历史中移除";
+"Result" = "结果";
+
+/* Toast */
+"Previous / next" = "上一张 / 下一张";
+"Fit to window" = "适应窗口";
+"Actual size" = "实际大小";
+"Exit compare / close" = "退出对比 / 关闭";
+"Compare with" = "与…对比";
+"Info" = "信息";

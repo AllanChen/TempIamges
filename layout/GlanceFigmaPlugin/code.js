@@ -36,6 +36,7 @@ const ICONS = {
   play: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m6 4 8 5-8 5V4Z" fill="CURRENT"/></svg>',
   pause: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4v10M12 4v10" stroke="CURRENT" stroke-width="2" stroke-linecap="round"/></svg>',
   capture: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h3l1-2h4l1 2h3v8H3V6Z" stroke="CURRENT" stroke-width="1.5" stroke-linejoin="round"/><circle cx="9" cy="10" r="2.5" stroke="CURRENT" stroke-width="1.5"/></svg>',
+  screenshot: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3H4.5A1.5 1.5 0 0 0 3 4.5V6M12 3h1.5A1.5 1.5 0 0 1 15 4.5V6M15 12v1.5a1.5 1.5 0 0 1-1.5 1.5H12M6 15H4.5A1.5 1.5 0 0 1 3 13.5V12" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="6.5" y="6.5" width="5" height="5" rx="1" stroke="CURRENT" stroke-width="1.5" stroke-linejoin="round"/></svg>',
   refresh: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 7A6 6 0 1 0 15 10" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round"/><path d="M11.5 4h3.5v3.5" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   search: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="4.5" stroke="CURRENT" stroke-width="1.5"/><path d="m11.5 11.5 3 3" stroke="CURRENT" stroke-width="1.5" stroke-linecap="round"/></svg>',
   clear: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 5h8l-.7 10H5.7L5 5ZM3.5 5h11M7 3h4" stroke="CURRENT" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -2541,7 +2542,7 @@ function captureToolbar(parent, width, active) {
     offset: { x: 0, y: 8 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL'
   }];
   parent.appendChild(toolbar);
-  [['Focus', 'focus'], ['Compare', 'compare'], ['Slider', 'slider'], ['Capture', 'capture'],
+  [['Focus', 'focus'], ['Compare', 'compare'], ['Slider', 'slider'], ['Capture', 'screenshot'],
    ['Widget', 'grid'], ['Information', 'info']].forEach(([name, icon], i) =>
     lightIconButton(toolbar, name, icon, 14 + i * 52, name === active));
   return toolbar;
@@ -2619,7 +2620,7 @@ function captureBar(board, activeRatio, menuOpen = false) {
 
   const cap = frame('Action / Capture', 8 + ddW + 16 + cancelW + 8, 8, capW, 36, COLORS.accent, 9);
   bar.appendChild(cap);
-  const icon = figma.createNodeFromSvg(ICONS.capture.replaceAll('CURRENT', '#21130D'));
+  const icon = figma.createNodeFromSvg(ICONS.screenshot.replaceAll('CURRENT', '#21130D'));
   icon.name = 'Icon / capture'; icon.resize(16, 16); icon.x = 18; icon.y = 10; cap.appendChild(icon);
   text('Label', cap, 'Capture', 40, 10, 12, '#21130D', 'semibold', 60);
 
@@ -2721,6 +2722,432 @@ async function generateCaptureEditor() {
   figma.viewport.scrollAndZoomIntoView([flow]);
   figma.ui.postMessage({ message: 'Created Capture Editor: toolbar (6), image Free, 3:4 with dropdown open, video, result window.' });
   figma.notify('Capture Editor created');
+}
+
+// ---------------------------------------------------------------------------
+// Preview History redesign — media-first. The page used to be one flat grid
+// under a single "Today" title with a caption bar over every thumbnail. Now:
+// search + type filters on one row, day groups (Today / Yesterday / Earlier),
+// clean thumbnails with the name and metadata underneath, and quick actions
+// that appear on hover.
+// ---------------------------------------------------------------------------
+
+const HISTORY_REDESIGN_FRAME = 'Preview History Redesign';
+const HIST = { cardW: 278, thumbH: 188, cardH: 240, gap: 21, margin: 40 };
+
+function historyTextWidth(value, size) { return Math.ceil(String(value).length * size * 0.58); }
+
+function historyFill(node, hex, alpha) { node.fills = [fill(hex, alpha)]; return node; }
+
+function historyStroke(node, hex, alpha, weight = 1) {
+  node.strokes = [fill(hex, alpha)];
+  node.strokeWeight = weight;
+  return node;
+}
+
+function historyIcon(parent, iconName, x, y, size, color) {
+  const svg = figma.createNodeFromSvg(ICONS[iconName].replaceAll('CURRENT', color));
+  svg.name = 'Icon / ' + iconName;
+  svg.resize(size, size);
+  svg.x = x; svg.y = y;
+  parent.appendChild(svg);
+  return svg;
+}
+
+/// Round 30 pt action that appears on a hovered thumbnail.
+function historyHoverAction(parent, name, iconName, x, y) {
+  const node = frame(name, x, y, 30, 30, null, 15);
+  historyFill(node, '#161719', .84);
+  historyStroke(node, '#FFFFFF', .16);
+  parent.appendChild(node);
+  historyIcon(node, iconName, 7, 7, 16, '#F3F3F3');
+  return node;
+}
+
+function historyCard(parent, o) {
+  const { x, y, name, meta, palette = ['#24313B', '#A77B72', '#26352D'], kind = 'image' } = o;
+  const card = frame('History Card / ' + name, x, y, HIST.cardW, HIST.cardH, null, 0);
+  card.fills = []; card.clipsContent = false;
+  parent.appendChild(card);
+
+  const thumb = frame('Thumbnail', 0, 0, HIST.cardW, HIST.thumbH, '#14151A', 12);
+  historyStroke(thumb, '#FFFFFF', o.hover ? .38 : .08, o.hover ? 1.5 : 1);
+  if (o.hover) {
+    thumb.effects = [{ type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .45 }, offset: { x: 0, y: 10 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL' }];
+  }
+  card.appendChild(thumb);
+
+  if (kind === 'doc') {
+    const tile = frame('Document Tile', (HIST.cardW - 64) / 2, 52, 64, 64, '#202126', 18);
+    historyStroke(tile, '#FFFFFF', .08);
+    thumb.appendChild(tile);
+    historyIcon(tile, 'file', 16, 16, 32, COLORS.secondary);
+    text('Extension', thumb, o.ext || 'MD', 0, 126, 11, COLORS.muted, 'semibold', HIST.cardW, 'CENTER');
+  } else {
+    artworkFill(rect('Artwork', thumb, 0, 0, HIST.cardW, HIST.thumbH, null, 0), palette);
+  }
+  if (kind === 'video') {
+    const scrim = rect('Video Scrim', thumb, 0, 0, HIST.cardW, HIST.thumbH, '#000000', 0);
+    scrim.opacity = .18;
+    const play = frame('Play Badge', (HIST.cardW - 40) / 2, (HIST.thumbH - 40) / 2, 40, 40, null, 20);
+    historyFill(play, '#000000', .5); historyStroke(play, '#FFFFFF', .28);
+    thumb.appendChild(play);
+    historyIcon(play, 'play', 11, 11, 18, '#F3F3F3');
+    const dur = frame('Duration', HIST.cardW - 10 - 46, HIST.thumbH - 10 - 20, 46, 20, null, 6);
+    historyFill(dur, '#000000', .62); thumb.appendChild(dur);
+    text('Duration Label', dur, o.duration || '0:37', 0, 3, 11, '#F3F3F3', 'medium', 46, 'CENTER');
+  }
+  if (o.result) {
+    const pill = frame('AI Result Pill', 10, 10, 58, 22, null, 11);
+    historyFill(pill, '#161719', .8); historyStroke(pill, COLORS.accent, .5);
+    thumb.appendChild(pill);
+    ellipse('Dot', pill, 10, 8, 6, COLORS.accent);
+    text('Label', pill, 'Result', 22, 4, 11, COLORS.accent, 'semibold', 34);
+  }
+  if (o.hover) {
+    const veil = rect('Hover Veil', thumb, 0, 0, HIST.cardW, HIST.thumbH, '#FFFFFF', 0);
+    veil.opacity = .05;
+    historyHoverAction(thumb, 'Action / Reveal in Finder', 'folder', HIST.cardW - 10 - 68, 10);
+    historyHoverAction(thumb, 'Action / Remove from History', 'close', HIST.cardW - 10 - 30, 10);
+  }
+
+  // Name (with the search match highlighted) and metadata sit under the thumbnail.
+  if (o.match && o.name.toLowerCase().includes(o.match.toLowerCase())) {
+    const at = o.name.toLowerCase().indexOf(o.match.toLowerCase());
+    const before = o.name.slice(0, at), hit = o.name.slice(at, at + o.match.length), after = o.name.slice(at + o.match.length);
+    let cursor = 2;
+    [[before, COLORS.text, 'medium'], [hit, COLORS.accent, 'semibold'], [after, COLORS.text, 'medium']].forEach(([part, color, weight]) => {
+      if (!part) return;
+      const node = text('Filename / ' + weight, card, part, cursor, HIST.thumbH + 10, 13, color, weight);
+      cursor += historyTextWidth(part, 13);
+    });
+  } else {
+    text('Filename', card, o.name, 2, HIST.thumbH + 10, 13, COLORS.text, 'medium', HIST.cardW - 4);
+  }
+  text('Meta', card, meta, 2, HIST.thumbH + 30, 11, COLORS.muted, 'regular', HIST.cardW - 4);
+  return card;
+}
+
+function historySection(parent, y, title, count) {
+  const label = text('Section Title', parent, title, HIST.margin, y, 15, COLORS.text, 'semibold');
+  const countX = HIST.margin + historyTextWidth(title, 15) + 10;
+  text('Section Count', parent, String(count), countX, y + 2, 12, COLORS.muted, 'regular');
+  const lineX = countX + historyTextWidth(String(count), 12) + 16;
+  const line = rect('Section Hairline', parent, lineX, y + 10, 1554 - HIST.margin - lineX, 1, '#FFFFFF', 0);
+  line.opacity = .07;
+  return label;
+}
+
+function historyRow(parent, y, items) {
+  items.forEach((item, i) => historyCard(parent, Object.assign({}, item, {
+    x: HIST.margin + i * (HIST.cardW + HIST.gap), y
+  })));
+}
+
+/// Title bar, search + filter row and clear button, shared by all three scenes.
+function historyWindowChrome(flow, name, x, opts) {
+  const screen = frame(name, x, 0, 1554, 1012, '#0B0C0F', 16);
+  historyStroke(screen, '#FFFFFF', .12);
+  flow.appendChild(screen);
+  createBareSystemControls(screen);
+  text('Window Title', screen, 'Preview History', 0, 12, 13, COLORS.text, 'semibold', 1554, 'CENTER');
+  text('Window Subtitle', screen, opts.subtitle, 0, 31, 11, COLORS.muted, 'regular', 1554, 'CENTER');
+
+  const rowY = 68;
+  // Search field.
+  const search = frame('Search Field', HIST.margin, rowY, 320, 40, '#14151A', 12);
+  historyStroke(search, opts.searching ? COLORS.accent : '#FFFFFF', opts.searching ? .6 : .10);
+  screen.appendChild(search);
+  historyIcon(search, 'search', 13, 11, 18, opts.searching ? COLORS.accent : COLORS.muted);
+  if (opts.query) {
+    text('Query', search, opts.query, 40, 12, 13, COLORS.text, 'regular', 220);
+    rect('Caret', search, 40 + historyTextWidth(opts.query, 13) + 1, 11, 1.5, 18, COLORS.accent, 1);
+    const clear = frame('Clear Query', 320 - 12 - 20, 10, 20, 20, null, 10);
+    historyFill(clear, '#FFFFFF', .10); search.appendChild(clear);
+    historyIcon(clear, 'close', 4, 4, 12, COLORS.secondary);
+  } else {
+    text('Placeholder', search, 'Search filename', 40, 12, 13, COLORS.muted, 'regular', 200);
+    const kbd = frame('Shortcut Hint', 320 - 12 - 34, 9, 34, 22, null, 6);
+    historyFill(kbd, '#FFFFFF', .06); search.appendChild(kbd);
+    text('Label', kbd, '⌘F', 0, 4, 11, COLORS.muted, 'medium', 34, 'CENTER');
+  }
+  if (opts.disabled) search.opacity = .5;
+
+  // Type filters.
+  let cx = 384;
+  opts.chips.forEach(([label, count, active]) => {
+    const w = 14 + historyTextWidth(label, 12) + 7 + historyTextWidth(String(count), 12) + 14;
+    const chip = frame('Filter / ' + label, cx, rowY + 4, w, 32, null, 16);
+    historyFill(chip, active ? '#34251F' : '#FFFFFF', active ? .96 : .05);
+    historyStroke(chip, active ? COLORS.accent : '#FFFFFF', active ? .6 : .08);
+    screen.appendChild(chip);
+    text('Label', chip, label, 14, 8, 12, active ? COLORS.accent : COLORS.secondary, active ? 'semibold' : 'medium');
+    text('Count', chip, String(count), 14 + historyTextWidth(label, 12) + 7, 8, 12, active ? COLORS.accent : COLORS.muted, 'regular');
+    if (opts.disabled || count === 0) chip.opacity = .45;
+    cx += w + 8;
+  });
+
+  // Clear history: quiet danger, right aligned.
+  if (!opts.disabled) {
+    const clear = frame('Clear History', 1554 - HIST.margin - 132, rowY + 4, 132, 32, null, 16);
+    clear.fills = [];
+    historyStroke(clear, COLORS.danger, .32);
+    screen.appendChild(clear);
+    historyIcon(clear, 'clear', 12, 8, 16, COLORS.danger);
+    text('Label', clear, 'Clear History', 34, 8, 12, COLORS.danger, 'medium', 90);
+  }
+  const divider = rect('Header Divider', screen, 0, 124, 1554, 1, '#FFFFFF', 0);
+  divider.opacity = .07;
+  return screen;
+}
+
+function historyBottomFade(screen) {
+  const fade = figma.createRectangle();
+  fade.name = 'Scroll Fade';
+  fade.x = 0; fade.y = 912;
+  fade.resize(1554, 100);
+  const c = rgb('#0B0C0F');
+  fade.fills = [{
+    type: 'GRADIENT_LINEAR', gradientTransform: [[0, 1, 0], [-1, 0, 1]],
+    gradientStops: [{ position: 0, color: { ...c, a: 0 } }, { position: 1, color: { ...c, a: 1 } }]
+  }];
+  screen.appendChild(fade);
+  const bar = rect('Scrollbar', screen, 1554 - 10, 148, 4, 240, '#FFFFFF', 2);
+  bar.opacity = .18;
+}
+
+const HISTORY_CHIPS = [['All', 128, true], ['Images', 96, false], ['Videos', 18, false], ['Documents', 14, false]];
+
+function createHistoryRedesign(x) {
+  const gap = 196;
+  const flow = frame(HISTORY_REDESIGN_FRAME, x, 0, 1554 * 3 + gap * 2, 1012 + 80, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+
+  // 01 — populated, day groups, one card hovered.
+  const s1 = historyWindowChrome(flow, '01 / Preview History / Populated', 0,
+    { subtitle: '128 previews', chips: HISTORY_CHIPS });
+  historySection(s1, 148, 'Today', 5);
+  historyRow(s1, 184, [
+    { name: 'input.png', meta: 'PNG · 2.4 MB · 4:32 PM', palette: ['#24313B', '#9B705C', '#29382E'] },
+    { name: 'result-remove-bg.png', meta: 'PNG · 1.1 MB · 4:35 PM', palette: ['#24312D', '#7DA67D', '#26352D'], result: true, hover: true },
+    { name: 'portrait.jpg', meta: 'JPEG · 3.8 MB · 2:10 PM', palette: ['#2E323D', '#A77B72', '#1A2633'] },
+    { name: 'clip.mov', meta: 'MOV · 48 MB · 11:42 AM', palette: ['#171F29', '#766051', '#222F2B'], kind: 'video', duration: '0:37' },
+    { name: 'README.md', meta: 'Markdown · 12 KB · 9:03 AM', kind: 'doc', ext: 'MD' }
+  ]);
+  historySection(s1, 452, 'Yesterday', 5);
+  historyRow(s1, 488, [
+    { name: 'product.webp', meta: 'WebP · 640 KB · 9:15 PM', palette: ['#363539', '#926A58', '#26332A'] },
+    { name: 'design.png', meta: 'PNG · 5.2 MB · 6:48 PM', palette: ['#323644', '#95718A', '#282A34'] },
+    { name: 'result-upscale.png', meta: 'PNG · 8.6 MB · 5:20 PM', palette: ['#2B3340', '#C99A7A', '#35444B'], result: true },
+    { name: 'demo.mp4', meta: 'MP4 · 212 MB · 3:02 PM', palette: ['#121C27', '#715041', '#1C2E28'], kind: 'video', duration: '1:12' },
+    { name: 'capture.jpg', meta: 'JPEG · 1.9 MB · 10:27 AM', palette: ['#273032', '#B08565', '#36463C'] }
+  ]);
+  historySection(s1, 756, 'Earlier', 118);
+  historyRow(s1, 792, [
+    { name: 'hero-banner.png', meta: 'PNG · 3.1 MB · Oct 8', palette: ['#2A3140', '#B78A6E', '#27382F'] },
+    { name: 'notes.pdf', meta: 'PDF · 420 KB · Oct 8', kind: 'doc', ext: 'PDF' },
+    { name: 'icon-set.png', meta: 'PNG · 880 KB · Oct 7', palette: ['#2D2F3A', '#8E7AA6', '#233034'] },
+    { name: 'walkthrough.mov', meta: 'MOV · 96 MB · Oct 7', palette: ['#1C2430', '#8A6450', '#22362F'], kind: 'video', duration: '2:45' },
+    { name: 'cover.jpg', meta: 'JPEG · 2.2 MB · Oct 6', palette: ['#303A33', '#C0A27A', '#2A3A44'] }
+  ]);
+  historyBottomFade(s1);
+  text('Note', flow, 'Day groups replace the single "Today" title. Thumbnails are clean; name and metadata sit underneath. Hover (card 2) lightens the thumbnail and reveals Reveal in Finder / Remove. AI results carry a Result pill. Click opens Glance Image / Video Inspect.',
+    0, 1030, 12, COLORS.muted, 'regular', 1554);
+
+  // 02 — search narrows the page to a flat result list with the match highlighted.
+  const x2 = 1554 + gap;
+  const s2 = historyWindowChrome(flow, '02 / Preview History / Search', x2, {
+    subtitle: '4 results', searching: true, query: 'result',
+    chips: [['All', 4, true], ['Images', 4, false], ['Videos', 0, false], ['Documents', 0, false]]
+  });
+  historySection(s2, 148, 'Results for “result”', 4);
+  historyRow(s2, 184, [
+    { name: 'result-remove-bg.png', meta: 'PNG · 1.1 MB · Today 4:35 PM', palette: ['#24312D', '#7DA67D', '#26352D'], result: true, match: 'result' },
+    { name: 'result-upscale.png', meta: 'PNG · 8.6 MB · Yesterday', palette: ['#2B3340', '#C99A7A', '#35444B'], result: true, match: 'result' },
+    { name: 'result-expand.png', meta: 'PNG · 4.4 MB · Oct 9', palette: ['#2E323D', '#A77B72', '#1A2633'], result: true, match: 'result' },
+    { name: 'product-result.webp', meta: 'WebP · 520 KB · Oct 6', palette: ['#363539', '#926A58', '#26332A'], match: 'result' }
+  ]);
+  text('Note', flow, 'Typing filters live and flattens the day groups; the matched text is highlighted. Filter chips keep their counts for the query, empty types dim. Esc clears the query.',
+    x2, 1030, 12, COLORS.muted, 'regular', 1554);
+
+  // 03 — nothing recorded yet.
+  const x3 = (1554 + gap) * 2;
+  const s3 = historyWindowChrome(flow, '03 / Preview History / Empty', x3, {
+    subtitle: '0 previews', disabled: true,
+    chips: [['All', 0, true], ['Images', 0, false], ['Videos', 0, false], ['Documents', 0, false]]
+  });
+  const tile = frame('Empty Illustration', (1554 - 96) / 2, 360, 96, 96, '#14151A', 28);
+  historyStroke(tile, '#FFFFFF', .08); s3.appendChild(tile);
+  historyIcon(tile, 'focus', 28, 28, 40, COLORS.muted);
+  text('Empty Title', s3, 'No previews yet', 0, 484, 20, COLORS.text, 'semibold', 1554, 'CENTER');
+  text('Empty Description', s3, 'Select a file path or image link anywhere and use your Glance shortcut.\nEverything you preview shows up here.',
+    (1554 - 460) / 2, 520, 13, COLORS.secondary, 'regular', 460, 'CENTER');
+  text('Note', flow, 'Search and filters stay visible but disabled; Clear History is hidden when there is nothing to clear.',
+    x3, 1030, 12, COLORS.muted, 'regular', 1554);
+  return flow;
+}
+
+async function generatePreviewHistoryRedesign() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === HISTORY_REDESIGN_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Preview History Redesign already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createHistoryRedesign(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Preview History Redesign: populated, search, empty.' });
+  figma.notify('Preview History Redesign created');
+}
+
+// ---------------------------------------------------------------------------
+// Toast — one notification style for the whole app. The old toast was a
+// 12 pt single label in a plain frosted box (and errors were a bare black
+// rectangle at the cursor). Now: a glass capsule with an icon badge, a 14 pt
+// title and an optional 12 pt detail line (paths, reasons).
+// ---------------------------------------------------------------------------
+
+const TOAST_FRAME = 'Toast';
+const TOAST_KINDS = {
+  success: { icon: 'check', color: '#8FD0AF' },
+  info: { icon: 'copy', color: '#F3EEE8' },
+  error: { icon: 'warning', color: '#F18B86' }
+};
+
+function toastShadow() {
+  return [{ type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .45 }, offset: { x: 0, y: 12 }, radius: 32, spread: 0, visible: true, blendMode: 'NORMAL' }];
+}
+
+/// Glass toast: [badge 32] [title 14 semibold / detail 12 regular]. 48 pt high
+/// with a title only, 64 pt with a detail line; 200–560 pt wide.
+function toastCard(parent, name, x, y, kind, title, detail) {
+  const spec = TOAST_KINDS[kind];
+  const textW = Math.max(historyTextWidth(title, 14), detail ? historyTextWidth(detail, 12) : 0);
+  const width = Math.min(560, Math.max(200, 14 + 32 + 12 + textW + 20));
+  const height = detail ? 64 : 48;
+  const toast = frame(name, x, y, width, height, null, 16);
+  toast.fills = [fill('#161719', .94)];
+  toast.strokes = [fill('#FFFFFF', .12)]; toast.strokeWeight = 1;
+  toast.effects = [{ type: 'BACKGROUND_BLUR', radius: 18, visible: true }].concat(toastShadow());
+  parent.appendChild(toast);
+
+  const badge = frame('Icon Badge', 14, (height - 32) / 2, 32, 32, null, 16);
+  badge.fills = [fill(spec.color, kind === 'info' ? .10 : .16)];
+  toast.appendChild(badge);
+  historyIcon(badge, spec.icon, 7, 7, 18, spec.color);
+
+  if (detail) {
+    text('Title', toast, title, 58, 12, 14, COLORS.text, 'semibold', width - 58 - 20);
+    text('Detail', toast, detail, 58, 33, 12, COLORS.secondary, 'regular', width - 58 - 20);
+  } else {
+    text('Title', toast, title, 58, 14, 14, COLORS.text, 'semibold', width - 58 - 20);
+  }
+  return toast;
+}
+
+/// Keyboard Shortcuts: same glass, key chips on the left, meaning on the right.
+function toastShortcuts(parent, x, y) {
+  const rows = [
+    ['← →', 'Previous / next'], ['0', 'Fit to window'], ['1', 'Actual size'], ['+  −', 'Zoom'],
+    ['Esc', 'Exit compare / close'], ['⌥ click', 'Compare with'], ['⌘C', 'Copy'], ['⌘S', 'Save'],
+    ['⌘L  ⌘R', 'Rotate'], ['⌘I', 'Info'], ['⌘⇧X', 'Capture']
+  ];
+  const width = 440, rowH = 30, height = 14 + 32 + 12 + rows.length * rowH + 14;
+  const toast = frame('Toast / Shortcuts', x, y, width, height, null, 16);
+  toast.fills = [fill('#161719', .94)];
+  toast.strokes = [fill('#FFFFFF', .12)]; toast.strokeWeight = 1;
+  toast.effects = [{ type: 'BACKGROUND_BLUR', radius: 18, visible: true }].concat(toastShadow());
+  parent.appendChild(toast);
+  const badge = frame('Icon Badge', 14, 14, 32, 32, null, 16);
+  badge.fills = [fill('#F3EEE8', .10)]; toast.appendChild(badge);
+  historyIcon(badge, 'info', 7, 7, 18, '#F3EEE8');
+  text('Title', toast, 'Keyboard Shortcuts', 58, 21, 14, COLORS.text, 'semibold', 340);
+  rows.forEach(([keys, label], i) => {
+    const ry = 14 + 32 + 12 + i * rowH;
+    const chipW = Math.max(28, historyTextWidth(keys, 11) + 16);
+    const chip = frame('Key', 14, ry + 2, chipW, 24, null, 6);
+    chip.fills = [fill('#FFFFFF', .08)]; chip.strokes = [fill('#FFFFFF', .08)]; chip.strokeWeight = 1;
+    toast.appendChild(chip);
+    text('Keys', chip, keys, 0, 5, 11, COLORS.text, 'medium', chipW, 'CENTER');
+    text('Meaning', toast, label, 128, ry + 6, 12, COLORS.secondary, 'regular', 290);
+  });
+  return toast;
+}
+
+function createToastBoard(x) {
+  const gap = 196;
+  const flow = frame(TOAST_FRAME, x, 0, 1554 * 2 + gap, 780, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+
+  // 01 — the variants, each on a patch of artwork so the glass reads.
+  const sheet = frame('01 / Toast / Variants', 0, 0, 1554, 780, '#0B0C0F', 16);
+  historyStroke(sheet, '#FFFFFF', .12); flow.appendChild(sheet);
+  text('Heading', sheet, 'Toast', 40, 32, 22, COLORS.text, 'semibold');
+  text('Subheading', sheet, 'One style for every confirmation and error. 32 pt badge · 14 pt title · 12 pt detail · radius 16 · glass #161719 94% · hairline white 12% · blur 18',
+    40, 66, 12, COLORS.muted, 'regular', 1400);
+  const palettes = [['#24313B', '#A77B72', '#26352D'], ['#2F3747', '#C99A7A', '#35444B'],
+                    ['#171F29', '#766051', '#222F2B'], ['#2E323D', '#9B705C', '#1A2633']];
+  const variants = [
+    ['Success · title + path', 'success', 'Capture saved', '~/Pictures/Glance/photo-capture-1080x1440.png'],
+    ['Success · title only', 'success', 'Copied', null],
+    ['Info · title only', 'info', 'Base64 copied', null],
+    ['Error · title + reason', 'error', 'Export failed', 'The disk is full. Free some space and try again.']
+  ];
+  variants.forEach(([label, kind, title, detail], i) => {
+    const y = 120 + i * 156;
+    text('Variant Label', sheet, label, 40, y, 11, COLORS.muted, 'medium');
+    const patch = frame('Backdrop', 40, y + 22, 640, 112, '#14151A', 12);
+    artworkFill(rect('Artwork', patch, 0, 0, 640, 112, null, 0), palettes[i]);
+    sheet.appendChild(patch);
+    const toast = toastCard(patch, 'Toast / ' + kind + (detail ? ' / detail' : ' / compact'), 0, 0, kind, title, detail);
+    toast.x = Math.round((640 - toast.width) / 2); toast.y = Math.round((112 - toast.height) / 2);
+  });
+  text('Variant Label', sheet, 'Keyboard Shortcuts · shown for 7 s', 714, 120, 11, COLORS.muted, 'medium');
+  const helpPatch = frame('Backdrop', 714, 142, 800, 590, '#14151A', 12);
+  artworkFill(rect('Artwork', helpPatch, 0, 0, 800, 590, null, 0), ['#2A3140', '#B78A6E', '#27382F']);
+  sheet.appendChild(helpPatch);
+  const help = toastShortcuts(helpPatch, 0, 0);
+  help.x = Math.round((800 - help.width) / 2); help.y = Math.round((590 - help.height) / 2);
+
+  // 02 — in context: centred over the media in Image Inspect.
+  const scene = frame('02 / Toast / In Context', 1554 + gap, 0, 1554, 780, '#060709', 16);
+  historyStroke(scene, '#FFFFFF', .12); flow.appendChild(scene);
+  artworkFill(rect('Image', scene, 0, 0, 1554, 780, null, 0), ['#24313B', '#A77B72', '#26352D']);
+  createBareSystemControls(scene);
+  createFloatingInspectToolbar(scene, 1554, 'Focus');
+  const live = toastCard(scene, 'Toast / success / detail', 0, 0, 'success', 'Saved', '~/Pictures/Glance/photo-capture-1080x1440.png');
+  live.x = Math.round((1554 - live.width) / 2); live.y = Math.round((780 - live.height) / 2);
+
+  text('Note', flow, 'Placement: centred over the window it belongs to (as today), non-activating so it never steals focus. Motion: fade in + rise 8 pt over 0.18 s, hold 1.4 s (title only) / 3 s (with detail) / 7 s (shortcuts), fade out 0.2 s. A new toast replaces the current one. Errors use the same toast (red badge) instead of the black tooltip at the cursor.',
+    0, 800, 12, COLORS.muted, 'regular', 1554);
+  return flow;
+}
+
+async function generateToast() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === TOAST_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Toast already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createToastBoard(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Toast: success, info, error, shortcuts and an in-context scene.' });
+  figma.notify('Toast created');
 }
 
 // Seven focused Widget screens. The existing image/video input and image
@@ -4735,6 +5162,24 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Market redesign failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Market redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-toast') {
+    try {
+      await generateToast();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Toast failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Toast failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-preview-history-redesign') {
+    try {
+      await generatePreviewHistoryRedesign();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Preview History Redesign failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Preview History Redesign failed', { error: true });
     }
   }
   if (message.type === 'generate-capture-editor') {

@@ -1,26 +1,20 @@
 import AppKit
 
+/// Error notice for moments with no window to attach to (selection and
+/// hotkey failures). Same glass toast as everywhere else, placed by the cursor.
 class ErrorTooltip: NSPanel {
-    private let textField: NSTextField
+    private let content = ToastPanelContent()
     private let offset = CGPoint(x: 20, y: -20)
     private let autoHideDelay: TimeInterval = 3.0
     private var autoHideWorkItem: DispatchWorkItem?
 
     init() {
-        textField = NSTextField(labelWithString: "")
-
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 40),
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 48),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-
-        setupPanel()
-        setupTextField()
-    }
-
-    private func setupPanel() {
         isFloatingPanel = true
         level = .floating
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -28,44 +22,23 @@ class ErrorTooltip: NSPanel {
         backgroundColor = .clear
         hasShadow = true
         isOpaque = false
-    }
-
-    private func setupTextField() {
-        textField.alignment = .center
-        textField.font = NSFont.systemFont(ofSize: 12)
-        textField.textColor = .white
-        textField.wantsLayer = true
-        textField.layer?.cornerRadius = 8
-        textField.layer?.masksToBounds = true
-        textField.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.75).cgColor
-
-        contentView = textField
+        contentView = content
     }
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
     func show(message: String, at mouseLocation: NSPoint) {
-        let maxWidth: CGFloat = 300
-        let constrainedSize = NSSize(width: maxWidth, height: CGFloat.greatestFiniteMagnitude)
-        let textSize = textField.cell?.cellSize(forBounds: NSRect(origin: .zero, size: constrainedSize)) ?? NSSize(width: 200, height: 30)
-
-        let padding: CGFloat = 16
-        let width = min(textSize.width + padding, maxWidth)
-        let height = textSize.height + padding
-
-        textField.stringValue = message
-        textField.frame = NSRect(x: 0, y: 0, width: width, height: height)
-
-        let tooltipSize = NSSize(width: width, height: height)
-        let frame = ScreenManager.shared.adjustedFrame(for: tooltipSize, at: mouseLocation, offset: offset)
+        let size = content.apply(kind: .error, title: message, detail: nil, maxWidth: 420)
+        let frame = ScreenManager.shared.adjustedFrame(for: size, at: mouseLocation, offset: offset)
         setFrame(frame, display: true)
+        invalidateShadow()
 
         alphaValue = 0
         orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.15
+            context.duration = 0.18
             self.animator().alphaValue = 1
         }
 
@@ -86,7 +59,7 @@ class ErrorTooltip: NSPanel {
         autoHideWorkItem = nil
         guard isVisible else { return }
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.15
+            context.duration = 0.2
             self.animator().alphaValue = 0
         }, completionHandler: {
             self.orderOut(nil)

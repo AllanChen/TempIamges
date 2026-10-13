@@ -40,6 +40,30 @@ final class InspectImageViewport: NSView {
         InspectViewportState(zoomRelativeToFit: zoom, normalizedCenter: normalizedCenter)
     }
 
+    /// Everything needed to re-render what this viewport shows at the image's
+    /// full resolution (view-only rotation and flips included).
+    var capturePane: CapturePane? {
+        guard let image, mediaRect.width > 0, mediaRect.height > 0 else { return nil }
+        return CapturePane(image: image, quarters: rotationQuarters,
+                           flipX: flipX < 0, flipY: flipY < 0,
+                           paneSize: mediaRect.size, zoom: zoom, center: normalizedCenter)
+    }
+
+    /// Where the visible part of the image sits on screen, in `target`'s
+    /// top-left coordinates. The capture editor draws its frozen picture here
+    /// so it opens exactly over the original.
+    func captureDisplayRect(in target: NSView) -> CGRect? {
+        guard let pane = capturePane,
+              let cg = pane.image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        let odd = abs(pane.quarters) % 2 == 1
+        let pixels = CGSize(width: odd ? cg.height : cg.width, height: odd ? cg.width : cg.height)
+        let d = CaptureGeometry.displayedRect(imagePixels: pixels, paneSize: pane.paneSize, zoom: pane.zoom)
+        let local = CGRect(x: mediaRect.minX + d.minX, y: mediaRect.minY + (mediaRect.height - d.maxY),
+                           width: d.width, height: d.height)
+        let r = convert(local, to: target)
+        return target.isFlipped ? r : CGRect(x: r.minX, y: target.bounds.height - r.maxY, width: r.width, height: r.height)
+    }
+
     private let imageLayer = CALayer()
     private let activeIndicator = CALayer()
     private let loadingView = FocusSweepLoadingView(frame: .zero)

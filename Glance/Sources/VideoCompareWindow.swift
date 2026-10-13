@@ -122,6 +122,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     /// Fired with the temp-file URL of a captured frame; AppDelegate routes it
     /// into the image inspect window.
     var onCaptureFrame: ((URL) -> Void)?
+    /// Fired with the saved file once a capture from the editor is written.
+    var onCaptured: ((URL) -> Void)?
+    /// The capture overlay while it is open; playback stays paused behind it.
+    private var captureEditor: CaptureEditorView?
+    private var resumeAfterCaptureEditor = false
+    private var captureSourceName: String?
     /// A dropped image opens in Image Inspect while this video window stays open.
     var onOpenImage: ((MediaInfo) -> Void)?
     /// Themed right-click menu (mute controls), rebuilt per presentation.
@@ -189,6 +195,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         // it at the window boundary so AVPlayerView/other responders cannot
         // consume it before synchronized playback toggles.
         if event.type == .keyDown,
+           captureEditor == nil,
            event.keyCode == 49,
            !event.isARepeat,
            event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty {
@@ -774,40 +781,49 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             self.completeCapture(image: image, at: time, resumePlayback: resumePlayback)
         }
     }
+    /// Hands the frozen frame to the capture editor. Playback stays paused
+    /// until the editor closes, then resumes if it was playing.
     private func completeCapture(image: NSImage?, at time: Double, resumePlayback: Bool) {
-        if resumePlayback {
-            viewports.forEach { $0.play() }
-            isPlaying = true
-            updateTimeline()
+        guard captureEditor == nil, let image, let frozen = CaptureFreeze.frame(image) else {
+            if resumePlayback { resumePlaybackAfterCapture() }
+            return
         }
-        guard let image else { return }
-        NSSound(named: "Grab")?.play()
-        captureFeedback.flash()
-        // Keep the captured frame ready for the thumbnail's existing Image
-        // Inspect handoff. A second capture replaces the pending preview.
-        let sourceToken = generation
-        let captureToken = frameCaptureGeneration
+        resumeAfterCaptureEditor = resumePlayback
+        captureSourceName = infos[safe: activeIndices[safe: mode == .compare ? activeCompareSlot : 0] ?? 0]?.filename
+        // Open over the video exactly where it plays (flip to top-left coordinates).
+        let video = activeVideoFrame
+        let shown: CGRect? = video.isEmpty ? nil
+            : CGRect(x: video.minX, y: canvas.bounds.height - video.maxY, width: video.width, height: video.height)
+        let editor = CaptureEditorView(image: frozen, displayRect: shown)
+        editor.frame = canvas.bounds
+        editor.onCancel = { [weak self] in self?.endCaptureEditor() }
+        editor.onCapture = { [weak self] cropped in self?.finishCaptureEditor(cropped) }
+        canvas.addSubview(editor)
+        captureEditor = editor
+        makeFirstResponder(editor)
+    }
+    private func resumePlaybackAfterCapture() {
+        viewports.forEach { $0.play() }
+        isPlaying = true
+        updateTimeline()
+    }
+    private func endCaptureEditor() {
+        guard let editor = captureEditor else { return }
+        captureEditor = nil
+        editor.removeFromSuperview()
+        makeFirstResponder(canvas)
+        if resumeAfterCaptureEditor { resumePlaybackAfterCapture() }
+        resumeAfterCaptureEditor = false
+    }
+    private func finishCaptureEditor(_ image: CGImage) {
+        let name = captureSourceName
+        endCaptureEditor()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let data = image.tiffRepresentation,
-                  let bitmap = NSBitmapImageRep(data: data),
-                  let png = bitmap.representation(using: .png, properties: [:]) else { return }
-            let directory = FileManager.default.temporaryDirectory
-                .appendingPathComponent("GlanceCaptures", isDirectory: true)
-            let url = directory.appendingPathComponent("capture-\(UUID().uuidString).png")
-            do {
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                try png.write(to: url)
-            } catch {
-                Logger.error("Video capture write failed: \(error.localizedDescription)")
-                return
-            }
+            let url = CaptureOutput.save(image, sourceName: name)
             DispatchQueue.main.async {
-                guard let self, self.generation == sourceToken,
-                      self.frameCaptureGeneration == captureToken else {
-                    try? FileManager.default.removeItem(at: url)
-                    return
-                }
-                self.showCaptureThumbnail(image: image, time: time, url: url)
+                guard let self else { return }
+                if let url { self.onCaptured?(url) }
+                else { self.toastWindow.show(message: "Could not save capture".localized, kind: .error, over: self) }
             }
         }
     }
@@ -1112,7 +1128,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                     if let url = URL(string: storedURL), url.host != "api.glance.mcreator.ai" {
                         self.copyWidgetResultURLToPasteboard(storedURL)
                     } else {
-                        self.toastWindow.show(message: "Could not refresh result URL".localized, over: self)
+                        self.toastWindow.show(message: "Could not refresh result URL".localized, kind: .error, over: self)
                     }
                 }
             }

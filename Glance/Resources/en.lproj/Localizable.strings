@@ -517,3 +517,33 @@
 "Copy as Base64" = "Copy as Base64";
 "Base64 → Image…" = "Base64 → Image…";
 "Tools" = "Tools";
+
+/* Capture */
+"Capture" = "Capture";
+"Ratio" = "Ratio";
+"Free" = "Free";
+"Capture…" = "Capture…";
+"Capture saved ✓" = "Capture saved ✓";
+"Could not save capture" = "Could not save capture";
+
+/* Preview History */
+"Yesterday" = "Yesterday";
+"Earlier" = "Earlier";
+"Documents" = "Documents";
+"%d previews" = "%d previews";
+"%d results" = "%d results";
+"Results for “%@”" = "Results for “%@”";
+"No previews yet" = "No previews yet";
+"Select a file path or image link anywhere and use your Glance shortcut.\nEverything you preview shows up here." = "Select a file path or image link anywhere and use your Glance shortcut.\nEverything you preview shows up here.";
+"No matches" = "No matches";
+"Try a different filename or filter." = "Try a different filename or filter.";
+"Remove from History" = "Remove from History";
+"Result" = "Result";
+
+/* Toast */
+"Previous / next" = "Previous / next";
+"Fit to window" = "Fit to window";
+"Actual size" = "Actual size";
+"Exit compare / close" = "Exit compare / close";
+"Compare with" = "Compare with";
+"Info" = "Info";

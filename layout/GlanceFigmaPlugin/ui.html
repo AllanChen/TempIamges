@@ -26,6 +26,8 @@
   <h1>Glance UI Builder <span style="color:#e8a87c">v2.1</span></h1>
   <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages. Includes the Result Badge Study.</p>
   <div id="mode">Checking Figma mode…</div>
+  <button id="generate-toast" class="generate-screens featured">Generate Toast</button>
+  <button id="generate-preview-history-redesign" class="generate-screens featured">Generate Preview History Redesign</button>
   <button id="generate-capture-editor" class="generate-screens featured">Generate Capture Editor</button>
   <button id="generate-menu-bar-icon" class="generate-screens featured">Generate Menu Bar Icon</button>
   <button id="generate-app-logo" class="generate-screens featured">Generate App Logo</button>
@@ -136,6 +138,14 @@
     document.getElementById('generate-app-logo').onclick = () => {
       status.textContent = 'Building App Logo...';
       parent.postMessage({ pluginMessage: { type: 'generate-app-logo' } }, '*');
+    };
+    document.getElementById('generate-toast').onclick = () => {
+      status.textContent = 'Building Toast...';
+      parent.postMessage({ pluginMessage: { type: 'generate-toast' } }, '*');
+    };
+    document.getElementById('generate-preview-history-redesign').onclick = () => {
+      status.textContent = 'Building Preview History Redesign...';
+      parent.postMessage({ pluginMessage: { type: 'generate-preview-history-redesign' } }, '*');
     };
     document.getElementById('generate-capture-editor').onclick = () => {
       status.textContent = 'Building Capture Editor...';

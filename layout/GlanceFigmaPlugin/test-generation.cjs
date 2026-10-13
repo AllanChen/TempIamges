@@ -440,6 +440,45 @@ const names = [
     'Regeneration must leave exactly one current compression flow');
   assert.equal(page.children.filter(child => child.name === 'Image Compression Flow / Previous').length, 1,
     'Regeneration must preserve the previous compression flow for review');
+  const beforeToast = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-toast' });
+  const toastBoard = page.children.find(child => child.name === 'Toast');
+  assert.ok(toastBoard, 'Toast board must be generated');
+  assert.equal(page.children.length, beforeToast + 1);
+  for (const scene of ['01 / Toast / Variants', '02 / Toast / In Context']) {
+    assert.ok(toastBoard.findOne(child => child.name === scene), `scene ${scene}`);
+  }
+  assert.ok(toastBoard.findOne(child => child.name === 'Toast / Shortcuts'), 'shortcuts toast');
+  assert.ok(toastBoard.findAll(child => child.name.startsWith('Toast / error')).length >= 1, 'error toast');
+  const detailToast = toastBoard.findOne(child => child.name === 'Toast / success / detail');
+  assert.equal(detailToast.height, 64, 'detail toast is 64 high');
+  const compactToast = toastBoard.findOne(child => child.name === 'Toast / success / compact');
+  assert.equal(compactToast.height, 48, 'compact toast is 48 high');
+  assert.ok(toastBoard.findAll(child => child.name === 'Title').every(node => node.fontSize >= 14), 'toast titles are 14 pt or larger');
+  await figma.ui.onmessage({ type: 'generate-toast' });
+  assert.equal(page.children.length, beforeToast + 1, 'toast regeneration is idempotent');
+  const beforeHistory = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-preview-history-redesign' });
+  const history = page.children.find(child => child.name === 'Preview History Redesign');
+  assert.ok(history, 'Preview History Redesign board must be generated');
+  assert.equal(page.children.length, beforeHistory + 1);
+  for (const scene of ['01 / Preview History / Populated', '02 / Preview History / Search', '03 / Preview History / Empty']) {
+    assert.ok(history.findOne(child => child.name === scene), `scene ${scene}`);
+  }
+  const populated = history.findOne(child => child.name === '01 / Preview History / Populated');
+  assert.equal(populated.findAll(child => child.name === 'Section Title').length, 3, 'Today / Yesterday / Earlier groups');
+  assert.equal(populated.findAll(child => child.name.startsWith('History Card / ')).length, 15, 'three rows of five cards');
+  assert.equal(populated.findAll(child => child.name === 'Action / Reveal in Finder').length, 1, 'only the hovered card shows actions');
+  assert.equal(populated.findAll(child => child.name === 'Filter / Videos').length, 1);
+  assert.equal(populated.findAll(child => child.name === 'Caption Bar').length, 0, 'no caption bar over thumbnails');
+  const searchScene = history.findOne(child => child.name === '02 / Preview History / Search');
+  assert.equal(searchScene.findAll(child => child.name.startsWith('History Card / ')).length, 4);
+  assert.ok(searchScene.findOne(child => child.name === 'Filename / semibold'), 'search match is highlighted');
+  const emptyScene = history.findOne(child => child.name === '03 / Preview History / Empty');
+  assert.equal(emptyScene.findAll(child => child.name.startsWith('History Card / ')).length, 0);
+  assert.equal(emptyScene.findOne(child => child.name === 'Clear History'), null, 'nothing to clear when empty');
+  await figma.ui.onmessage({ type: 'generate-preview-history-redesign' });
+  assert.equal(page.children.length, beforeHistory + 1, 'regeneration is idempotent');
   const beforeCapture = page.children.length;
   await figma.ui.onmessage({ type: 'generate-capture-editor' });
   const capture = page.children.find(child => child.name === 'Capture Editor');

@@ -62,6 +62,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let compareIconButton = InspectToolbarButton(symbol: "rectangle.split.2x1", tooltip: "Compare".localized)
     private let sliderIconButton = InspectToolbarButton(symbol: "slider.horizontal.3", tooltip: "Slider".localized)
     private let fitIconButton = InspectToolbarButton(symbol: "arrow.up.left.and.arrow.down.right", tooltip: "Fit".localized)
+    private let captureIconButton = InspectToolbarButton(symbol: "crop", tooltip: "Capture".localized)
+    /// The capture overlay while it is open, and the view that had focus before it.
+    private var captureEditor: CaptureEditorView?
+    private weak var captureReturnResponder: NSResponder?
+    /// Called with the saved file once a capture is written; the app opens it
+    /// in a new Image Inspect window.
+    var onCaptured: ((URL) -> Void)?
     private var isPinned = false
     private var autoHideChromeEnabled = true
     private var chromeIsHidden = false
@@ -104,7 +111,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// Themed action menu panel (frosted dark, warm-cue selection); rebuilt
     /// per presentation so enabled states and titles are always fresh.
     private var actionsPanel: ActionMenuPanel?
-    private lazy var errorTooltip = ErrorTooltip()
     private lazy var toastWindow = InspectToastWindow()
     private let canvasContainer = MediaDropCanvasView()
     /// Frosted semi-transparent black base filling the window behind the media,
@@ -356,6 +362,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // The capture overlay owns the keyboard while it is open.
+        if let editor = captureEditor {
+            let isShortcut = event.modifierFlags.contains([.command, .shift])
+                && event.charactersIgnoringModifiers?.lowercased() == "x"
+            if event.keyCode == 53 || isShortcut { endCapture(); return true }
+            if event.keyCode == 36 || event.keyCode == 76 { editor.keyDown(with: event); return true }
+            return super.performKeyEquivalent(with: event)
+        }
         // A presented sheet owns its keyboard input. In particular, do not
         // let the image window's global ⌘V shortcut consume paste intended
         // for the URL field in the Open sheet.
@@ -363,6 +377,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         guard session != nil else { return super.performKeyEquivalent(with: event) }
         let key = event.charactersIgnoringModifiers ?? ""
         if event.modifierFlags.contains(.command) {
+            if key.lowercased() == "x", event.modifierFlags.contains(.shift) { beginCapture(); return true }
             if key == "0" { activeViewports.forEach { $0.fitToView() }; return true }
             if key == "1" { activeViewports.forEach { $0.setActualSize() }; return true }
             if key.lowercased() == "w" { closeAndRestore(); return true }
@@ -440,9 +455,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     private func showKeyboardHelp() {
-        toastWindow.show(message: "Keyboard Shortcuts".localized + "\n" +
-            "← →  Previous / next\n0  Fit to window    1  Actual size    + −  Zoom\nEsc  Exit compare / close    ⌥-click  Compare with\n⌘C Copy   ⌘S Save   ⌘L / ⌘R Rotate   ⌘I Info".localized,
-            over: self, duration: 7)
+        toastWindow.showShortcuts(over: self)
     }
 
     override func sendEvent(_ event: NSEvent) {
@@ -688,6 +701,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         compareIconButton.action = #selector(sideBySideTapped)
         sliderIconButton.target = self
         sliderIconButton.action = #selector(sliderTapped)
+        captureIconButton.target = self
+        captureIconButton.action = #selector(captureTapped)
         fitIconButton.target = self
         fitIconButton.action = #selector(fitToWindowTapped)
         infoButton.target = self
@@ -717,26 +732,27 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         pinButton.action = #selector(pinTapped)
         pinButton.isActive = isPinned
         for view in [directionButton, flipIconButton, focusIconButton,
-                     compareIconButton, sliderIconButton, fitIconButton,
+                     compareIconButton, sliderIconButton, captureIconButton, fitIconButton,
                      zoomOutButton, zoomInButton,
                      widgetTasksButton, widgetMarketButton, infoButton,
                      actionsButton] {
             toolbarBar.addSubview(view)
         }
         for button in [directionButton, flipIconButton, focusIconButton,
-                       compareIconButton, sliderIconButton, fitIconButton,
+                       compareIconButton, sliderIconButton, captureIconButton, fitIconButton,
                        zoomOutButton, zoomInButton,
                        widgetTasksButton, widgetMarketButton, infoButton,
                        actionsButton] {
             button.usesFigmaStyle = true
         }
-        for button in [focusIconButton, compareIconButton, sliderIconButton,
+        for button in [focusIconButton, compareIconButton, sliderIconButton, captureIconButton,
                        widgetMarketButton, actionsButton] {
             button.isBorderlessFigmaTile = true
         }
         focusIconButton.setDesignIcon("ToolbarFocus")
         compareIconButton.setDesignIcon("ToolbarCompare")
         sliderIconButton.setDesignIcon("ToolbarSlider")
+        captureIconButton.setDesignIcon("ToolbarCapture")
         widgetMarketButton.setDesignIcon("ToolbarGrid")
         infoButton.setDesignIcon("ToolbarInfo")
         taskBadge.wantsLayer = true
@@ -866,7 +882,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let runningIndicatorX = max(8, width - 24 - 34)
         let toolbarAvailableW = runningImageIndicator.isHidden
             ? width - 16 : runningIndicatorX - 20
-        let toolbarScale = max(0.1, min(1, min(toolbarAvailableW / 274,
+        let toolbarScale = max(0.1, min(1, min(toolbarAvailableW / 326,
                                                (height - 16) / 77)))
         // Rounded frosted panel: the media is inset 8pt so the frosted base
         // reads as a dark frame; a hairline edge finishes the window.
@@ -892,10 +908,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             button.layer?.cornerRadius = dot / 2
         }
 
-        // 274×54 floating toolbar, centered horizontally, 23pt from the top.
-        // Wider than the old 230 so the five 38pt tiles get 14pt of breathing
-        // room between them instead of a cramped 6pt.
-        let toolbarW = 274 * toolbarScale
+        // 326×54 floating toolbar, centered horizontally, 23pt from the top.
+        // Six 38pt tiles with 14pt of breathing room between them.
+        let toolbarW = 326 * toolbarScale
         let toolbarH = 54 * toolbarScale
         let centeredToolbarX = (width - toolbarW) / 2
         let toolbarX = runningImageIndicator.isHidden
@@ -995,13 +1010,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func layoutToolbar(width: CGFloat) {
         // The toolbar frame is scaled uniformly, so a single scale drives the
         // tiles and keeps every icon square (no oval/stretched glyphs).
-        // Base design width is 274 (5×38pt tiles at a 52pt pitch, 14pt insets).
-        let scale = width / 274
+        // Base design width is 326 (6×38pt tiles at a 52pt pitch, 14pt insets).
+        let scale = width / 326
         func place(_ view: NSView, x: CGFloat) {
             // 38pt tiles, y=8 from top, 52pt horizontal pitch.
             view.frame = NSRect(x: x * scale, y: 8 * scale, width: 38 * scale, height: 38 * scale)
         }
-        let v3Buttons = [focusIconButton, compareIconButton, sliderIconButton,
+        let v3Buttons = [focusIconButton, compareIconButton, sliderIconButton, captureIconButton,
                          widgetMarketButton, actionsButton]
         for button in v3Buttons {
             button.layer?.cornerRadius = 9 * scale
@@ -1012,8 +1027,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         place(focusIconButton, x: 14)
         place(compareIconButton, x: 66)
         place(sliderIconButton, x: 118)
-        place(widgetMarketButton, x: 170)
-        place(actionsButton, x: 222)
+        place(captureIconButton, x: 170)
+        place(widgetMarketButton, x: 222)
+        place(actionsButton, x: 274)
 
         // Retained actions still exist in the controller and keyboard paths,
         // but are intentionally absent from the v3 five-action toolbar.
@@ -1152,6 +1168,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         focusIconButton.isHidden = !showingImage
         compareIconButton.isHidden = !showingImage
         sliderIconButton.isHidden = !showingImage
+        captureIconButton.isHidden = !showingImage
         widgetTasksButton.isHidden = true
         widgetMarketButton.isHidden = !showingImage
         actionsButton.isHidden = !showingImage
@@ -1332,6 +1349,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         focusIconButton.updateTooltip("Focus".localized)
         compareIconButton.updateTooltip("Compare".localized)
         sliderIconButton.updateTooltip("Slider".localized)
+        captureIconButton.updateTooltip("Capture".localized)
         fitIconButton.updateTooltip("Fit".localized)
         zoomOutButton.updateTooltip("Zoom Out".localized)
         zoomInButton.updateTooltip("Zoom In".localized)
@@ -1527,6 +1545,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             // Everything else that processes the image. Always openable:
             // "Base64 → Image…" does not depend on the current item.
             ActionMenuEntry(title: "Tools".localized, submenu: [
+                ActionMenuEntry(title: "Capture…".localized, shortcut: "⌘⇧X", enabled: hasImage, action: { [weak self] in self?.beginCapture() }),
+                .separator(),
                 ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() }),
                 ActionMenuEntry(title: "Compress…".localized, enabled: hasImage, action: { [weak self] in self?.compressImageTapped() }),
                 .separator(),
@@ -2042,7 +2062,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
               let tiff = image.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiff),
               let png = bitmap.representation(using: .png, properties: [:]) else {
-            errorTooltip.show(message: "Invalid Base64 image".localized, at: NSEvent.mouseLocation); return
+            toastWindow.show(message: "Invalid Base64 image".localized, kind: .error, over: self); return
         }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("GlanceBase64", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -2071,11 +2091,95 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                     self.toastWindow.show(message: "Saved ✓".localized + "\n" + url.path,
                                           over: self)
                 } else {
-                    self?.errorTooltip.show(message: "Export failed".localized,
-                                            at: NSEvent.mouseLocation)
+                    if let self { self.toastWindow.show(message: "Export failed".localized, kind: .error, over: self) }
                 }
             }
         }
+    }
+
+    // MARK: Capture
+
+    @objc private func captureTapped() { beginCapture() }
+
+    /// Shows a brief toast over this window (used for "Capture saved").
+    func showToast(_ message: String) {
+        toastWindow.show(message: message, over: self)
+    }
+
+    /// Freezes what the viewports show right now, at the source's full
+    /// resolution, and opens the capture editor over the window.
+    private func beginCapture() {
+        guard captureEditor == nil, let session, activeItemIsImage || session.mode == .compare,
+              let frozen = makeFrozenCapture() else { return }
+        actionsPanel?.dismissChain()
+        autoHideWorkItem?.cancel()
+        let editor = CaptureEditorView(image: frozen, displayRect: captureDisplayRect())
+        editor.frame = canvasContainer.bounds
+        editor.wantsLayer = true
+        editor.layer?.cornerRadius = canvasContainer.layer?.cornerRadius ?? 0
+        editor.layer?.masksToBounds = true
+        editor.onCancel = { [weak self] in self?.endCapture() }
+        editor.onCapture = { [weak self] cropped in self?.finishCapture(cropped) }
+        canvasContainer.addSubview(editor)
+        captureEditor = editor
+        captureReturnResponder = firstResponder
+        makeFirstResponder(editor)
+    }
+
+    private func endCapture() {
+        guard let editor = captureEditor else { return }
+        captureEditor = nil
+        editor.removeFromSuperview()
+        makeFirstResponder(captureReturnResponder ?? canvasContainer)
+        captureReturnResponder = nil
+        resetAutoHideTimer()
+    }
+
+    private func finishCapture(_ image: CGImage) {
+        let name = currentActionIndex.flatMap { index -> String? in
+            session?.infos.indices.contains(index) == true ? session?.infos[index].filename : nil
+        }
+        endCapture()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let url = CaptureOutput.save(image, sourceName: name)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let url { self.onCaptured?(url) }
+                else { self.toastWindow.show(message: "Could not save capture".localized, kind: .error, over: self) }
+            }
+        }
+    }
+
+    /// Where the frozen composite sits on screen: the displayed image of the
+    /// single / slider viewport, or both viewports together side by side.
+    private func captureDisplayRect() -> CGRect? {
+        guard let session else { return nil }
+        if session.mode == .compare {
+            if session.comparisonStyle == .slider {
+                return sliderViewport.viewport.captureDisplayRect(in: canvasContainer)
+            }
+            guard let a = primaryViewport.captureDisplayRect(in: canvasContainer),
+                  let b = secondaryViewport.captureDisplayRect(in: canvasContainer) else { return nil }
+            return a.union(b)
+        }
+        return primaryViewport.captureDisplayRect(in: canvasContainer)
+    }
+
+    private func makeFrozenCapture() -> CGImage? {
+        guard let session else { return nil }
+        if session.mode == .compare {
+            switch session.comparisonStyle {
+            case .sideBySide:
+                guard let a = primaryViewport.capturePane, let b = secondaryViewport.capturePane else { return nil }
+                return CaptureFreeze.sideBySide(a, b)
+            case .slider:
+                guard let panes = sliderViewport.capturePanes else { return nil }
+                return CaptureFreeze.slider(base: panes.base, overlay: panes.overlay,
+                                            fraction: sliderViewport.revealFraction)
+            }
+        }
+        guard let pane = primaryViewport.capturePane else { return nil }
+        return CaptureFreeze.single(pane)
     }
 
     private func quickSaveSource() -> QuickSaveSource? {
@@ -2185,8 +2289,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                     self.toastWindow.show(message: "Exported ✓".localized + "\n" + url.path,
                                           over: self)
                 } else {
-                    self?.errorTooltip.show(message: "Export failed".localized,
-                                            at: NSEvent.mouseLocation)
+                    if let self { self.toastWindow.show(message: "Export failed".localized, kind: .error, over: self) }
                 }
             }
         }
@@ -2299,7 +2402,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     private func showCompressionError() {
-        errorTooltip.show(message: "Compression failed".localized, at: NSEvent.mouseLocation)
+        toastWindow.show(message: "Compression failed".localized, kind: .error, over: self)
     }
 
     private var currentRevealInfo: MediaInfo? {
@@ -2353,7 +2456,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                     if let url = URL(string: storedURL), url.host != "api.glance.mcreator.ai" {
                         self.copyWidgetResultURLToPasteboard(storedURL)
                     } else {
-                        self.toastWindow.show(message: "Could not refresh result URL".localized, over: self)
+                        self.toastWindow.show(message: "Could not refresh result URL".localized, kind: .error, over: self)
                     }
                 }
             }
@@ -2748,7 +2851,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     private func openImageFromInput(_ text: String) {
         guard let info = imageInfo(from: text, allowExtensionlessRemoteURL: true) else {
-            errorTooltip.show(message: "No image URL found".localized, at: NSEvent.mouseLocation)
+            toastWindow.show(message: "No image URL found".localized, kind: .error, over: self)
             return
         }
         appendOrFocusImage(info: info)

@@ -1,37 +1,58 @@
 import AppKit
+import AVFoundation
+import ImageIO
 
-/// Lists past preview events as a grid of thumbnail cards, styled to match the
-/// Figma "Preview History / Clean Editable" frame: a dark titlebar with custom
-/// traffic lights, an icon toolbar, a searchable content area, and a statusbar.
+/// Preview History, built from the Figma "Preview History Redesign" board:
+/// a title bar, one row with search + type filters + Clear History, then the
+/// history grouped by day (or a flat result list while searching) as
+/// media-first cards.
 ///
 /// Cards are lightweight self-drawn views (not MediaTileView) so opening the
-/// window never blocks the main thread building AVPlayers / masonry tiles — the
-/// old cause of the open-time stutter.
+/// window never blocks the main thread building AVPlayers / masonry tiles.
+/// Thumbnails are decoded off the main thread at a small size and cached.
 final class HistoryWindow: NSWindow, NSWindowDelegate {
-    private static let contentSize = NSSize(width: 1040, height: 720)
+    private static let contentSize = NSSize(width: 1280, height: 800)
 
+    // Figma metrics (top-left origin).
     private enum Metric {
         static let titlebarH: CGFloat = 52
-        static let toolbarH: CGFloat = 56
-        static let statusH: CGFloat = 30
-        static let pad: CGFloat = 32
-        static let card = NSSize(width: 232, height: 176)
-        static let spacing: CGFloat = 20
+        static let rowY: CGFloat = 68
+        static let margin: CGFloat = 40
+        static let searchSize = NSSize(width: 320, height: 40)
+        static let chipsX: CGFloat = 384
+        static let chipY: CGFloat = 72
+        static let chipH: CGFloat = 32
+        static let chipGap: CGFloat = 8
+        static let clearSize = NSSize(width: 132, height: 32)
+        static let dividerY: CGFloat = 124
+        /// Section title sits at y 148 in the window; the scroll view starts at 125.
+        static let docTopPad: CGFloat = 23
+        static let sectionToCards: CGFloat = 36
+        static let afterRow: CGFloat = 28
+        static let rowGap: CGFloat = 24
+        static let cardGap: CGFloat = 21
+        static let minCardW: CGFloat = 240
+    }
+
+    private struct Group {
+        let title: String
+        let entries: [HistoryEntry]
     }
 
     private let imageLoader = ImageLoader()
     private var viewerWindows: [ContentViewerWindow] = []
 
     // Chrome
-    private let contentContainer = NSView()
+    private let contentContainer = FlippedDocView()
     private let titlebar = HistoryTitlebar()
-    private let windowTitleLabel = NSTextField(labelWithString: "")
-    private let subtitleLabel = NSTextField(labelWithString: "")
-    private let toolbarBar = NSView()
-    private let bodyView = FlippedDocView()
-    private let statusbar = NSView()
-    private let leftStatusLabel = NSTextField(labelWithString: "")
-    private let centerHintLabel = NSTextField(labelWithString: "")
+    private let searchBox = HistorySearchBox(frame: NSRect(origin: .zero, size: Metric.searchSize))
+    private let clearButton = HistoryClearButton(frame: NSRect(origin: .zero, size: Metric.clearSize))
+    private let divider = NSView()
+    private var chips: [(filter: HistoryFilter, view: HistoryChipView)] = []
+    private let scrollView = NSScrollView()
+    private let gridDocView = FlippedDocView()
+    private let emptyView = HistoryEmptyView()
+    private let fadeView = HistoryFadeView()
 
     private lazy var closeTrafficButton = TrafficLightButton(
         color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1),
@@ -43,19 +64,15 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1),
         target: self, action: #selector(zoomTapped))
 
-    // Content
-    /// Drawn by PanelCenteredTextView, not NSTextField: single-line text fields clip
-    /// the taller CJK fallback glyphs of a 19 pt heading ("今天" lost its top half).
-    private let sectionTitle = PanelCenteredTextView()
-    private let countLabel = NSTextField(labelWithString: "")
-    private let searchField = NSSearchField()
-    private let emptyLabel = NSTextField(labelWithString: "")
-    private let scrollView = NSScrollView()
-    private let gridDocView = FlippedDocView()
-
-    private var allInfos: [MediaInfo] = []
+    // Data
+    private var entries: [HistoryEntry] = []
+    private var selectedFilter = HistoryFilter.all
+    private var groups: [Group] = []
+    private var headers: [HistorySectionHeader] = []
     private var cards: [HistoryCardView] = []
-    private var toolbarTrailingButtons: [NSButton] = []
+    private let thumbnailCache = NSCache<NSString, CGImage>()
+    private var sizeCache: [String: String] = [:]
+    private var durationCache: [String: String] = [:]
 
     init() {
         super.init(contentRect: NSRect(origin: .zero, size: Self.contentSize),
@@ -67,11 +84,12 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         titlebarAppearsTransparent = true
         isReleasedWhenClosed = false
         appearance = NSAppearance(named: .darkAqua)
-        backgroundColor = PanelStyle.inspectBackground
-        minSize = NSSize(width: 820, height: 520)
+        backgroundColor = HistoryStyle.background
+        minSize = NSSize(width: 1000, height: 560)
         standardWindowButton(.closeButton)?.isHidden = true
         standardWindowButton(.miniaturizeButton)?.isHidden = true
         standardWindowButton(.zoomButton)?.isHidden = true
+        thumbnailCache.countLimit = 400
 
         buildUI()
         setFrame(ScreenManager.shared.contentFrame(for: Self.contentSize), display: false)
@@ -87,99 +105,53 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     deinit { NotificationCenter.default.removeObserver(self) }
 
-    func refresh() { rebuildCards() }
+    func refresh() { rebuildEntries() }
 
     // MARK: Build
 
     private func buildUI() {
         contentContainer.wantsLayer = true
-        contentContainer.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
+        contentContainer.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background)
         contentView = contentContainer
 
-        titlebar.wantsLayer = true
-        titlebar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        titlebar.title = "Preview History".localized
         contentContainer.addSubview(titlebar)
-        configureLabel(windowTitleLabel, size: 15, weight: .semibold, color: PanelStyle.textPrimary, align: .center)
-        windowTitleLabel.stringValue = "Preview History".localized
-        titlebar.addSubview(windowTitleLabel)
-        configureLabel(subtitleLabel, size: 11, color: PanelStyle.textTertiary, align: .center)
-        titlebar.addSubview(subtitleLabel)
         titlebar.addSubview(closeTrafficButton)
         titlebar.addSubview(minimizeTrafficButton)
         titlebar.addSubview(zoomTrafficButton)
 
-        toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        toolbarBar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        toolbarBar.layer?.borderWidth = 1
-        contentContainer.addSubview(toolbarBar)
-        addToolbarButton(symbol: "arrow.uturn.backward", tooltip: "Open in Inspect".localized, action: #selector(noop))
-        addToolbarButton(symbol: "trash", tooltip: "Clear History".localized, action: #selector(clearTapped), tint: PanelStyle.danger)
-        addToolbarButton(symbol: "info.circle", tooltip: "About Glance".localized, action: #selector(noop))
+        searchBox.onChange = { [weak self] in self?.applyFilter() }
+        contentContainer.addSubview(searchBox)
 
-        bodyView.wantsLayer = true
-        bodyView.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-        contentContainer.addSubview(bodyView)
+        for filter in HistoryFilter.allCases {
+            let chip = HistoryChipView(frame: .zero)
+            chip.onClick = { [weak self] in
+                self?.selectedFilter = filter
+                self?.applyFilter()
+            }
+            contentContainer.addSubview(chip)
+            chips.append((filter, chip))
+        }
 
-        sectionTitle.font = PanelStyle.inspectFont(ofSize: 19, weight: .semibold)
-        sectionTitle.textColor = PanelStyle.textPrimary
-        sectionTitle.alignment = .left
-        sectionTitle.string = "Today".localized
-        bodyView.addSubview(sectionTitle)
-        configureLabel(countLabel, size: 11, color: PanelStyle.textTertiary)
-        bodyView.addSubview(countLabel)
+        clearButton.onClick = { [weak self] in self?.clearTapped() }
+        contentContainer.addSubview(clearButton)
 
-        searchField.placeholderString = "Search filename".localized
-        searchField.font = PanelStyle.inspectFont(ofSize: 12)
-        searchField.target = self
-        searchField.action = #selector(searchChanged)
-        searchField.sendsSearchStringImmediately = true
-        searchField.sendsWholeSearchString = false
-        bodyView.addSubview(searchField)
-
-        configureLabel(emptyLabel, size: 13, color: PanelStyle.textTertiary, align: .center)
-        emptyLabel.stringValue = "No preview history yet.".localized
-        emptyLabel.isHidden = true
-        bodyView.addSubview(emptyLabel)
+        divider.wantsLayer = true
+        divider.layer?.backgroundColor = HistoryStyle.hairline.cgColor
+        contentContainer.addSubview(divider)
 
         scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = false
+        scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
         scrollView.documentView = gridDocView
-        bodyView.addSubview(scrollView)
+        contentContainer.addSubview(scrollView)
 
-        statusbar.wantsLayer = true
-        statusbar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectStatus)
-        statusbar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        statusbar.layer?.borderWidth = 1
-        contentContainer.addSubview(statusbar)
-        configureLabel(leftStatusLabel, size: 12, color: PanelStyle.textSecondary)
-        statusbar.addSubview(leftStatusLabel)
-        configureLabel(centerHintLabel, size: 12, color: PanelStyle.textSecondary, align: .center)
-        centerHintLabel.stringValue = "Search by filename, inspect again with one click".localized
-        statusbar.addSubview(centerHintLabel)
-
-        rebuildCards()
+        contentContainer.addSubview(emptyView)
+        contentContainer.addSubview(fadeView)
+        rebuildEntries()
     }
-
-    private func configureLabel(_ label: NSTextField, size: CGFloat, weight: NSFont.Weight = .regular,
-                                color: NSColor, align: NSTextAlignment = .left) {
-        label.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
-        label.textColor = color
-        label.alignment = align
-        label.lineBreakMode = .byTruncatingTail
-        label.cell?.usesSingleLineMode = true
-    }
-
-    private func addToolbarButton(symbol: String, tooltip: String, action: Selector, tint: NSColor? = nil) {
-        let btn = PanelStyle.makeIconButton(symbol: symbol, tooltip: tooltip, target: self, action: action)
-        if let tint = tint { btn.contentTintColor = tint }
-        toolbarBar.addSubview(btn)
-        toolbarTrailingButtons.append(btn)
-    }
-
-    // MARK: Layout
 
     private func layoutContent() {
         let W = contentContainer.bounds.width
@@ -187,45 +159,31 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         guard W > 0, H > 0 else { return }
         applyBackingScale()
 
-        titlebar.frame = NSRect(x: 0, y: H - Metric.titlebarH, width: W, height: Metric.titlebarH)
-        let dot: CGFloat = 12
-        let dotY = (Metric.titlebarH - dot) / 2
-        closeTrafficButton.frame = NSRect(x: 20, y: dotY, width: dot, height: dot)
-        minimizeTrafficButton.frame = NSRect(x: 40, y: dotY, width: dot, height: dot)
-        zoomTrafficButton.frame = NSRect(x: 60, y: dotY, width: dot, height: dot)
-        windowTitleLabel.frame = NSRect(x: 100, y: Metric.titlebarH / 2, width: W - 200, height: 20)
-        subtitleLabel.frame = NSRect(x: 100, y: Metric.titlebarH / 2 - 17, width: W - 200, height: 14)
+        titlebar.frame = NSRect(x: 0, y: 0, width: W, height: Metric.titlebarH)
+        closeTrafficButton.frame = NSRect(x: 20, y: 18, width: 12, height: 12)
+        minimizeTrafficButton.frame = NSRect(x: 40, y: 18, width: 12, height: 12)
+        zoomTrafficButton.frame = NSRect(x: 60, y: 18, width: 12, height: 12)
 
-        toolbarBar.frame = NSRect(x: 0, y: H - Metric.titlebarH - Metric.toolbarH, width: W, height: Metric.toolbarH)
-        let btn: CGFloat = 36
-        let btnY = (Metric.toolbarH - btn) / 2
-        for (i, b) in toolbarTrailingButtons.enumerated() {
-            b.frame = NSRect(x: W - 20 - btn - CGFloat(i) * 44, y: btnY, width: btn, height: btn)
-        }
+        searchBox.frame = NSRect(x: Metric.margin, y: Metric.rowY, width: Metric.searchSize.width, height: Metric.searchSize.height)
+        layoutChips()
+        clearButton.frame = NSRect(x: W - Metric.margin - Metric.clearSize.width, y: Metric.chipY,
+                                   width: Metric.clearSize.width, height: Metric.clearSize.height)
+        divider.frame = NSRect(x: 0, y: Metric.dividerY, width: W, height: 1)
 
-        statusbar.frame = NSRect(x: 0, y: 0, width: W, height: Metric.statusH)
-        leftStatusLabel.frame = NSRect(x: 20, y: (Metric.statusH - 15) / 2, width: 480, height: 15)
-        centerHintLabel.frame = NSRect(x: 0, y: (Metric.statusH - 15) / 2, width: W, height: 15)
-
-        let bodyTop = H - Metric.titlebarH - Metric.toolbarH
-        let bodyH = bodyTop - Metric.statusH
-        bodyView.frame = NSRect(x: 0, y: Metric.statusH, width: W, height: bodyH)
-        layoutBody()
+        let bodyY = Metric.dividerY + 1
+        scrollView.frame = NSRect(x: 0, y: bodyY, width: W, height: H - bodyY)
+        emptyView.frame = scrollView.frame
+        fadeView.frame = NSRect(x: 0, y: H - 100, width: W, height: 100)
+        layoutGrid()
     }
 
-    private func layoutBody() {
-        // bodyView is flipped: y grows downward.
-        let w = bodyView.bounds.width
-        let h = bodyView.bounds.height
-        let p = Metric.pad
-        sectionTitle.frame = NSRect(x: p, y: 28, width: 300, height: 28)
-        countLabel.frame = NSRect(x: p, y: 62, width: 300, height: 15)
-        searchField.frame = NSRect(x: w - p - 320, y: 30, width: 320, height: 30)
-
-        let gridTop: CGFloat = 100
-        scrollView.frame = NSRect(x: p, y: gridTop, width: max(0, w - p * 2), height: max(0, h - gridTop - 16))
-        emptyLabel.frame = NSRect(x: 0, y: gridTop + 60, width: w, height: 20)
-        relayoutCards()
+    private func layoutChips() {
+        var x = Metric.chipsX
+        for (_, chip) in chips {
+            let width = chip.fittingWidth
+            chip.frame = NSRect(x: x, y: Metric.chipY, width: width, height: Metric.chipH)
+            x += width + Metric.chipGap
+        }
     }
 
     private func applyBackingScale() {
@@ -237,84 +195,265 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         apply(contentContainer)
     }
 
-    // MARK: Cards
+    // MARK: Data
 
-    private func rebuildCards() {
-        for card in cards { card.removeFromSuperview() }
-        cards.removeAll()
-
+    private func rebuildEntries() {
         var seen = Set<String>()
-        allInfos = HistoryManager.shared.records
-            .flatMap { $0.items }
-            .filter { seen.insert($0.value).inserted }
-            .compactMap { $0.detectedPath }
-            .compactMap { MediaInfo.from($0) }
-
+        var built: [HistoryEntry] = []
+        for record in HistoryManager.shared.records {
+            for item in record.items where seen.insert(item.value).inserted {
+                guard let info = item.detectedPath.flatMap({ MediaInfo.from($0) }) else { continue }
+                let isResult = info.kind == .image && info.isLocal
+                    && WidgetTaskManager.shared.completedRecord(for: info.url) != nil
+                built.append(HistoryEntry(info: info, timestamp: record.timestamp, isResult: isResult, storedValue: item.value))
+            }
+        }
+        entries = built
         applyFilter()
     }
 
     private func applyFilter() {
-        let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let filtered = query.isEmpty ? allInfos
-            : allInfos.filter { $0.filename.lowercased().contains(query) }
+        let query = searchBox.query
+        let lowered = query.lowercased()
+        let matching = lowered.isEmpty ? entries : entries.filter { $0.info.filename.lowercased().contains(lowered) }
 
-        for card in cards { card.removeFromSuperview() }
-        cards.removeAll()
-
-        emptyLabel.isHidden = !filtered.isEmpty
-        for info in filtered {
-            let card = HistoryCardView(info: info)
-            let captured = info
-            card.onTap = { [weak self] in self?.handleTileTap(info: captured) }
-            gridDocView.addSubview(card)
-            cards.append(card)
-            loadThumbnail(for: info, card: card)
+        // Chip counts follow the query; the selected chip filters the list.
+        for (filter, chip) in chips {
+            let count = matching.filter { filter.matches($0.info) }.count
+            chip.title = filter.title
+            chip.count = count
+            chip.isActive = filter == selectedFilter
+            chip.isDimmed = count == 0 && filter != .all || entries.isEmpty
         }
-        countLabel.stringValue = String(format: "%d items".localized, filtered.count)
-        leftStatusLabel.stringValue = "Preview History".localized + "  •  " + String(format: "%d items".localized, allInfos.count)
-        subtitleLabel.stringValue = String(format: "%d items today".localized, allInfos.count)
-        relayoutCards()
+        layoutChips()
+
+        let shown = matching.filter { selectedFilter.matches($0.info) }
+        titlebar.subtitle = lowered.isEmpty
+            ? String(format: "%d previews".localized, entries.count)
+            : String(format: "%d results".localized, shown.count)
+        clearButton.isHidden = entries.isEmpty
+        searchBox.alphaValue = entries.isEmpty ? 0.5 : 1
+
+        groups = lowered.isEmpty
+            ? Self.dayGroups(for: shown)
+            : (shown.isEmpty ? [] : [Group(title: String(format: "Results for “%@”".localized, query), entries: shown)])
+
+        rebuildCards(highlight: query, flat: !lowered.isEmpty)
+
+        let empty = shown.isEmpty
+        emptyView.isHidden = !empty
+        fadeView.isHidden = empty
+        scrollView.isHidden = empty
+        if empty {
+            if entries.isEmpty {
+                emptyView.configure(icon: "HistoryFocus", heading: "No previews yet".localized,
+                                    detail: "Select a file path or image link anywhere and use your Glance shortcut.\nEverything you preview shows up here.".localized)
+            } else {
+                emptyView.configure(icon: "HistorySearch", heading: "No matches".localized,
+                                    detail: "Try a different filename or filter.".localized)
+            }
+        }
+        layoutGrid()
     }
 
-    private func relayoutCards() {
+    private static func dayGroups(for entries: [HistoryEntry]) -> [Group] {
+        let calendar = Calendar.current
+        var today: [HistoryEntry] = [], yesterday: [HistoryEntry] = [], earlier: [HistoryEntry] = []
+        for entry in entries {
+            if calendar.isDateInToday(entry.timestamp) { today.append(entry) }
+            else if calendar.isDateInYesterday(entry.timestamp) { yesterday.append(entry) }
+            else { earlier.append(entry) }
+        }
+        return [Group(title: "Today".localized, entries: today),
+                Group(title: "Yesterday".localized, entries: yesterday),
+                Group(title: "Earlier".localized, entries: earlier)].filter { !$0.entries.isEmpty }
+    }
+
+    // MARK: Cards
+
+    private func rebuildCards(highlight: String, flat: Bool) {
+        headers.forEach { $0.removeFromSuperview() }
+        cards.forEach { $0.removeFromSuperview() }
+        headers.removeAll(); cards.removeAll()
+
+        for group in groups {
+            let header = HistorySectionHeader(title: group.title, count: group.entries.count)
+            gridDocView.addSubview(header)
+            headers.append(header)
+            for entry in group.entries {
+                let card = HistoryCardView(entry: entry, highlight: highlight,
+                                           meta: metaText(for: entry, flat: flat))
+                card.onOpen = { [weak self] in self?.handleTileTap(info: entry.info) }
+                card.onReveal = { NSWorkspace.shared.activateFileViewerSelecting([entry.info.url]) }
+                card.onRemove = { HistoryManager.shared.remove(value: entry.storedValue) }
+                gridDocView.addSubview(card)
+                cards.append(card)
+                loadThumbnail(for: entry.info, card: card)
+                loadExtras(for: entry, card: card, flat: flat)
+            }
+        }
+    }
+
+    private func layoutGrid() {
         var contentW = scrollView.contentSize.width
         if contentW <= 0 { contentW = scrollView.frame.width }
         guard contentW > 0 else { return }
 
-        let cardW = Metric.card.width
-        let cardH = Metric.card.height
-        let spacing = Metric.spacing
-        let cols = max(1, Int((contentW + spacing) / (cardW + spacing)))
-        var maxY: CGFloat = 0
-        for (idx, card) in cards.enumerated() {
-            let row = idx / cols
-            let col = idx % cols
-            let x = (CGFloat(col) * (cardW + spacing)).rounded()
-            let y = (CGFloat(row) * (cardH + spacing)).rounded()
-            card.frame = NSRect(x: x, y: y, width: cardW, height: cardH)
-            maxY = max(maxY, y + cardH)
+        let avail = contentW - Metric.margin * 2
+        let cols = max(1, Int((avail + Metric.cardGap) / (Metric.minCardW + Metric.cardGap)))
+        let cardW = floor((avail - Metric.cardGap * CGFloat(cols - 1)) / CGFloat(cols))
+        let cardH = HistoryCardView.height(forWidth: cardW)
+
+        var y = Metric.docTopPad
+        var headerIndex = 0, cardIndex = 0
+        for group in groups {
+            headers[headerIndex].frame = NSRect(x: Metric.margin, y: y, width: avail, height: 20)
+            headerIndex += 1
+            y += Metric.sectionToCards
+            let rows = (group.entries.count + cols - 1) / cols
+            for i in 0..<group.entries.count {
+                let row = i / cols, col = i % cols
+                cards[cardIndex].frame = NSRect(x: Metric.margin + CGFloat(col) * (cardW + Metric.cardGap),
+                                                y: y + CGFloat(row) * (cardH + Metric.rowGap),
+                                                width: cardW, height: cardH)
+                cardIndex += 1
+            }
+            y += CGFloat(rows) * cardH + CGFloat(max(0, rows - 1)) * Metric.rowGap + Metric.afterRow
         }
-        let rows = (cards.count + cols - 1) / cols
-        let docH = max(CGFloat(rows) * (cardH + spacing), scrollView.contentSize.height)
-        gridDocView.frame = NSRect(x: 0, y: 0, width: contentW, height: docH)
+        gridDocView.frame = NSRect(x: 0, y: 0, width: contentW,
+                                   height: max(y + 60, scrollView.contentSize.height))
     }
 
+    // MARK: Thumbnails and metadata
+
     private func loadThumbnail(for info: MediaInfo, card: HistoryCardView) {
+        let key = info.url.absoluteString as NSString
+        if let cached = thumbnailCache.object(forKey: key) {
+            card.setThumbnail(cached)
+            return
+        }
         switch info.kind {
         case .image:
-            imageLoader.loadImage(from: info.url) { [weak card] image in
-                DispatchQueue.main.async {
-                    if let image = image { card?.setImage(image) } else { card?.setFailed() }
+            if info.isLocal {
+                let url = info.url
+                DispatchQueue.global(qos: .userInitiated).async { [weak self, weak card] in
+                    let image = Self.downsampledImage(at: url)
+                    DispatchQueue.main.async {
+                        if let image { self?.thumbnailCache.setObject(image, forKey: key); card?.setThumbnail(image) }
+                        else { self?.loadFullImage(info, key: key, card: card) }
+                    }
                 }
+            } else {
+                loadFullImage(info, key: key, card: card)
             }
         case .video:
-            card.setPlaceholder(for: info)
-            imageLoader.loadVideoThumbnail(from: info.url) { [weak card] image in
-                if let image { card?.setImage(image) }
+            imageLoader.loadVideoThumbnail(from: info.url) { [weak self, weak card] image in
+                DispatchQueue.main.async {
+                    guard let cg = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+                    self?.thumbnailCache.setObject(cg, forKey: key)
+                    card?.setThumbnail(cg)
+                }
             }
         default:
-            card.setPlaceholder(for: info)
+            card.setDocument()
         }
+    }
+
+    private func loadFullImage(_ info: MediaInfo, key: NSString, card: HistoryCardView?) {
+        imageLoader.loadImage(from: info.url) { [weak self, weak card] image in
+            DispatchQueue.main.async {
+                guard let cg = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) else { card?.setFailed(); return }
+                self?.thumbnailCache.setObject(cg, forKey: key)
+                card?.setThumbnail(cg)
+            }
+        }
+    }
+
+    private static func downsampledImage(at url: URL, maxPixel: Int = 720) -> CGImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
+
+    /// File size (local files) and video duration arrive after the card exists,
+    /// so building the list never touches the disk on the main thread.
+    private func loadExtras(for entry: HistoryEntry, card: HistoryCardView, flat: Bool) {
+        let info = entry.info
+        let path = info.url.path
+        if info.isLocal {
+            if let cached = sizeCache[path] {
+                card.setMeta(metaText(for: entry, flat: flat, size: cached))
+            } else {
+                DispatchQueue.global(qos: .utility).async { [weak self, weak card] in
+                    guard let bytes = (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int64 else { return }
+                    let text = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+                    DispatchQueue.main.async {
+                        guard let self else { return }
+                        self.sizeCache[path] = text
+                        card?.setMeta(self.metaText(for: entry, flat: flat, size: text))
+                    }
+                }
+            }
+        }
+        if info.kind == .video, info.isLocal {
+            if let cached = durationCache[path] { card.setDuration(cached); return }
+            let url = info.url
+            Task.detached { [weak self, weak card] in
+                guard let time = try? await AVURLAsset(url: url).load(.duration), time.seconds.isFinite, time.seconds > 0 else { return }
+                let text = Self.durationText(time.seconds)
+                await MainActor.run {
+                    self?.durationCache[path] = text
+                    card?.setDuration(text)
+                }
+            }
+        }
+    }
+
+    private static func durationText(_ seconds: Double) -> String {
+        let total = Int(seconds.rounded())
+        let h = total / 3600, m = (total % 3600) / 60, s = total % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
+    }
+
+    private func metaText(for entry: HistoryEntry, flat: Bool, size: String? = nil) -> String {
+        var parts = [Self.formatName(for: entry.info)]
+        if let size = size ?? sizeCache[entry.info.url.path] { parts.append(size) }
+        parts.append(timeText(for: entry.timestamp, flat: flat))
+        return parts.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    private static func formatName(for info: MediaInfo) -> String {
+        switch info.formatName {
+        case "JPG", "JPEG": return "JPEG"
+        case "WEBP": return "WebP"
+        case "MD", "MARKDOWN": return "Markdown"
+        case "": return info.kind == .webPage ? (info.url.host ?? "") : ""
+        case let other: return other
+        }
+    }
+
+    /// Day groups already say Today / Yesterday, so cards show the time there
+    /// and the date in "Earlier". A flat search list needs the day spelled out.
+    private func timeText(for date: Date, flat: Bool) -> String {
+        let locale = Locale(identifier: Preferences.shared.appLanguage.rawValue)
+        let calendar = Calendar.current
+        let time = DateFormatter()
+        time.locale = locale; time.timeStyle = .short; time.dateStyle = .none
+        let day = DateFormatter()
+        day.locale = locale
+        day.setLocalizedDateFormatFromTemplate("MMMd")
+        if calendar.isDateInToday(date) {
+            return flat ? "Today".localized + " " + time.string(from: date) : time.string(from: date)
+        }
+        if calendar.isDateInYesterday(date) {
+            return flat ? "Yesterday".localized : time.string(from: date)
+        }
+        return day.string(from: date)
     }
 
     // MARK: Actions
@@ -322,8 +461,6 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
     @objc private func closeTapped() { close() }
     @objc private func minimizeTapped() { miniaturize(nil) }
     @objc private func zoomTapped() { zoom(nil) }
-    @objc private func noop() {}
-    @objc private func searchChanged() { applyFilter() }
 
     /// Images and videos reopen inside Glance (Image / Video Inspect). Falls
     /// back to the system app only when nobody wired the callback.
@@ -356,7 +493,7 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         }
     }
 
-    @objc private func clearTapped() {
+    private func clearTapped() {
         let alert = NSAlert()
         alert.messageText = "Clear all history?".localized
         alert.informativeText = "This removes the saved list of past previews. It does not affect any actual files.".localized
@@ -369,140 +506,26 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
     }
 
     @objc private func historyDidChange() {
-        DispatchQueue.main.async { [weak self] in self?.rebuildCards() }
+        DispatchQueue.main.async { [weak self] in self?.rebuildEntries() }
     }
 
     @objc private func languageChanged() {
-        windowTitleLabel.stringValue = "Preview History".localized
-        sectionTitle.string = "Today".localized
-        searchField.placeholderString = "Search filename".localized
-        centerHintLabel.stringValue = "Search by filename, inspect again with one click".localized
+        titlebar.title = "Preview History".localized
+        searchBox.updatePlaceholder()
         applyFilter()
     }
 
     func windowDidResize(_ notification: Notification) { layoutContent() }
 
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+           event.charactersIgnoringModifiers?.lowercased() == "f" {
+            searchBox.focus()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
-}
-
-// MARK: - Supporting views
-
-private final class HistoryTitlebar: NSView {
-    override func mouseDown(with event: NSEvent) {
-        if event.clickCount == 2 { window?.zoom(nil) } else { window?.performDrag(with: event) }
-    }
-}
-
-/// Self-drawn history card: thumbnail + filename/type overlay + load states.
-private final class HistoryCardView: NSView {
-    var onTap: (() -> Void)?
-    private let info: MediaInfo
-    private let imageView = NSImageView()
-    private let overlay = NSView()
-    private let nameLabel = NSTextField(labelWithString: "")
-    private let typeLabel = NSTextField(labelWithString: "")
-    private let stateLabel = NSTextField(labelWithString: "")
-    /// Sits above the artwork and caption so the whole card lightens on hover.
-    private let hoverTint = InspectNonHitTestingView()
-
-    init(info: MediaInfo) {
-        self.info = info
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.cornerRadius = 12
-        layer?.masksToBounds = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surfaceRaised)
-        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        layer?.borderWidth = 1
-
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.wantsLayer = true
-        imageView.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-        addSubview(imageView)
-
-        stateLabel.font = PanelStyle.inspectFont(ofSize: 11)
-        stateLabel.textColor = PanelStyle.textTertiary
-        stateLabel.alignment = .center
-        stateLabel.stringValue = "Loading…".localized
-        stateLabel.backgroundColor = .clear
-        stateLabel.isBordered = false
-        stateLabel.isEditable = false
-        addSubview(stateLabel)
-
-        overlay.wantsLayer = true
-        overlay.layer?.backgroundColor = NSColor(white: 0, alpha: 0.55).cgColor
-        addSubview(overlay)
-
-        nameLabel.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
-        nameLabel.textColor = PanelStyle.textPrimary
-        nameLabel.lineBreakMode = .byTruncatingMiddle
-        nameLabel.cell?.usesSingleLineMode = true
-        nameLabel.stringValue = info.filename
-        overlay.addSubview(nameLabel)
-
-        typeLabel.font = PanelStyle.inspectFont(ofSize: 10)
-        typeLabel.textColor = PanelStyle.textTertiary
-        typeLabel.alignment = .right
-        typeLabel.stringValue = info.formatName
-        overlay.addSubview(typeLabel)
-
-        hoverTint.wantsLayer = true
-        hoverTint.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.rowHover)
-        hoverTint.isHidden = true
-        addSubview(hoverTint, positioned: .above, relativeTo: nil)
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow],
-                                       owner: self, userInfo: nil))
-    }
-    override func mouseEntered(with event: NSEvent) { hoverTint.isHidden = false }
-    override func mouseExited(with event: NSEvent) { hoverTint.isHidden = true }
-
-    func setImage(_ image: NSImage) {
-        imageView.image = image
-        imageView.contentTintColor = nil
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        stateLabel.isHidden = true
-    }
-
-    func setFailed() {
-        imageView.image = nil
-        stateLabel.stringValue = "Failed to load".localized
-        stateLabel.textColor = PanelStyle.danger
-        stateLabel.isHidden = false
-    }
-
-    func setPlaceholder(for info: MediaInfo) {
-        let symbol: String
-        switch info.kind {
-        case .video: symbol = "film"
-        case .markdown, .text: symbol = "doc.text"
-        case .pdf: symbol = "doc.richtext"
-        case .webPage: symbol = "globe"
-        case .folder: symbol = "folder"
-        default: symbol = "doc"
-        }
-        imageView.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-        imageView.contentTintColor = PanelStyle.textTertiary
-        imageView.imageScaling = .scaleNone
-        stateLabel.isHidden = true
-    }
-
-    override func layout() {
-        super.layout()
-        imageView.frame = bounds
-        let overlayH: CGFloat = 34
-        overlay.frame = NSRect(x: 0, y: 0, width: bounds.width, height: overlayH)
-        nameLabel.frame = NSRect(x: 12, y: (overlayH - 16) / 2, width: bounds.width - 64, height: 16)
-        typeLabel.frame = NSRect(x: bounds.width - 56, y: (overlayH - 14) / 2, width: 44, height: 14)
-        stateLabel.frame = NSRect(x: 0, y: bounds.midY - 8, width: bounds.width, height: 16)
-        hoverTint.frame = bounds
-    }
-
-    override func mouseDown(with event: NSEvent) { onTap?() }
 }
