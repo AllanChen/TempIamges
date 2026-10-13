@@ -83,8 +83,8 @@ def is_audit_rejection(result: dict) -> bool:
 
 def provider_message(result: dict, api_key: str) -> str:
     reason = failed_reason(result)
-    detail = (result.get("errorMessage") or reason.get("exception_message")
-              or reason.get("message") or result.get("message") or result.get("msg")
+    detail = (reason.get("exception_message") or reason.get("message")
+              or result.get("errorMessage") or result.get("message") or result.get("msg")
               or result.get("status") or "Unknown provider error")
     return safe_error(detail, api_key)
 
@@ -289,8 +289,12 @@ def wait_for_result(api_key: str, task_id: str, deadline: float) -> str:
             return video_result_url(result)
         if status in ("FAILED", "FAILURE", "ERROR"):
             if is_audit_rejection(result):
-                raise AuditRejectedError(f"RunningHub content rejected: {provider_message(result, api_key)}")
-            raise GenerationFailedError(f"RunningHub task failed: {provider_message(result, api_key)}")
+                raise AuditRejectedError(
+                    f"RunningHub task {safe_error(task_id, api_key)} content rejected: "
+                    f"{provider_message(result, api_key)}")
+            raise GenerationFailedError(
+                f"RunningHub task {safe_error(task_id, api_key)} failed: "
+                f"{provider_message(result, api_key)}")
         if status not in ("RUNNING", "QUEUED"):
             raise RuntimeError(f"RunningHub returned unknown task status: {safe_error(status, api_key)}")
         time.sleep(min(POLL_INTERVAL, remaining(poll_deadline)))

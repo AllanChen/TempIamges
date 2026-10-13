@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "783745bf-501d-4cfd-b2b8-69d32a8d90a8",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "name": "视频去水印",
   "summary": "将较长视频分段去水印，并按原顺序合成为一个视频。",
   "author": "Allan",
