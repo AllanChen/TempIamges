@@ -86,6 +86,21 @@ enum JSONValue: Codable, Hashable {
     }
 }
 
+/// Per-language overrides for a command's user-facing text.
+struct WidgetCommandLocalization: Codable, Hashable {
+    let name: String?
+    let description: String?
+}
+
+/// Per-language overrides for a manifest's user-facing text. `commands` is
+/// keyed by command id. Every field is optional; missing ones fall back to the
+/// manifest's base text.
+struct WidgetLocalization: Codable, Hashable {
+    let name: String?
+    let summary: String?
+    let commands: [String: WidgetCommandLocalization]?
+}
+
 struct WidgetManifest: Codable, Hashable {
     let schemaVersion: Int
     let id: String
@@ -101,9 +116,70 @@ struct WidgetManifest: Codable, Hashable {
     let minimumGlanceVersion: String
     let updatedAt: String
     let signature: WidgetSignature
+    /// Translations keyed by language tag ("en", "zh-Hans"). Optional so
+    /// manifests and caches written before this field still decode, and
+    /// omitted from the signed JSON when absent.
+    let localizations: [String: WidgetLocalization]?
 
     func isCompatible(with inputType: String) -> Bool {
         commands.contains { $0.inputTypes.contains(inputType) }
+    }
+
+    // MARK: Display text in the app's language
+
+    /// Language tags to try, most specific first, for the current app language.
+    static var preferredLanguageTags: [String] {
+        let language = Preferences.shared.appLanguage.rawValue
+        var tags = [language]
+        if let base = language.split(separator: "-").first.map(String.init), base != language { tags.append(base) }
+        return tags
+    }
+
+    private var localization: WidgetLocalization? {
+        guard let localizations else { return nil }
+        for tag in Self.preferredLanguageTags {
+            if let match = localizations[tag] { return match }
+        }
+        return nil
+    }
+
+    private static func text(_ value: String?, fallback: String) -> String {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return fallback }
+        return value
+    }
+
+    /// The widget name in the app's language, or the manifest's base name.
+    var displayName: String { Self.text(localization?.name, fallback: name) }
+    /// The summary in the app's language, or the manifest's base summary.
+    var displaySummary: String { Self.text(localization?.summary, fallback: summary) }
+
+    /// `command` with its name and description in the app's language.
+    func localized(_ command: WidgetCommand) -> WidgetCommand {
+        guard let override = localization?.commands?[command.id] else { return command }
+        return WidgetCommand(id: command.id,
+                             name: Self.text(override.name, fallback: command.name),
+                             description: Self.text(override.description, fallback: command.description),
+                             inputTypes: command.inputTypes, inputMimeTypes: command.inputMimeTypes,
+                             outputs: command.outputs, showResultURL: command.showResultURL,
+                             taskType: command.taskType, requiresUpload: command.requiresUpload,
+                             parameterSchema: command.parameterSchema)
+    }
+
+    /// All commands with their text in the app's language; ids are unchanged.
+    var localizedCommands: [WidgetCommand] { commands.map(localized) }
+
+    func localizedCommand(id: String) -> WidgetCommand? {
+        commands.first(where: { $0.id == id }).map(localized)
+    }
+
+    /// Every piece of text the manifest carries, for search.
+    var searchableText: String {
+        var parts = [name, summary, author] + commands.flatMap { [$0.name, $0.description] }
+        for localization in (localizations ?? [:]).values {
+            parts += [localization.name, localization.summary].compactMap { $0 }
+            parts += (localization.commands ?? [:]).values.flatMap { [$0.name, $0.description].compactMap { $0 } }
+        }
+        return parts.joined(separator: " ")
     }
 
     /// Synchronous client-side checks run before a manifest is submitted to
@@ -133,6 +209,20 @@ struct WidgetManifest: Codable, Hashable {
             if command.taskType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("command \(command.id) must declare taskType") }
         }
         if privacy.notice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("privacy notice is required") }
+        for (tag, localization) in localizations ?? [:] {
+            if tag.range(of: "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$", options: .regularExpression) == nil {
+                issues.append("localizations key must be a language tag such as en or zh-Hans: \(tag)")
+            }
+            for value in [localization.name, localization.summary].compactMap({ $0 }) where value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                issues.append("localizations.\(tag) text must not be empty")
+            }
+            for (commandID, command) in localization.commands ?? [:] {
+                if !commandIDs.contains(commandID) { issues.append("localizations.\(tag) names an unknown command: \(commandID)") }
+                for value in [command.name, command.description].compactMap({ $0 }) where value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    issues.append("localizations.\(tag).commands.\(commandID) text must not be empty")
+                }
+            }
+        }
         if signature.algorithm != "Ed25519" || signature.value.isEmpty || signature.keyID.isEmpty {
             issues.append("an Ed25519 signature is required")
         }
@@ -222,7 +312,8 @@ final class WidgetRegistry {
                               iconURL: manifest.iconURL, official: manifest.official,
                               execution: manifest.execution, commands: commands,
                               privacy: manifest.privacy, minimumGlanceVersion: manifest.minimumGlanceVersion,
-                              updatedAt: manifest.updatedAt, signature: manifest.signature)
+                              updatedAt: manifest.updatedAt, signature: manifest.signature,
+                              localizations: manifest.localizations)
     }
 
     private static func migrateResultURLPreference(_ manifest: WidgetManifest) -> WidgetManifest {
@@ -245,7 +336,8 @@ final class WidgetRegistry {
                               iconURL: manifest.iconURL, official: manifest.official,
                               execution: manifest.execution, commands: commands,
                               privacy: manifest.privacy, minimumGlanceVersion: manifest.minimumGlanceVersion,
-                              updatedAt: manifest.updatedAt, signature: manifest.signature)
+                              updatedAt: manifest.updatedAt, signature: manifest.signature,
+                              localizations: manifest.localizations)
     }
 
     func install(_ manifest: WidgetManifest) {

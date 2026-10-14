@@ -27,6 +27,9 @@ type Manifest = {
   privacy?: { uploadsMedia?: boolean; notice?: string };
   minimumGlanceVersion?: string; updatedAt?: string;
   signature?: { algorithm: string; keyID: string; value: string };
+  // Translations keyed by language tag ("en", "zh-Hans"); commands keyed by command id.
+  // Optional overrides of the base text; clients fall back to the base fields.
+  localizations?: Record<string, { name?: string; summary?: string; commands?: Record<string, { name?: string; description?: string }> }>;
 };
 
 const MAX_BODY = 2 * 1024 * 1024;
@@ -297,6 +300,24 @@ function validationIssues(manifest: Manifest) {
     if (command.showResultURL === true && !command.outputs?.some((type) => type === "image" || type === "video")) issues.push(`command ${command.id || "unknown"} can show a result URL only for image or video output`);
     if (typeof command.taskType !== "string" || !command.taskType.trim()) issues.push(`command ${command.id || "unknown"} needs taskType`);
     if (typeof command.requiresUpload !== "boolean" || !command.parameterSchema || typeof command.parameterSchema !== "object" || Array.isArray(command.parameterSchema)) issues.push(`command ${command.id || "unknown"} needs requiresUpload and parameterSchema`);
+  }
+  if (manifest.localizations !== undefined) {
+    if (!manifest.localizations || typeof manifest.localizations !== "object" || Array.isArray(manifest.localizations)) issues.push("localizations must be an object keyed by language tag");
+    else {
+      const text = (value: unknown) => value === undefined || (typeof value === "string" && value.trim().length > 0);
+      for (const [tag, localization] of Object.entries(manifest.localizations)) {
+        if (!/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(tag)) issues.push(`localizations key must be a language tag such as en or zh-Hans: ${tag}`);
+        if (!localization || typeof localization !== "object" || Array.isArray(localization)) { issues.push(`localizations.${tag} must be an object`); continue; }
+        if (!text(localization.name) || !text(localization.summary)) issues.push(`localizations.${tag} name and summary must be non-empty strings when present`);
+        if (localization.commands !== undefined) {
+          if (!localization.commands || typeof localization.commands !== "object" || Array.isArray(localization.commands)) { issues.push(`localizations.${tag}.commands must be keyed by command id`); continue; }
+          for (const [commandID, command] of Object.entries(localization.commands)) {
+            if (!commandIDs.has(commandID)) issues.push(`localizations.${tag} names an unknown command: ${commandID}`);
+            if (!command || typeof command !== "object" || Array.isArray(command) || !text(command.name) || !text(command.description)) issues.push(`localizations.${tag}.commands.${commandID} name and description must be non-empty strings when present`);
+          }
+        }
+      }
+    }
   }
   if (typeof manifest.privacy?.notice !== "string" || !manifest.privacy.notice.trim()) issues.push("privacy.notice is required");
   for (const command of commands) {

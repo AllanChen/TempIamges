@@ -548,3 +548,26 @@
 "Exit compare / close" = "退出对比 / 关闭";
 "Compare with" = "与…对比";
 "Info" = "信息";
+
+/* Task Center */
+"Show Source" = "查看源图";
+"Clear Finished" = "清除已完成";
+"No tasks yet" = "还没有任务";
+"No matching tasks" = "没有匹配的任务";
+"Run a Widget on an image and it will show up here." = "对图片运行一个 Widget，进度会显示在这里。";
+"Try a different search or filter." = "换个搜索词或筛选条件试试。";
+"Its progress, result and timeline appear here." = "任务的进度、结果和时间线会显示在这里。";
+
+/* Task Center states */
+"Generating" = "生成中";
+"Task failed" = "任务失败";
+"Task cancelled" = "任务已取消";
+"You cancelled this task." = "你取消了这个任务。";
+"Finished in %@" = "用时 %@";
+"Saved next to the source" = "已保存在源文件旁";
+"Skipped" = "已跳过";
+"Stopped at %d%%" = "停在 %d%%";
+"Error" = "错误";
+"Running…" = "运行中…";
+"Source · %@" = "来源 · %@";
+"Media" = "媒体";

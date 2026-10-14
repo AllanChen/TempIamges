@@ -117,8 +117,10 @@ final class WidgetTaskManager {
         }
         let id = UUID()
         requestNotificationPermissionIfNeeded()
-        records.insert(WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.name,
-            commandID: command.id, commandName: command.name, outputTypes: command.outputs,
+        // Names are display snapshots for the Task Center, taken in the app's language.
+        let shownCommand = widget.localized(command)
+        records.insert(WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.displayName,
+            commandID: command.id, commandName: shownCommand.name, outputTypes: command.outputs,
             showResultURL: command.showResultURL,
             sourceURL: media.url.absoluteString,
             sourceKind: media.kind == .video ? "video" : "image",

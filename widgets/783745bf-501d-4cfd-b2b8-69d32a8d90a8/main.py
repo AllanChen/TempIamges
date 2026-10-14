@@ -135,7 +135,7 @@ def request_json(request: Request, operation: str, api_key: str, deadline: float
                 ) from None
             failure = f"HTTP {error.code}"
         except (URLError, TimeoutError) as error:
-            failure = type(error).__name__
+            failure = f"{type(error).__name__}: {getattr(error, 'reason', error)}"
         if not retry_transient:
             raise SubmissionStateUnknownError(
                 f"RunningHub submit status is unknown ({failure}); refusing duplicate submission"

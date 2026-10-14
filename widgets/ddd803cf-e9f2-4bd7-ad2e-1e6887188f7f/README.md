@@ -1,6 +1,6 @@
 # 超分 Widget
 
-这个旧目录不需要 `widget.json`。`main.py` 读取 Glance 下载好的本地图片，用 RunningHub 生成超分图片，再返回本地文件路径，由 Glance Worker 上传结果。默认分辨率为 `4k`；本地测试可用 `--parameters` 指定 `1k` 或 `2k`。
+`widget.json` 由线上 Manifest 整理而来（含中英文 `localizations`），发布新版本时随代码一起提交。`main.py` 读取 Glance 下载好的本地图片，用 RunningHub 生成超分图片，再返回本地文件路径，由 Glance Worker 上传结果。默认分辨率为 `4k`；本地测试可用 `--parameters` 指定 `1k` 或 `2k`。
 
 在仓库根目录运行：
 

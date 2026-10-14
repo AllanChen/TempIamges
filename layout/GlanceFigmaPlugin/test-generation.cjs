@@ -440,6 +440,48 @@ const names = [
     'Regeneration must leave exactly one current compression flow');
   assert.equal(page.children.filter(child => child.name === 'Image Compression Flow / Previous').length, 1,
     'Regeneration must preserve the previous compression flow for review');
+  const beforePlacement = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-task-running-placement' });
+  const placement = page.children.find(child => child.name === 'Task Running Placement');
+  assert.ok(placement, 'Task Running Placement must be generated');
+  assert.equal(page.children.length, beforePlacement + 1);
+  for (const scene of ['A / Small window 320 × 240', 'B / Compact window 480 × 360', 'C / Standard window 1554 × 1012', 'D / Task Center rows']) {
+    assert.ok(placement.findOne(child => child.name === scene), `placement scene ${scene}`);
+  }
+  assert.ok(placement.findOne(child => child.name === 'Running Chip / full'), 'full chip in the standard window');
+  assert.ok(placement.findOne(child => child.name === 'Running Chip / compact'), 'compact chip in the compact window');
+  const smallWindow = placement.findOne(child => child.name === 'A / Small window 320 × 240');
+  assert.equal(smallWindow.findAll(child => child.name.startsWith('Running Chip')).length, 0, 'no chip in the small window');
+  assert.ok(smallWindow.findOne(child => child.name === 'Running Badge'), 'badge in the small window');
+  assert.equal(placement.findAll(child => child.name === 'Running Badge').length, 3, 'badge in every window');
+  assert.ok(placement.findAll(child => child.name.endsWith('/ running') && child.name.startsWith('Tile')).length === 3, 'one running tile per window');
+  await figma.ui.onmessage({ type: 'generate-task-running-placement' });
+  assert.equal(page.children.length, beforePlacement + 1, 'placement regeneration is idempotent');
+
+  const beforeTaskCenter = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-task-center-redesign' });
+  const taskCenter = page.children.find(child => child.name === 'Task Center Redesign');
+  assert.ok(taskCenter, 'Task Center Redesign must be generated');
+  assert.equal(page.children.length, beforeTaskCenter + 1);
+  const tcScene = name => taskCenter.findOne(child => child.name === name);
+  for (const scene of ['01 / Task Center / Running', '02 / Task Center / Done', '03 / Task Center / Failed', '04 / Task Center / Empty']) {
+    assert.ok(tcScene(scene), `task center scene ${scene}`);
+  }
+  const actionNames = scene => scene.findAll(child => child.name.startsWith('Action / ')).map(child => child.name);
+  assert.deepEqual(actionNames(tcScene('01 / Task Center / Running')).sort(), ['Action / Cancel', 'Action / Show Source']);
+  assert.equal(actionNames(tcScene('01 / Task Center / Running')).length, 2);
+  assert.equal(actionNames(tcScene('02 / Task Center / Done')).length, 4);
+  assert.equal(actionNames(tcScene('03 / Task Center / Failed')).length, 2);
+  assert.equal(actionNames(tcScene('04 / Task Center / Empty')).length, 0);
+  for (const scene of ['01 / Task Center / Running', '02 / Task Center / Done', '03 / Task Center / Failed', '04 / Task Center / Empty']) {
+    const node = tcScene(scene);
+    assert.equal(node.findOne(child => child.name === '02 / Icon Toolbar'), null, 'grey toolbar band removed');
+    assert.equal(node.findAll(child => child.name === 'Task Information' || child.name === 'Info').length, 0, 'Info button removed');
+    assert.equal(node.findAll(child => child.name === 'Clear Finished').length, 1, 'clear finished lives once, in the list');
+  }
+  await figma.ui.onmessage({ type: 'generate-task-center-redesign' });
+  assert.equal(page.children.length, beforeTaskCenter + 1, 'task center regeneration is idempotent');
+
   const beforeMotion = page.children.length;
   await figma.ui.onmessage({ type: 'generate-task-running-motion' });
   const motion = page.children.find(child => child.name === 'Task Running Motion');

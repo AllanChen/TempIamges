@@ -185,6 +185,7 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
             guard let local = WidgetRegistry.shared.installed.first(where: { $0.id == remote.id }) else { continue }
             if local.version != remote.version || local.commands != remote.commands ||
                 local.name != remote.name || local.summary != remote.summary ||
+                local.localizations != remote.localizations ||
                 local.author != remote.author || local.iconURL != remote.iconURL ||
                 local.privacy.notice != remote.privacy.notice {
                 result.insert(remote.id)
@@ -203,12 +204,10 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
             case .updates: guard updates.contains(manifest.id) else { return false }
             }
             guard !query.isEmpty else { return true }
-            let haystack = ([manifest.name, manifest.summary, manifest.author]
-                + manifest.commands.flatMap { [$0.name, $0.description] }).joined(separator: " ")
-            return haystack.localizedCaseInsensitiveContains(query)
+            return manifest.searchableText.localizedCaseInsensitiveContains(query)
         }
         if sortsByName {
-            result.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            result.sort { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
         }
         return result
     }
@@ -639,7 +638,7 @@ private final class WidgetMarketRowView: NSView {
         wantsLayer = true
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
-        setAccessibilityLabel(manifest.name)
+        setAccessibilityLabel(manifest.displayName)
         buildUI()
         applyAppearance()
     }
@@ -649,12 +648,12 @@ private final class WidgetMarketRowView: NSView {
         divider.wantsLayer = true
         divider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
         addSubview(divider)
-        iconView.letter = Self.initials(for: manifest.name)
+        iconView.letter = Self.initials(for: manifest.displayName)
         iconView.highlighted = false
         addSubview(iconView)
         nameLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold)
         nameLabel.textColor = PanelStyle.textPrimary
-        nameLabel.stringValue = manifest.name
+        nameLabel.stringValue = manifest.displayName
         nameLabel.lineBreakMode = .byTruncatingTail
         addSubview(nameLabel)
         verifiedDot.wantsLayer = true
@@ -669,7 +668,7 @@ private final class WidgetMarketRowView: NSView {
         addSubview(publisherLabel)
         summaryLabel.font = PanelStyle.inspectFont(ofSize: 10)
         summaryLabel.textColor = PanelStyle.textSecondary
-        summaryLabel.stringValue = manifest.summary
+        summaryLabel.stringValue = manifest.displaySummary
         summaryLabel.lineBreakMode = .byTruncatingTail
         addSubview(summaryLabel)
         metadataLabel.font = PanelStyle.inspectFont(ofSize: 9)

@@ -3329,6 +3329,407 @@ async function generateTaskRunningMotion() {
   figma.notify('Task Running Motion created');
 }
 
+// ---------------------------------------------------------------------------
+// Shared pieces for the task-running placement study and the Task Center
+// redesign.
+// ---------------------------------------------------------------------------
+
+/// The peeker as separate layers at any size (badge, tile overlay, chip).
+function peekerBadge(parent, x, y, size, key = TASK_MOTION_KEYS[1]) {
+  const u = size / 18;
+  const body = frame('Peeker', x, y + key.lift * u, size, size, null, 0);
+  body.fills = []; body.clipsContent = false;
+  parent.appendChild(body);
+  const ink = '#F3EEE8';
+  const disc = (name, cx, cy, d, color) => ellipse(name, body, cx * u - d * u / 2, cy * u - d * u / 2, d * u, color);
+  disc('Head', 9, 8, 11, ink);
+  rect('Frame Edge', body, 1.5 * u, 12.25 * u, 15 * u, 2.25 * u, ink, 1.125 * u);
+  disc('Eye L', 6.8 + key.eye, 7.6, 2.2, '#161719');
+  disc('Eye R', 11.2 + key.eye, 7.6, 2.2, '#161719');
+  disc('Hand L', 5.2, 12.3 + key.handL, 3.2, COLORS.accent);
+  disc('Hand R', 12.8, 12.3 + key.handR, 3.2, COLORS.accent);
+  return body;
+}
+
+/// Highlight sweeping along a thin track (the "working" line).
+function sweepTrack(parent, x, y, width, height = 4, sweepX = null) {
+  const track = frame('Track', x, y, width, height, null, height / 2);
+  track.fills = [fill('#FFFFFF', .10)];
+  parent.appendChild(track);
+  const w = Math.max(24, Math.round(width * .36));
+  const shimmer = rect('Shimmer', track, sweepX === null ? Math.round(width * .3) : sweepX, 0, w, height, null, height / 2);
+  shimmer.fills = [{
+    type: 'GRADIENT_LINEAR', gradientTransform: [[1, 0, 0], [0, 1, 0]],
+    gradientStops: [{ position: 0, color: { ...rgb(COLORS.accent), a: 0 } },
+                    { position: .5, color: { ...rgb(COLORS.accent), a: 1 } },
+                    { position: 1, color: { ...rgb(COLORS.accent), a: 0 } }]
+  }];
+  return track;
+}
+
+/// Running chip: full (360×76: peeker, title, detail, sweep) or compact (240×48).
+function placementChip(parent, x, y, compact) {
+  const w = compact ? 240 : 360, h = compact ? 48 : 76;
+  const chip = frame(compact ? 'Running Chip / compact' : 'Running Chip / full', x, y, w, h, null, compact ? 14 : 20);
+  chip.fills = [fill('#18191D', .96)];
+  historyStroke(chip, '#FFFFFF', .12);
+  chip.effects = toastShadow();
+  chip.clipsContent = false;
+  parent.appendChild(chip);
+  if (compact) {
+    peekerBadge(chip, 10, 8, 32);
+    text('Title', chip, 'Generating', 54, 8, 13, COLORS.text, 'semibold');
+    [0, 1, 2].forEach(i => { ellipse('Dot ' + (i + 1), chip, 54 + 70 + i * 7, 19, 3.5, COLORS.text).opacity = [1, 1, .3][i]; });
+    sweepTrack(chip, 54, 32, 164, 3);
+  } else {
+    peekerBadge(chip, 16, 16, 44);
+    text('Title', chip, 'Generating', 84, 14, 14, COLORS.text, 'semibold');
+    [0, 1, 2].forEach(i => { ellipse('Dot ' + (i + 1), chip, 166 + i * 8, 26, 4, COLORS.text).opacity = [1, 1, .3][i]; });
+    text('Detail', chip, 'Remove Background', 84, 36, 12, COLORS.secondary, 'regular', 250);
+    sweepTrack(chip, 84, 60, 252, 4);
+  }
+  return chip;
+}
+
+/// A window mock: artwork, traffic lights, toolbar, and the running badge.
+function placementWindow(flow, name, x, y, w, h, radius = 12) {
+  const win = frame(name, x, y, w, h, '#060709', radius);
+  historyStroke(win, '#FFFFFF', .12);
+  flow.appendChild(win);
+  artworkFill(rect('Image', win, 0, 0, w, h, null, 0), ['#24313B', '#A77B72', '#26352D']);
+  createBareSystemControls(win);
+  const toolbar = createFloatingInspectToolbar(win, w, 'Focus');
+  const scale = Math.min(1, (w - 120) / 326);
+  if (scale < 1 && typeof toolbar.rescale === 'function') toolbar.rescale(Math.max(.4, scale));
+  const toolbarH = 54 * Math.min(1, Math.max(.4, scale));
+  // Breathing frame + the badge that replaces the old green dot.
+  const border = rect('Running Border', win, 8, 12, w - 16, h - 24, null, Math.max(8, radius));
+  border.strokes = [fill(COLORS.accent, .8)]; border.strokeWeight = 2;
+  const bx = w - 24 - 34, by = 24 + toolbarH / 2 - 17;
+  const badge = frame('Running Badge', bx, by, 34, 34, null, 17);
+  badge.fills = [fill('#161719', .9)]; historyStroke(badge, '#FFFFFF', .12);
+  badge.effects = [{ type: 'DROP_SHADOW', color: { ...rgb(COLORS.accent), a: .35 }, offset: { x: 0, y: 0 }, radius: 10, spread: 0, visible: true, blendMode: 'NORMAL' }];
+  win.appendChild(badge);
+  peekerBadge(badge, 5, 5, 24);
+  return win;
+}
+
+/// Bottom filmstrip: dark bar + tiles. `running` is the index with a task.
+function placementFilmstrip(win, w, h, barH, tile, count, running) {
+  const bar = rect('Filmstrip Shade', win, 8, h - 12 - barH, w - 16, barH, '#07080A', 0);
+  bar.opacity = .55;
+  const gap = Math.max(5, Math.round(tile * .13));
+  const total = count * tile + (count - 1) * gap;
+  const x0 = Math.round((w - total) / 2), y0 = h - 12 - barH + Math.round((barH - tile) / 2);
+  const palettes = [['#24313B', '#9B705C', '#29382E'], ['#2E323D', '#A77B72', '#1A2633'], ['#363539', '#926A58', '#26332A'],
+                    ['#323644', '#95718A', '#282A34'], ['#273032', '#B08565', '#36463C']];
+  for (let i = 0; i < count; i++) {
+    const t = frame('Tile ' + (i + 1) + (i === running ? ' / running' : ''), x0 + i * (tile + gap), y0, tile, tile, '#14151A', Math.max(5, tile * .12));
+    historyStroke(t, i === running ? COLORS.accent : '#FFFFFF', i === running ? .9 : .10, i === running ? 2 : 1);
+    win.appendChild(t);
+    artworkFill(rect('Preview', t, 0, 0, tile, tile, null, 0), palettes[i % palettes.length]);
+    if (i === running) {
+      rect('Tile Scrim', t, 0, 0, tile, tile, '#000000', 0).opacity = .35;
+      const size = Math.max(16, Math.round(tile * .45));
+      peekerBadge(t, Math.round((tile - size) / 2), Math.round((tile - size) / 2) - 2, size);
+      sweepTrack(t, 4, tile - 7, tile - 8, 2);
+      if (tile >= 56) {
+        const tag = frame('Percent Tag', tile - 36, 5, 31, 14, '#8FD0AF', 4);
+        t.appendChild(tag);
+        text('Label', tag, '64%', 0, 1, 9, '#0B2018', 'semibold', 31, 'CENTER');
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Task Running Placement — where the motion lives, by available space.
+// ---------------------------------------------------------------------------
+
+const TASK_PLACEMENT_FRAME = 'Task Running Placement';
+
+function createTaskRunningPlacement(x) {
+  const flow = frame(TASK_PLACEMENT_FRAME, x, 0, 320 + 480 + 1554 + 1100 + 4 * 120, 1150, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+  text('Heading', flow, 'Task Running Placement', 0, 0, 22, COLORS.text, 'semibold');
+  text('Subheading', flow, 'One peeker, three sizes. The badge is always there; the tile overlay appears with a filmstrip; the chip only when the canvas has room (≥ 520 × 360 full, ≥ 360 wide compact).',
+    0, 34, 12, COLORS.muted, 'regular', 1500);
+
+  let cx = 0;
+  // A — a small image makes a small window.
+  const aW = 320, aH = 240;
+  text('Label A', flow, 'A · Small image — window ≈ 320 × 240. Badge + tile overlay + breathing border. No chip.', cx, 82, 11, COLORS.secondary, 'medium', aW + 40);
+  const a = placementWindow(flow, 'A / Small window 320 × 240', cx, 120, aW, aH);
+  placementFilmstrip(a, aW, aH, 58, 38, 1, 0);
+  cx += aW + 120;
+
+  // B — compact window: compact chip above the filmstrip.
+  const bW = 480, bH = 360;
+  text('Label B', flow, 'B · Compact window — 360 to 520 wide. Compact chip (240 × 48), bottom-centre, above the filmstrip.', cx, 82, 11, COLORS.secondary, 'medium', bW + 60);
+  const b = placementWindow(flow, 'B / Compact window 480 × 360', cx, 120, bW, bH);
+  placementFilmstrip(b, bW, bH, 58, 38, 4, 1);
+  const bc = placementChip(b, 0, 0, true);
+  bc.x = Math.round((bW - 240) / 2); bc.y = bH - 12 - 58 - 14 - 48;
+  cx += bW + 120;
+
+  // C — standard window: full chip.
+  const cW = 1554, cH = 1012;
+  text('Label C', flow, 'C · Standard window — ≥ 520 × 360. Full chip (360 × 76), bottom-centre, 16 above the filmstrip; badge top-right; tile overlay.', cx, 82, 11, COLORS.secondary, 'medium', 1400);
+  const c = placementWindow(flow, 'C / Standard window 1554 × 1012', cx, 120, cW, cH, 16);
+  placementFilmstrip(c, cW, cH, 94, 61, 5, 2);
+  const cc = placementChip(c, 0, 0, false);
+  cc.x = Math.round((cW - 360) / 2); cc.y = cH - 12 - 94 - 16 - 76;
+  cx += cW + 120;
+
+  // D — Task Center rows.
+  text('Label D', flow, 'D · Task Center — the placeholder hourglass becomes a mini peeker; state badge gets an animated ellipsis.', cx, 82, 11, COLORS.secondary, 'medium', 900);
+  const d = frame('D / Task Center rows', cx, 120, 380, 300, '#0E0F13', 16);
+  historyStroke(d, '#FFFFFF', .12); flow.appendChild(d);
+  const rows = [['Remove Background', 'Just now · input.png', 'Running', COLORS.accent, true],
+                ['Upscale 2×', '12 min ago · portrait.jpg', 'Done', COLORS.success, false],
+                ['Image Caption', 'Yesterday · product.webp', 'Failed', COLORS.danger, false]];
+  rows.forEach(([title, detail, state, color, running], i) => {
+    const row = taskListRow(d, 16 + i * 92, title, detail, running ? 'Running…' : state, color, running);
+    if (running) {
+      const thumb = row.findOne(n => n.name === 'Thumbnail');
+      rect('Thumbnail Scrim', row, thumb.x, thumb.y, 56, 56, '#000000', 7).opacity = .38;
+      peekerBadge(row, 12 + 12, 13 + 11, 32);
+    }
+  });
+  return flow;
+}
+
+async function generateTaskRunningPlacement() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === TASK_PLACEMENT_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Task Running Placement already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createTaskRunningPlacement(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Task Running Placement: small, compact, standard windows and Task Center rows.' });
+  figma.notify('Task Running Placement created');
+}
+
+// ---------------------------------------------------------------------------
+// Task Center Redesign — one place for each kind of action.
+//   list actions (refresh, search, clear finished, filters) live in the list;
+//   task actions live in ONE group at the top right of the detail, and change
+//   with the task's state. The grey toolbar band and the Info button are gone.
+// ---------------------------------------------------------------------------
+
+const TASK_CENTER_REDESIGN_FRAME = 'Task Center Redesign';
+
+function tcGhostIcon(parent, name, iconName, x, y, tint) {
+  const node = frame(name, x, y, 32, 32, null, 10);
+  node.fills = [fill('#FFFFFF', .05)]; historyStroke(node, '#FFFFFF', .08);
+  parent.appendChild(node);
+  historyIcon(node, iconName, 8, 8, 16, tint || COLORS.text);
+  return node;
+}
+
+function tcPill(parent, label, count, x, y, active) {
+  const w = 12 + historyTextWidth(label, 12) + 6 + historyTextWidth(String(count), 12) + 12;
+  const chip = frame('Filter / ' + label, x, y, w, 30, null, 15);
+  historyFill(chip, active ? '#34251F' : '#FFFFFF', active ? .96 : .05);
+  historyStroke(chip, active ? COLORS.accent : '#FFFFFF', active ? .6 : .08);
+  parent.appendChild(chip);
+  text('Label', chip, label, 12, 7, 12, active ? COLORS.accent : COLORS.secondary, active ? 'semibold' : 'medium');
+  text('Count', chip, String(count), 12 + historyTextWidth(label, 12) + 6, 7, 12, active ? COLORS.accent : COLORS.muted, 'regular');
+  return w;
+}
+
+/// The single, right-aligned action group for the selected task. Built from the
+/// right edge so it stays aligned whichever buttons the state needs.
+function taskActionGroup(parent, rightEdge, y, items) {
+  const group = frame('Task Actions', 0, y, 10, 36, null, 0);
+  group.fills = []; group.clipsContent = false;
+  parent.appendChild(group);
+  let x = rightEdge;
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (item.separator) {
+      x -= 13;
+      const line = rect('Separator', parent, x + 6, y + 6, 1, 24, '#FFFFFF', 0); line.opacity = .12;
+      continue;
+    }
+    const iconOnly = !item.label;
+    const w = iconOnly ? 36 : 14 + 16 + 8 + historyTextWidth(item.label, 12) + 14;
+    x -= w;
+    const btn = frame('Action / ' + (item.label || item.name), x, y, w, 36, null, 12);
+    const primary = item.kind === 'primary', danger = item.kind === 'danger';
+    if (primary) { btn.fills = [fill(COLORS.accent)]; }
+    else { btn.fills = [fill(danger ? COLORS.danger : '#FFFFFF', danger ? .08 : .05)]; historyStroke(btn, danger ? COLORS.danger : '#FFFFFF', danger ? .32 : .08); }
+    parent.appendChild(btn);
+    const tint = primary ? '#21130D' : (danger ? COLORS.danger : COLORS.text);
+    if (iconOnly) historyIcon(btn, item.icon, 10, 10, 16, tint);
+    else {
+      historyIcon(btn, item.icon, 14, 10, 16, tint);
+      text('Label', btn, item.label, 38, 10, 12, tint, primary ? 'semibold' : 'medium', w - 52);
+    }
+    x -= 8;
+  }
+  group.remove();
+  return x;
+}
+
+const TC_ROWS = [
+  ['Remove Background', 'Just now · input.png', 'Running', COLORS.accent],
+  ['Upscale 2×', '12 min ago · portrait.jpg', 'Done', COLORS.success],
+  ['Image Caption', 'Yesterday · product.webp', 'Failed', COLORS.danger]
+];
+
+function taskCenterScene(flow, name, x, state) {
+  const empty = state === 'empty';
+  const screen = frame(name, x, 0, 1554, 1012, '#0B0C0F', 16);
+  historyStroke(screen, '#FFFFFF', .12); flow.appendChild(screen);
+  createBareSystemControls(screen);
+  text('Window Title', screen, 'Task Center', 0, 12, 13, COLORS.text, 'semibold', 1554, 'CENTER');
+  text('Window Subtitle', screen, empty ? '0 tasks' : '3 tasks · 1 running', 0, 31, 11, COLORS.muted, 'regular', 1554, 'CENTER');
+
+  // List column: list-level actions only.
+  const side = frame('Task List', 0, 52, 360, 960, '#0E0F13', 0);
+  screen.appendChild(side);
+  rect('Edge', side, 359, 0, 1, 960, '#FFFFFF', 0).opacity = .07;
+  text('Heading', side, 'Tasks', 24, 22, 17, COLORS.text, 'semibold');
+  tcGhostIcon(side, 'Refresh', 'refresh', 360 - 24 - 32 * 2 - 8, 16, COLORS.text);
+  const clear = tcGhostIcon(side, 'Clear Finished', 'clear', 360 - 24 - 32, 16, COLORS.danger);
+  clear.strokes = [fill(COLORS.danger, .32)];
+  const search = frame('Search Field', 24, 68, 312, 36, '#14151A', 12);
+  historyStroke(search, '#FFFFFF', .10); side.appendChild(search);
+  historyIcon(search, 'search', 12, 9, 18, COLORS.muted);
+  text('Placeholder', search, 'Search tasks', 38, 10, 13, COLORS.muted, 'regular', 200);
+  let px = 24;
+  [['All', empty ? 0 : 3, true], ['Running', empty ? 0 : 1, false], ['Done', empty ? 0 : 1, false], ['Failed', empty ? 0 : 1, false]]
+    .forEach(([label, count, active]) => { const pill = tcPill(side, label, count, px, 118, active); px += pill + 8; });
+
+  if (empty) {
+    text('Empty List', side, 'No tasks yet', 0, 300, 14, COLORS.secondary, 'medium', 360, 'CENTER');
+    text('Empty List Hint', side, 'Run a Widget on an image and it will show up here.', 40, 328, 12, COLORS.muted, 'regular', 280, 'CENTER');
+  } else {
+    const selected = { running: 0, done: 1, failed: 2 }[state];
+    TC_ROWS.forEach(([title, detail, label, color], i) => {
+      const row = taskListRow(side, 166 + i * 92, title, detail, label === 'Running' ? 'Running…' : label, color, i === selected);
+      if (label === 'Running') {
+        const thumb = row.findOne(n => n.name === 'Thumbnail');
+        rect('Thumbnail Scrim', row, thumb.x, thumb.y, 56, 56, '#000000', 7).opacity = .38;
+        peekerBadge(row, 24, 24, 32);
+      }
+    });
+  }
+
+  // Detail column.
+  const detail = frame('Task Detail', 360, 52, 1194, 960, '#0B0C0F', 0);
+  screen.appendChild(detail);
+  if (empty) {
+    const tile = frame('Empty Illustration', (1194 - 96) / 2, 340, 96, 96, '#14151A', 28);
+    historyStroke(tile, '#FFFFFF', .08); detail.appendChild(tile);
+    historyIcon(tile, 'tasks', 28, 28, 40, COLORS.muted);
+    text('Empty Title', detail, 'Select a task', 0, 464, 20, COLORS.text, 'semibold', 1194, 'CENTER');
+    text('Empty Hint', detail, 'Its progress, result and timeline appear here.', 0, 500, 13, COLORS.secondary, 'regular', 1194, 'CENTER');
+    return screen;
+  }
+
+  const meta = { running: ['Remove Background', 'Task 81C4  •  Running  •  64%', COLORS.accent],
+                 done: ['Upscale 2×', 'Task 7E20  •  Done  •  12.4 s', COLORS.success],
+                 failed: ['Image Caption', 'Task 55B9  •  Failed  •  The worker stopped before returning a result', COLORS.danger] }[state];
+  text('Task Title', detail, meta[0], 32, 26, 18, COLORS.text, 'semibold');
+  text('Task Metadata', detail, meta[1], 32, 54, 12, meta[2], 'medium', 700);
+
+  const groups = {
+    running: [{ label: 'Show Source', icon: 'focus' }, { label: 'Cancel', icon: 'uninstall', kind: 'danger' }],
+    done: [{ label: 'Show in Image Inspect', icon: 'focus' }, { label: 'Copy URL', icon: 'copy' }, { label: 'Reveal in Finder', icon: 'folder' },
+           { separator: true }, { name: 'Remove', icon: 'clear', kind: 'danger' }],
+    failed: [{ label: 'Retry', icon: 'retry', kind: 'primary' }, { separator: true }, { name: 'Remove', icon: 'clear', kind: 'danger' }]
+  }[state];
+  taskActionGroup(detail, 1194 - 32, 24, groups);
+
+  const source = panel(detail, 'Source Preview', 32, 100, 556, 360, COLORS.canvas, 12);
+  artworkFill(rect('Source Image', source, 12, 12, 532, 336, null, 8), ['#24313B', '#9B705C', '#29382E']);
+  text('Preview Caption', source, 'Source · input.png', 18, 322, 11, '#F3F3F3', 'medium', 300);
+  const result = panel(detail, 'Result Preview', 606, 100, 556, 360, COLORS.canvas, 12);
+  if (state === 'running') {
+    const chip = placementChip(result, 0, 0, false);
+    chip.x = Math.round((556 - 360) / 2); chip.y = Math.round((360 - 76) / 2);
+  } else if (state === 'done') {
+    artworkFill(rect('Result Image', result, 12, 12, 532, 336, null, 8), ['#24312D', '#7DA67D', '#26352D']);
+    const pill = frame('AI Result Pill', 24, 24, 58, 22, null, 11);
+    historyFill(pill, '#161719', .8); historyStroke(pill, COLORS.accent, .5); result.appendChild(pill);
+    ellipse('Dot', pill, 10, 8, 6, COLORS.accent);
+    text('Label', pill, 'Result', 22, 4, 11, COLORS.accent, 'semibold', 34);
+  } else {
+    const badge = frame('Error Badge', (556 - 56) / 2, 112, 56, 56, null, 28);
+    badge.fills = [fill(COLORS.danger, .14)]; result.appendChild(badge);
+    historyIcon(badge, 'warning', 14, 14, 28, COLORS.danger);
+    text('Error Title', result, 'Task failed', 0, 188, 16, COLORS.text, 'semibold', 556, 'CENTER');
+    text('Error Reason', result, 'The worker stopped before returning a result.', 78, 218, 12, COLORS.secondary, 'regular', 400, 'CENTER');
+  }
+
+  const timeline = panel(detail, 'Timeline', 32, 490, 556, 400, '#101115', 12);
+  text('Timeline Heading', timeline, 'Timeline', 24, 20, 13, COLORS.text, 'semibold');
+  const steps = {
+    running: [['Task submitted', 'Client uploaded the source image', '14:32:06', COLORS.success], ['Worker claimed', 'GPU worker eu-02', '14:32:08', COLORS.success],
+              ['Processing', 'Polling every 2 seconds', 'Now', COLORS.accent, true], ['Download result', 'Waiting for output file', 'Pending', COLORS.muted]],
+    done: [['Task submitted', 'Client uploaded the source image', '14:20:01', COLORS.success], ['Worker claimed', 'GPU worker eu-02', '14:20:03', COLORS.success],
+           ['Processing', 'Finished in 12.4 s', '14:20:15', COLORS.success], ['Download result', 'Saved next to the source', '14:20:16', COLORS.success]],
+    failed: [['Task submitted', 'Client uploaded the source image', 'Yesterday', COLORS.success], ['Worker claimed', 'GPU worker eu-01', 'Yesterday', COLORS.success],
+             ['Processing', 'The worker stopped responding', 'Yesterday', COLORS.danger, true], ['Download result', 'Skipped', '—', COLORS.muted]]
+  }[state];
+  steps.forEach(([t, d, time, color, current], i) => timelineRow(timeline, 60 + i * 72, t, d, time, color, !!current));
+
+  const info = panel(detail, 'Task Details', 606, 490, 556, 400, '#101115', 12);
+  text('Heading', info, 'Task Details', 24, 20, 13, COLORS.text, 'semibold');
+  const rows = { running: [['Widget', 'Remove Background'], ['Input', 'input.png'], ['Worker', 'eu-02'], ['Progress', '64%'], ['Polling', '2 seconds']],
+                 done: [['Widget', 'Upscale 2×'], ['Input', 'portrait.jpg'], ['Worker', 'eu-02'], ['Duration', '12.4 s'], ['Result', 'portrait-2x.png']],
+                 failed: [['Widget', 'Image Caption'], ['Input', 'product.webp'], ['Worker', 'eu-01'], ['Progress', 'Stopped at 41%'], ['Error', 'Worker timeout']] }[state];
+  rows.forEach(([k, v], i) => metadataRow(info, k, v, 60 + i * 38));
+  return screen;
+}
+
+function createTaskCenterRedesign(x) {
+  const gap = 196;
+  const flow = frame(TASK_CENTER_REDESIGN_FRAME, x, 0, 1554 * 4 + gap * 3, 1012 + 90, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+  const scenes = [['01 / Task Center / Running', 'running', 'Running: Show Source · Cancel. Nothing to copy or reveal yet.'],
+                  ['02 / Task Center / Done', 'done', 'Done: Show in Image Inspect · Copy URL · Reveal in Finder | Remove.'],
+                  ['03 / Task Center / Failed', 'failed', 'Failed or cancelled: Retry (primary) | Remove.'],
+                  ['04 / Task Center / Empty', 'empty', 'Empty: list and detail both explain what to do.']];
+  scenes.forEach(([name, state, note], i) => {
+    taskCenterScene(flow, name, i * (1554 + gap), state);
+    text('Note', flow, note + (i === 0 ? '  List actions (refresh, search, filters, clear finished) live in the list; task actions live only in the detail header. The grey toolbar band and the Info button are removed.' : ''),
+      i * (1554 + gap), 1030, 12, COLORS.muted, 'regular', 1554);
+  });
+  return flow;
+}
+
+async function generateTaskCenterRedesign() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === TASK_CENTER_REDESIGN_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Task Center Redesign already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createTaskCenterRedesign(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Task Center Redesign: running, done, failed, empty.' });
+  figma.notify('Task Center Redesign created');
+}
+
 // Seven focused Widget screens. The existing image/video input and image
 // result flows stay in place; older studies are hidden so edits remain available.
 const SIMPLE_WIDGET_NAME = 'Widget / Simple Input + Output / Clean Editable';
@@ -5341,6 +5742,24 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Market redesign failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Market redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-task-running-placement') {
+    try {
+      await generateTaskRunningPlacement();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Task Running Placement failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Task Running Placement failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-task-center-redesign') {
+    try {
+      await generateTaskCenterRedesign();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Task Center Redesign failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Task Center Redesign failed', { error: true });
     }
   }
   if (message.type === 'generate-task-running-motion') {

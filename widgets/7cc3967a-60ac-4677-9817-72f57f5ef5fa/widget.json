@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "id": "7cc3967a-60ac-4677-9817-72f57f5ef5fa",
+  "version": "1.0.1",
+  "name": "人物背景分离",
+  "summary": "把人物从背景中精准分离，保留发丝等细节边缘。",
+  "author": "Glance",
+  "iconURL": "https://rh-images.xiaoyaoyou.com/f3257c885c1aaa9dddfcc32ac04c6ba1/2026-09-10/fc739596d0b2188498113e409c99debc.gif?imageMogr2/format/webp/ignore-error/1&imageMogr2/format/webp/rquality/60/ignore-error/1/minisize/1",
+  "official": true,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "remove-bg-pro",
+      "name": "移除背景",
+      "description": "上传一张图片，移除背景并生成透明背景副本。",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/heic",
+        "image/heif"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "image.remove-bg-pro.v1",
+      "requiresUpload": true,
+      "parameterSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "The selected image will be uploaded to Glance for cloud processing."
+  },
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Background Remover Pro",
+      "summary": "Precise background removal that keeps fine edges such as hair.",
+      "commands": {
+        "remove-bg-pro": {
+          "name": "Remove Background",
+          "description": "Takes one image and returns a copy with a transparent background."
+        }
+      }
+    }
+  }
+}

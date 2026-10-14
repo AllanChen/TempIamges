@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "0d7a1de4-af33-4df1-9607-a47323c07a52",
-  "version": "0.1.1",
-  "name": "洗图2",
-  "summary": "洗图2",
+  "version": "0.1.2",
+  "name": "图生图",
+  "summary": "重新生成图片，并按指定画幅比例输出。",
   "author": "Allan",
   "official": false,
   "execution": {
@@ -12,8 +12,8 @@
   "commands": [
     {
       "id": "run",
-      "name": "洗图2",
-      "description": "输入一张图片，生成指定比例的新图片。",
+      "name": "图生图",
+      "description": "输入一张图片，按所选比例生成一张新图片。",
       "inputTypes": [
         "image"
       ],
@@ -32,7 +32,24 @@
         "properties": {
           "aspectRatio": {
             "type": "string",
-            "enum": ["empty", "1:1", "2:3", "3:2", "4:5", "5:4", "4:3", "3:4", "16:9", "9:16", "21:9", "9:21", "2:1", "1:2", "3:1", "1:3"],
+            "enum": [
+              "empty",
+              "1:1",
+              "2:3",
+              "3:2",
+              "4:5",
+              "5:4",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "21:9",
+              "9:21",
+              "2:1",
+              "1:2",
+              "3:1",
+              "1:3"
+            ],
             "default": "3:4"
           }
         }
@@ -43,5 +60,17 @@
     "uploadsMedia": true,
     "notice": "The selected image is uploaded to Glance and RunningHub for processing."
   },
-  "minimumGlanceVersion": "2.0.0"
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Redraw & Reframe",
+      "summary": "Regenerate the image at the aspect ratio you choose.",
+      "commands": {
+        "run": {
+          "name": "Redraw & Reframe",
+          "description": "Takes one image and generates a new one at the selected aspect ratio."
+        }
+      }
+    }
+  }
 }

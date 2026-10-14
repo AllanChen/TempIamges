@@ -27,6 +27,7 @@ description: 根据用户提供的代码或处理流程，在本项目的 widget
 2. 在 `widgets/` 下创建 UUID 目录，包含 `main.py` 和 `widget.json`；可使用项目的 `glance widget init --directory widgets` 创建骨架。更新已有 Widget 时沿用 ID，并按发布要求更新版本。不要覆盖无关文件。
 3. 将实现整理为 `main(task: dict) -> dict`。从 Glance 任务读取实际输入：单个媒体文件可读 `task["input"]["path"]`；多个图片或视频分别读 `imagePaths` 或 `videoPaths`；可编辑参数从 `task["parameters"]` 读取。外部 API 的字段、节点和顺序只按该服务的实际协议映射，不能留下示例文件名。
 4. 让 Manifest 与代码一致：声明实际输入类型、媒体数量、可编辑参数及输出类型。只有代码支持 prompt 时才声明 prompt。需要外部 API 时按其要求上传、提交和查询；本机处理不增加多余的外部步骤。凭证从环境变量读取，不写入代码、Manifest 或日志；需要额外 Python 依赖时使用适合该 Widget 的解释器并说明安装要求。
+5. 名称和文案提供中英文：Manifest 的 `name`、`summary` 和每个 command 的 `name`、`description` 写一种语言，另一种语言写在 `localizations` 里（键为语言标签 `en` 或 `zh-Hans`，command 按 id 组织）。Glance 按当前界面语言显示，缺少时回退到基础文案。名称用 2–4 个汉字的动宾短语或 1–3 个英文单词的 Title Case，例如基础 `"name": "高清放大"`，`"localizations": {"en": {"name": "Upscale", "summary": "...", "commands": {"run": {"name": "Upscale", "description": "..."}}}}`。
 
 ### RunningHub 域名与凭证
 

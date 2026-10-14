@@ -960,7 +960,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         let marketEntry = ActionMenuEntry(title: "Widget Market…".localized,
                                           action: { [weak self] in self?.widgetMarketTapped() })
         var widgetEntries: [ActionMenuEntry] = widgets.compactMap { widget in
-            let commands = widget.commands.filter { $0.inputTypes.contains("video") }
+            let commands = widget.localizedCommands.filter { $0.inputTypes.contains("video") }
             guard !commands.isEmpty else { return nil }
             func entry(_ command: WidgetCommand) -> ActionMenuEntry {
                 let currentIndex = activeIndices[safe: mode == .compare ? activeCompareSlot : 0]
@@ -973,7 +973,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                                        action: { [weak self] in self?.runWidget(widget: widget, command: command) })
             }
             if commands.count == 1 { return entry(commands[0]) }
-            return ActionMenuEntry(title: widget.name, submenu: commands.map(entry))
+            return ActionMenuEntry(title: widget.displayName, submenu: commands.map(entry))
         }
         entries.append(.separator())
         if widgetEntries.isEmpty {
@@ -1042,7 +1042,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             return
         }
         widgetInputPanel?.close()
-        let panel = WidgetVideoInputPanel(widgetName: widget.name, sourceURL: info.url,
+        let panel = WidgetVideoInputPanel(widgetName: widget.displayName, sourceURL: info.url,
                                           capabilities: capabilities)
         panel.onSubmit = { input in
             guard let first = input.mediaURLs.first else { return }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "783745bf-501d-4cfd-b2b8-69d32a8d90a8",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "name": "视频去水印",
   "summary": "将较长视频分段去水印，并按原顺序合成为一个视频。",
   "author": "Allan",
@@ -12,19 +12,43 @@
   "commands": [
     {
       "id": "run",
-      "name": "视频去水印",
+      "name": "去水印",
       "description": "输入一个视频；每段最长 8 秒，经 RunningHub 去水印后按顺序合并。",
-      "inputTypes": ["video"],
-      "inputMimeTypes": ["video/mp4", "video/quicktime", "video/webm", "video/x-matroska"],
-      "outputs": ["video"],
+      "inputTypes": [
+        "video"
+      ],
+      "inputMimeTypes": [
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+        "video/x-matroska"
+      ],
+      "outputs": [
+        "video"
+      ],
       "taskType": "widget.783745bf-501d-4cfd-b2b8-69d32a8d90a8.run",
       "requiresUpload": true,
-      "parameterSchema": {"type": "object", "properties": {}}
+      "parameterSchema": {
+        "type": "object",
+        "properties": {}
+      }
     }
   ],
   "privacy": {
     "uploadsMedia": true,
     "notice": "所选视频将上传到 Glance，并按最长 8 秒分段上传至 RunningHub 去水印；结果会合并并上传回 Glance。"
   },
-  "minimumGlanceVersion": "2.0.0"
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Video Watermark Remover",
+      "summary": "Remove watermarks from long videos by cleaning 8-second segments and stitching them back in order.",
+      "commands": {
+        "run": {
+          "name": "Remove Watermark",
+          "description": "Takes one video; segments of up to 8 s are cleaned on RunningHub and merged in order."
+        }
+      }
+    }
+  }
 }

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
-  "version": "0.1.1",
-  "name": "图片反推文字",
-  "summary": "使用 RunningHub 从图片生成文字描述。",
+  "version": "0.1.2",
+  "name": "图片转提示词",
+  "summary": "分析图片内容，生成可直接复用的文字描述。",
   "author": "Your name",
   "official": false,
   "execution": {
@@ -12,7 +12,7 @@
   "commands": [
     {
       "id": "run",
-      "name": "图片反推文字",
+      "name": "生成描述",
       "description": "分析所选图片并返回文字描述。",
       "inputTypes": [
         "image"
@@ -33,5 +33,17 @@
     "uploadsMedia": true,
     "notice": "所选图片将上传到 Glance 和 RunningHub 进行分析。"
   },
-  "minimumGlanceVersion": "2.0.0"
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Image to Prompt",
+      "summary": "Describe an image in words you can reuse as a prompt.",
+      "commands": {
+        "run": {
+          "name": "Describe Image",
+          "description": "Analyzes the selected image and returns a text description."
+        }
+      }
+    }
+  }
 }
