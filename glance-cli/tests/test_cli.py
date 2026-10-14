@@ -91,6 +91,24 @@ class CLITest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "必须是布尔值"):
             validate(manifest)
 
+    def test_localizations_are_optional_but_must_be_well_formed(self):
+        _, manifest = self.create_widget()
+        self.assertEqual(manifest["localizations"]["zh-Hans"]["commands"]["run"]["name"], "运行")
+        validate(manifest)
+        del manifest["localizations"]
+        validate(manifest)
+        manifest["localizations"] = {"en": {"name": "Blur", "commands": {"run": {"description": "Blur it."}}}}
+        validate(manifest)
+        manifest["localizations"] = {"EN": {"name": "Blur"}}
+        with self.assertRaisesRegex(ValueError, "语言标签"):
+            validate(manifest)
+        manifest["localizations"] = {"en": {"name": "  "}}
+        with self.assertRaisesRegex(ValueError, "不能为空"):
+            validate(manifest)
+        manifest["localizations"] = {"en": {"commands": {"missing": {"name": "x"}}}}
+        with self.assertRaisesRegex(ValueError, "不存在的 command"):
+            validate(manifest)
+
     def test_worker_stops_polling_widget_removed_from_server(self):
         folder, manifest = self.create_widget()
         with closing(connect()) as db:

@@ -48,7 +48,7 @@ def request_json(request: Request, operation: str, api_key: str) -> dict:
                 ) from error
             failure = f"HTTP {error.code}, {safe_error(detail, api_key)}"
         except (URLError, TimeoutError) as error:
-            failure = type(error).__name__
+            failure = f"{type(error).__name__}: {getattr(error, 'reason', error)}"
         if attempt == REQUEST_RETRIES:
             raise RuntimeError(f"RunningHub {operation} failed after {attempt} attempts: {failure}")
         logger.warning("RunningHub %s attempt %d/%d failed (%s); retrying",

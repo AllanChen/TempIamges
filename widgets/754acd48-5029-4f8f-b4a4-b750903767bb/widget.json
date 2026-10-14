@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "754acd48-5029-4f8f-b4a4-b750903767bb",
-  "version": "0.1.0",
-  "name": "换装",
-  "summary": "换装",
+  "version": "0.1.1",
+  "name": "AI 换装",
+  "summary": "把第二张图里的服装穿到第一张图的人物身上。",
   "author": "Allan",
   "official": false,
   "execution": {
@@ -13,7 +13,7 @@
     {
       "id": "run",
       "name": "换装",
-      "description": "Process an input.",
+      "description": "输入两张图片：第一张是人物，第二张是服装，生成换装后的图片。",
       "inputTypes": [
         "image"
       ],
@@ -32,7 +32,10 @@
         "properties": {
           "images": {
             "type": "array",
-            "items": { "type": "string", "format": "uri" },
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
             "minItems": 2,
             "maxItems": 2
           }
@@ -44,5 +47,17 @@
     "uploadsMedia": true,
     "notice": "The selected media is uploaded to Glance for processing."
   },
-  "minimumGlanceVersion": "2.0.0"
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Outfit Swap",
+      "summary": "Dress the person in the first image in the outfit from the second.",
+      "commands": {
+        "run": {
+          "name": "Swap Outfit",
+          "description": "Takes two images, a person and an outfit, and returns the person wearing it."
+        }
+      }
+    }
+  }
 }

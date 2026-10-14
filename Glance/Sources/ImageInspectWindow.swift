@@ -1568,13 +1568,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let marketEntry = ActionMenuEntry(title: "Widget Market…".localized,
                                           action: { [weak self] in self?.widgetMarketTapped() })
         var widgetEntries: [ActionMenuEntry] = widgets.compactMap { widget in
-            let commands = widget.commands.filter { $0.inputTypes.contains("image") }
+            let commands = widget.localizedCommands.filter { $0.inputTypes.contains("image") }
             guard !commands.isEmpty else { return nil }
             let commandEntries = commands.map { command in
                 let duplicate = currentRevealInfo.map { info in WidgetTaskManager.shared.activeRecords(for: info.url).contains { $0.widgetID == widget.id && $0.commandID == command.id } } ?? false
                 return ActionMenuEntry(title: command.name, enabled: hasImage && !duplicate, action: { [weak self] in self?.runWidget(widgetID: widget.id, commandID: command.id) })
             }
-            return commands.count == 1 ? commandEntries[0] : ActionMenuEntry(title: widget.name, submenu: commandEntries)
+            return commands.count == 1 ? commandEntries[0] : ActionMenuEntry(title: widget.displayName, submenu: commandEntries)
         }
         if widgetEntries.isEmpty {
             // Nothing installed (or nothing fits this image): keep the Market one click away.
@@ -1654,7 +1654,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func runWidget(widgetID: String, commandID: String) {
         guard let info = currentRevealInfo, info.kind == .image,
               let widget = WidgetRegistry.shared.installed.first(where: { $0.id == widgetID }),
-              let command = widget.commands.first(where: { $0.id == commandID }) else { return }
+              let command = widget.localizedCommand(id: commandID) else { return }
         let capabilities = command.inputCapabilities
         guard capabilities.needsImageDialog else {
             _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info)
@@ -1665,7 +1665,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             session.infos.firstIndex(where: { $0.url == info.url })
                 .flatMap { session.images[safe: $0] ?? nil }
         }
-        let panel = WidgetInputPanel(widgetName: widget.name, sourceURL: info.url,
+        let panel = WidgetInputPanel(widgetName: widget.displayName, sourceURL: info.url,
                                      sourceImage: sourceImage, capabilities: capabilities)
         panel.onSubmit = { [weak self] input in
             guard self != nil, let source = input.mediaURLs.first else { return }

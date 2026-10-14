@@ -29,7 +29,7 @@ class ErrorTooltip: NSPanel {
     override var canBecomeMain: Bool { false }
 
     func show(message: String, at mouseLocation: NSPoint) {
-        let size = content.apply(kind: .error, title: message, detail: nil, maxWidth: 420)
+        let size = content.apply(kind: .error, title: message, detail: nil, maxWidth: 420, maxHeight: 200)
         let frame = ScreenManager.shared.adjustedFrame(for: size, at: mouseLocation, offset: offset)
         setFrame(frame, display: true)
         invalidateShadow()

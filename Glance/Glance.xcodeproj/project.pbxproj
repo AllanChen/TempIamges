@@ -35,6 +35,7 @@
 		59E94B3294CB2E062A068A55 /* PreviewPanelPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A683F6DB94CE572022B5AA0 /* PreviewPanelPreview.swift */; };
 		5C57991C681CC89FE3AA2E07 /* FileNameResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945E891D8DC06977A9604F98 /* FileNameResolver.swift */; };
 		5E3532E3A1531B8024CA1FA8 /* ImageCompressionDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D2AD5C474EE6E65678F682 /* ImageCompressionDialog.swift */; };
+		5E4E045334F7FC25E0122DDC /* TaskRunningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9506424730AC6E5EE7E50BED /* TaskRunningViews.swift */; };
 		61A42E8BE6754C641FD1577A /* ImageFilmstrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F694E38E928E4458F0C675C7 /* ImageFilmstrip.swift */; };
 		6517E9498999A7FDDDDD7727 /* PathDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94DBC9997333D10A429AA36 /* PathDetector.swift */; };
 		6523E6CFEA4A4A65B06552B6 /* WebMVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 934E8AF04E9DC1C978DA7D49 /* WebMVideoView.swift */; };
@@ -143,6 +144,7 @@
 		8A5E859FF1BD25FBF7B257D3 /* ActionMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionMenu.swift; sourceTree = "<group>"; };
 		934E8AF04E9DC1C978DA7D49 /* WebMVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebMVideoView.swift; sourceTree = "<group>"; };
 		945E891D8DC06977A9604F98 /* FileNameResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNameResolver.swift; sourceTree = "<group>"; };
+		9506424730AC6E5EE7E50BED /* TaskRunningViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRunningViews.swift; sourceTree = "<group>"; };
 		9547D8963B922FFDFC345E56 /* CaptureOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureOutput.swift; sourceTree = "<group>"; };
 		9E0AC229A392A01D463A484B /* CaptureGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGeometry.swift; sourceTree = "<group>"; };
 		9E3752BB582E3A80CC0F50EB /* SelectedTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedTextExtractor.swift; sourceTree = "<group>"; };
@@ -320,6 +322,7 @@
 				7F782B64022CF60CCC6E4FC2 /* InspectToastWindow.swift */,
 				41BADF761B708A92F9122A72 /* MediaDropCanvasView.swift */,
 				E856A36615679744D2E55D02 /* OCRResultWindow.swift */,
+				9506424730AC6E5EE7E50BED /* TaskRunningViews.swift */,
 				7D6F1BD77245D7D4DEC80034 /* WidgetResultURLButton.swift */,
 				683FA1330AE6960F66402CEE /* WidgetTextResultWindow.swift */,
 			);
@@ -462,6 +465,7 @@
 				DDC3B6DB4CA276E80EF371A9 /* SelectedTextExtractor.swift in Sources */,
 				AA5BDE8FB2A97259B0116087 /* StatusBarController.swift in Sources */,
 				EEDBCB39C263989AF783FAE6 /* String+Localization.swift in Sources */,
+				5E4E045334F7FC25E0122DDC /* TaskRunningViews.swift in Sources */,
 				36190ACF12F79CE1E8E5926E /* TrafficLightButton.swift in Sources */,
 				71331F7B62DF6B17CACBD94B /* TrayPopoverPanel.swift in Sources */,
 				DA16731AF957758F1AB545E7 /* VideoCompareWindow.swift in Sources */,

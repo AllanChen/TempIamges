@@ -1,6 +1,6 @@
 # RemoveBG 高级 Widget
 
-这个目录保留旧版没有 `widget.json` 的结构。CLI 的 Manifest 缓存放在本机配置目录；`main.py` 接收 Glance 任务中的本地图片路径，返回本地图片，由 Worker 上传结果。
+`widget.json` 由线上 Manifest 整理而来（含中英文 `localizations`），发布新版本时随代码一起提交；`main.py` 接收 Glance 任务中的本地图片路径，返回本地图片，由 Worker 上传结果。
 
 在仓库根目录运行本地测试：
 

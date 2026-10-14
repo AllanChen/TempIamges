@@ -547,3 +547,34 @@
 "Exit compare / close" = "Exit compare / close";
 "Compare with" = "Compare with";
 "Info" = "Info";
+
+/* Task Center */
+"Show Source" = "Show Source";
+"Clear Finished" = "Clear Finished";
+"No tasks yet" = "No tasks yet";
+"No matching tasks" = "No matching tasks";
+"Run a Widget on an image and it will show up here." = "Run a Widget on an image and it will show up here.";
+"Try a different search or filter." = "Try a different search or filter.";
+"Its progress, result and timeline appear here." = "Its progress, result and timeline appear here.";
+
+/* Task Center states */
+"Generating" = "Generating";
+"Task failed" = "Task failed";
+"Task cancelled" = "Task cancelled";
+"You cancelled this task." = "You cancelled this task.";
+"Finished in %@" = "Finished in %@";
+"Saved next to the source" = "Saved next to the source";
+"Skipped" = "Skipped";
+"Stopped at %d%%" = "Stopped at %d%%";
+"Error" = "Error";
+"Running…" = "Running…";
+"Source · %@" = "Source · %@";
+"Media" = "Media";
+"%d available  ·  %d installed  ·  %d updates" = "%d available  ·  %d installed  ·  %d updates";
+"No matching widgets" = "No matching widgets";
+"Try a different search, or clear it to see every widget." = "Try a different search, or clear it to see every widget.";
+"No widgets available" = "No widgets available";
+"Refresh to load the catalog." = "Refresh to load the catalog.";
+"%d command" = "%d command";
+"%d commands" = "%d commands";
+"Sort by name" = "Sort by name";

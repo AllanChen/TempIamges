@@ -4,6 +4,7 @@ import argparse
 from contextlib import closing
 from datetime import datetime, timezone
 import json
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -63,8 +64,45 @@ def validate(manifest: dict, code_path: Path | None = None) -> None:
             raise ValueError(f"Command {command.get('id')} 的 showResultURL 必须是布尔值")
         if command.get("showResultURL") and not any(kind in command["outputs"] for kind in ("image", "video")):
             raise ValueError(f"Command {command.get('id')} 只有图片或视频输出才能显示结果 URL")
+    validate_localizations(manifest)
     if code_path and not (code_path / "main.py").is_file():
         raise ValueError(f"找不到 {code_path / 'main.py'}")
+
+
+LANGUAGE_TAG = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
+
+
+def validate_localizations(manifest: dict) -> None:
+    """`localizations` 为可选的多语言文案：按语言标签（如 en、zh-Hans）给出
+    name、summary，以及按 command id 给出命令的 name、description。所有字段
+    都是可选覆盖；缺少时 Glance 显示 Manifest 的基础文案。"""
+    localizations = manifest.get("localizations")
+    if localizations is None:
+        return
+    if not isinstance(localizations, dict):
+        raise ValueError("localizations 必须是按语言标签组织的对象")
+    command_ids = {command.get("id") for command in manifest["commands"]}
+
+    def text_ok(value: object) -> bool:
+        return value is None or (isinstance(value, str) and value.strip() != "")
+
+    for tag, localization in localizations.items():
+        if not isinstance(tag, str) or not LANGUAGE_TAG.match(tag):
+            raise ValueError(f"localizations 的键必须是语言标签（如 en、zh-Hans）：{tag}")
+        if not isinstance(localization, dict):
+            raise ValueError(f"localizations.{tag} 必须是对象")
+        if not text_ok(localization.get("name")) or not text_ok(localization.get("summary")):
+            raise ValueError(f"localizations.{tag} 的 name 和 summary 不能为空字符串")
+        commands = localization.get("commands")
+        if commands is None:
+            continue
+        if not isinstance(commands, dict):
+            raise ValueError(f"localizations.{tag}.commands 必须按 command id 组织")
+        for command_id, command in commands.items():
+            if command_id not in command_ids:
+                raise ValueError(f"localizations.{tag} 引用了不存在的 command：{command_id}")
+            if not isinstance(command, dict) or not text_ok(command.get("name")) or not text_ok(command.get("description")):
+                raise ValueError(f"localizations.{tag}.commands.{command_id} 的 name 和 description 不能为空字符串")
 
 
 def registered_python(db, widget_id: str, version: str) -> str | None:
@@ -109,7 +147,9 @@ def command_init(args: argparse.Namespace) -> None:
                       "requiresUpload": True, "parameterSchema": {}}],
         "privacy": {"uploadsMedia": True,
                     "notice": "The selected media is uploaded to Glance for processing."},
-        "minimumGlanceVersion": "2.0.0"
+        "minimumGlanceVersion": "2.0.0",
+        "localizations": {"zh-Hans": {"name": "我的 Widget", "summary": "描述你的 Widget。",
+                                      "commands": {"run": {"name": "运行", "description": "处理一个输入。"}}}}
     }
     manifest_path = directory / "widget.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

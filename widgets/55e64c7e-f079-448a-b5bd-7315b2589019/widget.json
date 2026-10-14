@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "55e64c7e-f079-448a-b5bd-7315b2589019",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "name": "免费图床",
-  "summary": "免费图床",
+  "summary": "上传图片或视频，获得可分享的链接。",
   "author": "Glance",
   "official": true,
   "execution": {
@@ -12,8 +12,8 @@
   "commands": [
     {
       "id": "c8446b13-f54b-4a1f-aaba-156996118d60",
-      "name": "上传图片或视频",
-      "description": "上传图片或视频，获取结果文件链接。",
+      "name": "上传获取链接",
+      "description": "上传图片或视频，获取结果文件的链接。",
       "inputTypes": [
         "image",
         "video"
@@ -43,10 +43,16 @@
     "notice": "图片会上传至 Freeimage 或 Glance R2；视频会上传至 Glance R2。"
   },
   "minimumGlanceVersion": "2.0.0",
-  "updatedAt": "2026-10-10T08:29:28Z",
-  "signature": {
-    "algorithm": "Ed25519",
-    "keyID": "admin-console",
-    "value": "admin-created"
+  "localizations": {
+    "en": {
+      "name": "Free Image Host",
+      "summary": "Upload an image or video and get a shareable link.",
+      "commands": {
+        "c8446b13-f54b-4a1f-aaba-156996118d60": {
+          "name": "Upload & Get Link",
+          "description": "Uploads the image or video and returns a link to the hosted file."
+        }
+      }
+    }
   }
 }

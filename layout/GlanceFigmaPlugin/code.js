@@ -3150,6 +3150,774 @@ async function generateToast() {
   figma.notify('Toast created');
 }
 
+// ---------------------------------------------------------------------------
+// Task Running Motion — "the peeker is working on it". A playable Figma
+// prototype (Smart Animate, looping) plus its storyboard. Select the first
+// frame and press Present (▶). Click any running frame to see the finish.
+//
+// Layer names are identical in every frame so Smart Animate can tween them:
+// the eyes glance left → centre → right, blink, the hands take turns lifting,
+// three sparkles twinkle, the ellipsis counts up and a highlight sweeps along
+// the progress track. 6 frames × 350 ms = a 2.1 s loop.
+// ---------------------------------------------------------------------------
+
+const TASK_MOTION_FRAME = 'Task Running Motion';
+const TASK_MOTION_STEP = 0.35;   // seconds per frame
+const SPARK_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 0 9.6 6.4 16 8 9.6 9.6 8 16 6.4 9.6 0 8 6.4 6.4Z" fill="#E8A87C"/></svg>';
+
+// One entry per frame: 0–5 loop, 6 = finished.
+const TASK_MOTION_KEYS = [
+  { name: '1 · look left',   eye: -0.9, blink: 0, handL: 0,    handR: 0,    lift: 0,   dots: [1, .25, .25], shimmer: -90, shimmerOpacity: 0,
+    sparks: [[1, .6], [.35, .4], [.7, .5]] },
+  { name: '2 · centre',      eye: 0,    blink: 0, handL: -.7,  handR: 0,    lift: -.3, dots: [1, 1, .25],   shimmer: 0,   shimmerOpacity: 1,
+    sparks: [[.4, .5], [1, 1], [.3, .4]] },
+  { name: '3 · look right',  eye: 0.9,  blink: 0, handL: 0,    handR: -.7,  lift: 0,   dots: [1, 1, 1],     shimmer: 90,  shimmerOpacity: 1,
+    sparks: [[.25, .4], [.5, .6], [1, 1]] },
+  { name: '4 · blink',       eye: 0.9,  blink: 1, handL: -.7,  handR: 0,    lift: -.3, dots: [.25, 1, 1],   shimmer: 165, shimmerOpacity: 1,
+    sparks: [[.8, .8], [.3, .4], [.5, .5]] },
+  { name: '5 · centre',      eye: 0,    blink: 0, handL: 0,    handR: -.7,  lift: 0,   dots: [.25, .25, 1], shimmer: 240, shimmerOpacity: 1,
+    sparks: [[1, 1], [.7, .7], [.25, .4]] },
+  { name: '6 · glance back', eye: -0.9, blink: 0, handL: -.7,  handR: 0,    lift: -.3, dots: [.25, .25, .25], shimmer: 320, shimmerOpacity: 0,
+    sparks: [[.5, .6], [.3, .4], [1, 1]] },
+  { name: '7 · done',        eye: 0,    blink: 2, handL: -1.6, handR: -1.6, lift: -.6, dots: [0, 0, 0],     shimmer: 0,   shimmerOpacity: 0,
+    sparks: [[1, 1.15], [1, 1.15], [1, 1.15]], done: true }
+];
+
+function taskMotionStage(parent, index, x, y, key) {
+  const stage = frame('Task Running Motion / ' + key.name, x, y, 420, 160, '#0B0C0F', 16);
+  historyStroke(stage, '#FFFFFF', .12);
+  parent.appendChild(stage);
+
+  const chip = frame('Chip', 30, 42, 360, 76, null, 20);
+  chip.fills = [fill('#18191D', 1)];
+  historyStroke(chip, '#FFFFFF', .12);
+  chip.effects = toastShadow();
+  chip.clipsContent = false;
+  stage.appendChild(chip);
+
+  // Peeker, drawn from separate layers (not a flattened glyph) so it can animate.
+  const size = 44, u = size / 18;
+  const body = frame('Character', 16, 16 + key.lift * u, size, size, null, 0);
+  body.fills = []; body.clipsContent = false;
+  chip.appendChild(body);
+  const ink = '#F3EEE8';
+  const disc = (name, cx, cy, d, color) => ellipse(name, body, cx * u - d * u / 2, cy * u - d * u / 2, d * u, color);
+  disc('Head', 9, 8, 11, ink);
+  rect('Frame Edge', body, 1.5 * u, 12.25 * u, 15 * u, 2.25 * u, ink, 1.125 * u);
+  const eyeY = 7.6;
+  [['Eye L', 6.8], ['Eye R', 11.2]].forEach(([name, cx]) => {
+    const eye = disc(name, cx + key.eye, eyeY, 2.2, '#161719');
+    if (key.blink === 1) {          // blink: squash to a sliver
+      eye.resize(2.2 * u, 0.6 * u); eye.y = eyeY * u - 0.3 * u;
+    } else if (key.blink === 2) {   // happy squint
+      eye.resize(2.4 * u, 1.1 * u); eye.y = eyeY * u - 0.55 * u;
+    }
+  });
+  disc('Hand L', 5.2, 12.3 + key.handL, 3.2, key.done ? '#8FD0AF' : COLORS.accent);
+  disc('Hand R', 12.8, 12.3 + key.handR, 3.2, key.done ? '#8FD0AF' : COLORS.accent);
+
+  // Sparkles: twinkle by opacity and scale. [opacity, scale]
+  [['Spark A', 62, 10], ['Spark B', 6, 8], ['Spark C', 64, 50]].forEach(([name, cx, cy], i) => {
+    const [opacity, scale] = key.sparks[i];
+    const s = figma.createNodeFromSvg(SPARK_SVG);
+    s.name = name;
+    const d = 14 * scale;
+    s.resize(d, d); s.x = cx - d / 2; s.y = cy - d / 2; s.opacity = opacity;
+    chip.appendChild(s);
+  });
+
+  text('Title', chip, key.done ? 'Done' : 'Generating', 84, 14, 14, COLORS.text, 'semibold');
+  [0, 1, 2].forEach(i => {
+    const dot = ellipse('Dot ' + (i + 1), chip, 166 + i * 8, 26, 4, COLORS.text);
+    dot.opacity = key.dots[i];
+  });
+  const check = historyIcon(chip, 'check', 128, 14, 16, '#8FD0AF');
+  check.name = 'Check'; check.opacity = key.done ? 1 : 0;
+  text('Detail', chip, key.done ? 'Remove Background · 12.4 s' : 'Remove Background', 84, 36, 12, COLORS.secondary, 'regular', 250);
+
+  // Progress track with a sweeping highlight (clipped to the track).
+  const track = frame('Track', 84, 60, 252, 4, null, 2);
+  track.fills = [fill('#FFFFFF', .08)];
+  chip.appendChild(track);
+  const shimmer = rect('Shimmer', track, key.shimmer, 0, 90, 4, null, 2);
+  shimmer.fills = [{
+    type: 'GRADIENT_LINEAR', gradientTransform: [[1, 0, 0], [0, 1, 0]],
+    gradientStops: [{ position: 0, color: { ...rgb(COLORS.accent), a: 0 } },
+                    { position: .5, color: { ...rgb(COLORS.accent), a: 1 } },
+                    { position: 1, color: { ...rgb(COLORS.accent), a: 0 } }]
+  }];
+  shimmer.opacity = key.shimmerOpacity;
+  const fillBar = rect('Bar Fill', track, 0, 0, 252, 4, '#8FD0AF', 2);
+  fillBar.opacity = key.done ? 1 : 0;
+
+  text('Frame Label', stage, key.name + (key.done ? ' · click-through, then back to 1' : ' · ' + Math.round(TASK_MOTION_STEP * 1000) + ' ms'),
+    0, 134, 11, COLORS.muted, 'regular', 420, 'CENTER');
+  return stage;
+}
+
+/// Loop 1→6→1 after 350 ms (Smart Animate); click any running frame for "done",
+/// which returns to frame 1 after 1.6 s.
+async function setTaskMotionReactions(stages) {
+  const go = (target, timeout, trigger, duration) => ({
+    trigger: trigger || { type: 'AFTER_TIMEOUT', timeout },
+    actions: [{ type: 'NODE', destinationId: target.id, navigation: 'NAVIGATE', preserveScrollPosition: false,
+                transition: { type: 'SMART_ANIMATE', easing: { type: 'EASE_IN_OUT' }, duration } }]
+  });
+  const loop = stages.slice(0, 6), done = stages[6];
+  const apply = async (node, reactions) => {
+    try {
+      if (typeof node.setReactionsAsync === 'function') await node.setReactionsAsync(reactions);
+      else node.reactions = reactions;
+    } catch (error) { console.error('reactions', error); }
+  };
+  for (let i = 0; i < loop.length; i++) {
+    await apply(loop[i], [go(loop[(i + 1) % loop.length], TASK_MOTION_STEP, null, TASK_MOTION_STEP),
+                          go(done, 0, { type: 'ON_CLICK' }, 0.4)]);
+  }
+  await apply(done, [go(loop[0], 1.6, null, 0.4)]);
+  try {
+    const point = [{ nodeId: loop[0].id, name: 'Task Running' }];
+    if (typeof figma.currentPage.setFlowStartingPointsAsync === 'function') await figma.currentPage.setFlowStartingPointsAsync(point);
+    else figma.currentPage.flowStartingPoints = point;
+  } catch (error) { console.error('flow start', error); }
+}
+
+async function generateTaskRunningMotion() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === TASK_MOTION_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Task Running Motion already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+
+  const gap = 40, width = 40 + TASK_MOTION_KEYS.length * (420 + gap);
+  let holder;
+  if (typeof figma.createSection === 'function') {
+    holder = figma.createSection();
+    holder.name = TASK_MOTION_FRAME;
+    holder.x = maxX + 196; holder.y = 0;
+    holder.resizeWithoutConstraints(width, 330);
+  } else {
+    holder = frame(TASK_MOTION_FRAME, maxX + 196, 0, width, 330, null, 0);
+    holder.fills = []; holder.clipsContent = false;
+    figma.currentPage.appendChild(holder);
+  }
+  const stages = TASK_MOTION_KEYS.map((key, i) => taskMotionStage(holder, i, 40 + i * (420 + gap), 110, key));
+  if (typeof figma.createSection !== 'function') {
+    text('Heading', holder, 'Task Running Motion', 40, 24, 20, COLORS.text, 'semibold');
+    text('How To Play', holder, 'Select frame 1, press Present (▶). Smart Animate loops 6 frames × 350 ms = 2.1 s. Click a running frame to see "Done".', 40, 58, 12, COLORS.muted, 'regular', 1500);
+  } else {
+    const heading = figma.createText();
+    heading.fontName = fontSemibold; heading.fontSize = 20; heading.characters = 'Task Running Motion';
+    heading.fills = [fill(COLORS.text)]; heading.x = 40; heading.y = 24; heading.name = 'Heading'; holder.appendChild(heading);
+    const how = figma.createText();
+    how.fontName = fontRegular; how.fontSize = 12;
+    how.characters = 'Select frame 1, press Present (▶). Smart Animate loops 6 frames × 350 ms = 2.1 s. Click a running frame to see "Done".';
+    how.fills = [fill(COLORS.muted)]; how.x = 40; how.y = 58; how.name = 'How To Play'; holder.appendChild(how);
+  }
+  text('Spec', holder, 'Eyes glance L → C → R and blink on frame 4 · hands take turns lifting 0.7 pt · sparkles twinkle (opacity .25–1, scale .3–1) · ellipsis counts 1→3 · highlight sweeps the track and fades out before it wraps. Ease in-out, 350 ms. Reduce Motion: show frame 1 static with the ellipsis only.',
+    40, 290, 11, COLORS.muted, 'regular', 1500);
+  await setTaskMotionReactions(stages);
+  figma.currentPage.selection = [holder];
+  figma.viewport.scrollAndZoomIntoView([holder]);
+  figma.ui.postMessage({ message: 'Created Task Running Motion: 6-frame loop + done, with Smart Animate prototype links. Select frame 1 and press Present.' });
+  figma.notify('Task Running Motion created');
+}
+
+// ---------------------------------------------------------------------------
+// Shared pieces for the task-running placement study and the Task Center
+// redesign.
+// ---------------------------------------------------------------------------
+
+/// The peeker as separate layers at any size (badge, tile overlay, chip).
+function peekerBadge(parent, x, y, size, key = TASK_MOTION_KEYS[1]) {
+  const u = size / 18;
+  const body = frame('Peeker', x, y + key.lift * u, size, size, null, 0);
+  body.fills = []; body.clipsContent = false;
+  parent.appendChild(body);
+  const ink = '#F3EEE8';
+  const disc = (name, cx, cy, d, color) => ellipse(name, body, cx * u - d * u / 2, cy * u - d * u / 2, d * u, color);
+  disc('Head', 9, 8, 11, ink);
+  rect('Frame Edge', body, 1.5 * u, 12.25 * u, 15 * u, 2.25 * u, ink, 1.125 * u);
+  disc('Eye L', 6.8 + key.eye, 7.6, 2.2, '#161719');
+  disc('Eye R', 11.2 + key.eye, 7.6, 2.2, '#161719');
+  disc('Hand L', 5.2, 12.3 + key.handL, 3.2, COLORS.accent);
+  disc('Hand R', 12.8, 12.3 + key.handR, 3.2, COLORS.accent);
+  return body;
+}
+
+/// Highlight sweeping along a thin track (the "working" line).
+function sweepTrack(parent, x, y, width, height = 4, sweepX = null) {
+  const track = frame('Track', x, y, width, height, null, height / 2);
+  track.fills = [fill('#FFFFFF', .10)];
+  parent.appendChild(track);
+  const w = Math.max(24, Math.round(width * .36));
+  const shimmer = rect('Shimmer', track, sweepX === null ? Math.round(width * .3) : sweepX, 0, w, height, null, height / 2);
+  shimmer.fills = [{
+    type: 'GRADIENT_LINEAR', gradientTransform: [[1, 0, 0], [0, 1, 0]],
+    gradientStops: [{ position: 0, color: { ...rgb(COLORS.accent), a: 0 } },
+                    { position: .5, color: { ...rgb(COLORS.accent), a: 1 } },
+                    { position: 1, color: { ...rgb(COLORS.accent), a: 0 } }]
+  }];
+  return track;
+}
+
+/// Running chip: full (360×76: peeker, title, detail, sweep) or compact (240×48).
+function placementChip(parent, x, y, compact) {
+  const w = compact ? 240 : 360, h = compact ? 48 : 76;
+  const chip = frame(compact ? 'Running Chip / compact' : 'Running Chip / full', x, y, w, h, null, compact ? 14 : 20);
+  chip.fills = [fill('#18191D', .96)];
+  historyStroke(chip, '#FFFFFF', .12);
+  chip.effects = toastShadow();
+  chip.clipsContent = false;
+  parent.appendChild(chip);
+  if (compact) {
+    peekerBadge(chip, 10, 8, 32);
+    text('Title', chip, 'Generating', 54, 8, 13, COLORS.text, 'semibold');
+    [0, 1, 2].forEach(i => { ellipse('Dot ' + (i + 1), chip, 54 + 70 + i * 7, 19, 3.5, COLORS.text).opacity = [1, 1, .3][i]; });
+    sweepTrack(chip, 54, 32, 164, 3);
+  } else {
+    peekerBadge(chip, 16, 16, 44);
+    text('Title', chip, 'Generating', 84, 14, 14, COLORS.text, 'semibold');
+    [0, 1, 2].forEach(i => { ellipse('Dot ' + (i + 1), chip, 166 + i * 8, 26, 4, COLORS.text).opacity = [1, 1, .3][i]; });
+    text('Detail', chip, 'Remove Background', 84, 36, 12, COLORS.secondary, 'regular', 250);
+    sweepTrack(chip, 84, 60, 252, 4);
+  }
+  return chip;
+}
+
+/// A window mock: artwork, traffic lights, toolbar, and the running badge.
+function placementWindow(flow, name, x, y, w, h, radius = 12) {
+  const win = frame(name, x, y, w, h, '#060709', radius);
+  historyStroke(win, '#FFFFFF', .12);
+  flow.appendChild(win);
+  artworkFill(rect('Image', win, 0, 0, w, h, null, 0), ['#24313B', '#A77B72', '#26352D']);
+  createBareSystemControls(win);
+  const toolbar = createFloatingInspectToolbar(win, w, 'Focus');
+  const scale = Math.min(1, (w - 120) / 326);
+  if (scale < 1 && typeof toolbar.rescale === 'function') toolbar.rescale(Math.max(.4, scale));
+  const toolbarH = 54 * Math.min(1, Math.max(.4, scale));
+  // Breathing frame + the badge that replaces the old green dot.
+  const border = rect('Running Border', win, 8, 12, w - 16, h - 24, null, Math.max(8, radius));
+  border.strokes = [fill(COLORS.accent, .8)]; border.strokeWeight = 2;
+  const bx = w - 24 - 34, by = 24 + toolbarH / 2 - 17;
+  const badge = frame('Running Badge', bx, by, 34, 34, null, 17);
+  badge.fills = [fill('#161719', .9)]; historyStroke(badge, '#FFFFFF', .12);
+  badge.effects = [{ type: 'DROP_SHADOW', color: { ...rgb(COLORS.accent), a: .35 }, offset: { x: 0, y: 0 }, radius: 10, spread: 0, visible: true, blendMode: 'NORMAL' }];
+  win.appendChild(badge);
+  peekerBadge(badge, 5, 5, 24);
+  return win;
+}
+
+/// Bottom filmstrip: dark bar + tiles. `running` is the index with a task.
+function placementFilmstrip(win, w, h, barH, tile, count, running) {
+  const bar = rect('Filmstrip Shade', win, 8, h - 12 - barH, w - 16, barH, '#07080A', 0);
+  bar.opacity = .55;
+  const gap = Math.max(5, Math.round(tile * .13));
+  const total = count * tile + (count - 1) * gap;
+  const x0 = Math.round((w - total) / 2), y0 = h - 12 - barH + Math.round((barH - tile) / 2);
+  const palettes = [['#24313B', '#9B705C', '#29382E'], ['#2E323D', '#A77B72', '#1A2633'], ['#363539', '#926A58', '#26332A'],
+                    ['#323644', '#95718A', '#282A34'], ['#273032', '#B08565', '#36463C']];
+  for (let i = 0; i < count; i++) {
+    const t = frame('Tile ' + (i + 1) + (i === running ? ' / running' : ''), x0 + i * (tile + gap), y0, tile, tile, '#14151A', Math.max(5, tile * .12));
+    historyStroke(t, i === running ? COLORS.accent : '#FFFFFF', i === running ? .9 : .10, i === running ? 2 : 1);
+    win.appendChild(t);
+    artworkFill(rect('Preview', t, 0, 0, tile, tile, null, 0), palettes[i % palettes.length]);
+    if (i === running) {
+      rect('Tile Scrim', t, 0, 0, tile, tile, '#000000', 0).opacity = .35;
+      const size = Math.max(16, Math.round(tile * .45));
+      peekerBadge(t, Math.round((tile - size) / 2), Math.round((tile - size) / 2) - 2, size);
+      sweepTrack(t, 4, tile - 7, tile - 8, 2);
+      if (tile >= 56) {
+        const tag = frame('Percent Tag', tile - 36, 5, 31, 14, '#8FD0AF', 4);
+        t.appendChild(tag);
+        text('Label', tag, '64%', 0, 1, 9, '#0B2018', 'semibold', 31, 'CENTER');
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Task Running Placement — where the motion lives, by available space.
+// ---------------------------------------------------------------------------
+
+const TASK_PLACEMENT_FRAME = 'Task Running Placement';
+
+function createTaskRunningPlacement(x) {
+  const flow = frame(TASK_PLACEMENT_FRAME, x, 0, 320 + 480 + 1554 + 1100 + 4 * 120, 1150, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+  text('Heading', flow, 'Task Running Placement', 0, 0, 22, COLORS.text, 'semibold');
+  text('Subheading', flow, 'One peeker, three sizes. The badge is always there; the tile overlay appears with a filmstrip; the chip only when the canvas has room (≥ 520 × 360 full, ≥ 360 wide compact).',
+    0, 34, 12, COLORS.muted, 'regular', 1500);
+
+  let cx = 0;
+  // A — a small image makes a small window.
+  const aW = 320, aH = 240;
+  text('Label A', flow, 'A · Small image — window ≈ 320 × 240. Badge + tile overlay + breathing border. No chip.', cx, 82, 11, COLORS.secondary, 'medium', aW + 40);
+  const a = placementWindow(flow, 'A / Small window 320 × 240', cx, 120, aW, aH);
+  placementFilmstrip(a, aW, aH, 58, 38, 1, 0);
+  cx += aW + 120;
+
+  // B — compact window: compact chip above the filmstrip.
+  const bW = 480, bH = 360;
+  text('Label B', flow, 'B · Compact window — 360 to 520 wide. Compact chip (240 × 48), bottom-centre, above the filmstrip.', cx, 82, 11, COLORS.secondary, 'medium', bW + 60);
+  const b = placementWindow(flow, 'B / Compact window 480 × 360', cx, 120, bW, bH);
+  placementFilmstrip(b, bW, bH, 58, 38, 4, 1);
+  const bc = placementChip(b, 0, 0, true);
+  bc.x = Math.round((bW - 240) / 2); bc.y = bH - 12 - 58 - 14 - 48;
+  cx += bW + 120;
+
+  // C — standard window: full chip.
+  const cW = 1554, cH = 1012;
+  text('Label C', flow, 'C · Standard window — ≥ 520 × 360. Full chip (360 × 76), bottom-centre, 16 above the filmstrip; badge top-right; tile overlay.', cx, 82, 11, COLORS.secondary, 'medium', 1400);
+  const c = placementWindow(flow, 'C / Standard window 1554 × 1012', cx, 120, cW, cH, 16);
+  placementFilmstrip(c, cW, cH, 94, 61, 5, 2);
+  const cc = placementChip(c, 0, 0, false);
+  cc.x = Math.round((cW - 360) / 2); cc.y = cH - 12 - 94 - 16 - 76;
+  cx += cW + 120;
+
+  // D — Task Center rows.
+  text('Label D', flow, 'D · Task Center — the placeholder hourglass becomes a mini peeker; state badge gets an animated ellipsis.', cx, 82, 11, COLORS.secondary, 'medium', 900);
+  const d = frame('D / Task Center rows', cx, 120, 380, 300, '#0E0F13', 16);
+  historyStroke(d, '#FFFFFF', .12); flow.appendChild(d);
+  const rows = [['Remove Background', 'Just now · input.png', 'Running', COLORS.accent, true],
+                ['Upscale 2×', '12 min ago · portrait.jpg', 'Done', COLORS.success, false],
+                ['Image Caption', 'Yesterday · product.webp', 'Failed', COLORS.danger, false]];
+  rows.forEach(([title, detail, state, color, running], i) => {
+    const row = taskListRow(d, 16 + i * 92, title, detail, running ? 'Running…' : state, color, running);
+    if (running) {
+      const thumb = row.findOne(n => n.name === 'Thumbnail');
+      rect('Thumbnail Scrim', row, thumb.x, thumb.y, 56, 56, '#000000', 7).opacity = .38;
+      peekerBadge(row, 12 + 12, 13 + 11, 32);
+    }
+  });
+  return flow;
+}
+
+async function generateTaskRunningPlacement() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === TASK_PLACEMENT_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Task Running Placement already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createTaskRunningPlacement(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Task Running Placement: small, compact, standard windows and Task Center rows.' });
+  figma.notify('Task Running Placement created');
+}
+
+// ---------------------------------------------------------------------------
+// Task Center Redesign — one place for each kind of action.
+//   list actions (refresh, search, clear finished, filters) live in the list;
+//   task actions live in ONE group at the top right of the detail, and change
+//   with the task's state. The grey toolbar band and the Info button are gone.
+// ---------------------------------------------------------------------------
+
+const TASK_CENTER_REDESIGN_FRAME = 'Task Center Redesign';
+
+function tcGhostIcon(parent, name, iconName, x, y, tint) {
+  const node = frame(name, x, y, 32, 32, null, 10);
+  node.fills = [fill('#FFFFFF', .05)]; historyStroke(node, '#FFFFFF', .08);
+  parent.appendChild(node);
+  historyIcon(node, iconName, 8, 8, 16, tint || COLORS.text);
+  return node;
+}
+
+function tcPill(parent, label, count, x, y, active) {
+  const w = 12 + historyTextWidth(label, 12) + 6 + historyTextWidth(String(count), 12) + 12;
+  const chip = frame('Filter / ' + label, x, y, w, 30, null, 15);
+  historyFill(chip, active ? '#34251F' : '#FFFFFF', active ? .96 : .05);
+  historyStroke(chip, active ? COLORS.accent : '#FFFFFF', active ? .6 : .08);
+  parent.appendChild(chip);
+  text('Label', chip, label, 12, 7, 12, active ? COLORS.accent : COLORS.secondary, active ? 'semibold' : 'medium');
+  text('Count', chip, String(count), 12 + historyTextWidth(label, 12) + 6, 7, 12, active ? COLORS.accent : COLORS.muted, 'regular');
+  return w;
+}
+
+/// The single, right-aligned action group for the selected task. Built from the
+/// right edge so it stays aligned whichever buttons the state needs.
+function taskActionGroup(parent, rightEdge, y, items) {
+  const group = frame('Task Actions', 0, y, 10, 36, null, 0);
+  group.fills = []; group.clipsContent = false;
+  parent.appendChild(group);
+  let x = rightEdge;
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (item.separator) {
+      x -= 13;
+      const line = rect('Separator', parent, x + 6, y + 6, 1, 24, '#FFFFFF', 0); line.opacity = .12;
+      continue;
+    }
+    const iconOnly = !item.label;
+    const w = iconOnly ? 36 : 14 + 16 + 8 + historyTextWidth(item.label, 12) + 14;
+    x -= w;
+    const btn = frame('Action / ' + (item.label || item.name), x, y, w, 36, null, 12);
+    const primary = item.kind === 'primary', danger = item.kind === 'danger';
+    if (primary) { btn.fills = [fill(COLORS.accent)]; }
+    else { btn.fills = [fill(danger ? COLORS.danger : '#FFFFFF', danger ? .08 : .05)]; historyStroke(btn, danger ? COLORS.danger : '#FFFFFF', danger ? .32 : .08); }
+    parent.appendChild(btn);
+    const tint = primary ? '#21130D' : (danger ? COLORS.danger : COLORS.text);
+    if (iconOnly) historyIcon(btn, item.icon, 10, 10, 16, tint);
+    else {
+      historyIcon(btn, item.icon, 14, 10, 16, tint);
+      text('Label', btn, item.label, 38, 10, 12, tint, primary ? 'semibold' : 'medium', w - 52);
+    }
+    x -= 8;
+  }
+  group.remove();
+  return x;
+}
+
+const TC_ROWS = [
+  ['Remove Background', 'Just now · input.png', 'Running', COLORS.accent],
+  ['Upscale 2×', '12 min ago · portrait.jpg', 'Done', COLORS.success],
+  ['Image Caption', 'Yesterday · product.webp', 'Failed', COLORS.danger]
+];
+
+function taskCenterScene(flow, name, x, state) {
+  const empty = state === 'empty';
+  const screen = frame(name, x, 0, 1554, 1012, '#0B0C0F', 16);
+  historyStroke(screen, '#FFFFFF', .12); flow.appendChild(screen);
+  createBareSystemControls(screen);
+  text('Window Title', screen, 'Task Center', 0, 12, 13, COLORS.text, 'semibold', 1554, 'CENTER');
+  text('Window Subtitle', screen, empty ? '0 tasks' : '3 tasks · 1 running', 0, 31, 11, COLORS.muted, 'regular', 1554, 'CENTER');
+
+  // List column: list-level actions only.
+  const side = frame('Task List', 0, 52, 360, 960, '#0E0F13', 0);
+  screen.appendChild(side);
+  rect('Edge', side, 359, 0, 1, 960, '#FFFFFF', 0).opacity = .07;
+  text('Heading', side, 'Tasks', 24, 22, 17, COLORS.text, 'semibold');
+  tcGhostIcon(side, 'Refresh', 'refresh', 360 - 24 - 32 * 2 - 8, 16, COLORS.text);
+  const clear = tcGhostIcon(side, 'Clear Finished', 'clear', 360 - 24 - 32, 16, COLORS.danger);
+  clear.strokes = [fill(COLORS.danger, .32)];
+  const search = frame('Search Field', 24, 68, 312, 36, '#14151A', 12);
+  historyStroke(search, '#FFFFFF', .10); side.appendChild(search);
+  historyIcon(search, 'search', 12, 9, 18, COLORS.muted);
+  text('Placeholder', search, 'Search tasks', 38, 10, 13, COLORS.muted, 'regular', 200);
+  let px = 24;
+  [['All', empty ? 0 : 3, true], ['Running', empty ? 0 : 1, false], ['Done', empty ? 0 : 1, false], ['Failed', empty ? 0 : 1, false]]
+    .forEach(([label, count, active]) => { const pill = tcPill(side, label, count, px, 118, active); px += pill + 8; });
+
+  if (empty) {
+    text('Empty List', side, 'No tasks yet', 0, 300, 14, COLORS.secondary, 'medium', 360, 'CENTER');
+    text('Empty List Hint', side, 'Run a Widget on an image and it will show up here.', 40, 328, 12, COLORS.muted, 'regular', 280, 'CENTER');
+  } else {
+    const selected = { running: 0, done: 1, failed: 2 }[state];
+    TC_ROWS.forEach(([title, detail, label, color], i) => {
+      const row = taskListRow(side, 166 + i * 92, title, detail, label === 'Running' ? 'Running…' : label, color, i === selected);
+      if (label === 'Running') {
+        const thumb = row.findOne(n => n.name === 'Thumbnail');
+        rect('Thumbnail Scrim', row, thumb.x, thumb.y, 56, 56, '#000000', 7).opacity = .38;
+        peekerBadge(row, 24, 24, 32);
+      }
+    });
+  }
+
+  // Detail column.
+  const detail = frame('Task Detail', 360, 52, 1194, 960, '#0B0C0F', 0);
+  screen.appendChild(detail);
+  if (empty) {
+    const tile = frame('Empty Illustration', (1194 - 96) / 2, 340, 96, 96, '#14151A', 28);
+    historyStroke(tile, '#FFFFFF', .08); detail.appendChild(tile);
+    historyIcon(tile, 'tasks', 28, 28, 40, COLORS.muted);
+    text('Empty Title', detail, 'Select a task', 0, 464, 20, COLORS.text, 'semibold', 1194, 'CENTER');
+    text('Empty Hint', detail, 'Its progress, result and timeline appear here.', 0, 500, 13, COLORS.secondary, 'regular', 1194, 'CENTER');
+    return screen;
+  }
+
+  const meta = { running: ['Remove Background', 'Task 81C4  •  Running  •  64%', COLORS.accent],
+                 done: ['Upscale 2×', 'Task 7E20  •  Done  •  12.4 s', COLORS.success],
+                 failed: ['Image Caption', 'Task 55B9  •  Failed  •  The worker stopped before returning a result', COLORS.danger] }[state];
+  text('Task Title', detail, meta[0], 32, 26, 18, COLORS.text, 'semibold');
+  text('Task Metadata', detail, meta[1], 32, 54, 12, meta[2], 'medium', 700);
+
+  const groups = {
+    running: [{ label: 'Show Source', icon: 'focus' }, { label: 'Cancel', icon: 'uninstall', kind: 'danger' }],
+    done: [{ label: 'Show in Image Inspect', icon: 'focus' }, { label: 'Copy URL', icon: 'copy' }, { label: 'Reveal in Finder', icon: 'folder' },
+           { separator: true }, { name: 'Remove', icon: 'clear', kind: 'danger' }],
+    failed: [{ label: 'Retry', icon: 'retry', kind: 'primary' }, { separator: true }, { name: 'Remove', icon: 'clear', kind: 'danger' }]
+  }[state];
+  taskActionGroup(detail, 1194 - 32, 24, groups);
+
+  const source = panel(detail, 'Source Preview', 32, 100, 556, 360, COLORS.canvas, 12);
+  artworkFill(rect('Source Image', source, 12, 12, 532, 336, null, 8), ['#24313B', '#9B705C', '#29382E']);
+  text('Preview Caption', source, 'Source · input.png', 18, 322, 11, '#F3F3F3', 'medium', 300);
+  const result = panel(detail, 'Result Preview', 606, 100, 556, 360, COLORS.canvas, 12);
+  if (state === 'running') {
+    const chip = placementChip(result, 0, 0, false);
+    chip.x = Math.round((556 - 360) / 2); chip.y = Math.round((360 - 76) / 2);
+  } else if (state === 'done') {
+    artworkFill(rect('Result Image', result, 12, 12, 532, 336, null, 8), ['#24312D', '#7DA67D', '#26352D']);
+    const pill = frame('AI Result Pill', 24, 24, 58, 22, null, 11);
+    historyFill(pill, '#161719', .8); historyStroke(pill, COLORS.accent, .5); result.appendChild(pill);
+    ellipse('Dot', pill, 10, 8, 6, COLORS.accent);
+    text('Label', pill, 'Result', 22, 4, 11, COLORS.accent, 'semibold', 34);
+  } else {
+    const badge = frame('Error Badge', (556 - 56) / 2, 112, 56, 56, null, 28);
+    badge.fills = [fill(COLORS.danger, .14)]; result.appendChild(badge);
+    historyIcon(badge, 'warning', 14, 14, 28, COLORS.danger);
+    text('Error Title', result, 'Task failed', 0, 188, 16, COLORS.text, 'semibold', 556, 'CENTER');
+    text('Error Reason', result, 'The worker stopped before returning a result.', 78, 218, 12, COLORS.secondary, 'regular', 400, 'CENTER');
+  }
+
+  const timeline = panel(detail, 'Timeline', 32, 490, 556, 400, '#101115', 12);
+  text('Timeline Heading', timeline, 'Timeline', 24, 20, 13, COLORS.text, 'semibold');
+  const steps = {
+    running: [['Task submitted', 'Client uploaded the source image', '14:32:06', COLORS.success], ['Worker claimed', 'GPU worker eu-02', '14:32:08', COLORS.success],
+              ['Processing', 'Polling every 2 seconds', 'Now', COLORS.accent, true], ['Download result', 'Waiting for output file', 'Pending', COLORS.muted]],
+    done: [['Task submitted', 'Client uploaded the source image', '14:20:01', COLORS.success], ['Worker claimed', 'GPU worker eu-02', '14:20:03', COLORS.success],
+           ['Processing', 'Finished in 12.4 s', '14:20:15', COLORS.success], ['Download result', 'Saved next to the source', '14:20:16', COLORS.success]],
+    failed: [['Task submitted', 'Client uploaded the source image', 'Yesterday', COLORS.success], ['Worker claimed', 'GPU worker eu-01', 'Yesterday', COLORS.success],
+             ['Processing', 'The worker stopped responding', 'Yesterday', COLORS.danger, true], ['Download result', 'Skipped', '—', COLORS.muted]]
+  }[state];
+  steps.forEach(([t, d, time, color, current], i) => timelineRow(timeline, 60 + i * 72, t, d, time, color, !!current));
+
+  const info = panel(detail, 'Task Details', 606, 490, 556, 400, '#101115', 12);
+  text('Heading', info, 'Task Details', 24, 20, 13, COLORS.text, 'semibold');
+  const rows = { running: [['Widget', 'Remove Background'], ['Input', 'input.png'], ['Worker', 'eu-02'], ['Progress', '64%'], ['Polling', '2 seconds']],
+                 done: [['Widget', 'Upscale 2×'], ['Input', 'portrait.jpg'], ['Worker', 'eu-02'], ['Duration', '12.4 s'], ['Result', 'portrait-2x.png']],
+                 failed: [['Widget', 'Image Caption'], ['Input', 'product.webp'], ['Worker', 'eu-01'], ['Progress', 'Stopped at 41%'], ['Error', 'Worker timeout']] }[state];
+  rows.forEach(([k, v], i) => metadataRow(info, k, v, 60 + i * 38));
+  return screen;
+}
+
+function createTaskCenterRedesign(x) {
+  const gap = 196;
+  const flow = frame(TASK_CENTER_REDESIGN_FRAME, x, 0, 1554 * 4 + gap * 3, 1012 + 90, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+  const scenes = [['01 / Task Center / Running', 'running', 'Running: Show Source · Cancel. Nothing to copy or reveal yet.'],
+                  ['02 / Task Center / Done', 'done', 'Done: Show in Image Inspect · Copy URL · Reveal in Finder | Remove.'],
+                  ['03 / Task Center / Failed', 'failed', 'Failed or cancelled: Retry (primary) | Remove.'],
+                  ['04 / Task Center / Empty', 'empty', 'Empty: list and detail both explain what to do.']];
+  scenes.forEach(([name, state, note], i) => {
+    taskCenterScene(flow, name, i * (1554 + gap), state);
+    text('Note', flow, note + (i === 0 ? '  List actions (refresh, search, filters, clear finished) live in the list; task actions live only in the detail header. The grey toolbar band and the Info button are removed.' : ''),
+      i * (1554 + gap), 1030, 12, COLORS.muted, 'regular', 1554);
+  });
+  return flow;
+}
+
+async function generateTaskCenterRedesign() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === TASK_CENTER_REDESIGN_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Task Center Redesign already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createTaskCenterRedesign(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Task Center Redesign: running, done, failed, empty.' });
+  figma.notify('Task Center Redesign created');
+}
+
+// ---------------------------------------------------------------------------
+// Widget Market Redesign — the 448 × 824 panel, one visual language with the
+// Task Center: bare window controls, title + subtitle, search, filter pills,
+// card rows. Each row says one thing per line and has exactly one action.
+// ---------------------------------------------------------------------------
+const WIDGET_MARKET_REDESIGN_FRAME = 'Widget Market Redesign';
+const WM = { w: 448, h: 824, margin: 24, rowW: 400, rowH: 84, rowGap: 8, listTop: 166 };
+
+// Live catalog, English display text (localizations.en); state is what the
+// installed registry says about each widget.
+const WM_CATALOG = [
+  { mono: 'BR', name: 'Background Remover Pro', author: 'Glance', official: true, version: '1.0.1', commands: 1, state: 'installed',
+    summary: 'Precise background removal that keeps fine edges such as hair.', tint: '#2F2A3A' },
+  { mono: 'UP', name: 'Upscale', author: 'Glance', official: true, version: '1.0.1', commands: 1, state: 'update',
+    summary: 'Upscale images to higher resolution with sharper detail.', tint: '#22312D' },
+  { mono: 'RR', name: 'Redraw & Reframe', author: 'Allan', official: false, version: '0.1.2', commands: 1, state: 'update',
+    summary: 'Regenerate the image at the aspect ratio you choose.', tint: '#342522' },
+  { mono: 'VW', name: 'Video Watermark Remover', author: 'Allan', official: false, version: '0.2.2', commands: 1, state: 'installed',
+    summary: 'Remove watermarks from long videos, segment by segment, in order.', tint: '#202C38' },
+  { mono: 'OS', name: 'Outfit Swap', author: 'Allan', official: false, version: '0.1.1', commands: 1, state: 'update',
+    summary: 'Dress the person in the first image in the outfit from the second.', tint: '#32273A' },
+  { mono: 'EX', name: 'Expand Image', author: 'Allan', official: false, version: '0.1.1', commands: 1, state: 'update',
+    summary: 'Extend the canvas beyond the edges with matching content.', tint: '#303022' },
+  { mono: 'WR', name: 'Watermark Remover', author: 'Glance', official: false, version: '0.1.3', commands: 1, state: 'update',
+    summary: 'Remove watermarks, text and marks from an image.', tint: '#26313A' },
+  { mono: 'IP', name: 'Image to Prompt', author: 'Allan', official: false, version: '0.1.2', commands: 1, state: 'install',
+    summary: 'Describe an image in words you can reuse as a prompt.', tint: '#2E2A22' },
+  { mono: 'FH', name: 'Free Image Host', author: 'Glance', official: true, version: '1.0.2', commands: 1, state: 'installed',
+    summary: 'Upload an image or video and get a shareable link.', tint: '#223034' }
+];
+
+/// One row action. install / update: accent primary. installed: quiet green.
+/// remove: danger ghost (replaces "Installed" while the row is hovered).
+function wmAction(parent, state, rightEdge, y) {
+  const spec = {
+    install: ['Install', 76, COLORS.accent, 1, COLORS.accent, 0, '#21130D'],
+    update: ['Update', 76, COLORS.accent, 1, COLORS.accent, 0, '#21130D'],
+    installed: ['Installed', 88, COLORS.success, .14, COLORS.success, .45, COLORS.success],
+    remove: ['Remove', 84, COLORS.danger, .08, COLORS.danger, .32, COLORS.danger]
+  }[state];
+  const [label, width, fillHex, fillAlpha, strokeHex, strokeAlpha, ink] = spec;
+  const node = frame('Action / ' + label, rightEdge - width, y, width, 32, null, 10);
+  historyFill(node, fillHex, fillAlpha);
+  if (strokeAlpha) historyStroke(node, strokeHex, strokeAlpha);
+  parent.appendChild(node);
+  text('Label', node, label, 0, 8, 12, ink, 'semibold', width, 'CENTER');
+  return node;
+}
+
+/// Card row: monogram tile, name, one-line summary, one meta line, one action.
+function wmRow(parent, y, widget, options = {}) {
+  const hover = !!options.hover;
+  const row = frame('Widget / ' + widget.name, WM.margin, y, WM.rowW, WM.rowH, hover ? '#1C1D22' : COLORS.surface, 9);
+  historyStroke(row, hover ? '#FFFFFF' : COLORS.line, hover ? .14 : 1);
+  parent.appendChild(row);
+  const tile = frame('Icon Tile', 12, 18, 48, 48, widget.tint, 10);
+  historyStroke(tile, '#FFFFFF', .08); row.appendChild(tile);
+  text('Monogram', tile, widget.mono, 0, 15, 15, COLORS.secondary, 'semibold', 48, 'CENTER');
+
+  const actionState = hover && widget.state === 'installed' ? 'remove' : widget.state;
+  const action = wmAction(row, actionState, WM.rowW - 12, 26);
+  const textW = action.x - 72 - 12;
+  text('Name', row, widget.name, 72, 14, 13, COLORS.text, 'semibold', textW);
+  text('Summary', row, widget.summary, 72, 36, 11, COLORS.secondary, 'regular', textW);
+  let mx = 72;
+  if (widget.official) { ellipse('Official', row, 72, 61, 7, COLORS.success); mx = 84; }
+  text('Meta', row, `${widget.author} · v${widget.version} · ${widget.commands} command${widget.commands === 1 ? '' : 's'}`,
+       mx, 58, 10, COLORS.muted, 'regular', textW - (mx - 72));
+  return row;
+}
+
+function wmScene(flow, name, x, filter, options = {}) {
+  const screen = frame(name, x, 0, WM.w, WM.h, '#0B0C0F', 16);
+  historyStroke(screen, '#FFFFFF', .12); flow.appendChild(screen);
+  createBareSystemControls(screen);
+  const installed = WM_CATALOG.filter(w => w.state !== 'install').length;
+  const updates = WM_CATALOG.filter(w => w.state === 'update').length;
+  text('Window Title', screen, 'Widget Market', 0, 12, 13, COLORS.text, 'semibold', WM.w, 'CENTER');
+  text('Window Subtitle', screen, `${WM_CATALOG.length} available · ${installed} installed · ${updates} updates`,
+       0, 31, 11, COLORS.muted, 'regular', WM.w, 'CENTER');
+  tcGhostIcon(screen, 'Refresh', 'refresh', WM.w - WM.margin - 32 * 2 - 8, 10, COLORS.text);
+  tcGhostIcon(screen, 'Close', 'close', WM.w - WM.margin - 32, 10, COLORS.text);
+  rect('Edge', screen, 0, 52, WM.w, 1, '#FFFFFF', 0).opacity = .07;
+
+  const query = options.query || '';
+  const search = frame('Search Field', WM.margin, 68, WM.rowW, 36, '#14151A', 12);
+  historyStroke(search, query ? COLORS.accent : '#FFFFFF', query ? .6 : .10); screen.appendChild(search);
+  historyIcon(search, 'search', 12, 9, 18, query ? COLORS.accent : COLORS.muted);
+  if (query) {
+    text('Query', search, query, 38, 10, 13, COLORS.text, 'regular', 300);
+    const clear = frame('Clear Query', WM.rowW - 10 - 18, 9, 18, 18, null, 9);
+    historyFill(clear, '#FFFFFF', .10); search.appendChild(clear);
+    historyIcon(clear, 'close', 4, 4, 10, COLORS.secondary);
+  } else {
+    text('Placeholder', search, `Search ${WM_CATALOG.length} widgets`, 38, 10, 13, COLORS.muted, 'regular', 300);
+  }
+
+  let px = WM.margin;
+  [['Marketplace', WM_CATALOG.length, 'marketplace'], ['Installed', installed, 'installed'], ['Updates', updates, 'updates']]
+    .forEach(([label, count, key]) => { px += tcPill(screen, label, count, px, 118, key === filter) + 8; });
+  const sort = tcGhostIcon(screen, 'Sort', 'slider', WM.w - WM.margin - 32, 117, COLORS.secondary);
+  sort.name = 'Sort / A–Z';
+
+  const rows = query ? [] : WM_CATALOG.filter(w =>
+    filter === 'marketplace' || (filter === 'installed' ? w.state !== 'install' : w.state === 'update'));
+  const visible = Math.floor((WM.h - WM.listTop - 30) / (WM.rowH + WM.rowGap));
+  rows.slice(0, visible).forEach((widget, i) => {
+    wmRow(screen, WM.listTop + i * (WM.rowH + WM.rowGap), widget, { hover: options.hoverIndex === i });
+  });
+  if (!rows.length) {
+    const tile = frame('Empty Illustration', (WM.w - 72) / 2, 300, 72, 72, '#14151A', 22);
+    historyStroke(tile, '#FFFFFF', .08); screen.appendChild(tile);
+    historyIcon(tile, 'search', 22, 22, 28, COLORS.muted);
+    text('Empty Title', screen, 'No matching widgets', 0, 392, 16, COLORS.text, 'semibold', WM.w, 'CENTER');
+    text('Empty Hint', screen, 'Try a different search, or clear it to see every widget.', 40, 420, 12, COLORS.muted, 'regular', WM.w - 80, 'CENTER');
+  }
+
+  // Footer: what the list is, and that it scrolls.
+  const footer = frame('Footer', 0, WM.h - 30, WM.w, 30, '#0B0C0F', 0);
+  screen.appendChild(footer);
+  rect('Footer Edge', footer, 0, 0, WM.w, 1, '#FFFFFF', 0).opacity = .07;
+  const filterLabel = { marketplace: 'Marketplace', installed: 'Installed', updates: 'Updates' }[filter];
+  text('Footer Count', footer, `${rows.length} widget${rows.length === 1 ? '' : 's'} · ${filterLabel}`, WM.margin, 8, 11, COLORS.muted, 'regular', 230);
+  if (rows.length > visible) text('Footer Hint', footer, 'Scroll for more', WM.w - WM.margin - 126, 8, 11, COLORS.muted, 'regular', 126, 'RIGHT');
+  return screen;
+}
+
+/// Spec strip: every row state side by side with the rule it follows.
+function wmRowStates(flow, x) {
+  const strip = frame('Row States', x, 0, WM.rowW + 48, WM.h, '#0B0C0F', 16);
+  historyStroke(strip, '#FFFFFF', .12); flow.appendChild(strip);
+  text('Heading', strip, 'Row states', 24, 24, 17, COLORS.text, 'semibold');
+  text('Rule', strip, 'One action per row, right-aligned, 32 pt tall. Text never runs under it.', 24, 52, 11, COLORS.muted, 'regular', WM.rowW);
+  const samples = [
+    ['Install', { ...WM_CATALOG[7] }, {}],
+    ['Installed', { ...WM_CATALOG[0] }, {}],
+    ['Installed · hover → Remove', { ...WM_CATALOG[0] }, { hover: true }],
+    ['Update available', { ...WM_CATALOG[1] }, {}],
+    ['Community (no official dot)', { ...WM_CATALOG[2] }, {}]
+  ];
+  samples.forEach(([label, widget, opts], i) => {
+    const y = 96 + i * (WM.rowH + 38);
+    text('State Label', strip, label, 24, y, 11, COLORS.secondary, 'medium', WM.rowW);
+    const row = wmRow(strip, y + 20, widget, opts);
+    row.name = 'State / ' + label;
+  });
+  const y = 96 + samples.length * (WM.rowH + 38);
+  text('Anatomy', strip, 'Row 400 × 84, radius 9. Tile 48 at (12, 18) with a two-letter monogram, or the widget icon. Name 13 semibold at (72, 14). Summary 11 at (72, 36), one line, truncates. Meta 10 at (72, 58): official dot · author · version · command count. Action at the right edge, 12 pt inset.',
+       24, y, 11, COLORS.muted, 'regular', WM.rowW).textAutoResize = 'HEIGHT';
+  return strip;
+}
+
+function createWidgetMarketRedesign(x) {
+  const gap = 120;
+  const scenes = [['01 / Widget Market / Marketplace', 'marketplace', {}, 'Default: every published widget. Install, Installed and Update sit in the same slot.'],
+                  ['02 / Widget Market / Installed', 'installed', { hoverIndex: 0 }, 'Installed filter. Hovering an installed row swaps "Installed" for a quiet Remove.'],
+                  ['03 / Widget Market / Updates', 'updates', {}, 'Updates filter: only rows with a newer version; one tap updates.'],
+                  ['04 / Widget Market / Search · Empty', 'marketplace', { query: 'caption' }, 'A query with no match: the list explains itself and offers a way back.']];
+  const flow = frame(WIDGET_MARKET_REDESIGN_FRAME, x, 0, (WM.w + gap) * scenes.length + WM.rowW + 48, WM.h + 90, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+  scenes.forEach(([name, filter, opts, note], i) => {
+    wmScene(flow, name, i * (WM.w + gap), filter, opts);
+    text('Note', flow, note, i * (WM.w + gap), WM.h + 18, 12, COLORS.muted, 'regular', WM.w).textAutoResize = 'HEIGHT';
+  });
+  wmRowStates(flow, scenes.length * (WM.w + gap));
+  return flow;
+}
+
+async function generateWidgetMarketRedesign() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === WIDGET_MARKET_REDESIGN_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Widget Market Redesign already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createWidgetMarketRedesign(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Widget Market Redesign: marketplace, installed, updates, empty search, row states.' });
+  figma.notify('Widget Market Redesign created');
+}
+
 // Seven focused Widget screens. The existing image/video input and image
 // result flows stay in place; older studies are hidden so edits remain available.
 const SIMPLE_WIDGET_NAME = 'Widget / Simple Input + Output / Clean Editable';
@@ -5162,6 +5930,42 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Market redesign failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Market redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-task-running-placement') {
+    try {
+      await generateTaskRunningPlacement();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Task Running Placement failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Task Running Placement failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-widget-market-redesign') {
+    try {
+      await generateWidgetMarketRedesign();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Widget Market Redesign failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Widget Market Redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-task-center-redesign') {
+    try {
+      await generateTaskCenterRedesign();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Task Center Redesign failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Task Center Redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-task-running-motion') {
+    try {
+      await generateTaskRunningMotion();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Task Running Motion failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Task Running Motion failed', { error: true });
     }
   }
   if (message.type === 'generate-toast') {

@@ -95,6 +95,8 @@ PUT  /api/admin/v2/upload-settings
 
 `PUT /api/admin/v2/widgets/:widget_id` 用于编辑 Widget，包括开发者发布的文字输出 Widget。编辑沿用 URL 中的已有 Widget ID，并沿用已有命令 ID；请求的 manifest 无需填写这些 ID。版本号不变时更新当前 manifest；版本号变化时创建新版本并将其设为当前版本。开发者 Widget 仍保持开发者归属，后台修改后由服务端重新签名；官方 Widget 保持官方归属。`GET /api/admin/v2/widget-versions` 保留按版本查看全部历史提交的能力。已有 ID 不会因这次改动而变化。
 
+Manifest 可选的 `localizations` 按语言标签（`en`、`zh-Hans`）提供 `name`、`summary` 和按 command id 组织的命令 `name`、`description`；Glance 客户端和市场页按界面语言显示，缺少的字段回退到基础文案。后台表单的英文字段写入 `localizations.en`，其他语言在编辑时保留。该字段参与 Manifest 签名，校验规则与基础字段相同（非空字符串、command id 必须存在）。
+
 Widget 的展示名称以当前版本 Manifest 的 `name` 为准。开发者提交新版本时不会提前覆盖已发布名称；审核将新版本设为当前版本时，同步更新 `widgets` 表的名称、摘要、作者和图标。后台列表也从对应版本 Manifest 读取这些字段，避免列表旧标题与编辑表单不一致。
 
 后台表单支持单图、多图（最多 4 张）、单视频、多视频（最多 4 段），并可声明文字 `prompt`；单图还可声明 `mask`。多图和多视频分别写入 `commands[].parameterSchema.properties.images`、`videos`，文字和遮罩写入 `prompt`、`mask`。选中图片和视频表示两个可触发的媒体类型，不表示一次任务混合两类媒体。输出类型可同时选择多个；编辑时保留表单未展示的其他命令和参数字段。

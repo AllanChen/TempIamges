@@ -54,6 +54,10 @@
         <div class="field span2"><label for="cw-icon">图标 URL（可选）</label><input id="cw-icon" placeholder="https://example.com/icon.png"></div>
         <div class="field"><label for="cw-command-name">命令名称</label><input id="cw-command-name" required placeholder="Blur Background"></div>
         <div class="field span2"><label for="cw-command-desc">命令说明</label><input id="cw-command-desc" required placeholder="Upload an image and blur its background."></div>
+        <div class="field"><label for="cw-name-en">英文名称（localizations.en）</label><input id="cw-name-en" placeholder="Blur Background"></div>
+        <div class="field span2"><label for="cw-summary-en">英文摘要</label><input id="cw-summary-en" placeholder="Blur the background of the selected image."></div>
+        <div class="field"><label for="cw-command-name-en">英文命令名称</label><input id="cw-command-name-en" placeholder="Blur Background"></div>
+        <div class="field span2"><label for="cw-command-desc-en">英文命令说明</label><input id="cw-command-desc-en" placeholder="Upload an image and blur its background."></div>
         <div class="field"><label>输出类型</label><div class="input-choice output-choice"><label><input type="checkbox" id="cw-output-image" checked> image</label><label><input type="checkbox" id="cw-output-video"> video</label><label><input type="checkbox" id="cw-output-text"> text</label><label><input type="checkbox" id="cw-output-audio"> audio</label></div></div>
         <div class="field"><label>媒体结果</label><div class="input-choice"><label><input type="checkbox" id="cw-show-result-url"> 显示复制 URL 按钮</label></div></div>
         <div class="field"><label for="cw-status">状态</label><select id="cw-status"><option value="manual_review">manual_review（走审核流程）</option><option value="gray_release">gray_release（灰度可见）</option><option value="published">published（立即发布）</option><option value="suspended">suspended（暂停）</option><option value="rejected">rejected（拒绝）</option></select></div>
@@ -287,6 +291,9 @@
           $('#cw-version').value=m.version||'';$('#cw-name').value=m.name||'';$('#cw-author').value=m.author||'';
           $('#cw-summary').value=m.summary||'';$('#cw-icon').value=m.iconURL||'';
           $('#cw-command-name').value=c?.name||'';$('#cw-command-desc').value=c?.description||'';
+          const en=m.localizations?.en||{},enCommand=c?.id?en.commands?.[c.id]||{}:{};
+          $('#cw-name-en').value=en.name||'';$('#cw-summary-en').value=en.summary||'';
+          $('#cw-command-name-en').value=enCommand.name||'';$('#cw-command-desc-en').value=enCommand.description||'';
           ['image','video','text','audio'].forEach(type=>$('#cw-output-'+type).checked=c?.outputs?.includes(type)||false);
           $('#cw-status').value=x.status||'manual_review';
           $('#cw-show-result-url').checked=c?.showResultURL===true||
@@ -303,6 +310,21 @@
       updateInputControls();updateOutputControls();$('#createWidgetModal').classList.remove('hidden');
     }
     function closeCreateWidget(){ editingWidgetId=null;$('#createWidgetModal').classList.add('hidden') }
+    // English text from the form becomes localizations.en; other languages and other
+    // commands' translations are kept from the previous manifest. Empty = no override.
+    function englishLocalizations(previous,commandId){
+      const text=id=>$('#'+id).value.trim()||undefined;
+      const base={...(previous?.localizations||{})};
+      const en={...(base.en||{}),name:text('cw-name-en'),summary:text('cw-summary-en')};
+      const commands={...(en.commands||{})};
+      if(commandId){
+        const command={name:text('cw-command-name-en'),description:text('cw-command-desc-en')};
+        if(command.name||command.description)commands[commandId]=command;else delete commands[commandId];
+      }
+      if(Object.keys(commands).length)en.commands=commands;else delete en.commands;
+      if(en.name||en.summary||en.commands)base.en=en;else delete base.en;
+      return Object.keys(base).length?base:undefined;
+    }
     $('#createWidgetForm').addEventListener('submit',async e=>{
       e.preventDefault();
       const outputs=selectedOutputTypes();
@@ -350,6 +372,7 @@
           requiresUpload:true,
           parameterSchema
         },...(previous?.commands?.slice(1)||[])],
+        localizations:englishLocalizations(previous,previousCommand?.id),
         privacy:{...previous?.privacy,uploadsMedia:true,notice:$('#cw-privacy').value.trim()},
         minimumGlanceVersion:'2.0.0',
         updatedAt:new Date().toISOString()

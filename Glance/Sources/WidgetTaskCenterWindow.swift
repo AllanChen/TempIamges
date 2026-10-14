@@ -1,9 +1,16 @@
 import AppKit
 
-final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
+/// Task Center, built from the Figma "Task Center Redesign" board.
+///
+/// Two kinds of action, one place each:
+///  - list actions (refresh, search, filters, clear finished) live in the list;
+///  - task actions live in a single group at the top right of the detail and
+///    change with the selected task's state. No toolbar band, no Info button.
+final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
     private static let designSize = NSSize(width: 1554, height: 1012)
 
-    private let root = NSView()
+    // Flipped so frames can be written with the board's top-left coordinates.
+    private let root = FlippedDocView()
     private let titlebar = TaskCenterTitlebar()
     private let titleLabel = TaskPassthroughLabel(labelWithString: "Task Center".localized)
     private let countLabel = TaskPassthroughLabel(labelWithString: "")
@@ -11,47 +18,48 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     private lazy var minimizeButton = TrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTapped))
     private lazy var zoomButton = TrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTapped))
 
-    private let toolbarBar = NSView()
-    private lazy var refreshButton = makeIconButton("arrow.clockwise", "Refresh".localized, #selector(refreshTapped))
-    private lazy var searchButton = makeIconButton("magnifyingglass", "Search".localized, #selector(searchTapped))
-    private lazy var inspectButton = makeIconButton("photo", "Show in Image Inspect".localized, #selector(showInInspect))
-    private lazy var clearButton = makeIconButton("trash", "Clear History".localized, #selector(clearAll), tint: PanelStyle.failure)
-    private lazy var infoButton = makeIconButton("info.circle", "Task information".localized, #selector(toggleDetails))
-    private lazy var revealButton = makeIconButton("folder", "Reveal in Finder".localized, #selector(revealSelected))
-    private lazy var copyURLButton = PanelStyle.makeQuietButton(title: "Copy URL".localized,
-                                                                target: self, action: #selector(copyResultURL))
-    private lazy var retryButton = makeIconButton("arrow.clockwise", "Retry".localized, #selector(retrySelected))
-    private lazy var removeButton = makeIconButton("trash", "Remove Record".localized, #selector(removeSelected), tint: PanelStyle.failure)
-
-    private let sidebar = NSView()
+    // List column: list-level actions only.
+    private let sidebar = FlippedDocView()
     private let sidebarTitle = NSTextField(labelWithString: "Tasks".localized)
-    private let sidebarCaption = NSTextField(labelWithString: "Local and polling Widget tasks".localized)
-    private let filter = TaskFilterBar(titles: ["All".localized, "Running".localized, "Completed".localized, "Failed".localized])
-    private let searchField = NSSearchField()
+    private let sidebarEdge = NSView()
+    private lazy var refreshButton = TaskGhostButton(icon: "TaskIconRefresh", tooltip: "Refresh".localized, tint: PanelStyle.textPrimary) { [weak self] in self?.refreshTapped() }
+    private lazy var clearButton = TaskGhostButton(icon: "HistoryClear", tooltip: "Clear Finished".localized, tint: PanelStyle.failure, danger: true) { [weak self] in self?.clearAll() }
+    private let searchBox = TaskSearchBox()
+    private let pills = TaskPillBar(titles: ["All".localized, "Running".localized, "Done".localized, "Failed".localized])
     private let table = NSTableView()
     private let scroll = NSScrollView()
+    private let emptyListTitle = TaskPassthroughLabel(labelWithString: "")
+    private let emptyListHint = TaskPassthroughLabel(labelWithString: "")
 
-    private let detail = NSView()
+    // Detail column: one action group, then previews, timeline and properties.
+    private let detail = FlippedDocView()
     private let detailTitle = NSTextField(labelWithString: "Select a task".localized)
     private let detailStatus = NSTextField(labelWithString: "")
+    private lazy var showSourceButton = TaskActionButton(label: "Show Source".localized, icon: "HistoryFocus", style: .ghost) { [weak self] in self?.showSource() }
+    private lazy var cancelButton = TaskActionButton(label: "Cancel".localized, icon: "TaskIconCancel", style: .danger) { [weak self] in self?.cancelSelected() }
+    private lazy var inspectButton = TaskActionButton(label: "Show in Image Inspect".localized, icon: "HistoryFocus", style: .ghost) { [weak self] in self?.showInInspect() }
+    private lazy var copyURLButton = TaskActionButton(label: "Copy URL".localized, icon: "ToastCopy", style: .ghost) { [weak self] in self?.copyResultURL() }
+    private lazy var revealButton = TaskActionButton(label: "Reveal in Finder".localized, icon: "HistoryFolder", style: .ghost) { [weak self] in self?.revealSelected() }
+    private lazy var retryButton = TaskActionButton(label: "Retry".localized, icon: "TaskIconRetry", style: .primary) { [weak self] in self?.retrySelected() }
+    private lazy var removeButton = TaskActionButton(label: nil, icon: "HistoryClear", style: .danger, tooltip: "Remove Record".localized) { [weak self] in self?.removeSelected() }
+    private let actionSeparator = NSView()
+    /// Visible actions left to right; nil is the separator.
+    private var actionOrder: [NSView] = []
     private let sourcePreview = TaskPreviewView(title: "Source".localized)
     private let resultPreview = TaskPreviewView(title: "Waiting for result".localized)
-    private let timelinePanel = NSView()
+    private let timelinePanel = FlippedDocView()
     private let timelineTitle = NSTextField(labelWithString: "Timeline".localized)
     private var timelineRows: [TaskTimelineRow] = []
-    private let propertiesPanel = NSView()
+    private let propertiesPanel = FlippedDocView()
     private let propertiesTitle = NSTextField(labelWithString: "Task Details".localized)
     private var propertyKeys: [NSTextField] = []
     private var propertyValues: [NSTextField] = []
-
-    private let statusbar = NSView()
-    private let leftStatus = NSTextField(labelWithString: "")
-    private let centerStatus = NSTextField(labelWithString: "Select a task to inspect details".localized)
-    private let rightDot = NSView()
-    private let rightStatus = NSTextField(labelWithString: "")
+    private var propertyDividers: [NSView] = []
+    private let emptyDetail = HistoryEmptyView()
+    private let toast = InspectToastWindow()
 
     private var visibleRecords: [WidgetTaskRecord] = []
-    private var detailsVisible = true
+    private var allRecords: [WidgetTaskRecord] = []
 
     init() {
         let frame = Self.initialFrame()
@@ -63,7 +71,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         titlebarAppearsTransparent = true
         animationBehavior = .none
         appearance = NSAppearance(named: .darkAqua)
-        backgroundColor = PanelStyle.inspectBackground
+        backgroundColor = HistoryStyle.background
         minSize = NSSize(width: 900, height: 586)
         contentAspectRatio = Self.designSize
         isReleasedWhenClosed = false
@@ -94,13 +102,13 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     private func buildUI() {
         contentView = root
         root.wantsLayer = true
-        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
+        root.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background)
         root.layer?.cornerRadius = 16
         root.layer?.borderWidth = 1
-        root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        root.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
         root.layer?.masksToBounds = true
 
-        configureLabel(titleLabel, size: 15, color: PanelStyle.textPrimary, weight: .semibold, alignment: .center)
+        configureLabel(titleLabel, size: 13, color: PanelStyle.textPrimary, weight: .semibold, alignment: .center)
         configureLabel(countLabel, size: 11, color: PanelStyle.textTertiary, weight: .regular, alignment: .center)
         titlebar.addSubview(titleLabel)
         titlebar.addSubview(countLabel)
@@ -111,28 +119,23 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         titlebar.addSubview(zoomButton)
         root.addSubview(titlebar)
 
-        toolbarBar.wantsLayer = true
-        toolbarBar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        toolbarBar.layer?.borderWidth = 1
-        toolbarBar.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        [refreshButton, searchButton, inspectButton, clearButton, infoButton].forEach(toolbarBar.addSubview)
-        root.addSubview(toolbarBar)
-
-        configurePanel(sidebar, color: NSColor(srgbRed: 17 / 255, green: 18 / 255, blue: 23 / 255, alpha: 1))
+        // List column.
+        sidebar.wantsLayer = true
+        sidebar.layer?.backgroundColor = HistoryStyle.hex(0x0E0F13).cgColor
+        sidebarEdge.wantsLayer = true
+        sidebarEdge.layer?.backgroundColor = HistoryStyle.hairline.cgColor
+        sidebar.addSubview(sidebarEdge)
         configureLabel(sidebarTitle, size: 17, color: PanelStyle.textPrimary, weight: .semibold)
-        configureLabel(sidebarCaption, size: 11, color: PanelStyle.textTertiary)
         sidebar.addSubview(sidebarTitle)
-        sidebar.addSubview(sidebarCaption)
-        filter.selectedSegment = 0
-        filter.onSelect = { [weak self] index in
-            self?.filter.selectedSegment = index
+        sidebar.addSubview(refreshButton)
+        sidebar.addSubview(clearButton)
+        searchBox.onChange = { [weak self] in self?.refresh() }
+        sidebar.addSubview(searchBox)
+        pills.onSelect = { [weak self] index in
+            self?.pills.selectedSegment = index
             self?.refresh()
         }
-        sidebar.addSubview(filter)
-        searchField.placeholderString = "Search tasks".localized
-        searchField.delegate = self
-        searchField.isHidden = true
-        sidebar.addSubview(searchField)
+        sidebar.addSubview(pills)
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("Task"))
         column.width = 332
         table.addTableColumn(column)
@@ -156,20 +159,31 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         scroll.scrollerStyle = .overlay
         scroll.drawsBackground = false
         sidebar.addSubview(scroll)
+        configureLabel(emptyListTitle, size: 14, color: PanelStyle.textSecondary, weight: .medium, alignment: .center)
+        configureLabel(emptyListHint, size: 12, color: PanelStyle.textTertiary, alignment: .center)
+        emptyListHint.maximumNumberOfLines = 2
+        emptyListHint.lineBreakMode = .byWordWrapping
+        sidebar.addSubview(emptyListTitle)
+        sidebar.addSubview(emptyListHint)
         root.addSubview(sidebar)
 
-        configurePanel(detail, color: PanelStyle.inspectChrome)
+        // Detail column.
+        detail.wantsLayer = true
+        detail.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background)
         configureLabel(detailTitle, size: 18, color: PanelStyle.textPrimary, weight: .semibold)
         configureLabel(detailStatus, size: 12, color: PanelStyle.accent, weight: .medium)
         detail.addSubview(detailTitle)
         detail.addSubview(detailStatus)
-        detail.addSubview(copyURLButton)
-        detail.addSubview(revealButton)
-        detail.addSubview(retryButton)
-        detail.addSubview(removeButton)
+        actionSeparator.wantsLayer = true
+        actionSeparator.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        for view in [showSourceButton, cancelButton, inspectButton, copyURLButton, revealButton, retryButton, removeButton, actionSeparator] as [NSView] {
+            view.isHidden = true
+            detail.addSubview(view)
+        }
         detail.addSubview(sourcePreview)
         detail.addSubview(resultPreview)
-        configurePanel(timelinePanel, color: NSColor(srgbRed: 20 / 255, green: 21 / 255, blue: 25 / 255, alpha: 1), radius: 10)
+        let panelColor = HistoryStyle.hex(0x101115)
+        configurePanel(timelinePanel, color: panelColor, radius: 12)
         configureLabel(timelineTitle, size: 13, color: PanelStyle.textPrimary, weight: .semibold)
         timelinePanel.addSubview(timelineTitle)
         let timelineSpecs = [
@@ -184,33 +198,27 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
             timelineRows.append(row)
         }
         detail.addSubview(timelinePanel)
-        configurePanel(propertiesPanel, color: NSColor(srgbRed: 20 / 255, green: 21 / 255, blue: 25 / 255, alpha: 1), radius: 10)
+        configurePanel(propertiesPanel, color: panelColor, radius: 12)
         configureLabel(propertiesTitle, size: 13, color: PanelStyle.textPrimary, weight: .semibold)
         propertiesPanel.addSubview(propertiesTitle)
         for key in ["Widget", "Input", "Worker", "Progress", "Polling", "Failure reason"] {
             let keyLabel = NSTextField(labelWithString: key.localized)
             let valueLabel = NSTextField(labelWithString: "—")
-            configureLabel(keyLabel, size: 11, color: PanelStyle.textTertiary, weight: .medium)
-            configureLabel(valueLabel, size: 12, color: PanelStyle.textPrimary)
+            configureLabel(keyLabel, size: 13, color: PanelStyle.textTertiary, weight: .medium)
+            configureLabel(valueLabel, size: 13, color: PanelStyle.textPrimary)
+            let divider = NSView()
+            divider.wantsLayer = true
+            divider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
             propertiesPanel.addSubview(keyLabel)
             propertiesPanel.addSubview(valueLabel)
+            propertiesPanel.addSubview(divider)
             propertyKeys.append(keyLabel)
             propertyValues.append(valueLabel)
+            propertyDividers.append(divider)
         }
         detail.addSubview(propertiesPanel)
+        detail.addSubview(emptyDetail)
         root.addSubview(detail)
-
-        configurePanel(statusbar, color: PanelStyle.inspectStatus)
-        configureLabel(leftStatus, size: 12, color: PanelStyle.textSecondary)
-        configureLabel(centerStatus, size: 12, color: PanelStyle.textSecondary, alignment: .center)
-        configureLabel(rightStatus, size: 12, color: PanelStyle.accent, weight: .medium)
-        rightDot.wantsLayer = true
-        rightDot.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
-        statusbar.addSubview(leftStatus)
-        statusbar.addSubview(centerStatus)
-        statusbar.addSubview(rightDot)
-        statusbar.addSubview(rightStatus)
-        root.addSubview(statusbar)
         layoutContent()
     }
 
@@ -226,58 +234,46 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         let scale = min(sx, sy)
         root.layer?.cornerRadius = 16 * scale
         root.layer?.borderWidth = max(1, scale)
-        titlebar.frame = NSRect(x: 0, y: height - 58 * sy, width: width, height: 58 * sy)
+
+        // Title bar: 52 pt, traffic lights at y 18, title 13 pt at y 12, subtitle 11 pt at y 31.
+        titlebar.frame = NSRect(x: 0, y: 0, width: width, height: 52 * sy)
         [closeButton, minimizeButton, zoomButton].enumerated().forEach { index, button in
-            button.frame = NSRect(x: (24 + CGFloat(index) * 20) * sx, y: 23 * sy, width: 12 * sx, height: 12 * sy)
+            button.frame = NSRect(x: (20 + CGFloat(index) * 20) * sx, y: 18 * sy, width: 12 * sx, height: 12 * sy)
             button.layer?.cornerRadius = 6 * scale
         }
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 15 * sy, weight: .semibold)
-        countLabel.font = PanelStyle.inspectFont(ofSize: 11 * sy)
-        titleLabel.frame = NSRect(x: 0, y: 26 * sy, width: width, height: 18 * sy)
-        countLabel.frame = NSRect(x: 0, y: 7 * sy, width: width, height: 13 * sy)
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
+        countLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale)
+        titleLabel.frame = NSRect(x: 0, y: 12 * sy, width: width, height: 16 * sy)
+        countLabel.frame = NSRect(x: 0, y: 31 * sy, width: width, height: 14 * sy)
 
-        toolbarBar.frame = NSRect(x: 0, y: height - 128 * sy, width: width, height: 70 * sy)
-        toolbarBar.layer?.borderWidth = max(1, scale)
-        func place(_ button: NSButton, _ x: CGFloat) {
-            button.frame = NSRect(x: x * sx, y: 18 * sy, width: 38 * sx, height: 38 * sy)
-            button.layer?.cornerRadius = 8 * scale
-            button.layer?.borderWidth = max(1, scale)
+        let columnH = height - 52 * sy
+        sidebar.frame = NSRect(x: 0, y: 52 * sy, width: 360 * sx, height: columnH)
+        detail.frame = NSRect(x: 360 * sx, y: 52 * sy, width: width - 360 * sx, height: columnH)
+
+        // List column (design 360 × 960).
+        func s(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+            NSRect(x: x * sx, y: y * sy, width: w * sx, height: h * sy)
         }
-        place(refreshButton, 40); place(searchButton, 88)
-        place(inspectButton, 1378); place(clearButton, 1426); place(infoButton, 1474)
-
-        let statusH = 37 * sy
-        statusbar.frame = NSRect(x: 0, y: 0, width: width, height: statusH)
-        statusbar.layer?.borderWidth = max(1, scale)
-        leftStatus.font = PanelStyle.inspectFont(ofSize: 12 * sy)
-        centerStatus.font = PanelStyle.inspectFont(ofSize: 12 * sy)
-        rightStatus.font = PanelStyle.inspectFont(ofSize: 12 * sy, weight: .medium)
-        leftStatus.frame = NSRect(x: 38 * sx, y: 11 * sy, width: 420 * sx, height: 15 * sy)
-        centerStatus.frame = NSRect(x: 0, y: 11 * sy, width: width, height: 15 * sy)
-        rightDot.frame = NSRect(x: 1394 * sx, y: 14 * sy, width: 8 * sx, height: 8 * sy)
-        rightDot.layer?.cornerRadius = 4 * scale
-        rightStatus.frame = NSRect(x: 1414 * sx, y: 11 * sy, width: 120 * sx, height: 15 * sy)
-
-        let contentY = statusH, contentH = height - 128 * sy - statusH
-        sidebar.frame = NSRect(x: 0, y: contentY, width: 360 * sx, height: contentH)
-        detail.frame = NSRect(x: 360 * sx, y: contentY, width: width - 360 * sx, height: contentH)
-        sidebar.layer?.borderWidth = max(1, scale); detail.layer?.borderWidth = max(1, scale)
-        func topRect(_ parent: NSView, _ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, designW: CGFloat = 360, designH: CGFloat = 847) -> NSRect {
-            let px = parent.bounds.width / designW, py = parent.bounds.height / designH
-            return NSRect(x: x * px, y: parent.bounds.height - (y + h) * py, width: w * px, height: h * py)
-        }
-        sidebarTitle.font = PanelStyle.inspectFont(ofSize: 17 * sy, weight: .semibold)
-        sidebarCaption.font = PanelStyle.inspectFont(ofSize: 11 * sy)
-        sidebarTitle.frame = topRect(sidebar, 24, 22, 300, 21)
-        sidebarCaption.frame = topRect(sidebar, 24, 49, 312, 14)
-        filter.frame = topRect(sidebar, 20, 82, 320, 38)
-        searchField.frame = topRect(sidebar, 20, 82, 320, 38)
-        scroll.frame = topRect(sidebar, 14, 140, 332, 690)
+        sidebarEdge.frame = s(359, 0, 1, 960)
+        sidebarTitle.font = PanelStyle.inspectFont(ofSize: 17 * scale, weight: .semibold)
+        sidebarTitle.frame = s(24, 22, 200, 21)
+        for button in [refreshButton, clearButton] { button.uiScale = scale }
+        refreshButton.frame = s(360 - 24 - 32 * 2 - 8, 16, 32, 32)
+        clearButton.frame = s(360 - 24 - 32, 16, 32, 32)
+        searchBox.uiScale = scale
+        searchBox.frame = s(24, 68, 312, 36)
+        pills.uiScale = scale
+        pills.frame = s(24, 118, 312, 30)
+        scroll.frame = s(14, 166, 332, 960 - 166 - 12)
         scroll.borderType = .noBorder
         scroll.layoutSubtreeIfNeeded()
         let tableWidth = max(1, scroll.contentSize.width)
         if let column = table.tableColumns.first {
+            // Widen the limits before the width: setting a width above the old
+            // maxWidth is clamped, which froze the rows at their first size.
             column.resizingMask = .autoresizingMask
+            column.minWidth = 1
+            column.maxWidth = .greatestFiniteMagnitude
             column.width = tableWidth
             column.minWidth = tableWidth
             column.maxWidth = tableWidth
@@ -285,35 +281,62 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         table.rowHeight = 82 * sy
         table.intercellSpacing = NSSize(width: 0, height: 10 * sy)
         table.frame.size.width = tableWidth
+        table.tile()
+        emptyListTitle.font = PanelStyle.inspectFont(ofSize: 14 * scale, weight: .medium)
+        emptyListHint.font = PanelStyle.inspectFont(ofSize: 12 * scale)
+        emptyListTitle.frame = s(0, 300, 360, 18)
+        emptyListHint.frame = s(40, 328, 280, 34)
 
-        let dx = detail.bounds.width / 1194, dy = detail.bounds.height / 847
-        detailTitle.font = PanelStyle.inspectFont(ofSize: 18 * sy, weight: .semibold)
-        detailStatus.font = PanelStyle.inspectFont(ofSize: 12 * sy, weight: .medium)
-        detailTitle.frame = NSRect(x: 32 * dx, y: detail.bounds.height - 46 * dy, width: 500 * dx, height: 22 * dy)
-        detailStatus.frame = NSRect(x: 32 * dx, y: detail.bounds.height - 69 * dy, width: 500 * dx, height: 15 * dy)
-        copyURLButton.frame = NSRect(x: detail.bounds.width - 280 * dx, y: detail.bounds.height - 59 * dy, width: 98 * dx, height: 36 * dy)
-        revealButton.frame = NSRect(x: detail.bounds.width - 162 * dx, y: detail.bounds.height - 60 * dy, width: 38 * dx, height: 38 * dy)
-        retryButton.frame = NSRect(x: detail.bounds.width - 114 * dx, y: detail.bounds.height - 60 * dy, width: 38 * dx, height: 38 * dy)
-        removeButton.frame = NSRect(x: detail.bounds.width - 66 * dx, y: detail.bounds.height - 60 * dy, width: 38 * dx, height: 38 * dy)
-        [revealButton, retryButton, removeButton].forEach {
-            $0.layer?.cornerRadius = 8 * scale
-            $0.layer?.borderWidth = max(1, scale)
+        // Detail column (design 1194 × 960).
+        detailTitle.font = PanelStyle.inspectFont(ofSize: 18 * scale, weight: .semibold)
+        detailStatus.font = PanelStyle.inspectFont(ofSize: 12 * scale, weight: .medium)
+        detailTitle.frame = s(32, 26, 600, 22)
+        detailStatus.frame = s(32, 54, 700, 15)
+        // The one action group, built from the right edge so it stays aligned
+        // whichever buttons this state needs.
+        var x: CGFloat = 1194 - 32
+        for view in actionOrder.reversed() {
+            if view === actionSeparator {
+                x -= 13
+                actionSeparator.frame = s(x + 6, 30, 1, 24)
+            } else if let button = view as? TaskActionButton {
+                button.uiScale = scale
+                x -= button.designWidth
+                button.frame = s(x, 24, button.designWidth, 36)
+                x -= 8
+            }
         }
-        inspectButton.isEnabled = selectedOutputExists
-        clearButton.isEnabled = WidgetTaskManager.shared.records.contains { !$0.phase.isActive }
-        sourcePreview.frame = NSRect(x: 32 * dx, y: detail.bounds.height - 408 * dy, width: 528 * dx, height: 304 * dy)
-        resultPreview.frame = NSRect(x: 578 * dx, y: detail.bounds.height - 408 * dy, width: 528 * dx, height: 304 * dy)
-        timelinePanel.frame = NSRect(x: 32 * dx, y: detail.bounds.height - 770 * dy, width: 560 * dx, height: 330 * dy)
-        propertiesPanel.frame = NSRect(x: 612 * dx, y: detail.bounds.height - 770 * dy, width: 494 * dx, height: 330 * dy)
-        timelineTitle.frame = NSRect(x: 24 * dx, y: timelinePanel.bounds.height - 39 * dy, width: 200 * dx, height: 16 * dy)
-        let timelineY: [CGFloat] = [60, 132, 204, 276]
-        for (row, y) in zip(timelineRows, timelineY) { row.frame = topRect(timelinePanel, 20, y, 520, 54, designW: 560, designH: 330) }
-        propertiesTitle.frame = topRect(propertiesPanel, 24, 20, 300, 16, designW: 494, designH: 330)
-        let propertyY: [CGFloat] = [60, 98, 136, 174, 212, 250]
+        sourcePreview.frame = s(32, 100, 556, 360)
+        resultPreview.frame = s(606, 100, 556, 360)
+        timelinePanel.frame = s(32, 490, 556, 400)
+        propertiesPanel.frame = s(606, 490, 556, 400)
+        for panel in [timelinePanel, propertiesPanel] { panel.layer?.cornerRadius = 12 * scale }
+        func inPanel(_ parent: NSView, _ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+            NSRect(x: x * sx, y: y * sy, width: w * sx, height: h * sy)
+        }
+        timelineTitle.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
+        timelineTitle.frame = inPanel(timelinePanel, 24, 20, 200, 16)
+        // Board rows (215:5970) start every 72 pt from y 60; each row frame also
+        // holds the current-step halo (2 pt above) and the connector below.
+        for (index, row) in timelineRows.enumerated() {
+            row.frame = inPanel(timelinePanel, 0, CGFloat(58 + index * 72), 556, TaskTimelineRow.designHeight)
+        }
+        propertiesTitle.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
+        propertiesTitle.frame = inPanel(propertiesPanel, 24, 20, 300, 16)
+        // Board rows (215:5992): key at 36, value at 174 (220 wide), 38 pt pitch,
+        // a 362 pt divider 30 pt below each row.
         for index in propertyKeys.indices {
-            propertyKeys[index].frame = topRect(propertiesPanel, 24, propertyY[index], 120, 15, designW: 494, designH: 330)
-            propertyValues[index].frame = topRect(propertiesPanel, 168, propertyY[index], 290, 15, designW: 494, designH: 330)
+            let y = CGFloat(60 + index * 38)
+            propertyKeys[index].font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .medium)
+            propertyValues[index].font = PanelStyle.inspectFont(ofSize: 13 * scale)
+            propertyKeys[index].frame = inPanel(propertiesPanel, 36, y, 130, 16)
+            propertyValues[index].frame = inPanel(propertiesPanel, 174, y, 220, 16)
+            propertyDividers[index].frame = inPanel(propertiesPanel, 36, y + 30, 362, max(1, scale))
         }
+        // HistoryEmptyView puts its tile at (height / 2 - 120); the board (215:6302)
+        // wants it at 340 of 960, so the view gets 40 pt less height.
+        emptyDetail.frame = NSRect(x: 0, y: 0, width: detail.bounds.width, height: max(0, detail.bounds.height - 40 * sy))
+        clearButton.isEnabled = allRecords.contains { !$0.phase.isActive }
     }
 
     private func configurePanel(_ view: NSView, color: NSColor, radius: CGFloat = 0) {
@@ -334,21 +357,12 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         label.maximumNumberOfLines = 1
     }
 
-    private func makeIconButton(_ symbol: String, _ tooltip: String, _ action: Selector,
-                                tint: NSColor = PanelStyle.textPrimary) -> InspectToolbarButton {
-        let button = InspectToolbarButton(symbol: symbol, tooltip: tooltip)
-        button.target = self
-        button.action = action
-        button.usesFigmaStyle = true
-        button.contentTintColor = tint
-        return button
-    }
-
     func refresh() {
-        let records = WidgetTaskManager.shared.records
-        let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        allRecords = WidgetTaskManager.shared.records
+        let records = allRecords
+        let query = searchBox.query
         let filtered: [WidgetTaskRecord]
-        switch filter.selectedSegment {
+        switch pills.selectedSegment {
         case 1: filtered = records.filter { $0.phase.isActive }
         case 2: filtered = records.filter { $0.phase == .completed }
         case 3: filtered = records.filter { $0.phase.isFailure }
@@ -359,11 +373,14 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
             $0.commandName.localizedCaseInsensitiveContains(query) ||
             ($0.source?.lastPathComponent.localizedCaseInsensitiveContains(query) ?? false)
         }
-        countLabel.stringValue = String(format: "%d tasks".localized, records.count)
-        leftStatus.stringValue = String(format: "%d tasks  •  %d running".localized, records.count, WidgetTaskManager.shared.activeCount)
-        rightDot.isHidden = WidgetTaskManager.shared.activeCount == 0
-        rightStatus.isHidden = WidgetTaskManager.shared.activeCount == 0
-        rightStatus.stringValue = "\(WidgetTaskManager.shared.activeCount) task" + (WidgetTaskManager.shared.activeCount == 1 ? " running" : "s running")
+        pills.counts = [records.count,
+                        records.filter { $0.phase.isActive }.count,
+                        records.filter { $0.phase == .completed }.count,
+                        records.filter { $0.phase.isFailure }.count]
+        let running = WidgetTaskManager.shared.activeCount
+        countLabel.stringValue = records.isEmpty
+            ? String(format: "%d tasks".localized, 0)
+            : String(format: "%d tasks  •  %d running".localized, records.count, running)
         let selectedID = selected?.id
         table.reloadData()
         if let selectedID, let row = visibleRecords.firstIndex(where: { $0.id == selectedID }) {
@@ -371,8 +388,31 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         } else if !visibleRecords.isEmpty {
             table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
         }
+        updateEmptyStates()
         updateDetail(selected)
         layoutContent()
+    }
+
+    /// The list and the detail each explain themselves when there is nothing to show.
+    private func updateEmptyStates() {
+        let none = visibleRecords.isEmpty
+        scroll.isHidden = none
+        emptyListTitle.isHidden = !none
+        emptyListHint.isHidden = !none
+        if none {
+            let noTasks = allRecords.isEmpty
+            emptyListTitle.stringValue = noTasks ? "No tasks yet".localized : "No matching tasks".localized
+            emptyListHint.stringValue = noTasks ? "Run a Widget on an image and it will show up here.".localized
+                                                : "Try a different search or filter.".localized
+        }
+        emptyDetail.isHidden = !none
+        if none {
+            emptyDetail.configure(icon: "TaskIconTasks", heading: "Select a task".localized,
+                                  detail: "Its progress, result and timeline appear here.".localized)
+        }
+        for view in [detailTitle, detailStatus, sourcePreview, resultPreview, timelinePanel, propertiesPanel] as [NSView] {
+            view.isHidden = none
+        }
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { visibleRecords.count }
@@ -404,8 +444,6 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         table.reloadData(forRowIndexes: rows, columnIndexes: IndexSet(integer: 0))
     }
 
-    func controlTextDidChange(_ obj: Notification) { refresh() }
-
     private var selected: WidgetTaskRecord? {
         let row = table.selectedRow
         return visibleRecords.indices.contains(row) ? visibleRecords[row] : nil
@@ -430,23 +468,44 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         guard let record else {
             detailTitle.stringValue = "Select a task".localized
             detailStatus.stringValue = ""
+            sourcePreview.caption = nil
             sourcePreview.configure(url: nil, waiting: false)
             resultPreview.configure(url: nil, waiting: true, displaysText: false)
             timelineRows.enumerated().forEach { $0.element.configure(state: $0.offset == 0 ? .pending : .disabled, time: "") }
             propertyValues.forEach { $0.stringValue = "—" }
-            centerStatus.stringValue = "Select a task to inspect details".localized
-            inspectButton.isEnabled = false
-            copyURLButton.isHidden = true
-            revealButton.isEnabled = false
-            retryButton.isEnabled = false
-            removeButton.isEnabled = false
+            setActions([])
             return
         }
         detailTitle.stringValue = record.commandName
         detailStatus.stringValue = String(format: "Task %@  •  %@".localized, String(record.id.uuidString.prefix(4).uppercased()), stateText(record))
+        detailStatus.textColor = record.phase.isActive ? PanelStyle.accent
+            : (record.phase.isFailure ? PanelStyle.failure
+               : (record.phase == .cancelled ? PanelStyle.textSecondary : PanelStyle.success))
+        sourcePreview.caption = String(format: "Source · %@".localized, record.source?.lastPathComponent ?? "Media".localized)
         sourcePreview.configure(url: record.source, waiting: false)
-        resultPreview.configure(url: record.output, waiting: record.phase != .completed,
-                                displaysText: returnsText(record))
+        let failed = record.phase.isFailure
+        let stopped = failed || record.phase == .cancelled
+        let failureReason = record.errorMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let reasonText = (failureReason?.isEmpty == false ? failureReason : nil)
+            ?? "The task stopped without reporting a reason.".localized
+        resultPreview.showsResultPill = false
+        if record.phase.isActive {
+            resultPreview.showRunning(detail: record.widgetName)
+        } else if stopped {
+            resultPreview.showFailure(title: (record.phase == .cancelled ? "Task cancelled" : "Task failed").localized,
+                                      reason: record.phase == .cancelled ? "You cancelled this task.".localized : reasonText)
+        } else if resultPreview.isShowingRunning {
+            // Board frame 7: the chip says "Done ✓" for 1.6 s, then the result.
+            let elapsed = Self.durationText(record.updatedAt.timeIntervalSince(record.createdAt))
+            resultPreview.finishRunning(detail: "\(record.widgetName) · \(elapsed)") { [weak self] in
+                guard let self, let current = self.selected, current.id == record.id else { return }
+                self.showResult(current)
+            }
+        } else {
+            showResult(record)
+        }
+
+        // Timeline: finished steps are green, the live step amber, a failed step red.
         let phaseIndex: Int
         switch record.phase {
         case .uploading, .submitting: phaseIndex = 0
@@ -455,34 +514,95 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         case .completed: phaseIndex = 4
         case .failed, .interrupted, .cancelled, .expired: phaseIndex = 2
         }
+        let clock = DateFormatter()
+        clock.dateFormat = "HH:mm:ss"
         for index in timelineRows.indices {
-            let state: TaskTimelineRow.State = index < phaseIndex ? .complete : (index == phaseIndex ? .current : .pending)
-            timelineRows[index].configure(state: state, time: index == phaseIndex ? "Now".localized : "")
+            var state: TaskTimelineRow.State = index < phaseIndex ? .complete : (index == phaseIndex ? .current : .pending)
+            var time = index == phaseIndex ? "Now".localized : ""
+            var detail: String?
+            if index == 0 { time = clock.string(from: record.createdAt) }
+            if stopped && index == phaseIndex {
+                state = failed ? .failed : .disabled
+                time = clock.string(from: record.updatedAt)
+                detail = record.phase == .cancelled ? "Cancelled".localized : reasonText
+            }
+            if stopped && index > phaseIndex { detail = "Skipped".localized; time = "—" }
+            if record.phase == .completed && index == 2 {
+                detail = String(format: "Finished in %@".localized, Self.durationText(record.updatedAt.timeIntervalSince(record.createdAt)))
+            }
+            if record.phase == .completed && index == 3 {
+                detail = "Saved next to the source".localized
+                time = clock.string(from: record.updatedAt)
+            }
+            timelineRows[index].configure(state: state, time: time, detail: detail)
         }
-        propertyValues[0].stringValue = record.widgetName
-        propertyValues[1].stringValue = record.source?.lastPathComponent ?? "Media"
-        propertyValues[2].stringValue = record.remoteTaskID == nil ? "—" : "Remote"
-        propertyValues[3].stringValue = "\(record.progress)%"
-        propertyValues[4].stringValue = record.phase.isActive ? "2 seconds".localized : "—"
-        let failed = record.phase.isFailure
-        let failureReason = record.errorMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
-        propertyValues[5].stringValue = failed
-            ? ((failureReason?.isEmpty == false ? failureReason : nil)
-                ?? "The task stopped without reporting a reason.".localized)
-            : "—"
-        propertyValues[5].textColor = failed ? PanelStyle.failure : PanelStyle.textPrimary
-        propertyValues[5].toolTip = failed ? propertyValues[5].stringValue : nil
-        centerStatus.stringValue = record.errorMessage ?? detailText(record)
-        inspectButton.isEnabled = selectedOutputExists
-        copyURLButton.isHidden = record.copyableMediaResultURL == nil
-        copyURLButton.isEnabled = !copyURLButton.isHidden
-        revealButton.isEnabled = selectedOutputExists
-        retryButton.isEnabled = record.phase.isFailure || record.phase == .cancelled || (record.phase == .completed && !selectedOutputExists)
-        removeButton.isEnabled = !record.phase.isActive
+
+        // Properties follow the state: live tasks poll, finished ones report a
+        // duration and a file, stopped ones say where and why.
+        let rows: [(String, String, NSColor)]
+        let worker = record.remoteTaskID == nil ? "—" : "Remote"
+        if record.phase.isActive {
+            rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.source?.lastPathComponent ?? "Media", PanelStyle.textPrimary),
+                    ("Worker", worker, PanelStyle.textPrimary), ("Progress", "\(record.progress)%", PanelStyle.textPrimary),
+                    ("Polling", "2 seconds".localized, PanelStyle.textPrimary)]
+        } else if stopped {
+            rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.source?.lastPathComponent ?? "Media", PanelStyle.textPrimary),
+                    ("Worker", worker, PanelStyle.textPrimary),
+                    ("Progress", String(format: "Stopped at %d%%".localized, record.progress), PanelStyle.textPrimary),
+                    ("Error", record.phase == .cancelled ? "Cancelled".localized : reasonText, record.phase == .cancelled ? PanelStyle.textPrimary : PanelStyle.failure)]
+        } else {
+            rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.source?.lastPathComponent ?? "Media", PanelStyle.textPrimary),
+                    ("Worker", worker, PanelStyle.textPrimary),
+                    ("Duration", Self.durationText(record.updatedAt.timeIntervalSince(record.createdAt)), PanelStyle.textPrimary),
+                    ("Result", record.output?.lastPathComponent ?? "—", PanelStyle.textPrimary)]
+        }
+        for index in propertyKeys.indices {
+            let hidden = index >= rows.count
+            propertyKeys[index].isHidden = hidden
+            propertyValues[index].isHidden = hidden
+            guard !hidden else { continue }
+            propertyKeys[index].stringValue = rows[index].0.localized
+            propertyValues[index].stringValue = rows[index].1
+            propertyValues[index].textColor = rows[index].2
+            propertyValues[index].toolTip = rows[index].1
+        }
+        copyURLButton.isEnabled = true
+
+        // The single action group for this state.
+        let sourceExists = record.source.map { !$0.isFileURL || FileManager.default.fileExists(atPath: $0.path) } == true
+        if record.phase.isActive {
+            setActions([sourceExists ? showSourceButton : nil, cancelButton].compactMap { $0 })
+        } else if record.phase == .completed && selectedOutputExists {
+            var items: [NSView] = []
+            if !returnsText(record) { items.append(inspectButton) }
+            if record.copyableMediaResultURL != nil { items.append(copyURLButton) }
+            items.append(revealButton)
+            items.append(actionSeparator)
+            items.append(removeButton)
+            setActions(items)
+        } else {
+            setActions([retryButton, actionSeparator, removeButton])
+        }
     }
 
-    private func detailText(_ record: WidgetTaskRecord) -> String {
-        "\(record.source?.lastPathComponent ?? "Media")  •  \(DateFormatter.localizedString(from: record.createdAt, dateStyle: .short, timeStyle: .short))"
+    private func showResult(_ record: WidgetTaskRecord) {
+        resultPreview.showsResultPill = !returnsText(record)
+        resultPreview.configure(url: record.output, waiting: record.phase != .completed,
+                                displaysText: returnsText(record))
+    }
+
+    /// "12.4 s" under a minute, "2 min 5 s" above.
+    private static func durationText(_ seconds: TimeInterval) -> String {
+        let value = max(0, seconds)
+        if value < 60 { return String(format: "%.1f s", value) }
+        return String(format: "%d min %d s", Int(value) / 60, Int(value) % 60)
+    }
+
+    private func setActions(_ items: [NSView]) {
+        let all: [NSView] = [showSourceButton, cancelButton, inspectButton, copyURLButton, revealButton, retryButton, removeButton, actionSeparator]
+        for view in all { view.isHidden = !items.contains { $0 === view } }
+        actionOrder = items
+        layoutContent()
     }
 
     private func stateText(_ record: WidgetTaskRecord) -> String {
@@ -501,17 +621,19 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     }
 
     @objc private func tasksChanged() { refresh() }
-    @objc private func refreshTapped() { refresh() }
-    @objc private func filterChanged() { refresh() }
     @objc private func selectionChanged() { updateDetail(selected) }
-    @objc private func searchTapped() { searchField.isHidden.toggle(); if !searchField.isHidden { makeFirstResponder(searchField) } }
-    @objc private func toggleDetails() { detailsVisible.toggle(); propertiesPanel.isHidden = !detailsVisible; timelinePanel.isHidden = !detailsVisible }
     @objc private func closeTapped() { close() }
     @objc private func minimizeTapped() { miniaturize(nil) }
     @objc private func zoomTapped() { zoom(nil) }
+    private func refreshTapped() { refresh() }
 
-    @objc private func showInInspect() {
+    private func showInInspect() {
         guard let url = selected?.output, FileManager.default.fileExists(atPath: url.path) else { return }
+        (NSApp.delegate as? AppDelegate)?.openTaskOutputInInspect(url)
+    }
+
+    private func showSource() {
+        guard let url = selected?.source else { return }
         (NSApp.delegate as? AppDelegate)?.openTaskOutputInInspect(url)
     }
 
@@ -519,13 +641,13 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         if let url = selected?.output, FileManager.default.fileExists(atPath: url.path) { NSWorkspace.shared.open(url) }
     }
 
-    @objc private func revealSelected() {
+    private func revealSelected() {
         if let url = selected?.output, FileManager.default.fileExists(atPath: url.path) {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         }
     }
 
-    @objc private func copyResultURL() {
+    private func copyResultURL() {
         guard let record = selected, let storedURL = record.copyableMediaResultURL else { return }
         guard let taskID = record.remoteTaskID else {
             copyURLToPasteboard(storedURL)
@@ -543,7 +665,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
                        url.host != "api.glance.mcreator.ai" {
                         self.copyURLToPasteboard(storedURL)
                     } else {
-                        self.centerStatus.stringValue = "Could not refresh result URL".localized
+                        self.toast.show(message: "Could not refresh result URL".localized, kind: .error, over: self)
                     }
                 }
             }
@@ -553,13 +675,14 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
     private func copyURLToPasteboard(_ value: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
-        centerStatus.stringValue = "Result URL copied".localized
+        toast.show(message: "Result URL copied".localized, kind: .info, over: self)
     }
 
-    @objc private func retrySelected() { if let id = selected?.id { WidgetTaskManager.shared.retry(id) } }
-    @objc private func removeSelected() { if let id = selected?.id { WidgetTaskManager.shared.remove(id) } }
+    private func retrySelected() { if let id = selected?.id { WidgetTaskManager.shared.retry(id) } }
+    private func removeSelected() { if let id = selected?.id { WidgetTaskManager.shared.remove(id) } }
+    private func cancelSelected() { if let id = selected?.id { WidgetTaskManager.shared.cancel(id) } }
 
-    @objc private func clearAll() {
+    private func clearAll() {
         let alert = NSAlert()
         alert.messageText = "Clear finished task history?".localized
         alert.informativeText = "Downloaded files will not be deleted.".localized
@@ -579,21 +702,26 @@ private final class TaskPassthroughLabel: NSTextField {
 }
 
 private final class TaskCenterTitlebar: NSView {
+    override var isFlipped: Bool { true }
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        layer?.backgroundColor = NSColor.clear.cgColor
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func mouseDown(with event: NSEvent) { event.clickCount == 2 ? window?.zoom(nil) : window?.performDrag(with: event) }
 }
 
 private final class TaskCenterCellView: NSTableCellView {
-    private let preview = NSImageView()
+    /// Thumbnail tile: aspect-fill layer contents, as the board's full-bleed artwork.
+    private let preview = NSView()
+    private let placeholder = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(labelWithString: "")
     private let stateBadge = NSView()
     private let stateLabel = PanelCenteredTextView()
+    private let runningScrim = NSView()
+    private let runningPeeker = PeekerView()
     /// Which thumbnail request this cell is waiting for; a reused cell ignores
     /// results that arrive for the record it used to show.
     private var thumbnailToken = UUID()
@@ -606,13 +734,25 @@ private final class TaskCenterCellView: NSTableCellView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true; layer?.cornerRadius = 9; layer?.borderWidth = 1; layer?.masksToBounds = true
-        preview.imageScaling = .scaleProportionallyUpOrDown; preview.wantsLayer = true; preview.layer?.cornerRadius = 7; preview.layer?.masksToBounds = true; preview.layer?.borderWidth = 1; preview.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        preview.wantsLayer = true; preview.layer?.cornerRadius = 7; preview.layer?.masksToBounds = true; preview.layer?.borderWidth = 1; preview.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        preview.layer?.contentsGravity = .resizeAspectFill
+        preview.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
+        placeholder.imageScaling = .scaleProportionallyUpOrDown
+        placeholder.contentTintColor = PanelStyle.textTertiary
+        preview.addSubview(placeholder)
         titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold); titleLabel.textColor = PanelStyle.textPrimary
         detailLabel.font = PanelStyle.inspectFont(ofSize: 11); detailLabel.textColor = PanelStyle.textTertiary
         stateBadge.wantsLayer = true; stateBadge.layer?.cornerRadius = 6; stateBadge.layer?.masksToBounds = true
         stateLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
         stateBadge.addSubview(stateLabel)
         [preview, titleLabel, detailLabel, stateBadge].forEach(addSubview)
+        runningScrim.wantsLayer = true
+        runningScrim.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.38).cgColor
+        runningScrim.layer?.cornerRadius = 7
+        runningScrim.isHidden = true
+        runningPeeker.isHidden = true
+        addSubview(runningScrim)
+        addSubview(runningPeeker)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
@@ -620,24 +760,36 @@ private final class TaskCenterCellView: NSTableCellView {
         isSelectedRow = selected
         applyBackground()
         layer?.borderColor = PanelStyle.resolvedCG(selected ? PanelStyle.accent.withAlphaComponent(0.42) : PanelStyle.inspectLine)
-        let placeholder = NSImage(systemSymbolName: record.phase.isActive ? "hourglass" : "photo",
-                                  accessibilityDescription: nil)
+        // A running task shows the peeker over the thumbnail instead of a glyph.
+        placeholder.image = record.phase.isActive ? nil : NSImage(systemSymbolName: "photo", accessibilityDescription: nil)
         let candidates = [record.output, record.source].compactMap { $0 }.filter(\.isFileURL)
         let token = UUID()
         thumbnailToken = token
         if let hit = candidates.lazy.compactMap({ MediaThumbnailCache.shared.cached(for: $0, maxPixelSize: Self.thumbnailPixelSize) }).first {
-            preview.image = hit
+            setThumbnail(hit)
         } else {
-            preview.image = placeholder
+            setThumbnail(nil)
             loadThumbnail(candidates, token: token)
         }
         titleLabel.stringValue = record.commandName
         detailLabel.stringValue = "\(relativeDate(record.createdAt))  •  \(record.source?.lastPathComponent ?? "Media")"
         let color: NSColor = record.phase.isActive ? PanelStyle.accent : (record.phase.isFailure ? PanelStyle.failure : (record.phase == .cancelled ? PanelStyle.textSecondary : PanelStyle.success))
+        runningScrim.isHidden = !record.phase.isActive
+        runningPeeker.isHidden = !record.phase.isActive
         stateLabel.string = taskState(record)
         stateLabel.textColor = color
         stateBadge.layer?.backgroundColor = color.withAlphaComponent(0.16).cgColor
         setAccessibilityLabel("\(record.commandName), \(stateLabel.string)")
+    }
+
+    private func setThumbnail(_ image: NSImage?) {
+        preview.layer?.contents = image?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        placeholder.isHidden = image != nil
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        needsLayout = true
     }
 
     override func layout() {
@@ -654,10 +806,16 @@ private final class TaskCenterCellView: NSTableCellView {
         detailLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale)
         stateLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale, weight: .semibold)
         preview.frame = NSRect(x: 12 * sx, y: 13 * sy, width: 56 * sx, height: 56 * sy)
+        placeholder.frame = preview.bounds.insetBy(dx: 16 * scale, dy: 16 * scale)
+        // Text stops 8 pt before the state badge (x 250) so long file names truncate
+        // instead of running under it.
         titleLabel.frame = NSRect(x: 82 * sx, y: 17 * sy, width: 160 * sx, height: 17 * sy)
         detailLabel.frame = NSRect(x: 82 * sx, y: 43 * sy, width: 160 * sx, height: 14 * sy)
         stateBadge.frame = NSRect(x: 250 * sx, y: 28 * sy, width: 70 * sx, height: 26 * sy)
         stateLabel.frame = stateBadge.bounds.insetBy(dx: 2 * sx, dy: 0)
+        runningScrim.frame = preview.frame
+        runningScrim.layer?.cornerRadius = 7 * scale
+        runningPeeker.frame = NSRect(x: 24 * sx, y: 24 * sy, width: 32 * sx, height: 32 * sy)
     }
 
     private func applyBackground() {
@@ -683,14 +841,25 @@ private final class TaskCenterCellView: NSTableCellView {
         guard let url = candidates.first else { return }
         MediaThumbnailCache.shared.load(url, maxPixelSize: Self.thumbnailPixelSize) { [weak self] image in
             guard let self, self.thumbnailToken == token else { return }
-            if let image { self.preview.image = image }
+            if let image { self.setThumbnail(image) }
             else { self.loadThumbnail(Array(candidates.dropFirst()), token: token) }
         }
     }
 
     private func taskState(_ record: WidgetTaskRecord) -> String {
         if let queued = record.queueText { return queued }
-        switch record.phase { case .processing: return record.progress > 0 ? "\(record.progress)%" : "Running"; case .uploading: return "Uploading"; case .submitting: return "Submitting"; case .downloading: return "Downloading"; case .completed: return "Done"; case .failed: return "Failed"; case .interrupted: return "Interrupted"; case .cancelled: return "Cancelled"; case .expired: return "Expired" }
+        // The badge names the state (board: "Running…"); the percentage lives in the detail.
+        switch record.phase {
+        case .processing: return "Running…".localized
+        case .uploading: return "Uploading".localized
+        case .submitting: return "Submitting".localized
+        case .downloading: return "Downloading".localized
+        case .completed: return "Done".localized
+        case .failed: return "Failed".localized
+        case .interrupted: return "Interrupted".localized
+        case .cancelled: return "Cancelled".localized
+        case .expired: return "Expired".localized
+        }
     }
 
     private func relativeDate(_ date: Date) -> String {
@@ -719,6 +888,19 @@ private final class TaskPreviewView: NSView {
     private let textScroll = NSScrollView()
     private let textView = NSTextView()
     private var loadGeneration = UUID()
+    private let runningChip = TaskRunningChip()
+    private let failureBadge = TaskFailureBadge()
+    private let failureTitle = NSTextField(labelWithString: "")
+    private let failureReason = NSTextField(wrappingLabelWithString: "")
+    private let resultPill = TaskResultPill()
+    private let captionLabel = NSTextField(labelWithString: "")
+    /// Shows the "Result" pill over a finished result image.
+    var showsResultPill = false
+    /// "Source · input.png" over the bottom-left of the image (board 215:5953).
+    var caption: String? { didSet { captionLabel.stringValue = caption ?? ""; needsLayout = true } }
+    /// True while the running chip (working or "Done") is on screen.
+    var isShowingRunning: Bool { !runningChip.isHidden }
+    private var doneWork: DispatchWorkItem?
 
     init(title: String) {
         waitingLabel = NSTextField(labelWithString: title)
@@ -730,7 +912,14 @@ private final class TaskPreviewView: NSView {
         layer?.cornerRadius = 10
         layer?.masksToBounds = true
         imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.wantsLayer = true
+        imageView.layer?.masksToBounds = true
         addSubview(imageView)
+        captionLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .medium)
+        captionLabel.textColor = HistoryStyle.hex(0xF3F3F3)
+        captionLabel.lineBreakMode = .byTruncatingTail
+        captionLabel.maximumNumberOfLines = 1
+        captionLabel.isHidden = true
         textScroll.drawsBackground = false
         textScroll.hasVerticalScroller = true
         textScroll.autohidesScrollers = true
@@ -754,12 +943,82 @@ private final class TaskPreviewView: NSView {
         waitingLabel.textColor = PanelStyle.textTertiary
         waitingLabel.alignment = .center
         addSubview(waitingLabel)
+        runningChip.isHidden = true
+        addSubview(runningChip)
+        failureBadge.isHidden = true
+        addSubview(failureBadge)
+        failureTitle.font = PanelStyle.inspectFont(ofSize: 16, weight: .semibold)
+        failureTitle.textColor = PanelStyle.textPrimary
+        failureTitle.alignment = .center
+        failureReason.font = PanelStyle.inspectFont(ofSize: 12)
+        failureReason.textColor = PanelStyle.textSecondary
+        failureReason.alignment = .center
+        failureReason.maximumNumberOfLines = 3
+        [failureTitle, failureReason].forEach { $0.isHidden = true; addSubview($0) }
+        resultPill.isHidden = true
+        addSubview(resultPill)
+        addSubview(captionLabel)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func resetModes() {
+        doneWork?.cancel()
+        doneWork = nil
+        runningChip.isHidden = true
+        captionLabel.isHidden = true
+        failureBadge.isHidden = true
+        failureTitle.isHidden = true
+        failureReason.isHidden = true
+        resultPill.isHidden = true
+    }
+
+    /// A running task: the peeker chip instead of a "waiting" label.
+    func showRunning(detail: String) {
+        loadGeneration = UUID()
+        imageView.image = nil
+        textScroll.isHidden = true
+        waitingLabel.isHidden = true
+        resetModes()
+        runningChip.showRunning(detail: detail)
+        runningChip.isHidden = false
+        needsLayout = true
+    }
+
+    /// The task finished while the chip was up: show board frame 7 ("Done ✓",
+    /// `detail` = "Remove Background · 12.4 s"), hold 1.6 s, then `completion`.
+    /// Later calls while the hold runs keep the first completion.
+    func finishRunning(detail: String, completion: @escaping () -> Void) {
+        guard isShowingRunning else { completion(); return }
+        if runningChip.isDone { return }
+        runningChip.showDone(detail: detail)
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.doneWork != nil else { return }
+            self.doneWork = nil
+            completion()
+        }
+        doneWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6, execute: work)
+    }
+
+    /// A failed or cancelled task: a red badge, the outcome and the reason.
+    func showFailure(title: String, reason: String) {
+        loadGeneration = UUID()
+        imageView.image = nil
+        textScroll.isHidden = true
+        waitingLabel.isHidden = true
+        resetModes()
+        failureTitle.stringValue = title
+        failureReason.stringValue = reason
+        failureBadge.isHidden = false
+        failureTitle.isHidden = false
+        failureReason.isHidden = false
+        needsLayout = true
+    }
 
     func configure(url: URL?, waiting: Bool, displaysText: Bool = false) {
         loadGeneration = UUID()
         let generation = loadGeneration
+        resetModes()
         imageView.image = nil
         textView.string = ""
         textScroll.isHidden = true
@@ -795,6 +1054,8 @@ private final class TaskPreviewView: NSView {
             if let image {
                 self.imageView.image = image
                 self.waitingLabel.isHidden = true
+                self.resultPill.isHidden = !self.showsResultPill
+                self.captionLabel.isHidden = self.caption == nil
             } else {
                 self.waitingLabel.stringValue = waiting ? "Waiting for result".localized : "Preview unavailable".localized
             }
@@ -816,9 +1077,26 @@ private final class TaskPreviewView: NSView {
 
     override func layout() {
         super.layout()
-        imageView.frame = bounds.insetBy(dx: 12, dy: 12)
-        textScroll.frame = bounds.insetBy(dx: 12, dy: 12)
+        // Everything follows the 556 × 360 board, scaled with the pane. Board
+        // y values are top-origin; this view is not flipped, so y = height - (top + h).
+        let k = bounds.width / 556
+        imageView.frame = NSRect(x: 12 * k, y: 12 * k, width: bounds.width - 24 * k, height: bounds.height - 24 * k)
+        imageView.layer?.cornerRadius = 8 * k
+        textScroll.frame = bounds.insetBy(dx: 12 * k, dy: 12 * k)
         waitingLabel.frame = NSRect(x: 20, y: bounds.midY - 9, width: bounds.width - 40, height: 18)
+        captionLabel.font = PanelStyle.inspectFont(ofSize: 11 * k, weight: .medium)
+        captionLabel.frame = NSRect(x: 18 * k, y: bounds.height - (322 + 14) * k, width: 300 * k, height: 14 * k)
+        let chipWidth = 360 * k
+        runningChip.frame = NSRect(x: (bounds.width - chipWidth) / 2, y: (bounds.height - 76 * k) / 2, width: chipWidth, height: 76 * k)
+        failureBadge.frame = NSRect(x: (bounds.width - 56 * k) / 2, y: bounds.height - (112 + 56) * k, width: 56 * k, height: 56 * k)
+        failureTitle.font = PanelStyle.inspectFont(ofSize: 16 * k, weight: .semibold)
+        failureReason.font = PanelStyle.inspectFont(ofSize: 12 * k)
+        failureTitle.frame = NSRect(x: 0, y: bounds.height - (188 + 20) * k, width: bounds.width, height: 20 * k)
+        failureReason.frame = NSRect(x: 78 * k, y: bounds.height - (218 + 46) * k, width: bounds.width - 156 * k, height: 46 * k)
+        // Board pill: 58 wide — dot at 10, label at 22. Wider only if the label needs it.
+        let pillWidth = max(58, 22 + HistoryStyle.width("Result".localized, size: 11, weight: .semibold) + 4) * k
+        resultPill.frame = NSRect(x: 24 * k, y: bounds.height - (24 + 22) * k, width: pillWidth, height: 22 * k)
+        resultPill.uiScale = k
         layoutTextView()
     }
 
@@ -837,37 +1115,354 @@ private final class TaskPreviewView: NSView {
 }
 
 private final class TaskTimelineRow: NSView {
-    enum State { case complete, current, pending, disabled }
-    private let mark = NSView(), halo = NSView(), connector = NSView(), titleLabel: NSTextField, detailLabel: NSTextField, timeLabel = NSTextField(labelWithString: "")
+    enum State { case complete, current, pending, disabled, failed }
+    /// Board row box: halo top (y − 2) to connector bottom (y + 70), 72 pt pitch.
+    static let designHeight: CGFloat = 74
+    private let mark = NSView(), halo = NSView(), connector = NSView()
+    private let titleLabel: NSTextField, detailLabel: NSTextField
+    private let timeLabel = NSTextField(labelWithString: "")
+    private let defaultDetail: String
     private let showsConnector: Bool
-    init(title: String, detail: String, showsConnector: Bool) { self.showsConnector = showsConnector; titleLabel = NSTextField(labelWithString: title); detailLabel = NSTextField(labelWithString: detail); super.init(frame: .zero); mark.wantsLayer = true; halo.wantsLayer = true; connector.wantsLayer = true; connector.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine); addSubview(connector); addSubview(halo); addSubview(mark); titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium); titleLabel.textColor = PanelStyle.textPrimary; detailLabel.font = PanelStyle.inspectFont(ofSize: 11); detailLabel.textColor = PanelStyle.textTertiary; timeLabel.font = PanelStyle.inspectFont(ofSize: 11); timeLabel.textColor = PanelStyle.textTertiary; timeLabel.alignment = .right; [titleLabel, detailLabel, timeLabel].forEach(addSubview) }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    func configure(state: State, time: String) { let color: NSColor = state == .complete ? PanelStyle.success : (state == .current ? PanelStyle.accent : PanelStyle.textTertiary); mark.layer?.backgroundColor = color.cgColor; halo.layer?.backgroundColor = color.withAlphaComponent(0.14).cgColor; halo.isHidden = state != .current; timeLabel.stringValue = time }
-    override func layout() { super.layout(); halo.frame = NSRect(x: 3, y: bounds.height - 28, width: 24, height: 24); halo.layer?.cornerRadius = 12; mark.frame = NSRect(x: 8, y: bounds.height - 23, width: 14, height: 14); mark.layer?.cornerRadius = 7; connector.isHidden = !showsConnector; connector.frame = NSRect(x: 14.5, y: 0, width: 1, height: max(0, bounds.height - 23)); titleLabel.frame = NSRect(x: 38, y: bounds.height - 22, width: bounds.width - 170, height: 16); detailLabel.frame = NSRect(x: 38, y: bounds.height - 44, width: bounds.width - 90, height: 14); timeLabel.frame = NSRect(x: bounds.width - 110, y: bounds.height - 22, width: 100, height: 14) }
-}
+    override var isFlipped: Bool { true }
 
-private final class TaskFilterBar: NSView {
-    var onSelect: ((Int) -> Void)?
-    var selectedSegment = 0 { didSet { updateAppearance() } }
-    private let buttons: [PanelButton]
-
-    init(titles: [String]) {
-        buttons = titles.enumerated().map { index, title in
-            let button = PanelStyle.makeSegmentButton(title: title, target: nil, action: nil)
-            button.tag = index
-            return button
-        }
+    init(title: String, detail: String, showsConnector: Bool) {
+        self.showsConnector = showsConnector
+        defaultDetail = detail
+        titleLabel = NSTextField(labelWithString: title)
+        detailLabel = NSTextField(labelWithString: detail)
         super.init(frame: .zero)
-        for button in buttons {
-            button.target = self
-            button.action = #selector(tapped(_:))
-            button.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
-            addSubview(button)
+        mark.wantsLayer = true
+        halo.wantsLayer = true
+        connector.wantsLayer = true
+        connector.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        addSubview(connector); addSubview(halo); addSubview(mark)
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
+        titleLabel.textColor = PanelStyle.textPrimary
+        detailLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        detailLabel.textColor = PanelStyle.textTertiary
+        timeLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        timeLabel.textColor = PanelStyle.textTertiary
+        timeLabel.alignment = .right
+        for label in [titleLabel, detailLabel, timeLabel] {
+            label.lineBreakMode = .byTruncatingTail
+            label.maximumNumberOfLines = 1
+            addSubview(label)
         }
-        updateAppearance()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    @objc private func tapped(_ sender: NSButton) { selectedSegment = sender.tag; onSelect?(sender.tag) }
-    private func updateAppearance() { for (index, button) in buttons.enumerated() { PanelStyle.setSegmentActive(button, active: index == selectedSegment) } }
-    override func layout() { super.layout(); let widths: [CGFloat] = [72, 80, 72, 72]; let scale = bounds.width / 320; var x: CGFloat = 0; for (button, width) in zip(buttons, widths) { button.frame = NSRect(x: x, y: 0, width: width * scale, height: bounds.height); button.layer?.cornerRadius = 8 * min(scale, bounds.height / 38); x += (width + 8) * scale } }
+
+    /// `detail` replaces the default description for this state (nil restores it).
+    func configure(state: State, time: String, detail: String? = nil) {
+        let color: NSColor
+        switch state {
+        case .complete: color = PanelStyle.success
+        case .current: color = PanelStyle.accent
+        case .failed: color = PanelStyle.failure
+        case .pending, .disabled: color = PanelStyle.textTertiary
+        }
+        mark.layer?.backgroundColor = color.cgColor
+        halo.layer?.backgroundColor = color.withAlphaComponent(0.14).cgColor
+        halo.isHidden = !(state == .current || state == .failed)
+        timeLabel.stringValue = time
+        detailLabel.stringValue = detail ?? defaultDetail
+    }
+
+    override func layout() {
+        super.layout()
+        // Board (row origin y): halo (23, y − 2) 24, mark (28, y + 3) 14,
+        // title (58, y) 13 pt, detail (58, y + 22) 11 pt, time (430, y + 3) 110
+        // wide right-aligned, connector (34, y + 18) 1 × 52. This box starts at y − 2.
+        let sx = bounds.width / 556, sy = bounds.height / Self.designHeight
+        let scale = min(sx, sy)
+        func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+            NSRect(x: x * sx, y: y * sy, width: w * sx, height: h * sy)
+        }
+        halo.frame = r(23, 0, 24, 24); halo.layer?.cornerRadius = 12 * scale
+        mark.frame = r(28, 5, 14, 14); mark.layer?.cornerRadius = 7 * scale
+        connector.isHidden = !showsConnector
+        connector.frame = NSRect(x: 34 * sx, y: 20 * sy, width: max(1, scale), height: 52 * sy)
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .medium)
+        detailLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale)
+        timeLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale)
+        titleLabel.frame = r(58, 2, 360, 16)
+        detailLabel.frame = r(58, 24, 360, 14)
+        timeLabel.frame = r(430, 5, 110, 14)
+    }
+}
+
+/// Red circle with a warning glyph (failed / cancelled result pane).
+private final class TaskFailureBadge: NSView {
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func draw(_ dirtyRect: NSRect) {
+        PanelStyle.failure.withAlphaComponent(0.14).setFill()
+        NSBezierPath(ovalIn: bounds).fill()
+        let side = bounds.width * 0.5
+        HistoryStyle.drawIcon("ToastWarning", color: PanelStyle.failure,
+                              in: CGRect(x: (bounds.width - side) / 2, y: (bounds.height - side) / 2, width: side, height: side))
+    }
+}
+
+/// "● Result" pill on a finished result image.
+private final class TaskResultPill: NSView {
+    var uiScale: CGFloat = 1 { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func draw(_ dirtyRect: NSRect) {
+        let s = uiScale
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 11 * s, yRadius: 11 * s)
+        HistoryStyle.overlayFill.withAlphaComponent(0.8).setFill(); path.fill()
+        HistoryStyle.accent.withAlphaComponent(0.5).setStroke(); path.lineWidth = max(1, s); path.stroke()
+        HistoryStyle.accent.setFill()
+        NSBezierPath(ovalIn: CGRect(x: 10 * s, y: 8 * s, width: 6 * s, height: 6 * s)).fill()
+        HistoryStyle.draw("Result".localized, in: CGRect(x: 22 * s, y: 4 * s, width: bounds.width - 24 * s, height: 14 * s),
+                          size: 11 * s, weight: .semibold, color: HistoryStyle.accent)
+    }
+}
+
+// MARK: - Redesign controls
+
+/// 32 × 32 list-level icon button (refresh, clear finished, sort).
+final class TaskGhostButton: NSView {
+    var uiScale: CGFloat = 1 { didSet { needsDisplay = true } }
+    var isEnabled = true { didSet { alphaValue = isEnabled ? 1 : 0.4 } }
+    /// Toggled state (e.g. sort on): warm fill and accent icon, like an active filter pill.
+    var isActive = false { didSet { needsDisplay = true } }
+    private let icon: String
+    private let tint: NSColor
+    private let danger: Bool
+    private let onClick: () -> Void
+    private var hovering = false { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    init(icon: String, tooltip: String, tint: NSColor, danger: Bool = false, onClick: @escaping () -> Void) {
+        self.icon = icon; self.tint = tint; self.danger = danger; self.onClick = onClick
+        super.init(frame: .zero)
+        toolTip = tooltip
+        setAccessibilityLabel(tooltip)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+    }
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+    override func mouseDown(with event: NSEvent) { if isEnabled { onClick() } }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let s = uiScale
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10 * s, yRadius: 10 * s)
+        if isActive {
+            HistoryStyle.chipActiveFill.setFill(); path.fill()
+            HistoryStyle.accent.withAlphaComponent(0.6).setStroke()
+        } else {
+            NSColor.white.withAlphaComponent(hovering ? 0.09 : 0.05).setFill(); path.fill()
+            (danger ? PanelStyle.failure.withAlphaComponent(0.32) : NSColor.white.withAlphaComponent(0.08)).setStroke()
+        }
+        path.lineWidth = max(1, s); path.stroke()
+        HistoryStyle.drawIcon(icon, color: isActive ? HistoryStyle.accent : tint, in: CGRect(x: 8 * s, y: 8 * s, width: 16 * s, height: 16 * s))
+    }
+}
+
+/// Task-level action in the detail header: ghost, primary (amber) or danger.
+/// Icon + label, or icon only (label nil).
+private final class TaskActionButton: NSView {
+    enum Style { case ghost, primary, danger }
+    var uiScale: CGFloat = 1 { didSet { needsDisplay = true } }
+    var isEnabled = true { didSet { alphaValue = isEnabled ? 1 : 0.4 } }
+    private let label: String?
+    private let icon: String
+    private let style: Style
+    private let onClick: () -> Void
+    private var hovering = false { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    /// Width on the 1554-wide board.
+    var designWidth: CGFloat {
+        guard let label else { return 36 }
+        return 14 + 16 + 8 + HistoryStyle.width(label, size: 12, weight: style == .primary ? .semibold : .medium) + 14
+    }
+
+    init(label: String?, icon: String, style: Style, tooltip: String? = nil, onClick: @escaping () -> Void) {
+        self.label = label; self.icon = icon; self.style = style; self.onClick = onClick
+        super.init(frame: .zero)
+        toolTip = tooltip ?? label
+        setAccessibilityLabel(tooltip ?? label ?? "")
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+    }
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+    override func mouseDown(with event: NSEvent) { if isEnabled { onClick() } }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let s = uiScale
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 12 * s, yRadius: 12 * s)
+        let tint: NSColor
+        switch style {
+        case .primary:
+            (hovering ? PanelStyle.accentHover : PanelStyle.warmCue).setFill(); path.fill()
+            tint = PanelStyle.accentInk
+        case .danger:
+            PanelStyle.failure.withAlphaComponent(hovering ? 0.14 : 0.08).setFill(); path.fill()
+            PanelStyle.failure.withAlphaComponent(0.32).setStroke(); path.lineWidth = max(1, s); path.stroke()
+            tint = PanelStyle.failure
+        case .ghost:
+            NSColor.white.withAlphaComponent(hovering ? 0.09 : 0.05).setFill(); path.fill()
+            NSColor.white.withAlphaComponent(0.08).setStroke(); path.lineWidth = max(1, s); path.stroke()
+            tint = PanelStyle.textPrimary
+        }
+        if let label {
+            HistoryStyle.drawIcon(icon, color: tint, in: CGRect(x: 14 * s, y: 10 * s, width: 16 * s, height: 16 * s))
+            HistoryStyle.draw(label, in: CGRect(x: 38 * s, y: 10 * s, width: bounds.width - 52 * s, height: 16 * s), size: 12 * s,
+                              weight: style == .primary ? .semibold : .medium, color: tint)
+        } else {
+            HistoryStyle.drawIcon(icon, color: tint, in: CGRect(x: 10 * s, y: 10 * s, width: 16 * s, height: 16 * s))
+        }
+    }
+}
+
+/// 36 pt search field, always visible in the list header (Task Center and Widget Market).
+final class TaskSearchBox: NSView, NSTextFieldDelegate {
+    var uiScale: CGFloat = 1 { didSet { needsLayout = true; needsDisplay = true } }
+    var onChange: (() -> Void)?
+    var placeholder = "Search tasks".localized { didSet { updatePlaceholder() } }
+    private let field = HistoryTextField()
+    private var focused = false { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+    var query: String { field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.textColor = HistoryStyle.text
+        field.cell?.usesSingleLineMode = true
+        field.cell?.isScrollable = true
+        field.delegate = self
+        field.onFocusChange = { [weak self] in self?.focused = $0 }
+        addSubview(field)
+        updatePlaceholder()
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private func updatePlaceholder() {
+        field.placeholderAttributedString = NSAttributedString(
+            string: placeholder,
+            attributes: [.font: PanelStyle.inspectFont(ofSize: 13), .foregroundColor: HistoryStyle.muted])
+    }
+
+    private var clearRect: CGRect {
+        let s = uiScale
+        return CGRect(x: bounds.width - 10 * s - 18 * s, y: 9 * s, width: 18 * s, height: 18 * s)
+    }
+
+    override func layout() {
+        super.layout()
+        let s = uiScale
+        field.font = PanelStyle.inspectFont(ofSize: 13 * s)
+        field.frame = CGRect(x: 38 * s, y: (bounds.height - 18 * s) / 2, width: bounds.width - 38 * s - 34 * s, height: 18 * s)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let s = uiScale
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 12 * s, yRadius: 12 * s)
+        HistoryStyle.field.setFill(); path.fill()
+        (focused ? HistoryStyle.accent.withAlphaComponent(0.6) : NSColor.white.withAlphaComponent(0.10)).setStroke()
+        path.lineWidth = max(1, s); path.stroke()
+        HistoryStyle.drawIcon("HistorySearch", color: focused ? HistoryStyle.accent : HistoryStyle.muted,
+                              in: CGRect(x: 12 * s, y: 9 * s, width: 18 * s, height: 18 * s))
+        if !field.stringValue.isEmpty {
+            NSColor.white.withAlphaComponent(0.10).setFill()
+            NSBezierPath(ovalIn: clearRect).fill()
+            HistoryStyle.drawIcon("HistoryClose", color: HistoryStyle.secondary,
+                                  in: clearRect.insetBy(dx: 4 * s, dy: 4 * s))
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if !field.stringValue.isEmpty, clearRect.insetBy(dx: -4, dy: -4).contains(point) { clear(); return }
+        window?.makeFirstResponder(field)
+    }
+
+    private func clear() {
+        field.stringValue = ""
+        needsDisplay = true
+        onChange?()
+    }
+
+    func controlTextDidChange(_ obj: Notification) {
+        needsDisplay = true
+        onChange?()
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+        guard selector == #selector(NSResponder.cancelOperation(_:)) else { return false }
+        if field.stringValue.isEmpty { window?.makeFirstResponder(nil) } else { clear() }
+        return true
+    }
+}
+
+/// Filter pills with counts (All / Running / Done / Failed, Marketplace / Installed / Updates).
+final class TaskPillBar: NSView {
+    var onSelect: ((Int) -> Void)?
+    var selectedSegment = 0 { didSet { needsDisplay = true } }
+    var counts: [Int] = [0, 0, 0, 0] { didSet { needsDisplay = true } }
+    var uiScale: CGFloat = 1 { didSet { needsDisplay = true } }
+    private let titles: [String]
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    init(titles: [String]) {
+        self.titles = titles
+        super.init(frame: .zero)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private func pillRects() -> [CGRect] {
+        let s = uiScale
+        var x: CGFloat = 0
+        return titles.indices.map { index in
+            let active = index == selectedSegment
+            let w = (12 + HistoryStyle.width(titles[index], size: 12, weight: active ? .semibold : .medium) + 6
+                     + HistoryStyle.width(String(counts[index]), size: 12) + 12) * s
+            defer { x += w + 8 * s }
+            return CGRect(x: x, y: 0, width: w, height: 30 * s)
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let s = uiScale
+        for (index, rect) in pillRects().enumerated() {
+            let active = index == selectedSegment
+            let path = NSBezierPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), xRadius: 15 * s, yRadius: 15 * s)
+            (active ? HistoryStyle.chipActiveFill : NSColor.white.withAlphaComponent(0.05)).setFill(); path.fill()
+            (active ? HistoryStyle.accent.withAlphaComponent(0.6) : NSColor.white.withAlphaComponent(0.08)).setStroke()
+            path.lineWidth = max(1, s); path.stroke()
+            let weight: NSFont.Weight = active ? .semibold : .medium
+            let labelW = HistoryStyle.width(titles[index], size: 12 * s, weight: weight)
+            HistoryStyle.draw(titles[index], in: CGRect(x: rect.minX + 12 * s, y: 7 * s, width: labelW + 2, height: 16 * s), size: 12 * s,
+                              weight: weight, color: active ? HistoryStyle.accent : HistoryStyle.secondary)
+            HistoryStyle.draw(String(counts[index]), in: CGRect(x: rect.minX + 12 * s + labelW + 6 * s, y: 7 * s, width: 50, height: 16 * s), size: 12 * s,
+                              color: active ? HistoryStyle.accent : HistoryStyle.muted)
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if let index = pillRects().firstIndex(where: { $0.contains(point) }) { onSelect?(index) }
+    }
 }

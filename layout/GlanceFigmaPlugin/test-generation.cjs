@@ -440,6 +440,96 @@ const names = [
     'Regeneration must leave exactly one current compression flow');
   assert.equal(page.children.filter(child => child.name === 'Image Compression Flow / Previous').length, 1,
     'Regeneration must preserve the previous compression flow for review');
+  const beforePlacement = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-task-running-placement' });
+  const placement = page.children.find(child => child.name === 'Task Running Placement');
+  assert.ok(placement, 'Task Running Placement must be generated');
+  assert.equal(page.children.length, beforePlacement + 1);
+  for (const scene of ['A / Small window 320 × 240', 'B / Compact window 480 × 360', 'C / Standard window 1554 × 1012', 'D / Task Center rows']) {
+    assert.ok(placement.findOne(child => child.name === scene), `placement scene ${scene}`);
+  }
+  assert.ok(placement.findOne(child => child.name === 'Running Chip / full'), 'full chip in the standard window');
+  assert.ok(placement.findOne(child => child.name === 'Running Chip / compact'), 'compact chip in the compact window');
+  const smallWindow = placement.findOne(child => child.name === 'A / Small window 320 × 240');
+  assert.equal(smallWindow.findAll(child => child.name.startsWith('Running Chip')).length, 0, 'no chip in the small window');
+  assert.ok(smallWindow.findOne(child => child.name === 'Running Badge'), 'badge in the small window');
+  assert.equal(placement.findAll(child => child.name === 'Running Badge').length, 3, 'badge in every window');
+  assert.ok(placement.findAll(child => child.name.endsWith('/ running') && child.name.startsWith('Tile')).length === 3, 'one running tile per window');
+  await figma.ui.onmessage({ type: 'generate-task-running-placement' });
+  assert.equal(page.children.length, beforePlacement + 1, 'placement regeneration is idempotent');
+
+  const beforeTaskCenter = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-task-center-redesign' });
+  const taskCenter = page.children.find(child => child.name === 'Task Center Redesign');
+  assert.ok(taskCenter, 'Task Center Redesign must be generated');
+  assert.equal(page.children.length, beforeTaskCenter + 1);
+  const tcScene = name => taskCenter.findOne(child => child.name === name);
+  for (const scene of ['01 / Task Center / Running', '02 / Task Center / Done', '03 / Task Center / Failed', '04 / Task Center / Empty']) {
+    assert.ok(tcScene(scene), `task center scene ${scene}`);
+  }
+  const actionNames = scene => scene.findAll(child => child.name.startsWith('Action / ')).map(child => child.name);
+  assert.deepEqual(actionNames(tcScene('01 / Task Center / Running')).sort(), ['Action / Cancel', 'Action / Show Source']);
+  assert.equal(actionNames(tcScene('01 / Task Center / Running')).length, 2);
+  assert.equal(actionNames(tcScene('02 / Task Center / Done')).length, 4);
+  assert.equal(actionNames(tcScene('03 / Task Center / Failed')).length, 2);
+  assert.equal(actionNames(tcScene('04 / Task Center / Empty')).length, 0);
+  for (const scene of ['01 / Task Center / Running', '02 / Task Center / Done', '03 / Task Center / Failed', '04 / Task Center / Empty']) {
+    const node = tcScene(scene);
+    assert.equal(node.findOne(child => child.name === '02 / Icon Toolbar'), null, 'grey toolbar band removed');
+    assert.equal(node.findAll(child => child.name === 'Task Information' || child.name === 'Info').length, 0, 'Info button removed');
+    assert.equal(node.findAll(child => child.name === 'Clear Finished').length, 1, 'clear finished lives once, in the list');
+  }
+  await figma.ui.onmessage({ type: 'generate-task-center-redesign' });
+  assert.equal(page.children.length, beforeTaskCenter + 1, 'task center regeneration is idempotent');
+
+  const beforeMarket = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-widget-market-redesign' });
+  const market = page.children.find(child => child.name === 'Widget Market Redesign');
+  assert.ok(market, 'Widget Market Redesign must be generated');
+  assert.equal(page.children.length, beforeMarket + 1);
+  const wmScene = name => market.findOne(child => child.name === name);
+  for (const scene of ['01 / Widget Market / Marketplace', '02 / Widget Market / Installed', '03 / Widget Market / Updates', '04 / Widget Market / Search · Empty']) {
+    assert.ok(wmScene(scene), `widget market scene ${scene}`);
+    assert.equal(wmScene(scene).width, 448, 'panel width matches WidgetMarketPanel.designSize');
+    assert.equal(wmScene(scene).height, 824, 'panel height matches WidgetMarketPanel.designSize');
+  }
+  const wmRows = scene => wmScene(scene).findAll(child => child.name.startsWith('Widget / '));
+  const wmActions = row => row.findAll(child => child.name.startsWith('Action / ')).map(child => child.name);
+  assert.equal(wmRows('01 / Widget Market / Marketplace').length, 6, 'six rows fit above the footer');
+  for (const row of wmRows('01 / Widget Market / Marketplace')) {
+    assert.equal(wmActions(row).length, 1, 'exactly one action per row');
+    const action = row.findOne(child => child.name.startsWith('Action / '));
+    for (const label of ['Name', 'Summary', 'Meta']) {
+      const node = row.findOne(child => child.name === label);
+      assert.ok(node.x + node.width <= action.x, `${label} stops before the action`);
+    }
+  }
+  assert.ok(wmRows('02 / Widget Market / Installed').every(row => wmActions(row)[0] !== 'Action / Install'), 'installed filter hides Install');
+  assert.ok(wmRows('02 / Widget Market / Installed').some(row => wmActions(row)[0] === 'Action / Remove'), 'hovered installed row offers Remove');
+  assert.ok(wmRows('03 / Widget Market / Updates').every(row => wmActions(row)[0] === 'Action / Update'), 'updates filter shows only Update');
+  assert.equal(wmRows('04 / Widget Market / Search · Empty').length, 0);
+  assert.ok(wmScene('04 / Widget Market / Search · Empty').findOne(child => child.name === 'Empty Title'), 'empty search state');
+  assert.ok(market.findOne(child => child.name === 'Row States'), 'row state spec strip');
+  await figma.ui.onmessage({ type: 'generate-widget-market-redesign' });
+  assert.equal(page.children.length, beforeMarket + 1, 'widget market regeneration is idempotent');
+
+  const beforeMotion = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-task-running-motion' });
+  const motion = page.children.find(child => child.name === 'Task Running Motion');
+  assert.ok(motion, 'Task Running Motion must be generated');
+  assert.equal(page.children.length, beforeMotion + 1);
+  const motionStages = motion.findAll(child => child.name.startsWith('Task Running Motion / '));
+  assert.equal(motionStages.length, 7, 'six loop frames plus the done frame');
+  for (const stage of motionStages) {
+    for (const layer of ['Eye L', 'Eye R', 'Hand L', 'Hand R', 'Spark A', 'Spark B', 'Spark C', 'Dot 1', 'Dot 2', 'Dot 3', 'Shimmer', 'Bar Fill', 'Check', 'Title']) {
+      assert.ok(stage.findOne(child => child.name === layer), `${stage.name} has ${layer} (Smart Animate matches by name)`);
+    }
+  }
+  const eyeX = motionStages.slice(0, 3).map(stage => stage.findOne(child => child.name === 'Eye L').x);
+  assert.ok(eyeX[0] < eyeX[1] && eyeX[1] < eyeX[2], 'eyes glance left to right across the first three frames');
+  assert.ok(motionStages[0].reactions && motionStages[0].reactions.length === 2, 'loop + click-through reactions');
+  await figma.ui.onmessage({ type: 'generate-task-running-motion' });
+  assert.equal(page.children.length, beforeMotion + 1, 'motion regeneration is idempotent');
   const beforeToast = page.children.length;
   await figma.ui.onmessage({ type: 'generate-toast' });
   const toastBoard = page.children.find(child => child.name === 'Toast');

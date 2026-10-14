@@ -53,20 +53,61 @@ private func drawToastBadge(kind: ToastKind, y: CGFloat) {
     drawToastIcon(kind.iconName, color: kind.color, in: CGRect(x: badge.minX + 7, y: badge.minY + 7, width: 18, height: 18))
 }
 
-/// Title (+ optional detail) with the badge. 48 pt high, 64 with a detail.
+/// Title (+ optional detail) with the badge. The toast hugs its text: it grows
+/// with the message up to a maximum size, then wraps (and finally truncates).
 final class ToastCardView: NSView {
+    private static let textInsetLeft: CGFloat = 58   // 14 + 32 badge + 12
+    private static let textInsetRight: CGFloat = 20
+    private static let minWidth: CGFloat = 200
+    private static let minHeight: CGFloat = 48
+    private static let detailGap: CGFloat = 3
+
     private var kind = ToastKind.info
     private var title = ""
     private var detail: String?
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    static func fittingSize(title: String, detail: String?, maxWidth: CGFloat) -> NSSize {
-        func width(_ s: String, _ font: NSFont) -> CGFloat {
-            ceil(NSAttributedString(string: s, attributes: [.font: font]).size().width)
+    private static func titleAttributes() -> [NSAttributedString.Key: Any] {
+        let style = NSMutableParagraphStyle(); style.lineBreakMode = .byWordWrapping
+        return [.font: toastFont(14, .semibold), .foregroundColor: PanelStyle.textPrimary, .paragraphStyle: style]
+    }
+    /// Paths and URLs have no spaces, so the detail wraps by character.
+    private static func detailAttributes() -> [NSAttributedString.Key: Any] {
+        let style = NSMutableParagraphStyle(); style.lineBreakMode = .byCharWrapping
+        return [.font: toastFont(12, .regular), .foregroundColor: PanelStyle.textSecondary, .paragraphStyle: style]
+    }
+
+    private static func height(of string: String, attributes: [NSAttributedString.Key: Any], width: CGFloat) -> CGFloat {
+        ceil(NSAttributedString(string: string, attributes: attributes)
+            .boundingRect(with: NSSize(width: width, height: .greatestFiniteMagnitude),
+                          options: [.usesLineFragmentOrigin, .usesFontLeading]).height)
+    }
+
+    /// Heights of the title and detail blocks for a toast `width` wide, limited
+    /// so the whole toast stays within `maxHeight`.
+    private static func blocks(title: String, detail: String?, width: CGFloat, maxHeight: CGFloat) -> (title: CGFloat, detail: CGFloat) {
+        let textWidth = width - textInsetLeft - textInsetRight
+        let padding: CGFloat = detail == nil ? 30 : 27
+        let room = max(18, maxHeight - padding)
+        let titleH = min(height(of: title, attributes: titleAttributes(), width: textWidth), room)
+        guard let detail else { return (titleH, 0) }
+        let detailRoom = max(16, room - titleH - detailGap)
+        return (titleH, min(height(of: detail, attributes: detailAttributes(), width: textWidth), detailRoom))
+    }
+
+    /// The toast's size: as wide as its text wants (200 minimum), never wider
+    /// than `maxWidth`; as tall as the wrapped text needs, never taller than `maxHeight`.
+    static func fittingSize(title: String, detail: String?, maxWidth: CGFloat, maxHeight: CGFloat) -> NSSize {
+        func oneLine(_ s: String, _ attributes: [NSAttributedString.Key: Any]) -> CGFloat {
+            ceil(NSAttributedString(string: s, attributes: attributes).size().width)
         }
-        let text = max(width(title, toastFont(14, .semibold)), detail.map { width($0, toastFont(12, .regular)) } ?? 0)
-        return NSSize(width: min(maxWidth, max(200, 14 + 32 + 12 + text + 20)), height: detail == nil ? 48 : 64)
+        let wanted = max(oneLine(title, titleAttributes()), detail.map { oneLine($0, detailAttributes()) } ?? 0)
+        let width = min(maxWidth, max(min(minWidth, maxWidth), textInsetLeft + wanted + textInsetRight))
+        let heights = blocks(title: title, detail: detail, width: width, maxHeight: maxHeight)
+        let content = heights.title + (detail == nil ? 0 : detailGap + heights.detail)
+        let height = min(maxHeight, max(minHeight, content + (detail == nil ? 30 : 27)))
+        return NSSize(width: width, height: height)
     }
 
     func configure(kind: ToastKind, title: String, detail: String?) {
@@ -75,16 +116,19 @@ final class ToastCardView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        drawToastBadge(kind: kind, y: (bounds.height - 32) / 2)
-        let textWidth = bounds.width - 58 - 20
+        let heights = Self.blocks(title: title, detail: detail, width: bounds.width, maxHeight: bounds.height)
+        let content = heights.title + (detail == nil ? 0 : Self.detailGap + heights.detail)
+        // One- and two-line toasts centre the badge; taller ones pin it to the top.
+        drawToastBadge(kind: kind, y: bounds.height <= 64 ? (bounds.height - 32) / 2 : 14)
+        let textWidth = bounds.width - Self.textInsetLeft - Self.textInsetRight
+        let top = max(12, ((bounds.height - content) / 2).rounded())
+        NSAttributedString(string: title, attributes: Self.titleAttributes())
+            .draw(with: CGRect(x: Self.textInsetLeft, y: top, width: textWidth, height: heights.title),
+                  options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         if let detail {
-            drawToastText(title, in: CGRect(x: 58, y: 12, width: textWidth, height: 18),
-                          font: toastFont(14, .semibold), color: PanelStyle.textPrimary)
-            drawToastText(detail, in: CGRect(x: 58, y: 33, width: textWidth, height: 16),
-                          font: toastFont(12, .regular), color: PanelStyle.textSecondary, truncation: .byTruncatingMiddle)
-        } else {
-            drawToastText(title, in: CGRect(x: 58, y: 14, width: textWidth, height: 18),
-                          font: toastFont(14, .semibold), color: PanelStyle.textPrimary)
+            NSAttributedString(string: detail, attributes: Self.detailAttributes())
+                .draw(with: CGRect(x: Self.textInsetLeft, y: top + heights.title + Self.detailGap, width: textWidth, height: heights.detail),
+                      options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         }
     }
 }
@@ -131,6 +175,7 @@ final class ToastShortcutsView: NSView {
 final class ToastPanelContent: NSVisualEffectView {
     let card = ToastCardView()
     let shortcuts = ToastShortcutsView()
+    private let tint = CALayer()
 
     init() {
         super.init(frame: .zero)
@@ -143,11 +188,8 @@ final class ToastPanelContent: NSVisualEffectView {
         layer?.masksToBounds = true
         layer?.borderWidth = 1
         layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
-        let tint = CALayer()
         tint.backgroundColor = NSColor(srgbRed: 0x16 / 255, green: 0x17 / 255, blue: 0x19 / 255, alpha: 0.94).cgColor
-        tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
         layer?.addSublayer(tint)
-        tint.frame = bounds
         for view in [card, shortcuts] {
             view.autoresizingMask = [.width, .height]
             addSubview(view)
@@ -156,11 +198,19 @@ final class ToastPanelContent: NSVisualEffectView {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        tint.frame = bounds
+        CATransaction.commit()
+    }
+
     /// Shows a title/detail toast and returns the size the window should take.
-    func apply(kind: ToastKind, title: String, detail: String?, maxWidth: CGFloat) -> NSSize {
+    func apply(kind: ToastKind, title: String, detail: String?, maxWidth: CGFloat, maxHeight: CGFloat) -> NSSize {
         card.isHidden = false; shortcuts.isHidden = true
         card.configure(kind: kind, title: title, detail: detail)
-        return ToastCardView.fittingSize(title: title, detail: detail, maxWidth: maxWidth)
+        return ToastCardView.fittingSize(title: title, detail: detail, maxWidth: maxWidth, maxHeight: maxHeight)
     }
 
     func applyShortcuts() -> NSSize {
@@ -197,6 +247,7 @@ final class InspectToastWindow: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
+    /// Hugs its text, up to half the window's width and height; longer text wraps.
     /// `message` is the title; text after the first newline becomes the detail
     /// line. A trailing "✓" is dropped (the badge says it). Without `kind`,
     /// "✓" messages are success ("copied" ones info) and anything else is info.
@@ -206,8 +257,10 @@ final class InspectToastWindow: NSPanel {
         let title = rawTitle.replacingOccurrences(of: "✓", with: "").trimmingCharacters(in: .whitespaces)
         let detail = parts.count > 1 ? parts[1] : nil
         let resolved = kind ?? (rawTitle.contains("✓") ? (rawTitle.lowercased().contains("copied") || rawTitle.contains("复制") || rawTitle.contains("拷贝") ? .info : .success) : .info)
-        let maxWidth = min(560, max(240, parentWindow.frame.width - 80))
-        let size = content.apply(kind: resolved, title: title, detail: detail, maxWidth: maxWidth)
+        // Never more than half the window in either direction.
+        let size = content.apply(kind: resolved, title: title, detail: detail,
+                                 maxWidth: max(160, parentWindow.frame.width * 0.5),
+                                 maxHeight: max(48, parentWindow.frame.height * 0.5))
         present(size: size, over: parentWindow, duration: duration ?? (detail == nil ? 1.4 : 3))
     }
 
