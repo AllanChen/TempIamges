@@ -1,8 +1,10 @@
 import AppKit
 
-/// Compact Widget marketplace shown alongside the main Glance window.
-/// The panel stays focused on the searchable catalog and install actions.
-final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
+/// Widget Market, built from the Figma "Widget Market Redesign" board (448 × 824):
+/// bare window controls with a title and subtitle, a search field, filter pills,
+/// card rows that say one thing per line and carry exactly one action, and a
+/// footer that names the list. Shares its controls with the Task Center.
+final class WidgetMarketPanel: NSPanel {
     /// Recreated on language change: every label is set when the panel is built.
     private(set) static var shared = WidgetMarketPanel()
 
@@ -15,9 +17,14 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     }
 
     private enum CatalogFilter: Int { case marketplace, installed, updates }
+    // Board geometry (top-origin; the root view is flipped).
     private static let designSize = NSSize(width: 448, height: 824)
-    private static let titlebarHeight: CGFloat = 48
+    private static let margin: CGFloat = 24
+    private static let rowWidth: CGFloat = 400
     private static let rowHeight: CGFloat = 84
+    private static let rowGap: CGFloat = 8
+    private static let listTop: CGFloat = 166
+    private static let footerHeight: CGFloat = 30
 
     private weak var attachedParent: NSWindow?
     private var isRaising = false
@@ -30,28 +37,26 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     private var sortsByName = false
 
     private let rootView = WidgetMarketRootView()
-    private let titlebar = WidgetMarketTitlebar()
+    private let dragRegion = WidgetMarketDragRegion()
     private let closeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1))
     private let minimizeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1))
     private let zoomTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1))
-    private let titleLabel = PanelCenteredTextView()
-    private let titlebarDivider = NSView()
-    private let refreshButton = WidgetMarketIconButton(symbol: "arrow.clockwise", accessibilityLabel: "Refresh".localized)
-    private let closeButton = WidgetMarketIconButton(symbol: "xmark", accessibilityLabel: "Close".localized)
-
-    private let catalogPane = NSView()
-    private let catalogHeading = NSTextField(labelWithString: "Widgets".localized)
-    private let catalogCount = NSTextField(labelWithString: "")
-    private let searchField = NSSearchField()
-    private let marketplaceFilterButton = WidgetMarketFilterButton(title: "Marketplace".localized)
-    private let installedFilterButton = WidgetMarketFilterButton(title: "Installed".localized)
-    private let updatesFilterButton = WidgetMarketFilterButton(title: "Updates".localized)
-    private let sortButton = WidgetMarketIconButton(symbol: "arrow.up.arrow.down", accessibilityLabel: "Sort Widgets".localized)
-    private let listHeaderDivider = NSView()
+    private let titleLabel = WidgetMarketPassthroughLabel(labelWithString: "Widget Market".localized)
+    private let subtitleLabel = WidgetMarketPassthroughLabel(labelWithString: "")
+    private lazy var refreshButton = TaskGhostButton(icon: "TaskIconRefresh", tooltip: "Refresh".localized, tint: PanelStyle.textPrimary) { [weak self] in self?.refreshTapped() }
+    private lazy var closeButton = TaskGhostButton(icon: "HistoryClose", tooltip: "Close".localized, tint: PanelStyle.textPrimary) { [weak self] in self?.close() }
+    private let headerEdge = NSView()
+    private let searchBox = TaskSearchBox()
+    private let pills = TaskPillBar(titles: ["Marketplace".localized, "Installed".localized, "Updates".localized])
+    private lazy var sortButton = TaskGhostButton(icon: "MarketIconSort", tooltip: "Sort by name".localized, tint: PanelStyle.textSecondary) { [weak self] in self?.sortTapped() }
     private let scrollView = NSScrollView()
     private let catalogContainer = WidgetMarketListDocumentView()
     private let scrollIndicator = WidgetMarketScrollIndicator()
-    private let catalogFooter = NSView()
+    private let emptyTile = NSView()
+    private let emptyIcon = NSImageView()
+    private let emptyTitle = NSTextField(labelWithString: "")
+    private let emptyHint = NSTextField(labelWithString: "")
+    private let footerEdge = NSView()
     private let footerCountLabel = NSTextField(labelWithString: "")
     private let footerHintLabel = NSTextField(labelWithString: "Scroll for more".localized)
     private let loadingOverlay = NSView()
@@ -132,6 +137,8 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         makeKeyAndOrderFront(nil)
     }
 
+    // MARK: Catalog data
+
     private func loadCatalog() {
         guard !hasAttemptedLoad else { return }
         hasAttemptedLoad = true
@@ -195,7 +202,7 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     }
 
     private var visibleManifests: [WidgetManifest] {
-        let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = searchBox.query
         let updates = updatesAvailable
         var result = manifests.filter { manifest in
             switch catalogFilter {
@@ -214,157 +221,125 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
 
     @objc private func registryDidChange() { refreshInstalledState() }
 
-    private func buildUI() {
-        let windowContainer = NSView()
-        windowContainer.wantsLayer = true
-        windowContainer.layer?.cornerRadius = 16
-        windowContainer.layer?.cornerCurve = .continuous
-        windowContainer.layer?.masksToBounds = true
-        contentView = windowContainer
-        windowContainer.superview?.wantsLayer = true
-        windowContainer.superview?.layer?.cornerRadius = 16
-        windowContainer.superview?.layer?.cornerCurve = .continuous
-        windowContainer.superview?.layer?.masksToBounds = true
+    // MARK: Chrome
 
-        let frost = PanelStyle.makeFrostedBase(cornerRadius: 16)
-        frost.layer?.borderWidth = 1
-        frost.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        frost.frame = windowContainer.bounds
-        frost.autoresizingMask = [.width, .height]
-        windowContainer.addSubview(frost)
+    private func buildUI() {
+        contentView = rootView
         rootView.wantsLayer = true
+        rootView.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background)
         rootView.layer?.cornerRadius = 16
         rootView.layer?.cornerCurve = .continuous
+        rootView.layer?.borderWidth = 1
+        rootView.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
         rootView.layer?.masksToBounds = true
-        rootView.frame = frost.bounds
-        rootView.autoresizingMask = [.width, .height]
         rootView.onLayout = { [weak self] bounds in self?.layoutContent(in: bounds) }
-        frost.addSubview(rootView)
 
-        titlebar.wantsLayer = true
-        titlebar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-        rootView.addSubview(titlebar)
-        [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].forEach { titlebar.addSubview($0) }
+        // Board: "System / Transparent Drag Region" 0,0 × 448,44; bare controls at (20,16).
+        rootView.addSubview(dragRegion)
+        [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].forEach { rootView.addSubview($0) }
         closeTrafficButton.target = self; closeTrafficButton.action = #selector(closeTapped)
         minimizeTrafficButton.target = self; minimizeTrafficButton.action = #selector(minimizeTapped)
         zoomTrafficButton.target = self; zoomTrafficButton.action = #selector(zoomTapped)
-        titleLabel.string = "Widget Market".localized
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold)
-        titleLabel.textColor = PanelStyle.textPrimary
-        titlebar.addSubview(titleLabel)
-        titlebarDivider.wantsLayer = true
-        titlebarDivider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        titlebar.addSubview(titlebarDivider)
-        refreshButton.target = self; refreshButton.action = #selector(refreshTapped)
-        closeButton.target = self; closeButton.action = #selector(closeTapped)
-        titlebar.addSubview(refreshButton); titlebar.addSubview(closeButton)
+        configure(titleLabel, size: 13, weight: .semibold, color: PanelStyle.textPrimary, alignment: .center)
+        configure(subtitleLabel, size: 11, weight: .regular, color: PanelStyle.textTertiary, alignment: .center)
+        rootView.addSubview(titleLabel)
+        rootView.addSubview(subtitleLabel)
+        rootView.addSubview(refreshButton)
+        rootView.addSubview(closeButton)
+        headerEdge.wantsLayer = true
+        headerEdge.layer?.backgroundColor = HistoryStyle.hairline.cgColor
+        rootView.addSubview(headerEdge)
 
-        catalogPane.wantsLayer = true
-        catalogPane.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-        catalogPane.layer?.borderWidth = 1
-        catalogPane.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        rootView.addSubview(catalogPane)
-        catalogHeading.font = PanelStyle.inspectFont(ofSize: 18, weight: .semibold)
-        catalogHeading.textColor = PanelStyle.textPrimary
-        catalogPane.addSubview(catalogHeading)
-        catalogCount.font = PanelStyle.inspectFont(ofSize: 10, weight: .medium)
-        catalogCount.textColor = PanelStyle.textTertiary
-        catalogCount.alignment = .right
-        catalogPane.addSubview(catalogCount)
-
-        if let defaultCell = searchField.cell as? NSSearchFieldCell {
-            let cell = WidgetMarketSearchFieldCell(textCell: "")
-            cell.searchButtonCell = defaultCell.searchButtonCell
-            cell.cancelButtonCell = defaultCell.cancelButtonCell
-            searchField.cell = cell
-        }
-        searchField.delegate = self
-        searchField.font = PanelStyle.inspectFont(ofSize: 12)
-        searchField.textColor = PanelStyle.textPrimary
-        searchField.focusRingType = .none
-        searchField.isBordered = false
-        searchField.drawsBackground = false
-        searchField.wantsLayer = true
-        searchField.layer?.cornerRadius = 8
-        searchField.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        searchField.layer?.borderWidth = 1
-        searchField.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.52))
-        catalogPane.addSubview(searchField)
-
-        for (index, button) in [marketplaceFilterButton, installedFilterButton, updatesFilterButton].enumerated() {
-            button.tag = index; button.target = self; button.action = #selector(filterTapped(_:))
-            catalogPane.addSubview(button)
-        }
-        sortButton.target = self; sortButton.action = #selector(sortTapped)
-        catalogPane.addSubview(sortButton)
-        listHeaderDivider.wantsLayer = true
-        listHeaderDivider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        catalogPane.addSubview(listHeaderDivider)
+        searchBox.onChange = { [weak self] in self?.refreshCatalog(resetScroll: true) }
+        rootView.addSubview(searchBox)
+        pills.onSelect = { [weak self] index in self?.filterTapped(index) }
+        rootView.addSubview(pills)
+        rootView.addSubview(sortButton)
 
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
+        scrollView.borderType = .noBorder
         scrollView.documentView = catalogContainer
         scrollView.contentView.postsBoundsChangedNotifications = true
-        catalogPane.addSubview(scrollView)
-        catalogPane.addSubview(scrollIndicator)
+        rootView.addSubview(scrollView)
+        rootView.addSubview(scrollIndicator)
         NotificationCenter.default.addObserver(self, selector: #selector(listBoundsDidChange),
             name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
 
-        catalogFooter.wantsLayer = true
-        catalogFooter.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-        catalogFooter.layer?.borderWidth = 1
-        catalogFooter.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        catalogPane.addSubview(catalogFooter)
-        footerCountLabel.font = PanelStyle.inspectFont(ofSize: 10)
-        footerCountLabel.textColor = PanelStyle.textTertiary
-        catalogFooter.addSubview(footerCountLabel)
-        footerHintLabel.font = PanelStyle.inspectFont(ofSize: 10)
-        footerHintLabel.textColor = PanelStyle.textTertiary
-        footerHintLabel.alignment = .right
-        catalogFooter.addSubview(footerHintLabel)
+        // Board 04: empty search — a 72 pt tile with the search glyph, a title and a hint.
+        emptyTile.wantsLayer = true
+        emptyTile.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.field)
+        emptyTile.layer?.cornerRadius = 22
+        emptyTile.layer?.borderWidth = 1
+        emptyTile.layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
+        emptyIcon.image = HistoryStyle.icon("HistorySearch", color: PanelStyle.textTertiary, size: 28)
+        emptyIcon.imageScaling = .scaleProportionallyUpOrDown
+        emptyTile.addSubview(emptyIcon)
+        rootView.addSubview(emptyTile)
+        configure(emptyTitle, size: 16, weight: .semibold, color: PanelStyle.textPrimary, alignment: .center)
+        configure(emptyHint, size: 12, weight: .regular, color: PanelStyle.textTertiary, alignment: .center)
+        rootView.addSubview(emptyTitle)
+        rootView.addSubview(emptyHint)
+
+        footerEdge.wantsLayer = true
+        footerEdge.layer?.backgroundColor = HistoryStyle.hairline.cgColor
+        rootView.addSubview(footerEdge)
+        configure(footerCountLabel, size: 11, weight: .regular, color: PanelStyle.textTertiary, alignment: .left)
+        configure(footerHintLabel, size: 11, weight: .regular, color: PanelStyle.textTertiary, alignment: .right)
+        rootView.addSubview(footerCountLabel)
+        rootView.addSubview(footerHintLabel)
 
         loadingOverlay.wantsLayer = true
-        loadingOverlay.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground.withAlphaComponent(0.94))
+        loadingOverlay.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background.withAlphaComponent(0.94))
         loadingOverlay.addSubview(loadingSpinner)
         rootView.addSubview(loadingOverlay)
         setLoading(false)
-        updateFilterButtons()
         layoutContent(in: rootView.bounds)
     }
 
+    private func configure(_ label: NSTextField, size: CGFloat, weight: NSFont.Weight, color: NSColor, alignment: NSTextAlignment) {
+        label.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
+        label.textColor = color
+        label.alignment = alignment
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+    }
+
+    /// Board coordinates are top-origin on a 448-wide panel; the root is flipped,
+    /// so frames are written as drawn. Width scales with the window, the header
+    /// stays anchored at the top and the footer at the bottom.
     private func layoutContent(in bounds: NSRect) {
         let width = bounds.width, height = bounds.height
-        let catalogWidth = width
-        let contentHeight = max(0, height - Self.titlebarHeight)
-        titlebar.frame = NSRect(x: 0, y: height - Self.titlebarHeight, width: width, height: Self.titlebarHeight)
-        closeTrafficButton.frame = NSRect(x: 14, y: 14, width: 20, height: 20)
-        minimizeTrafficButton.frame = NSRect(x: 34, y: 14, width: 20, height: 20)
-        zoomTrafficButton.frame = NSRect(x: 54, y: 14, width: 20, height: 20)
-        titleLabel.frame = NSRect(x: 0, y: 15, width: width, height: 18)
-        titlebarDivider.frame = NSRect(x: 0, y: 0, width: width, height: 1)
-        refreshButton.frame = NSRect(x: width - 96, y: 5, width: 38, height: 38)
-        closeButton.frame = NSRect(x: width - 52, y: 5, width: 38, height: 38)
+        let m = Self.margin
+        let rowWidth = width - 2 * m
+        dragRegion.frame = NSRect(x: 0, y: 0, width: width, height: 44)
+        [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].enumerated().forEach { index, button in
+            button.frame = NSRect(x: 20 + CGFloat(index) * 26, y: 18, width: 12, height: 12)
+        }
+        titleLabel.frame = NSRect(x: 0, y: 12, width: width, height: 16)
+        subtitleLabel.frame = NSRect(x: 0, y: 31, width: width, height: 13)
+        refreshButton.frame = NSRect(x: width - m - 32 * 2 - 8, y: 10, width: 32, height: 32)
+        closeButton.frame = NSRect(x: width - m - 32, y: 10, width: 32, height: 32)
+        headerEdge.frame = NSRect(x: 0, y: 52, width: width, height: 1)
+        searchBox.frame = NSRect(x: m, y: 68, width: rowWidth, height: 36)
+        pills.frame = NSRect(x: m, y: 118, width: rowWidth - 40, height: 30)
+        sortButton.frame = NSRect(x: width - m - 32, y: 117, width: 32, height: 32)
 
-        catalogPane.frame = NSRect(x: 0, y: 0, width: catalogWidth, height: contentHeight)
-        catalogHeading.frame = topFrame(x: 20, y: 17, width: 180, height: 22, in: contentHeight)
-        catalogCount.frame = topFrame(x: catalogWidth - 136, y: 22, width: 116, height: 14, in: contentHeight)
-        searchField.frame = topFrame(x: 16, y: 53, width: catalogWidth - 32, height: 38, in: contentHeight)
-        marketplaceFilterButton.frame = topFrame(x: 16, y: 103, width: 132, height: 30, in: contentHeight)
-        installedFilterButton.frame = topFrame(x: 156, y: 103, width: 116, height: 30, in: contentHeight)
-        updatesFilterButton.frame = topFrame(x: 280, y: 103, width: 104, height: 30, in: contentHeight)
-        sortButton.frame = topFrame(x: catalogWidth - 54, y: 99, width: 38, height: 38, in: contentHeight)
-        sortButton.isHidden = catalogWidth < 432
-        listHeaderDivider.frame = topFrame(x: 0, y: 145, width: catalogWidth, height: 1, in: contentHeight)
-        let listBottom: CGFloat = 30
-        let listTop = max(listBottom, contentHeight - 146)
-        scrollView.frame = NSRect(x: 0, y: listBottom, width: catalogWidth, height: max(0, listTop - listBottom))
-        catalogContainer.frame.size.width = max(0, catalogWidth - 4)
-        scrollIndicator.frame = NSRect(x: catalogWidth - 7, y: listBottom + 8,
-                                       width: 3, height: max(0, scrollView.frame.height - 16))
-        catalogFooter.frame = NSRect(x: 0, y: 0, width: catalogWidth, height: 30)
-        footerCountLabel.frame = NSRect(x: 16, y: 8, width: 230, height: 14)
-        footerHintLabel.frame = NSRect(x: catalogWidth - 142, y: 8, width: 126, height: 14)
+        let listBottom = height - Self.footerHeight
+        scrollView.frame = NSRect(x: m, y: Self.listTop, width: rowWidth, height: max(0, listBottom - Self.listTop))
+        catalogContainer.frame.size.width = rowWidth
+        for row in catalogContainer.subviews { row.frame.size.width = rowWidth }
+        scrollIndicator.frame = NSRect(x: width - 12, y: Self.listTop + 8, width: 3, height: max(0, scrollView.frame.height - 16))
+
+        emptyTile.frame = NSRect(x: (width - 72) / 2, y: 300, width: 72, height: 72)
+        emptyIcon.frame = NSRect(x: 22, y: 22, width: 28, height: 28)
+        emptyTitle.frame = NSRect(x: 0, y: 392, width: width, height: 20)
+        emptyHint.frame = NSRect(x: 40, y: 420, width: width - 80, height: 16)
+
+        footerEdge.frame = NSRect(x: 0, y: listBottom, width: width, height: 1)
+        footerCountLabel.frame = NSRect(x: m, y: listBottom + 8, width: 230, height: 14)
+        footerHintLabel.frame = NSRect(x: width - m - 126, y: listBottom + 8, width: 126, height: 14)
         loadingOverlay.frame = bounds
         let spinnerSize: CGFloat = 20
         loadingSpinner.frame = NSRect(x: (width - spinnerSize) / 2,
@@ -372,33 +347,38 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         updateScrollIndicator()
     }
 
-    private func topFrame(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat, in containerHeight: CGFloat) -> NSRect {
-        NSRect(x: x, y: containerHeight - y - height, width: width, height: height)
-    }
-
     private func refreshCatalog(resetScroll: Bool) {
         catalogContainer.subviews.forEach { $0.removeFromSuperview() }
         let visible = visibleManifests
-        let contentHeight = max(scrollView.contentSize.height, CGFloat(visible.count) * Self.rowHeight)
-        catalogContainer.frame = NSRect(x: 0, y: 0, width: max(0, scrollView.contentSize.width - 4), height: contentHeight)
         let updates = updatesAvailable
+        let pitch = Self.rowHeight + Self.rowGap
+        let contentHeight = visible.isEmpty ? 0 : CGFloat(visible.count) * pitch - Self.rowGap
+        let rowWidth = max(0, scrollView.frame.width)
+        catalogContainer.frame = NSRect(x: 0, y: 0, width: rowWidth, height: max(scrollView.contentSize.height, contentHeight))
         for (index, manifest) in visible.enumerated() {
             let row = WidgetMarketRowView(manifest: manifest,
                 isInstalled: installedIDs.contains(manifest.id), hasUpdate: updates.contains(manifest.id),
                 isRemovedFromCatalog: !catalogIDs.contains(manifest.id))
-            row.frame = NSRect(x: 0, y: CGFloat(index) * Self.rowHeight,
-                               width: catalogContainer.frame.width, height: Self.rowHeight)
+            row.frame = NSRect(x: 0, y: CGFloat(index) * pitch, width: rowWidth, height: Self.rowHeight)
             row.onInstall = { [weak self] in self?.install(manifest) }
             row.onRemove = { WidgetRegistry.shared.uninstall(id: manifest.id) }
             catalogContainer.addSubview(row)
         }
-        catalogCount.stringValue = String(format: "%d available".localized, catalogIDs.count)
+        subtitleLabel.stringValue = String(format: "%d available  ·  %d installed  ·  %d updates".localized,
+                                           catalogIDs.count, installedIDs.count, updates.count)
         footerCountLabel.stringValue = String(format: "%d widgets  •  %@".localized, visible.count, filterTitle)
-        searchField.placeholderString = String(format: "Search %d widgets".localized, catalogIDs.count)
-        marketplaceFilterButton.count = catalogIDs.count
-        installedFilterButton.count = installedIDs.count
-        updatesFilterButton.count = updates.count
-        updateFilterButtons()
+        searchBox.placeholder = String(format: "Search %d widgets".localized, catalogIDs.count)
+        pills.counts = [catalogIDs.count, installedIDs.count, updates.count]
+        pills.selectedSegment = catalogFilter.rawValue
+        let none = visible.isEmpty
+        scrollView.isHidden = none
+        [emptyTile, emptyTitle, emptyHint].forEach { $0.isHidden = !none }
+        if none {
+            let searching = !searchBox.query.isEmpty
+            emptyTitle.stringValue = searching ? "No matching widgets".localized : "No widgets available".localized
+            emptyHint.stringValue = searching ? "Try a different search, or clear it to see every widget.".localized
+                                              : "Refresh to load the catalog.".localized
+        }
         if resetScroll { scrollView.contentView.scroll(to: .zero) }
         scrollView.reflectScrolledClipView(scrollView.contentView)
         updateScrollIndicator()
@@ -412,15 +392,11 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         }
     }
 
-    private func updateFilterButtons() {
-        marketplaceFilterButton.isSelected = catalogFilter == .marketplace
-        installedFilterButton.isSelected = catalogFilter == .installed
-        updatesFilterButton.isSelected = catalogFilter == .updates
-    }
-
     private func updateScrollIndicator() {
+        let scrollable = catalogContainer.frame.height > scrollView.contentView.bounds.height + 1
         scrollIndicator.update(contentHeight: catalogContainer.frame.height,
             viewportHeight: scrollView.contentView.bounds.height, offset: scrollView.contentView.bounds.minY)
+        footerHintLabel.isHidden = !scrollable || scrollView.isHidden
     }
 
     private func setLoading(_ loading: Bool) {
@@ -429,15 +405,13 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
         else { loadingSpinner.stopAnimation(nil) }
     }
 
-    func controlTextDidChange(_ obj: Notification) { refreshCatalog(resetScroll: true) }
-
-    @objc private func filterTapped(_ sender: WidgetMarketFilterButton) {
-        guard let filter = CatalogFilter(rawValue: sender.tag), filter != catalogFilter else { return }
+    private func filterTapped(_ index: Int) {
+        guard let filter = CatalogFilter(rawValue: index), filter != catalogFilter else { return }
         catalogFilter = filter
         refreshCatalog(resetScroll: true)
     }
 
-    @objc private func sortTapped() {
+    private func sortTapped() {
         sortsByName.toggle()
         sortButton.isActive = sortsByName
         refreshCatalog(resetScroll: true)
@@ -447,7 +421,7 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
     @objc private func closeTapped() { close() }
     @objc private func minimizeTapped() { miniaturize(nil) }
     @objc private func zoomTapped() { zoom(nil) }
-    @objc private func refreshTapped() { hasAttemptedLoad = true; refreshFromServer(showLoading: true) }
+    private func refreshTapped() { hasAttemptedLoad = true; refreshFromServer(showLoading: true) }
 
     private func install(_ manifest: WidgetManifest) {
         WidgetCatalogClient.shared.fetch(widgetID: manifest.id) { result in
@@ -474,107 +448,24 @@ final class WidgetMarketPanel: NSPanel, NSSearchFieldDelegate {
 
 // MARK: - Layout and chrome
 
-private final class WidgetMarketSearchFieldCell: NSSearchFieldCell {
-    override func searchTextRect(forBounds rect: NSRect) -> NSRect {
-        var textRect = super.searchTextRect(forBounds: rect)
-        let searchIconRect = searchButtonRect(forBounds: rect)
-        let textLeadingEdge = searchIconRect.maxX + 7
-        if textRect.minX < textLeadingEdge {
-            let offset = textLeadingEdge - textRect.minX
-            textRect.origin.x += offset
-            textRect.size.width = max(0, textRect.width - offset)
-        }
-        return textRect
-    }
-
-    override func titleRect(forBounds rect: NSRect) -> NSRect {
-        var titleRect = super.titleRect(forBounds: rect)
-        titleRect.origin.y = rect.minY + (rect.height - titleRect.height) / 2
-        return titleRect
-    }
-}
-
+/// Flipped so the board's top-origin coordinates can be used as written.
 private final class WidgetMarketRootView: NSView {
     var onLayout: ((NSRect) -> Void)?
+    override var isFlipped: Bool { true }
     override func layout() { super.layout(); onLayout?(bounds) }
 }
 
-private final class WidgetMarketTitlebar: NSView {
+/// Board "System / Transparent Drag Region": moves the panel, double-click zooms.
+private final class WidgetMarketDragRegion: NSView {
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 { window?.zoom(nil) }
         else { window?.performDrag(with: event) }
     }
 }
 
-private final class WidgetMarketIconButton: NSButton {
-    private let glyph = NSImageView()
-    var isActive = false { didSet { applyAppearance() } }
-
-    init(symbol: String, accessibilityLabel: String) {
-        super.init(frame: .zero)
-        isBordered = false
-        title = ""
-        wantsLayer = true
-        layer?.cornerRadius = 8
-        layer?.borderWidth = 1
-        glyph.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-        glyph.imageScaling = .scaleProportionallyUpOrDown
-        addSubview(glyph)
-        setAccessibilityLabel(accessibilityLabel)
-        applyAppearance()
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        let local = convert(point, from: superview)
-        return bounds.contains(local) ? self : nil
-    }
-    override func layout() {
-        super.layout()
-        glyph.frame = NSRect(x: (bounds.width - 18) / 2, y: (bounds.height - 18) / 2,
-                             width: 18, height: 18)
-    }
-    private func applyAppearance() {
-        layer?.backgroundColor = PanelStyle.resolvedCG(isActive ? PanelStyle.accentSubtleFill : PanelStyle.inspectToolbar)
-        layer?.borderColor = PanelStyle.resolvedCG(isActive ? PanelStyle.accent.withAlphaComponent(0.58) : PanelStyle.inspectLine)
-        glyph.contentTintColor = isActive ? PanelStyle.accent : PanelStyle.textPrimary
-    }
-}
-
-private final class WidgetMarketFilterButton: NSButton {
-    private let labelView = PanelCenteredTextView()
-    private let countView = PanelCenteredTextView()
-    var count = 0 { didSet { countView.string = "\(count)" } }
-    var isSelected = false { didSet { applyAppearance() } }
-
-    init(title: String) {
-        super.init(frame: .zero)
-        isBordered = false
-        self.title = ""
-        wantsLayer = true
-        layer?.cornerRadius = 7
-        layer?.borderWidth = 1
-        labelView.string = title
-        countView.font = PanelStyle.inspectFont(ofSize: 10)
-        countView.alignment = .right
-        addSubview(labelView)
-        addSubview(countView)
-        setAccessibilityLabel(title)
-        applyAppearance()
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layout() {
-        super.layout()
-        labelView.frame = NSRect(x: 10, y: 7, width: max(0, bounds.width - 49), height: 16)
-        countView.frame = NSRect(x: max(10, bounds.width - 36), y: 7, width: 26, height: 16)
-    }
-    private func applyAppearance() {
-        layer?.backgroundColor = PanelStyle.resolvedCG(isSelected ? PanelStyle.accentSubtleFill : NSColor.clear)
-        layer?.borderColor = PanelStyle.resolvedCG(isSelected ? PanelStyle.accent.withAlphaComponent(0.44) : PanelStyle.inspectLine)
-        labelView.textColor = isSelected ? PanelStyle.accent : PanelStyle.textSecondary
-        labelView.font = PanelStyle.inspectFont(ofSize: 10, weight: isSelected ? .semibold : .medium)
-        countView.textColor = PanelStyle.textTertiary
-    }
+/// Title text that never intercepts the mouse, so the drag region beneath it works.
+private final class WidgetMarketPassthroughLabel: NSTextField {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 private final class WidgetMarketListDocumentView: NSView {
@@ -594,6 +485,7 @@ private final class WidgetMarketScrollIndicator: NSView {
         addSubview(thumb)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
     func update(contentHeight: CGFloat, viewportHeight: CGFloat, offset: CGFloat) {
         guard bounds.height > 0, contentHeight > viewportHeight, viewportHeight > 0 else {
@@ -602,13 +494,16 @@ private final class WidgetMarketScrollIndicator: NSView {
         isHidden = false
         let thumbHeight = max(34, bounds.height * viewportHeight / contentHeight)
         let progress = min(1, max(0, offset / max(1, contentHeight - viewportHeight)))
-        thumb.frame = NSRect(x: 0, y: bounds.height - thumbHeight - progress * (bounds.height - thumbHeight),
-                             width: bounds.width, height: thumbHeight)
+        thumb.frame = NSRect(x: 0, y: progress * (bounds.height - thumbHeight), width: bounds.width, height: thumbHeight)
     }
 }
 
 // MARK: - Catalog row
 
+/// Board row (400 × 84, radius 9): icon tile 48 at (12, 18) with a monogram or
+/// the widget icon; name 13 semibold at (72, 14); one-line summary 11 at (72, 36);
+/// meta 10 at (72, 58) with the official dot; one action at the right edge, 12 pt
+/// inset, 32 pt tall. Hovering an installed row swaps "Installed" for "Remove".
 private final class WidgetMarketRowView: NSView {
     var onInstall: (() -> Void)?
     var onRemove: (() -> Void)?
@@ -616,18 +511,15 @@ private final class WidgetMarketRowView: NSView {
     private let isInstalled: Bool
     private let hasUpdate: Bool
     private let isRemovedFromCatalog: Bool
-    private let divider = NSView()
-    private let iconView = WidgetMarketIconView()
+    private let iconTile = WidgetMarketIconTile()
     private let nameLabel = NSTextField(labelWithString: "")
-    private let verifiedDot = NSView()
-    private let publisherLabel = NSTextField(labelWithString: "")
     private let summaryLabel = NSTextField(labelWithString: "")
-    private let metadataLabel = NSTextField(labelWithString: "")
-    private let updateBadge = WidgetMarketBadgeView(title: "UPDATE".localized, color: PanelStyle.accent)
-    private let installButton = WidgetMarketActionButton()
-    private let installedBadge = WidgetMarketBadgeView(title: "Installed".localized, color: PanelStyle.success)
+    private let officialDot = NSView()
+    private let metaLabel = NSTextField(labelWithString: "")
+    private let action = WidgetMarketActionButton()
     private var trackingAreaRef: NSTrackingArea?
     private var hovering = false
+    override var isFlipped: Bool { true }
 
     init(manifest: WidgetManifest, isInstalled: Bool, hasUpdate: Bool, isRemovedFromCatalog: Bool) {
         self.manifest = manifest
@@ -636,8 +528,11 @@ private final class WidgetMarketRowView: NSView {
         self.isRemovedFromCatalog = isRemovedFromCatalog
         super.init(frame: .zero)
         wantsLayer = true
+        layer?.cornerRadius = 9
+        layer?.borderWidth = 1
+        layer?.masksToBounds = true
         setAccessibilityElement(true)
-        setAccessibilityRole(.button)
+        setAccessibilityRole(.group)
         setAccessibilityLabel(manifest.displayName)
         buildUI()
         applyAppearance()
@@ -645,69 +540,60 @@ private final class WidgetMarketRowView: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     private func buildUI() {
-        divider.wantsLayer = true
-        divider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        addSubview(divider)
-        iconView.letter = Self.initials(for: manifest.displayName)
-        iconView.highlighted = false
-        addSubview(iconView)
+        iconTile.configure(monogram: Self.monogram(for: manifest), tint: Self.tint(for: manifest), iconURL: manifest.iconURL)
+        addSubview(iconTile)
         nameLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold)
         nameLabel.textColor = PanelStyle.textPrimary
         nameLabel.stringValue = manifest.displayName
-        nameLabel.lineBreakMode = .byTruncatingTail
-        addSubview(nameLabel)
-        verifiedDot.wantsLayer = true
-        verifiedDot.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.success)
-        verifiedDot.layer?.cornerRadius = 3.5
-        verifiedDot.isHidden = !manifest.official
-        addSubview(verifiedDot)
-        publisherLabel.font = PanelStyle.inspectFont(ofSize: 10)
-        publisherLabel.textColor = PanelStyle.textTertiary
-        publisherLabel.stringValue = manifest.author
-        publisherLabel.lineBreakMode = .byTruncatingTail
-        addSubview(publisherLabel)
-        summaryLabel.font = PanelStyle.inspectFont(ofSize: 10)
+        summaryLabel.font = PanelStyle.inspectFont(ofSize: 11)
         summaryLabel.textColor = PanelStyle.textSecondary
         summaryLabel.stringValue = manifest.displaySummary
-        summaryLabel.lineBreakMode = .byTruncatingTail
-        addSubview(summaryLabel)
-        metadataLabel.font = PanelStyle.inspectFont(ofSize: 9)
-        metadataLabel.textColor = PanelStyle.textTertiary
-        metadataLabel.stringValue = "v\(manifest.version)   ·   \(manifest.commands.count) \(manifest.commands.count == 1 ? "command" : "commands")"
-        addSubview(metadataLabel)
-        updateBadge.isHidden = !hasUpdate
-        addSubview(updateBadge)
-        if isRemovedFromCatalog {
-            installButton.style = .remove
-            installButton.target = self
-            installButton.action = #selector(removeTapped)
-            addSubview(installButton)
-        } else if isInstalled && !hasUpdate {
-            addSubview(installedBadge)
-        } else {
-            installButton.style = hasUpdate ? .update : .install
-            installButton.target = self
-            installButton.action = #selector(installTapped)
-            addSubview(installButton)
+        officialDot.wantsLayer = true
+        officialDot.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.success)
+        officialDot.layer?.cornerRadius = 3.5
+        officialDot.isHidden = !manifest.official
+        let count = manifest.commands.count
+        let commands = String(format: (count == 1 ? "%d command" : "%d commands").localized, count)
+        metaLabel.font = PanelStyle.inspectFont(ofSize: 10)
+        metaLabel.textColor = PanelStyle.textTertiary
+        metaLabel.stringValue = "\(manifest.author) · v\(manifest.version) · \(commands)"
+        for label in [nameLabel, summaryLabel, metaLabel] {
+            label.lineBreakMode = .byTruncatingTail
+            label.maximumNumberOfLines = 1
+            addSubview(label)
         }
+        addSubview(officialDot)
+        action.target = self
+        action.action = #selector(actionTapped)
+        addSubview(action)
+        updateAction()
+    }
+
+    /// The one action this row offers right now.
+    private var actionStyle: WidgetMarketActionButton.Style {
+        if isRemovedFromCatalog { return .remove }
+        if hasUpdate { return .update }
+        if isInstalled { return hovering ? .remove : .installed }
+        return .install
+    }
+
+    private func updateAction() {
+        action.style = actionStyle
+        needsLayout = true
     }
 
     override func layout() {
         super.layout()
-        divider.frame = NSRect(x: 16, y: 0, width: max(0, bounds.width - 32), height: 1)
-        iconView.frame = NSRect(x: 16, y: 22, width: 48, height: 48)
-        let showsInstalledBadge = isInstalled && !hasUpdate && !isRemovedFromCatalog
-        let actionWidth: CGFloat = showsInstalledBadge ? 82 : 68
-        let actionX = bounds.width - actionWidth - 18
-        nameLabel.frame = NSRect(x: 78, y: 59, width: max(70, actionX - 90), height: 16)
-        verifiedDot.frame = NSRect(x: 78, y: 43, width: 7, height: 7)
-        publisherLabel.frame = NSRect(x: manifest.official ? 91 : 78, y: 39,
-                                      width: max(70, actionX - (manifest.official ? 103 : 90)), height: 13)
-        summaryLabel.frame = NSRect(x: 78, y: 22, width: max(80, actionX - 90), height: 13)
-        metadataLabel.frame = NSRect(x: 78, y: 6, width: 160, height: 12)
-        updateBadge.frame = NSRect(x: min(250, max(170, actionX - 65)), y: 4, width: 54, height: 19)
-        if showsInstalledBadge { installedBadge.frame = NSRect(x: actionX, y: 26, width: actionWidth, height: 31) }
-        else { installButton.frame = NSRect(x: actionX, y: 26, width: actionWidth, height: 31) }
+        iconTile.frame = NSRect(x: 12, y: 18, width: 48, height: 48)
+        let actionWidth = action.style.width
+        let actionX = bounds.width - 12 - actionWidth
+        action.frame = NSRect(x: actionX, y: 26, width: actionWidth, height: 32)
+        let textWidth = max(0, actionX - 72 - 12)
+        nameLabel.frame = NSRect(x: 72, y: 14, width: textWidth, height: 16)
+        summaryLabel.frame = NSRect(x: 72, y: 36, width: textWidth, height: 14)
+        officialDot.frame = NSRect(x: 72, y: 61, width: 7, height: 7)
+        let metaX: CGFloat = manifest.official ? 84 : 72
+        metaLabel.frame = NSRect(x: metaX, y: 58, width: max(0, textWidth - (metaX - 72)), height: 12)
     }
 
     override func updateTrackingAreas() {
@@ -717,106 +603,162 @@ private final class WidgetMarketRowView: NSView {
                                   owner: self, userInfo: nil)
         addTrackingArea(area); trackingAreaRef = area
     }
-    override func mouseEntered(with event: NSEvent) { hovering = true; applyAppearance() }
-    override func mouseExited(with event: NSEvent) { hovering = false; applyAppearance() }
+    override func mouseEntered(with event: NSEvent) { hovering = true; applyAppearance(); updateAction() }
+    override func mouseExited(with event: NSEvent) { hovering = false; applyAppearance(); updateAction() }
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
-        if (isRemovedFromCatalog || !isInstalled || hasUpdate), installButton.frame.contains(local) { return installButton }
-        return nil
+        return action.frame.contains(local) ? action : nil
     }
+
     private func applyAppearance() {
-        let color: NSColor = hovering ? PanelStyle.inspectToolbar.withAlphaComponent(0.72) : PanelStyle.inspectCanvas
-        layer?.backgroundColor = PanelStyle.resolvedCG(color)
+        // Board: surface #17181D with the line stroke; hover #1C1D22 with a white 14 % stroke.
+        layer?.backgroundColor = PanelStyle.resolvedCG(hovering ? HistoryStyle.hex(0x1C1D22) : PanelStyle.inspectChrome)
+        layer?.borderColor = hovering ? NSColor.white.withAlphaComponent(0.14).cgColor : PanelStyle.resolvedCG(PanelStyle.inspectLine)
     }
-    @objc private func installTapped() { onInstall?() }
-    @objc private func removeTapped() { onRemove?() }
-    private static func initials(for name: String) -> String {
-        let words = name.split(separator: " ")
-        if words.count > 1 { return words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased() }
-        return String(name.prefix(2)).uppercased()
+
+    @objc private func actionTapped() {
+        switch action.style {
+        case .install, .update: onInstall?()
+        case .remove: onRemove?()
+        case .installed: break
+        }
+    }
+
+    /// Two Latin letters from the English name (first letters of the first two
+    /// words); a non-Latin name falls back to its first character.
+    private static func monogram(for manifest: WidgetManifest) -> String {
+        let source = manifest.localizations?["en"]?.name ?? manifest.name
+        let words = source.split(separator: " ").filter { !$0.isEmpty }
+        let letters: String
+        if words.count > 1 { letters = words.prefix(2).compactMap(\.first).map(String.init).joined() }
+        else { letters = String(source.prefix(2)) }
+        if letters.unicodeScalars.allSatisfy({ $0.isASCII && CharacterSet.letters.contains($0) }), !letters.isEmpty {
+            return letters.uppercased()
+        }
+        return String(manifest.displayName.prefix(1))
+    }
+
+    /// Board tile tints, chosen by the widget id so a widget keeps its colour.
+    private static func tint(for manifest: WidgetManifest) -> NSColor {
+        let palette: [Int] = [0x2F2A3A, 0x22312D, 0x342522, 0x202C38, 0x32273A, 0x303022, 0x26313A, 0x2E2A22, 0x223034]
+        let index = abs(manifest.id.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0x7fffffff }) % palette.count
+        return HistoryStyle.hex(palette[index])
     }
 }
 
-private final class WidgetMarketIconView: NSView {
-    var letter = "W" { didSet { letterLabel.string = letter } }
-    var highlighted = false { didSet { applyAppearance() } }
-    private let letterLabel = PanelCenteredTextView()
+/// 48 pt tile, radius 10: a tinted background with a two-letter monogram, replaced
+/// by the widget icon (aspect fill) once it loads.
+private final class WidgetMarketIconTile: NSView {
+    private static var iconCache: [URL: NSImage] = [:]
+    private let monogramLabel = PanelCenteredTextView()
+    private let iconLayer = CALayer()
+    private var pendingURL: URL?
+    override var isFlipped: Bool { true }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.borderWidth = 1
         layer?.cornerRadius = 10
-        letterLabel.font = PanelStyle.inspectFont(ofSize: 14, weight: .semibold)
-        letterLabel.string = letter
-        addSubview(letterLabel)
-        applyAppearance()
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layout() { super.layout(); letterLabel.frame = bounds }
-    private func applyAppearance() {
-        layer?.backgroundColor = PanelStyle.resolvedCG(NSColor(srgbRed: 52 / 255, green: 37 / 255, blue: 34 / 255, alpha: 1))
-        layer?.borderColor = PanelStyle.resolvedCG(highlighted ? PanelStyle.accent.withAlphaComponent(0.52) : PanelStyle.inspectLine)
-        letterLabel.textColor = highlighted ? PanelStyle.accent : PanelStyle.textSecondary
-    }
-}
-
-private final class WidgetMarketBadgeView: NSView {
-    private let label = PanelCenteredTextView()
-    init(title: String, color: NSColor) {
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.cornerRadius = 7
         layer?.borderWidth = 1
-        layer?.backgroundColor = PanelStyle.resolvedCG(color.withAlphaComponent(0.12))
-        layer?.borderColor = PanelStyle.resolvedCG(color.withAlphaComponent(0.42))
-        label.string = title
-        label.font = PanelStyle.inspectFont(ofSize: 9, weight: .semibold)
-        label.textColor = color
-        addSubview(label)
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
+        layer?.masksToBounds = true
+        monogramLabel.font = PanelStyle.inspectFont(ofSize: 15, weight: .semibold)
+        monogramLabel.textColor = PanelStyle.textSecondary
+        addSubview(monogramLabel)
+        iconLayer.contentsGravity = .resizeAspectFill
+        iconLayer.masksToBounds = true
+        iconLayer.isHidden = true
+        layer?.addSublayer(iconLayer)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layout() { super.layout(); label.frame = bounds }
+
+    func configure(monogram: String, tint: NSColor, iconURL: URL?) {
+        monogramLabel.string = monogram
+        layer?.backgroundColor = PanelStyle.resolvedCG(tint)
+        pendingURL = iconURL
+        guard let iconURL, iconURL.scheme == "https" else { return }
+        if let cached = Self.iconCache[iconURL] { show(cached); return }
+        URLSession.shared.dataTask(with: iconURL) { [weak self] data, _, _ in
+            guard let data, let image = NSImage(data: data) else { return }
+            DispatchQueue.main.async {
+                Self.iconCache[iconURL] = image
+                guard let self, self.pendingURL == iconURL else { return }
+                self.show(image)
+            }
+        }.resume()
+    }
+
+    private func show(_ image: NSImage) {
+        iconLayer.contents = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        iconLayer.isHidden = false
+        monogramLabel.isHidden = true
+    }
+
+    override func layout() {
+        super.layout()
+        monogramLabel.frame = bounds
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        iconLayer.frame = bounds
+        CATransaction.commit()
+    }
 }
 
+/// The row's single action. Board: 32 pt tall, radius 10, 12 pt semibold label.
+/// install / update: accent fill, ink text. installed: green 14 % fill, 45 % stroke.
+/// remove: red 8 % fill, 32 % stroke.
 private final class WidgetMarketActionButton: NSButton {
-    enum Style { case install, installed, update, remove }
+    enum Style {
+        case install, installed, update, remove
+        var width: CGFloat {
+            switch self {
+            case .install, .update: return 76
+            case .installed: return 88
+            case .remove: return 84
+            }
+        }
+        var title: String {
+            switch self {
+            case .install: return "Install".localized
+            case .installed: return "Installed".localized
+            case .update: return "Update".localized
+            case .remove: return "Remove".localized
+            }
+        }
+    }
     var style: Style = .install { didSet { applyAppearance() } }
     private let titleView = PanelCenteredTextView()
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         isBordered = false
         title = ""
         wantsLayer = true
-        layer?.cornerRadius = 8
-        layer?.borderWidth = 1
+        layer?.cornerRadius = 10
+        titleView.font = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
         addSubview(titleView)
         applyAppearance()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func layout() { super.layout(); titleView.frame = bounds }
+
     private func applyAppearance() {
-        titleView.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
+        titleView.string = style.title
         switch style {
-        case .install:
-            titleView.string = "Install".localized
+        case .install, .update:
             titleView.textColor = PanelStyle.accentInk
             layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
-            layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.5))
+            layer?.borderWidth = 0
         case .installed:
-            titleView.string = "Installed".localized
             titleView.textColor = PanelStyle.success
-            layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.success.withAlphaComponent(0.12))
-            layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.success.withAlphaComponent(0.5))
-        case .update:
-            titleView.string = "Update".localized
-            titleView.textColor = PanelStyle.accentInk
-            layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
-            layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.5))
+            layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.success.withAlphaComponent(0.14))
+            layer?.borderWidth = 1
+            layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.success.withAlphaComponent(0.45))
         case .remove:
-            titleView.string = "Remove".localized
-            titleView.textColor = PanelStyle.textSecondary
-            layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-            layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+            titleView.textColor = PanelStyle.failure
+            layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.failure.withAlphaComponent(0.08))
+            layer?.borderWidth = 1
+            layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.failure.withAlphaComponent(0.32))
         }
         setAccessibilityLabel(titleView.string)
     }

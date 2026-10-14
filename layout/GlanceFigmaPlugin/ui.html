@@ -27,6 +27,7 @@
   <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages. Includes the Result Badge Study.</p>
   <div id="mode">Checking Figma mode…</div>
   <button id="generate-task-running-placement" class="generate-screens featured">Generate Task Running Placement</button>
+  <button id="generate-widget-market-redesign" class="generate-screens featured">Generate Widget Market Redesign</button>
   <button id="generate-task-center-redesign" class="generate-screens featured">Generate Task Center Redesign</button>
   <button id="generate-task-running-motion" class="generate-screens featured">Generate Task Running Motion</button>
   <button id="generate-toast" class="generate-screens featured">Generate Toast</button>
@@ -145,6 +146,10 @@
     document.getElementById('generate-task-running-placement').onclick = () => {
       status.textContent = 'Building Task Running Placement...';
       parent.postMessage({ pluginMessage: { type: 'generate-task-running-placement' } }, '*');
+    };
+    document.getElementById('generate-widget-market-redesign').onclick = () => {
+      status.textContent = 'Building Widget Market Redesign...';
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-market-redesign' } }, '*');
     };
     document.getElementById('generate-task-center-redesign').onclick = () => {
       status.textContent = 'Building Task Center Redesign...';

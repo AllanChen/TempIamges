@@ -570,3 +570,11 @@
 "Running…" = "Running…";
 "Source · %@" = "Source · %@";
 "Media" = "Media";
+"%d available  ·  %d installed  ·  %d updates" = "%d available  ·  %d installed  ·  %d updates";
+"No matching widgets" = "No matching widgets";
+"Try a different search, or clear it to see every widget." = "Try a different search, or clear it to see every widget.";
+"No widgets available" = "No widgets available";
+"Refresh to load the catalog." = "Refresh to load the catalog.";
+"%d command" = "%d command";
+"%d commands" = "%d commands";
+"Sort by name" = "Sort by name";

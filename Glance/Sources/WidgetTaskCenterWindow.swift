@@ -1222,10 +1222,12 @@ private final class TaskResultPill: NSView {
 
 // MARK: - Redesign controls
 
-/// 32 × 32 list-level icon button (refresh, clear finished).
-private final class TaskGhostButton: NSView {
+/// 32 × 32 list-level icon button (refresh, clear finished, sort).
+final class TaskGhostButton: NSView {
     var uiScale: CGFloat = 1 { didSet { needsDisplay = true } }
     var isEnabled = true { didSet { alphaValue = isEnabled ? 1 : 0.4 } }
+    /// Toggled state (e.g. sort on): warm fill and accent icon, like an active filter pill.
+    var isActive = false { didSet { needsDisplay = true } }
     private let icon: String
     private let tint: NSColor
     private let danger: Bool
@@ -1254,10 +1256,15 @@ private final class TaskGhostButton: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let s = uiScale
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10 * s, yRadius: 10 * s)
-        NSColor.white.withAlphaComponent(hovering ? 0.09 : 0.05).setFill(); path.fill()
-        (danger ? PanelStyle.failure.withAlphaComponent(0.32) : NSColor.white.withAlphaComponent(0.08)).setStroke()
+        if isActive {
+            HistoryStyle.chipActiveFill.setFill(); path.fill()
+            HistoryStyle.accent.withAlphaComponent(0.6).setStroke()
+        } else {
+            NSColor.white.withAlphaComponent(hovering ? 0.09 : 0.05).setFill(); path.fill()
+            (danger ? PanelStyle.failure.withAlphaComponent(0.32) : NSColor.white.withAlphaComponent(0.08)).setStroke()
+        }
         path.lineWidth = max(1, s); path.stroke()
-        HistoryStyle.drawIcon(icon, color: tint, in: CGRect(x: 8 * s, y: 8 * s, width: 16 * s, height: 16 * s))
+        HistoryStyle.drawIcon(icon, color: isActive ? HistoryStyle.accent : tint, in: CGRect(x: 8 * s, y: 8 * s, width: 16 * s, height: 16 * s))
     }
 }
 
@@ -1325,10 +1332,11 @@ private final class TaskActionButton: NSView {
     }
 }
 
-/// 312 × 36 search field, always visible in the list header.
-private final class TaskSearchBox: NSView, NSTextFieldDelegate {
+/// 36 pt search field, always visible in the list header (Task Center and Widget Market).
+final class TaskSearchBox: NSView, NSTextFieldDelegate {
     var uiScale: CGFloat = 1 { didSet { needsLayout = true; needsDisplay = true } }
     var onChange: (() -> Void)?
+    var placeholder = "Search tasks".localized { didSet { updatePlaceholder() } }
     private let field = HistoryTextField()
     private var focused = false { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
@@ -1352,7 +1360,7 @@ private final class TaskSearchBox: NSView, NSTextFieldDelegate {
 
     private func updatePlaceholder() {
         field.placeholderAttributedString = NSAttributedString(
-            string: "Search tasks".localized,
+            string: placeholder,
             attributes: [.font: PanelStyle.inspectFont(ofSize: 13), .foregroundColor: HistoryStyle.muted])
     }
 
@@ -1408,8 +1416,8 @@ private final class TaskSearchBox: NSView, NSTextFieldDelegate {
     }
 }
 
-/// All / Running / Done / Failed with counts, as pills.
-private final class TaskPillBar: NSView {
+/// Filter pills with counts (All / Running / Done / Failed, Marketplace / Installed / Updates).
+final class TaskPillBar: NSView {
     var onSelect: ((Int) -> Void)?
     var selectedSegment = 0 { didSet { needsDisplay = true } }
     var counts: [Int] = [0, 0, 0, 0] { didSet { needsDisplay = true } }

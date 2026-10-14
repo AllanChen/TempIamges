@@ -3730,6 +3730,194 @@ async function generateTaskCenterRedesign() {
   figma.notify('Task Center Redesign created');
 }
 
+// ---------------------------------------------------------------------------
+// Widget Market Redesign — the 448 × 824 panel, one visual language with the
+// Task Center: bare window controls, title + subtitle, search, filter pills,
+// card rows. Each row says one thing per line and has exactly one action.
+// ---------------------------------------------------------------------------
+const WIDGET_MARKET_REDESIGN_FRAME = 'Widget Market Redesign';
+const WM = { w: 448, h: 824, margin: 24, rowW: 400, rowH: 84, rowGap: 8, listTop: 166 };
+
+// Live catalog, English display text (localizations.en); state is what the
+// installed registry says about each widget.
+const WM_CATALOG = [
+  { mono: 'BR', name: 'Background Remover Pro', author: 'Glance', official: true, version: '1.0.1', commands: 1, state: 'installed',
+    summary: 'Precise background removal that keeps fine edges such as hair.', tint: '#2F2A3A' },
+  { mono: 'UP', name: 'Upscale', author: 'Glance', official: true, version: '1.0.1', commands: 1, state: 'update',
+    summary: 'Upscale images to higher resolution with sharper detail.', tint: '#22312D' },
+  { mono: 'RR', name: 'Redraw & Reframe', author: 'Allan', official: false, version: '0.1.2', commands: 1, state: 'update',
+    summary: 'Regenerate the image at the aspect ratio you choose.', tint: '#342522' },
+  { mono: 'VW', name: 'Video Watermark Remover', author: 'Allan', official: false, version: '0.2.2', commands: 1, state: 'installed',
+    summary: 'Remove watermarks from long videos, segment by segment, in order.', tint: '#202C38' },
+  { mono: 'OS', name: 'Outfit Swap', author: 'Allan', official: false, version: '0.1.1', commands: 1, state: 'update',
+    summary: 'Dress the person in the first image in the outfit from the second.', tint: '#32273A' },
+  { mono: 'EX', name: 'Expand Image', author: 'Allan', official: false, version: '0.1.1', commands: 1, state: 'update',
+    summary: 'Extend the canvas beyond the edges with matching content.', tint: '#303022' },
+  { mono: 'WR', name: 'Watermark Remover', author: 'Glance', official: false, version: '0.1.3', commands: 1, state: 'update',
+    summary: 'Remove watermarks, text and marks from an image.', tint: '#26313A' },
+  { mono: 'IP', name: 'Image to Prompt', author: 'Allan', official: false, version: '0.1.2', commands: 1, state: 'install',
+    summary: 'Describe an image in words you can reuse as a prompt.', tint: '#2E2A22' },
+  { mono: 'FH', name: 'Free Image Host', author: 'Glance', official: true, version: '1.0.2', commands: 1, state: 'installed',
+    summary: 'Upload an image or video and get a shareable link.', tint: '#223034' }
+];
+
+/// One row action. install / update: accent primary. installed: quiet green.
+/// remove: danger ghost (replaces "Installed" while the row is hovered).
+function wmAction(parent, state, rightEdge, y) {
+  const spec = {
+    install: ['Install', 76, COLORS.accent, 1, COLORS.accent, 0, '#21130D'],
+    update: ['Update', 76, COLORS.accent, 1, COLORS.accent, 0, '#21130D'],
+    installed: ['Installed', 88, COLORS.success, .14, COLORS.success, .45, COLORS.success],
+    remove: ['Remove', 84, COLORS.danger, .08, COLORS.danger, .32, COLORS.danger]
+  }[state];
+  const [label, width, fillHex, fillAlpha, strokeHex, strokeAlpha, ink] = spec;
+  const node = frame('Action / ' + label, rightEdge - width, y, width, 32, null, 10);
+  historyFill(node, fillHex, fillAlpha);
+  if (strokeAlpha) historyStroke(node, strokeHex, strokeAlpha);
+  parent.appendChild(node);
+  text('Label', node, label, 0, 8, 12, ink, 'semibold', width, 'CENTER');
+  return node;
+}
+
+/// Card row: monogram tile, name, one-line summary, one meta line, one action.
+function wmRow(parent, y, widget, options = {}) {
+  const hover = !!options.hover;
+  const row = frame('Widget / ' + widget.name, WM.margin, y, WM.rowW, WM.rowH, hover ? '#1C1D22' : COLORS.surface, 9);
+  historyStroke(row, hover ? '#FFFFFF' : COLORS.line, hover ? .14 : 1);
+  parent.appendChild(row);
+  const tile = frame('Icon Tile', 12, 18, 48, 48, widget.tint, 10);
+  historyStroke(tile, '#FFFFFF', .08); row.appendChild(tile);
+  text('Monogram', tile, widget.mono, 0, 15, 15, COLORS.secondary, 'semibold', 48, 'CENTER');
+
+  const actionState = hover && widget.state === 'installed' ? 'remove' : widget.state;
+  const action = wmAction(row, actionState, WM.rowW - 12, 26);
+  const textW = action.x - 72 - 12;
+  text('Name', row, widget.name, 72, 14, 13, COLORS.text, 'semibold', textW);
+  text('Summary', row, widget.summary, 72, 36, 11, COLORS.secondary, 'regular', textW);
+  let mx = 72;
+  if (widget.official) { ellipse('Official', row, 72, 61, 7, COLORS.success); mx = 84; }
+  text('Meta', row, `${widget.author} · v${widget.version} · ${widget.commands} command${widget.commands === 1 ? '' : 's'}`,
+       mx, 58, 10, COLORS.muted, 'regular', textW - (mx - 72));
+  return row;
+}
+
+function wmScene(flow, name, x, filter, options = {}) {
+  const screen = frame(name, x, 0, WM.w, WM.h, '#0B0C0F', 16);
+  historyStroke(screen, '#FFFFFF', .12); flow.appendChild(screen);
+  createBareSystemControls(screen);
+  const installed = WM_CATALOG.filter(w => w.state !== 'install').length;
+  const updates = WM_CATALOG.filter(w => w.state === 'update').length;
+  text('Window Title', screen, 'Widget Market', 0, 12, 13, COLORS.text, 'semibold', WM.w, 'CENTER');
+  text('Window Subtitle', screen, `${WM_CATALOG.length} available · ${installed} installed · ${updates} updates`,
+       0, 31, 11, COLORS.muted, 'regular', WM.w, 'CENTER');
+  tcGhostIcon(screen, 'Refresh', 'refresh', WM.w - WM.margin - 32 * 2 - 8, 10, COLORS.text);
+  tcGhostIcon(screen, 'Close', 'close', WM.w - WM.margin - 32, 10, COLORS.text);
+  rect('Edge', screen, 0, 52, WM.w, 1, '#FFFFFF', 0).opacity = .07;
+
+  const query = options.query || '';
+  const search = frame('Search Field', WM.margin, 68, WM.rowW, 36, '#14151A', 12);
+  historyStroke(search, query ? COLORS.accent : '#FFFFFF', query ? .6 : .10); screen.appendChild(search);
+  historyIcon(search, 'search', 12, 9, 18, query ? COLORS.accent : COLORS.muted);
+  if (query) {
+    text('Query', search, query, 38, 10, 13, COLORS.text, 'regular', 300);
+    const clear = frame('Clear Query', WM.rowW - 10 - 18, 9, 18, 18, null, 9);
+    historyFill(clear, '#FFFFFF', .10); search.appendChild(clear);
+    historyIcon(clear, 'close', 4, 4, 10, COLORS.secondary);
+  } else {
+    text('Placeholder', search, `Search ${WM_CATALOG.length} widgets`, 38, 10, 13, COLORS.muted, 'regular', 300);
+  }
+
+  let px = WM.margin;
+  [['Marketplace', WM_CATALOG.length, 'marketplace'], ['Installed', installed, 'installed'], ['Updates', updates, 'updates']]
+    .forEach(([label, count, key]) => { px += tcPill(screen, label, count, px, 118, key === filter) + 8; });
+  const sort = tcGhostIcon(screen, 'Sort', 'slider', WM.w - WM.margin - 32, 117, COLORS.secondary);
+  sort.name = 'Sort / A–Z';
+
+  const rows = query ? [] : WM_CATALOG.filter(w =>
+    filter === 'marketplace' || (filter === 'installed' ? w.state !== 'install' : w.state === 'update'));
+  const visible = Math.floor((WM.h - WM.listTop - 30) / (WM.rowH + WM.rowGap));
+  rows.slice(0, visible).forEach((widget, i) => {
+    wmRow(screen, WM.listTop + i * (WM.rowH + WM.rowGap), widget, { hover: options.hoverIndex === i });
+  });
+  if (!rows.length) {
+    const tile = frame('Empty Illustration', (WM.w - 72) / 2, 300, 72, 72, '#14151A', 22);
+    historyStroke(tile, '#FFFFFF', .08); screen.appendChild(tile);
+    historyIcon(tile, 'search', 22, 22, 28, COLORS.muted);
+    text('Empty Title', screen, 'No matching widgets', 0, 392, 16, COLORS.text, 'semibold', WM.w, 'CENTER');
+    text('Empty Hint', screen, 'Try a different search, or clear it to see every widget.', 40, 420, 12, COLORS.muted, 'regular', WM.w - 80, 'CENTER');
+  }
+
+  // Footer: what the list is, and that it scrolls.
+  const footer = frame('Footer', 0, WM.h - 30, WM.w, 30, '#0B0C0F', 0);
+  screen.appendChild(footer);
+  rect('Footer Edge', footer, 0, 0, WM.w, 1, '#FFFFFF', 0).opacity = .07;
+  const filterLabel = { marketplace: 'Marketplace', installed: 'Installed', updates: 'Updates' }[filter];
+  text('Footer Count', footer, `${rows.length} widget${rows.length === 1 ? '' : 's'} · ${filterLabel}`, WM.margin, 8, 11, COLORS.muted, 'regular', 230);
+  if (rows.length > visible) text('Footer Hint', footer, 'Scroll for more', WM.w - WM.margin - 126, 8, 11, COLORS.muted, 'regular', 126, 'RIGHT');
+  return screen;
+}
+
+/// Spec strip: every row state side by side with the rule it follows.
+function wmRowStates(flow, x) {
+  const strip = frame('Row States', x, 0, WM.rowW + 48, WM.h, '#0B0C0F', 16);
+  historyStroke(strip, '#FFFFFF', .12); flow.appendChild(strip);
+  text('Heading', strip, 'Row states', 24, 24, 17, COLORS.text, 'semibold');
+  text('Rule', strip, 'One action per row, right-aligned, 32 pt tall. Text never runs under it.', 24, 52, 11, COLORS.muted, 'regular', WM.rowW);
+  const samples = [
+    ['Install', { ...WM_CATALOG[7] }, {}],
+    ['Installed', { ...WM_CATALOG[0] }, {}],
+    ['Installed · hover → Remove', { ...WM_CATALOG[0] }, { hover: true }],
+    ['Update available', { ...WM_CATALOG[1] }, {}],
+    ['Community (no official dot)', { ...WM_CATALOG[2] }, {}]
+  ];
+  samples.forEach(([label, widget, opts], i) => {
+    const y = 96 + i * (WM.rowH + 38);
+    text('State Label', strip, label, 24, y, 11, COLORS.secondary, 'medium', WM.rowW);
+    const row = wmRow(strip, y + 20, widget, opts);
+    row.name = 'State / ' + label;
+  });
+  const y = 96 + samples.length * (WM.rowH + 38);
+  text('Anatomy', strip, 'Row 400 × 84, radius 9. Tile 48 at (12, 18) with a two-letter monogram, or the widget icon. Name 13 semibold at (72, 14). Summary 11 at (72, 36), one line, truncates. Meta 10 at (72, 58): official dot · author · version · command count. Action at the right edge, 12 pt inset.',
+       24, y, 11, COLORS.muted, 'regular', WM.rowW).textAutoResize = 'HEIGHT';
+  return strip;
+}
+
+function createWidgetMarketRedesign(x) {
+  const gap = 120;
+  const scenes = [['01 / Widget Market / Marketplace', 'marketplace', {}, 'Default: every published widget. Install, Installed and Update sit in the same slot.'],
+                  ['02 / Widget Market / Installed', 'installed', { hoverIndex: 0 }, 'Installed filter. Hovering an installed row swaps "Installed" for a quiet Remove.'],
+                  ['03 / Widget Market / Updates', 'updates', {}, 'Updates filter: only rows with a newer version; one tap updates.'],
+                  ['04 / Widget Market / Search · Empty', 'marketplace', { query: 'caption' }, 'A query with no match: the list explains itself and offers a way back.']];
+  const flow = frame(WIDGET_MARKET_REDESIGN_FRAME, x, 0, (WM.w + gap) * scenes.length + WM.rowW + 48, WM.h + 90, null, 0);
+  flow.fills = []; flow.clipsContent = false;
+  figma.currentPage.appendChild(flow);
+  scenes.forEach(([name, filter, opts, note], i) => {
+    wmScene(flow, name, i * (WM.w + gap), filter, opts);
+    text('Note', flow, note, i * (WM.w + gap), WM.h + 18, 12, COLORS.muted, 'regular', WM.w).textAutoResize = 'HEIGHT';
+  });
+  wmRowStates(flow, scenes.length * (WM.w + gap));
+  return flow;
+}
+
+async function generateWidgetMarketRedesign() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === WIDGET_MARKET_REDESIGN_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Widget Market Redesign already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const flow = createWidgetMarketRedesign(maxX + 196);
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Widget Market Redesign: marketplace, installed, updates, empty search, row states.' });
+  figma.notify('Widget Market Redesign created');
+}
+
 // Seven focused Widget screens. The existing image/video input and image
 // result flows stay in place; older studies are hidden so edits remain available.
 const SIMPLE_WIDGET_NAME = 'Widget / Simple Input + Output / Clean Editable';
@@ -5751,6 +5939,15 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Task Running Placement failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Task Running Placement failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-widget-market-redesign') {
+    try {
+      await generateWidgetMarketRedesign();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Widget Market Redesign failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Widget Market Redesign failed', { error: true });
     }
   }
   if (message.type === 'generate-task-center-redesign') {

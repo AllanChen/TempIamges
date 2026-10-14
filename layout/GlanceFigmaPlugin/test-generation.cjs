@@ -482,6 +482,37 @@ const names = [
   await figma.ui.onmessage({ type: 'generate-task-center-redesign' });
   assert.equal(page.children.length, beforeTaskCenter + 1, 'task center regeneration is idempotent');
 
+  const beforeMarket = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-widget-market-redesign' });
+  const market = page.children.find(child => child.name === 'Widget Market Redesign');
+  assert.ok(market, 'Widget Market Redesign must be generated');
+  assert.equal(page.children.length, beforeMarket + 1);
+  const wmScene = name => market.findOne(child => child.name === name);
+  for (const scene of ['01 / Widget Market / Marketplace', '02 / Widget Market / Installed', '03 / Widget Market / Updates', '04 / Widget Market / Search · Empty']) {
+    assert.ok(wmScene(scene), `widget market scene ${scene}`);
+    assert.equal(wmScene(scene).width, 448, 'panel width matches WidgetMarketPanel.designSize');
+    assert.equal(wmScene(scene).height, 824, 'panel height matches WidgetMarketPanel.designSize');
+  }
+  const wmRows = scene => wmScene(scene).findAll(child => child.name.startsWith('Widget / '));
+  const wmActions = row => row.findAll(child => child.name.startsWith('Action / ')).map(child => child.name);
+  assert.equal(wmRows('01 / Widget Market / Marketplace').length, 6, 'six rows fit above the footer');
+  for (const row of wmRows('01 / Widget Market / Marketplace')) {
+    assert.equal(wmActions(row).length, 1, 'exactly one action per row');
+    const action = row.findOne(child => child.name.startsWith('Action / '));
+    for (const label of ['Name', 'Summary', 'Meta']) {
+      const node = row.findOne(child => child.name === label);
+      assert.ok(node.x + node.width <= action.x, `${label} stops before the action`);
+    }
+  }
+  assert.ok(wmRows('02 / Widget Market / Installed').every(row => wmActions(row)[0] !== 'Action / Install'), 'installed filter hides Install');
+  assert.ok(wmRows('02 / Widget Market / Installed').some(row => wmActions(row)[0] === 'Action / Remove'), 'hovered installed row offers Remove');
+  assert.ok(wmRows('03 / Widget Market / Updates').every(row => wmActions(row)[0] === 'Action / Update'), 'updates filter shows only Update');
+  assert.equal(wmRows('04 / Widget Market / Search · Empty').length, 0);
+  assert.ok(wmScene('04 / Widget Market / Search · Empty').findOne(child => child.name === 'Empty Title'), 'empty search state');
+  assert.ok(market.findOne(child => child.name === 'Row States'), 'row state spec strip');
+  await figma.ui.onmessage({ type: 'generate-widget-market-redesign' });
+  assert.equal(page.children.length, beforeMarket + 1, 'widget market regeneration is idempotent');
+
   const beforeMotion = page.children.length;
   await figma.ui.onmessage({ type: 'generate-task-running-motion' });
   const motion = page.children.find(child => child.name === 'Task Running Motion');

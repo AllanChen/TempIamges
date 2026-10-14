@@ -571,3 +571,11 @@
 "Running…" = "运行中…";
 "Source · %@" = "来源 · %@";
 "Media" = "媒体";
+"%d available  ·  %d installed  ·  %d updates" = "%d 个可用  ·  %d 个已安装  ·  %d 个更新";
+"No matching widgets" = "没有匹配的 Widget";
+"Try a different search, or clear it to see every widget." = "换个关键词试试，或清空搜索查看全部 Widget。";
+"No widgets available" = "暂无可用 Widget";
+"Refresh to load the catalog." = "点击刷新加载目录。";
+"%d command" = "%d 个命令";
+"%d commands" = "%d 个命令";
+"Sort by name" = "按名称排序";
