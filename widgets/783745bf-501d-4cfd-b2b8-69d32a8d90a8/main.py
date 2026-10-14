@@ -25,6 +25,10 @@ QUERY_URL = f"{BASE_URL}/openapi/v2/query"
 # The "load video" node of workflow 2109559022260154369 that receives each
 # uploaded clip (RunningHub sample: nodeId 184, fieldName video).
 NODE_ID = "184"
+# Result nodes of that workflow: 183 saves the cleaned clip; 283 echoes the
+# uploaded input and 210 renders a before/after comparison.
+OUTPUT_NODE_ID = os.environ.get("RUNNINGHUB_OUTPUT_NODE", "183")
+IGNORED_RESULT_NODES = {NODE_ID, "283", "210"}
 MAX_CLIP_SECONDS = 8.0
 SPLIT_TARGET_SECONDS = 7.8  # Leave room for MP4 frame/audio packet rounding.
 MAX_SEGMENTS = 24  # Glance runs one Widget for at most 25 minutes.
@@ -36,6 +40,8 @@ POLL_TIMEOUT = 900
 POLL_INTERVAL = 5
 REQUEST_RETRIES = 3
 GENERATION_ATTEMPTS = 3
+# RunningHub allows 100 QPS for this account; keep clip workers under that with headroom.
+CLIP_CONCURRENCY = max(1, int(os.environ.get("RUNNINGHUB_CONCURRENCY", "90") or 90))
 
 
 class AuditRejectedError(RuntimeError):
@@ -268,11 +274,19 @@ def video_result_url(result: dict) -> str:
     entries = result.get("results")
     if not isinstance(entries, list):
         raise GenerationFailedError("RunningHub completed without video results")
-    urls = [entry.get("url") for entry in entries if isinstance(entry, dict)]
-    urls = [url for url in urls if isinstance(url, str)]
-    preferred = next((url for url in urls if Path(urlparse(url).path).suffix.lower()
-                      in (".mp4", ".mov", ".webm", ".mkv")), None)
-    url = preferred or (urls[0] if urls else None)
+    # A finished task lists three videos: the untouched input (node 283), the
+    # cleaned clip (node 183) and a side-by-side comparison (node 210). Only the
+    # cleaned clip is wanted; fall back to the first video from any other node.
+    entries = [entry for entry in entries if isinstance(entry, dict) and isinstance(entry.get("url"), str)]
+    by_node = {str(entry.get("nodeId", "")): entry["url"] for entry in entries}
+    if OUTPUT_NODE_ID in by_node:
+        url = by_node[OUTPUT_NODE_ID]
+    else:
+        urls = [entry["url"] for entry in entries
+                if str(entry.get("nodeId", "")) not in IGNORED_RESULT_NODES]
+        videos = [url for url in urls if Path(urlparse(url).path).suffix.lower()
+                  in (".mp4", ".mov", ".webm", ".mkv")]
+        url = videos[0] if videos else (urls[0] if urls else None)
     parsed = urlparse(url or "")
     if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
             or parsed.hostname.lower() in ("localhost", "127.0.0.1", "::1")):
@@ -338,7 +352,8 @@ def process_clip(index: int, clip: Path, directory: Path, api_key: str,
         remaining(deadline)
         try:
             task_id = submit_task(api_key, uploaded_name, deadline)
-            logger.info("Clip %d: RunningHub task %s (attempt %d/%d)",
+            # Warning level so the task ID reaches the Worker log (INFO is not forwarded).
+            logger.warning("Clip %d: RunningHub task %s (attempt %d/%d)",
                         index + 1, task_id, attempt, GENERATION_ATTEMPTS)
             url = wait_for_result(api_key, task_id, deadline)
             break
@@ -352,31 +367,72 @@ def process_clip(index: int, clip: Path, directory: Path, api_key: str,
     return index, download_video(url, destination, api_key, deadline)
 
 
-def normalize_and_merge(results: list[Path], directory: Path, deadline: float) -> Path:
+def black_clip(index: int, clip: Path, directory: Path, deadline: float) -> Path:
+    """Stand-in for a clip RunningHub could not process: black frames, silent, same length and size."""
+    duration, width, height, _ = probe_video(clip, deadline)
+    destination = directory / f"result-{index:03d}-black.mp4"
+    run_media_tool([
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+        "-f", "lavfi", "-i", f"color=c=black:s={width}x{height}:r=30:d={duration:.3f}",
+        "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+        "-t", f"{duration:.3f}", "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(destination),
+    ], deadline, f"black clip {index + 1}")
+    return destination
+
+
+def process_clip_or_black(index: int, clip: Path, directory: Path, api_key: str,
+                          deadline: float) -> tuple[int, Path, bool]:
+    """Never let one bad segment sink the whole video: substitute black after retries."""
+    try:
+        return (*process_clip(index, clip, directory, api_key, deadline), False)
+    except TimeoutError:
+        raise  # The Widget deadline applies to the whole task.
+    except Exception as error:
+        logger.warning("Clip %d failed (%s); using a black segment", index + 1, error)
+        return index, black_clip(index, clip, directory, deadline), True
+
+
+def normalize_and_merge(results: list[Path], directory: Path, deadline: float,
+                        target_durations: list[float] | None = None) -> Path:
+    """Re-encode every result clip to one format, retime it to the length of the
+    clip that was submitted, and concatenate in order.
+
+    RunningHub returns clips a few frames shorter than their input (7.63 s for
+    7.70 s); left alone the drift adds up to about a second over a two-minute
+    video. Scaling the timestamps keeps every segment where the source had it.
+    """
     _, width, height, _ = probe_video(results[0], deadline)
     width += width % 2
     height += height % 2
     normalized = []
     for index, source in enumerate(results):
-        _, _, _, has_audio = probe_video(source, deadline)
+        clip_duration, _, _, has_audio = probe_video(source, deadline)
+        target = target_durations[index] if target_durations else clip_duration
+        ratio = target / clip_duration
+        retime = abs(ratio - 1) > 0.005
         destination = directory / f"normalized-{index:03d}.mp4"
         command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(source)]
         if not has_audio:
             command += ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]
         command += [
             "-map", "0:v:0", "-map", "0:a:0" if has_audio else "1:a:0",
-            "-vf", f"fps=30,scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            "-vf", (f"setpts={ratio:.6f}*PTS," if retime else "") +
+                   f"fps=30,scale={width}:{height}:force_original_aspect_ratio=decrease,"
                    f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "24",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
             "-ar", "48000", "-ac", "2", "-af", "aresample=async=1:first_pts=0,apad",
-            "-shortest", "-movflags", "+faststart", str(destination),
+            # Cut at the exact target length: -shortest overshoots with apad and
+            # the concat demuxer would then stretch the segment.
+            "-t", f"{target:.3f}", "-movflags", "+faststart", str(destination),
         ]
         run_media_tool(command, deadline, f"normalize result {index + 1}/{len(results)}")
         probe_video(destination, deadline)
         normalized.append(destination)
     concat_file = directory / "ordered-clips.txt"
-    concat_file.write_text("".join(f"file '{str(path).replace(chr(39), chr(39) + chr(92) + chr(39) + chr(39))}'\n"
+    # The concat demuxer resolves relative entries against the list file, so write absolute paths.
+    concat_file.write_text("".join(f"file '{str(path.resolve()).replace(chr(39), chr(39) + chr(92) + chr(39) + chr(39))}'\n"
                                    for path in normalized), encoding="utf-8")
     merged = directory / "result.mp4"
     run_media_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat",
@@ -421,13 +477,16 @@ def main(task: dict) -> dict:
     clips = split_video(source, output_dir, deadline)
     logger.info("Video split into %d ordered clips (each at most 8 seconds)", len(clips))
     results: list[Path | None] = [None] * len(clips)
-    with ThreadPoolExecutor(max_workers=min(3, len(clips))) as pool:
-        futures = {pool.submit(process_clip, index, clip, output_dir, api_key, deadline): index
+    blacked: list[int] = []
+    with ThreadPoolExecutor(max_workers=min(CLIP_CONCURRENCY, len(clips))) as pool:
+        futures = {pool.submit(process_clip_or_black, index, clip, output_dir, api_key, deadline): index
                    for index, clip in enumerate(clips)}
         try:
             for future in as_completed(futures):
-                index, path = future.result()
+                index, path, is_black = future.result()
                 results[index] = path
+                if is_black:
+                    blacked.append(index + 1)
                 logger.info("Processed clip %d/%d", index + 1, len(clips))
         except BaseException:
             for future in futures:
@@ -436,5 +495,9 @@ def main(task: dict) -> dict:
     ordered = [path for path in results if path is not None]
     if len(ordered) != len(clips):
         raise RuntimeError("One or more video clips did not return a result")
-    merged = normalize_and_merge(ordered, output_dir, deadline)
+    if blacked:
+        logger.warning("%d of %d clips failed and were replaced with black: %s",
+                       len(blacked), len(clips), sorted(blacked))
+    targets = [probe_video(clip, deadline)[0] for clip in clips]
+    merged = normalize_and_merge(ordered, output_dir, deadline, targets)
     return {"outputs": [{"type": "video", "path": str(merged)}]}

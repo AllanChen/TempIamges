@@ -52,12 +52,44 @@ class ProviderContractTests(unittest.TestCase):
                     widget.process_clip(0, clip, Path(directory), "secret", deadline)
                 self.assertEqual(submit.call_count, 1)
 
+    def test_failed_clip_becomes_black_instead_of_failing_the_task(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            clip = folder / "clip.mp4"
+            clip.write_bytes(b"video")
+            deadline = time.monotonic() + 60
+            black = folder / "result-000-black.mp4"
+            with patch.object(widget, "process_clip", side_effect=widget.AuditRejectedError("rejected")), \
+                 patch.object(widget, "black_clip", return_value=black) as fallback:
+                self.assertEqual(widget.process_clip_or_black(0, clip, folder, "secret", deadline),
+                                 (0, black, True))
+            fallback.assert_called_once_with(0, clip, folder, deadline)
+            # The task deadline is not something a black segment can paper over.
+            with patch.object(widget, "process_clip", side_effect=TimeoutError("deadline")), \
+                 self.assertRaises(TimeoutError):
+                widget.process_clip_or_black(0, clip, folder, "secret", deadline)
+
     def test_prefers_video_result_over_preview_image(self):
         url = widget.video_result_url({"results": [
             {"url": "https://example.com/preview.png"},
             {"url": "https://example.com/output.mp4"},
         ]})
         self.assertEqual(url, "https://example.com/output.mp4")
+
+    def test_takes_the_cleaned_clip_not_the_input_echo_or_comparison(self):
+        # Real task 2110031279239163906 listed exactly these three videos.
+        results = [
+            {"url": "https://example.com/ser_00001.mp4", "nodeId": "283"},   # uploaded input
+            {"url": "https://example.com/ver_00001.mp4", "nodeId": "183"},   # cleaned clip
+            {"url": "https://example.com/T2V_00001.mp4", "nodeId": "210"},   # side-by-side
+        ]
+        self.assertEqual(widget.video_result_url({"results": results}), "https://example.com/ver_00001.mp4")
+        # Without the known output node, any other node's video still beats the echoes.
+        self.assertEqual(widget.video_result_url({"results": [
+            results[0], {"url": "https://example.com/other.mp4", "nodeId": "999"}, results[2]]}),
+            "https://example.com/other.mp4")
+        with self.assertRaises(widget.GenerationFailedError):
+            widget.video_result_url({"results": [results[0], results[2]]})
 
     def test_structured_audit_code_is_not_a_normal_failure(self):
         self.assertTrue(widget.is_audit_rejection({"errorCode": "CONTENT_AUDIT_REJECTED"}))
@@ -111,6 +143,32 @@ class VideoPipelineTests(unittest.TestCase):
             merged_duration, _, _, merged_audio = widget.probe_video(merged, deadline)
             self.assertGreater(merged_duration, 7.5)
             self.assertTrue(merged_audio)
+
+    def test_black_clip_matches_the_input_clip_and_merges(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            deadline = time.monotonic() + 120
+            good = folder / "remote-0.mp4"
+            self.make_video(good, "red", 0.5)
+            lost = folder / "input-001.mp4"
+            self.make_video(lost, "green", 0.5)
+            black = widget.black_clip(1, lost, folder, deadline)
+            duration, width, height, has_audio = widget.probe_video(black, deadline)
+            self.assertAlmostEqual(duration, 0.5, delta=0.1)
+            self.assertEqual((width, height, has_audio), (64, 64, True))
+            merged = widget.normalize_and_merge([good, black], folder, deadline)
+            red, dark = (self.pixel_at(merged, second) for second in (0.2, 0.7))
+            self.assertGreater(red[0], 150)
+            self.assertLess(max(dark), 40)
+
+    def test_shorter_result_is_retimed_to_the_submitted_clip_length(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            short = folder / "remote-0.mp4"
+            self.make_video(short, "red", 0.8)  # RunningHub returned 0.8 s for a 1.0 s input.
+            deadline = time.monotonic() + 120
+            merged = widget.normalize_and_merge([short], folder, deadline, target_durations=[1.0])
+            self.assertAlmostEqual(widget.probe_video(merged, deadline)[0], 1.0, delta=0.08)
 
     def test_results_are_merged_in_given_order(self):
         with tempfile.TemporaryDirectory() as directory:
