@@ -26,8 +26,13 @@
   <h1>Glance UI Builder <span style="color:#e8a87c">v2.1</span></h1>
   <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages. Includes the Result Badge Study.</p>
   <div id="mode">Checking Figma mode…</div>
+  <button id="generate-pricing-flows" class="generate-screens featured">Generate Pricing + Credits Flow</button>
+  <div class="hint">Pricing redesign: centered welcome, pricing and results; structured orders and records. Creates a separate Refined board.</div>
+  <button id="generate-widget-context-credits" class="generate-screens featured">Generate Compact Widget Menu</button>
   <button id="generate-task-running-placement" class="generate-screens featured">Generate Task Running Placement</button>
   <button id="generate-widget-market-redesign" class="generate-screens featured">Generate Widget Market Redesign</button>
+  <button id="generate-widget-market-details" class="generate-screens featured">Generate Widget Details + Loading</button>
+  <button id="hide-widget-market-version-info" class="generate-screens featured">Remove Widget Version Info</button>
   <button id="generate-task-center-redesign" class="generate-screens featured">Generate Task Center Redesign</button>
   <button id="generate-task-running-motion" class="generate-screens featured">Generate Task Running Motion</button>
   <button id="generate-toast" class="generate-screens featured">Generate Toast</button>
@@ -150,6 +155,22 @@
     document.getElementById('generate-widget-market-redesign').onclick = () => {
       status.textContent = 'Building Widget Market Redesign...';
       parent.postMessage({ pluginMessage: { type: 'generate-widget-market-redesign' } }, '*');
+    };
+    document.getElementById('generate-widget-market-details').onclick = () => {
+      status.textContent = 'Building Widget Details + Loading...';
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-market-details' } }, '*');
+    };
+    document.getElementById('hide-widget-market-version-info').onclick = () => {
+      status.textContent = 'Removing Widget metadata...';
+      parent.postMessage({ pluginMessage: { type: 'hide-widget-market-version-info' } }, '*');
+    };
+    document.getElementById('generate-pricing-flows').onclick = () => {
+      status.textContent = 'Building software licensing, top-ups and task billing flows…';
+      parent.postMessage({ pluginMessage: { type: 'generate-pricing-flows' } }, '*');
+    };
+    document.getElementById('generate-widget-context-credits').onclick = () => {
+      status.textContent = 'Building Compact Widget Menu...';
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-context-credits' } }, '*');
     };
     document.getElementById('generate-task-center-redesign').onclick = () => {
       status.textContent = 'Building Task Center Redesign...';

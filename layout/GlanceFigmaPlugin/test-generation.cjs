@@ -2,8 +2,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
+let nextNodeID = 0;
 function node(type) {
   return {
+    id: 'mock:' + (++nextNodeID),
     type,
     name: '',
     x: 0,
@@ -499,13 +501,14 @@ const names = [
   for (const row of wmRows('01 / Widget Market / Marketplace')) {
     assert.equal(wmActions(row).length, 1, 'exactly one action per row');
     const action = row.findOne(child => child.name.startsWith('Action / '));
-    for (const label of ['Name', 'Summary', 'Meta']) {
+    assert.equal(row.findOne(child => child.name === 'Meta'), null, 'row has no version metadata');
+    for (const label of ['Name', 'Summary']) {
       const node = row.findOne(child => child.name === label);
       assert.ok(node.x + node.width <= action.x, `${label} stops before the action`);
     }
   }
   assert.ok(wmRows('02 / Widget Market / Installed').every(row => wmActions(row)[0] !== 'Action / Install'), 'installed filter hides Install');
-  assert.ok(wmRows('02 / Widget Market / Installed').some(row => wmActions(row)[0] === 'Action / Remove'), 'hovered installed row offers Remove');
+  assert.ok(wmRows('02 / Widget Market / Installed').every(row => wmActions(row)[0] !== 'Action / Remove'), 'hover never exposes Remove in the list');
   assert.ok(wmRows('03 / Widget Market / Updates').every(row => wmActions(row)[0] === 'Action / Update'), 'updates filter shows only Update');
   assert.equal(wmRows('04 / Widget Market / Search · Empty').length, 0);
   assert.ok(wmScene('04 / Widget Market / Search · Empty').findOne(child => child.name === 'Empty Title'), 'empty search state');
@@ -513,7 +516,226 @@ const names = [
   await figma.ui.onmessage({ type: 'generate-widget-market-redesign' });
   assert.equal(page.children.length, beforeMarket + 1, 'widget market regeneration is idempotent');
 
+  const beforeDetails = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-widget-market-details' });
+  const details = page.children.find(child => child.name === 'Widget Market / Details + Loading');
+  assert.ok(details, 'Widget detail and loading board must be generated');
+  const scene = name => details.findOne(child => child.name === name);
+  const browse = scene('01 / Widget Market / Browse');
+  const installedDetail = scene('02 / Widget Details / Installed');
+  const availableDetail = scene('03 / Widget Details / Not Installed');
+  const updateDetail = scene('04 / Widget Details / Update Available');
+  const freeDetail = scene('05 / Widget Details / Free');
+  const loading = scene('06 / Widget Market / Loading');
+  for (const panel of [browse, installedDetail, availableDetail, updateDetail, freeDetail, loading]) {
+    assert.ok(panel);
+    assert.equal(panel.width, 448);
+    assert.equal(panel.height, 824);
+  }
+  assert.equal(browse.findAll(child => child.name === 'Action / Remove').length, 0, 'Remove is reserved for details');
+  const firstRow = browse.findOne(child => child.name === 'Widget / Background Remover Pro');
+  assert.equal(firstRow.reactions[0].actions[0].destinationId, installedDetail.id, 'card opens details');
+  assert.equal(installedDetail.findOne(child => child.name === 'Action / Remove').reactions[0].actions[0].destinationId,
+    availableDetail.id, 'Remove changes the detail page to the uninstalled state');
+  assert.equal(availableDetail.findAll(child => child.name === 'Action / Remove').length, 0);
+  assert.ok(availableDetail.findOne(child => child.name === 'Action / Install'));
+  assert.ok(updateDetail.findOne(child => child.name === 'Action / Update'));
+  assert.ok(updateDetail.findOne(child => child.name === 'Action / Remove'));
+  for (const panel of [installedDetail, availableDetail, updateDetail, freeDetail]) {
+    assert.equal(panel.findOne(child => child.name === 'Back to widgets').reactions[0].actions[0].destinationId, browse.id);
+    assert.ok(panel.findOne(child => child.name === 'Task Price'));
+    assert.ok(panel.findOne(child => child.name === 'Privacy Notice'));
+  }
+  assert.equal(freeDetail.findOne(child => child.name === 'Credit Cost').characters, 'Free');
+  assert.equal(details.findOne(child => child.name === 'Publisher and Version'), null, 'details have no publisher/version line');
+  assert.ok(loading.findOne(child => child.name === 'Loading Label'));
+  assert.equal(loading.findAll(child => child.name.startsWith('Widget / ') || child.name === 'Empty Title').length, 0,
+    'loading has neither fabricated results nor an empty state');
+  await figma.ui.onmessage({ type: 'generate-widget-market-details' });
+  assert.equal(page.children.length, beforeDetails + 1, 'detail regeneration preserves existing frames');
+
+  // Existing Figma boards can be updated without recreating edited artwork.
+  const legacyMeta = node('TEXT'); legacyMeta.name = 'Meta';
+  legacyMeta.characters = 'Glance · v1.0.1 · 1 command'; firstRow.appendChild(legacyMeta);
+  const legacyPublisher = node('TEXT'); legacyPublisher.name = 'Publisher and Version';
+  installedDetail.findOne(child => child.name === 'Scrollable Details').appendChild(legacyPublisher);
+  const editedSummary = firstRow.findOne(child => child.name === 'Summary');
+  editedSummary.characters = 'Keep my edited description'; editedSummary.y = 43;
+  await figma.ui.onmessage({ type: 'hide-widget-market-version-info' });
+  assert.equal(firstRow.findOne(child => child.name === 'Meta'), null);
+  assert.equal(installedDetail.findOne(child => child.name === 'Publisher and Version'), null);
+  assert.equal(editedSummary.characters, 'Keep my edited description');
+  assert.equal(editedSummary.y, 43, 'manual positioning is preserved');
+  assert.equal(page.children.length, beforeDetails + 1, 'cleanup does not duplicate boards');
+
+  const beforeCompactMenu = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-widget-context-credits' });
+  const compactMenu = page.children.find(child => child.name === 'Widget Context Menu / Compact Credits');
+  assert.ok(compactMenu, 'compact Widget menu design is generated');
+  assert.equal(page.children.length, beforeCompactMenu + 1);
+  assert.ok(compactMenu.findOne(child => child.name === 'Context Menu'));
+  assert.ok(compactMenu.findOne(child => child.name === 'Full Name Tooltip / Hover or Focus'));
+  const submenus = compactMenu.findAll(child => child.name === 'Widget Submenu');
+  assert.equal(submenus.length, 3, 'cascade, long names and price states');
+  for (const menu of submenus) {
+    assert.equal(menu.width, 280, 'submenu has a bounded width');
+    assert.equal(menu.findAll(child => child.name === 'Cost Unit').length, 1, 'units appear once in the header');
+    const rows = menu.children.filter(child => child.name.startsWith('Widget Item / '));
+    for (const row of rows) {
+      const name = row.findOne(child => child.name === 'Widget Name');
+      const badge = row.findOne(child => child.name === 'Credit Badge');
+      const value = badge.findOne(child => child.name === 'Credit Value');
+      assert.equal(row.height, 28, 'row remains compact');
+      assert.equal(name.maxLines, 1);
+      assert.equal(name.textTruncation, 'ENDING');
+      assert.ok(name.x + name.width + 10 <= badge.x, 'name never overlaps the separate cost');
+      assert.equal(badge.x + badge.width, row.width - 10, 'prices align at the right edge');
+      assert.ok(/^(\d+|免费|Free)$/.test(value.characters), 'badge contains a complete short price only');
+    }
+  }
+  assert.ok(compactMenu.findOne(child => child.name === 'Credit Value' && child.characters === '1000000'), 'large prices are not shortened or clipped');
+  assert.ok(compactMenu.findOne(child => child.name === 'Credit Value' && child.characters === '免费'));
+  assert.ok(compactMenu.findOne(child => child.name === 'Credit Value' && child.characters === 'Free'));
+  const editedName = compactMenu.findOne(child => child.name === 'Widget Name');
+  editedName.characters = 'Manual label edit';
+  await figma.ui.onmessage({ type: 'generate-widget-context-credits' });
+  assert.equal(page.children.length, beforeCompactMenu + 1, 'regeneration does not duplicate the design');
+  assert.equal(editedName.characters, 'Manual label edit', 'regeneration preserves edits');
+
   const beforeMotion = page.children.length;
+  const previousPricing = node('FRAME');
+  previousPricing.name = 'Pricing & Credits / Purchase + Usage Flow';
+  previousPricing.resize(2704, 19114); page.appendChild(previousPricing);
+  const beforePricing = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-pricing-flows' });
+  assert.ok(!figma.ui.lastMessage.message.includes('failed'), figma.ui.lastMessage.message);
+  const pricing = page.children.find(child => child.name === 'Pricing & Credits / Purchase + Usage Flow / Refined');
+  assert.ok(pricing, 'pricing review board is generated');
+  const pricingScreens = pricing.children.filter(child => child.name.startsWith('Screen / '));
+  assert.ok(pricingScreens.length >= 25, 'purchase, credits, task and recovery states are covered');
+  const pricingScreenIDs = new Set(pricingScreens.map(screen => screen.id));
+  const pricingScreen = id => pricingScreens.find(screen => screen.name.startsWith('Screen / ' + id + ' / '));
+  const actionDestination = (screenID, label) => pricingScreen(screenID)
+    .findOne(child => child.name === 'Action / ' + label).reactions[0].actions[0].destinationId;
+  const hasText = (screenID, value) => pricingScreen(screenID).findOne(child => child.type === 'TEXT' && child.characters === value);
+  for (const screen of pricingScreens) {
+    assert.equal(screen.width, 640, 'billing uses ordinary, compact desktop windows');
+    assert.equal(screen.height, 600);
+    for (const layer of screen.findAll(child => child.type === 'TEXT')) {
+      assert.equal(layer.fontName.family, 'Inter', 'reuse the established Glance design font');
+    }
+  }
+  let pricingLinkCount = 0;
+  for (const layer of pricing.findAll(child => !!child.reactions)) {
+    for (const reaction of layer.reactions) for (const action of reaction.actions || []) {
+      assert.ok(pricingScreenIDs.has(action.destinationId), 'all prototype destinations exist on this board');
+      assert.equal(action.type, 'NODE', 'prototype cannot initiate real payments');
+      pricingLinkCount++;
+    }
+  }
+  assert.ok(pricingLinkCount > 50);
+  assert.equal(actionDestination('orderPro', '前往浏览器支付 ¥99'), pricingScreen('checkoutPro').id);
+  assert.equal(actionDestination('paidPro', '打开 Glance'), pricingScreen('pro').id);
+  assert.equal(actionDestination('plans', '¥99 买断 Pro'), pricingScreen('loginPro').id,
+    'a buyer without a session authenticates before confirming an order');
+  assert.equal(actionDestination('loginPro', '使用 Google 继续'), pricingScreen('orderPro').id,
+    'purchase login returns to the intended order instead of dropping into trial');
+  assert.equal(actionDestination('running', '取消任务'), pricingScreen('cancelTask420').id);
+  assert.ok(hasText('cancelledTask420', '412 点'), 'cancelling after execution starts does not refund');
+  assert.ok(hasText('renewOrder', '¥59'));
+  for (const before of [2, 20, 120]) for (const pack of [100, 300, 1000]) {
+    const suffix = before + '_' + pack;
+    assert.ok(hasText('topup' + suffix, (before + pack) + ' 点'));
+    assert.equal(actionDestination('topup' + suffix, '前往浏览器支付 ¥' + pack / 10), pricingScreen('creditsCheckout' + suffix).id);
+    assert.ok(hasText('creditsPaid' + suffix, (before + pack) + ' 点'), 'checkout credits match selected package and starting balance');
+  }
+  assert.ok(hasText('quote420', '412 点'));
+  assert.ok(hasText('taskRefund', '420 点'));
+  assert.ok(hasText('resume300', '294 点'), 'recovered input requires a fresh confirmation before debit');
+  for (const id of ['free', 'login', 'plans', 'paidPro', 'wallet120', 'topup120_300', 'taskRefund']) {
+    assert.equal(pricingScreen(id).findOne(child => child.name === 'Heading').textAlignHorizontal, 'CENTER', `${id} has a centered composition`);
+    const content = pricingScreen(id).findOne(child => child.name === 'Content');
+    assert.equal(content.x + content.width / 2, 320, `${id} has a genuinely centered content column`);
+  }
+  for (const id of ['pro', 'ledger', 'quote420']) {
+    assert.equal(pricingScreen(id).findOne(child => child.name === 'Heading').textAlignHorizontal, 'LEFT', `${id} retains a clear reading edge`);
+  }
+  for (const id of ['topup120_100', 'topup120_300', 'topup120_1000']) {
+    const packs = pricingScreen(id).findOne(child => child.name === 'Recharge Packages');
+    for (const option of packs.children) assert.equal(option.findOne(child => child.name === 'Points').textAlignHorizontal, 'CENTER');
+    assert.ok(packs.children.reduce((sum, option) => sum + option.width, 24) <= packs.width + .01);
+  }
+  assert.ok(hasText('plans', '¥99'), 'price is isolated as the central visual anchor');
+  assert.ok(pricingScreen('paidPro').findOne(child => child.name === 'Status Mark'));
+  assert.equal(pricingScreen('login').findOne(child => child.name === 'Email Label').textAlignHorizontal, 'LEFT');
+  assert.equal(pricingScreen('plans').findOne(child => child.name === 'Footer Divider'), null,
+    'do not force every screen into the same bottom-bar form template');
+  assert.equal(pricingScreen('quote420').findOne(child => child.name === 'Value').textAlignHorizontal, 'RIGHT');
+  const pricingHeading = pricingScreen('plans').findOne(child => child.name === 'Heading');
+  pricingHeading.characters = 'User-edited pricing title';
+  await figma.ui.onmessage({ type: 'generate-pricing-flows' });
+  assert.equal(page.children.length, beforePricing + 1, 'rerun must not duplicate pricing boards');
+  assert.equal(pricingHeading.characters, 'User-edited pricing title', 'rerun preserves design edits');
+  pricingHeading.characters = '一次购买，长期使用';
+
+  // Approximate text metrics and native auto-layout to catch clipped content in
+  // the local generator without launching Figma or the Glance app.
+  function layoutBillingNode(layer) {
+    if (layer.type === 'TEXT' && layer.textAutoResize === 'HEIGHT') {
+      const size = layer.fontSize;
+      const width = layer.width || 1;
+      let lines = 1, used = 0;
+      for (const char of layer.characters) {
+        if (char === '\n') { lines++; used = 0; continue; }
+        const advance = size * (char.codePointAt(0) > 255 ? 1 : .58);
+        if (used + advance > width) { lines++; used = 0; }
+        used += advance;
+      }
+      layer.height = lines * (layer.lineHeight?.value || Math.ceil(size * 1.55));
+    }
+    layer.children.forEach(layoutBillingNode);
+    if (layer.layoutMode === 'VERTICAL') {
+      let y = layer.paddingTop || 0;
+      layer.children.filter(child => child.visible !== false).forEach((child, index) => {
+        if (index) y += layer.itemSpacing || 0;
+        child.x = layer.paddingLeft || 0; child.y = y; y += child.height;
+      });
+      if (layer.primaryAxisSizingMode === 'AUTO') layer.height = y + (layer.paddingBottom || 0);
+    }
+  }
+  layoutBillingNode(pricing);
+  const luminance = color => {
+    const linear = value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+    return .2126 * linear(color.r) + .7152 * linear(color.g) + .0722 * linear(color.b);
+  };
+  function backgroundFor(layer) {
+    for (let ancestor = layer.parent; ancestor; ancestor = ancestor.parent) {
+      const paint = ancestor.fills?.find(paint => paint.type === 'SOLID' && (paint.opacity ?? 1) === 1);
+      if (paint) return paint.color;
+    }
+    throw new Error('Missing billing text background');
+  }
+  for (const screen of pricingScreens) {
+    const content = screen.findOne(child => child.name === 'Content');
+    assert.ok(content.y + content.height <= 492,
+      `${screen.name}: content bottom ${content.y + content.height} must precede footer`);
+    for (const layer of screen.findAll(child => child.type === 'TEXT')) {
+      const foreground = luminance(layer.fills[0].color);
+      const background = luminance(backgroundFor(layer));
+      const contrast = (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+      assert.ok(contrast >= 4.5, `${screen.name}/${layer.name} contrast ${contrast.toFixed(2)} must pass AA`);
+      if (layer.name === 'Label' && layer.parent.name.startsWith('Action /')) {
+        assert.ok(layer.height <= layer.lineHeight.value, `${screen.name}: button label must stay on one line`);
+      }
+      assert.ok(!/[—–]/.test(layer.characters), 'avoid decorative dashes in billing copy');
+    }
+  }
+  assert.ok(uiSource.indexOf('id="generate-pricing-flows"') < uiSource.indexOf('<label for="reference">'));
+  pricing.remove();
+  assert.equal(page.children.length, beforePricing);
+  assert.equal(previousPricing.name, 'Pricing & Credits / Purchase + Usage Flow', 'redesign preserves the old review board');
+  previousPricing.remove();
+
   await figma.ui.onmessage({ type: 'generate-task-running-motion' });
   const motion = page.children.find(child => child.name === 'Task Running Motion');
   assert.ok(motion, 'Task Running Motion must be generated');
