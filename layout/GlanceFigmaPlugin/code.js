@@ -3762,7 +3762,7 @@ const WM_CATALOG = [
 ];
 
 /// One row action. install / update: accent primary. installed: quiet green.
-/// remove: danger ghost (replaces "Installed" while the row is hovered).
+/// remove: danger ghost, reserved for the Widget detail page.
 function wmAction(parent, state, rightEdge, y) {
   const spec = {
     install: ['Install', 76, COLORS.accent, 1, COLORS.accent, 0, '#21130D'],
@@ -3779,7 +3779,7 @@ function wmAction(parent, state, rightEdge, y) {
   return node;
 }
 
-/// Card row: monogram tile, name, one-line summary, one meta line, one action.
+/// Card row: monogram tile, name, one-line summary and one action.
 function wmRow(parent, y, widget, options = {}) {
   const hover = !!options.hover;
   const row = frame('Widget / ' + widget.name, WM.margin, y, WM.rowW, WM.rowH, hover ? '#1C1D22' : COLORS.surface, 9);
@@ -3789,15 +3789,11 @@ function wmRow(parent, y, widget, options = {}) {
   historyStroke(tile, '#FFFFFF', .08); row.appendChild(tile);
   text('Monogram', tile, widget.mono, 0, 15, 15, COLORS.secondary, 'semibold', 48, 'CENTER');
 
-  const actionState = hover && widget.state === 'installed' ? 'remove' : widget.state;
+  const actionState = widget.state;
   const action = wmAction(row, actionState, WM.rowW - 12, 26);
   const textW = action.x - 72 - 12;
-  text('Name', row, widget.name, 72, 14, 13, COLORS.text, 'semibold', textW);
-  text('Summary', row, widget.summary, 72, 36, 11, COLORS.secondary, 'regular', textW);
-  let mx = 72;
-  if (widget.official) { ellipse('Official', row, 72, 61, 7, COLORS.success); mx = 84; }
-  text('Meta', row, `${widget.author} · v${widget.version} · ${widget.commands} command${widget.commands === 1 ? '' : 's'}`,
-       mx, 58, 10, COLORS.muted, 'regular', textW - (mx - 72));
+  text('Name', row, widget.name, 72, 22, 13, COLORS.text, 'semibold', textW);
+  text('Summary', row, widget.summary, 72, 44, 11, COLORS.secondary, 'regular', textW);
   return row;
 }
 
@@ -3866,7 +3862,7 @@ function wmRowStates(flow, x) {
   const samples = [
     ['Install', { ...WM_CATALOG[7] }, {}],
     ['Installed', { ...WM_CATALOG[0] }, {}],
-    ['Installed · hover → Remove', { ...WM_CATALOG[0] }, { hover: true }],
+    ['Installed · hover keeps status', { ...WM_CATALOG[0] }, { hover: true }],
     ['Update available', { ...WM_CATALOG[1] }, {}],
     ['Community (no official dot)', { ...WM_CATALOG[2] }, {}]
   ];
@@ -3877,7 +3873,7 @@ function wmRowStates(flow, x) {
     row.name = 'State / ' + label;
   });
   const y = 96 + samples.length * (WM.rowH + 38);
-  text('Anatomy', strip, 'Row 400 × 84, radius 9. Tile 48 at (12, 18) with a two-letter monogram, or the widget icon. Name 13 semibold at (72, 14). Summary 11 at (72, 36), one line, truncates. Meta 10 at (72, 58): official dot · author · version · command count. Action at the right edge, 12 pt inset.',
+  text('Anatomy', strip, 'Row 400 × 84, radius 9. Tile 48 at (12, 18) with a two-letter monogram, or the widget icon. Name 13 semibold at (72, 22). Summary 11 at (72, 44), one line, truncates. No publisher, version or command-count metadata. Action at the right edge, 12 pt inset.',
        24, y, 11, COLORS.muted, 'regular', WM.rowW).textAutoResize = 'HEIGHT';
   return strip;
 }
@@ -3885,7 +3881,7 @@ function wmRowStates(flow, x) {
 function createWidgetMarketRedesign(x) {
   const gap = 120;
   const scenes = [['01 / Widget Market / Marketplace', 'marketplace', {}, 'Default: every published widget. Install, Installed and Update sit in the same slot.'],
-                  ['02 / Widget Market / Installed', 'installed', { hoverIndex: 0 }, 'Installed filter. Hovering an installed row swaps "Installed" for a quiet Remove.'],
+                  ['02 / Widget Market / Installed', 'installed', { hoverIndex: 0 }, 'Installed filter. Hover keeps Installed; click the card to manage the Widget.'],
                   ['03 / Widget Market / Updates', 'updates', {}, 'Updates filter: only rows with a newer version; one tap updates.'],
                   ['04 / Widget Market / Search · Empty', 'marketplace', { query: 'caption' }, 'A query with no match: the list explains itself and offers a way back.']];
   const flow = frame(WIDGET_MARKET_REDESIGN_FRAME, x, 0, (WM.w + gap) * scenes.length + WM.rowW + 48, WM.h + 90, null, 0);
@@ -3899,11 +3895,53 @@ function createWidgetMarketRedesign(x) {
   return flow;
 }
 
+function removeWidgetMarketMetadata(root) {
+  let removed = 0;
+  const rows = root.findAll(node => node.type === 'FRAME' &&
+    (node.name.startsWith('Widget / ') || node.name.startsWith('State / ')) &&
+    node.children.some(child => child.name === 'Name'));
+  for (const row of rows) {
+    const metadata = row.children.filter(child => child.name === 'Meta' || child.name === 'Official');
+    const hadMeta = metadata.some(child => child.name === 'Meta');
+    for (const node of metadata) { node.remove(); removed++; }
+    // Only recenter labels that still use the generator's original positions.
+    // Hand-positioned labels and all other manual changes are preserved.
+    if (hadMeta) {
+      const name = row.children.find(child => child.name === 'Name');
+      const summary = row.children.find(child => child.name === 'Summary');
+      if (name && name.y === 14) name.y = 22;
+      if (summary && summary.y === 36) summary.y = 44;
+    }
+  }
+  for (const node of root.findAll(child => child.type === 'TEXT' && child.name === 'Publisher and Version')) {
+    const parent = node.parent;
+    node.remove(); removed++;
+    const status = parent.children.find(child => child.name === 'Install Status');
+    if (status && status.y === 62) status.y = 40;
+  }
+  return removed;
+}
+
+async function hideWidgetMarketVersionInfo() {
+  const boards = figma.currentPage.children.filter(child =>
+    child.name === WIDGET_MARKET_REDESIGN_FRAME || child.name === WIDGET_MARKET_DETAILS_FRAME);
+  let removed = 0;
+  for (const board of boards) removed += removeWidgetMarketMetadata(board);
+  if (boards.length) {
+    figma.currentPage.selection = boards;
+    figma.viewport.scrollAndZoomIntoView(boards);
+  }
+  figma.ui.postMessage({ message: boards.length
+    ? `Removed ${removed} Widget metadata layers; other manual edits preserved.`
+    : 'No Widget Market boards found. Generate Widget Market Redesign or Widget Details + Loading first.' });
+}
+
 async function generateWidgetMarketRedesign() {
   await loadFonts();
   await createStyles();
   const existing = figma.currentPage.children.find(child => child.name === WIDGET_MARKET_REDESIGN_FRAME);
   if (existing) {
+    removeWidgetMarketMetadata(existing);
     figma.currentPage.selection = [existing];
     figma.viewport.scrollAndZoomIntoView([existing]);
     figma.ui.postMessage({ message: 'Widget Market Redesign already exists; selected it (manual edits preserved).' });
@@ -3916,6 +3954,784 @@ async function generateWidgetMarketRedesign() {
   figma.viewport.scrollAndZoomIntoView([flow]);
   figma.ui.postMessage({ message: 'Created Widget Market Redesign: marketplace, installed, updates, empty search, row states.' });
   figma.notify('Widget Market Redesign created');
+}
+
+// Review-only billing storyboards. No checkout URL, wallet or app is modified.
+const PRICING_FLOW_FRAME = 'Pricing & Credits / Purchase + Usage Flow / Refined';
+const BILLING = { w: 640, h: 600, gap: 48, columns: 4, surface: '#0B0C0F' };
+// Redesign - preserve: Glance palette/type stay intact. Alignment follows the
+// screen's job, rather than one left-aligned template for every state.
+// DESIGN_VARIANCE 4 / MOTION_INTENSITY 2 / VISUAL_DENSITY 3.
+const billingContexts = new Map();
+
+function billingLayout(spec) {
+  if (spec.id === 'login' || spec.id === 'loginPro') return 'auth';
+  if (spec.id === 'plans') return 'offer';
+  if (spec.id.startsWith('topup')) return 'topup';
+  if (spec.id.startsWith('ledger')) return 'ledger';
+  if (/^(pro|renewedPro|devices|devicesFull|deviceReleased|updateExpired)$/.test(spec.id)) return 'management';
+  if (/^(wallet|resumedWallet|spentWallet)/.test(spec.id)) return 'wallet';
+  if (/^(orderPro|renewOrder|renewCheckout|checkoutPro|creditsCheckout)/.test(spec.id)) return 'receipt';
+  if (/^(quote|resume\d|cancelTask)/.test(spec.id)) return 'task';
+  return 'center';
+}
+
+function billingContext(node) {
+  for (let current = node; current; current = current.parent) {
+    if (billingContexts.has(current.id)) return billingContexts.get(current.id);
+  }
+  return {};
+}
+
+function billingText(parent, name, value, size = 13, color = COLORS.text, weight = 'regular', width = 544) {
+  if (String(value).split(' · ').length > 2) value = String(value).replaceAll(' · ', '，');
+  const node = text(name, parent, value, 0, 0, size, color, weight, width);
+  node.textAutoResize = 'HEIGHT';
+  node.lineHeight = { unit: 'PIXELS', value: Math.ceil(size * 1.55) };
+  node.layoutSizingHorizontal = 'FIXED';
+  node.layoutSizingVertical = 'HUG';
+  if (billingContext(parent).centerText) node.textAlignHorizontal = 'CENTER';
+  return node;
+}
+
+function billingStack(parent, name, x, y, width, gap = 12, padding = 0, color = null) {
+  const node = frame(name, x, y, width, 1, color, color ? 12 : 0);
+  node.layoutMode = 'VERTICAL';
+  node.primaryAxisSizingMode = 'AUTO';
+  node.counterAxisSizingMode = 'FIXED';
+  node.itemSpacing = gap;
+  node.paddingTop = node.paddingBottom = padding;
+  node.paddingLeft = node.paddingRight = padding;
+  node.clipsContent = false;
+  parent.appendChild(node);
+  return node;
+}
+
+function billingCard(parent, title, detail, options = {}) {
+  const context = billingContext(parent);
+  const width = parent.width - (parent.paddingLeft || 0) - (parent.paddingRight || 0);
+  const elevated = context.family === 'management' && options.accent;
+  const padding = elevated ? 16 : 0;
+  const card = billingStack(parent, 'Card / ' + title, 0, 0, width, 6, padding,
+    elevated ? COLORS.surface : null);
+  if (elevated) historyStroke(card, '#FFFFFF', .12);
+  const innerWidth = width - padding * 2;
+  if (context.family === 'offer' && options.large) {
+    billingText(card, 'Plan Name', 'Glance Pro', 15, COLORS.text, 'semibold', innerWidth);
+    billingText(card, 'Card Title', '¥99', 44, COLORS.text, 'semibold', innerWidth);
+  } else billingText(card, 'Card Title', title, options.large ? context.family === 'wallet' ? 48 : 32 : 14,
+    options.success ? COLORS.success : options.accent ? COLORS.accent : COLORS.text, 'semibold', innerWidth);
+  if (detail) billingText(card, 'Card Detail', detail, 12, COLORS.secondary, 'regular', innerWidth);
+  return card;
+}
+
+function billingRow(parent, label, value, tint = COLORS.text) {
+  const context = billingContext(parent);
+  const emphasized = /^(本次支付|应付金额|本次费用)$/.test(label);
+  const row = frame('Row / ' + label, 0, 0, parent.width, emphasized ? 38 : context.family === 'ledger' ? 36 : 30, null);
+  row.layoutMode = 'HORIZONTAL';
+  row.primaryAxisSizingMode = 'FIXED';
+  row.counterAxisSizingMode = 'FIXED';
+  row.counterAxisAlignItems = 'CENTER';
+  row.primaryAxisAlignItems = 'SPACE_BETWEEN';
+  parent.appendChild(row);
+  const labelNode = billingText(row, 'Label', label, 12, COLORS.secondary, 'regular', Math.round(row.width * .57));
+  labelNode.textAlignHorizontal = 'LEFT';
+  const val = billingText(row, 'Value', value, emphasized ? 20 : 12, tint, 'medium', Math.round(row.width * .40));
+  val.textAlignHorizontal = 'RIGHT';
+  return row;
+}
+
+function billingAction(parent, label, x, y, width, primary = true, name = label) {
+  const action = frame('Action / ' + name, x, y, width, 40,
+    primary ? COLORS.accent : COLORS.surface, 8);
+  action.layoutMode = 'HORIZONTAL';
+  action.primaryAxisAlignItems = 'CENTER';
+  action.counterAxisAlignItems = 'CENTER';
+  action.primaryAxisSizingMode = action.counterAxisSizingMode = 'FIXED';
+  parent.appendChild(action);
+  if (!primary) historyStroke(action, '#FFFFFF', .12);
+  billingText(action, 'Label', label, 13, primary ? '#21130D' : COLORS.text, 'semibold', width - 16).textAlignHorizontal = 'CENTER';
+  return action;
+}
+
+function billingWindow(board, spec, x, y) {
+  const screen = frame('Screen / ' + spec.id + ' / ' + spec.title, x, y, BILLING.w, BILLING.h, BILLING.surface, 14);
+  board.appendChild(screen);
+  historyStroke(screen, '#FFFFFF', .12);
+  createBareSystemControls(screen);
+  text('Window Title', screen, spec.browser ? 'Glance · 安全结账' : 'Glance · 账户',
+    166, 14, 12, COLORS.secondary, 'medium', 308, 'CENTER');
+  rect('Titlebar Divider', screen, 0, 47, 640, 1, '#FFFFFF').opacity = .07;
+  const family = billingLayout(spec);
+  const centered = !['management', 'task', 'ledger'].includes(family);
+  const focus = family === 'center';
+  const width = family === 'auth' ? 360 : ['center', 'offer', 'receipt'].includes(family) ? 432 : 512;
+  const left = (640 - width) / 2;
+  const back = billingAction(screen, '‹  返回', 24, 60, 80, false, 'Back');
+  back.fills = []; back.strokes = [];
+  if (!spec.back) back.visible = false;
+  if (focus) {
+    const good = /^(paidPro|renewPaid|trial$|creditsPaid|freeCredits|taskDone|trialDone|taskRefund|trialRefund)/.test(spec.id);
+    const caution = /^(insufficient|paymentFailed|trialExpired|cancelled)/.test(spec.id);
+    const mark = frame('Status Mark', 296, 86, 48, 48,
+      good ? '#1A2B23' : caution ? '#30241D' : COLORS.surface, 24);
+    screen.appendChild(mark);
+    historyIcon(mark, good ? 'check' : caution ? 'warning' : spec.id.startsWith('email') ? 'file' : spec.id === 'free' ? 'focus' : 'tasks',
+      13, 13, 22, good ? COLORS.success : caution ? COLORS.accent : COLORS.secondary);
+  }
+  const headingY = focus ? 152 : 110;
+  text('Heading', screen, spec.title, centered ? 64 : left, headingY, 25, COLORS.text, 'semibold', centered ? 512 : width,
+    centered ? 'CENTER' : 'LEFT');
+  const subtitle = text('Subtitle', screen, spec.subtitle || '', centered ? 84 : left, headingY + 40, 12, COLORS.secondary, 'regular', centered ? 472 : width,
+    centered ? 'CENTER' : 'LEFT');
+  subtitle.textAutoResize = 'HEIGHT'; subtitle.lineHeight = { unit: 'PIXELS', value: 19 };
+  const body = billingStack(screen, 'Content', left, focus ? 230 : 191, width, 10);
+  billingContexts.set(body.id, { family, centerText: centered && family !== 'receipt' });
+  const footer = text('Footer Note', screen, spec.note || '', 40, 578, 11,
+    '#AAA4A0', 'regular', 560, centered ? 'CENTER' : 'LEFT');
+  footer.textAutoResize = 'HEIGHT'; footer.lineHeight = { unit: 'PIXELS', value: 17 };
+  return { screen, body, back, actions: [], family, centered };
+}
+
+function billingAuth(ref, spec, links) {
+  const { body } = ref;
+  body.y = 216; body.itemSpacing = 12;
+  const google = billingAction(body, spec.actions[0][0], 0, 0, 360, false);
+  links.push([google, spec.actions[0][1]]); ref.actions.push(google);
+  billingText(body, 'Email Separator', '或使用邮箱', 11, COLORS.secondary, 'regular', 360);
+  const inputGroup = billingStack(body, 'Email Field', 0, 0, 360, 6);
+  billingText(inputGroup, 'Email Label', '邮箱地址', 12, COLORS.text, 'medium', 360).textAlignHorizontal = 'LEFT';
+  const input = frame('Input / Email', 0, 0, 360, 44, COLORS.surface, 8);
+  inputGroup.appendChild(input); historyStroke(input, '#FFFFFF', .18);
+  text('Email Placeholder', input, 'you@example.com', 14, 12, 13, COLORS.secondary, 'regular', 332);
+  const email = billingAction(body, spec.actions[1][0], 0, 0, 360, true);
+  links.push([email, spec.actions[1][1]]); ref.actions.push(email);
+  billingText(body, 'Login Helper', spec.id === 'loginPro' ? '登录后继续确认订单，不会立即扣款。' : '首次注册赠送 20 点。', 12, COLORS.secondary, 'regular', 360);
+}
+
+function billingFooterActions(ref, spec, links) {
+  const centered = ref.centered;
+  spec.actions.forEach(([label, target], index) => {
+    const primary = index === 0;
+    const paired = spec.actions.length > 1;
+    // Focused decisions have a single central CTA and a quiet secondary link.
+    // Structured desktop forms keep Cancel left, primary action on the right.
+    const width = centered ? primary ? 320 : 304 : paired ? primary ? 272 : 224 : 272;
+    const x = centered ? (640 - width) / 2 : primary ? 640 - 64 - width : 64;
+    const y = centered ? primary ? 500 : 544 : 512;
+    const action = billingAction(ref.screen, label, x, y, width, primary);
+    if (centered && !primary) {
+      action.resize(width, 28); action.fills = []; action.strokes = [];
+      action.findOne(child => child.name === 'Label').fills = [fill(COLORS.secondary)];
+    }
+    ref.actions.push(action); if (target) links.push([action, target]);
+  });
+}
+
+async function generatePricingFlows() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === PRICING_FLOW_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Pricing + Credits Flow already exists; selected it. Manual edits preserved.' });
+    return;
+  }
+  const specs = [];
+  const add = (id, group, title, subtitle, render, actions, extra = {}) => {
+    specs.push({ id, group, title, subtitle, render, actions, section: group, ...extra });
+  };
+  const card = billingCard, row = billingRow;
+  const hint = (p, value) => billingText(p, 'Explanation', value, 12, COLORS.secondary, 'regular', p.width);
+  const balance = (p, amount, detail = '长期有效 · 同一账户的设备共用') => card(p, amount + ' 点', detail, { large: true, accent: true });
+  const account = (p, name, email) => { card(p, name, email); };
+
+  add('free', '01 / 账户与试用', '让 Glance 成为日常工具', '基础预览免费使用，随时体验完整本地工具。', p => {
+    card(p, '免费版', '基础图片、视频与文件预览。', { accent: true });
+    card(p, '先体验，再决定', '14 天完整 Pro 试用；试用结束后继续使用基础预览。');
+    hint(p, '云端 Widget 独立按次计费，免费版也可以充值使用。');
+  }, [['开始 14 天试用', 'login'], ['查看 Pro', 'plans']], { note: '基础预览无需登录 · 登录后领取 20 点新用户赠送' });
+
+  add('login', '01 / 账户与试用', '登录 Glance', '同步软件授权、设备和点数钱包。', p => {
+    card(p, '欢迎使用 Glance', '首次注册赠送 20 点；每个账户仅领取一次。', { accent: true });
+    const email = card(p, '邮箱地址', 'you@example.com');
+    email.name = 'Input / Email';
+    hint(p, '通过邮件中的安全链接登录。已有账户的点数与任务会自动恢复。');
+  }, [['使用 Google 登录', 'trial'], ['发送邮箱登录链接', 'emailSent']], { back: 'free', note: '继续即表示你同意服务条款与隐私政策。' });
+
+  add('emailSent', '01 / 账户与试用', '查看你的邮箱', '登录链接已发送至 you@example.com。', p => {
+    card(p, '打开邮件中的登录链接', '完成验证后返回 Glance，继续本次操作。', { accent: true });
+    hint(p, '没有收到？检查垃圾邮件，或确认邮箱地址是否正确。');
+  }, [['重新发送', 'emailSent'], ['更换邮箱', 'login']], { back: 'login', note: '验证成功后自动返回 Glance。', extraLinks: [['邮件验证完成 →', 'trial']] });
+
+  add('trial', '01 / 账户与试用', 'Pro 试用已开启', '还有 14 天，可以完整体验本地效率工具。', p => {
+    card(p, 'Glance Pro · 试用中', '无需绑定支付方式，到期不会自动扣款。', { accent: true });
+    row(p, '试用点数', '20 点');
+    row(p, '本地 Pro 功能', '不限次数 · 不扣点');
+    row(p, '设备数量', '同一用户 2 台 Mac');
+    hint(p, '图片对比、批量处理、压缩转换、OCR 与视频增强操作。');
+  }, [['¥99 买断 Pro', 'orderPro'], ['继续体验', 'quote20']], { back: 'free', note: '首发前 30 天 ¥99，之后 ¥149。', extraLinks: [['试用到期 →', 'trialExpired']] });
+
+  add('trialExpired', '01 / 账户与试用', '试用结束，文件依然可用', '升级 Pro 继续使用完整本地工具，也可以保留免费版。', p => {
+    card(p, '完整本地工具已暂停', '图片对比、批量处理等 Pro 操作需要软件授权。');
+    card(p, '基础预览和钱包继续可用', '已有文件、结果与导出不受影响；云端 Widget 仍按点数使用。', { accent: true });
+    row(p, '点数余额', '20 点 · 长期有效');
+  }, [['¥99 买断 Pro', 'orderPro'], ['继续使用免费版', 'free']], { back: 'free' });
+
+  add('plans', '02 / 软件购买', '一次购买，长期使用', '本地效率工具买断，云端任务按需充值。', p => {
+    card(p, 'Glance Pro  ¥99', '首发价 · 前 30 天有效 · 正式价 ¥149', { large: true, accent: true });
+    row(p, '完整本地工具 / 2 台 Mac', '包含');
+    row(p, '首次功能更新', '12 个月');
+    row(p, '购买赠送', '100 点 · 仅赠送一次');
+    hint(p, '更新期结束，已有版本继续使用。以后可自愿 ¥59 续购一年功能更新，不自动续费。');
+  }, [['¥99 买断 Pro', 'loginPro'], ['免费试用 14 天', 'login']], { back: 'free' });
+
+  add('loginPro', '02 / 软件购买', '登录后购买 Pro', '授权与赠送点数会绑定到你的 Glance 账户。', p => {
+    card(p, 'Glance Pro · ¥99', '首发买断价 · 2 台 Mac · 购买赠送 100 点', { accent: true });
+    card(p, '邮箱地址', 'you@example.com').name = 'Input / Email';
+    hint(p, '登录后回到确认订单；软件授权与点数将保留在同一账户中。');
+  }, [['使用 Google 继续', 'orderPro'], ['发送邮箱登录链接', 'emailSentPro']], { back: 'plans', note: '继续即表示你同意服务条款与隐私政策。' });
+  add('emailSentPro', '02 / 软件购买', '查看你的邮箱', '登录链接已发送至 you@example.com。', p => {
+    card(p, '验证后继续购买 Pro', '完成邮件验证后返回 Glance 的订单确认页。', { accent: true });
+    hint(p, '验证邮箱不会扣款；购买前仍需要你确认订单并完成支付。');
+  }, [['重新发送', 'emailSentPro'], ['更换邮箱', 'loginPro']], { back: 'loginPro', note: '登录验证成功后自动返回原来的购买流程。', extraLinks: [['邮件验证完成 →', 'orderPro']] });
+
+  const orderBody = (p, renewal = false) => {
+    account(p, 'Lin · 已登录', 'lin@example.com');
+    row(p, '商品', renewal ? 'Pro 功能更新 · 1 年' : 'Glance Pro · 买断');
+    row(p, renewal ? '更新时长' : '包含', renewal ? '付款当天起 12 个月' : '2 台 Mac · 12 个月更新');
+    row(p, renewal ? '附赠点数' : '购买赠送', renewal ? '无' : '100 点');
+    row(p, '本次支付', renewal ? '¥59' : '¥99', COLORS.accent);
+    hint(p, '在浏览器完成支付后，软件授权自动同步到此账户。');
+  };
+  add('orderPro', '02 / 软件购买', '确认购买 Pro', '一次付费，无自动续费。', p => orderBody(p),
+    [['前往浏览器支付 ¥99', 'checkoutPro'], ['暂不购买', 'plans']], { back: 'plans', note: '点数按云端任务消耗；买断授权不包含无限云端用量。' });
+
+  const checkoutBody = (p, item, amount, detail) => {
+    card(p, item, detail, { accent: true });
+    row(p, '支付账户', 'lin@example.com');
+    row(p, '订单状态', '待支付');
+    row(p, '应付金额', amount, COLORS.accent);
+    hint(p, '完成支付后返回 Glance。支付方式在安全收银台中选择。');
+  };
+  add('checkoutPro', '02 / 软件购买', '完成你的购买', 'Glance 官方结账', p => checkoutBody(p, 'Glance Pro', '¥99', '买断使用权 · 2 台 Mac · 赠送 100 点'),
+    [['继续支付 ¥99', 'paidPro'], ['取消订单', 'cancelled']], { browser: true, back: 'orderPro', note: '设计示意：收银台与支付方式以最终接入渠道为准。', extraLinks: [['支付失败 →', 'paymentFailed'], ['到账确认中 →', 'paymentPending']] });
+
+  add('paidPro', '02 / 软件购买', '支付成功，Pro 已就绪', '授权与赠送点数已同步到 lin@example.com。', p => {
+    card(p, 'Glance Pro · 已购买', '一次购买，长期使用已获得的版本。', { success: true });
+    row(p, '本次支付', '¥99'); row(p, '购买赠送', '+100 点', COLORS.success);
+    row(p, '当前余额', '120 点'); hint(p, '如果没有自动返回，请点击下方按钮打开 Glance。');
+  }, [['打开 Glance', 'pro'], ['查看订单', 'pro']], { browser: true, note: '支付确认后再显示成功；返回应用不需要重新登录。' });
+
+  const proBody = (p, renewed = false) => {
+    card(p, 'Glance Pro · 已激活', renewed ? '功能更新已续购，当前授权继续有效。' : '买断授权 · lin@example.com', { accent: true });
+    row(p, '功能更新', renewed ? '续费日起 12 个月' : '购买日起 12 个月');
+    row(p, '已激活设备', '1 / 2 台 Mac'); row(p, '点数余额', '120 点');
+    hint(p, '已有版本长期可用；本地操作不限次数，不消耗点数。');
+  };
+  add('pro', '03 / 授权管理', '账户与授权', '你的软件授权和点数分别管理。', p => proBody(p),
+    [['打开点数钱包', 'wallet120'], ['管理设备', 'devices']], { extraLinks: [['更新期已结束 →', 'updateExpired']] });
+
+  add('devices', '03 / 授权管理', '你的 Mac', '同一用户可同时激活 2 台 Mac，可自行释放设备。', p => {
+    card(p, 'MacBook Pro · 当前设备', '已激活 · 最近使用：今天', { accent: true });
+    card(p, '还有 1 个设备名额', '在另一台 Mac 下载 Glance，登录同一账户即可激活。');
+    hint(p, '换机时可自行释放旧设备，不会删除文件或点数。');
+  }, [['返回账户', 'pro']], { back: 'pro', extraLinks: [['已激活两台设备 →', 'devicesFull']] });
+  add('devicesFull', '03 / 授权管理', '设备名额已用满', '先释放一台旧设备，再激活新的 Mac。', p => {
+    card(p, 'MacBook Pro · 当前设备', '已激活 · 最近使用：今天', { accent: true });
+    card(p, 'Mac mini', '已激活 · 最近使用：昨天');
+    hint(p, '释放设备不删除该设备上的文件，也不影响账户里的点数。');
+  }, [['释放 Mac mini', 'deviceReleased'], ['返回账户', 'pro']], { back: 'devices' });
+  add('deviceReleased', '03 / 授权管理', '已释放一台设备', '现在可以在另一台 Mac 登录 Glance。', p => {
+    card(p, 'MacBook Pro · 当前设备', '已激活', { accent: true }); row(p, '设备名额', '1 / 2 台');
+    hint(p, '原 Mac mini 上的本地文件保留，Pro 功能需要重新激活后使用。');
+  }, [['完成', 'pro']], { back: 'pro' });
+  add('updateExpired', '03 / 授权管理', '继续使用，更新由你决定', '功能更新期已结束，已获得的版本仍可使用。', p => {
+    card(p, 'Glance Pro · 买断授权有效', '本地 Pro 功能、现有文件和点数钱包照常使用。', { accent: true });
+    card(p, '再获得一年功能更新  ¥59', '从续费当天起计算 12 个月，不补收之前的费用。');
+    hint(p, '已购版本的维护与安全修复不要求购买功能更新。');
+  }, [['¥59 续购一年更新', 'renewOrder'], ['继续使用当前版本', 'pro']], { back: 'pro' });
+  add('renewOrder', '03 / 授权管理', '续购一年功能更新', '自愿购买，不自动续费。', p => orderBody(p, true),
+    [['前往浏览器支付 ¥59', 'renewCheckout'], ['暂不续购', 'updateExpired']], { back: 'updateExpired' });
+  add('renewCheckout', '03 / 授权管理', '续购功能更新', 'Glance 官方结账', p => checkoutBody(p, 'Pro 功能更新 · 1 年', '¥59', '从付款当天起计算 · 保留买断授权'),
+    [['继续支付 ¥59', 'renewPaid'], ['返回 Glance', 'updateExpired']], { browser: true, back: 'renewOrder' });
+  add('renewPaid', '03 / 授权管理', '更新期已延长', '授权已同步，可以返回 Glance 获取新功能。', p => {
+    card(p, '新增 12 个月功能更新', '从本次续费当天开始计算。', { success: true });
+    row(p, '本次支付', '¥59'); row(p, '附赠点数', '无'); hint(p, '软件买断授权和已有点数保持有效。');
+  }, [['打开 Glance', 'renewedPro']], { browser: true });
+  add('renewedPro', '03 / 授权管理', '账户与授权', '一年功能更新已续购。', p => proBody(p, true),
+    [['打开点数钱包', 'wallet120'], ['管理设备', 'devices']], { back: 'pro' });
+
+  // Each selectable package has a matching order, success and balance specimen.
+  const wallet = (amount, origin = 'pro') => add('wallet' + amount, '04 / 点数钱包', '点数钱包', '只为你使用的云端任务付费。', p => {
+    balance(p, amount);
+    card(p, '充值点数长期有效', '软件授权与点数独立。免费版也可以充值、使用 Widget。');
+    row(p, '换算', '¥1 = 10 点'); row(p, '本地操作', '不消耗点数');
+  }, [['充值点数', amount === 20 ? 'topup20_300' : amount === 120 ? 'topup120_300' : null], ['消费记录', 'ledger' + amount]], { back: amount === 20 || amount === 120 ? origin : null });
+  wallet(120); wallet(20, 'trial');
+  const topup = (before, pack, afterTarget) => {
+    const id = 'topup' + before + '_' + pack;
+    add(id, before === 2 ? '06 / 余额不足与恢复' : '04 / 点数钱包', '按需充值，没有订阅', '充值点数长期有效，所有云端 Widget 共用。', (p, refs, register) => {
+      row(p, '当前余额', before + ' 点');
+      const optionWidth = (p.width - 24) / 3;
+      const packs = frame('Recharge Packages', 0, 0, p.width, 124, null);
+      packs.layoutMode = 'HORIZONTAL'; packs.itemSpacing = 12;
+      packs.primaryAxisSizingMode = packs.counterAxisSizingMode = 'FIXED';
+      p.appendChild(packs);
+      [100, 300, 1000].forEach(value => {
+        const option = billingStack(packs, 'Package / ' + value, 0, 0, optionWidth, 8, 16,
+          value === pack ? COLORS.accentSoft : COLORS.surface);
+        option.resize(optionWidth, 124); option.primaryAxisSizingMode = 'FIXED';
+        option.primaryAxisAlignItems = 'CENTER'; option.counterAxisAlignItems = 'CENTER';
+        historyStroke(option, value === pack ? COLORS.accent : '#FFFFFF', value === pack ? .7 : .1);
+        billingText(option, 'Points', value.toLocaleString('en-US') + ' 点', 23,
+          value === pack ? COLORS.accent : COLORS.text, 'semibold', optionWidth - 32);
+        billingText(option, 'Price', '¥' + (value / 10), 14, COLORS.secondary, 'medium', optionWidth - 32);
+        register(option, 'topup' + before + '_' + value);
+      });
+      row(p, '本次充值', '+' + pack + ' 点', COLORS.accent);
+      row(p, '到账后余额', (before + pack) + ' 点');
+      hint(p, before === 2 ? '付款成功后返回原任务；图片与输入会保留，不会自动提交。' : '按需购买，无自动续费。点数仅在提交云端任务时扣除。');
+    }, [['前往浏览器支付 ¥' + (pack / 10), 'creditsCheckout' + before + '_' + pack], ['暂不充值', before === 2 ? 'insufficient' : 'wallet' + before]],
+    { back: before === 2 ? 'insufficient' : 'wallet' + before });
+    add('creditsCheckout' + before + '_' + pack, before === 2 ? '06 / 余额不足与恢复' : '04 / 点数钱包', '充值 ' + pack + ' 点', 'Glance 官方结账', p => {
+      checkoutBody(p, 'Glance 点数 · ' + pack + ' 点', '¥' + (pack / 10), '长期有效 · 到账后余额 ' + (before + pack) + ' 点');
+    }, [['继续支付 ¥' + (pack / 10), 'creditsPaid' + before + '_' + pack], ['返回 Glance', id]], { browser: true, back: id });
+    add('creditsPaid' + before + '_' + pack, before === 2 ? '06 / 余额不足与恢复' : '04 / 点数钱包', '充值成功，已到账', '点数已同步到 lin@example.com。', p => {
+      card(p, '+' + pack + ' 点', '已完成充值 · ¥' + (pack / 10), { large: true, success: true });
+      row(p, '充值前余额', before + ' 点'); row(p, '当前余额', (before + pack) + ' 点');
+      hint(p, before === 2 ? '返回原任务后，再确认费用并提交。' : '返回 Glance，即可使用云端 Widget。');
+    }, [[before === 2 ? '返回原任务' : '打开点数钱包', afterTarget]], { browser: true });
+  };
+  [100, 300, 1000].forEach(pack => {
+    topup(120, pack, 'wallet' + (120 + pack)); wallet(120 + pack);
+    add('ledger' + (120 + pack), '04 / 点数钱包', '点数记录', '每一次到账与消耗，都有记录。', p => {
+      balance(p, 120 + pack);
+      row(p, '今天 · 点数充值 ¥' + pack / 10, '+' + pack, COLORS.success);
+      row(p, '今天 · 购买 Pro 赠送', '+100', COLORS.success);
+      row(p, '今天 · 新用户赠送', '+20', COLORS.success);
+    }, [['返回钱包', 'wallet' + (120 + pack)]], { back: 'wallet' + (120 + pack) });
+  });
+  // Free accounts use the same packages without purchasing the software first.
+  [100, 300, 1000].forEach(pack => topup(20, pack, 'freeCredits' + pack));
+  [100, 300, 1000].forEach(pack => add('freeCredits' + pack, '04 / 点数钱包', '点数已准备好', '免费版也可以直接使用云端 Widget。', p => {
+    balance(p, 20 + pack); row(p, '软件授权', '免费版');
+    hint(p, '本次充值不会购买或开启 Pro；点数仅用于云端任务。');
+  }, [['返回账户', 'free']], { back: 'free' }));
+  [12, 20, 120, 412].forEach(amount => add('ledger' + amount, '04 / 点数钱包', '点数记录', '赠送、充值与消费分别标记。', p => {
+    balance(p, amount);
+    if (amount === 120 || amount === 412) row(p, '今天 · 购买 Pro 赠送', '+100', COLORS.success);
+    if (amount === 412) row(p, '今天 · 点数充值 ¥30', '+300', COLORS.success);
+    if (amount === 412 || amount === 12) row(p, '今天 · 高清放大', '−8');
+    row(p, '今天 · 新用户赠送', '+20', COLORS.success);
+  }, [['返回钱包', 'wallet' + amount]], { back: 'wallet' + amount }));
+  add('ledger', '05 / Widget 扣点与退点', '点数记录', '任务失败退回的点数，会单独显示。', p => {
+    balance(p, 420);
+    row(p, '高清放大 · 系统失败退点', '+8', COLORS.success);
+    row(p, '高清放大 · 任务提交', '−8');
+    row(p, '点数充值 · ¥30', '+300', COLORS.success);
+    row(p, '购买 Pro / 新用户赠送', '+120', COLORS.success);
+  }, [['返回钱包', 'wallet420']], { back: 'wallet420' });
+
+  const quote = (before, target) => add('quote' + before, '05 / Widget 扣点与退点', '提交高清放大任务', '使用当前图片生成高清版本。', p => {
+    card(p, '高清放大', '输入：portrait.png · 输出：高清图片');
+    row(p, '本次费用', '8 点', COLORS.accent); row(p, '当前余额', before + ' 点');
+    row(p, '提交后余额', (before - 8) + ' 点');
+    hint(p, '确认提交后扣点。系统失败或超时且无可用结果，自动退回点数。');
+  }, [['确认提交 · 8 点', target], ['取消', before === 20 ? 'trial' : 'wallet' + before]], { back: before === 20 ? 'trial' : 'wallet' + before, note: '尚未开始执行的任务可取消退点；开始执行后取消不退点。' });
+  quote(420, 'running'); quote(20, 'runningTrial');
+  const taskState = (id, before, state, target) => add(id, '05 / Widget 扣点与退点',
+    state === 'running' ? '高清放大进行中' : state === 'refund' ? '任务失败，8 点已退回' : '高清图片已生成',
+    state === 'running' ? '可以关闭窗口，任务会在后台继续。' : state === 'refund' ? '处理服务暂时不可用，没有产生可用结果。' : '结果已保留，可以返回图片窗口查看。', p => {
+      card(p, state === 'running' ? '正在处理 portrait.png' : state === 'refund' ? '点数已自动退回钱包' : 'portrait_upscaled.png',
+        state === 'running' ? '已扣 8 点 · 内部重试不重复扣费' : state === 'refund' ? '原扣费与退点均可在记录中查看。' : '本次消耗 8 点', { success: state !== 'running', accent: state === 'running' });
+      row(p, '当前余额', (state === 'refund' ? before : before - 8) + ' 点');
+      hint(p, state === 'running' ? '任务开始执行后，主动取消不退点。' : state === 'refund' ? '再次提交会作为新任务，重新确认费用。' : '本地查看、比较与导出结果不再扣点。');
+    }, state === 'running' ? [['查看完成状态', target + 'Done'], ['查看失败退点', target + 'Refund']] :
+      state === 'refund' ? [['重新提交 · 8 点', id === 'trialRefund' ? 'quote20' : 'quote420'], ['查看点数记录', id === 'trialRefund' ? 'ledger20' : 'ledger']] : [['完成', id === 'trialDone' ? 'wallet12' : 'wallet412']],
+    { note: state === 'running' ? '你可以继续浏览其他图片，任务会在后台运行。' : '每笔费用与退点都可以在点数记录中查看。' });
+  taskState('running', 420, 'running', 'task'); taskState('taskDone', 420, 'success'); taskState('taskRefund', 420, 'refund');
+  taskState('runningTrial', 20, 'running', 'trial'); taskState('trialDone', 20, 'success'); taskState('trialRefund', 20, 'refund');
+  for (const [id, prefix, amount] of [['running', 'task', 420], ['runningTrial', 'trial', 20]]) {
+    const spec = specs.find(item => item.id === id);
+    spec.actions = [['返回图片', null], ['取消任务', 'cancelTask' + amount]];
+    spec.extraLinks = [['任务完成 →', prefix + 'Done'], ['失败自动退点 →', prefix + 'Refund']];
+    add('cancelTask' + amount, '05 / Widget 扣点与退点', '取消正在执行的任务？', '此任务已经开始执行，取消后不会退回 8 点。', p => {
+      card(p, '高清放大 · 执行中', '取消后，当前处理结果可能无法保留。');
+      row(p, '本次已扣', '8 点'); row(p, '当前余额', (amount - 8) + ' 点');
+      hint(p, '如果是系统失败或超时且没有可用结果，系统会自动退点。');
+    }, [['继续等待', id], ['确认取消', 'cancelledTask' + amount]], { back: id });
+    add('cancelledTask' + amount, '05 / Widget 扣点与退点', '任务已取消', '执行开始后主动取消，本次点数不退回。', p => {
+      card(p, '高清放大 · 已取消', '原始图片与任务输入仍保留。');
+      row(p, '本次消耗', '8 点'); row(p, '当前余额', (amount - 8) + ' 点');
+    }, [['查看钱包', amount === 20 ? 'wallet12' : 'wallet412']]);
+  }
+  wallet(412); wallet(12, 'trial');
+  add('insufficient', '06 / 余额不足与恢复', '还差 6 点', '高清放大需要 8 点，你当前有 2 点。', p => {
+    card(p, '任务尚未提交', '图片与输入保留，充值后可回来继续。', { accent: true });
+    row(p, '本次费用', '8 点'); row(p, '当前余额', '2 点');
+    hint(p, '没有创建任务，也没有扣点。充值完成后仍需要你确认提交。');
+  }, [['充值并返回此任务', 'topup2_300'], ['暂不处理', 'free']], { note: '独立状态示例：此账户起始余额为 2 点。' });
+  [100, 300, 1000].forEach(pack => {
+    topup(2, pack, 'resume' + pack);
+    add('resume' + pack, '06 / 余额不足与恢复', '已返回原任务', 'portrait.png 与任务输入已保留。', p => {
+      card(p, '高清放大', '准备提交 · 尚未扣点', { accent: true });
+      row(p, '当前余额', (2 + pack) + ' 点'); row(p, '本次费用', '8 点'); row(p, '提交后余额', (pack - 6) + ' 点');
+      hint(p, '请再次确认费用。充值不会自动执行任务。');
+    }, [['确认提交 · 8 点', 'resumedRunning' + pack], ['暂不提交', 'resumedWallet' + pack]]);
+    add('resumedRunning' + pack, '06 / 余额不足与恢复', '任务已提交', '高清放大正在后台处理中。', p => {
+      card(p, '正在处理 portrait.png', '本次扣除 8 点，不重复扣费。', { accent: true });
+      balance(p, pack - 6);
+    }, [['查看钱包', 'spentWallet' + pack]]);
+    add('resumedWallet' + pack, '06 / 余额不足与恢复', '点数钱包', '任务尚未提交，充值点数已到账。', p => balance(p, pack + 2), [['返回原任务', 'resume' + pack]]);
+    add('spentWallet' + pack, '06 / 余额不足与恢复', '点数钱包', '点数已按本次任务费用扣除。', p => {
+      balance(p, pack - 6); row(p, '本次充值', '+' + pack, COLORS.success); row(p, '高清放大 · 已提交', '−8');
+    }, [['查看任务', 'resumedRunning' + pack]]);
+  });
+
+  add('paymentPending', '07 / 支付异常', '正在确认付款结果', '如果已经付款，请勿重复支付。', p => {
+    card(p, '订单确认中', '银行或支付渠道的确认可能稍有延迟。', { accent: true });
+    row(p, '订单', 'Glance Pro · ¥99');
+    hint(p, '确认到账前不会显示已激活。你可以稍后回到这里继续查询。');
+  }, [['重新查询付款结果', 'paymentPending'], ['返回账户', 'free']], { browser: true, note: '确认成功后自动更新状态。', extraLinks: [['到账确认成功 →', 'paidPro']] });
+  add('paymentFailed', '07 / 支付异常', '支付未完成', '本次没有激活 Pro，也没有发放购买赠送点数。', p => {
+    card(p, '请重试支付', '订单保留。已扣款但状态未更新时，先查询付款结果。');
+    row(p, '商品', 'Glance Pro'); row(p, '待支付', '¥99');
+  }, [['重新支付 ¥99', 'checkoutPro'], ['我已付款，查询结果', 'paymentPending']], { browser: true, back: 'orderPro' });
+  add('cancelled', '07 / 支付异常', '已取消本次购买', '可以继续使用 Glance，稍后再决定。', p => {
+    card(p, '软件授权保持原状态', '没有新增 Pro 授权，也没有赠送购买点数。');
+    hint(p, '如果已完成扣款，请先查询付款结果，避免重复支付。');
+  }, [['返回 Glance', 'free'], ['查询付款结果', 'paymentPending']], { browser: true });
+
+  // A readable overview precedes the screen grid. Navigation stays inside Figma.
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const width = BILLING.columns * BILLING.w + (BILLING.columns - 1) * BILLING.gap;
+  const board = frame(PRICING_FLOW_FRAME, maxX + 196, 0, width, 800, null);
+  board.clipsContent = false; figma.currentPage.appendChild(board);
+  text('Board Title', board, 'Glance / 软件买断与点数充值 / Refined', 0, 0, 32, COLORS.text, 'semibold', width);
+  text('Board Summary', board, '买断 ¥99（首发）/ ¥149（正式），功能更新自愿续购 ¥59，充值 ¥1 = 10 点。', 0, 56, 16, COLORS.secondary, 'regular', width);
+  text('Prototype Guide', board, '从流程入口点击体验。macOS 与浏览器分别标记；金额变体均有对应订单与到账结果。示例 Widget 价格不修改实际定价。',
+    0, 92, 13, COLORS.secondary, 'regular', width);
+  const routes = [
+    ['软件购买', [['了解 Pro', 'plans'], ['登录与确认订单', 'loginPro'], ['浏览器支付', 'checkoutPro'], ['支付成功', 'paidPro'], ['返回 Glance 激活', 'pro']]],
+    ['点数充值', [['点数钱包', 'wallet120'], ['选择充值包', 'topup120_300'], ['浏览器支付', 'creditsCheckout120_300'], ['到账确认', 'creditsPaid120_300'], ['返回钱包', 'wallet420']]],
+    ['Widget 消费', [['确认费用', 'quote420'], ['提交并扣点', 'running'], ['查看结果', 'taskDone'], ['失败自动退点', 'taskRefund'], ['查看消费记录', 'ledger']]],
+    ['余额不足', [['保留图片与输入', 'insufficient'], ['充值点数', 'topup2_300'], ['确认到账', 'creditsPaid2_300'], ['返回任务并确认', 'resume300'], ['提交并扣点', 'resumedRunning300']]]
+  ];
+  const links = [];
+  routes.forEach(([title, steps], i) => {
+    const y = 148 + i * 88;
+    text('Flow / ' + title, board, title, 0, y + 20, 16, COLORS.accent, 'semibold', 184);
+    const stepWidth = (width - 208 - 4 * 32) / 5;
+    steps.forEach(([label, target], index) => {
+      const x = 208 + index * (stepWidth + 32);
+      const step = billingStack(board, 'Flow Step / ' + label, x, y, stepWidth, 0, 16, COLORS.surface);
+      historyStroke(step, '#FFFFFF', .09);
+      billingText(step, 'Label', label, 14, COLORS.text, 'medium', stepWidth - 32).textAlignHorizontal = 'CENTER';
+      if (index < steps.length - 1) historyIcon(board, 'chevron', x + stepWidth + 9, y + 24, 14, COLORS.muted);
+      links.push([step, target]);
+    });
+  });
+  text('Review Note', board, '点击流程节点打开对应窗口。完成与失败为不同分支，可用窗口下方的橙色状态入口切换。所有操作均为原型，不会发起真实交易。',
+    0, 508, 12, COLORS.muted, 'regular', width);
+
+  const refs = new Map();
+  let groupY = 570;
+  const groups = [...new Set(specs.map(spec => spec.group))];
+  for (const group of groups) {
+    const members = specs.filter(spec => spec.group === group);
+    text('Group / ' + group, board, group, 0, groupY, 22, COLORS.text, 'semibold', width);
+    members.forEach((spec, index) => {
+      const x = (index % BILLING.columns) * (BILLING.w + BILLING.gap);
+      const y = groupY + 52 + Math.floor(index / BILLING.columns) * (BILLING.h + 64);
+      const ref = billingWindow(board, spec, x, y);
+      refs.set(spec.id, ref);
+      if (ref.family === 'auth') billingAuth(ref, spec, links);
+      else spec.render(ref.body, refs, (source, target) => links.push([source, target]));
+      if (spec.back) links.push([ref.back, spec.back]);
+      if (ref.family !== 'auth') billingFooterActions(ref, spec, links);
+      (spec.extraLinks || []).forEach(([label, target], i) => {
+        const link = text('Prototype State / ' + spec.id + ' / ' + label, board, label,
+          x + 312 + i * 132, y + 612, 10, COLORS.accent, 'medium', 128);
+        links.push([link, target]);
+      });
+      text('Screen Caption / ' + spec.id, board, spec.id + ' · ' + spec.title, x, y + 612, 11, COLORS.muted, 'regular', BILLING.w);
+    });
+    groupY += 52 + Math.ceil(members.length / BILLING.columns) * (BILLING.h + 64) + 36;
+  }
+  board.resize(width, groupY);
+  for (const [source, targetID] of links) {
+    const target = refs.get(targetID);
+    if (!target) throw new Error('Pricing prototype target is missing: ' + targetID);
+    const reactions = [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'NODE', destinationId: target.screen.id,
+      navigation: 'NAVIGATE', resetScrollPosition: true, transition: null }] }];
+    if (typeof source.setReactionsAsync === 'function') await source.setReactionsAsync(reactions);
+    else source.reactions = reactions;
+  }
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created Pricing + Credits Flow / Refined: ' + specs.length + ' editable states with centered welcome / pricing / result layouts and structured account / order / ledger layouts. Previous board preserved.' });
+}
+
+// Right-click Widget submenu: one short name and one independent price badge.
+const WIDGET_CONTEXT_CREDITS_FRAME = 'Widget Context Menu / Compact Credits';
+const WCC = { width: 280, rowH: 28, headerH: 32, padding: 6 };
+
+function wccMenuShell(parent, name, x, y, width, height) {
+  const menu = frame(name, x, y, width, height, COLORS.surface, 10);
+  historyStroke(menu, '#FFFFFF', .12);
+  menu.effects = [{ type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .40 },
+    offset: { x: 0, y: 8 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL' }];
+  parent.appendChild(menu);
+  return menu;
+}
+
+function wccWidgetRow(parent, y, widget, options = {}) {
+  const active = !!options.active && !widget.disabled;
+  const row = frame('Widget Item / ' + widget.name, WCC.padding, y,
+    WCC.width - WCC.padding * 2, WCC.rowH, active ? COLORS.accent : null, 5);
+  parent.appendChild(row);
+  const free = widget.cost === 0;
+  const value = free ? (options.english ? 'Free' : '免费') : String(widget.cost);
+  const badgeW = Math.max(28, Math.ceil(value.length * (free && !options.english ? 11 : 7)) + 16);
+  const badge = frame('Credit Badge', row.width - 10 - badgeW, 4, badgeW, 20, null, 5);
+  const ink = active ? '#21130D' : widget.disabled ? COLORS.muted : COLORS.text;
+  historyFill(badge, active ? '#21130D' : free ? COLORS.success : '#FFFFFF', active ? .09 : free ? .10 : .06);
+  row.appendChild(badge);
+  const price = text('Credit Value', badge, value, 0, 3, 11,
+    active ? '#21130D' : widget.disabled ? COLORS.muted : free ? COLORS.success : COLORS.secondary,
+    'semibold', badgeW, 'CENTER');
+  price.textAutoResize = 'NONE'; price.resize(badgeW, 14);
+  const nameW = badge.x - 10 - 10;
+  const name = text('Widget Name', row, widget.name, 10, 6, 13, ink, 'medium', nameW);
+  name.textAutoResize = 'NONE'; name.resize(nameW, 16);
+  name.textTruncation = 'ENDING'; name.maxLines = 1;
+  if (widget.disabled) row.opacity = .55;
+  return row;
+}
+
+function wccSubmenu(parent, x, y, widgets, options = {}) {
+  const listBottom = WCC.headerH + widgets.length * WCC.rowH;
+  const menu = wccMenuShell(parent, 'Widget Submenu', x, y, WCC.width, listBottom + 43);
+  text('Menu Heading', menu, options.english ? 'Installed' : '已安装', 16, 10, 11, COLORS.secondary, 'medium', 140);
+  text('Cost Unit', menu, options.english ? 'pts/task' : '点/次', WCC.width - 108, 10,
+    11, COLORS.secondary, 'regular', 92, 'RIGHT');
+  widgets.forEach((widget, i) => wccWidgetRow(menu, WCC.headerH + i * WCC.rowH, widget,
+    { active: options.activeIndex === i, english: options.english }));
+  rect('Market Divider', menu, 12, listBottom + 8, WCC.width - 24, 1, '#FFFFFF').opacity = .09;
+  const market = frame('Open Widget Market', 6, listBottom + 14, WCC.width - 12, 24, null, 5);
+  menu.appendChild(market);
+  text('Label', market, options.english ? 'Widget Market…' : 'Widget 市场…', 10, 4, 12,
+    COLORS.secondary, 'regular', market.width - 38);
+  historyIcon(market, 'chevron', market.width - 24, 6, 12, COLORS.muted);
+  return menu;
+}
+
+function wccParentMenu(parent, x, y) {
+  const items = [['Widget', true], null, ['复制图片', false, '⌘C'], ['编辑', true],
+    ['导出', true], ['工具', true], null, ['在 Finder 中显示'], ['图像信息', false, '⌘I']];
+  const height = 12 + items.reduce((sum, item) => sum + (item ? 26 : 9), 0);
+  const menu = wccMenuShell(parent, 'Context Menu', x, y, 216, height);
+  let rowY = 6;
+  for (const item of items) {
+    if (!item) {
+      rect('Divider', menu, 12, rowY + 4, 192, 1, '#FFFFFF').opacity = .09;
+      rowY += 9; continue;
+    }
+    const active = item[0] === 'Widget';
+    const row = frame('Menu Item / ' + item[0], 6, rowY, 204, 26, active ? COLORS.accent : null, 5);
+    menu.appendChild(row);
+    text('Name', row, item[0], 10, 5, 13, active ? '#21130D' : COLORS.text, 'medium', 160);
+    if (item[1]) historyIcon(row, 'chevron', 182, 7, 12, active ? '#21130D' : COLORS.secondary);
+    if (item[2]) text('Shortcut', row, item[2], 158, 6, 11, COLORS.muted, 'regular', 34, 'RIGHT');
+    rowY += 26;
+  }
+  return menu;
+}
+
+async function generateWidgetContextCredits() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === WIDGET_CONTEXT_CREDITS_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Compact Widget Menu already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = frame(WIDGET_CONTEXT_CREDITS_FRAME, maxX + 196, 0, 1552, 584, null, 0);
+  board.clipsContent = false; figma.currentPage.appendChild(board);
+  const scene = (name, x, width, title, caption) => {
+    const node = frame(name, x, 0, width, 504, '#0B0C0F', 16);
+    historyStroke(node, '#FFFFFF', .08); board.appendChild(node);
+    text('Study Title', node, title, 24, 24, 17, COLORS.text, 'semibold', width - 48);
+    text('Study Caption', node, caption, 24, 54, 11, COLORS.secondary, 'regular', width - 48);
+    return node;
+  };
+  const cascade = scene('01 / Right Click / Widget Submenu', 0, 600, '右键 → Widget', '名称与点数分列；单位只说明一次。');
+  const parent = wccParentMenu(cascade, 24, 104);
+  wccSubmenu(cascade, parent.x + parent.width + 2, 104,
+    ['人物背景分离', '高清放大', '图生图', '视频去水印', 'AI 换装', '智能扩图', '图片去水印', '图片转提示词', '免费图床']
+      .map(name => ({ name, cost: 1 })), { activeIndex: 1 });
+  const longNames = scene('02 / Long Names / Full Name Hint', 680, 388, '长名称也保持紧凑', '固定 280 pt；名称单行省略，点数始终完整。');
+  const fullName = 'Background Remover Pro — Fine Hair & Edge Refinement';
+  wccSubmenu(longNames, 24, 160, [
+    { name: fullName, cost: 1 }, { name: 'Video Watermark Remover', cost: 1 },
+    { name: 'Redraw & Reframe', cost: 1 }, { name: 'Image to Prompt', cost: 1 },
+    { name: 'Free Image Host', cost: 0 }
+  ], { english: true, activeIndex: 0 });
+  const hint = wccMenuShell(longNames, 'Full Name Tooltip / Hover or Focus', 24, 94, 340, 48);
+  text('Complete Widget Name', hint, fullName, 12, 10, 12, COLORS.secondary, 'regular', 316).textAutoResize = 'HEIGHT';
+  const states = scene('03 / Credit Values / Interaction States', 1148, 404, '费用与状态', '标签随数字扩展，右边缘对齐。');
+  wccSubmenu(states, 24, 104, [
+    { name: '免费示例', cost: 0 }, { name: '悬停示例', cost: 1 }, { name: '高清放大', cost: 10 },
+    { name: '视频处理', cost: 100 }, { name: '高点数示例', cost: 1000000 },
+    { name: '任务进行中示例', cost: 1, disabled: true }
+  ], { activeIndex: 1 });
+  text('Interaction Note', board,
+    '28 pt 行高 · 单行名称 · 独立点数标签 · 长名通过悬停或键盘聚焦提示完整显示 · 屏幕右侧空间不足时，子菜单翻到左侧。',
+    0, 526, 12, COLORS.secondary, 'regular', 1000).textAutoResize = 'HEIGHT';
+  text('Pricing Note', board, '免费与高点数仅为设计状态示例，不修改任何 Widget 的实际定价。',
+    0, 558, 11, COLORS.muted, 'regular', 1000);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created Compact Widget Menu: cascade, long names, free pricing and interaction states. Design only; client unchanged.' });
+}
+
+// Compact drill-in flow. Never replace existing design boards or manual edits.
+const WIDGET_MARKET_DETAILS_FRAME = 'Widget Market / Details + Loading';
+
+function wmDetailScene(flow, name, x, widget, options = {}) {
+  const screen = frame(name, x, 0, WM.w, WM.h, '#0B0C0F', 16);
+  historyStroke(screen, '#FFFFFF', .12); flow.appendChild(screen);
+  createBareSystemControls(screen);
+  text('Window Title', screen, 'Widget Market', 0, 12, 13, COLORS.text, 'semibold', WM.w, 'CENTER');
+  text('Window Subtitle', screen, 'Widget details', 0, 31, 11, COLORS.muted, 'regular', WM.w, 'CENTER');
+  tcGhostIcon(screen, 'Refresh', 'refresh', WM.w - WM.margin - 72, 10, COLORS.text);
+  tcGhostIcon(screen, 'Close', 'close', WM.w - WM.margin - 32, 10, COLORS.text);
+  rect('Header Edge', screen, 0, 52, WM.w, 1, '#FFFFFF', 0).opacity = .07;
+  const back = frame('Back to widgets', 24, 68, 400, 32, null, 0);
+  screen.appendChild(back);
+  const arrow = historyIcon(back, 'chevron', 0, 8, 16, COLORS.secondary);
+  arrow.rotation = 180; arrow.x = 16; arrow.y = 24;
+  text('Label', back, 'Back to widgets', 24, 8, 12, COLORS.secondary, 'medium', 360);
+  const body = frame('Scrollable Details', 24, 110, 400, 614, null, 0);
+  screen.appendChild(body);
+  const icon = frame('Icon Tile', 0, 8, 64, 64, widget.tint, 10);
+  historyStroke(icon, '#FFFFFF', .08); body.appendChild(icon);
+  text('Monogram', icon, widget.mono, 0, 23, 15, COLORS.secondary, 'semibold', 64, 'CENTER');
+  text('Widget Name', body, widget.name, 84, 8, 18, COLORS.text, 'semibold', 316);
+  const installed = widget.state !== 'install';
+  text('Install Status', body, installed ? 'Installed' : 'Not installed', 84, 40, 11,
+    installed ? COLORS.success : COLORS.muted, 'regular', 316);
+  text('Summary', body, widget.summary, 0, 98, 13, COLORS.secondary, 'regular', 400).textAutoResize = 'HEIGHT';
+  const price = frame('Task Price', 0, 162, 400, 64, COLORS.surface, 12);
+  historyStroke(price, COLORS.line, 1); body.appendChild(price);
+  text('Price Label', price, 'Cost per task', 16, 23, 12, COLORS.secondary, 'regular', 180);
+  text('Credit Cost', price, options.free ? 'Free' : '1 credit / task', 196, 22, 13, COLORS.text, 'semibold', 188, 'RIGHT');
+  text('Commands Heading', body, 'Commands', 0, 254, 12, COLORS.text, 'semibold', 400);
+  const command = frame('Command', 0, 278, 400, 96, COLORS.surface, 12);
+  historyStroke(command, COLORS.line, 1); body.appendChild(command);
+  text('Command Name', command, 'Remove Background', 16, 14, 13, COLORS.text, 'semibold', 368);
+  text('Command Description', command, 'Create a transparent-background copy of the selected image.',
+    16, 40, 12, COLORS.secondary, 'regular', 368).textAutoResize = 'HEIGHT';
+  text('Input', body, 'Input: Image', 0, 392, 12, COLORS.secondary, 'regular', 400);
+  text('Output', body, 'Output: Image', 0, 416, 12, COLORS.secondary, 'regular', 400);
+  text('Privacy Heading', body, 'Privacy', 0, 466, 12, COLORS.text, 'semibold', 400);
+  text('Privacy Notice', body, 'The selected image will be uploaded to Glance for cloud processing.',
+    0, 492, 12, COLORS.secondary, 'regular', 400).textAutoResize = 'HEIGHT';
+  rect('Action Edge', screen, 24, 724, 400, 1, '#FFFFFF', 0).opacity = .07;
+  const paired = widget.state === 'update';
+  const actions = [];
+  if (widget.state === 'install' || paired) {
+    const primary = wmAction(screen, widget.state, paired ? 292 : 424, 748);
+    primary.x = 24; primary.resize(paired ? 268 : 400, 40);
+    const label = primary.findOne(child => child.name === 'Label');
+    label.resize(primary.width, label.height); label.y = 12;
+    actions.push(primary);
+  }
+  if (installed) {
+    const remove = wmAction(screen, 'remove', 424, 748);
+    remove.x = paired ? 304 : 24; remove.resize(paired ? 120 : 400, 40);
+    const label = remove.findOne(child => child.name === 'Label');
+    label.resize(remove.width, label.height); label.y = 12;
+    actions.push(remove);
+  }
+  return { screen, back, actions };
+}
+
+function wmLoadingScene(flow, x) {
+  const screen = wmScene(flow, '06 / Widget Market / Loading', x, 'marketplace');
+  screen.findAll(child => child.name.startsWith('Widget / ')).forEach(child => child.remove());
+  screen.findOne(child => child.name === 'Window Subtitle').characters = 'Loading…';
+  screen.findOne(child => child.name === 'Placeholder').characters = 'Search widgets';
+  screen.findOne(child => child.name === 'Footer Count').characters = 'Loading…';
+  screen.findAll(child => child.name === 'Footer Hint' || child.name === 'Count').forEach(child => child.remove());
+  let pillX = WM.margin;
+  for (const pill of screen.children.filter(child => child.name.startsWith('Filter / '))) {
+    const label = pill.findOne(child => child.name === 'Label');
+    const width = 24 + historyTextWidth(label.characters, 12);
+    pill.x = pillX; pill.resize(width, 30); pillX += width + 8;
+  }
+  const loading = frame('Loading Content', 0, WM.listTop, WM.w, WM.h - WM.listTop - 30, '#0B0C0F', 0);
+  screen.appendChild(loading);
+  const cy = loading.height / 2;
+  historyIcon(loading, 'refresh', (WM.w - 20) / 2, cy - 28, 20, COLORS.secondary);
+  text('Loading Label', loading, 'Loading…', 0, cy + 8, 13, COLORS.secondary, 'medium', WM.w, 'CENTER');
+  return screen;
+}
+
+async function generateWidgetMarketDetails() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === WIDGET_MARKET_DETAILS_FRAME);
+  if (existing) {
+    removeWidgetMarketMetadata(existing);
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Widget Details + Loading already exists; selected it (manual edits preserved).' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const pitch = WM.w + 100;
+  const flow = frame(WIDGET_MARKET_DETAILS_FRAME, maxX + 196, 0, pitch * 6 - 100, WM.h + 100, null, 0);
+  flow.clipsContent = false; figma.currentPage.appendChild(flow);
+  const list = wmScene(flow, '01 / Widget Market / Browse', 0, 'marketplace', { hoverIndex: 0 });
+  const widget = WM_CATALOG[0];
+  const installed = wmDetailScene(flow, '02 / Widget Details / Installed', pitch, widget);
+  const available = wmDetailScene(flow, '03 / Widget Details / Not Installed', pitch * 2, { ...widget, state: 'install' });
+  const update = wmDetailScene(flow, '04 / Widget Details / Update Available', pitch * 3, { ...widget, state: 'update' });
+  const free = wmDetailScene(flow, '05 / Widget Details / Free', pitch * 4, widget, { free: true });
+  wmLoadingScene(flow, pitch * 5);
+  const go = target => [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'NODE', destinationId: target.id,
+    navigation: 'NAVIGATE', preserveScrollPosition: false, transition: null }] }];
+  const link = async (node, target) => {
+    if (typeof node.setReactionsAsync === 'function') await node.setReactionsAsync(go(target));
+    else node.reactions = go(target);
+  };
+  const row = list.findOne(child => child.name === 'Widget / ' + widget.name);
+  await link(row, installed.screen);
+  await link(row.findOne(child => child.name === 'Action / Installed'), installed.screen);
+  for (const detail of [installed, available, update, free]) {
+    await link(detail.back, list);
+    // Free is a pricing specimen; retain its price rather than linking to the
+    // one-credit installation specimens. Back works on every detail page.
+    if (detail !== free) for (const action of detail.actions) await link(action, action.name === 'Action / Remove' ? available.screen : installed.screen);
+  }
+  const notes = ['Hover keeps Installed. Click the card to open details.', 'Remove is shown only on the installed detail page.',
+    'The same page offers Install when the Widget is not installed.', 'Update and Remove remain separate actions.',
+    'creditCost = 0 is displayed as Free.', 'While fetching, show Loading…; show empty only after a successful empty result.'];
+  notes.forEach((note, i) => text('Note', flow, note, i * pitch, WM.h + 20, 12, COLORS.secondary,
+    'regular', WM.w).textAutoResize = 'HEIGHT');
+  figma.currentPage.selection = [flow];
+  figma.viewport.scrollAndZoomIntoView([flow]);
+  figma.ui.postMessage({ message: 'Created Widget Details + Loading: 6 screens with clickable card, Back, Install and Remove prototype links.' });
 }
 
 // Seven focused Widget screens. The existing image/video input and image
@@ -5948,6 +6764,38 @@ figma.ui.onmessage = async message => {
       console.error(error);
       figma.ui.postMessage({ message: 'Widget Market Redesign failed: ' + (error && error.message ? error.message : String(error)) });
       figma.notify('Widget Market Redesign failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-widget-market-details') {
+    try {
+      await generateWidgetMarketDetails();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Widget Details + Loading failed: ' + (error && error.message ? error.message : String(error)) });
+    }
+  }
+  if (message.type === 'hide-widget-market-version-info') {
+    try {
+      await hideWidgetMarketVersionInfo();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Remove Widget Version Info failed: ' + (error && error.message ? error.message : String(error)) });
+    }
+  }
+  if (message.type === 'generate-pricing-flows') {
+    try {
+      await generatePricingFlows();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Pricing + Credits Flow failed: ' + (error && error.message ? error.message : String(error)) });
+    }
+  }
+  if (message.type === 'generate-widget-context-credits') {
+    try {
+      await generateWidgetContextCredits();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Compact Widget Menu failed: ' + (error && error.message ? error.message : String(error)) });
     }
   }
   if (message.type === 'generate-task-center-redesign') {

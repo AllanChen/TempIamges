@@ -17,6 +17,64 @@ If the plugin reports `Switch to Design Mode`, use the toolbar mode toggle or
 
 ## Generate
 
+### Review software pricing and credit flows
+
+In Figma **Design Mode** (`Shift+D`), run **Glance UI Builder v2.1** and click
+**Generate Pricing + Credits Flow**, the first button in the plugin.
+
+It adds the editable `Pricing & Credits / Purchase + Usage Flow / Refined` board to the
+right of existing artwork. The overview has clickable steps for four journeys:
+software purchase, credit top-up, Widget charging/refunds, and resuming a task
+after insufficient balance. Seven labeled screen groups cover:
+
+- Free access, Google/email login, 14-day trial and trial expiry.
+- Pro purchase: ¥99 launch price, ¥149 regular price, two Macs and a one-time
+  100-point gift. Unauthenticated buyers return to their purchase after login.
+- License/device management and optional ¥59 yearly feature-update renewal;
+  the purchased version keeps working after update access expires.
+- ¥10 / 100, ¥30 / 300 and ¥100 / 1,000-point top-ups, matching checkout,
+  arrival confirmation, wallet and transaction specimens. Free accounts can
+  top up without purchasing Pro.
+- An illustrative 8-point Widget task: fee confirmation, execution, successful
+  result, system-failure refund, and cancellation after processing begins.
+- Insufficient balance: preserve input, top up, return to the original task,
+  reconfirm, and only then submit and charge.
+- Payment pending, failed and cancelled, with recovery paths.
+
+The redesign preserves Glance's Inter typography, dark solid surfaces, apricot
+accent, ordinary 640 × 600 windows and all existing pricing/flow decisions.
+Following the context-appropriate parts of `design-taste-frontend`, it uses
+`DESIGN_VARIANCE: 4`, `MOTION_INTENSITY: 2`, `VISUAL_DENSITY: 3`:
+
+- Welcome, trial, email confirmation and payment/task results have centered
+  headings, a compact semantic status mark, a narrow central content column,
+  one centered primary action and a quiet secondary link.
+- Pricing isolates ¥99 as the main visual anchor. The wallet similarly gives
+  the balance space, without putting every paragraph inside a raised card.
+- Recharge has centered option labels/prices in a genuinely centered grid.
+  Totals retain left/right alignment for quick verification.
+- Account management, task confirmation and transaction history keep a clear
+  left reading edge and right-aligned values. Native form actions put the
+  primary decision on the right.
+- Login uses a centered 360px form, Google sign-in above the email field, a
+  separate left-aligned field label, and the email action below the input.
+- Browser receipts use a centered composition with readable aligned order
+  details. Numbered section labels and repeated footer rules are removed from
+  the product windows; prototype annotations remain outside them.
+
+Browser checkout/return screens are
+explicitly marked. Provider-hosted payment UI is a design placeholder until a
+payment channel is selected. State-switch links are outside the product windows;
+the primary flows are clickable and terminal balance specimens remain editable.
+The board is a storyboard, not a stateful payment simulator. It never sends
+email, logs in, charges money, changes Widget prices or modifies the Glance app.
+
+The original `Pricing & Credits / Purchase + Usage Flow` board is preserved for
+comparison. Running the button again selects the Refined board without
+duplicating it or overwriting manual edits. No reference image is needed.
+
+### Generate Image Inspect
+
 1. Optionally select `layout/image-inspect-ui.png` in the plugin window.
 2. Click **Create editable design**.
 3. The plugin creates:
@@ -240,6 +298,43 @@ editable frame contains:
 
 The existing WebView and Widget installation flow in the macOS app are not
 modified by this Figma-only design update.
+
+## Compact right-click Widget menu
+
+In **Design Mode** (`Shift+D`), click **Generate Compact Widget Menu**. It adds
+`Widget Context Menu / Compact Credits`, preserving all previous frames and
+manual edits. This is a design study; it does not modify the Glance client.
+
+The three scenes show the full right-click cascade, long names with a full-name
+hint, and price/hover/disabled states. The 280 pt submenu uses 28 pt rows with
+the Widget name on the left and a separate right-aligned price badge. “点/次”
+(“pts/task” in English) appears once in the header. Paid badges contain only
+the number; zero-cost examples say “免费” / “Free”. Names truncate to one line;
+prices remain complete, including the maximum 1000000. Full names are available
+in a hover/focus hint, and the Widget Market entry remains at the bottom.
+Example prices in this study do not change actual Widget pricing.
+
+## Widget Market details and loading
+
+To remove the publisher/version/command-count line from existing Widget Market
+designs, click **Remove Widget Version Info** in Design Mode. This updates both
+`Widget Market Redesign` and `Widget Market / Details + Loading` on the current
+page, preserving other manual edits. Newly generated designs omit this metadata
+as well; the Widget's actual command descriptions remain in its details page.
+
+In Figma **Design Mode** (`Shift+D`), run **Glance UI Builder v2** and click
+**Generate Widget Details + Loading**. It adds the separate
+`Widget Market / Details + Loading` board without replacing existing designs.
+The six 448 × 824 scenes show the browse list, installed details, uninstalled
+details, update available, free pricing, and loading. The first card opens the
+detail page in the prototype; Back returns to the list, and Install/Remove
+switch the installed state. Remove appears only on an installed detail page.
+
+Details use the same colors, typography, row actions, and 24 pt margins as the
+current market. The content lists the Widget description, `creditCost` per
+task (`0` is Free), commands, inputs/outputs, and privacy notice. It scrolls
+while Back and the bottom actions remain available. Loading shows a spinner
+and “Loading…” instead of reporting that no Widgets are available.
 
 ## Export your edited frame for AppKit implementation
 
