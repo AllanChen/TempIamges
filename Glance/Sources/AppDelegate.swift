@@ -147,10 +147,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls where url.scheme == "glance" && url.host == "payment" {
+            BillingClient.shared.handlePaymentCallback(url)
+        }
+        let fileURLs = urls.filter(\.isFileURL)
+        guard !fileURLs.isEmpty else { return }
         if pathDetector == nil || imageLoader == nil {
             setupComponents()
         }
-        pendingOpenURLs.append(contentsOf: urls)
+        pendingOpenURLs.append(contentsOf: fileURLs)
         pendingOpenWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in self?.flushPendingOpenURLs() }
         pendingOpenWorkItem = item
@@ -265,6 +270,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         }
 
         Logger.info("AppDelegate: Received deep link \(url.scheme ?? "")://\(url.host ?? "")\(url.path)")
+        if url.scheme == "glance", url.host == "payment" {
+            BillingClient.shared.handlePaymentCallback(url)
+            return
+        }
         AuthManager.shared.handleCallbackURL(url) { result in
             switch result {
             case .success(let session):

@@ -81,6 +81,12 @@ final class AuthManager {
     }
 
     func signOut() {
+        if let token = cachedSession?.token {
+            var request = URLRequest(url: apiBase.appendingPathComponent("auth/logout"))
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            URLSession.shared.dataTask(with: request).resume()
+        }
         cachedSession = nil
         deleteSessionFromStorage()
         NotificationCenter.default.post(name: .authDidChange, object: nil)
@@ -276,4 +282,157 @@ enum AuthError: LocalizedError {
 
 extension Notification.Name {
     static let authDidChange = Notification.Name("AuthManager.authDidChange")
+    static let billingDidChange = Notification.Name("BillingClient.billingDidChange")
+}
+
+/// Payment operations deliberately use the signed-in user's service token. The
+/// hosted checkout URL is short-lived and contains a buyer token, so it is never
+/// saved to UserDefaults or logged.
+final class BillingClient {
+    static let shared = BillingClient()
+
+    private let apiBase = URL(string: "https://glance-service.allanchanni.workers.dev/api/v2/billing")!
+    private let decoder = JSONDecoder()
+
+    private init() {}
+
+    func fetchWallet(completion: @escaping (Result<BillingWallet, AuthError>) -> Void) {
+        send(path: "wallet", completion: completion)
+    }
+
+    func fetchCatalog(completion: @escaping (Result<BillingCatalog, AuthError>) -> Void) {
+        send(path: "catalog", completion: completion)
+    }
+
+    func startCheckout(sku: String, completion: @escaping (Result<String, AuthError>) -> Void) {
+        send(path: "checkout", method: "POST", body: ["sku": sku]) { (result: Result<BillingCheckout, AuthError>) in
+            switch result {
+            case .success(let checkout):
+                guard let url = URL(string: checkout.checkoutUrl), url.scheme == "https" else {
+                    completion(.failure(.message("Invalid checkout URL.")))
+                    return
+                }
+                if NSWorkspace.shared.open(url) {
+                    completion(.success(checkout.orderId))
+                } else {
+                    completion(.failure(.message("Could not open checkout in a browser.")))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func fetchOrder(id: String, completion: @escaping (Result<BillingOrder, AuthError>) -> Void) {
+        send(path: "orders/\(id)", completion: completion)
+    }
+
+    func handlePaymentCallback(_ url: URL) {
+        guard url.scheme == "glance", url.host == "payment", url.path == "/callback",
+              let orderID = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "order" })?.value,
+              orderID.hasPrefix("order_"), UUID(uuidString: String(orderID.dropFirst(6))) != nil else { return }
+        pollOrder(id: orderID, attemptsRemaining: 15)
+    }
+
+    private func pollOrder(id: String, attemptsRemaining: Int) {
+        fetchOrder(id: id) { [weak self] result in
+            switch result {
+            case .success(let order):
+                if order.status != "pending" {
+                    NotificationCenter.default.post(name: .billingDidChange, object: order)
+                } else if attemptsRemaining > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        self?.pollOrder(id: id, attemptsRemaining: attemptsRemaining - 1)
+                    }
+                }
+            case .failure(let error):
+                Logger.warning("Payment status check failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func send<ResultType: Decodable>(
+        path: String,
+        method: String = "GET",
+        body: [String: String]? = nil,
+        completion: @escaping (Result<ResultType, AuthError>) -> Void
+    ) {
+        guard let token = AuthManager.shared.session?.token else {
+            DispatchQueue.main.async { completion(.failure(.message("Sign in to continue."))) }
+            return
+        }
+        var request = URLRequest(url: apiBase.appendingPathComponent(path))
+        request.httpMethod = method
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        }
+        URLSession.shared.dataTask(with: request) { [decoder = self.decoder] data, response, networkError in
+            let result: Result<ResultType, AuthError>
+            if let networkError {
+                result = .failure(.message(networkError.localizedDescription))
+            } else if let data {
+                let envelope = try? decoder.decode(ApiEnvelope<ResultType>.self, from: data)
+                if let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                   envelope?.success == true, let value = envelope?.result {
+                    result = .success(value)
+                } else {
+                    result = .failure(.message(envelope?.error?.message ?? "Payment request failed."))
+                }
+            } else {
+                result = .failure(.message("Empty server response."))
+            }
+            DispatchQueue.main.async { completion(result) }
+        }.resume()
+    }
+}
+
+struct BillingWallet: Decodable {
+    let balance: Int
+    let proLifetime: Bool
+    let updatesUntil: String?
+    let trialUntil: String
+    let trialActive: Bool
+}
+
+struct BillingCatalog: Decodable {
+    let currency: String
+    let products: [BillingProduct]
+}
+
+struct BillingProduct: Decodable {
+    let sku: String
+    let price: String
+    let credits: Int
+    let label: String
+}
+
+struct BillingCheckout: Decodable {
+    let orderId: String
+    let checkoutUrl: String
+    let expiresAt: String
+}
+
+struct BillingOrder: Decodable {
+    let id: String
+    let sku: String
+    let currency: String
+    let amount: String
+    let grantedCredits: Int
+    let status: String
+    let createdAt: String
+    let completedAt: String?
+    let refundedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, sku, currency, amount, status
+        case grantedCredits = "granted_credits"
+        case createdAt = "created_at"
+        case completedAt = "completed_at"
+        case refundedAt = "refunded_at"
+    }
 }

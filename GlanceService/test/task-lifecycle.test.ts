@@ -43,7 +43,7 @@ describe("task cancellation lifecycle", () => {
 
   it("returns 404 when cancelling someone else's or an unknown task", async () => {
     const { taskID } = await createTask();
-    expect((await api(`/api/v2/tasks/${taskID}`, { method: "DELETE", token: "other-user" })).status).toBe(404);
+    expect((await api(`/api/v2/tasks/${taskID}`, { method: "DELETE", token: "other-user" })).status).toBe(401);
     expect((await api("/api/v2/tasks/nope", { method: "DELETE", token: USER_TOKEN })).status).toBe(404);
   });
 

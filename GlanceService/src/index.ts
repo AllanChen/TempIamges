@@ -1,4 +1,6 @@
 import { OFFICIAL_MANIFESTS } from "./official";
+import { handleAuthRoute, requireAppUser } from "./app-auth";
+import { catalog, createCheckout, orderStatus, wallet, webhook } from "./billing";
 
 export interface Env {
   DB: D1Database;
@@ -18,6 +20,19 @@ export interface Env {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   GLANCE_SIGNING_KEY_PKCS8?: string;
+  RESEND_API_KEY?: string;
+  AUTH_EMAIL_FROM?: string;
+  WAFFO_MERCHANT_ID?: string;
+  WAFFO_STORE_ID?: string;
+  WAFFO_PRIVATE_KEY?: string;
+  WAFFO_WEBHOOK_PUBLIC_KEY?: string;
+  WAFFO_ENVIRONMENT?: "test" | "prod";
+  WAFFO_PRODUCT_PRO?: string;
+  WAFFO_PRODUCT_UPDATES_YEAR?: string;
+  WAFFO_PRODUCT_CREDITS_100?: string;
+  WAFFO_PRODUCT_CREDITS_300?: string;
+  WAFFO_PRODUCT_CREDITS_1000?: string;
+  PRO_LIFETIME_CNY?: string;
 }
 
 type Manifest = {
@@ -189,7 +204,9 @@ async function validAssetSignature(env: Env, assetID: string, exp: string, sig: 
 async function requireUser(request: Request, env?: Env) {
   const token = bearer(request);
   if (!token) throw new Error("Unauthorized");
-  return `user_${await digest(token)}`;
+  if (!env) throw new Error("Unauthorized");
+  if (isFlowTestToken(env, token)) return `user_${await digest(token)}`;
+  return String((await requireAppUser(env, request)).id);
 }
 async function requireAdmin(env: Env, request: Request) {
   if (env.DEVELOPER_TEST_TOKEN && bearer(request) === env.DEVELOPER_TEST_TOKEN) throw new Error("Unauthorized");
@@ -768,6 +785,9 @@ async function assetDownload(env: Env, request: Request, assetID: string) {
 }
 
 async function createTask(env: Env, request: Request, admin = false) {
+  if (!admin && isFlowTestToken(env, bearer(request))) {
+    return fail("test_token_not_allowed", "Test tokens cannot create production tasks.", 403);
+  }
   const actor = admin ? "admin" : await requireUser(request, env);
   await ensureOfficialWidgets(env);
   const body = await readJSON(request);
@@ -805,10 +825,18 @@ async function createTask(env: Env, request: Request, admin = false) {
     return fail("queue_full", "The task queue is full. Please try again later.", 429, { "Retry-After": "60", "Cache-Control": "no-store" });
   }
   const createdAt = now();
-  await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
-    .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt).run();
+  const creditCost = admin ? 0 : 8;
+  try {
+    await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at,credit_cost) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt, creditCost).run();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("insufficient_credits")) {
+      return fail("insufficient_credits", "Not enough credits for this task.", 402, { "Cache-Control": "no-store" });
+    }
+    throw error;
+  }
   const estimate = await queueEstimate(env, widgetID, createdAt);
-  return ok({ taskID, status: "queued", processCount: 0, pollAfterMs: 1000, ...estimate }, 202, { "Cache-Control": "no-store" });
+  return ok({ taskID, status: "queued", creditCost, processCount: 0, pollAfterMs: 1000, ...estimate }, 202, { "Cache-Control": "no-store" });
 }
 
 const TASK_QUEUE_LIMIT_SETTING = "task_queue_limit";
@@ -818,6 +846,17 @@ async function readTaskQueueLimit(env: Env) {
   const row = await env.DB.prepare("SELECT value FROM service_settings WHERE key=?").bind(TASK_QUEUE_LIMIT_SETTING).first<{ value: string }>();
   const value = row ? Number.parseInt(row.value, 10) : NaN;
   return Number.isInteger(value) && value > 0 ? value : DEFAULT_TASK_QUEUE_LIMIT;
+}
+
+export async function expireStaleTasks(env: Env) {
+  const cutoff = new Date(Date.now() - 60 * 60_000).toISOString();
+  await env.DB.prepare(`UPDATE widget_tasks SET status='failed',error_code='timeout',completed_at=?,
+    lease_expires_at=NULL,claim_token_hash=NULL
+    WHERE type='production' AND status IN ('queued','claimed','running') AND created_at<?`)
+    .bind(now(), cutoff).run();
+  await env.DB.prepare(`UPDATE billing_orders SET status='expired' WHERE status='pending' AND
+    (checkout_expires_at<? OR (checkout_session_id IS NULL AND created_at<?))`)
+    .bind(now(), cutoff).run();
 }
 
 // Contract 1.8: queuePosition = earlier queued tasks for the same Widget + 1;
@@ -1205,10 +1244,29 @@ async function adminAction(env: Env, request: Request, submissionID: string, act
 }
 
 export default {
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    await expireStaleTasks(env);
+  },
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     const url = new URL(request.url); const parts = pathParts(url);
     try {
+      const authResponse = await handleAuthRoute(env, request);
+      if (authResponse) return authResponse;
+      if (request.method === "GET" && url.pathname === "/payment/return") {
+        const orderID = url.searchParams.get("order") || "";
+        if (!/^order_[0-9a-f-]{36}$/.test(orderID)) return fail("invalid_order", "Invalid order link.", 400);
+        const callback = new URL("glance://payment/callback");
+        callback.searchParams.set("order", orderID);
+        return new Response(null, { status: 302, headers: { Location: callback.toString(), "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
+      }
+      if (request.method === "POST" && url.pathname === "/api/v2/billing/webhook") return await webhook(env, request);
+      if (request.method === "GET" && url.pathname === "/api/v2/billing/catalog") return await catalog(env, request);
+      if (request.method === "GET" && url.pathname === "/api/v2/billing/wallet") return await wallet(env, request);
+      if (request.method === "POST" && url.pathname === "/api/v2/billing/checkout") return await createCheckout(env, request);
+      if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "billing" && parts[3] === "orders" && parts[4]) {
+        return await orderStatus(env, request, parts[4]);
+      }
       if (env.ADMIN_PATH && request.method === "GET" && (url.pathname === `/${env.ADMIN_PATH}` || url.pathname === `/${env.ADMIN_PATH}/`)) {
         return env.ASSETS.fetch(new Request(new URL("/admin/index.html", request.url), request));
       }
