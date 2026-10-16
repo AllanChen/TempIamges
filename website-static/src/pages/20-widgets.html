@@ -1,0 +1,53 @@
+<!-- path: /widgets/ | zh: AI Widget | en: AI Widgets | nav: widgets | desc: Glance 云端 AI Widget 列表、每次价格与处理服务说明。Glance cloud AI Widgets, per-run prices and processing disclosures. -->
+<section class="hero" style="padding-bottom:40px">
+  <div class="wrap">
+    <p class="eyebrow">AI Widgets</p>
+    <h1 lang="zh">右键，就地用 AI 改。</h1><h1 lang="en">Right-click. Fix it with AI.</h1>
+    <p class="lead" lang="zh">在 Glance 里右键图片或视频，选择 Widget 即可运行。结果出现在原图旁边，可以直接对比。下面的列表和价格实时读取自 Glance 服务。</p>
+    <p class="lead" lang="en">Right-click an image or video in Glance and pick a Widget. The result appears next to the original so you can compare right away. The list and prices below are read live from the Glance service.</p>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="widget-list" data-widgets><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+    <div class="notice" style="margin-top:22px">
+      <span lang="zh"><strong>计费规则：</strong>任务被服务端接受时扣点。系统失败、排队超过 30 分钟、或在开始处理前取消，全额退回点数；开始处理后主动取消不退。价格超过确认阈值或价格变化时，提交前会请你确认。</span>
+      <span lang="en"><strong>Billing:</strong> credits are charged when the server accepts a task. Failures on our side, queue waits over 30 minutes, and cancellations before processing starts are refunded in full; cancelling after processing starts is not. You are asked to confirm before submitting when a price is above the confirmation threshold or has changed.</span>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:24px" id="models">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 lang="zh">处理服务与数据说明</h2><h2 lang="en">Processing services and data</h2>
+      <p class="lead" lang="zh">运行云端 Widget 时，你选中的媒体会上传到 Glance 服务，并交给下列服务处理。Glance 不会用你的素材训练模型。</p>
+      <p class="lead" lang="en">When you run a cloud Widget, the media you selected is uploaded to the Glance service and processed by the services below. Glance does not use your media to train models.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Widget</th><th><span lang="zh">处理服务</span><span lang="en">Processed by</span></th><th><span lang="zh">说明</span><span lang="en">Notes</span></th></tr></thead>
+      <tbody>
+        <tr><td><span lang="zh">高清放大、智能扩图、图生图</span><span lang="en">Upscale, Outpaint, Image to Image</span></td>
+          <td><span lang="zh">RunningHub（runninghub.cn）托管的 AI 图像工作流</span><span lang="en">AI image workflows hosted on RunningHub (runninghub.cn)</span></td>
+          <td><span lang="zh">输出为 AI 生成或修改的图像，可能与原图存在差异。</span><span lang="en">Output is AI-generated or AI-edited and may differ from the original.</span></td></tr>
+        <tr><td><span lang="zh">人物背景分离</span><span lang="en">Portrait Background Removal</span></td>
+          <td><span lang="zh">RunningHub 托管的 AI 抠图工作流</span><span lang="en">AI segmentation workflow hosted on RunningHub</span></td>
+          <td><span lang="zh">返回透明背景图片。</span><span lang="en">Returns an image with a transparent background.</span></td></tr>
+        <tr><td><span lang="zh">AI 换装</span><span lang="en">Outfit Swap</span></td>
+          <td><span lang="zh">RunningHub 托管的 AI 图像工作流</span><span lang="en">AI image workflow hosted on RunningHub</span></td>
+          <td><span lang="zh">只改变服装，不替换人脸或身份。只能上传你本人或已获得当事人同意的照片。</span><span lang="en">Changes clothing only and never swaps faces or identities. Only upload photos of yourself or of people who have given consent.</span></td></tr>
+        <tr><td><span lang="zh">图片去水印、视频去水印</span><span lang="en">Image and Video Watermark Removal</span></td>
+          <td><span lang="zh">RunningHub 托管的 AI 修复工作流；视频会先按 8 秒分段处理再合并</span><span lang="en">AI inpainting workflows hosted on RunningHub; video is processed in segments of up to 8 seconds and rejoined</span></td>
+          <td><span lang="zh">只能用于你拥有版权或已获授权的内容。不得用于去除他人的版权标识。</span><span lang="en">Only for content you own or are licensed to edit. Never use it to remove someone else's copyright marks.</span></td></tr>
+        <tr><td><span lang="zh">图片转提示词</span><span lang="en">Image to Prompt</span></td>
+          <td><span lang="zh">RunningHub 托管的图像理解工作流</span><span lang="en">Image-understanding workflow hosted on RunningHub</span></td>
+          <td><span lang="zh">返回一段文字描述。</span><span lang="en">Returns a text description.</span></td></tr>
+        <tr><td><span lang="zh">免费图床</span><span lang="en">Image Hosting</span></td>
+          <td><span lang="zh">中国大陆的图片上传到 Freeimage.host；其他地区的图片以及所有视频保存在 Glance 云存储（Cloudflare R2）</span><span lang="en">Images from mainland China are uploaded to Freeimage.host; other images and all videos are stored in Glance cloud storage (Cloudflare R2)</span></td>
+          <td><span lang="zh">生成可分享的链接。Freeimage.host 是公开图床，拿到链接的任何人都能访问，请勿上传私密内容。</span><span lang="en">Creates a shareable link. Freeimage.host is a public host: anyone with the link can open it, so do not upload private content.</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="small" style="margin-top:14px"><span lang="zh">使用 Widget 即表示你同意<a class="accent" href="/acceptable-use/">可接受使用政策</a>。发现违规结果，请<a class="accent" href="/acceptable-use/#report">举报</a>。</span><span lang="en">Using a Widget means you agree to the <a class="accent" href="/acceptable-use/">Acceptable Use Policy</a>. To report a harmful result, <a class="accent" href="/acceptable-use/#report">contact us</a>.</span></p>
+  </div>
+</section>

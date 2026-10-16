@@ -1,0 +1,620 @@
+const imgSystemWindowControlsBare = "http://localhost:3845/assets/9ab45688ef94661792c1bd26a7a2caa1c52b0d1c.svg";
+const imgIconRefresh = "http://localhost:3845/assets/f3441af398d6d36e515bd6d1c9bde63d06ca0bab.svg";
+const imgIconClose = "http://localhost:3845/assets/4e13eab9bc0d45a36e74a156bc9361fae3eadd3c.svg";
+const imgIconSearch = "http://localhost:3845/assets/027b45eee89794aa47a29826547fedd6217bc22f.svg";
+const imgIconSlider = "http://localhost:3845/assets/e6d76ff91e68cca5ef09dfa9a8e9364330089271.svg";
+const imgIconChevron = "http://localhost:3845/assets/208dbcf950f8ef8baf061de2fd9f53579f917e7c.svg";
+const imgIconRefresh1 = "http://localhost:3845/assets/354f4a4f2c82f6b2b1eb94f5e3d0e217c6f7a4a7.svg";
+
+export default function WidgetMarketDetailsLoading() {
+  return (
+    <div className="relative size-full" data-node-id="262:744" data-name="Widget Market / Details + Loading">
+      <div className="absolute bg-[#0b0c0f] border border-[rgba(255,255,255,0.12)] border-solid h-[824px] left-0 overflow-clip rounded-[16px] top-0 w-[448px]" data-node-id="262:745" data-name="01 / Widget Market / Browse">
+        <div className="absolute h-[44px] left-[-1px] top-[-1px] w-[448px]" data-node-id="262:746" data-name="System / Transparent Drag Region" />
+        <div className="absolute h-[16px] left-[19px] top-[15px] w-[64px]" data-node-id="262:747" data-name="System / Window Controls / Bare">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSystemWindowControlsBare} />
+        </div>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[223px] not-italic text-[#f3eee8] text-[13px] text-center top-[11px] w-[448px]" data-node-id="262:751">
+          Widget Market
+        </p>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[223px] not-italic text-[#726d69] text-[11px] text-center top-[30px] w-[448px]" data-node-id="262:752">
+          9 available · 8 installed · 5 updates
+        </p>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[351px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:753" data-name="Refresh">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:754" data-name="Icon / refresh">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconRefresh} />
+          </div>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[391px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:757" data-name="Close">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:758" data-name="Icon / close">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconClose} />
+          </div>
+        </div>
+        <div className="absolute bg-white h-px left-[-1px] opacity-7 top-[51px] w-[448px]" data-node-id="262:760" data-name="Edge" />
+        <div className="absolute bg-[#14151a] border border-[rgba(255,255,255,0.1)] border-solid h-[36px] left-[23px] overflow-clip rounded-[12px] top-[67px] w-[400px]" data-node-id="262:761" data-name="Search Field">
+          <div className="absolute left-[11px] size-[18px] top-[8px]" data-node-id="262:762" data-name="Icon / search">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconSearch} />
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[37px] not-italic text-[#726d69] text-[13px] top-[9px] w-[300px]" data-node-id="262:765">
+            Search 9 widgets
+          </p>
+        </div>
+        <div className="[word-break:break-word] absolute bg-[rgba(52,37,31,0.96)] border border-[rgba(232,168,124,0.6)] border-solid h-[30px] leading-[normal] left-[23px] not-italic overflow-clip rounded-[15px] text-[#e8a87c] text-[12px] top-[117px] w-[114px] whitespace-nowrap" data-node-id="262:766" data-name="Filter / Marketplace">
+          <p className="absolute font-['Inter:Semi_Bold'] font-semibold left-[11px] top-[6px]" data-node-id="262:767">
+            Marketplace
+          </p>
+          <p className="absolute font-['Inter:Regular'] font-normal left-[94px] top-[6px]" data-node-id="262:768">
+            9
+          </p>
+        </div>
+        <div className="[word-break:break-word] absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid h-[30px] leading-[normal] left-[145px] not-italic overflow-clip rounded-[15px] text-[12px] top-[117px] w-[100px] whitespace-nowrap" data-node-id="262:769" data-name="Filter / Installed">
+          <p className="absolute font-['Inter:Medium'] font-medium left-[11px] text-[#aaa4a0] top-[6px]" data-node-id="262:770">
+            Installed
+          </p>
+          <p className="absolute font-['Inter:Regular'] font-normal left-[80px] text-[#726d69] top-[6px]" data-node-id="262:771">
+            8
+          </p>
+        </div>
+        <div className="[word-break:break-word] absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid h-[30px] leading-[normal] left-[253px] not-italic overflow-clip rounded-[15px] text-[12px] top-[117px] w-[86px] whitespace-nowrap" data-node-id="262:772" data-name="Filter / Updates">
+          <p className="absolute font-['Inter:Medium'] font-medium left-[11px] text-[#aaa4a0] top-[6px]" data-node-id="262:773">
+            Updates
+          </p>
+          <p className="absolute font-['Inter:Regular'] font-normal left-[66px] text-[#726d69] top-[6px]" data-node-id="262:774">
+            5
+          </p>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[391px] overflow-clip rounded-[10px] size-[32px] top-[116px]" data-node-id="262:775" data-name="Sort / A–Z">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:776" data-name="Icon / slider">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconSlider} />
+          </div>
+        </div>
+        <div className="absolute bg-[#1c1d22] border border-[rgba(255,255,255,0.14)] border-solid h-[84px] left-[23px] overflow-clip rounded-[9px] top-[165px] w-[400px]" data-node-id="262:781" data-name="Widget / Background Remover Pro">
+          <div className="absolute bg-[#2f2a3a] border border-[rgba(255,255,255,0.08)] border-solid left-[11px] overflow-clip rounded-[10px] size-[48px] top-[17px]" data-node-id="262:782" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#aaa4a0] text-[15px] text-center top-[14px] w-[48px]" data-node-id="262:783">
+              BR
+            </p>
+          </div>
+          <div className="absolute bg-[rgba(143,208,175,0.14)] border border-[rgba(143,208,175,0.45)] border-solid h-[32px] left-[299px] overflow-clip rounded-[10px] top-[25px] w-[88px]" data-node-id="262:784" data-name="Action / Installed">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[43px] not-italic text-[#8fd0af] text-[12px] text-center top-[7px] w-[88px]" data-node-id="262:785">
+              Installed
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[71px] not-italic text-[#f3eee8] text-[13px] top-[21px] w-[216px]" data-node-id="262:786">
+            Background Remover Pro
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[71px] not-italic text-[#aaa4a0] text-[11px] top-[43px] w-[216px]" data-node-id="262:787">
+            Precise background removal that keeps fine edges such as hair.
+          </p>
+        </div>
+        <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[84px] left-[23px] overflow-clip rounded-[9px] top-[257px] w-[400px]" data-node-id="262:788" data-name="Widget / Upscale">
+          <div className="absolute bg-[#22312d] border border-[rgba(255,255,255,0.08)] border-solid left-[11px] overflow-clip rounded-[10px] size-[48px] top-[17px]" data-node-id="262:789" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#aaa4a0] text-[15px] text-center top-[14px] w-[48px]" data-node-id="262:790">
+              UP
+            </p>
+          </div>
+          <div className="absolute bg-[#e8a87c] h-[32px] left-[311px] overflow-clip rounded-[10px] top-[25px] w-[76px]" data-node-id="262:791" data-name="Action / Update">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[38px] not-italic text-[#21130d] text-[12px] text-center top-[8px] w-[76px]" data-node-id="262:792">
+              Update
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[71px] not-italic text-[#f3eee8] text-[13px] top-[21px] w-[228px]" data-node-id="262:793">
+            Upscale
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[71px] not-italic text-[#aaa4a0] text-[11px] top-[43px] w-[228px]" data-node-id="262:794">
+            Upscale images to higher resolution with sharper detail.
+          </p>
+        </div>
+        <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[84px] left-[23px] overflow-clip rounded-[9px] top-[349px] w-[400px]" data-node-id="262:795" data-name="Widget / Redraw & Reframe">
+          <div className="absolute bg-[#342522] border border-[rgba(255,255,255,0.08)] border-solid left-[11px] overflow-clip rounded-[10px] size-[48px] top-[17px]" data-node-id="262:796" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#aaa4a0] text-[15px] text-center top-[14px] w-[48px]" data-node-id="262:797">
+              RR
+            </p>
+          </div>
+          <div className="absolute bg-[#e8a87c] h-[32px] left-[311px] overflow-clip rounded-[10px] top-[25px] w-[76px]" data-node-id="262:798" data-name="Action / Update">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[38px] not-italic text-[#21130d] text-[12px] text-center top-[8px] w-[76px]" data-node-id="262:799">
+              Update
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[71px] not-italic text-[#f3eee8] text-[13px] top-[21px] w-[228px]" data-node-id="262:800">{`Redraw & Reframe`}</p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[71px] not-italic text-[#aaa4a0] text-[11px] top-[43px] w-[228px]" data-node-id="262:801">
+            Regenerate the image at the aspect ratio you choose.
+          </p>
+        </div>
+        <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[84px] left-[23px] overflow-clip rounded-[9px] top-[441px] w-[400px]" data-node-id="262:802" data-name="Widget / Video Watermark Remover">
+          <div className="absolute bg-[#202c38] border border-[rgba(255,255,255,0.08)] border-solid left-[11px] overflow-clip rounded-[10px] size-[48px] top-[17px]" data-node-id="262:803" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#aaa4a0] text-[15px] text-center top-[14px] w-[48px]" data-node-id="262:804">
+              VW
+            </p>
+          </div>
+          <div className="absolute bg-[rgba(143,208,175,0.14)] border border-[rgba(143,208,175,0.45)] border-solid h-[32px] left-[299px] overflow-clip rounded-[10px] top-[25px] w-[88px]" data-node-id="262:805" data-name="Action / Installed">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[43px] not-italic text-[#8fd0af] text-[12px] text-center top-[7px] w-[88px]" data-node-id="262:806">
+              Installed
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[71px] not-italic text-[#f3eee8] text-[13px] top-[21px] w-[216px]" data-node-id="262:807">
+            Video Watermark Remover
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[71px] not-italic text-[#aaa4a0] text-[11px] top-[43px] w-[216px]" data-node-id="262:808">
+            Remove watermarks from long videos, segment by segment, in order.
+          </p>
+        </div>
+        <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[84px] left-[23px] overflow-clip rounded-[9px] top-[533px] w-[400px]" data-node-id="262:809" data-name="Widget / Outfit Swap">
+          <div className="absolute bg-[#32273a] border border-[rgba(255,255,255,0.08)] border-solid left-[11px] overflow-clip rounded-[10px] size-[48px] top-[17px]" data-node-id="262:810" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#aaa4a0] text-[15px] text-center top-[14px] w-[48px]" data-node-id="262:811">
+              OS
+            </p>
+          </div>
+          <div className="absolute bg-[#e8a87c] h-[32px] left-[311px] overflow-clip rounded-[10px] top-[25px] w-[76px]" data-node-id="262:812" data-name="Action / Update">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[38px] not-italic text-[#21130d] text-[12px] text-center top-[8px] w-[76px]" data-node-id="262:813">
+              Update
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[71px] not-italic text-[#f3eee8] text-[13px] top-[21px] w-[228px]" data-node-id="262:814">
+            Outfit Swap
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[71px] not-italic text-[#aaa4a0] text-[11px] top-[43px] w-[228px]" data-node-id="262:815">
+            Dress the person in the first image in the outfit from the second.
+          </p>
+        </div>
+        <div className="absolute bg-[#17181d] border border-[#34353a] border-solid h-[84px] left-[23px] overflow-clip rounded-[9px] top-[625px] w-[400px]" data-node-id="262:816" data-name="Widget / Expand Image">
+          <div className="absolute bg-[#303022] border border-[rgba(255,255,255,0.08)] border-solid left-[11px] overflow-clip rounded-[10px] size-[48px] top-[17px]" data-node-id="262:817" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[23px] not-italic text-[#aaa4a0] text-[15px] text-center top-[14px] w-[48px]" data-node-id="262:818">
+              EX
+            </p>
+          </div>
+          <div className="absolute bg-[#e8a87c] h-[32px] left-[311px] overflow-clip rounded-[10px] top-[25px] w-[76px]" data-node-id="262:819" data-name="Action / Update">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[38px] not-italic text-[#21130d] text-[12px] text-center top-[8px] w-[76px]" data-node-id="262:820">
+              Update
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[71px] not-italic text-[#f3eee8] text-[13px] top-[21px] w-[228px]" data-node-id="262:821">
+            Expand Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[71px] not-italic text-[#aaa4a0] text-[11px] top-[43px] w-[228px]" data-node-id="262:822">
+            Extend the canvas beyond the edges with matching content.
+          </p>
+        </div>
+        <div className="absolute bg-[#0b0c0f] h-[30px] left-[-1px] overflow-clip top-[793px] w-[448px]" data-node-id="262:823" data-name="Footer">
+          <div className="absolute bg-white h-px left-0 opacity-7 top-0 w-[448px]" data-node-id="262:824" data-name="Footer Edge" />
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[24px] not-italic text-[#726d69] text-[11px] top-[8px] w-[230px]" data-node-id="262:825">
+            9 widgets · Marketplace
+          </p>
+          <p className="-translate-x-full [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[424px] not-italic text-[#726d69] text-[11px] text-right top-[8px] w-[126px]" data-node-id="262:826">
+            Scroll for more
+          </p>
+        </div>
+      </div>
+      <div className="absolute bg-[#0b0c0f] border border-[rgba(255,255,255,0.12)] border-solid h-[824px] left-[548px] overflow-clip rounded-[16px] top-0 w-[448px]" data-node-id="262:827" data-name="02 / Widget Details / Installed">
+        <div className="absolute h-[44px] left-[-1px] top-[-1px] w-[448px]" data-node-id="262:828" data-name="System / Transparent Drag Region" />
+        <div className="absolute h-[16px] left-[19px] top-[15px] w-[64px]" data-node-id="262:829" data-name="System / Window Controls / Bare">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSystemWindowControlsBare} />
+        </div>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[223px] not-italic text-[#f3eee8] text-[13px] text-center top-[11px] w-[448px]" data-node-id="262:833">
+          Widget Market
+        </p>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[223px] not-italic text-[#726d69] text-[11px] text-center top-[30px] w-[448px]" data-node-id="262:834">
+          Widget details
+        </p>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[351px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:835" data-name="Refresh">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:836" data-name="Icon / refresh">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconRefresh} />
+          </div>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[391px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:839" data-name="Close">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:840" data-name="Icon / close">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconClose} />
+          </div>
+        </div>
+        <div className="absolute bg-white h-px left-[-1px] opacity-7 top-[51px] w-[448px]" data-node-id="262:842" data-name="Header Edge" />
+        <div className="absolute h-[32px] left-[23px] overflow-clip top-[67px] w-[400px]" data-node-id="262:843" data-name="Back to widgets">
+          <div className="absolute flex items-center justify-center left-0 size-[16px] top-[8px]" data-node-id="262:844">
+            <div className="flex-none rotate-180">
+              <div className="relative size-[16px]" data-name="Icon / chevron">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconChevron} />
+              </div>
+            </div>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[24px] not-italic text-[#aaa4a0] text-[12px] top-[8px] w-[360px]" data-node-id="262:846">
+            Back to widgets
+          </p>
+        </div>
+        <div className="absolute h-[614px] left-[23px] overflow-clip top-[109px] w-[400px]" data-node-id="262:847" data-name="Scrollable Details">
+          <div className="absolute bg-[#2f2a3a] border border-[rgba(255,255,255,0.08)] border-solid left-0 overflow-clip rounded-[10px] size-[64px] top-[8px]" data-node-id="262:848" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[31px] not-italic text-[#aaa4a0] text-[15px] text-center top-[22px] w-[64px]" data-node-id="262:849">
+              BR
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[84px] not-italic text-[#f3eee8] text-[18px] top-[8px] w-[316px]" data-node-id="262:850">
+            Background Remover Pro
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[84px] not-italic text-[#8fd0af] text-[11px] top-[40px] w-[316px]" data-node-id="262:851">
+            Installed
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[13px] top-[98px] w-[400px]" data-node-id="262:852">
+            Precise background removal that keeps fine edges such as hair.
+          </p>
+          <div className="[word-break:break-word] absolute bg-[#17181d] border border-[#34353a] border-solid h-[64px] leading-[normal] left-0 not-italic overflow-clip rounded-[12px] top-[162px] w-[400px]" data-node-id="262:853" data-name="Task Price">
+            <p className="absolute font-['Inter:Regular'] font-normal left-[15px] text-[#aaa4a0] text-[12px] top-[22px] w-[180px]" data-node-id="262:854">
+              Cost per task
+            </p>
+            <p className="-translate-x-full absolute font-['Inter:Semi_Bold'] font-semibold left-[383px] text-[#f3eee8] text-[13px] text-right top-[21px] w-[188px]" data-node-id="262:855">
+              1 credit / task
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-0 not-italic text-[#f3eee8] text-[12px] top-[254px] w-[400px]" data-node-id="262:856">
+            Commands
+          </p>
+          <div className="[word-break:break-word] absolute bg-[#17181d] border border-[#34353a] border-solid h-[96px] leading-[normal] left-0 not-italic overflow-clip rounded-[12px] top-[278px] w-[400px]" data-node-id="262:857" data-name="Command">
+            <p className="absolute font-['Inter:Semi_Bold'] font-semibold left-[15px] text-[#f3eee8] text-[13px] top-[13px] w-[368px]" data-node-id="262:858">
+              Remove Background
+            </p>
+            <p className="absolute font-['Inter:Regular'] font-normal left-[15px] text-[#aaa4a0] text-[12px] top-[39px] w-[368px]" data-node-id="262:859">
+              Create a transparent-background copy of the selected image.
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[392px] w-[400px]" data-node-id="262:860">
+            Input: Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[416px] w-[400px]" data-node-id="262:861">
+            Output: Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-0 not-italic text-[#f3eee8] text-[12px] top-[466px] w-[400px]" data-node-id="262:862">
+            Privacy
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[492px] w-[400px]" data-node-id="262:863">
+            The selected image will be uploaded to Glance for cloud processing.
+          </p>
+        </div>
+        <div className="absolute bg-white h-px left-[23px] opacity-7 top-[723px] w-[400px]" data-node-id="262:864" data-name="Action Edge" />
+        <div className="absolute bg-[rgba(241,139,134,0.08)] border border-[rgba(241,139,134,0.32)] border-solid h-[40px] left-[23px] overflow-clip rounded-[10px] top-[747px] w-[400px]" data-node-id="262:865" data-name="Action / Remove">
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[199px] not-italic text-[#f18b86] text-[12px] text-center top-[11px] w-[400px]" data-node-id="262:866">
+            Remove
+          </p>
+        </div>
+      </div>
+      <div className="absolute bg-[#0b0c0f] border border-[rgba(255,255,255,0.12)] border-solid h-[824px] left-[1096px] overflow-clip rounded-[16px] top-0 w-[448px]" data-node-id="262:867" data-name="03 / Widget Details / Not Installed">
+        <div className="absolute h-[44px] left-[-1px] top-[-1px] w-[448px]" data-node-id="262:868" data-name="System / Transparent Drag Region" />
+        <div className="absolute h-[16px] left-[19px] top-[15px] w-[64px]" data-node-id="262:869" data-name="System / Window Controls / Bare">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSystemWindowControlsBare} />
+        </div>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[223px] not-italic text-[#f3eee8] text-[13px] text-center top-[11px] w-[448px]" data-node-id="262:873">
+          Widget Market
+        </p>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[223px] not-italic text-[#726d69] text-[11px] text-center top-[30px] w-[448px]" data-node-id="262:874">
+          Widget details
+        </p>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[351px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:875" data-name="Refresh">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:876" data-name="Icon / refresh">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconRefresh} />
+          </div>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[391px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:879" data-name="Close">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:880" data-name="Icon / close">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconClose} />
+          </div>
+        </div>
+        <div className="absolute bg-white h-px left-[-1px] opacity-7 top-[51px] w-[448px]" data-node-id="262:882" data-name="Header Edge" />
+        <div className="absolute h-[32px] left-[23px] overflow-clip top-[67px] w-[400px]" data-node-id="262:883" data-name="Back to widgets">
+          <div className="absolute flex items-center justify-center left-0 size-[16px] top-[8px]" data-node-id="262:884">
+            <div className="flex-none rotate-180">
+              <div className="relative size-[16px]" data-name="Icon / chevron">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconChevron} />
+              </div>
+            </div>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[24px] not-italic text-[#aaa4a0] text-[12px] top-[8px] w-[360px]" data-node-id="262:886">
+            Back to widgets
+          </p>
+        </div>
+        <div className="absolute h-[614px] left-[23px] overflow-clip top-[109px] w-[400px]" data-node-id="262:887" data-name="Scrollable Details">
+          <div className="absolute bg-[#2f2a3a] border border-[rgba(255,255,255,0.08)] border-solid left-0 overflow-clip rounded-[10px] size-[64px] top-[8px]" data-node-id="262:888" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[31px] not-italic text-[#aaa4a0] text-[15px] text-center top-[22px] w-[64px]" data-node-id="262:889">
+              BR
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[84px] not-italic text-[#f3eee8] text-[18px] top-[8px] w-[316px]" data-node-id="262:890">
+            Background Remover Pro
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[84px] not-italic text-[#726d69] text-[11px] top-[40px] w-[316px]" data-node-id="262:891">
+            Not installed
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[13px] top-[98px] w-[400px]" data-node-id="262:892">
+            Precise background removal that keeps fine edges such as hair.
+          </p>
+          <div className="[word-break:break-word] absolute bg-[#17181d] border border-[#34353a] border-solid h-[64px] leading-[normal] left-0 not-italic overflow-clip rounded-[12px] top-[162px] w-[400px]" data-node-id="262:893" data-name="Task Price">
+            <p className="absolute font-['Inter:Regular'] font-normal left-[15px] text-[#aaa4a0] text-[12px] top-[22px] w-[180px]" data-node-id="262:894">
+              Cost per task
+            </p>
+            <p className="-translate-x-full absolute font-['Inter:Semi_Bold'] font-semibold left-[383px] text-[#f3eee8] text-[13px] text-right top-[21px] w-[188px]" data-node-id="262:895">
+              1 credit / task
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-0 not-italic text-[#f3eee8] text-[12px] top-[254px] w-[400px]" data-node-id="262:896">
+            Commands
+          </p>
+          <div className="[word-break:break-word] absolute bg-[#17181d] border border-[#34353a] border-solid h-[96px] leading-[normal] left-0 not-italic overflow-clip rounded-[12px] top-[278px] w-[400px]" data-node-id="262:897" data-name="Command">
+            <p className="absolute font-['Inter:Semi_Bold'] font-semibold left-[15px] text-[#f3eee8] text-[13px] top-[13px] w-[368px]" data-node-id="262:898">
+              Remove Background
+            </p>
+            <p className="absolute font-['Inter:Regular'] font-normal left-[15px] text-[#aaa4a0] text-[12px] top-[39px] w-[368px]" data-node-id="262:899">
+              Create a transparent-background copy of the selected image.
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[392px] w-[400px]" data-node-id="262:900">
+            Input: Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[416px] w-[400px]" data-node-id="262:901">
+            Output: Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-0 not-italic text-[#f3eee8] text-[12px] top-[466px] w-[400px]" data-node-id="262:902">
+            Privacy
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[492px] w-[400px]" data-node-id="262:903">
+            The selected image will be uploaded to Glance for cloud processing.
+          </p>
+        </div>
+        <div className="absolute bg-white h-px left-[23px] opacity-7 top-[723px] w-[400px]" data-node-id="262:904" data-name="Action Edge" />
+        <div className="absolute bg-[#e8a87c] h-[40px] left-[23px] overflow-clip rounded-[10px] top-[747px] w-[400px]" data-node-id="262:905" data-name="Action / Install">
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[200px] not-italic text-[#21130d] text-[12px] text-center top-[12px] w-[400px]" data-node-id="262:906">
+            Install
+          </p>
+        </div>
+      </div>
+      <div className="absolute bg-[#0b0c0f] border border-[rgba(255,255,255,0.12)] border-solid h-[824px] left-[1644px] overflow-clip rounded-[16px] top-0 w-[448px]" data-node-id="262:907" data-name="04 / Widget Details / Update Available">
+        <div className="absolute h-[44px] left-[-1px] top-[-1px] w-[448px]" data-node-id="262:908" data-name="System / Transparent Drag Region" />
+        <div className="absolute h-[16px] left-[19px] top-[15px] w-[64px]" data-node-id="262:909" data-name="System / Window Controls / Bare">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSystemWindowControlsBare} />
+        </div>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[223px] not-italic text-[#f3eee8] text-[13px] text-center top-[11px] w-[448px]" data-node-id="262:913">
+          Widget Market
+        </p>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[223px] not-italic text-[#726d69] text-[11px] text-center top-[30px] w-[448px]" data-node-id="262:914">
+          Widget details
+        </p>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[351px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:915" data-name="Refresh">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:916" data-name="Icon / refresh">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconRefresh} />
+          </div>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[391px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:919" data-name="Close">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:920" data-name="Icon / close">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconClose} />
+          </div>
+        </div>
+        <div className="absolute bg-white h-px left-[-1px] opacity-7 top-[51px] w-[448px]" data-node-id="262:922" data-name="Header Edge" />
+        <div className="absolute h-[32px] left-[23px] overflow-clip top-[67px] w-[400px]" data-node-id="262:923" data-name="Back to widgets">
+          <div className="absolute flex items-center justify-center left-0 size-[16px] top-[8px]" data-node-id="262:924">
+            <div className="flex-none rotate-180">
+              <div className="relative size-[16px]" data-name="Icon / chevron">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconChevron} />
+              </div>
+            </div>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[24px] not-italic text-[#aaa4a0] text-[12px] top-[8px] w-[360px]" data-node-id="262:926">
+            Back to widgets
+          </p>
+        </div>
+        <div className="absolute h-[614px] left-[23px] overflow-clip top-[109px] w-[400px]" data-node-id="262:927" data-name="Scrollable Details">
+          <div className="absolute bg-[#2f2a3a] border border-[rgba(255,255,255,0.08)] border-solid left-0 overflow-clip rounded-[10px] size-[64px] top-[8px]" data-node-id="262:928" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[31px] not-italic text-[#aaa4a0] text-[15px] text-center top-[22px] w-[64px]" data-node-id="262:929">
+              BR
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[84px] not-italic text-[#f3eee8] text-[18px] top-[8px] w-[316px]" data-node-id="262:930">
+            Background Remover Pro
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[84px] not-italic text-[#8fd0af] text-[11px] top-[40px] w-[316px]" data-node-id="262:931">
+            Installed
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[13px] top-[98px] w-[400px]" data-node-id="262:932">
+            Precise background removal that keeps fine edges such as hair.
+          </p>
+          <div className="[word-break:break-word] absolute bg-[#17181d] border border-[#34353a] border-solid h-[64px] leading-[normal] left-0 not-italic overflow-clip rounded-[12px] top-[162px] w-[400px]" data-node-id="262:933" data-name="Task Price">
+            <p className="absolute font-['Inter:Regular'] font-normal left-[15px] text-[#aaa4a0] text-[12px] top-[22px] w-[180px]" data-node-id="262:934">
+              Cost per task
+            </p>
+            <p className="-translate-x-full absolute font-['Inter:Semi_Bold'] font-semibold left-[383px] text-[#f3eee8] text-[13px] text-right top-[21px] w-[188px]" data-node-id="262:935">
+              1 credit / task
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-0 not-italic text-[#f3eee8] text-[12px] top-[254px] w-[400px]" data-node-id="262:936">
+            Commands
+          </p>
+          <div className="[word-break:break-word] absolute bg-[#17181d] border border-[#34353a] border-solid h-[96px] leading-[normal] left-0 not-italic overflow-clip rounded-[12px] top-[278px] w-[400px]" data-node-id="262:937" data-name="Command">
+            <p className="absolute font-['Inter:Semi_Bold'] font-semibold left-[15px] text-[#f3eee8] text-[13px] top-[13px] w-[368px]" data-node-id="262:938">
+              Remove Background
+            </p>
+            <p className="absolute font-['Inter:Regular'] font-normal left-[15px] text-[#aaa4a0] text-[12px] top-[39px] w-[368px]" data-node-id="262:939">
+              Create a transparent-background copy of the selected image.
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[392px] w-[400px]" data-node-id="262:940">
+            Input: Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[416px] w-[400px]" data-node-id="262:941">
+            Output: Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-0 not-italic text-[#f3eee8] text-[12px] top-[466px] w-[400px]" data-node-id="262:942">
+            Privacy
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[492px] w-[400px]" data-node-id="262:943">
+            The selected image will be uploaded to Glance for cloud processing.
+          </p>
+        </div>
+        <div className="absolute bg-white h-px left-[23px] opacity-7 top-[723px] w-[400px]" data-node-id="262:944" data-name="Action Edge" />
+        <div className="absolute bg-[#e8a87c] h-[40px] left-[23px] overflow-clip rounded-[10px] top-[747px] w-[268px]" data-node-id="262:945" data-name="Action / Update">
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[134px] not-italic text-[#21130d] text-[12px] text-center top-[12px] w-[268px]" data-node-id="262:946">
+            Update
+          </p>
+        </div>
+        <div className="absolute bg-[rgba(241,139,134,0.08)] border border-[rgba(241,139,134,0.32)] border-solid h-[40px] left-[303px] overflow-clip rounded-[10px] top-[747px] w-[120px]" data-node-id="262:947" data-name="Action / Remove">
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[59px] not-italic text-[#f18b86] text-[12px] text-center top-[11px] w-[120px]" data-node-id="262:948">
+            Remove
+          </p>
+        </div>
+      </div>
+      <div className="absolute bg-[#0b0c0f] border border-[rgba(255,255,255,0.12)] border-solid h-[824px] left-[2192px] overflow-clip rounded-[16px] top-0 w-[448px]" data-node-id="262:949" data-name="05 / Widget Details / Free">
+        <div className="absolute h-[44px] left-[-1px] top-[-1px] w-[448px]" data-node-id="262:950" data-name="System / Transparent Drag Region" />
+        <div className="absolute h-[16px] left-[19px] top-[15px] w-[64px]" data-node-id="262:951" data-name="System / Window Controls / Bare">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSystemWindowControlsBare} />
+        </div>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[223px] not-italic text-[#f3eee8] text-[13px] text-center top-[11px] w-[448px]" data-node-id="262:955">
+          Widget Market
+        </p>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[223px] not-italic text-[#726d69] text-[11px] text-center top-[30px] w-[448px]" data-node-id="262:956">
+          Widget details
+        </p>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[351px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:957" data-name="Refresh">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:958" data-name="Icon / refresh">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconRefresh} />
+          </div>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[391px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:961" data-name="Close">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:962" data-name="Icon / close">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconClose} />
+          </div>
+        </div>
+        <div className="absolute bg-white h-px left-[-1px] opacity-7 top-[51px] w-[448px]" data-node-id="262:964" data-name="Header Edge" />
+        <div className="absolute h-[32px] left-[23px] overflow-clip top-[67px] w-[400px]" data-node-id="262:965" data-name="Back to widgets">
+          <div className="absolute flex items-center justify-center left-0 size-[16px] top-[8px]" data-node-id="262:966">
+            <div className="flex-none rotate-180">
+              <div className="relative size-[16px]" data-name="Icon / chevron">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconChevron} />
+              </div>
+            </div>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[24px] not-italic text-[#aaa4a0] text-[12px] top-[8px] w-[360px]" data-node-id="262:968">
+            Back to widgets
+          </p>
+        </div>
+        <div className="absolute h-[614px] left-[23px] overflow-clip top-[109px] w-[400px]" data-node-id="262:969" data-name="Scrollable Details">
+          <div className="absolute bg-[#2f2a3a] border border-[rgba(255,255,255,0.08)] border-solid left-0 overflow-clip rounded-[10px] size-[64px] top-[8px]" data-node-id="262:970" data-name="Icon Tile">
+            <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[31px] not-italic text-[#aaa4a0] text-[15px] text-center top-[22px] w-[64px]" data-node-id="262:971">
+              BR
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[84px] not-italic text-[#f3eee8] text-[18px] top-[8px] w-[316px]" data-node-id="262:972">
+            Background Remover Pro
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[84px] not-italic text-[#8fd0af] text-[11px] top-[40px] w-[316px]" data-node-id="262:973">
+            Installed
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[13px] top-[98px] w-[400px]" data-node-id="262:974">
+            Precise background removal that keeps fine edges such as hair.
+          </p>
+          <div className="[word-break:break-word] absolute bg-[#17181d] border border-[#34353a] border-solid h-[64px] leading-[normal] left-0 not-italic overflow-clip rounded-[12px] top-[162px] w-[400px]" data-node-id="262:975" data-name="Task Price">
+            <p className="absolute font-['Inter:Regular'] font-normal left-[15px] text-[#aaa4a0] text-[12px] top-[22px] w-[180px]" data-node-id="262:976">
+              Cost per task
+            </p>
+            <p className="-translate-x-full absolute font-['Inter:Semi_Bold'] font-semibold left-[383px] text-[#f3eee8] text-[13px] text-right top-[21px] w-[188px]" data-node-id="262:977">
+              Free
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-0 not-italic text-[#f3eee8] text-[12px] top-[254px] w-[400px]" data-node-id="262:978">
+            Commands
+          </p>
+          <div className="[word-break:break-word] absolute bg-[#17181d] border border-[#34353a] border-solid h-[96px] leading-[normal] left-0 not-italic overflow-clip rounded-[12px] top-[278px] w-[400px]" data-node-id="262:979" data-name="Command">
+            <p className="absolute font-['Inter:Semi_Bold'] font-semibold left-[15px] text-[#f3eee8] text-[13px] top-[13px] w-[368px]" data-node-id="262:980">
+              Remove Background
+            </p>
+            <p className="absolute font-['Inter:Regular'] font-normal left-[15px] text-[#aaa4a0] text-[12px] top-[39px] w-[368px]" data-node-id="262:981">
+              Create a transparent-background copy of the selected image.
+            </p>
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[392px] w-[400px]" data-node-id="262:982">
+            Input: Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[416px] w-[400px]" data-node-id="262:983">
+            Output: Image
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-0 not-italic text-[#f3eee8] text-[12px] top-[466px] w-[400px]" data-node-id="262:984">
+            Privacy
+          </p>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-0 not-italic text-[#aaa4a0] text-[12px] top-[492px] w-[400px]" data-node-id="262:985">
+            The selected image will be uploaded to Glance for cloud processing.
+          </p>
+        </div>
+        <div className="absolute bg-white h-px left-[23px] opacity-7 top-[723px] w-[400px]" data-node-id="262:986" data-name="Action Edge" />
+        <div className="absolute bg-[rgba(241,139,134,0.08)] border border-[rgba(241,139,134,0.32)] border-solid h-[40px] left-[23px] overflow-clip rounded-[10px] top-[747px] w-[400px]" data-node-id="262:987" data-name="Action / Remove">
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[199px] not-italic text-[#f18b86] text-[12px] text-center top-[11px] w-[400px]" data-node-id="262:988">
+            Remove
+          </p>
+        </div>
+      </div>
+      <div className="absolute bg-[#0b0c0f] border border-[rgba(255,255,255,0.12)] border-solid h-[824px] left-[2740px] overflow-clip rounded-[16px] top-0 w-[448px]" data-node-id="262:989" data-name="06 / Widget Market / Loading">
+        <div className="absolute h-[44px] left-[-1px] top-[-1px] w-[448px]" data-node-id="262:990" data-name="System / Transparent Drag Region" />
+        <div className="absolute h-[16px] left-[19px] top-[15px] w-[64px]" data-node-id="262:991" data-name="System / Window Controls / Bare">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSystemWindowControlsBare} />
+        </div>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[223px] not-italic text-[#f3eee8] text-[13px] text-center top-[11px] w-[448px]" data-node-id="262:995">
+          Widget Market
+        </p>
+        <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[223px] not-italic text-[#726d69] text-[11px] text-center top-[30px] w-[448px]" data-node-id="262:996">
+          Loading…
+        </p>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[351px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:997" data-name="Refresh">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:998" data-name="Icon / refresh">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconRefresh} />
+          </div>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[391px] overflow-clip rounded-[10px] size-[32px] top-[9px]" data-node-id="262:1001" data-name="Close">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:1002" data-name="Icon / close">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconClose} />
+          </div>
+        </div>
+        <div className="absolute bg-white h-px left-[-1px] opacity-7 top-[51px] w-[448px]" data-node-id="262:1004" data-name="Edge" />
+        <div className="absolute bg-[#14151a] border border-[rgba(255,255,255,0.1)] border-solid h-[36px] left-[23px] overflow-clip rounded-[12px] top-[67px] w-[400px]" data-node-id="262:1005" data-name="Search Field">
+          <div className="absolute left-[11px] size-[18px] top-[8px]" data-node-id="262:1006" data-name="Icon / search">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconSearch} />
+          </div>
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[37px] not-italic text-[#726d69] text-[13px] top-[9px] w-[300px]" data-node-id="262:1009">
+            Search widgets
+          </p>
+        </div>
+        <div className="absolute bg-[rgba(52,37,31,0.96)] border border-[rgba(232,168,124,0.6)] border-solid h-[30px] left-[23px] overflow-clip rounded-[15px] top-[117px] w-[101px]" data-node-id="262:1010" data-name="Filter / Marketplace">
+          <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold'] font-semibold leading-[normal] left-[11px] not-italic text-[#e8a87c] text-[12px] top-[6px] whitespace-nowrap" data-node-id="262:1011">
+            Marketplace
+          </p>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid h-[30px] left-[132px] overflow-clip rounded-[15px] top-[117px] w-[87px]" data-node-id="262:1013" data-name="Filter / Installed">
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[11px] not-italic text-[#aaa4a0] text-[12px] top-[6px] whitespace-nowrap" data-node-id="262:1014">
+            Installed
+          </p>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid h-[30px] left-[227px] overflow-clip rounded-[15px] top-[117px] w-[73px]" data-node-id="262:1016" data-name="Filter / Updates">
+          <p className="[word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[11px] not-italic text-[#aaa4a0] text-[12px] top-[6px] whitespace-nowrap" data-node-id="262:1017">
+            Updates
+          </p>
+        </div>
+        <div className="absolute bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] border-solid left-[391px] overflow-clip rounded-[10px] size-[32px] top-[116px]" data-node-id="262:1019" data-name="Sort / A–Z">
+          <div className="absolute left-[7px] size-[16px] top-[7px]" data-node-id="262:1020" data-name="Icon / slider">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconSlider} />
+          </div>
+        </div>
+        <div className="absolute bg-[#0b0c0f] h-[30px] left-[-1px] overflow-clip top-[793px] w-[448px]" data-node-id="262:1067" data-name="Footer">
+          <div className="absolute bg-white h-px left-0 opacity-7 top-0 w-[448px]" data-node-id="262:1068" data-name="Footer Edge" />
+          <p className="[word-break:break-word] absolute font-['Inter:Regular'] font-normal leading-[normal] left-[24px] not-italic text-[#726d69] text-[11px] top-[8px] w-[230px]" data-node-id="262:1069">
+            Loading…
+          </p>
+        </div>
+        <div className="absolute bg-[#0b0c0f] h-[628px] left-[-1px] overflow-clip top-[165px] w-[448px]" data-node-id="262:1071" data-name="Loading Content">
+          <div className="absolute left-[214px] size-[20px] top-[286px]" data-node-id="262:1072" data-name="Icon / refresh">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIconRefresh1} />
+          </div>
+          <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium'] font-medium leading-[normal] left-[224px] not-italic text-[#aaa4a0] text-[13px] text-center top-[322px] w-[448px]" data-node-id="262:1075">
+            Loading…
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+Image assets are stored on a localhost server. Clients can use these images directly in code as a way to view the image assets the same way they would other remote servers. Images and SVGs will be stored as constants, e.g. const image = 'http://localhost:3845/assets/10c13ac1a228a365cb98a0064b1d5afbc84887b2.png' These constants will be used in the code as the source for the image, e.g. <img src={image} /> This is true for both images and SVGs, so you can use the same approach for both types of assets.

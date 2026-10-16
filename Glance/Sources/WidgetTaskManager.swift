@@ -42,6 +42,16 @@ struct WidgetTaskRecord: Codable, Identifiable {
     /// Set while the task waits in the service queue; cleared once a worker takes it.
     var queuePosition: Int?
     var estimatedWaitSeconds: Int?
+    var creditCost: Int?
+    var refundedCredits: Int?
+    var billingStatusText: String? {
+        if let refunded = refundedCredits, refunded > 0 { return String(format: "Refunded %d credits".localized, refunded) }
+        if let cost = creditCost, cost > 0 {
+            if remoteTaskID == nil { return phase.isActive ? String(format: "Estimated %d credits".localized, cost) : "Not charged".localized }
+            return String(format: "Charged %d credits".localized, cost)
+        }
+        return creditCost == 0 ? "Free of charge".localized : nil
+    }
     var source: URL? { URL(string: sourceURL) }
     var output: URL? { outputPath.map { URL(fileURLWithPath: $0) } }
     /// "Queued · 3 ahead · ~2 min" while the service has not handed the task to
@@ -273,6 +283,7 @@ final class WidgetTaskManager {
     }
 
     private func finish(_ id: UUID, output: URL, remoteURL: URL?) {
+        BillingResultAccess.mark(output)
         DispatchQueue.main.async {
             guard let index = self.records.firstIndex(where: { $0.id == id }),
                   self.records[index].phase != .cancelled else { return }

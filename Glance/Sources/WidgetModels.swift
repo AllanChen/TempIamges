@@ -120,6 +120,12 @@ struct WidgetManifest: Codable, Hashable {
     /// manifests and caches written before this field still decode, and
     /// omitted from the signed JSON when absent.
     let localizations: [String: WidgetLocalization]?
+    let creditCost: Int?
+
+    var taskCreditCost: Int { max(0, creditCost ?? 1) }
+    var creditCostLabel: String {
+        String(format: (taskCreditCost == 1 ? "%d credit / task" : "%d credits / task").localized, taskCreditCost)
+    }
 
     func isCompatible(with inputType: String) -> Bool {
         commands.contains { $0.inputTypes.contains(inputType) }
@@ -188,6 +194,9 @@ struct WidgetManifest: Codable, Hashable {
     func submissionValidationIssues() -> [String] {
         var issues: [String] = []
         if schemaVersion < 1 { issues.append("schemaVersion must be at least 1") }
+        if let creditCost, !(0...1_000_000).contains(creditCost) {
+            issues.append("creditCost must be an integer between 0 and 1000000")
+        }
         if id.range(of: "^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$", options: .regularExpression) == nil {
             issues.append("id must be 3–128 characters using letters, numbers, '.', '_' or '-'")
         }
@@ -313,7 +322,7 @@ final class WidgetRegistry {
                               execution: manifest.execution, commands: commands,
                               privacy: manifest.privacy, minimumGlanceVersion: manifest.minimumGlanceVersion,
                               updatedAt: manifest.updatedAt, signature: manifest.signature,
-                              localizations: manifest.localizations)
+                              localizations: manifest.localizations, creditCost: manifest.creditCost)
     }
 
     private static func migrateResultURLPreference(_ manifest: WidgetManifest) -> WidgetManifest {
@@ -337,7 +346,7 @@ final class WidgetRegistry {
                               execution: manifest.execution, commands: commands,
                               privacy: manifest.privacy, minimumGlanceVersion: manifest.minimumGlanceVersion,
                               updatedAt: manifest.updatedAt, signature: manifest.signature,
-                              localizations: manifest.localizations)
+                              localizations: manifest.localizations, creditCost: manifest.creditCost)
     }
 
     func install(_ manifest: WidgetManifest) {

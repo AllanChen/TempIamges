@@ -1,0 +1,30 @@
+<!-- path: /pay/return/ | zh: 返回 Glance | en: Return to Glance | noindex: true -->
+<section class="status">
+  <div class="narrow">
+    <div class="status-mark" aria-hidden="true">✓</div>
+    <h1 style="font-size:clamp(30px,4vw,44px)" lang="zh">付款已提交，正在返回 Glance</h1>
+    <h1 style="font-size:clamp(30px,4vw,44px)" lang="en">Payment submitted. Returning to Glance.</h1>
+    <p class="lead" lang="zh">Glance 会在收到支付渠道的确认后为你开通 Pro 或发放点数。此页面本身不代表已经到账，请不要重复付款。</p>
+    <p class="lead" lang="en">Glance activates Pro or adds your credits once the payment provider confirms the payment. This page alone does not mean the payment is complete, so please do not pay again.</p>
+    <p class="small" id="order-line" hidden><span lang="zh">订单号：</span><span lang="en">Order: </span><code id="order-id"></code></p>
+    <div class="hero-actions" style="justify-content:center;margin-top:26px">
+      <a class="btn btn-primary" id="open-app" href="glance://payment/return"><span lang="zh">打开 Glance</span><span lang="en">Open Glance</span></a>
+      <a class="btn btn-ghost" href="mailto:{{SUPPORT_EMAIL}}"><span lang="zh">联系支持</span><span lang="en">Contact support</span></a>
+    </div>
+    <p class="small" style="margin-top:22px"><span lang="zh">如果 Glance 没有自动打开，请点击「打开 Glance」。超过 2 分钟仍未到账，请带上订单号联系我们。</span><span lang="en">If Glance does not open by itself, click Open Glance. If nothing arrives within 2 minutes, contact us with your order number.</span></p>
+  </div>
+</section>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var order = params.get('order') || params.get('order_id') || '';
+  if (!/^[A-Za-z0-9_-]{4,128}$/.test(order)) order = '';
+  var link = 'glance://payment/return' + (order ? '?order=' + encodeURIComponent(order) : '');
+  document.getElementById('open-app').setAttribute('href', link);
+  if (order) {
+    document.getElementById('order-id').textContent = order;
+    document.getElementById('order-line').hidden = false;
+  }
+  setTimeout(function () { location.href = link; }, 600);
+})();
+</script>

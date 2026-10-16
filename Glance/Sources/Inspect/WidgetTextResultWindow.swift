@@ -131,6 +131,7 @@ final class WidgetTextResultWindow: NSPanel {
 
         resultScroll.drawsBackground = false
         resultScroll.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: resultScroll)
         resultScroll.autohidesScrollers = true
         resultScroll.scrollerStyle = .overlay
         resultScroll.borderType = .noBorder

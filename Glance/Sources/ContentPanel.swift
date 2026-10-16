@@ -59,6 +59,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
 
     private init() {
         let config = WKWebViewConfiguration()
+        PanelStyle.styleWebScrollbars(in: config)
         let findScript = WKUserScript(
             source: ContentViewerWindow.findHelperJS,
             injectionTime: .atDocumentEnd,
@@ -73,6 +74,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         let scroll = NSScrollView(frame: .zero)
         scroll.hasVerticalScroller = true
         scroll.hasHorizontalScroller = false
+        PanelStyle.styleScrollers(in: scroll)
         scroll.borderType = .noBorder
         scroll.documentView = tv
         textScroll = scroll
@@ -844,6 +846,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     }
 
     @objc private func saveTapped() {
+        guard BillingCoordinator.shared.requireLocalTool("Save".localized, over: self) else { return }
         guard kind == .text, let url = currentURL, url.isFileURL else { return }
         let body = textView.string
         do {
@@ -1516,6 +1519,7 @@ private final class GitDiffWindow: NSWindow {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
+        PanelStyle.styleScrollers(in: scrollView)
         scrollView.borderType = .noBorder
         scrollView.documentView = textView
         return scrollView

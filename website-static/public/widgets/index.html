@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN" data-lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Widget · Glance</title>
+<meta name="description" content="Glance 云端 AI Widget 列表、每次价格与处理服务说明。Glance cloud AI Widgets, per-run prices and processing disclosures.">
+<link rel="canonical" href="https://glance.mcreator.ai/widgets/">
+<meta property="og:title" content="AI Widget · Glance | AI Widgets · Glance">
+<meta property="og:description" content="Glance 云端 AI Widget 列表、每次价格与处理服务说明。Glance cloud AI Widgets, per-run prices and processing disclosures.">
+<meta property="og:image" content="https://glance.mcreator.ai/assets/video/glance-demo-poster.jpg?v=222cee43">
+<meta property="og:url" content="https://glance.mcreator.ai/widgets/">
+<meta name="theme-color" content="#08090c">
+
+<link rel="icon" type="image/png" href="/assets/img/favicon-64.png">
+<link rel="apple-touch-icon" href="/assets/img/logo-256.png">
+<script>(function(){var l;try{l=localStorage.getItem('glance.lang')}catch(e){}if(!l)l=/^zh/i.test(navigator.language||'')?'zh':'en';document.documentElement.setAttribute('data-lang',l);document.documentElement.setAttribute('lang',l==='zh'?'zh-CN':'en')})();</script>
+<link rel="stylesheet" href="/assets/site.css?v=2026-10-16">
+</head>
+<body>
+<span hidden data-title-zh="AI Widget · Glance" data-title-en="AI Widgets · Glance"></span>
+<a class="skip" href="#main"><span lang="zh">跳到正文</span><span lang="en">Skip to content</span></a>
+<header class="site-header"><div class="wrap">
+  <a class="brand" href="/"><img src="/assets/img/logo-256.png" alt="" width="30" height="30">Glance</a>
+  <nav class="nav" aria-label="Main"><a class="hide-sm" href="/#loop"><span lang="zh">功能</span><span lang="en">Features</span></a><a class="hide-sm" href="/widgets/" aria-current="page"><span lang="zh">AI Widget</span><span lang="en">AI Widgets</span></a><a class="hide-sm" href="/pricing/"><span lang="zh">价格</span><span lang="en">Pricing</span></a><a class="hide-sm" href="/install/"><span lang="zh">安装</span><span lang="en">Install</span></a>
+    <button class="lang-toggle" type="button" aria-label="Switch language"><span lang="zh">EN</span><span lang="en">中文</span></button>
+    <a class="btn btn-primary" href="/#download"><span lang="zh">下载</span><span lang="en">Download</span></a>
+  </nav>
+</div></header>
+<main id="main">
+<section class="hero" style="padding-bottom:40px">
+  <div class="wrap">
+    <p class="eyebrow">AI Widgets</p>
+    <h1 lang="zh">右键，就地用 AI 改。</h1><h1 lang="en">Right-click. Fix it with AI.</h1>
+    <p class="lead" lang="zh">在 Glance 里右键图片或视频，选择 Widget 即可运行。结果出现在原图旁边，可以直接对比。下面的列表和价格实时读取自 Glance 服务。</p>
+    <p class="lead" lang="en">Right-click an image or video in Glance and pick a Widget. The result appears next to the original so you can compare right away. The list and prices below are read live from the Glance service.</p>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="widget-list" data-widgets><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+    <div class="notice" style="margin-top:22px">
+      <span lang="zh"><strong>计费规则：</strong>任务被服务端接受时扣点。系统失败、排队超过 30 分钟、或在开始处理前取消，全额退回点数；开始处理后主动取消不退。价格超过确认阈值或价格变化时，提交前会请你确认。</span>
+      <span lang="en"><strong>Billing:</strong> credits are charged when the server accepts a task. Failures on our side, queue waits over 30 minutes, and cancellations before processing starts are refunded in full; cancelling after processing starts is not. You are asked to confirm before submitting when a price is above the confirmation threshold or has changed.</span>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:24px" id="models">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 lang="zh">处理服务与数据说明</h2><h2 lang="en">Processing services and data</h2>
+      <p class="lead" lang="zh">运行云端 Widget 时，你选中的媒体会上传到 Glance 服务，并交给下列服务处理。Glance 不会用你的素材训练模型。</p>
+      <p class="lead" lang="en">When you run a cloud Widget, the media you selected is uploaded to the Glance service and processed by the services below. Glance does not use your media to train models.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Widget</th><th><span lang="zh">处理服务</span><span lang="en">Processed by</span></th><th><span lang="zh">说明</span><span lang="en">Notes</span></th></tr></thead>
+      <tbody>
+        <tr><td><span lang="zh">高清放大、智能扩图、图生图</span><span lang="en">Upscale, Outpaint, Image to Image</span></td>
+          <td><span lang="zh">RunningHub（runninghub.cn）托管的 AI 图像工作流</span><span lang="en">AI image workflows hosted on RunningHub (runninghub.cn)</span></td>
+          <td><span lang="zh">输出为 AI 生成或修改的图像，可能与原图存在差异。</span><span lang="en">Output is AI-generated or AI-edited and may differ from the original.</span></td></tr>
+        <tr><td><span lang="zh">人物背景分离</span><span lang="en">Portrait Background Removal</span></td>
+          <td><span lang="zh">RunningHub 托管的 AI 抠图工作流</span><span lang="en">AI segmentation workflow hosted on RunningHub</span></td>
+          <td><span lang="zh">返回透明背景图片。</span><span lang="en">Returns an image with a transparent background.</span></td></tr>
+        <tr><td><span lang="zh">AI 换装</span><span lang="en">Outfit Swap</span></td>
+          <td><span lang="zh">RunningHub 托管的 AI 图像工作流</span><span lang="en">AI image workflow hosted on RunningHub</span></td>
+          <td><span lang="zh">只改变服装，不替换人脸或身份。只能上传你本人或已获得当事人同意的照片。</span><span lang="en">Changes clothing only and never swaps faces or identities. Only upload photos of yourself or of people who have given consent.</span></td></tr>
+        <tr><td><span lang="zh">图片去水印、视频去水印</span><span lang="en">Image and Video Watermark Removal</span></td>
+          <td><span lang="zh">RunningHub 托管的 AI 修复工作流；视频会先按 8 秒分段处理再合并</span><span lang="en">AI inpainting workflows hosted on RunningHub; video is processed in segments of up to 8 seconds and rejoined</span></td>
+          <td><span lang="zh">只能用于你拥有版权或已获授权的内容。不得用于去除他人的版权标识。</span><span lang="en">Only for content you own or are licensed to edit. Never use it to remove someone else's copyright marks.</span></td></tr>
+        <tr><td><span lang="zh">图片转提示词</span><span lang="en">Image to Prompt</span></td>
+          <td><span lang="zh">RunningHub 托管的图像理解工作流</span><span lang="en">Image-understanding workflow hosted on RunningHub</span></td>
+          <td><span lang="zh">返回一段文字描述。</span><span lang="en">Returns a text description.</span></td></tr>
+        <tr><td><span lang="zh">免费图床</span><span lang="en">Image Hosting</span></td>
+          <td><span lang="zh">中国大陆的图片上传到 Freeimage.host；其他地区的图片以及所有视频保存在 Glance 云存储（Cloudflare R2）</span><span lang="en">Images from mainland China are uploaded to Freeimage.host; other images and all videos are stored in Glance cloud storage (Cloudflare R2)</span></td>
+          <td><span lang="zh">生成可分享的链接。Freeimage.host 是公开图床，拿到链接的任何人都能访问，请勿上传私密内容。</span><span lang="en">Creates a shareable link. Freeimage.host is a public host: anyone with the link can open it, so do not upload private content.</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="small" style="margin-top:14px"><span lang="zh">使用 Widget 即表示你同意<a class="accent" href="/acceptable-use/">可接受使用政策</a>。发现违规结果，请<a class="accent" href="/acceptable-use/#report">举报</a>。</span><span lang="en">Using a Widget means you agree to the <a class="accent" href="/acceptable-use/">Acceptable Use Policy</a>. To report a harmful result, <a class="accent" href="/acceptable-use/#report">contact us</a>.</span></p>
+  </div>
+</section>
+
+</main>
+<footer class="site-footer"><div class="wrap">
+  <div class="footer-grid">
+    <div>
+      <a class="brand" href="/" style="display:flex;padding:0;color:var(--text)"><img src="/assets/img/logo-256.png" alt="" width="30" height="30">Glance</a>
+      <p style="margin:14px 0 0;max-width:320px"><span lang="zh">AI 时代的 Preview。看图看视频，不满意就地用 AI 改，改完对比确认。</span><span lang="en">The Preview for the AI era. View images and video, fix them in place with AI, then compare to confirm.</span></p>
+    </div>
+    <div><h4><span lang="zh">产品</span><span lang="en">Product</span></h4>
+      <a href="/#loop"><span lang="zh">功能</span><span lang="en">Features</span></a><a href="/widgets/"><span lang="zh">AI Widget</span><span lang="en">AI Widgets</span></a>
+      <a href="/pricing/"><span lang="zh">价格</span><span lang="en">Pricing</span></a><a href="/install/"><span lang="zh">下载与安装</span><span lang="en">Download & install</span></a></div>
+    <div><h4><span lang="zh">政策</span><span lang="en">Legal</span></h4>
+      <a href="/terms/"><span lang="zh">服务条款</span><span lang="en">Terms of Service</span></a><a href="/privacy/"><span lang="zh">隐私政策</span><span lang="en">Privacy Policy</span></a>
+      <a href="/refunds/"><span lang="zh">退款政策</span><span lang="en">Refund Policy</span></a><a href="/acceptable-use/"><span lang="zh">可接受使用政策</span><span lang="en">Acceptable Use Policy</span></a></div>
+    <div><h4><span lang="zh">支持</span><span lang="en">Support</span></h4>
+      <a href="mailto:support@mcreator.ai">support@mcreator.ai</a>
+      <a href="/acceptable-use/#report"><span lang="zh">举报违规内容</span><span lang="en">Report content</span></a></div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Glance · mcreator.ai</span>
+    <span><span lang="zh">付款由 Pancake by Waffo 作为记录商户（Merchant of Record）处理。</span><span lang="en">Payments are processed by Pancake by Waffo as Merchant of Record.</span></span>
+  </div>
+</div></footer>
+<script src="/assets/site.js?v=2026-10-16-bilingual-media" defer></script>
+</body>
+</html>

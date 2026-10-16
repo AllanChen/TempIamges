@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "0d7a1de4-af33-4df1-9607-a47323c07a52",
   "version": "0.1.2",
   "name": "图生图",

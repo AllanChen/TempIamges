@@ -2,6 +2,62 @@
 
 独立的 Glance Widget 平台 Worker。它是 Widget 提交、审核、发布、任务队列和开发者 Worker 拉取任务的唯一后端，不依赖 `mcreator` 项目。
 
+## 用户登录与 Widget 积分
+
+Glance 用户可使用 Google 或邮箱六位验证码登录。普通用户会话与开发者 CLI 会话、管理员会话相互独立；任意字符串或调试 token 不再能创建用户任务。用户身份绑定数据库用户 ID，退出后再次登录仍使用同一账户和余额。用户 token 只以 SHA-256 摘要保存在服务端，客户端保存在 macOS Keychain；退出会撤销当前服务端会话。
+
+上线前先应用 `0010_user_accounts_credits.sql`，再部署 Worker：
+
+```bash
+cd GlanceService
+npx wrangler d1 migrations apply glance-service-db --remote
+npm run deploy
+```
+
+Google 登录复用 `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`，用户登录的回调地址由 `GOOGLE_REDIRECT_URI` 配置，当前为 `https://glance.mcreator.ai/auth/google/callback`，需要在 Google OAuth 客户端中登记这一完整地址；未配置时回退到 `<PUBLIC_ORIGIN>/auth/google/callback`。授权请求和授权码交换使用同一个回调地址。桌面客户端通过 `glance://auth/callback` 接收短期一次性授权码，并用本次请求的 PKCE verifier 交换会话；回调不包含用户 token。
+
+官网域名由静态站点提供，`mcreator.ai` Zone 中单独设置 Worker Route `glance.mcreator.ai/auth/google/callback*` → `glance-service`。Cloudflare 路由匹配包含查询参数，结尾的 `*` 确保 Google 携带 `code`、`state` 返回时进入认证服务。Google 控制台登记的回调 URI 和 `GOOGLE_REDIRECT_URI` 仍使用完整地址 `https://glance.mcreator.ai/auth/google/callback`，不加 `*`。此路由通过 Cloudflare Zone Routes 管理；不要将整个 `glance.mcreator.ai/*` 指向认证 Worker。官网首页与 API 自定义域名继续沿用各自的现有绑定。
+
+邮箱验证码通过 Resend 发送，需要配置已验证发信域名的地址，以及 API Key（均使用 Wrangler Secret）：
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put AUTH_EMAIL_FROM
+```
+
+`AUTH_EMAIL_FROM` 示例格式为 `Glance <auth@your-verified-domain.example>`。验证码有效期 10 分钟、最多尝试 5 次、同一邮箱发送间隔至少 60 秒；每个来源 IP 每小时最多请求 20 次。未配置邮件服务时邮箱登录返回 `503 email_not_configured`，不会发放可绕过认证的验证码。Google 登录不依赖邮件服务。
+
+`wrangler.toml` 的 `NEW_USER_CREDITS` 控制新账户的一次性赠送，默认 `100`；设为 `0` 时由管理员发放。修改该配置不改变已有账户的余额。后台新增“用户与积分”页面，展示最近 100 位用户的余额并支持备注发放；每次发放使用唯一提交编号，重试不会再次到账。
+
+开发者在 `widget.json` 的顶层设置每次任务的积分消耗：
+
+```json
+{ "creditCost": 1 }
+```
+
+每个新建 Widget 的 `widget.json` 都必须显式填写顶层 `creditCost`，为 `0–1000000` 的整数，默认 `1`；`0` 表示免费。同一 Widget 的所有命令使用这个费用；旧 Manifest 未填写时兼容为 `1`。开发者通过 CLI 提交的新版本沿用现有审核、发布流程，上线后价格才生效；管理后台的“每次任务消耗积分”读写同一个 Manifest 字段 `creditCost`。计价取服务端当前已发布版本，客户端传入的费用不能覆盖它。仅修改本地 `widget.json` 不会改变后台当前保存的价格。
+
+现有 Widget 通过 `0011_widget_credit_prices.sql` 一次性统一为 `1` 积分 / 次，本地 Widget 配置和内置模板也显式设置为 `1`。管理员可在 **Widget Review → 全部 Widget → 编辑 → 每次任务消耗积分** 修改并保存；保留当前版本号和发布状态时，新价格立即用于后续提交。后续部署不会重置管理员已修改的价格。
+
+任务创建、积分扣减和流水写入由同一个数据库语句中的触发器完成。余额不足返回 `402 insufficient_credits`，且不创建任务。免费 Widget 仍需登录，余额为 `0` 也可提交，不扣积分、不写扣费流水；已有服务需应用 `0012_free_widget_tasks.sql` 以更新数据库校验。无效请求、价格变化和队列已满不扣积分。付费任务被接受即扣费；系统失败、排队过期及排队中撤销按任务最初费用自动退点，每个任务最多退一次。已被 Worker 领取后主动取消不退点；Worker 重新领取、心跳、结果回传和管理员审核测试不重复扣费。任务记录保存提交时的费用，后续修改价格不影响已提交任务。
+
+新客户端提交时附带 `Idempotency-Key` 和 `expectedCreditCost`。相同用户、相同提交编号和参数只会创建一个任务；编号重复但参数不同返回 `409 idempotency_conflict`。价格与用户看到的不一致返回 `409 price_changed`，客户端刷新本地 Widget，但不会自动按新价格付费。
+
+```text
+GET  /auth/google?state=...&code_challenge=...
+GET  /auth/google/callback
+POST /auth/native/exchange          { code, code_verifier }
+POST /auth/email/send-code          { email }
+POST /auth/email/verify-code        { email, code }
+GET  /auth/me                       用户 Bearer token
+POST /auth/logout                   撤销当前 Bearer token
+GET  /api/v2/account/credits        余额、最近 100 笔流水
+GET  /api/admin/v2/users            管理员鉴权
+POST /api/admin/v2/users/:id/credits { amount, note }，必须带 Idempotency-Key
+```
+
+新版本客户端使用登录会话提交任务，移除了 `glance.widgetTaskToken` 调试覆盖。之前由调试 token 创建的任务和素材保留原归属，不自动转移到真实账户。受控 `FLOW_TEST_TOKEN` 仍仅用于任务状态和素材排查，不可创建付费任务。
+
 ## 开发者 CLI
 
 仓库中的 `glance-cli/` 是 Python 包。开发者安装后运行 `glance widget init` 创建 UUID 文件夹，`glance widget publish` 提交审核，并在自己的机器上运行一个 `glance worker`。该 Worker 用一次 `POST /api/v2/widget-tasks/pull-batch` 按 Widget ID 请求任务；服务端按 Widget ID 授权和分配，任务的版本号仅保留用于发布、审核和历史记录。Worker 对每个 Widget ID 运行一份本机代码，上传结果并发送心跳。管理员在 Admin Console 发送测试任务、检查结果、手动灰度及正式发布。
@@ -113,7 +169,7 @@ Python CLI Worker 使用开发者会话批量领取属于自己或经 `widget_wo
 wrangler secret put FLOW_TEST_TOKEN
 ```
 
-将客户端中的调试 token 替换为 login 获取的用户 token 后，新 token 会对应新的用户身份；调试 token 创建的私人任务、素材和提交不会自动迁移到该身份。
+真实用户身份绑定账户 ID，多次登录产生的新 token 仍可访问该账户已有任务和积分。调试 token 创建的私人任务和素材不会自动迁移到真实账户。
 
 Admin Console 左侧的“Glance 配置”页面可编辑整份 `glance_config` JSON；配置保存在 D1 的 `service_settings` 表，新增字段无需新增数据库列。`PUT /api/admin/v2/glance-config` 会替换整份配置，要求 `locationBasedUpload` 为布尔值；首页的便捷开关只修改这个字段并保留其他字段。该字段默认开启。`GET /api/v2/glance_config` 下发整份配置，Glance 客户端在每次上传前读取；读取失败时保守地使用 R2。开启时，客户端根据随后任务中使用的同一个 `location` 值判断：`CN` 或 `China` 的图片优先从本机上传到 Freeimage，失败时回退 R2；其他地区及非图片文件使用 R2。关闭时所有媒体统一上传 R2。Service 的 `POST /api/v2/uploads` 始终只上传 R2，不再调用 Freeimage。`glance_config` 会完整下发给客户端，不应放入密钥。
 
@@ -353,3 +409,14 @@ Authorization: Bearer <user_token>
 ```
 
 当前 `processCount` 只会返回 `0` 或 `100`，还没有中间进度上报；Worker 的 `heartbeat` 只负责续租和标记 `running`。
+
+
+## Pricing、Pro 与支付（PRD v0.5）
+
+实现说明和上线配置见 [`docs/billing-setup.md`](docs/billing-setup.md)。先应用数据库迁移 `0013_pricing_licenses_payments.sql`、`0014_billing_metrics.sql` 和 `0015_admin_pro_grants.sql`，再部署对应 Worker。迁移保留已有账户、会话、余额和流水，允许退款回收产生负余额。负余额仍可提交免费 Widget。后台「用户与授权」支持填写备注手动授予永久 Pro，沿用配置的功能更新期，不生成支付订单或附送积分。
+
+后台新增「定价与授权」「订单与退款」。软件买断和更新续购金额默认为空，只有管理员设置后才能购买。人民币与美元的价格、积分分别配置；积分包数量、启用和推荐可调整。开启销售需要有效商户配置；没有可用购买路径时客户端不会限制本地工具。
+
+订单与任务消费均使用 `Idempotency-Key`；下单携带 `expectedPrice`，提交任务携带 `expectedCreditCost`。付款页回跳不是支付凭据；只有通过原始请求体 RSA 验签、商户环境与金额核对的 webhook 能发放权益。支付 URL 中的买家令牌加密存储，后台订单接口不会返回。
+
+查询任务额外返回 `creditCost`、`refundedCredits` 和 `balance`。`DELETE /api/v2/tasks/:id?queuedOnly=true` 是撤销，只在排队中成功并全额退点；已领取时返回 409，客户端确认「不退点取消」后才发送常规 DELETE。定时任务每五分钟兜底清理过期任务，提交、领取、状态查询时也会检查；最长排队与最多领取次数由后台配置。

@@ -38,6 +38,9 @@ def validate(manifest: dict, code_path: Path | None = None) -> None:
     for field in required:
         if not manifest.get(field):
             raise ValueError(f"Manifest 缺少 {field}")
+    credit_cost = manifest.get("creditCost", 1)
+    if isinstance(credit_cost, bool) or not isinstance(credit_cost, int) or not 0 <= credit_cost <= 1_000_000:
+        raise ValueError("creditCost 必须是 0 到 1000000 的整数（0 表示免费）")
     uuid.UUID(str(manifest["id"]))
     if not isinstance(manifest["commands"], list) or not manifest["commands"]:
         raise ValueError("commands 必须是非空数组")
@@ -139,7 +142,7 @@ def command_init(args: argparse.Namespace) -> None:
     manifest = {
         "schemaVersion": 1, "id": widget_id, "version": "0.1.0",
         "name": "My Widget", "summary": "Describe your widget.",
-        "author": "Your name", "official": False,
+        "author": "Your name", "official": False, "creditCost": 1,
         "execution": {"mode": "cloud"},
         "commands": [{"id": "run", "name": "Run", "description": "Process an input.",
                       "inputTypes": ["image"], "inputMimeTypes": ["image/png", "image/jpeg"],

@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f",
   "version": "1.0.1",
   "name": "高清放大",

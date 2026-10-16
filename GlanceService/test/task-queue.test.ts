@@ -19,7 +19,7 @@ function setQueueLimit(value: string) {
 // Inserts finished/active rows directly so the estimate has history to work from.
 function seedTask(id: string, fields: { status: string; widgetID?: string; claimedAt?: string; completedAt?: string | null; createdAt?: string }) {
   return env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at,claimed_at,completed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
-    .bind(id, fields.widgetID ?? WIDGET_ID, "version_test", "run", "seed", "production", "{}", "{}", fields.status,
+    .bind(id, fields.widgetID ?? WIDGET_ID, "version_test", "run", "user_3", "production", "{}", "{}", fields.status,
       fields.createdAt ?? fields.claimedAt ?? new Date().toISOString(), fields.claimedAt ?? null, fields.completedAt ?? null).run();
 }
 
@@ -46,7 +46,7 @@ describe("queue limit", () => {
     await setQueueLimit("not-a-number");
     const statements = [];
     for (let i = 0; i < 300; i++) statements.push(env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
-      .bind(`task_seed_${i}`, "other-widget", "v", "run", "seed", "production", "{}", "{}", "queued", iso(-1000)));
+      .bind(`task_seed_${i}`, "other-widget", "v", "run", "user_3", "production", "{}", "{}", "queued", iso(-1000)));
     await env.DB.batch(statements);
     expect((await createTask()).response.status).toBe(429);
 

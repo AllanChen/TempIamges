@@ -1,6 +1,6 @@
 # Remove Background Widget
 
-这个旧目录不需要 `widget.json`。`main.py` 从 Glance 任务读取本地图片，使用 rembg 在本机生成透明背景 PNG，返回本地文件路径，由 Glance Worker 上传结果。macOS 使用 CPU 版 `onnxruntime`；第一次运行时 rembg 会下载模型。
+`widget.json` 声明输入、输出和每次任务的积分费用，顶层 `creditCost` 默认为 `1`，设为 `0` 表示免费，与管理后台的积分字段一致。`main.py` 从 Glance 任务读取本地图片，使用 rembg 在本机生成透明背景 PNG，返回本地文件路径，由 Glance Worker 上传结果。macOS 使用 CPU 版 `onnxruntime`；第一次运行时 rembg 会下载模型。
 
 在仓库根目录运行：
 

@@ -421,6 +421,7 @@ final class ImageDifferencePanel: NSView {
         layer?.backgroundColor = NSColor.clear.cgColor
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: scroll)
         // Only show the scroller when content overflows, and overlay it so it
         // never steals width from the info blocks.
         scroll.autohidesScrollers = true

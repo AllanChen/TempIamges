@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "d13ef3be-9d60-4283-a8f5-d75d4e550944",
   "version": "0.1.1",
   "name": "智能扩图",

@@ -6,13 +6,13 @@ set -e
 # It needs your Mac password (sudo + keychain), which is why it's a separate,
 # interactive step.
 
-CERT_NAME="Glance Self-Signed"
-CERT_PEM="/tmp/glance-cert.pem"
+CERT_NAME="${GLANCE_SIGN_IDENTITY:-Glance Self-Signed}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CERT_PEM="$(mktemp "${TMPDIR:-/tmp}/glance-cert.XXXXXX")"
+trap 'rm -f "$CERT_PEM"' EXIT
 
-if [ ! -f "$CERT_PEM" ]; then
-    echo "==> Exporting certificate..."
-    security find-certificate -c "$CERT_NAME" -p > "$CERT_PEM"
-fi
+echo "==> Exporting the current certificate..."
+security find-certificate -c "$CERT_NAME" -p > "$CERT_PEM"
 
 echo "==> Trusting '$CERT_NAME' for code signing (enter your Mac password)..."
 sudo security add-trusted-cert -d -r trustRoot \
@@ -21,10 +21,7 @@ sudo security add-trusted-cert -d -r trustRoot \
     "$CERT_PEM"
 
 echo "==> Allowing codesign to use the private key without prompts..."
-security set-key-partition-list \
-    -S apple-tool:,apple:,codesign: \
-    -k "" \
-    "$HOME/Library/Keychains/login.keychain-db" >/dev/null 2>&1 || true
+bash "$SCRIPT_DIR/configure-signing-key.sh"
 
 echo ""
 echo "==> Verifying the code-signing identity is now available:"

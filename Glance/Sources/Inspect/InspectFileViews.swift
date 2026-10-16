@@ -53,7 +53,9 @@ final class InspectFileWebView: WKWebView {
     weak var dropTarget: MediaDropCanvasView?
 
     convenience init() {
-        self.init(frame: .zero, configuration: WKWebViewConfiguration())
+        let configuration = WKWebViewConfiguration()
+        PanelStyle.styleWebScrollbars(in: configuration)
+        self.init(frame: .zero, configuration: configuration)
     }
 
     override init(frame: CGRect, configuration: WKWebViewConfiguration) {

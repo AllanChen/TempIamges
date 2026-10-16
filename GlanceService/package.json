@@ -15,5 +15,8 @@
     "typescript": "^5.9.0",
     "vitest": "4.1.11",
     "wrangler": "^4.92.0"
+  },
+  "dependencies": {
+    "@waffo/pancake-ts": "0.26.0"
   }
 }

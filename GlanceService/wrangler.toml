@@ -1,6 +1,10 @@
 name = "glance-service"
 main = "src/index.ts"
 compatibility_date = "2026-09-15"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["*/5 * * * *"]
 
 [[d1_databases]]
 binding = "DB"
@@ -17,9 +21,18 @@ directory = "site"
 binding = "ASSETS"
 
 [vars]
+# New accounts receive this many credits once; set to "0" for admin-only grants.
+NEW_USER_CREDITS = "100"
 PUBLIC_ORIGIN = "https://glance-service.allanchanni.workers.dev"
+GOOGLE_REDIRECT_URI = "https://glance.mcreator.ai/auth/google/callback"
 # Set ADMIN_PATH as a secret, e.g. "ops-7f3c9a2e". The admin UI is only served at that path.
 # Production tasks must be claimed by an authorized Widget Worker. The
 # FLOW_TEST_TOKEN remains available for task-status checks, but cannot act as
 # a legacy Worker and take jobs away from the local glance worker.
 WORKER_AUTH_DISABLED = "false"
+# Merchant/store IDs and all keys are configured with wrangler secret, never
+# committed. Keep sales disabled in Admin until the Waffo account is approved.
+WAFFO_ENVIRONMENT = "test"
+# Temporary mock checkout for the owner's test account only. Remove after
+# Pancake approval and merchant setup; no other account can create mock orders.
+MOCK_CHECKOUT_USER_ID = "1"

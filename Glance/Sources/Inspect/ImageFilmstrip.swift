@@ -3,10 +3,11 @@ import AppKit
 final class ImageFilmstripView: NSView {
     var onSelect: ((Int) -> Void)?
     var onCompare: ((Int) -> Void)?
+    var onVisibleIndicesChanged: (([Int]) -> Void)?
     /// The trailing "+" tile — an explicit alternative to drag-and-drop.
     var onAdd: (() -> Void)?
-    private var itemViews: [ImageFilmstripItem] = []
-    private var addTile: ImageFilmstripItem?
+    private var itemViews: [Int: ImageFilmstripItem] = [:]
+    private var visibleIndices: [Int] = []
     private var infos: [MediaInfo] = []
     private var images: [NSImage?] = []
     private var generatedResultPaths = Set<String>()
@@ -30,11 +31,11 @@ final class ImageFilmstripView: NSView {
 
     override func layout() {
         super.layout()
-        // Only reposition existing tiles here. Rebuilding (removing/adding
-        // subviews) inside layout() dirties the window's layout on every
-        // pass — AppKit aborts with "more Layout Window passes than there
-        // are views in the window" once the loop exceeds the pass limit.
         layoutItems()
+        if visibleRange != visibleIndices {
+            // Never mutate the view hierarchy during AppKit's layout pass.
+            DispatchQueue.main.async { [weak self] in self?.refreshVisibleItems() }
+        }
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -45,7 +46,7 @@ final class ImageFilmstripView: NSView {
         guard self.tileSize != tileSize || itemGap != gap else { return }
         self.tileSize = tileSize
         itemGap = gap
-        layoutItems()
+        refreshVisibleItems()
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -53,25 +54,33 @@ final class ImageFilmstripView: NSView {
         let delta = abs(event.scrollingDeltaX) > 0.01 ? event.scrollingDeltaX : event.scrollingDeltaY
         let step = event.hasPreciseScrollingDeltas ? delta : delta * 20
         scrollOffset = min(max(0, scrollOffset - step), maxScrollOffset)
-        layoutItems()
+        refreshVisibleItems()
     }
 
     func configure(infos: [MediaInfo], images: [NSImage?], selectedIndex: Int,
                    compareIndices: (Int, Int)?, generatedResultPaths: Set<String>) {
-        let previousInfos = self.infos
-        let previousURLs = Set(self.infos.map { $0.url.standardizedFileURL })
+        let structureChanged = self.infos.count != infos.count
+            || self.infos.first?.url != infos.first?.url
+            || self.infos.last?.url != infos.last?.url
+        let previousURLs: Set<URL> = structureChanged
+            ? Set(self.infos.map { $0.url.standardizedFileURL }) : []
         let previousSelection = self.selectedIndex
-        let firstLoad = itemViews.isEmpty
+        let firstLoad = self.infos.isEmpty
         let sessionChanged = self.infos.first?.url != infos.first?.url
-        if sessionChanged { scrollOffset = 0 }
+        if sessionChanged {
+            scrollOffset = 0
+            itemViews.values.forEach { $0.removeFromSuperview() }
+            itemViews.removeAll()
+            visibleIndices.removeAll()
+        }
         self.infos = infos
         self.images = images
         self.generatedResultPaths = generatedResultPaths
         self.selectedIndex = selectedIndex
         self.compareIndices = compareIndices
-        iconCache.removeAll()
-        rebuild(reusing: previousInfos)
-        if !sessionChanged, let resultIndex = infos.indices.first(where: {
+        if structureChanged { iconCache.removeAll() }
+        refreshVisibleItems()
+        if structureChanged, !sessionChanged, let resultIndex = infos.indices.first(where: {
             !previousURLs.contains(infos[$0].url.standardizedFileURL) &&
             (isGeneratedResult(infos[$0].url) ||
              WidgetTaskManager.shared.completedRecord(for: infos[$0].url) != nil)
@@ -83,18 +92,18 @@ final class ImageFilmstripView: NSView {
     }
 
     private func revealItem(at index: Int) {
-        guard itemViews.indices.contains(index) else { return }
+        guard infos.indices.contains(index) else { return }
         guard bounds.width > 0 else {
             pendingRevealIndex = index
             return
         }
         adjustOffsetToReveal(index)
-        layoutItems()
+        refreshVisibleItems()
     }
 
     /// Screen-space frame of a tile, for anchoring popovers to it.
     func screenFrame(ofItemAt index: Int) -> NSRect? {
-        guard let item = itemViews[safe: index], let window else { return nil }
+        guard let item = itemViews[index], let window else { return nil }
         return window.convertToScreen(item.convert(item.bounds, to: nil))
     }
 
@@ -119,10 +128,20 @@ final class ImageFilmstripView: NSView {
     }
 
     private var contentWidth: CGFloat {
-        CGFloat(itemViews.count) * tileSize + CGFloat(max(0, itemViews.count - 1)) * itemGap
+        CGFloat(infos.count) * tileSize + CGFloat(max(0, infos.count - 1)) * itemGap
     }
 
     private var maxScrollOffset: CGFloat { max(0, contentWidth - bounds.width) }
+    var visibleItemIndices: [Int] { visibleRange }
+
+    private var visibleRange: [Int] {
+        guard !infos.isEmpty, bounds.width > 0 else { return [] }
+        let pitch = max(1, tileSize + itemGap)
+        let offset = min(max(0, scrollOffset), maxScrollOffset)
+        let first = max(0, Int(offset / pitch) - 1)
+        let last = min(infos.count - 1, Int((offset + bounds.width) / pitch) + 1)
+        return Array(first...last)
+    }
 
     /// Position the existing tiles without touching the view hierarchy.
     private func layoutItems() {
@@ -131,39 +150,31 @@ final class ImageFilmstripView: NSView {
             adjustOffsetToReveal(index)
         }
         scrollOffset = min(scrollOffset, maxScrollOffset)
-        var x = -scrollOffset
-        for item in itemViews {
-            item.frame = NSRect(x: x, y: 0, width: tileSize, height: tileSize)
-            x += tileSize + itemGap
+        for (index, item) in itemViews {
+            item.frame = NSRect(x: CGFloat(index) * (tileSize + itemGap) - scrollOffset,
+                                y: 0, width: tileSize, height: tileSize)
         }
     }
 
-    private func rebuild(reusing previousInfos: [MediaInfo]) {
-        // Task progress can update many times before completion. Keep the
-        // existing tile/layer for each URL so its breathing animation stays
-        // in phase across upload, submit, process, and download updates.
-        var reusable: [String: [ImageFilmstripItem]] = [:]
-        for (info, item) in zip(previousInfos, itemViews) {
-            reusable[filmstripKey(for: info.url), default: []].append(item)
+    private func refreshVisibleItems() {
+        scrollOffset = min(max(0, scrollOffset), maxScrollOffset)
+        let indices = visibleRange
+        let wanted = Set(indices)
+        for index in itemViews.keys.filter({ !wanted.contains($0) }) {
+            itemViews.removeValue(forKey: index)?.removeFromSuperview()
         }
-        addTile?.removeFromSuperview()
-        addTile = nil
-        let count = infos.count
-        var updatedViews: [ImageFilmstripItem] = []
         let selectedResultTask: WidgetTaskRecord? = infos.indices.contains(selectedIndex)
             ? WidgetTaskManager.shared.completedRecord(for: infos[selectedIndex].url)
             : nil
         let ossResultTask = selectedResultTask?.widgetID == ossImageHostingWidgetID
             ? selectedResultTask : nil
-        for index in 0..<count {
-            let key = filmstripKey(for: infos[index].url)
+        for index in indices {
             let item: ImageFilmstripItem
-            if var candidates = reusable[key], !candidates.isEmpty {
-                item = candidates.removeFirst()
-                reusable[key] = candidates
-            } else {
+            if let existing = itemViews[index] { item = existing }
+            else {
                 item = ImageFilmstripItem(frame: .zero)
                 addSubview(item)
+                itemViews[index] = item
             }
             let isCompared = compareIndices.map { $0.0 == index || $0.1 == index } ?? false
             // In compare mode the border means pair membership only. The
@@ -191,17 +202,12 @@ final class ImageFilmstripView: NSView {
                 if modifiers.contains(.option) { self?.onCompare?(index) }
                 else { self?.onSelect?(index) }
             }
-            updatedViews.append(item)
         }
-        for candidates in reusable.values {
-            candidates.forEach { $0.removeFromSuperview() }
-        }
-        itemViews = updatedViews
         layoutItems()
-    }
-
-    private func filmstripKey(for url: URL) -> String {
-        url.isFileURL ? url.standardizedFileURL.path : url.absoluteString
+        if visibleIndices != indices {
+            visibleIndices = indices
+            onVisibleIndicesChanged?(indices)
+        }
     }
 }
 

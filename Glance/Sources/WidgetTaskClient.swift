@@ -66,13 +66,11 @@ final class WidgetTaskClient {
         configuration.timeoutIntervalForResource = 120
         return URLSession(configuration: configuration)
     }()
-    private let taskTokenKey = "glance.widgetTaskToken"
-
     private func authorizedRequest(_ url: URL) -> URLRequest {
         var request = URLRequest(url: url)
-        let token = UserDefaults.standard.string(forKey: taskTokenKey)
-            .flatMap { $0.isEmpty ? nil : $0 } ?? AuthManager.shared.session?.token
-        if let token {
+        // Uploads and tasks must use the same account session as billing.
+        // Legacy debug tokens are not accepted by the account-backed API.
+        if let token = AuthManager.shared.session?.token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         return request
@@ -102,6 +100,10 @@ final class WidgetTaskClient {
              queue: @escaping (WidgetQueueInfo?) -> Void = { _ in },
              submitted: @escaping (String) -> Void,
              completion: @escaping (Result<URL, Error>) -> Void) {
+        guard AuthManager.shared.session != nil else {
+            completion(.failure(WidgetTaskRequestError(statusCode: 401, message: nil)))
+            return
+        }
         let mediaURLs = input?.mediaURLs ?? [mediaURL]
         guard (1...4).contains(mediaURLs.count) else {
             completion(.failure(WidgetTaskInputError.invalidImageCount))
@@ -638,6 +640,9 @@ private struct WidgetTaskRequestError: LocalizedError {
     let message: String?
 
     var errorDescription: String? {
-        message ?? String(format: "Widget request failed (HTTP %d).".localized, statusCode)
+        if statusCode == 401 {
+            return "Please sign in to use Widgets.".localized
+        }
+        return message ?? String(format: "Widget request failed (HTTP %d).".localized, statusCode)
     }
 }

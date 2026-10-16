@@ -1,0 +1,307 @@
+<frame id="262:744" name="Widget Market / Details + Loading" x="23782" y="0" width="3188" height="924">
+  <frame id="262:745" name="01 / Widget Market / Browse" x="0" y="0" width="448" height="824">
+    <frame id="262:746" name="System / Transparent Drag Region" x="0" y="0" width="448" height="44" />
+    <frame id="262:747" name="System / Window Controls / Bare" x="20" y="16" width="64" height="16" />
+    <text id="262:751" name="Window Title" x="0" y="12" width="448" height="16" />
+    <text id="262:752" name="Window Subtitle" x="0" y="31" width="448" height="13" />
+    <frame id="262:753" name="Refresh" x="352" y="10" width="32" height="32">
+      <frame id="262:754" name="Icon / refresh" x="8" y="8" width="16" height="16" />
+    </frame>
+    <frame id="262:757" name="Close" x="392" y="10" width="32" height="32">
+      <frame id="262:758" name="Icon / close" x="8" y="8" width="16" height="16" />
+    </frame>
+    <rounded-rectangle id="262:760" name="Edge" x="0" y="52" width="448" height="1" />
+    <frame id="262:761" name="Search Field" x="24" y="68" width="400" height="36">
+      <frame id="262:762" name="Icon / search" x="12" y="9" width="18" height="18" />
+      <text id="262:765" name="Placeholder" x="38" y="10" width="300" height="16" />
+    </frame>
+    <frame id="262:766" name="Filter / Marketplace" x="24" y="118" width="114" height="30">
+      <text id="262:767" name="Label" x="12" y="7" width="73" height="15" />
+      <text id="262:768" name="Count" x="95" y="7" width="8" height="15" />
+    </frame>
+    <frame id="262:769" name="Filter / Installed" x="146" y="118" width="100" height="30">
+      <text id="262:770" name="Label" x="12" y="7" width="49" height="15" />
+      <text id="262:771" name="Count" x="81" y="7" width="8" height="15" />
+    </frame>
+    <frame id="262:772" name="Filter / Updates" x="254" y="118" width="86" height="30">
+      <text id="262:773" name="Label" x="12" y="7" width="49" height="15" />
+      <text id="262:774" name="Count" x="67" y="7" width="8" height="15" />
+    </frame>
+    <frame id="262:775" name="Sort / A–Z" x="392" y="117" width="32" height="32">
+      <frame id="262:776" name="Icon / slider" x="8" y="8" width="16" height="16" />
+    </frame>
+    <frame id="262:781" name="Widget / Background Remover Pro" x="24" y="166" width="400" height="84">
+      <frame id="262:782" name="Icon Tile" x="12" y="18" width="48" height="48">
+        <text id="262:783" name="Monogram" x="0" y="15" width="48" height="18" />
+      </frame>
+      <frame id="262:784" name="Action / Installed" x="300" y="26" width="88" height="32">
+        <text id="262:785" name="Label" x="0" y="8" width="88" height="15" />
+      </frame>
+      <text id="262:786" name="Name" x="72" y="22" width="216" height="16" />
+      <text id="262:787" name="Summary" x="72" y="44" width="216" height="26" />
+    </frame>
+    <frame id="262:788" name="Widget / Upscale" x="24" y="258" width="400" height="84">
+      <frame id="262:789" name="Icon Tile" x="12" y="18" width="48" height="48">
+        <text id="262:790" name="Monogram" x="0" y="15" width="48" height="18" />
+      </frame>
+      <frame id="262:791" name="Action / Update" x="312" y="26" width="76" height="32">
+        <text id="262:792" name="Label" x="0" y="8" width="76" height="15" />
+      </frame>
+      <text id="262:793" name="Name" x="72" y="22" width="228" height="16" />
+      <text id="262:794" name="Summary" x="72" y="44" width="228" height="26" />
+    </frame>
+    <frame id="262:795" name="Widget / Redraw &amp; Reframe" x="24" y="350" width="400" height="84">
+      <frame id="262:796" name="Icon Tile" x="12" y="18" width="48" height="48">
+        <text id="262:797" name="Monogram" x="0" y="15" width="48" height="18" />
+      </frame>
+      <frame id="262:798" name="Action / Update" x="312" y="26" width="76" height="32">
+        <text id="262:799" name="Label" x="0" y="8" width="76" height="15" />
+      </frame>
+      <text id="262:800" name="Name" x="72" y="22" width="228" height="16" />
+      <text id="262:801" name="Summary" x="72" y="44" width="228" height="26" />
+    </frame>
+    <frame id="262:802" name="Widget / Video Watermark Remover" x="24" y="442" width="400" height="84">
+      <frame id="262:803" name="Icon Tile" x="12" y="18" width="48" height="48">
+        <text id="262:804" name="Monogram" x="0" y="15" width="48" height="18" />
+      </frame>
+      <frame id="262:805" name="Action / Installed" x="300" y="26" width="88" height="32">
+        <text id="262:806" name="Label" x="0" y="8" width="88" height="15" />
+      </frame>
+      <text id="262:807" name="Name" x="72" y="22" width="216" height="16" />
+      <text id="262:808" name="Summary" x="72" y="44" width="216" height="26" />
+    </frame>
+    <frame id="262:809" name="Widget / Outfit Swap" x="24" y="534" width="400" height="84">
+      <frame id="262:810" name="Icon Tile" x="12" y="18" width="48" height="48">
+        <text id="262:811" name="Monogram" x="0" y="15" width="48" height="18" />
+      </frame>
+      <frame id="262:812" name="Action / Update" x="312" y="26" width="76" height="32">
+        <text id="262:813" name="Label" x="0" y="8" width="76" height="15" />
+      </frame>
+      <text id="262:814" name="Name" x="72" y="22" width="228" height="16" />
+      <text id="262:815" name="Summary" x="72" y="44" width="228" height="26" />
+    </frame>
+    <frame id="262:816" name="Widget / Expand Image" x="24" y="626" width="400" height="84">
+      <frame id="262:817" name="Icon Tile" x="12" y="18" width="48" height="48">
+        <text id="262:818" name="Monogram" x="0" y="15" width="48" height="18" />
+      </frame>
+      <frame id="262:819" name="Action / Update" x="312" y="26" width="76" height="32">
+        <text id="262:820" name="Label" x="0" y="8" width="76" height="15" />
+      </frame>
+      <text id="262:821" name="Name" x="72" y="22" width="228" height="16" />
+      <text id="262:822" name="Summary" x="72" y="44" width="228" height="26" />
+    </frame>
+    <frame id="262:823" name="Footer" x="0" y="794" width="448" height="30">
+      <rounded-rectangle id="262:824" name="Footer Edge" x="0" y="0" width="448" height="1" />
+      <text id="262:825" name="Footer Count" x="24" y="8" width="230" height="13" />
+      <text id="262:826" name="Footer Hint" x="298" y="8" width="126" height="13" />
+    </frame>
+  </frame>
+  <frame id="262:827" name="02 / Widget Details / Installed" x="548" y="0" width="448" height="824">
+    <frame id="262:828" name="System / Transparent Drag Region" x="0" y="0" width="448" height="44" />
+    <frame id="262:829" name="System / Window Controls / Bare" x="20" y="16" width="64" height="16" />
+    <text id="262:833" name="Window Title" x="0" y="12" width="448" height="16" />
+    <text id="262:834" name="Window Subtitle" x="0" y="31" width="448" height="13" />
+    <frame id="262:835" name="Refresh" x="352" y="10" width="32" height="32">
+      <frame id="262:836" name="Icon / refresh" x="8" y="8" width="16" height="16" />
+    </frame>
+    <frame id="262:839" name="Close" x="392" y="10" width="32" height="32">
+      <frame id="262:840" name="Icon / close" x="8" y="8" width="16" height="16" />
+    </frame>
+    <rounded-rectangle id="262:842" name="Header Edge" x="0" y="52" width="448" height="1" />
+    <frame id="262:843" name="Back to widgets" x="24" y="68" width="400" height="32">
+      <frame id="262:844" name="Icon / chevron" x="16" y="24" width="16" height="16" />
+      <text id="262:846" name="Label" x="24" y="8" width="360" height="15" />
+    </frame>
+    <frame id="262:847" name="Scrollable Details" x="24" y="110" width="400" height="614">
+      <frame id="262:848" name="Icon Tile" x="0" y="8" width="64" height="64">
+        <text id="262:849" name="Monogram" x="0" y="23" width="64" height="18" />
+      </frame>
+      <text id="262:850" name="Widget Name" x="84" y="8" width="316" height="22" />
+      <text id="262:851" name="Install Status" x="84" y="40" width="316" height="13" />
+      <text id="262:852" name="Summary" x="0" y="98" width="400" height="16" />
+      <frame id="262:853" name="Task Price" x="0" y="162" width="400" height="64">
+        <text id="262:854" name="Price Label" x="16" y="23" width="180" height="15" />
+        <text id="262:855" name="Credit Cost" x="196" y="22" width="188" height="16" />
+      </frame>
+      <text id="262:856" name="Commands Heading" x="0" y="254" width="400" height="15" />
+      <frame id="262:857" name="Command" x="0" y="278" width="400" height="96">
+        <text id="262:858" name="Command Name" x="16" y="14" width="368" height="16" />
+        <text id="262:859" name="Command Description" x="16" y="40" width="368" height="15" />
+      </frame>
+      <text id="262:860" name="Input" x="0" y="392" width="400" height="15" />
+      <text id="262:861" name="Output" x="0" y="416" width="400" height="15" />
+      <text id="262:862" name="Privacy Heading" x="0" y="466" width="400" height="15" />
+      <text id="262:863" name="Privacy Notice" x="0" y="492" width="400" height="15" />
+    </frame>
+    <rounded-rectangle id="262:864" name="Action Edge" x="24" y="724" width="400" height="1" />
+    <frame id="262:865" name="Action / Remove" x="24" y="748" width="400" height="40">
+      <text id="262:866" name="Label" x="0" y="12" width="400" height="15" />
+    </frame>
+  </frame>
+  <frame id="262:867" name="03 / Widget Details / Not Installed" x="1096" y="0" width="448" height="824">
+    <frame id="262:868" name="System / Transparent Drag Region" x="0" y="0" width="448" height="44" />
+    <frame id="262:869" name="System / Window Controls / Bare" x="20" y="16" width="64" height="16" />
+    <text id="262:873" name="Window Title" x="0" y="12" width="448" height="16" />
+    <text id="262:874" name="Window Subtitle" x="0" y="31" width="448" height="13" />
+    <frame id="262:875" name="Refresh" x="352" y="10" width="32" height="32">
+      <frame id="262:876" name="Icon / refresh" x="8" y="8" width="16" height="16" />
+    </frame>
+    <frame id="262:879" name="Close" x="392" y="10" width="32" height="32">
+      <frame id="262:880" name="Icon / close" x="8" y="8" width="16" height="16" />
+    </frame>
+    <rounded-rectangle id="262:882" name="Header Edge" x="0" y="52" width="448" height="1" />
+    <frame id="262:883" name="Back to widgets" x="24" y="68" width="400" height="32">
+      <frame id="262:884" name="Icon / chevron" x="16" y="24" width="16" height="16" />
+      <text id="262:886" name="Label" x="24" y="8" width="360" height="15" />
+    </frame>
+    <frame id="262:887" name="Scrollable Details" x="24" y="110" width="400" height="614">
+      <frame id="262:888" name="Icon Tile" x="0" y="8" width="64" height="64">
+        <text id="262:889" name="Monogram" x="0" y="23" width="64" height="18" />
+      </frame>
+      <text id="262:890" name="Widget Name" x="84" y="8" width="316" height="22" />
+      <text id="262:891" name="Install Status" x="84" y="40" width="316" height="13" />
+      <text id="262:892" name="Summary" x="0" y="98" width="400" height="16" />
+      <frame id="262:893" name="Task Price" x="0" y="162" width="400" height="64">
+        <text id="262:894" name="Price Label" x="16" y="23" width="180" height="15" />
+        <text id="262:895" name="Credit Cost" x="196" y="22" width="188" height="16" />
+      </frame>
+      <text id="262:896" name="Commands Heading" x="0" y="254" width="400" height="15" />
+      <frame id="262:897" name="Command" x="0" y="278" width="400" height="96">
+        <text id="262:898" name="Command Name" x="16" y="14" width="368" height="16" />
+        <text id="262:899" name="Command Description" x="16" y="40" width="368" height="15" />
+      </frame>
+      <text id="262:900" name="Input" x="0" y="392" width="400" height="15" />
+      <text id="262:901" name="Output" x="0" y="416" width="400" height="15" />
+      <text id="262:902" name="Privacy Heading" x="0" y="466" width="400" height="15" />
+      <text id="262:903" name="Privacy Notice" x="0" y="492" width="400" height="15" />
+    </frame>
+    <rounded-rectangle id="262:904" name="Action Edge" x="24" y="724" width="400" height="1" />
+    <frame id="262:905" name="Action / Install" x="24" y="748" width="400" height="40">
+      <text id="262:906" name="Label" x="0" y="12" width="400" height="15" />
+    </frame>
+  </frame>
+  <frame id="262:907" name="04 / Widget Details / Update Available" x="1644" y="0" width="448" height="824">
+    <frame id="262:908" name="System / Transparent Drag Region" x="0" y="0" width="448" height="44" />
+    <frame id="262:909" name="System / Window Controls / Bare" x="20" y="16" width="64" height="16" />
+    <text id="262:913" name="Window Title" x="0" y="12" width="448" height="16" />
+    <text id="262:914" name="Window Subtitle" x="0" y="31" width="448" height="13" />
+    <frame id="262:915" name="Refresh" x="352" y="10" width="32" height="32">
+      <frame id="262:916" name="Icon / refresh" x="8" y="8" width="16" height="16" />
+    </frame>
+    <frame id="262:919" name="Close" x="392" y="10" width="32" height="32">
+      <frame id="262:920" name="Icon / close" x="8" y="8" width="16" height="16" />
+    </frame>
+    <rounded-rectangle id="262:922" name="Header Edge" x="0" y="52" width="448" height="1" />
+    <frame id="262:923" name="Back to widgets" x="24" y="68" width="400" height="32">
+      <frame id="262:924" name="Icon / chevron" x="16" y="24" width="16" height="16" />
+      <text id="262:926" name="Label" x="24" y="8" width="360" height="15" />
+    </frame>
+    <frame id="262:927" name="Scrollable Details" x="24" y="110" width="400" height="614">
+      <frame id="262:928" name="Icon Tile" x="0" y="8" width="64" height="64">
+        <text id="262:929" name="Monogram" x="0" y="23" width="64" height="18" />
+      </frame>
+      <text id="262:930" name="Widget Name" x="84" y="8" width="316" height="22" />
+      <text id="262:931" name="Install Status" x="84" y="40" width="316" height="13" />
+      <text id="262:932" name="Summary" x="0" y="98" width="400" height="16" />
+      <frame id="262:933" name="Task Price" x="0" y="162" width="400" height="64">
+        <text id="262:934" name="Price Label" x="16" y="23" width="180" height="15" />
+        <text id="262:935" name="Credit Cost" x="196" y="22" width="188" height="16" />
+      </frame>
+      <text id="262:936" name="Commands Heading" x="0" y="254" width="400" height="15" />
+      <frame id="262:937" name="Command" x="0" y="278" width="400" height="96">
+        <text id="262:938" name="Command Name" x="16" y="14" width="368" height="16" />
+        <text id="262:939" name="Command Description" x="16" y="40" width="368" height="15" />
+      </frame>
+      <text id="262:940" name="Input" x="0" y="392" width="400" height="15" />
+      <text id="262:941" name="Output" x="0" y="416" width="400" height="15" />
+      <text id="262:942" name="Privacy Heading" x="0" y="466" width="400" height="15" />
+      <text id="262:943" name="Privacy Notice" x="0" y="492" width="400" height="15" />
+    </frame>
+    <rounded-rectangle id="262:944" name="Action Edge" x="24" y="724" width="400" height="1" />
+    <frame id="262:945" name="Action / Update" x="24" y="748" width="268" height="40">
+      <text id="262:946" name="Label" x="0" y="12" width="268" height="15" />
+    </frame>
+    <frame id="262:947" name="Action / Remove" x="304" y="748" width="120" height="40">
+      <text id="262:948" name="Label" x="0" y="12" width="120" height="15" />
+    </frame>
+  </frame>
+  <frame id="262:949" name="05 / Widget Details / Free" x="2192" y="0" width="448" height="824">
+    <frame id="262:950" name="System / Transparent Drag Region" x="0" y="0" width="448" height="44" />
+    <frame id="262:951" name="System / Window Controls / Bare" x="20" y="16" width="64" height="16" />
+    <text id="262:955" name="Window Title" x="0" y="12" width="448" height="16" />
+    <text id="262:956" name="Window Subtitle" x="0" y="31" width="448" height="13" />
+    <frame id="262:957" name="Refresh" x="352" y="10" width="32" height="32">
+      <frame id="262:958" name="Icon / refresh" x="8" y="8" width="16" height="16" />
+    </frame>
+    <frame id="262:961" name="Close" x="392" y="10" width="32" height="32">
+      <frame id="262:962" name="Icon / close" x="8" y="8" width="16" height="16" />
+    </frame>
+    <rounded-rectangle id="262:964" name="Header Edge" x="0" y="52" width="448" height="1" />
+    <frame id="262:965" name="Back to widgets" x="24" y="68" width="400" height="32">
+      <frame id="262:966" name="Icon / chevron" x="16" y="24" width="16" height="16" />
+      <text id="262:968" name="Label" x="24" y="8" width="360" height="15" />
+    </frame>
+    <frame id="262:969" name="Scrollable Details" x="24" y="110" width="400" height="614">
+      <frame id="262:970" name="Icon Tile" x="0" y="8" width="64" height="64">
+        <text id="262:971" name="Monogram" x="0" y="23" width="64" height="18" />
+      </frame>
+      <text id="262:972" name="Widget Name" x="84" y="8" width="316" height="22" />
+      <text id="262:973" name="Install Status" x="84" y="40" width="316" height="13" />
+      <text id="262:974" name="Summary" x="0" y="98" width="400" height="16" />
+      <frame id="262:975" name="Task Price" x="0" y="162" width="400" height="64">
+        <text id="262:976" name="Price Label" x="16" y="23" width="180" height="15" />
+        <text id="262:977" name="Credit Cost" x="196" y="22" width="188" height="16" />
+      </frame>
+      <text id="262:978" name="Commands Heading" x="0" y="254" width="400" height="15" />
+      <frame id="262:979" name="Command" x="0" y="278" width="400" height="96">
+        <text id="262:980" name="Command Name" x="16" y="14" width="368" height="16" />
+        <text id="262:981" name="Command Description" x="16" y="40" width="368" height="15" />
+      </frame>
+      <text id="262:982" name="Input" x="0" y="392" width="400" height="15" />
+      <text id="262:983" name="Output" x="0" y="416" width="400" height="15" />
+      <text id="262:984" name="Privacy Heading" x="0" y="466" width="400" height="15" />
+      <text id="262:985" name="Privacy Notice" x="0" y="492" width="400" height="15" />
+    </frame>
+    <rounded-rectangle id="262:986" name="Action Edge" x="24" y="724" width="400" height="1" />
+    <frame id="262:987" name="Action / Remove" x="24" y="748" width="400" height="40">
+      <text id="262:988" name="Label" x="0" y="12" width="400" height="15" />
+    </frame>
+  </frame>
+  <frame id="262:989" name="06 / Widget Market / Loading" x="2740" y="0" width="448" height="824">
+    <frame id="262:990" name="System / Transparent Drag Region" x="0" y="0" width="448" height="44" />
+    <frame id="262:991" name="System / Window Controls / Bare" x="20" y="16" width="64" height="16" />
+    <text id="262:995" name="Window Title" x="0" y="12" width="448" height="16" />
+    <text id="262:996" name="Window Subtitle" x="0" y="31" width="448" height="13" />
+    <frame id="262:997" name="Refresh" x="352" y="10" width="32" height="32">
+      <frame id="262:998" name="Icon / refresh" x="8" y="8" width="16" height="16" />
+    </frame>
+    <frame id="262:1001" name="Close" x="392" y="10" width="32" height="32">
+      <frame id="262:1002" name="Icon / close" x="8" y="8" width="16" height="16" />
+    </frame>
+    <rounded-rectangle id="262:1004" name="Edge" x="0" y="52" width="448" height="1" />
+    <frame id="262:1005" name="Search Field" x="24" y="68" width="400" height="36">
+      <frame id="262:1006" name="Icon / search" x="12" y="9" width="18" height="18" />
+      <text id="262:1009" name="Placeholder" x="38" y="10" width="300" height="16" />
+    </frame>
+    <frame id="262:1010" name="Filter / Marketplace" x="24" y="118" width="101" height="30">
+      <text id="262:1011" name="Label" x="12" y="7" width="73" height="15" />
+    </frame>
+    <frame id="262:1013" name="Filter / Installed" x="133" y="118" width="87" height="30">
+      <text id="262:1014" name="Label" x="12" y="7" width="49" height="15" />
+    </frame>
+    <frame id="262:1016" name="Filter / Updates" x="228" y="118" width="73" height="30">
+      <text id="262:1017" name="Label" x="12" y="7" width="49" height="15" />
+    </frame>
+    <frame id="262:1019" name="Sort / A–Z" x="392" y="117" width="32" height="32">
+      <frame id="262:1020" name="Icon / slider" x="8" y="8" width="16" height="16" />
+    </frame>
+    <frame id="262:1067" name="Footer" x="0" y="794" width="448" height="30">
+      <rounded-rectangle id="262:1068" name="Footer Edge" x="0" y="0" width="448" height="1" />
+      <text id="262:1069" name="Footer Count" x="24" y="8" width="230" height="13" />
+    </frame>
+    <frame id="262:1071" name="Loading Content" x="0" y="166" width="448" height="628">
+      <frame id="262:1072" name="Icon / refresh" x="214" y="286" width="20" height="20" />
+      <text id="262:1075" name="Loading Label" x="0" y="322" width="448" height="16" />
+    </frame>
+  </frame>
+</frame>

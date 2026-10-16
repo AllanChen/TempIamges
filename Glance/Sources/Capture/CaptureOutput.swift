@@ -5,6 +5,11 @@ import UniformTypeIdentifiers
 /// Writes a finished capture to disk. Captures are PNG (lossless, keeps alpha)
 /// and land in ~/Pictures/Glance/<source name>-capture-<w>x<h>.png.
 enum CaptureOutput {
+    static func isCapture(_ url: URL) -> Bool {
+        let folder = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first!.appendingPathComponent("Glance", isDirectory: true)
+        return url.isFileURL && url.deletingLastPathComponent().standardizedFileURL == folder.standardizedFileURL && url.lastPathComponent.contains("-capture-")
+    }
+
     static var directory: URL {
         FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Glance", isDirectory: true)

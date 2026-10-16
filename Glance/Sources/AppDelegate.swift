@@ -67,6 +67,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         UNUserNotificationCenter.current().delegate = self
         setupNotifications()
         setupDeepLinkHandler()
+        BillingManager.shared.start()
+        AuthManager.shared.refreshAccount()
         checkPermissions()
         // As a regular (Dock/Cmd-Tab) app, a fresh launch with no window would
         // otherwise start in the background. Bring it to the front so `run.sh`
@@ -98,6 +100,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     /// on screen, surface the Home launcher — Glance has no document to show
     /// otherwise, so the user would face an empty app.
     func applicationDidBecomeActive(_ notification: Notification) {
+        if AuthManager.shared.isSignedIn { BillingManager.shared.refreshEntitlements(); BillingManager.shared.refreshWallet(); BillingCoordinator.shared.restorePendingPayments() }
         surfaceHomeIfIdle()
     }
 
@@ -147,10 +150,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
+        let mediaURLs = urls.filter { url in
+            if BillingCoordinator.shared.handlePaymentReturn(url) { return false }
+            if url.scheme == "glance", url.host == "auth" { completeAuthCallback(url); return false }
+            return true
+        }
         if pathDetector == nil || imageLoader == nil {
             setupComponents()
         }
-        pendingOpenURLs.append(contentsOf: urls)
+        pendingOpenURLs.append(contentsOf: mediaURLs)
         pendingOpenWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in self?.flushPendingOpenURLs() }
         pendingOpenWorkItem = item
@@ -265,14 +273,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         }
 
         Logger.info("AppDelegate: Received deep link \(url.scheme ?? "")://\(url.host ?? "")\(url.path)")
+        if BillingCoordinator.shared.handlePaymentReturn(url) { return }
+        guard url.scheme == "glance",url.host == "auth" else{return}
+        completeAuthCallback(url)
+    }
+    private func completeAuthCallback(_ url:URL) {
         AuthManager.shared.handleCallbackURL(url) { result in
             switch result {
             case .success(let session):
                 Logger.info("AppDelegate: Auth callback exchanged for session")
-                LoginPanel.shared.completeSignIn(session: session)
+                _ = session // BillingWindow observes the saved session and resumes its original action.
             case .failure(let error):
                 Logger.info("AppDelegate: Auth callback failed: \(error.localizedDescription)")
-                LoginPanel.shared.showAuthError(error.localizedDescription)
+                BillingCoordinator.shared.showAuthenticationError(error.localizedDescription)
             }
         }
     }
@@ -1137,7 +1150,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         let fm = FileManager.default
         guard let entries = try? fm.contentsOfDirectory(
             at: folder,
-            includingPropertiesForKeys: [.isRegularFileKey],
+            includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return [] }
         return entries
             .filter { ImageFormatSupport.supports(extension: $0.pathExtension) }
@@ -1191,7 +1204,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     }
 
     func openLogin(at point: NSPoint) {
-        LoginPanel.shared.show(at: point)
+        BillingCoordinator.shared.showAccount()
     }
 
     #if DEBUG

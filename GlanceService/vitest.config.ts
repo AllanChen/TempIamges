@@ -8,7 +8,7 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: "./wrangler.toml" },
         miniflare: {
-          // nodejs_compat is needed only by the test runner, not by production.
+          // The official payment SDK uses node:crypto in production and tests.
           compatibilityFlags: ["nodejs_compat"],
           // The pool's bundled workerd can lag behind wrangler.toml's compatibility_date.
           compatibilityDate: "2026-08-01",
@@ -23,7 +23,11 @@ export default defineConfig(async () => {
             ADMIN_TOKEN: "test-admin-token",
             ADMIN_USERNAME: "test-admin",
             ADMIN_PASSWORD: "test-admin-password",
-            ADMIN_PATH: "test-admin-path"
+            ADMIN_PATH: "test-admin-path",
+            RESEND_API_KEY: "test-resend-key",
+            AUTH_EMAIL_FROM: "Glance <auth@example.com>",
+            GOOGLE_CLIENT_ID: "test-google-client",
+            GOOGLE_CLIENT_SECRET: "test-google-secret"
           }
         }
       })

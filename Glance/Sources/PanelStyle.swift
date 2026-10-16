@@ -1,6 +1,7 @@
 import AppKit
 import CoreText
 import Highlightr
+import WebKit
 
 /// The Focus Sweep loader from Glance Motion / 05. Shared by preview surfaces.
 final class FocusSweepLoadingView: NSView {
@@ -181,6 +182,52 @@ final class LoadFailedAnimationView: NSImageView {
 /// reserved for small, meaningful interaction cues.
 enum PanelStyle {
 
+    /// Apply Glance's shared scrollbar without changing a scroll view's content or scroll behavior.
+    /// Call after setting hasVerticalScroller / hasHorizontalScroller.
+    static func styleScrollers(in scrollView: NSScrollView) {
+        scrollView.scrollerStyle = .overlay
+        scrollView.autohidesScrollers = true
+        if scrollView.hasVerticalScroller {
+            scrollView.verticalScroller = GlanceScroller()
+        }
+        if scrollView.hasHorizontalScroller {
+            scrollView.horizontalScroller = GlanceScroller()
+        }
+    }
+
+    /// Style scrollbars inside Glance-owned WebKit documents, including nested
+    /// code blocks. The 12px lane leaves a centered 3px track and 4px thumb.
+    static func styleWebScrollbars(in configuration: WKWebViewConfiguration) {
+        let script = WKUserScript(source: """
+            (() => {
+              if (document.getElementById('glance-scrollbar-style')) return;
+              const style = document.createElement('style');
+              style.id = 'glance-scrollbar-style';
+              style.textContent = `
+                ::-webkit-scrollbar { width: 12px; height: 12px; }
+                ::-webkit-scrollbar-track:vertical {
+                  background: linear-gradient(to right, transparent 4.5px, rgba(52,53,58,.8) 4.5px,
+                    rgba(52,53,58,.8) 7.5px, transparent 7.5px);
+                }
+                ::-webkit-scrollbar-track:horizontal {
+                  background: linear-gradient(to bottom, transparent 4.5px, rgba(52,53,58,.8) 4.5px,
+                    rgba(52,53,58,.8) 7.5px, transparent 7.5px);
+                }
+                ::-webkit-scrollbar-thumb {
+                  background: rgba(232,168,124,.86); border: 4px solid transparent;
+                  border-radius: 6px; background-clip: padding-box;
+                }
+                ::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:active {
+                  background-color: #E8A87C;
+                }
+                ::-webkit-scrollbar-corner { background: transparent; }
+              `;
+              (document.head || document.documentElement).appendChild(style);
+            })();
+            """, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        configuration.userContentController.addUserScript(script)
+    }
+
     // MARK: - Palette
 
     /// Deepest image/background plane — Quiet Darkroom `#09090B`.
@@ -212,6 +259,10 @@ enum PanelStyle {
     static let textTertiary = NSColor(srgbRed: 114 / 255, green: 109 / 255, blue: 105 / 255, alpha: 1)
     /// Warm apricot interaction cue, the only brand accent — `#E8A87C`.
     static let warmCue = NSColor(srgbRed: 232 / 255, green: 168 / 255, blue: 124 / 255, alpha: 1)
+    /// `Glance / Scrollbar System` track and thumb tokens.
+    static let scrollbarTrack = inspectLine.withAlphaComponent(0.8)
+    static let scrollbarThumb = warmCue.withAlphaComponent(0.86)
+    static let scrollbarThumbActive = warmCue
     /// Dark ink drawn on top of `accent` fills (primary buttons) — `#21130D`.
     static let accentInk = NSColor(srgbRed: 33 / 255, green: 19 / 255, blue: 13 / 255, alpha: 1)
     /// Accent hover fill — `#F0B58E`.
@@ -509,6 +560,180 @@ enum PanelStyle {
         }
         bar.addSubview(sep)
         return sep
+    }
+}
+
+/// The shared 3 pt track and 4 pt warm thumb. NSScroller retains native
+/// wheel, trackpad, thumb dragging, accessibility, and overlay fade behavior.
+final class GlanceScroller: NSScroller {
+    override class var isCompatibleWithOverlayScrollers: Bool { true }
+    override class func scrollerWidth(for controlSize: NSControl.ControlSize,
+                                      scrollerStyle: NSScroller.Style) -> CGFloat { 12 }
+
+    private var hovering = false { didSet { needsDisplay = true } }
+    private var dragging = false { didSet { needsDisplay = true } }
+    private var hoverArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: bounds,
+                                  options: [.mouseEnteredAndExited, .activeInActiveApp], owner: self)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+
+    override func trackKnob(with event: NSEvent) {
+        dragging = true
+        super.trackKnob(with: event)
+        dragging = false
+    }
+
+    override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {
+        drawPill(in: slotRect, thickness: 3, color: PanelStyle.scrollbarTrack)
+    }
+
+    override func drawKnob() {
+        drawPill(in: rect(for: .knob), thickness: 4,
+                 color: hovering || dragging ? PanelStyle.scrollbarThumbActive : PanelStyle.scrollbarThumb)
+    }
+
+    private func drawPill(in rect: NSRect, thickness: CGFloat, color: NSColor) {
+        guard !rect.isEmpty else { return }
+        let pill: NSRect
+        if bounds.width < bounds.height {
+            pill = NSRect(x: rect.midX - thickness / 2, y: rect.minY,
+                          width: thickness, height: rect.height)
+        } else {
+            pill = NSRect(x: rect.minX, y: rect.midY - thickness / 2,
+                          width: rect.width, height: thickness)
+        }
+        color.setFill()
+        NSBezierPath(roundedRect: pill, xRadius: thickness / 2,
+                     yRadius: thickness / 2).fill()
+    }
+}
+
+/// The same Figma scrollbar for scroll surfaces that manage their own offset
+/// (for example, Home's thumbnail row and Widget Market's virtual catalog).
+final class GlanceScrollIndicator: NSView {
+    enum Axis { case horizontal, vertical }
+
+    var onSeek: ((CGFloat) -> Void)?
+    private let axis: Axis
+    private let trackLayer = CALayer()
+    private let thumbLayer = CALayer()
+    private var contentLength: CGFloat = 0
+    private var viewportLength: CGFloat = 0
+    private var offset: CGFloat = 0
+    private var dragAnchor: CGFloat = 0
+    private var hovering = false { didSet { updateThumbColor() } }
+    private var dragging = false { didSet { updateThumbColor() } }
+    private var hoverArea: NSTrackingArea?
+
+    init(axis: Axis) {
+        self.axis = axis
+        super.init(frame: .zero)
+        wantsLayer = true
+        trackLayer.backgroundColor = PanelStyle.resolvedCG(PanelStyle.scrollbarTrack)
+        trackLayer.cornerRadius = 1.5
+        thumbLayer.cornerRadius = 2
+        layer?.addSublayer(trackLayer)
+        layer?.addSublayer(thumbLayer)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.slider)
+        updateThumbColor()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override var isFlipped: Bool { true }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: bounds,
+                                  options: [.mouseEnteredAndExited, .activeInActiveApp], owner: self)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+
+    func update(contentLength: CGFloat, viewportLength: CGFloat, offset: CGFloat) {
+        self.contentLength = contentLength
+        self.viewportLength = viewportLength
+        self.offset = offset
+        isHidden = viewportLength <= 0 || contentLength <= viewportLength + 1
+        needsLayout = true
+    }
+
+    override func layout() {
+        super.layout()
+        let length = axis == .horizontal ? bounds.width : bounds.height
+        let thumbLength = min(length, max(axis == .horizontal ? 28 : 34,
+                                          length * viewportLength / max(contentLength, 1)))
+        let overflow = max(0, contentLength - viewportLength)
+        let travel = max(0, length - thumbLength)
+        let position = overflow > 0 ? min(1, max(0, offset / overflow)) * travel : 0
+        if axis == .horizontal {
+            trackLayer.frame = NSRect(x: 0, y: (bounds.height - 3) / 2,
+                                      width: length, height: 3)
+            thumbLayer.frame = NSRect(x: position, y: (bounds.height - 4) / 2,
+                                      width: thumbLength, height: 4)
+        } else {
+            trackLayer.frame = NSRect(x: (bounds.width - 3) / 2, y: 0,
+                                      width: 3, height: length)
+            thumbLayer.frame = NSRect(x: (bounds.width - 4) / 2, y: position,
+                                      width: 4, height: thumbLength)
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        layoutSubtreeIfNeeded()
+        dragging = true
+        let point = convert(event.locationInWindow, from: nil)
+        let thumb = thumbLayer.frame
+        let coordinate = axis == .horizontal ? point.x : point.y
+        let thumbStart = axis == .horizontal ? thumb.minX : thumb.minY
+        let thumbLength = axis == .horizontal ? thumb.width : thumb.height
+        dragAnchor = thumb.contains(point) ? coordinate - thumbStart : thumbLength / 2
+        seek(at: coordinate)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        seek(at: axis == .horizontal ? point.x : point.y)
+    }
+
+    override func mouseUp(with event: NSEvent) { dragging = false }
+
+    override func accessibilityValue() -> Any? {
+        NSNumber(value: Double(min(1, max(0, offset / max(1, contentLength - viewportLength)))))
+    }
+
+    override func accessibilityMinValue() -> Any? { NSNumber(value: 0) }
+    override func accessibilityMaxValue() -> Any? { NSNumber(value: 1) }
+
+    override func setAccessibilityValue(_ value: Any?) {
+        guard let number = value as? NSNumber else { return }
+        onSeek?(min(1, max(0, CGFloat(number.doubleValue))))
+    }
+
+    private func seek(at coordinate: CGFloat) {
+        let thumbLength = axis == .horizontal ? thumbLayer.frame.width : thumbLayer.frame.height
+        let length = axis == .horizontal ? bounds.width : bounds.height
+        let travel = length - thumbLength
+        guard travel > 0 else { return }
+        onSeek?(min(1, max(0, (coordinate - dragAnchor) / travel)))
+    }
+
+    private func updateThumbColor() {
+        thumbLayer.backgroundColor = PanelStyle.resolvedCG(
+            hovering || dragging ? PanelStyle.scrollbarThumbActive : PanelStyle.scrollbarThumb)
     }
 }
 

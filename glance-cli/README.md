@@ -70,6 +70,8 @@ glance widget add <已发布的 Widget UUID>
 
 `widget.json` 的 `name`、`summary` 和命令 `name`、`description` 写一种语言，另一种语言放在可选的 `localizations` 里，键为语言标签（`en`、`zh-Hans`），命令按 id 组织，例如 `"localizations": {"en": {"name": "Upscale", "summary": "…", "commands": {"run": {"name": "Upscale", "description": "…"}}}}`。Glance 按界面语言显示并回退到基础文案；`glance widget validate` 会检查语言标签、非空文案和 command id。
 
+每个新建 Widget 的 `widget.json` 都必须显式填写顶层 `"creditCost": 1`，定义用户每次提交任务消耗的积分，允许 `0–1000000` 的整数，`0` 表示免费。`init` 自动生成该字段，默认为 `1`；旧 Manifest 缺省兼容为 `1`。它与管理后台的“每次任务消耗积分”是同一个字段。仅编辑本地文件不会更新后台价格；需要发布时，再递增版本号、验证并通过原有审核发布流程上线。服务端按已发布版本扣分，开发者 Worker 的领取和重试不重复扣分；本地 `glance widget test` 不创建服务端付费任务，也不消耗用户积分。
+
 `widget.json` 是 Widget 目录中的可选文件：`init` 创建的新目录会包含它，旧目录可以没有。`add` 和 `test` 优先读取本地文件；没有时，`add` 根据 UUID 目录名从 Service 获取已公开发布的 Manifest，并缓存在 CLI 配置目录。已登记且有缓存的目录在 Service 暂时不可用时也能再次 `add`。首次添加时若本地没有文件、Service 没有公开 Manifest，也没有已有缓存，CLI 无法确定版本与命令，此时需要提供 Manifest。Service 不保存开发者的 `main.py`，所以还需从分享者获取代码。目录缺少 `main.py` 时可以登记，但 Worker 不会领取它的任务。代码放入目录后，可再次 `add`，再用 `glance widget test` 本地测试；`test` 会读取本地 Manifest 或已登记的缓存。重复 `add` 同一 Widget 版本会更新本机代码路径；`--python` 可切换该版本的解释器。登录后，CLI 会查询当前账号是否拥有该 Widget 的服务端任务权限。未获授权的分享目录仍可本地测试，但不会参与 Worker 领取任务。当前 Service 允许 Widget 所有者或经后台明确授权的开发者账号领取任务；分享代码目录本身不会授予服务端权限。
 
 开发者可以直接返回标准 Python 字典，也可以使用库里的类型和辅助函数：

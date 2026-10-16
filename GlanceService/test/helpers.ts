@@ -22,14 +22,28 @@ export async function sha256Hex(value: string) {
   return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+export async function seedUser(token = USER_TOKEN, credits = 10000, userID = 1) {
+  const t = new Date().toISOString();
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO users(id,email,auth_provider,credits,created_at,updated_at) VALUES(?,?,'email',?,?,?) ON CONFLICT(id) DO UPDATE SET credits=excluded.credits,status='active'")
+      .bind(userID, `test${userID}@example.com`, credits, t, t),
+    env.DB.prepare("INSERT OR REPLACE INTO user_sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)")
+      .bind(await sha256Hex(token), userID, new Date(Date.now()+86400000).toISOString(), t)
+  ]);
+}
+
 // Published Widget owned by "admin" and granted to the mock developer token.
 export async function seedWidget() {
+  await env.DB.prepare("DELETE FROM user_credit_ledger WHERE reason='widget_task'").run();
+  await seedUser();
+  await seedUser("other-user", 10000, 2);
+  await seedUser("seed", 10000, 3);
   const manifest = { schemaVersion: 1, id: WIDGET_ID, version: "1.0.0", name: "Test", commands: [{ id: COMMAND_ID, name: "Run" }] };
   const t = new Date().toISOString();
   await env.DB.batch([
     env.DB.prepare("INSERT OR IGNORE INTO widgets (id,owner_id,name,summary,author,icon_url,current_version,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
       .bind(WIDGET_ID, "admin", "Test", "Test", "Test", null, "1.0.0", "published", t, t),
-    env.DB.prepare("INSERT OR IGNORE INTO widget_versions (id,widget_id,version,manifest_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)")
+    env.DB.prepare("INSERT INTO widget_versions (id,widget_id,version,manifest_json,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET manifest_json=excluded.manifest_json,status=excluded.status")
       .bind("version_test", WIDGET_ID, "1.0.0", JSON.stringify(manifest), "published", t, t),
     env.DB.prepare("INSERT OR IGNORE INTO widget_worker_grants (widget_id,developer_id) VALUES (?,?)").bind(WIDGET_ID, "mock:glance-cli")
   ]);

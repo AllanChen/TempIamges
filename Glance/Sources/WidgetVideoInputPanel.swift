@@ -119,6 +119,7 @@ final class WidgetVideoInputPanel: NSPanel {
             let scroll = NSScrollView(frame: promptFrame.bounds.insetBy(dx: 14, dy: 10))
             scroll.drawsBackground = false
             scroll.hasVerticalScroller = true
+            PanelStyle.styleScrollers(in: scroll)
             scroll.autohidesScrollers = true
             scroll.borderType = .noBorder
             promptView.frame = scroll.contentView.bounds

@@ -48,6 +48,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let pathDetector = PathDetector()
     private var session: ImageInspectSession?
     private var loadGeneration = UUID()
+    private var pendingThumbnailIndices = Set<Int>()
+    private var requestedDetailIndices = Set<Int>()
 
     private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Image information".localized)
     private let revealButton = InspectToolbarButton(symbol: "folder", tooltip: "Reveal in Finder".localized)
@@ -86,6 +88,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let zoomLabel = NSTextField(labelWithString: "100%")
     private lazy var fitButton = PanelStyle.makeQuietButton(title: "Fit".localized, target: self, action: #selector(fitToWindowTapped))
     private let titlebar = FigmaInspectTitlebar()
+    private let trialBadge = BillingTrialBadge()
     private let windowTitleLabel = NSTextField(labelWithString: "")
     private let windowFilenameLabel = NSTextField(labelWithString: "")
     private lazy var closeTrafficButton = TrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTrafficTapped))
@@ -141,6 +144,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private lazy var ocrWindow = OCRResultWindow()
     private var ocrVisible = false
     private var ocrGeneration = UUID()
+    private var ocrResults: [URL: InspectOCRResult] = [:]
+    private var ocrPending = Set<URL>()
+    private var ocrFailed = Set<URL>()
+    private var ocrDisplayedURL: URL?
+    private let ocrQueue = DispatchQueue(label: "Glance.ImageInspect.OCR", qos: .utility)
     private struct WidgetTextResultKey: Hashable {
         let taskID: UUID
         let outputPath: String
@@ -311,6 +319,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         taskSummaryDot.isHidden = true
         taskToast.isHidden = true
         loadGeneration = UUID()
+        ocrGeneration = UUID()
+        ocrResults.removeAll()
+        ocrPending.removeAll()
+        ocrFailed.removeAll()
+        ocrDisplayedURL = nil
+        pendingThumbnailIndices.removeAll()
+        requestedDetailIndices.removeAll()
         renderSession()
         loadSessionImages(generation: loadGeneration)
         NSApp.activate(ignoringOtherApps: true)
@@ -329,12 +344,18 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         ocrWindow.orderOut(nil)
         ocrVisible = false
         ocrGeneration = UUID()
+        ocrResults.removeAll()
+        ocrPending.removeAll()
+        ocrFailed.removeAll()
+        ocrDisplayedURL = nil
         dismissWidgetTextResults()
         widgetInputPanel?.close()
         widgetInputPanel = nil
         let closedSources = session?.infos.map(\.url) ?? []
         session = nil
         loadGeneration = UUID()
+        pendingThumbnailIndices.removeAll()
+        requestedDetailIndices.removeAll()
         // Failed/interrupted task markers are not permanent image metadata.
         // Clear them when this Image Inspect session closes.
         WidgetTaskManager.shared.clearFailed(for: closedSources)
@@ -387,7 +408,16 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             // inline file preview.
             if key.lowercased() == "l", activeItemIsImage { rotateActive(byQuarters: -1); return true }
             if key.lowercased() == "r", activeItemIsImage { rotateActive(byQuarters: 1); return true }
-            if key.lowercased() == "c", activeItemIsImage { copyActiveImage(); return true }
+            if key.lowercased() == "c", activeItemIsImage {
+                if session?.mode == .compare, session?.comparisonStyle == .slider,
+                   sliderViewport.copySelectedText() { return true }
+                if let selectedViewport = firstResponder as? InspectImageViewport,
+                   activeViewports.contains(where: { $0 === selectedViewport }),
+                   selectedViewport.copySelectedText() { return true }
+                if activeViewports.contains(where: { $0.copySelectedText() }) { return true }
+                copyActiveImage()
+                return true
+            }
             if key.lowercased() == "s", activeItemIsImage { quickSaveActiveImage(); return true }
             if key.lowercased() == "v", pasteRemoteImageFromClipboard() { return true }
         } else if activeItemIsImage, !event.modifierFlags.contains(.control), !event.modifierFlags.contains(.option) {
@@ -586,6 +616,21 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         return [primaryViewport]
     }
 
+    private func containsRecognizedText(atCanvasPoint point: NSPoint) -> Bool {
+        guard let session else { return false }
+        if session.mode == .compare, session.comparisonStyle == .slider {
+            guard sliderViewport.frame.contains(point) else { return false }
+            return sliderViewport.containsRecognizedText(
+                at: sliderViewport.convert(point, from: canvasContainer))
+        }
+        for viewport in activeViewports where viewport.frame.contains(point) {
+            if viewport.containsRecognizedText(at: viewport.convert(point, from: canvasContainer)) {
+                return true
+            }
+        }
+        return false
+    }
+
     private func buildUI() {
         // Make the registered drop target the window's content view itself.
         // AppKit can otherwise lose the drag destination while walking the
@@ -653,6 +698,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             self?.offerFailureActions(forItemAt: index)
         }
         filmstrip.onCompare = { [weak self] index in self?.compare(focusedWith: index) }
+        filmstrip.onVisibleIndicesChanged = { [weak self] indices in
+            guard let self else { return }
+            let generation = self.loadGeneration
+            DispatchQueue.main.async { [weak self] in
+                self?.loadThumbnails(at: indices, generation: generation)
+            }
+        }
         filmstrip.onAdd = { [weak self] in self?.presentAddImagesPanel() }
         canvasContainer.addSubview(filmstrip)
 
@@ -663,6 +715,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         windowTitleLabel.lineBreakMode = .byTruncatingTail
         windowTitleLabel.stringValue = "Image Inspect".localized
         windowTitleLabel.isHidden = true
+        titlebar.addSubview(trialBadge)
         titlebar.addSubview(windowTitleLabel)
         windowFilenameLabel.font = PanelStyle.inspectFont(ofSize: 11)
         windowFilenameLabel.textColor = PanelStyle.textTertiary
@@ -673,6 +726,9 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         titlebar.addSubview(closeTrafficButton)
         titlebar.addSubview(minimizeTrafficButton)
         titlebar.addSubview(zoomTrafficButton)
+        titlebar.passesThroughTextAtPoint = { [weak self] point in
+            self?.containsRecognizedText(atCanvasPoint: point) == true
+        }
         canvasContainer.addSubview(titlebar, positioned: .above, relativeTo: nil)
 
         // MARK: V3 Floating Toolbar — exact five-action operation cluster.
@@ -893,6 +949,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         toolbarBar.layer?.cornerRadius = 15 * toolbarScale
 
         // Transparent 44pt drag region at the top (scaled uniformly).
+        trialBadge.frame = NSRect(x: max(92,width-166),y:8,width:min(146,max(0,width-102)),height:26)
+        trialBadge.refresh()
         let dragHeight = 44 * scale
         titlebar.frame = NSRect(x: 0, y: height - dragHeight, width: width, height: dragHeight)
         // Standard macOS traffic lights: fixed 12pt dots (NOT scaled down with
@@ -1095,6 +1153,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 secondaryViewport.setLoadFailed(session.failedIndices.contains(b))
                 primaryViewport.image = session.images[safe: a] ?? nil
                 secondaryViewport.image = session.images[safe: b] ?? nil
+                primaryViewport.setRecognizedText(ocrResults[session.infos[a].url])
+                secondaryViewport.setRecognizedText(ocrResults[session.infos[b].url])
                 primaryViewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: session.infos[a].url).first)
                 secondaryViewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: session.infos[b].url).first)
                 // Show which side a filmstrip tap will replace.
@@ -1108,6 +1168,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                                          b: session.images[safe: b] ?? nil,
                                          failed: session.failedIndices.contains(a)
                                              || session.failedIndices.contains(b))
+                sliderViewport.setRecognizedText(a: ocrResults[session.infos[a].url],
+                                                 b: ocrResults[session.infos[b].url])
                 let activeIndex = session.activeCompareSlot == 0 ? a : b
                 sliderViewport.viewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: session.infos[activeIndex].url).first)
             }
@@ -1124,6 +1186,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 primaryViewport.isHidden = false
                 primaryViewport.setLoadFailed(session.failedIndices.contains(session.focusedIndex))
                 primaryViewport.image = session.images[safe: session.focusedIndex] ?? nil
+                primaryViewport.setRecognizedText(ocrResults[info.url])
                 primaryViewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: info.url).first)
             case .text, .markdown, .pdf, .webPage:
                 fileWebView.isHidden = false
@@ -1149,6 +1212,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             infoPanel.highlight(index: nil)
         }
         layoutContent()
+        refreshOCRPanelIfNeeded()
     }
 
     private func shouldShowFilmstrip(for infos: [MediaInfo]) -> Bool {
@@ -1177,42 +1241,54 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     private func loadSessionImages(generation: UUID) {
         guard let session else { return }
-        var fullResolutionIndices = Set([session.focusedIndex])
-        if session.mode == .compare, let pair = session.compareIndices {
-            fullResolutionIndices = Set([pair.0, pair.1])
+        // The filmstrip requests only on-screen thumbnails as it scrolls. A
+        // folder may contain thousands of images; opening it must not queue
+        // decoding and metadata work for every file ahead of the focused one.
+        loadThumbnails(at: [session.focusedIndex] + filmstrip.visibleItemIndices,
+                       generation: generation)
+        loadFullResolutionForActiveItems(generation: generation)
+    }
+
+    private func loadThumbnails(at indices: [Int], generation: UUID) {
+        guard generation == loadGeneration, let session else { return }
+        for index in indices where session.infos.indices.contains(index) {
+            guard session.infos[index].kind == .image,
+                  session.images[safe: index] ?? nil == nil,
+                  !session.failedIndices.contains(index),
+                  pendingThumbnailIndices.insert(index).inserted else { continue }
+            imageLoader.loadImage(from: session.infos[index].url) { [weak self] image in
+                guard let self, generation == self.loadGeneration,
+                      let session = self.session, session.images.indices.contains(index) else { return }
+                self.pendingThumbnailIndices.remove(index)
+                if let image, session.images[index] == nil {
+                    session.failedIndices.remove(index)
+                    session.images[index] = image
+                } else if image == nil && session.images[index] == nil {
+                    session.failedIndices.insert(index)
+                }
+                self.renderSession()
+            }
         }
-        for (index, info) in session.infos.enumerated() {
-            if info.kind == .image, session.images[safe: index] ?? nil == nil,
-               !fullResolutionIndices.contains(index) {
-                imageLoader.loadImage(from: info.url) { [weak self] image in
-                    guard let self, generation == self.loadGeneration,
-                          let session = self.session, session.images.indices.contains(index) else { return }
-                    if let image {
-                        session.failedIndices.remove(index)
-                        session.images[index] = image
-                    } else {
-                        session.failedIndices.insert(index)
-                    }
-                    self.renderSession()
-                }
+    }
+
+    private func loadDetails(at indices: [Int], generation: UUID) {
+        guard generation == loadGeneration, let session else { return }
+        for index in indices where session.infos.indices.contains(index) {
+            let info = session.infos[index]
+            guard info.isLocal, requestedDetailIndices.insert(index).inserted else { continue }
+            imageLoader.loadFileSize(from: info.url) { [weak self] bytes in
+                guard let self, generation == self.loadGeneration,
+                      let session = self.session, session.infos.indices.contains(index) else { return }
+                session.infos[index].fileSize = bytes
+                if index == session.focusedIndex { self.renderSession() }
             }
-            if info.isLocal {
-                imageLoader.loadFileSize(from: info.url) { [weak self] bytes in
-                    guard let self, generation == self.loadGeneration,
-                          let session = self.session, session.infos.indices.contains(index) else { return }
-                    session.infos[index].fileSize = bytes
-                    self.renderSession()
-                }
-            }
-            guard info.isLocal else { continue }
             imageLoader.loadTechnicalMetadata(from: info.url) { [weak self] metadata in
                 guard let self, generation == self.loadGeneration,
                       let session = self.session, session.metadata.indices.contains(index) else { return }
                 session.metadata[index] = metadata
-                self.renderSession()
+                if index == session.focusedIndex { self.renderSession() }
             }
         }
-        loadFullResolutionForActiveItems(generation: generation)
     }
 
     private func loadFullResolutionForActiveItems(generation: UUID) {
@@ -1221,6 +1297,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         if session.mode == .compare, let pair = session.compareIndices {
             indices = [pair.0, pair.1]
         }
+        loadThumbnails(at: indices, generation: generation)
+        loadDetails(at: indices, generation: generation)
         for index in Set(indices) where session.infos.indices.contains(index) {
             let info = session.infos[index]
             guard info.kind == .image else { continue }
@@ -1237,8 +1315,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                     if session.mode != .compare, index == session.focusedIndex {
                         self.fitWindowToImage(image.size)
                     }
+                    self.scheduleOCR(for: session.infos[index].url, image: image)
                 } else {
                     session.failedIndices.insert(index)
+                    if let displayed = session.images[index] {
+                        self.scheduleOCR(for: info.url, image: displayed)
+                    }
                 }
                 self.renderSession()
             }
@@ -1314,6 +1396,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             session.compareIndices = (first, second)
             session.activeCompareSlot = 1
         }
+        BillingManager.shared.trackTrialActivity("compare")
         session.mode = .compare
         renderSession()
         loadFullResolutionForActiveItems(generation: loadGeneration)
@@ -1527,8 +1610,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // export, OCR, compress and other Widgets stay available.
         let canTransform = hasImage && !activeTask
         let hasImageInfo = currentRevealInfo?.kind == .image
+        let localLocked = !BillingManager.shared.localToolsAllowed
+        let exportLocked = localLocked && currentRevealInfo.map { WidgetTaskManager.shared.completedRecord(for: $0.url) == nil && !BillingResultAccess.contains($0.url) && !CaptureOutput.isCapture($0.url) } != false
         var entries: [ActionMenuEntry] = [
-            ActionMenuEntry(title: "Copy Image".localized, shortcut: "⌘C", enabled: hasImage, action: { [weak self] in self?.copyActiveImage() }),
+            ActionMenuEntry(title: "Copy Image".localized, shortcut: "⌘C", enabled: hasImage, requiresPro: exportLocked, action: { [weak self] in self?.copyActiveImage() }),
             ActionMenuEntry(title: "Edit".localized, enabled: canTransform, submenu: [
                 ActionMenuEntry(title: "Rotate Left".localized, shortcut: "⌘L", action: { [weak self] in self?.rotateActive(byQuarters: -1) }),
                 ActionMenuEntry(title: "Rotate Right".localized, shortcut: "⌘R", action: { [weak self] in self?.rotateActive(byQuarters: 1) }),
@@ -1536,7 +1621,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 ActionMenuEntry(title: "Flip Vertically".localized, action: { [weak self] in self?.flipActive(horizontal: false) })
             ]),
             // Export is only "save this image as a format".
-            ActionMenuEntry(title: "Export".localized, enabled: hasImage, submenu: [
+            ActionMenuEntry(title: "Export".localized, enabled: hasImage, requiresPro: exportLocked, submenu: [
                 ActionMenuEntry(title: "Save as PNG…".localized, action: { [weak self] in self?.exportActive(as: .png) }),
                 ActionMenuEntry(title: "Save as JPG…".localized, action: { [weak self] in self?.exportActive(as: .jpeg) }),
                 ActionMenuEntry(title: "Save as WebP…".localized, action: { [weak self] in self?.exportActive(as: .webP) }),
@@ -1548,10 +1633,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 ActionMenuEntry(title: "Capture…".localized, shortcut: "⌘⇧X", enabled: hasImage, action: { [weak self] in self?.beginCapture() }),
                 .separator(),
                 ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() }),
-                ActionMenuEntry(title: "Compress…".localized, enabled: hasImage, action: { [weak self] in self?.compressImageTapped() }),
+                ActionMenuEntry(title: "Compress…".localized, enabled: hasImage, requiresPro: localLocked, action: { [weak self] in self?.compressImageTapped() }),
                 .separator(),
-                ActionMenuEntry(title: "Copy as Base64".localized, enabled: hasImage, action: { [weak self] in self?.copyActiveImageAsBase64() }),
-                ActionMenuEntry(title: "Base64 → Image…".localized, action: { [weak self] in self?.presentBase64ImageInput() })
+                ActionMenuEntry(title: "Copy as Base64".localized, enabled: hasImage, requiresPro: localLocked, action: { [weak self] in self?.copyActiveImageAsBase64() }),
+                ActionMenuEntry(title: "Base64 → Image…".localized, requiresPro: localLocked, action: { [weak self] in self?.presentBase64ImageInput() })
             ]),
             .separator(),
             ActionMenuEntry(title: "Reveal in Finder".localized, enabled: currentRevealInfo?.isLocal == true,
@@ -1566,15 +1651,19 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         }
         let widgets = WidgetRegistry.shared.compatible(with: "image")
         let marketEntry = ActionMenuEntry(title: "Widget Market…".localized,
+                                          showsDisclosure: true,
                                           action: { [weak self] in self?.widgetMarketTapped() })
         var widgetEntries: [ActionMenuEntry] = widgets.compactMap { widget in
             let commands = widget.localizedCommands.filter { $0.inputTypes.contains("image") }
             guard !commands.isEmpty else { return nil }
             let commandEntries = commands.map { command in
                 let duplicate = currentRevealInfo.map { info in WidgetTaskManager.shared.activeRecords(for: info.url).contains { $0.widgetID == widget.id && $0.commandID == command.id } } ?? false
-                return ActionMenuEntry(title: command.name, enabled: hasImage && !duplicate, action: { [weak self] in self?.runWidget(widgetID: widget.id, commandID: command.id) })
+                return ActionMenuEntry(title: commands.count == 1 ? widget.displayName : command.name,
+                    creditCost: widget.taskCreditCost, enabled: hasImage && !duplicate,
+                    action: { [weak self] in self?.runWidget(widgetID: widget.id, commandID: command.id) })
             }
-            return commands.count == 1 ? commandEntries[0] : ActionMenuEntry(title: widget.displayName, submenu: commandEntries)
+            return commands.count == 1 ? commandEntries[0]
+                : ActionMenuEntry(title: widget.displayName, creditCost: widget.taskCreditCost, submenu: commandEntries)
         }
         if widgetEntries.isEmpty {
             // Nothing installed (or nothing fits this image): keep the Market one click away.
@@ -1771,7 +1860,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         removeChildWindow(ocrWindow)
         ocrWindow.orderOut(nil)
         ocrVisible = false
-        ocrGeneration = UUID()
         resultWindow.showLoading(task: task, source: sourceInfo,
                                  sourceImage: sourceImage)
         positionWidgetTextResults()
@@ -2004,6 +2092,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// ⌘C — copy the active image (rotation applied) to the general
     /// pasteboard as PNG data plus an NSImage (TIFF) fallback.
     private func copyActiveImage() {
+        guard BillingCoordinator.shared.requireLocalTool("Copy Image".localized, over: self, source: currentRevealInfo?.url) else { return }
         guard let cgImage = currentActionCGImage() else { return }
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -2017,6 +2106,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     private func copyActiveImageAsBase64() {
+        guard BillingCoordinator.shared.requireLocalTool("Copy as Base64".localized, over: self) else { return }
         guard let cgImage = currentActionCGImage(),
               let png = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else { return }
         NSPasteboard.general.clearContents()
@@ -2025,6 +2115,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     private func presentBase64ImageInput() {
+        guard BillingCoordinator.shared.requireLocalTool("Base64 to Image".localized, over: self) else { return }
         let alert = NSAlert()
         alert.messageText = "Base64 to Image".localized
         alert.informativeText = "Paste a Base64 image string below".localized
@@ -2075,6 +2166,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// Focus saves one image; Compare saves both images as the visible
     /// side-by-side or slider comparison.
     private func quickSaveActiveImage() {
+        guard BillingCoordinator.shared.requireLocalTool("Export".localized, over: self, source: currentRevealInfo?.url) else { return }
         guard let source = quickSaveSource() else { return }
         let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Glance", isDirectory: true)
@@ -2211,30 +2303,97 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     private func recognizeTextTapped() {
-        guard let cgImage = currentActionCGImage() else { return }
+        guard let session, let index = currentActionIndex,
+              session.infos.indices.contains(index),
+              let image = session.images[safe: index] ?? nil else { return }
+        let url = session.infos[index].url
         presentOCRWindow()
-        ocrWindow.showLoading()
-        let token = UUID()
-        ocrGeneration = token
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        ocrDisplayedURL = url
+        if let result = ocrResults[url] {
+            ocrWindow.showResult(result.text)
+        } else {
+            ocrWindow.showLoading()
+            ocrFailed.remove(url) // An explicit request can retry a failed scan.
+            scheduleOCR(for: url, image: image)
+        }
+    }
+
+    /// Scan the full-resolution image once per session. OCR stays off the main
+    /// thread and never delays the first visible image or filmstrip rendering.
+    private func scheduleOCR(for url: URL, image: NSImage) {
+        guard ocrResults[url] == nil, !ocrPending.contains(url), !ocrFailed.contains(url) else { return }
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            if ocrVisible && ocrDisplayedURL == url { ocrWindow.showResult("") }
+            return
+        }
+        ocrPending.insert(url)
+        let token = ocrGeneration
+        ocrQueue.async { [weak self] in
             let request = VNRecognizeTextRequest()
             request.recognitionLevel = .accurate
-            request.recognitionLanguages = ["zh-Hans", "en-US"]
+            if let supported = try? request.supportedRecognitionLanguages() {
+                let preferred = ["zh-Hans", "en-US"].filter { supported.contains($0) }
+                if !preferred.isEmpty { request.recognitionLanguages = preferred }
+            }
             request.usesLanguageCorrection = true
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            var text = ""
+            var result: InspectOCRResult?
             do {
                 try handler.perform([request])
-                text = (request.results ?? [])
-                    .compactMap { $0.topCandidates(1).first?.string }
-                    .joined(separator: "\n")
+                var lines: [String] = []
+                var lineBounds: [CGRect] = []
+                var glyphs: [InspectOCRGlyph] = []
+                for observation in request.results ?? [] {
+                    guard let candidate = observation.topCandidates(1).first else { continue }
+                    let line = lines.count
+                    lines.append(candidate.string)
+                    lineBounds.append(observation.boundingBox)
+                    let count = max(candidate.string.count, 1)
+                    for (offset, start) in candidate.string.indices.enumerated() {
+                        let end = candidate.string.index(after: start)
+                        let fallback = CGRect(x: observation.boundingBox.minX
+                                                + observation.boundingBox.width * CGFloat(offset) / CGFloat(count),
+                                              y: observation.boundingBox.minY,
+                                              width: observation.boundingBox.width / CGFloat(count),
+                                              height: observation.boundingBox.height)
+                        let box = (try? candidate.boundingBox(for: start..<end))?.boundingBox ?? fallback
+                        glyphs.append(InspectOCRGlyph(character: String(candidate.string[start..<end]),
+                                                      boundingBox: box, line: line))
+                    }
+                }
+                result = InspectOCRResult(text: lines.joined(separator: "\n"),
+                                          lineBounds: lineBounds, glyphs: glyphs)
             } catch {
                 Logger.error("OCR failed: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
                 guard let self, self.ocrGeneration == token else { return }
-                self.ocrWindow.showResult(text)
+                self.ocrPending.remove(url)
+                if let result {
+                    self.ocrResults[url] = result
+                } else {
+                    self.ocrFailed.insert(url)
+                }
+                self.renderSession()
+                if self.ocrVisible && self.ocrDisplayedURL == url {
+                    self.ocrWindow.showResult(result?.text ?? "")
+                }
             }
+        }
+    }
+
+    private func refreshOCRPanelIfNeeded() {
+        guard ocrVisible, let session, let index = currentActionIndex,
+              session.infos.indices.contains(index) else { return }
+        let url = session.infos[index].url
+        guard ocrDisplayedURL != url else { return }
+        ocrDisplayedURL = url
+        if let result = ocrResults[url] {
+            ocrWindow.showResult(result.text)
+        } else if ocrFailed.contains(url) {
+            ocrWindow.showResult("")
+        } else {
+            ocrWindow.showLoading()
         }
     }
 
@@ -2271,6 +2430,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// Export the active image through a Save panel. The export is WYSIWYG:
     /// it carries the current view rotation, but never touches the source file.
     private func exportActive(as format: ImageExportFormat) {
+        guard BillingCoordinator.shared.requireLocalTool("Export".localized, over: self, source: currentRevealInfo?.url) else { return }
         guard let session, let index = currentActionIndex,
               let image = session.images[safe: index] ?? nil else { return }
         let rotation = currentActionViewport.rotationQuarters
@@ -2298,6 +2458,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     /// Present a dialog to pick quality and show the resulting file size, then compress
     /// the active image and insert it next to the original for side-by-side comparison.
     @objc private func compressImageTapped() {
+        guard BillingCoordinator.shared.requireLocalTool("Compress…".localized, over: self) else { return }
         guard let session, let index = currentActionIndex,
               session.infos.indices.contains(index),
               session.infos[index].kind == .image,
@@ -2389,6 +2550,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let compressedInfo = MediaInfo(url: url, isLocal: url.isFileURL, kind: .image)
         let insertIndex = insertDerivedItem(compressedInfo, afterSourceIndex: index, in: session)
 
+        BillingManager.shared.trackTrialActivity("compare")
         session.mode = .compare
         session.comparisonStyle = .sideBySide
         session.compareIndices = (index, insertIndex)
@@ -2662,6 +2824,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         guard let session, session.infos.indices.contains(index), index != session.focusedIndex,
               session.infos[index].kind == .image,
               session.infos[session.focusedIndex].kind == .image else { return }
+        BillingManager.shared.trackTrialActivity("compare")
         session.mode = .compare
         session.compareIndices = (session.focusedIndex, index)
         renderSession()
@@ -2950,8 +3113,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 if session.mode != .compare, currentIndex == session.focusedIndex {
                     self.fitWindowToImage(image.size)
                 }
+                self.scheduleOCR(for: info.url, image: image)
             } else {
                 session.failedIndices.insert(currentIndex)
+                if let displayed = session.images[currentIndex] {
+                    self.scheduleOCR(for: info.url, image: displayed)
+                }
             }
             self.renderSession()
         }

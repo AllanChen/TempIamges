@@ -1,4 +1,9 @@
+import { recordBillingEvent, billingMetrics } from './billing-metrics';
 import { OFFICIAL_MANIFESTS } from "./official";
+import { authenticatedUser, userRoutes, adminUsers, adminGrantPro } from "./users";
+import { BillingError, expireTasks, publicPricing, readPricing, savePricing } from './pricing';
+import { adminOrders, billingWebhook, createOrder, orders, requestRefund, wallet,resumeOrder,denyRefund,abandonOrder } from './billing';
+import { activateDevice, entitlements, releaseDevice, synchronizeTrial } from './entitlements';
 
 export interface Env {
   DB: D1Database;
@@ -17,11 +22,22 @@ export interface Env {
   ASSETS: Fetcher;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_REDIRECT_URI?: string;
+  RESEND_API_KEY?: string;
+  AUTH_EMAIL_FROM?: string;
+  NEW_USER_CREDITS?: string;
   GLANCE_SIGNING_KEY_PKCS8?: string;
+  WAFFO_MERCHANT_ID?: string;
+  WAFFO_PRIVATE_KEY?: string;
+  WAFFO_STORE_ID?: string;
+  WAFFO_ENVIRONMENT?: string;
+  WAFFO_WEBHOOK_PUBLIC_KEY_TEST?: string;
+  WAFFO_WEBHOOK_PUBLIC_KEY_PROD?: string;
+  MOCK_CHECKOUT_USER_ID?: string;
 }
 
 type Manifest = {
-  schemaVersion?: number; id?: string; version?: string; name?: string; summary?: string;
+  schemaVersion?: number; id?: string; version?: string; name?: string; summary?: string; creditCost?: number;
   author?: string; iconURL?: string; official?: boolean; execution?: { mode?: string };
   commands?: Array<{ id?: string; name?: string; description?: string; inputTypes?: string[]; inputMimeTypes?: string[]; outputs?: string[]; showResultURL?: boolean; taskType?: string; requiresUpload?: boolean; parameterSchema?: unknown }>;
   privacy?: { uploadsMedia?: boolean; notice?: string };
@@ -36,7 +52,7 @@ const MAX_BODY = 2 * 1024 * 1024;
 const MAX_ASSET = 50 * 1024 * 1024;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Widget-Id, X-Task-Claim",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Widget-Id, X-Task-Claim, Idempotency-Key, X-Glance-Device",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   Vary: "Origin"
 };
@@ -186,10 +202,8 @@ async function validAssetSignature(env: Env, assetID: string, exp: string, sig: 
   const expected = await hmac(env, `${assetID}.${exp}`);
   return expected === sig;
 }
-async function requireUser(request: Request, env?: Env) {
-  const token = bearer(request);
-  if (!token) throw new Error("Unauthorized");
-  return `user_${await digest(token)}`;
+async function requireUser(request: Request, env: Env) {
+  return `user_${(await authenticatedUser(env, request)).id}`;
 }
 async function requireAdmin(env: Env, request: Request) {
   if (env.DEVELOPER_TEST_TOKEN && bearer(request) === env.DEVELOPER_TEST_TOKEN) throw new Error("Unauthorized");
@@ -281,6 +295,7 @@ async function adminAllWidgets(env: Env, request: Request) {
 }
 function validationIssues(manifest: Manifest) {
   const issues: string[] = [];
+  if (manifest.creditCost !== undefined && (!Number.isSafeInteger(manifest.creditCost) || manifest.creditCost < 0 || manifest.creditCost > 1000000)) issues.push("creditCost must be an integer between 0 and 1000000");
   if (manifest.schemaVersion !== 1) issues.push("schemaVersion must be 1");
   if (typeof manifest.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$/.test(manifest.id)) issues.push("invalid widget id");
   for (const field of ["version", "name", "summary", "author"] as const) if (typeof manifest[field] !== "string" || !manifest[field]?.trim()) issues.push(`${field} is required`);
@@ -362,6 +377,7 @@ function widgetManifestWithID(input: unknown, widgetID: string, existingCommands
   return {
     ...fields,
     id: widgetID,
+    creditCost: fields.creditCost === undefined ? 1 : fields.creditCost,
     commands
   };
 }
@@ -397,6 +413,7 @@ async function publicManifest(env: Env, row: { manifest_json: string }): Promise
   // The macOS catalog decoder requires these keys even when older D1 rows omit them.
   const normalized = {
     ...manifest,
+    creditCost: manifest.creditCost === undefined ? 1 : manifest.creditCost,
     minimumGlanceVersion: manifest.minimumGlanceVersion || "2.0.0",
     updatedAt: manifest.updatedAt || now(),
     signature: manifest.signature || (manifest.official ? {
@@ -405,7 +422,7 @@ async function publicManifest(env: Env, row: { manifest_json: string }): Promise
   } as Manifest;
   // Versions published before the signing fix still need a valid signature
   // for the macOS client to decode and install them.
-  if (!normalized.official && !normalized.signature) {
+  if (!normalized.official && (!normalized.signature || manifest.creditCost === undefined)) {
     return signDeveloperManifest(env, normalized, true);
   }
   return normalized;
@@ -548,7 +565,7 @@ async function createSubmission(env: Env, request: Request) {
   const owner = (await developerSession(env, request)).owner_id;
   const body = await readJSON(request);
   const input = body.manifest && typeof body.manifest === "object" && !Array.isArray(body.manifest) ? body.manifest as Manifest : {};
-  const manifest = { ...input, official: false, updatedAt: now() };
+  const manifest = { ...input, creditCost: input.creditCost === undefined ? 1 : input.creditCost, official: false, updatedAt: now() };
   const issues = validationIssues(manifest);
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(manifest.id || "")) issues.push("developer Widget ID must be a UUID");
   if (!manifest.minimumGlanceVersion) issues.push("minimumGlanceVersion is required");
@@ -626,12 +643,16 @@ async function widgetDetail(env: Env, widgetID: string) {
 }
 
 async function taskStatus(env: Env, request: Request, taskID: string) {
-  const actor = await requireUser(request, env);
+  await expireTasks(env);
+  const actor = isFlowTestToken(env, bearer(request)) ? null : await requireUser(request, env);
   const row = isFlowTestToken(env, bearer(request))
-    ? await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
-    : await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
+    ? await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at,credit_cost FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
+    : await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at,credit_cost FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
   if (!row) return fail("task_not_found", "Task not found.", 404);
   const result: Record<string, unknown> = { taskID: row.id, status: row.status === "succeeded" ? "completed" : row.status, processCount: row.status === "succeeded" ? 100 : 0, attempts: row.attempts };
+  const refund=await env.DB.prepare('SELECT amount FROM user_credit_ledger WHERE id=?').bind(`refund:${taskID}`).first<{amount:number}>();
+  result.creditCost=row.credit_cost; result.refundedCredits=refund?.amount??0;
+  result.balance=(await env.DB.prepare("SELECT credits FROM users WHERE 'user_'||id=?").bind(row.owner_id).first<{credits:number}>())?.credits;
   if (typeof row.progress === "number") result.progress = row.progress;
   if (typeof row.phase === "string" && row.phase) result.phase = row.phase;
   if (row.status === "queued") {
@@ -768,9 +789,25 @@ async function assetDownload(env: Env, request: Request, assetID: string) {
 }
 
 async function createTask(env: Env, request: Request, admin = false) {
+  await expireTasks(env);
   const actor = admin ? "admin" : await requireUser(request, env);
   await ensureOfficialWidgets(env);
   const body = await readJSON(request);
+  const requestKey = request.headers.get("Idempotency-Key");
+  if (requestKey !== null && !/^[A-Za-z0-9_-]{16,128}$/.test(requestKey)) return fail("invalid_request_key", "Invalid Idempotency-Key.");
+  const requestHash = await digest(canonicalJSON(body));
+  const previousTask = async () => requestKey ? env.DB.prepare("SELECT id,widget_id,created_at,credit_cost,request_hash FROM widget_tasks WHERE owner_id=? AND request_key=?")
+    .bind(actor, requestKey).first<{ id: string; widget_id: string; created_at: string; credit_cost: number; request_hash: string }>() : null;
+  const accepted = async (task: { id: string; widget_id: string; created_at: string; credit_cost: number; request_hash: string }) => {
+    if (task.request_hash !== requestHash) return fail("idempotency_conflict", "This request key was already used with different task parameters.", 409);
+    const estimate = await queueEstimate(env, task.widget_id, task.created_at);
+    const balance = admin ? undefined : (await env.DB.prepare("SELECT credits FROM users WHERE 'user_' || id=?")
+      .bind(actor).first<{ credits: number }>())?.credits;
+    return ok({ taskID: task.id, status: "queued", processCount: 0, pollAfterMs: 1000,
+      creditCost: task.credit_cost, balance, ...estimate }, 202, { "Cache-Control": "no-store" });
+  };
+  const previous = await previousTask();
+  if (previous) return accepted(previous);
   const widgetID = typeof body.widgetID === "string" ? body.widgetID : typeof body.widget_id === "string" ? body.widget_id : "";
   const commandID = typeof body.commandID === "string" ? body.commandID : typeof body.command_id === "string" ? body.command_id : "";
   const widget = await env.DB.prepare("SELECT id,owner_id,current_version,status FROM widgets WHERE id=?").bind(widgetID).first<{ id: string; owner_id: string; current_version: string; status: string }>();
@@ -778,6 +815,9 @@ async function createTask(env: Env, request: Request, admin = false) {
   const version = await env.DB.prepare("SELECT id,manifest_json FROM widget_versions WHERE widget_id=? AND version=?").bind(widgetID, widget.current_version).first<{ id: string; manifest_json: string }>();
   if (!version) return fail("version_missing", "Widget version is missing.", 409);
   const manifest = JSON.parse(version.manifest_json) as Manifest;
+  const creditCost = admin ? 0 : manifest.creditCost ?? 1;
+  if (!Number.isSafeInteger(creditCost) || creditCost < 0 || creditCost > 1000000) return fail("invalid_price", "This Widget has an invalid credit price.", 409);
+  if (!admin && body.expectedCreditCost !== undefined && body.expectedCreditCost !== creditCost) return json({success:false,error:{code:'price_changed',message:'The Widget credit price changed.',details:{creditCost}}},409);
   const command = manifest.commands?.find((entry) => entry.id === commandID);
   if (!command) return fail("unknown_command", "Unknown Widget command.", 400);
   const taskID = id("task");
@@ -804,11 +844,21 @@ async function createTask(env: Env, request: Request, admin = false) {
   if ((queued?.n ?? 0) >= await readTaskQueueLimit(env)) {
     return fail("queue_full", "The task queue is full. Please try again later.", 429, { "Retry-After": "60", "Cache-Control": "no-store" });
   }
+  const intentID=typeof body.billingIntentID==='string' && /^[A-Za-z0-9_-]{16,128}$/.test(body.billingIntentID)?body.billingIntentID:null;
+  const topup=typeof body.topupOrderID==='string' && intentID && !admin ? await env.DB.prepare("SELECT id FROM orders WHERE id=? AND 'user_'||user_id=? AND product='credits' AND paid_at IS NOT NULL AND billing_intent_id=?")
+    .bind(body.topupOrderID,actor,intentID).first<{id:string}>():null;
   const createdAt = now();
-  await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
-    .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt).run();
-  const estimate = await queueEstimate(env, widgetID, createdAt);
-  return ok({ taskID, status: "queued", processCount: 0, pollAfterMs: 1000, ...estimate }, 202, { "Cache-Control": "no-store" });
+  try {
+    await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at,credit_cost,request_key,request_hash,billing_intent_id,topup_order_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt, creditCost, requestKey, requestHash,intentID,topup?.id??null).run();
+  } catch (error) {
+    const existing = await previousTask();
+    if (existing) return accepted(existing);
+    if (String(error).includes("insufficient_credits")) return fail("insufficient_credits", "Not enough credits to run this Widget.", 402);
+    throw error;
+  }
+  if(!admin) await env.DB.prepare("INSERT OR IGNORE INTO billing_events(id,kind,user_id,feature,created_at) SELECT ?,'trial_activity',id,'widget',? FROM users WHERE 'user_'||id=? AND trial_voided=0").bind('task-activity:'+taskID,createdAt,actor).run();
+  return accepted({ id: taskID, widget_id: widgetID, created_at: createdAt, credit_cost: creditCost, request_hash: requestHash });
 }
 
 const TASK_QUEUE_LIMIT_SETTING = "task_queue_limit";
@@ -851,9 +901,19 @@ async function cancelTask(env: Env, request: Request, taskID: string) {
   const global = isFlowTestToken(env, bearer(request));
   const scope = global ? "" : " AND owner_id=?";
   const scopeArgs = global ? [] : [actor];
-  const cancelled = await env.DB.prepare(`UPDATE widget_tasks SET status='cancelled',completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL WHERE id=?${scope} AND status IN ('queued','claimed','running')`)
+  const onlyQueued=new URL(request.url).searchParams.get('queuedOnly')==='true';
+  const confirmed=new URL(request.url).searchParams.get('confirmRunning')==='true';
+  // Preserve the previous API for older clients while the new undo action is
+  // explicitly queued-only. A worker winning the race cannot silently consume
+  // a paid task that the user intended to undo for free.
+  const activeClause=onlyQueued?"status='queued'":confirmed?"status IN ('queued','claimed','running')":"status IN ('queued','claimed','running')";
+  const cancelled = await env.DB.prepare(`UPDATE widget_tasks SET status='cancelled',completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL WHERE id=?${scope} AND ${activeClause}`)
     .bind(now(), taskID, ...scopeArgs).run();
-  if (cancelled.meta.changes) return ok({ taskID, status: "cancelled" }, 200, { "Cache-Control": "no-store" });
+  if (cancelled.meta.changes) {
+    const refund=await env.DB.prepare('SELECT amount FROM user_credit_ledger WHERE id=?').bind(`refund:${taskID}`).first<{amount:number}>();
+    const balance=(await env.DB.prepare("SELECT credits FROM users WHERE 'user_'||id=?").bind(actor).first<{credits:number}>())?.credits;
+    return ok({taskID,status:'cancelled',refundedCredits:refund?.amount??0,balance},200,{'Cache-Control':'no-store'});
+  }
   const existing = await env.DB.prepare(`SELECT status FROM widget_tasks WHERE id=?${scope}`).bind(taskID, ...scopeArgs).first<{ status: string }>();
   if (!existing) return fail("task_not_found", "Task not found.", 404);
   return json({ success: false, error: { code: "task_not_active", message: "Task is no longer active." }, status: publicTaskStatus(existing.status) }, 409);
@@ -861,6 +921,7 @@ async function cancelTask(env: Env, request: Request, taskID: string) {
 function publicTaskStatus(status: unknown) { return status === "succeeded" ? "completed" : status; }
 
 async function pullTask(env: Env, request: Request, url: URL) {
+  await expireTasks(env);
   const token = bearer(request);
   const widgetID = url.searchParams.get("widget_id") || "";
   if (!widgetID || !token) return fail("worker_auth_required", "Widget ID and Worker token are required.", 401);
@@ -890,6 +951,7 @@ async function pullTask(env: Env, request: Request, url: URL) {
 }
 
 async function pullBatch(env: Env, request: Request) {
+  await expireTasks(env);
   const actor = await developerSession(env, request);
   const body = await readJSON(request);
   const raw = Array.isArray(body.widgets) ? body.widgets : [];
@@ -1205,10 +1267,57 @@ async function adminAction(env: Env, request: Request, submissionID: string, act
 }
 
 export default {
+  async scheduled(_event: ScheduledController, env: Env) { await expireTasks(env); },
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     const url = new URL(request.url); const parts = pathParts(url);
     try {
+      if(request.method==='POST' && url.pathname==='/api/v2/billing/events') return await recordBillingEvent(env,request);
+      if(request.method==='GET' && url.pathname==='/api/admin/v2/billing/metrics') {await requireAdmin(env,request);return await billingMetrics(env,request);}
+      const abandon=/^\/api\/v2\/orders\/([^/]+)\/abandon$/.exec(url.pathname);
+      if(abandon && request.method==='POST') return await abandonOrder(env,request,abandon[1]);
+      if (request.method === 'GET' && url.pathname === '/api/v2/pricing') return await publicPricing(env,request);
+      if (url.pathname === '/api/admin/v2/pricing') {
+        await requireAdmin(env,request);
+        if (request.method === 'GET') return ok(await readPricing(env));
+        if (request.method === 'PUT') return await savePricing(env,request);
+      }
+      if (url.pathname === '/api/admin/v2/orders' && request.method === 'GET') { await requireAdmin(env,request); return await adminOrders(env); }
+      const deny=/^\/api\/admin\/v2\/orders\/([^/]+)\/refund\/deny$/.exec(url.pathname);
+      if (deny && request.method==='POST') { await requireAdmin(env,request);return await denyRefund(env,request,deny[1]); }
+      const adminRefund=/^\/api\/admin\/v2\/orders\/([^/]+)\/refund$/.exec(url.pathname);
+      if (adminRefund && request.method === 'POST') { await requireAdmin(env,request); return await requestRefund(env,request,adminRefund[1],true); }
+      if (url.pathname === '/api/v2/payments/waffo/webhook' && request.method === 'POST') return await billingWebhook(env,request);
+      if (url.pathname === '/api/v2/account/credits' && request.method === 'GET') return await wallet(env,request);
+      if (url.pathname === '/api/v2/orders' && request.method === 'POST') return await createOrder(env,request);
+      if (url.pathname === '/api/v2/orders' && request.method === 'GET') return await orders(env,request);
+      const checkoutRoute=/^\/api\/v2\/orders\/([^/]+)\/checkout$/.exec(url.pathname);
+      if (checkoutRoute && request.method === 'POST') return await resumeOrder(env,request,checkoutRoute[1]);
+      if (url.pathname === '/api/v2/account/widget-notice' && request.method === 'POST') {
+        const user=await authenticatedUser(env,request);
+        await env.DB.prepare('UPDATE users SET widget_notice_seen=1 WHERE id=?').bind(user.id).run();return ok({acknowledged:true});
+      }
+      const orderRoute=/^\/api\/v2\/orders\/([^/]+)(\/refund)?$/.exec(url.pathname);
+      if (orderRoute && request.method === 'GET' && !orderRoute[2]) return await orders(env,request,orderRoute[1]);
+      if (orderRoute?.[2] && request.method === 'POST') return await requestRefund(env,request,orderRoute[1]);
+      if (url.pathname === '/api/v2/account/entitlements' && request.method === 'GET') return await entitlements(env,request);
+      if (url.pathname === '/api/v2/account/trial' && request.method === 'POST') return await synchronizeTrial(env,request);
+      if (url.pathname === '/api/v2/account/devices/activate' && request.method === 'POST') return await activateDevice(env,request);
+      const release=/^\/api\/v2\/account\/devices\/([^/]+)\/release$/.exec(url.pathname);
+      if (release && request.method === 'POST') return await releaseDevice(env,request,release[1]);
+      const userResponse = await userRoutes(env, request);
+      if (userResponse) return userResponse;
+      if (url.pathname === "/api/admin/v2/users" && request.method === "GET") {
+        await requireAdmin(env, request); return await adminUsers(env, request);
+      }
+      const creditGrant = /^\/api\/admin\/v2\/users\/(\d+)\/credits$/.exec(url.pathname);
+      if (creditGrant && request.method === "POST") {
+        await requireAdmin(env, request); return await adminUsers(env, request, Number(creditGrant[1]));
+      }
+      const proGrant = /^\/api\/admin\/v2\/users\/(\d+)\/pro$/.exec(url.pathname);
+      if (proGrant && request.method === 'POST') {
+        await requireAdmin(env, request); return await adminGrantPro(env, request, Number(proGrant[1]));
+      }
       if (env.ADMIN_PATH && request.method === "GET" && (url.pathname === `/${env.ADMIN_PATH}` || url.pathname === `/${env.ADMIN_PATH}/`)) {
         return env.ASSETS.fetch(new Request(new URL("/admin/index.html", request.url), request));
       }
@@ -1269,8 +1378,10 @@ export default {
       if (parts[0] === "api" && parts[1] === "admin" && parts[2] === "v2" && parts[3] === "widget-submissions" && request.method === "GET") { await requireAdmin(env, request); const rows = await env.DB.prepare("SELECT * FROM widget_versions ORDER BY updated_at DESC").all(); return ok(rows.results); }
       return fail("not_found", "Not found.", 404);
     } catch (error) {
+      if (error instanceof BillingError) return json({success:false,error:{code:error.code,message:error.message,details:error.details}},error.status);
       if (error instanceof HttpError) return fail(error.code, error.message, error.status);
       if (error instanceof Error && error.message === "Unauthorized") return fail("unauthorized", "Unauthorized", 401);
+      if (error instanceof Error && error.message === "Invalid JSON") return fail("invalid_json", "Invalid JSON body.", 400);
       console.error("Unhandled request error", error);
       return fail("internal_error", "Internal server error.", 500);
     }

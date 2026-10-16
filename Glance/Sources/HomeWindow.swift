@@ -89,8 +89,8 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     private let folderCountLabel = NSTextField(labelWithString: "")
     private let folderStrip = NSView()
     private let folderScroll = HomeFolderScrollView()
-    private let folderDocView = NSView()
-    private let folderIndicator = HomeFolderScrollIndicator()
+    private let folderDocView = HomeFlippedView()
+    private let folderIndicator = GlanceScrollIndicator(axis: .horizontal)
     private lazy var folderPreviousButton = makeFolderArrow(
         symbol: "chevron.left", tooltip: "Previous images".localized,
         action: #selector(previousFolderImagesTapped))
@@ -99,7 +99,8 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         action: #selector(nextFolderImagesTapped))
     private let inspectAllButton: PanelButton
     private var folderImageURLs: [URL] = []
-    private var folderThumbViews: [NSView] = []
+    private var folderThumbViews: [Int: HomeFolderThumbnailView] = [:]
+    private var folderGeneration = UUID()
 
     // Recent
     private let recentHeadingLabel = PanelCenteredTextView()
@@ -282,6 +283,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
                                                object: folderScroll.contentView)
         folderStrip.addSubview(folderScroll)
         folderIndicator.onSeek = { [weak self] fraction in self?.seekFolder(to: fraction) }
+        folderIndicator.setAccessibilityLabel("Scroll folder images".localized)
         folderStrip.addSubview(folderIndicator)
         folderStrip.addSubview(folderPreviousButton)
         folderStrip.addSubview(folderNextButton)
@@ -414,7 +416,12 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
 
     // MARK: Recent tiles
 
-    func refresh() { rebuildRecent() }
+    private var recentNeedsRefresh = false
+
+    func refresh() {
+        recentNeedsRefresh = false
+        rebuildRecent()
+    }
 
     private func rebuildRecent() {
         for card in recentCards { card.removeFromSuperview() }
@@ -490,6 +497,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     }
 
     func showFolder(_ folder: URL, imageURLs: [URL]) {
+        folderGeneration = UUID()
         folderImageURLs = imageURLs
         folderGroupLabel.stringValue = "FOLDER".localized + "  ·  " + folder.abbreviatedDisplayPath
         folderCountLabel.stringValue = String(format: "%d images found".localized, imageURLs.count)
@@ -503,23 +511,8 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     }
 
     private func rebuildFolderStrip() {
-        for v in folderThumbViews { v.removeFromSuperview() }
+        for v in folderThumbViews.values { v.removeFromSuperview() }
         folderThumbViews.removeAll()
-        for url in folderImageURLs {
-            let thumb = NSImageView()
-            thumb.wantsLayer = true
-            thumb.layer?.cornerRadius = 6
-            thumb.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-            thumb.layer?.borderWidth = 1
-            thumb.layer?.masksToBounds = true
-            thumb.imageScaling = .scaleAxesIndependently
-            thumb.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surfaceRaised)
-            folderDocView.addSubview(thumb)
-            folderThumbViews.append(thumb)
-            imageLoader.loadImage(from: url) { [weak thumb] image in
-                DispatchQueue.main.async { if let image = image { thumb?.image = image } }
-            }
-        }
         layoutFolderStrip()
     }
 
@@ -530,8 +523,8 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
                                     width: max(0, folderStrip.bounds.width - 24),
                                     height: folderStrip.bounds.height)
         let viewportWidth = folderScroll.contentSize.width
-        let thumbnailsWidth = folderThumbViews.isEmpty ? 0
-            : thumb + CGFloat(folderThumbViews.count - 1) * pitch
+        let thumbnailsWidth = folderImageURLs.isEmpty ? 0
+            : thumb + CGFloat(folderImageURLs.count - 1) * pitch
         folderDocView.frame = NSRect(x: 0, y: 0, width: max(viewportWidth, thumbnailsWidth),
                                      height: folderStrip.bounds.height)
         let maxOffset = max(0, thumbnailsWidth - viewportWidth)
@@ -544,9 +537,36 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
                                         y: (folderStrip.bounds.height - 32) / 2,
                                         width: 32, height: 32)
         updateFolderNavigation()
-        let y = (folderDocView.bounds.height - thumb) / 2
-        for (i, v) in folderThumbViews.enumerated() {
-            v.frame = NSRect(x: CGFloat(i) * pitch, y: y, width: thumb, height: thumb)
+        updateVisibleFolderThumbnails()
+    }
+
+    private func updateVisibleFolderThumbnails() {
+        let width = folderScroll.contentSize.width
+        guard width > 0, !folderImageURLs.isEmpty else { return }
+        let contentWidth = 84 + CGFloat(folderImageURLs.count - 1) * 96
+        let offset = min(max(0, folderScroll.contentView.bounds.minX), max(0, contentWidth - width))
+        let first = max(0, Int(offset / 96) - 2)
+        let last = min(folderImageURLs.count - 1, Int((offset + width) / 96) + 2)
+        let visible = Set(first...last)
+        for index in folderThumbViews.keys.filter({ !visible.contains($0) }) {
+            folderThumbViews.removeValue(forKey: index)?.removeFromSuperview()
+        }
+        let generation = folderGeneration
+        let y = (folderDocView.bounds.height - 84) / 2
+        for index in first...last where folderThumbViews[index] == nil {
+            let url = folderImageURLs[index]
+            let thumb = HomeFolderThumbnailView(frame: .zero)
+            thumb.frame = NSRect(x: CGFloat(index) * 96, y: y, width: 84, height: 84)
+            thumb.toolTip = url.lastPathComponent
+            thumb.setAccessibilityLabel(url.lastPathComponent)
+            thumb.onOpen = { [weak self] in self?.onOpenImages?([url]) }
+            folderDocView.addSubview(thumb)
+            folderThumbViews[index] = thumb
+            imageLoader.loadThumbnail(from: url) { [weak self, weak thumb] image in
+                guard let self, let thumb, self.folderGeneration == generation,
+                      self.folderThumbViews[index] === thumb else { return }
+                thumb.image = image
+            }
         }
     }
 
@@ -563,13 +583,14 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
 
     @objc private func folderClipBoundsChanged(_ notification: Notification) {
         updateFolderNavigation()
+        updateVisibleFolderThumbnails()
     }
 
     private func updateFolderNavigation() {
         let overflow = max(0, folderDocView.bounds.width - folderScroll.contentSize.width)
         let offset = min(max(0, folderScroll.contentView.bounds.minX), overflow)
-        folderIndicator.update(contentWidth: folderDocView.bounds.width,
-                               viewportWidth: folderScroll.contentSize.width, offset: offset)
+        folderIndicator.update(contentLength: folderDocView.bounds.width,
+                               viewportLength: folderScroll.contentSize.width, offset: offset)
         folderPreviousButton.isHidden = overflow < 1 || offset < 1
         folderNextButton.isHidden = overflow < 1 || offset >= overflow - 1
     }
@@ -584,6 +605,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         folderScroll.contentView.scroll(to: NSPoint(x: min(max(0, offset), overflow), y: 0))
         folderScroll.reflectScrolledClipView(folderScroll.contentView)
         updateFolderNavigation()
+        updateVisibleFolderThumbnails()
     }
 
     @objc private func previousFolderImagesTapped() {
@@ -664,7 +686,18 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     }
 
     @objc private func historyChanged() {
-        DispatchQueue.main.async { [weak self] in self?.rebuildRecent() }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.recentNeedsRefresh = true
+            // Opening a folder records its local images, then hides Home.
+            // Do not fetch unrelated history thumbnails behind Image Inspect.
+            guard self.isVisible else { return }
+            self.refresh()
+        }
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        if recentNeedsRefresh { refresh() }
     }
 
     func windowDidResize(_ notification: Notification) {
@@ -792,6 +825,28 @@ private final class HomeFlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
+private final class HomeFolderThumbnailView: NSImageView {
+    var onOpen: (() -> Void)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        layer?.borderWidth = 1
+        layer?.masksToBounds = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surfaceRaised)
+        imageScaling = .scaleAxesIndependently
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func mouseDown(with event: NSEvent) { onOpen?() }
+    override func accessibilityPerformPress() -> Bool { onOpen?(); return true }
+}
+
 private final class HomeFolderScrollView: NSScrollView {
     override func scrollWheel(with event: NSEvent) {
         guard let documentView, documentView.frame.width > contentSize.width else { return }
@@ -801,67 +856,6 @@ private final class HomeFolderScrollView: NSScrollView {
         let x = min(max(0, contentView.bounds.minX - delta), maxOffset)
         contentView.scroll(to: NSPoint(x: x, y: 0))
         reflectScrolledClipView(contentView)
-    }
-}
-
-private final class HomeFolderScrollIndicator: NSView {
-    var onSeek: ((CGFloat) -> Void)?
-
-    private let trackLayer = CALayer()
-    private let thumbLayer = CALayer()
-    private var contentWidth: CGFloat = 0
-    private var viewportWidth: CGFloat = 0
-    private var offset: CGFloat = 0
-    private var dragAnchor: CGFloat = 0
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        wantsLayer = true
-        trackLayer.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine.withAlphaComponent(0.8))
-        trackLayer.cornerRadius = 1.5
-        thumbLayer.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.86))
-        thumbLayer.cornerRadius = 1.5
-        layer?.addSublayer(trackLayer)
-        layer?.addSublayer(thumbLayer)
-        setAccessibilityLabel("Scroll folder images".localized)
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    func update(contentWidth: CGFloat, viewportWidth: CGFloat, offset: CGFloat) {
-        self.contentWidth = contentWidth
-        self.viewportWidth = viewportWidth
-        self.offset = offset
-        isHidden = contentWidth <= viewportWidth + 1
-        needsLayout = true
-    }
-
-    override func layout() {
-        super.layout()
-        trackLayer.frame = NSRect(x: 0, y: 3, width: bounds.width, height: 3)
-        let thumbWidth = min(bounds.width, max(28, bounds.width * viewportWidth / max(contentWidth, 1)))
-        let overflow = max(0, contentWidth - viewportWidth)
-        let thumbTravel = max(0, bounds.width - thumbWidth)
-        let x = overflow > 0 ? offset / overflow * thumbTravel : 0
-        thumbLayer.frame = NSRect(x: x, y: 3, width: thumbWidth, height: 3)
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        layoutSubtreeIfNeeded()
-        let x = convert(event.locationInWindow, from: nil).x
-        dragAnchor = thumbLayer.frame.contains(NSPoint(x: x, y: 4))
-            ? x - thumbLayer.frame.minX : thumbLayer.frame.width / 2
-        seek(at: x)
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        seek(at: convert(event.locationInWindow, from: nil).x)
-    }
-
-    private func seek(at x: CGFloat) {
-        let travel = bounds.width - thumbLayer.frame.width
-        guard travel > 0 else { return }
-        onSeek?(min(max(0, (x - dragAnchor) / travel), 1))
     }
 }
 

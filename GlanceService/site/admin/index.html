@@ -41,7 +41,7 @@
 </head>
 <body>
   <div id="login" class="login"><form id="loginForm" class="login-box"><p class="eyebrow">GLANCE / PRIVATE OPS</p><h1>Admin Console</h1><p>管理任务队列、Widget 审核和 Worker 运行状态。</p><div id="loginError" class="error hidden" role="alert"></div><div class="field"><label for="username">用户名</label><input id="username" name="username" autocomplete="username" required></div><div class="field"><label for="password">密码</label><input id="password" name="password" type="password" autocomplete="current-password" required></div><button class="primary" type="submit">登录控制台</button></form></div>
-  <div id="app" class="shell hidden"><aside class="side"><div class="brand">Glance <small>Operations Console</small></div><nav class="nav" aria-label="后台导航"><button class="active" data-view="overview">Overview</button><button data-view="tasks">Task Center</button><button data-view="widgets">Widget Review</button><button data-view="config">Glance 配置</button></nav><div class="side-foot">Private surface<br>Session protected</div></aside><main class="main"><header class="top"><div><p class="eyebrow">SERVICE CONTROL PLANE</p><h1 id="title">运营概览</h1><p id="subtitle">任务、审核与 Worker 的实时摘要。</p></div><div style="display:flex;gap:8px"><button id="refresh" class="outline">刷新数据</button><button id="logout" class="outline">退出登录</button></div></header><div id="content"></div></main></div>
+  <div id="app" class="shell hidden"><aside class="side"><div class="brand">Glance <small>Operations Console</small></div><nav class="nav" aria-label="后台导航"><button class="active" data-view="overview">Overview</button><button data-view="tasks">Task Center</button><button data-view="widgets">Widget Review</button><button data-view="users">用户与授权</button><button data-view="metrics">收费指标</button><button data-view="pricing">定价与授权</button><button data-view="orders">订单与退款</button><button data-view="config">Glance 配置</button></nav><div class="side-foot">Private surface<br>Session protected</div></aside><main class="main"><header class="top"><div><p class="eyebrow">SERVICE CONTROL PLANE</p><h1 id="title">运营概览</h1><p id="subtitle">任务、审核与 Worker 的实时摘要。</p></div><div style="display:flex;gap:8px"><button id="refresh" class="outline">刷新数据</button><button id="logout" class="outline">退出登录</button></div></header><div id="content"></div></main></div>
   <div id="createWidgetModal" class="modal-mask hidden" role="dialog" aria-modal="true">
     <form id="createWidgetForm" class="modal">
       <h2 id="cw-title">新建 Widget</h2>
@@ -49,6 +49,7 @@
       <div class="form-grid">
         <div class="field"><label for="cw-version">版本号</label><input id="cw-version" required placeholder="1.0.0"></div>
         <div class="field"><label for="cw-name">名称</label><input id="cw-name" required placeholder="Blur Background"></div>
+        <div class="field"><label for="cw-credit-cost">每次任务消耗积分（0 为免费）</label><input id="cw-credit-cost" type="number" min="0" max="1000000" step="1" value="1" required></div>
         <div class="field"><label for="cw-author">作者</label><input id="cw-author" required placeholder="Example Studio"></div>
         <div class="field span2"><label for="cw-summary">一句话摘要</label><input id="cw-summary" required placeholder="Blur the background of the selected image."></div>
         <div class="field span2"><label for="cw-icon">图标 URL（可选）</label><input id="cw-icon" placeholder="https://example.com/icon.png"></div>
@@ -126,8 +127,36 @@
       let config;try{config=JSON.parse($('#configJson').value);if(!config||Array.isArray(config)||typeof config!=='object'||typeof config.locationBasedUpload!=='boolean')throw Error('配置必须是 JSON 对象，且 locationBasedUpload 必须为 true 或 false。')}catch(e){feedback.style.color='var(--red)';feedback.textContent=e.message;return}
       button.disabled=true;try{state.glanceConfig=await api('/api/admin/v2/glance-config',{method:'PUT',body:JSON.stringify(config)});$('#configJson').value=JSON.stringify(state.glanceConfig,null,2);feedback.style.color='var(--teal-dark)';feedback.textContent='已保存，客户端新请求将读取此配置。'}catch(e){feedback.style.color='var(--red)';feedback.textContent=e.message}finally{button.disabled=false}
     }
+    function renderUsers(users){
+      $('#title').textContent='用户与授权';$('#subtitle').textContent='管理最近 100 位用户的 Pro 授权与 Widget 积分。手动升级授予永久 Pro，更新期按当前后台配置，积分单独发放。';
+      $('#content').innerHTML=`<div class="section"><div class="section-head"><h2>用户账户</h2><button class="row-action" onclick="load('users')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>用户</th><th>状态</th><th>Pro 授权</th><th>积分余额</th><th>发放积分</th></tr></thead><tbody>${users.map(user=>`<tr><td>${esc(user.name||user.email)}<br><span class="mono">${esc(user.email)} · #${user.id}</span></td><td>${pill(user.status)}</td><td>${user.license_status==='active'?`<strong>Pro · ${user.license_source==='admin'?'管理员授予':'购买'}</strong><br><span class="mono">更新至 ${esc(new Date(user.updates_until).toLocaleDateString())}</span>`:`<span>${user.license_status==='refunded'?'已退款':'免费版'}</span>${user.status==='active'?`<form data-pro-user="${user.id}" data-pro-email="${esc(user.email)}" style="margin-top:8px"><label>升级备注 <input name="note" aria-label="升级 Pro 原因" maxlength="500" required style="width:150px"></label> <button class="row-action" type="submit">升级为 Pro</button><span role="status" class="config-feedback"></span></form>`:''}`}</td><td data-user-balance>${user.credits}</td><td><form data-credit-user="${user.id}"><label>数量 <input name="amount" aria-label="发放积分数量" type="number" min="1" max="1000000000" step="1" required style="width:90px"></label> <label>备注 <input name="note" aria-label="发放原因" maxlength="500" required style="width:150px"></label> <button class="row-action" type="submit">发放</button><span role="status" class="config-feedback"></span></form></td></tr>`).join('')||'<tr><td colspan="5" class="empty">暂无用户</td></tr>'}</tbody></table></div></div>`;
+      document.querySelectorAll('[data-credit-user]').forEach(form=>form.addEventListener('submit',async event=>{
+        event.preventDefault();const button=form.querySelector('button'),feedback=form.querySelector('[role=status]');
+        const payload=JSON.stringify({amount:Number(form.elements.amount.value),note:form.elements.note.value.trim()});
+        if(!form.requestKey||form.lastPayload!==payload){form.requestKey=crypto.randomUUID();form.lastPayload=payload}
+        button.disabled=true;feedback.textContent='正在发放…';
+        try{const result=await api('/api/admin/v2/users/'+form.dataset.creditUser+'/credits',{method:'POST',headers:{'Idempotency-Key':form.requestKey},body:payload});form.closest('tr').querySelector('[data-user-balance]').textContent=result.balance;feedback.textContent='已发放';form.reset();form.requestKey=null}
+        catch(error){feedback.textContent=error.message}finally{button.disabled=false}
+      }));
+      document.querySelectorAll('[data-pro-user]').forEach(form=>form.addEventListener('submit',async event=>{
+        event.preventDefault();const button=form.querySelector('button'),feedback=form.querySelector('[role=status]');
+        const note=form.elements.note.value.trim();if(!note)return;
+        const payload=JSON.stringify({note});
+        if(!form.requestKey||form.lastPayload!==payload){
+          if(!confirm('将 '+form.dataset.proEmail+' 升级为永久 Pro？功能更新期按当前后台配置；本操作不发放积分。'))return;
+          form.requestKey=crypto.randomUUID();form.lastPayload=payload;
+        }
+        button.disabled=true;form.setAttribute('aria-busy','true');feedback.textContent='正在升级…';
+        try{
+          const result=await api('/api/admin/v2/users/'+form.dataset.proUser+'/pro',{method:'POST',headers:{'Idempotency-Key':form.requestKey},body:payload});
+          const user=users.find(user=>String(user.id)===form.dataset.proUser);
+          Object.assign(user,{license_status:result.license.status,license_source:'admin',updates_until:result.license.updates_until});
+          renderUsers(users);
+        }catch(error){feedback.textContent=error.message;button.disabled=false;form.setAttribute('aria-busy','false')}
+      }));
+    }
     function renderTasks(){ $('#title').textContent='Task Center';$('#subtitle').textContent='查看任务响应、输入媒体、输出产物和失败原因。';$('#content').innerHTML=`<div class="section"><div class="section-head"><h2>最近 100 个任务</h2><button class="row-action" onclick="load('tasks')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>任务</th><th>Widget</th><th>类型</th><th>状态</th><th>输入媒体</th><th>输出结果</th><th>尝试</th><th>错误</th><th>创建时间</th></tr></thead><tbody>${state.tasks.map(x=>`<tr><td class="mono">${esc(x.id).slice(0,22)}</td><td>${esc(x.widget_name||x.widget_id)}<br><span class="mono">${esc(x.command_id)}</span></td><td>${pill(x.type)}</td><td>${pill(x.status)}</td><td class="media-cell">${mediaMarkup(x.input)}</td><td class="media-cell">${mediaMarkup(x.result)}</td><td>${x.attempts}</td><td class="error-cell">${x.error_code?`<details><summary>${esc(x.error_code)}</summary><div class="error-detail">${esc(x.error_code)}<br>Task: <span class="mono">${esc(x.id)}</span></div></details>`:'<span class="media-empty">—</span>'}</td><td>${esc(new Date(x.created_at).toLocaleString())}</td></tr>`).join('')||'<tr><td colspan="9" class="empty">暂无任务</td></tr>'}</tbody></table></div></div>`}
-    function renderWidgets(){ $('#title').textContent='Widget Review';$('#subtitle').textContent='先发送测试任务并检查输出，再决定灰度和正式发布。';const pending=state.versions.filter(x=>['manual_review','test_passed','gray_release'].includes(x.status));$('#content').innerHTML=`<div class="section"><div class="section-head"><h2>待审核与灰度版本</h2><button class="row-action" onclick="load('widgets')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>Widget / 版本</th><th>状态</th><th>最近测试</th><th>操作</th></tr></thead><tbody>${pending.map(x=>{const tests=state.tasks.filter(t=>t.version_id===x.version_id&&t.type==='review_test');const latest=tests[0];return `<tr><td><strong>${esc(x.name)}</strong><br><span class="mono">${esc(x.widget_id)} v${esc(x.version)}</span></td><td>${pill(x.status)}</td><td>${latest?`${pill(latest.status)} ${mediaMarkup(latest.result)}<br><span class="mono">${esc(latest.id)}</span>`:'尚未测试'}</td><td>${x.status!=='gray_release'?`<button class="row-action" onclick="sendTest('${esc(x.version_id)}')">发送测试</button><button class="row-action" onclick="review('${esc(x.version_id)}','approve')">灰度发布</button><button class="row-action" onclick="review('${esc(x.version_id)}','reject')">拒绝</button>`:`<button class="row-action" onclick="review('${esc(x.version_id)}','promote')">正式发布</button>`}</td></tr>`}).join('')||'<tr><td colspan="4" class="empty">暂无待审核版本</td></tr>'}</tbody></table></div></div><div class="section"><div class="section-head"><h2>全部 Widget</h2><button class="row-action" onclick="openCreateWidget()">新建 Widget</button></div><div class="table-wrap"><table><thead><tr><th>Widget / ID</th><th>当前版本</th><th>作者</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead><tbody>${state.widgets.map(x=>`<tr><td><strong>${esc(x.name)}</strong><br><span class="mono">${esc(x.widgetId)}</span></td><td class="mono">v${esc(x.currentVersion)}</td><td>${esc(x.author)}</td><td>${pill(x.status)}</td><td>${esc(new Date(x.updatedAt).toLocaleString())}</td><td><button class="row-action" onclick="openCreateWidget('${esc(x.widgetId)}')">编辑</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">暂无 Widget</td></tr>'}</tbody></table></div></div>`}
+    function renderWidgets(){ $('#title').textContent='Widget Review';$('#subtitle').textContent='先发送测试任务并检查输出，再决定灰度和正式发布。';const pending=state.versions.filter(x=>['manual_review','test_passed','gray_release'].includes(x.status));$('#content').innerHTML=`<div class="section"><div class="section-head"><h2>待审核与灰度版本</h2><button class="row-action" onclick="load('widgets')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>Widget / 版本</th><th>状态</th><th>最近测试</th><th>操作</th></tr></thead><tbody>${pending.map(x=>{const tests=state.tasks.filter(t=>t.version_id===x.version_id&&t.type==='review_test');const latest=tests[0];return `<tr><td><strong>${esc(x.name)}</strong><br><span class="mono">${esc(x.widget_id)} v${esc(x.version)}</span></td><td>${pill(x.status)}</td><td>${latest?`${pill(latest.status)} ${mediaMarkup(latest.result)}<br><span class="mono">${esc(latest.id)}</span>`:'尚未测试'}</td><td>${x.status!=='gray_release'?`<button class="row-action" onclick="sendTest('${esc(x.version_id)}')">发送测试</button><button class="row-action" onclick="review('${esc(x.version_id)}','approve')">灰度发布</button><button class="row-action" onclick="review('${esc(x.version_id)}','reject')">拒绝</button>`:`<button class="row-action" onclick="review('${esc(x.version_id)}','promote')">正式发布</button>`}</td></tr>`}).join('')||'<tr><td colspan="4" class="empty">暂无待审核版本</td></tr>'}</tbody></table></div></div><div class="section"><div class="section-head"><h2>全部 Widget</h2><button class="row-action" onclick="openCreateWidget()">新建 Widget</button></div><div class="table-wrap"><table><thead><tr><th>Widget / ID</th><th>当前版本</th><th>作者 / 积分</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead><tbody>${state.widgets.map(x=>`<tr><td><strong>${esc(x.name)}</strong><br><span class="mono">${esc(x.widgetId)}</span></td><td class="mono">v${esc(x.currentVersion)}</td><td>${esc(x.author)}<br>${x.manifest?.creditCost??1} 积分 / 次</td><td>${pill(x.status)}</td><td>${esc(new Date(x.updatedAt).toLocaleString())}</td><td><button class="row-action" onclick="openCreateWidget('${esc(x.widgetId)}')">编辑</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">暂无 Widget</td></tr>'}</tbody></table></div></div>`}
     function attachWidgetDeleteButtons(){
       const rows=$('#content').querySelectorAll('.section:nth-of-type(2) tbody tr');
       state.widgets.forEach((widget,index)=>{
@@ -142,6 +171,44 @@
       try{await api('/api/admin/v2/widgets/'+encodeURIComponent(id),{method:'DELETE'});await load('widgets')}
       catch(e){alert(e.message||'删除失败')}
     }
+
+
+    function renderBillingMetrics(data){
+      $('#title').textContent='收费与授权指标';$('#subtitle').textContent='支付、扣点、退点使用服务端记录；界面埋点为尽力采集。没有足够样本时不显示虚假的 0% 或 100%。';
+      const percent=r=>r.rate===null?'暂无成熟样本':(r.rate*100).toFixed(1)+'%';
+      const stats=[['登录转化',data.login],['赠送耗尽率（7 天成熟队列）',data.giftDepletion],['余额不足 → 充值',data.insufficientTopup],['充值 → 原任务已受理',data.topupTaskSubmission],['试用期活跃',data.trialActivity],['试用 → Pro（到期后 7 天成熟）',data.trialConversion],['任务撤销率',data.cancellations]];
+      const table=(title,headers,rows)=>`<div class="section"><div class="section-head"><h2>${esc(title)}</h2></div><div class="table-wrap"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(v=>`<td>${esc(String(v))}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${headers.length}" class="empty">暂无数据</td></tr>`}</tbody></table></div></div>`;
+      $('#content').innerHTML=`<div class="card"><label>统计区间 <select id="metricsDays">${[7,30,90].map(n=>`<option value="${n}" ${n===data.days?'selected':''}>最近 ${n} 天</option>`).join('')}</select></label><p>埋点开始：${esc(new Date(data.instrumentedSince).toLocaleString())}。只统计采集开始后的记录；成熟队列排除尚未观察满时间的用户。</p></div><div class="cards" style="margin-top:18px">${stats.map(([label,value])=>`<div class="card"><div class="stat-label">${esc(label)}</div><div class="stat-value" style="font-size:24px">${percent(value)}</div><div class="stat-label">${value.numerator} / ${value.denominator}</div></div>`).join('')}</div>`+
+      table('支付成功率 / 币种',['币种','已建订单','已到账','成功率'],data.payments.map(p=>[p.currency,p.created,p.paid,p.created?(p.paid/p.created*100).toFixed(1)+'%':'—']))+
+      table('支付方式',['币种','平台确认的方式','订单','已到账'],data.paymentMethods.map(p=>[p.currency,p.method==='unreported'?'尚未回报':p.method,p.orders,p.paid]))+
+      '<p class="empty">Pancake 只在成功通知中提供实际支付方式；未付款美元订单归为「尚未回报」，无法据此计算银行卡 / 钱包各自的失败率。</p>'+
+      table('退点率 / Widget',['Widget','付费任务','已退点','退点率'],data.taskRefunds.map(p=>[p.name||p.widget_id,p.tasks,p.refunded,p.tasks?(p.refunded/p.tasks*100).toFixed(1)+'%':'—']))+
+      table('退款率 / 商品',['商品','已支付','已退款','退款率'],data.refunds.map(p=>[p.product,p.paid,p.refunded,p.paid?(p.refunded/p.paid*100).toFixed(1)+'%':'—']))+
+      table('免费版锁定点击',['功能','次数'],data.lockedClicks.map(p=>[p.feature,p.clicks]));
+      $('#metricsDays').onchange=()=>{metricsDays=Number($('#metricsDays').value);load('metrics')};
+    }
+    let metricsDays=30;
+    function renderPricing(settings){
+      $('#title').textContent='定价与授权';$('#subtitle').textContent='独立配置人民币与美元价格（最小货币单位：分 / cents）。保存后影响新订单，已创建订单保留价格快照。';
+      const numeric={trialDays:'试用天数',signupCredits:'注册赠点',proBonusCredits:'Pro 首购赠点',deviceLimit:'Mac 数量',offlineDays:'离线授权天数',releaseLimit:'30 天释放设备次数',confirmationThreshold:'任务二次确认阈值',queueMinutes:'排队最长分钟数',maxAttempts:'Worker 最大领取次数',updatesMonths:'Pro 更新月数',renewalMonths:'续费更新月数'};
+      const field=(name,label,value,type='text')=>`<label class="field"><span>${esc(label)}</span><input data-pricing="${esc(name)}" type="${type}" ${type==='number'?'min="0" step="1"':''} value="${esc(value??'')}"></label>`;
+      $('#content').innerHTML=`<form id="pricingForm"><div class="section"><div class="section-head"><h2>销售开关</h2><label><input id="salesEnabled" type="checkbox" ${settings.enabled?'checked':''}> 开启销售与客户端权限限制</label></div><div class="card">支付密钥未配置时，客户端购买按钮保持禁用，且不会锁定本地工具。商户私钥与 webhook 公钥通过 Worker secrets 配置。</div></div><div class="section"><div class="section-head"><h2>Pro 与更新续费</h2></div><div class="card" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">${['pro','renewal'].map(product=>['CNY','USD'].map(currency=>field(product+'.'+currency+'.amount',`${product==='pro'?'Pro':'续费'} ${currency} / 分`,settings[product][currency].amount,'number')).join('')+field(product+'.productID',`${product} Pancake product ID`,settings[product].productID)).join('')}${field('pro.launchCNY.amount','首发 Pro CNY / 分',settings.pro.launchCNY.amount,'number')}${field('pro.launchUSD.amount','首发 Pro USD / cents',settings.pro.launchUSD.amount,'number')}${field('pro.launchUntil','首发结束 UTC（ISO 8601，可留空）',settings.pro.launchUntil)}</div></div><div class="section"><div class="section-head"><h2>积分包</h2><button id="addPack" class="outline" type="button">新增积分包</button></div><div class="table-wrap"><table><thead><tr><th>积分包</th><th>CNY 分 / 积分</th><th>USD cents / 积分</th><th>商品 ID</th><th>启用 / 推荐</th><th></th></tr></thead><tbody id="packRows"></tbody></table></div></div><div class="section"><div class="section-head"><h2>授权、任务与退款联系</h2></div><div class="card" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">${Object.entries(numeric).map(([key,label])=>field(key,label,settings[key],'number')).join('')}${['taxCategory','supportEmail','termsURL','privacyURL','refundURL','lastCompatibleVersionURL'].map(key=>field(key,key,settings[key])).join('')}<label class="field"><span>价格含税</span><input id="taxIncluded" type="checkbox" ${settings.taxIncluded?'checked':''}></label></div></div><div class="card"><button class="outline" type="submit">保存定价</button> <span id="pricingResult" role="status"></span></div></form>`;
+      let packs=structuredClone(settings.packs);
+      function drawPacks(){
+        $('#packRows').innerHTML=packs.map((p,i)=>`<tr data-pack="${i}"><td><input name="id" aria-label="积分包 ID" value="${esc(p.id)}" style="width:110px"><br><input name="name" aria-label="积分包名称" value="${esc(p.name)}" style="width:110px"></td>${['CNY','USD'].map(c=>`<td><input name="${c}.amount" type="number" aria-label="${c} 金额" value="${p[c].amount??''}" style="width:90px"> / <input name="${c}.points" type="number" aria-label="${c} 积分" value="${p[c].points}" style="width:90px"></td>`).join('')}<td><input name="productID" aria-label="Pancake 商品 ID" value="${esc(p.productID)}"></td><td><input name="enabled" aria-label="启用" type="checkbox" ${p.enabled?'checked':''}> / <input name="recommended" aria-label="推荐" type="checkbox" ${p.recommended?'checked':''}></td><td><button type="button" data-remove="${i}" class="row-action">移除</button></td></tr>`).join('');
+        $('#packRows').querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{readPacks();packs.splice(Number(b.dataset.remove),1);drawPacks()});
+      }
+      const assign=(target,path,value)=>{const parts=path.split('.');let obj=target;for(const part of parts.slice(0,-1))obj=obj[part];obj[parts.at(-1)]=value};
+      function readPacks(){$('#packRows').querySelectorAll('tr').forEach(row=>row.querySelectorAll('input').forEach(input=>assign(packs[Number(row.dataset.pack)],input.name,input.type==='checkbox'?input.checked:input.type==='number'?(input.value===''?null:Number(input.value)):input.value.trim())))}
+      drawPacks();$('#addPack').onclick=()=>{readPacks();if(packs.length>=12)return;packs.push({id:'pack_'+Date.now(),name:'New package',enabled:false,recommended:false,CNY:{amount:null,points:120},USD:{amount:null,points:120},productID:''});drawPacks()};
+      $('#pricingForm').onsubmit=async event=>{event.preventDefault();readPacks();const config=structuredClone(settings);delete config.revision;config.packs=packs;config.enabled=$('#salesEnabled').checked;config.taxIncluded=$('#taxIncluded').checked;document.querySelectorAll('[data-pricing]').forEach(input=>assign(config,input.dataset.pricing,input.type==='number'?(input.value===''?null:Number(input.value)):input.value.trim()|| (input.dataset.pricing==='pro.launchUntil'?null:'')));const button=event.submitter;button.disabled=true;try{const saved=await api('/api/admin/v2/pricing',{method:'PUT',body:{revision:settings.revision,config}});renderPricing(saved);$('#pricingResult').textContent='已保存'}catch(error){$('#pricingResult').textContent=error.message}finally{button.disabled=false}};
+    }
+    function renderOrders(orders){
+      $('#title').textContent='订单与退款';$('#subtitle').textContent='仅支付平台确认成功后到账。批准退款会提交平台申请；refund.succeeded 后才撤销权益。';
+      $('#content').innerHTML=`<div class="section"><div class="section-head"><h2>最近 200 笔订单</h2><button class="outline" onclick="load('orders')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>订单 / 用户</th><th>商品</th><th>金额 / 积分</th><th>支付状态</th><th>退款申请</th><th>创建时间</th><th>操作</th></tr></thead><tbody>${orders.map(o=>`<tr><td class="mono">${esc(o.id)}<br>${esc(o.email)}</td><td>${esc(o.product)} ${esc(o.pack_id||'')}</td><td>${esc(o.currency)} ${(o.amount/100).toFixed(2)}<br>${o.credits} 积分</td><td>${pill(o.status)}<br>${esc(o.refund_status||'')}</td><td>${esc(o.refund_request_status||'—')}<br><span style="white-space:normal">${esc(o.refund_reason||'')}</span></td><td>${esc(new Date(o.created_at).toLocaleString())}</td><td>${['paid','refund_failed'].includes(o.status)&&o.refund_request_status!=='processing'?`<button class="row-action" data-refund="${esc(o.id)}">${o.refund_request_status==='requested'?'审核退款':'特殊退款'}</button>${o.refund_request_status==='requested'?`<button class="row-action" data-deny-refund="${esc(o.id)}">拒绝申请</button>`:''}`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">暂无订单</td></tr>'}</tbody></table></div></div>`;
+      document.querySelectorAll('[data-deny-refund]').forEach(button=>button.onclick=async()=>{const reason=prompt('请填写拒绝退款的原因：');if(!reason?.trim())return;button.disabled=true;try{await api('/api/admin/v2/orders/'+encodeURIComponent(button.dataset.denyRefund)+'/refund/deny',{method:'POST',body:{reason}});await load('orders')}catch(error){alert(error.message);button.disabled=false}});
+      document.querySelectorAll('[data-refund]').forEach(button=>button.onclick=async()=>{const reason=prompt('填写审批原因（特殊退款请记录重复支付 / 未到账等依据）：');if(!reason?.trim())return;if(!confirm('向支付平台提交这笔订单的退款申请？权益会在平台确认退款成功后撤销。'))return;button.disabled=true;try{await api('/api/admin/v2/orders/'+encodeURIComponent(button.dataset.refund)+'/refund',{method:'POST',body:{reason}});await load('orders')}catch(error){alert(error.message);button.disabled=false}});
+    }
     async function load(view){
       const seq=++loadSeq;
       loadController?.abort();
@@ -151,7 +218,7 @@
       const current=()=>seq===loadSeq;
       currentView=view;
       document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-current',b.dataset.view===view?'page':'false')});
-      $('#title').textContent={overview:'运营概览',tasks:'Task Center',widgets:'Widget Review',config:'Glance 配置'}[view]||view;
+      $('#title').textContent={overview:'运营概览',tasks:'Task Center',widgets:'Widget Review',config:'Glance 配置',users:'用户与授权'}[view]||view;
       $('#subtitle').textContent='正在加载数据…';
       $('#content').innerHTML='<div class="section"><div class="empty" role="status">正在加载，请稍候…</div></div>';
       try{
@@ -175,6 +242,14 @@
           if(tasks.status==='fulfilled')state.tasks=tasks.value;
           renderWidgets();attachWidgetDeleteButtons();
           if(versions.status==='rejected'||tasks.status==='rejected')$('#subtitle').textContent='部分数据未更新，请点击刷新数据重试。';
+        }else if(view==='users'){
+          const result=await fetchView('/api/admin/v2/users');if(current())renderUsers(result.users||[]);
+        }else if(view==='metrics'){
+          const result=await fetchView('/api/admin/v2/billing/metrics?days='+metricsDays);if(current())renderBillingMetrics(result);
+        }else if(view==='pricing'){
+          const result=await fetchView('/api/admin/v2/pricing');if(current())renderPricing(result);
+        }else if(view==='orders'){
+          const result=await fetchView('/api/admin/v2/orders');if(current())renderOrders(result.orders||[]);
         }else if(view==='config'){
           state.glanceConfig=await fetchView('/api/admin/v2/glance-config');if(current())renderConfig();
         }
@@ -289,7 +364,7 @@
         if(m){
           const properties=c?.parameterSchema?.properties||c?.parameterSchema||{};
           $('#cw-version').value=m.version||'';$('#cw-name').value=m.name||'';$('#cw-author').value=m.author||'';
-          $('#cw-summary').value=m.summary||'';$('#cw-icon').value=m.iconURL||'';
+          $('#cw-credit-cost').value=m.creditCost??1;$('#cw-summary').value=m.summary||'';$('#cw-icon').value=m.iconURL||'';
           $('#cw-command-name').value=c?.name||'';$('#cw-command-desc').value=c?.description||'';
           const en=m.localizations?.en||{},enCommand=c?.id?en.commands?.[c.id]||{}:{};
           $('#cw-name-en').value=en.name||'';$('#cw-summary-en').value=en.summary||'';
@@ -359,6 +434,7 @@
         name:$('#cw-name').value.trim(),
         summary:$('#cw-summary').value.trim(),
         author:$('#cw-author').value.trim(),
+        creditCost:Number($('#cw-credit-cost').value),
         iconURL:$('#cw-icon').value.trim()||undefined,
         execution:{mode:'cloud'},
         commands:[{

@@ -659,6 +659,7 @@ class PreviewPanel: NSPanel {
         scrollView.autoresizingMask = [.width, .height]
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
+        PanelStyle.styleScrollers(in: scrollView)
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.autohidesScrollers = true
@@ -959,6 +960,7 @@ class PreviewPanel: NSPanel {
 
         case .markdown, .text, .pdf, .webPage:
             let config = WKWebViewConfiguration()
+            PanelStyle.styleWebScrollbars(in: config)
             let webView = WKWebView(frame: container.bounds, configuration: config)
             webView.autoresizingMask = [.width, .height]
             container.addSubview(webView)
@@ -1389,10 +1391,7 @@ class PreviewPanel: NSPanel {
     }
 
     @objc private func loginButtonTapped() {
-        let panel = LoginPanel.shared
-        let btnFrame = self.frame
-        let point = CGPoint(x: btnFrame.maxX - 200, y: btnFrame.maxY - 10)
-        panel.show(at: point)
+        BillingCoordinator.shared.showAccount(over: self)
     }
 
     private func updateLoginButtonState() {

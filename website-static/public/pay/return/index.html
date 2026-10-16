@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN" data-lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>返回 Glance · Glance</title>
+<meta name="description" content="Glance 是 macOS 上的看图看视频工具：不满意就地用 AI 改，改完对比确认。Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.">
+<link rel="canonical" href="https://glance.mcreator.ai/pay/return/">
+<meta property="og:title" content="返回 Glance · Glance | Return to Glance · Glance">
+<meta property="og:description" content="Glance 是 macOS 上的看图看视频工具：不满意就地用 AI 改，改完对比确认。Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.">
+<meta property="og:image" content="https://glance.mcreator.ai/assets/video/glance-demo-poster.jpg?v=222cee43">
+<meta property="og:url" content="https://glance.mcreator.ai/pay/return/">
+<meta name="theme-color" content="#08090c">
+
+<link rel="icon" type="image/png" href="/assets/img/favicon-64.png">
+<link rel="apple-touch-icon" href="/assets/img/logo-256.png">
+<script>(function(){var l;try{l=localStorage.getItem('glance.lang')}catch(e){}if(!l)l=/^zh/i.test(navigator.language||'')?'zh':'en';document.documentElement.setAttribute('data-lang',l);document.documentElement.setAttribute('lang',l==='zh'?'zh-CN':'en')})();</script>
+<link rel="stylesheet" href="/assets/site.css?v=2026-10-16">
+</head>
+<body>
+<span hidden data-title-zh="返回 Glance · Glance" data-title-en="Return to Glance · Glance"></span>
+<a class="skip" href="#main"><span lang="zh">跳到正文</span><span lang="en">Skip to content</span></a>
+<header class="site-header"><div class="wrap">
+  <a class="brand" href="/"><img src="/assets/img/logo-256.png" alt="" width="30" height="30">Glance</a>
+  <nav class="nav" aria-label="Main"><a class="hide-sm" href="/#loop"><span lang="zh">功能</span><span lang="en">Features</span></a><a class="hide-sm" href="/widgets/"><span lang="zh">AI Widget</span><span lang="en">AI Widgets</span></a><a class="hide-sm" href="/pricing/"><span lang="zh">价格</span><span lang="en">Pricing</span></a><a class="hide-sm" href="/install/"><span lang="zh">安装</span><span lang="en">Install</span></a>
+    <button class="lang-toggle" type="button" aria-label="Switch language"><span lang="zh">EN</span><span lang="en">中文</span></button>
+    <a class="btn btn-primary" href="/#download"><span lang="zh">下载</span><span lang="en">Download</span></a>
+  </nav>
+</div></header>
+<main id="main">
+<section class="section" style="max-width:520px;margin:60px auto;text-align:center;padding:24px"><div>Glance</div><h1 id="title">Return to Glance</h1><p id="copy">Glance will check your order securely. Your purchase is delivered after confirmation from the payment provider.</p><a id="return" hidden>Open Glance</a><p id="order"></p><p id="help">If the app does not open, use the button above. You can also check Orders in Glance. Please do not pay again while confirmation is pending.</p><footer id="footer">You can close this page after returning to Glance.</footer></section>
+<script>
+const zh=navigator.language.toLowerCase().startsWith('zh');if(zh){document.documentElement.lang='zh-Hans';document.querySelector('#title').textContent='返回 Glance';document.querySelector('#copy').textContent='Glance 会安全查询订单。购买内容将在支付平台确认后到账。';document.querySelector('#return').textContent='打开 Glance';document.querySelector('#help').textContent='如果没有自动打开，请点击上方按钮，也可以在 Glance 的订单页查询。确认期间请勿重复付款。';document.querySelector('#footer').textContent='返回 Glance 后可以关闭此页面。'}
+const id=new URLSearchParams(location.search).get('order');const button=document.querySelector('#return');if(id&&/^order_[A-Za-z0-9-]{1,80}$/.test(id)){const link='glance://payment/return?order='+encodeURIComponent(id);button.href=link;button.hidden=false;document.querySelector('#order').textContent=(zh?'订单：':'Order: ')+id;setTimeout(()=>location.assign(link),500)}else{document.querySelector('#copy').textContent=zh?'无法识别订单，请从 Glance 的账户页查看订单。':'Order not recognized. Open Orders from your Glance account.';button.remove()}
+</script>
+
+</main>
+<footer class="site-footer"><div class="wrap">
+  <div class="footer-grid">
+    <div>
+      <a class="brand" href="/" style="display:flex;padding:0;color:var(--text)"><img src="/assets/img/logo-256.png" alt="" width="30" height="30">Glance</a>
+      <p style="margin:14px 0 0;max-width:320px"><span lang="zh">AI 时代的 Preview。看图看视频，不满意就地用 AI 改，改完对比确认。</span><span lang="en">The Preview for the AI era. View images and video, fix them in place with AI, then compare to confirm.</span></p>
+    </div>
+    <div><h4><span lang="zh">产品</span><span lang="en">Product</span></h4>
+      <a href="/#loop"><span lang="zh">功能</span><span lang="en">Features</span></a><a href="/widgets/"><span lang="zh">AI Widget</span><span lang="en">AI Widgets</span></a>
+      <a href="/pricing/"><span lang="zh">价格</span><span lang="en">Pricing</span></a><a href="/install/"><span lang="zh">下载与安装</span><span lang="en">Download & install</span></a></div>
+    <div><h4><span lang="zh">政策</span><span lang="en">Legal</span></h4>
+      <a href="/terms/"><span lang="zh">服务条款</span><span lang="en">Terms of Service</span></a><a href="/privacy/"><span lang="zh">隐私政策</span><span lang="en">Privacy Policy</span></a>
+      <a href="/refunds/"><span lang="zh">退款政策</span><span lang="en">Refund Policy</span></a><a href="/acceptable-use/"><span lang="zh">可接受使用政策</span><span lang="en">Acceptable Use Policy</span></a></div>
+    <div><h4><span lang="zh">支持</span><span lang="en">Support</span></h4>
+      <a href="mailto:support@mcreator.ai">support@mcreator.ai</a>
+      <a href="/acceptable-use/#report"><span lang="zh">举报违规内容</span><span lang="en">Report content</span></a></div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Glance · mcreator.ai</span>
+    <span><span lang="zh">付款由 Pancake by Waffo 作为记录商户（Merchant of Record）处理。</span><span lang="en">Payments are processed by Pancake by Waffo as Merchant of Record.</span></span>
+  </div>
+</div></footer>
+<script src="/assets/site.js?v=2026-10-16-bilingual-media" defer></script>
+</body>
+</html>

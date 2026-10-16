@@ -143,6 +143,7 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
+        PanelStyle.styleScrollers(in: scrollView)
         scrollView.autohidesScrollers = true
         scrollView.scrollerStyle = .overlay
         scrollView.documentView = gridDocView

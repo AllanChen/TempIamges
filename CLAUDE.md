@@ -41,6 +41,10 @@ keyboard input. Rules:
 8. All panels share the frosted-dark-glass chrome via `PanelStyle.swift`
    (`makeBarBlur`, `makeFrostedBase`, `makeIconButton`, color/type tokens). Reuse
    these instead of rolling per-view colors/fonts.
+   For any new scrolling surface, use `PanelStyle.styleScrollers(in:)` after
+   enabling its scroll directions. The matching Figma components are in
+   `Glance / Scrollbar System`; use `GlanceScrollIndicator` for scroll surfaces
+   with manually managed offsets, and `styleWebScrollbars(in:)` for WebKit.
 
 ## Figma design compliance
 
@@ -66,6 +70,16 @@ keyboard input. Rules:
     Figma top-origin text frame to an AppKit bottom-origin frame explicitly.
     Never let intrinsic content size, default cell padding, or font baseline
     determine the final text frame when matching Figma.
+
+## Widget credit configuration
+
+17. Every newly created Widget directory must contain a `widget.json` with an
+    explicit top-level `creditCost` integer from `0` to `1000000`. Default to `1`
+    unless the user specifies a price; `0` means free. Use this same field for
+    Admin pricing, client display, and server task billing. When updating an
+    existing Widget, preserve its configured price unless asked to change it.
+    Do not publish Widgets or deploy the service unless the current request
+    explicitly includes it.
 
 ## Building
 

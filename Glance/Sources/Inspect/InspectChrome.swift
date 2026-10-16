@@ -166,6 +166,10 @@ final class InspectNonHitTestingView: NSView {
 /// Figma V3's transparent drag region keeps native dragging without drawing a
 /// second chrome band above the image.
 final class FigmaInspectTitlebar: NSView {
+    /// The bar is transparent over the image. Text beneath it must remain
+    /// selectable while the rest of the bar still drags the window.
+    var passesThroughTextAtPoint: ((NSPoint) -> Bool)?
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
@@ -173,6 +177,12 @@ final class FigmaInspectTitlebar: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard let hit = super.hitTest(point) else { return nil }
+        if hit === self, passesThroughTextAtPoint?(point) == true { return nil }
+        return hit
+    }
 
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 {

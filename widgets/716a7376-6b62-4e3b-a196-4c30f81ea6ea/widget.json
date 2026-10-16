@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "716a7376-6b62-4e3b-a196-4c30f81ea6ea",
   "version": "0.1.0",
   "name": "My Widget",

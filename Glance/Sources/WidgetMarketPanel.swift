@@ -1,6 +1,6 @@
 import AppKit
 
-/// Widget Market, built from the Figma "Widget Market Redesign" board (448 × 824):
+/// Widget Market, built from "Widget Market / Details + Loading" (262:744):
 /// bare window controls with a title and subtitle, a search field, filter pills,
 /// card rows that say one thing per line and carry exactly one action, and a
 /// footer that names the list. Shares its controls with the Task Center.
@@ -33,6 +33,10 @@ final class WidgetMarketPanel: NSPanel {
     private var installedIDs = Set<String>()
     private var isLoading = false
     private var hasAttemptedLoad = false
+    private var hasFinishedLoad = false
+    private var catalogLoadFailed = false
+    private var selectedWidgetID: String?
+    private var detailView: WidgetMarketDetailView?
     private var catalogFilter: CatalogFilter = .marketplace
     private var sortsByName = false
 
@@ -51,7 +55,7 @@ final class WidgetMarketPanel: NSPanel {
     private lazy var sortButton = TaskGhostButton(icon: "MarketIconSort", tooltip: "Sort by name".localized, tint: PanelStyle.textSecondary) { [weak self] in self?.sortTapped() }
     private let scrollView = NSScrollView()
     private let catalogContainer = WidgetMarketListDocumentView()
-    private let scrollIndicator = WidgetMarketScrollIndicator()
+    private let scrollIndicator = GlanceScrollIndicator(axis: .vertical)
     private let emptyTile = NSView()
     private let emptyIcon = NSImageView()
     private let emptyTitle = NSTextField(labelWithString: "")
@@ -59,15 +63,9 @@ final class WidgetMarketPanel: NSPanel {
     private let footerEdge = NSView()
     private let footerCountLabel = NSTextField(labelWithString: "")
     private let footerHintLabel = NSTextField(labelWithString: "Scroll for more".localized)
-    private let loadingOverlay = NSView()
-    private let loadingSpinner: NSProgressIndicator = {
-        let indicator = NSProgressIndicator(frame: .zero)
-        indicator.style = .spinning
-        indicator.controlSize = .regular
-        indicator.isIndeterminate = true
-        indicator.isDisplayedWhenStopped = false
-        return indicator
-    }()
+    private let loadingOverlay = WidgetMarketListDocumentView()
+    private let loadingLabel = WidgetMarketTextView(labelWithString: "Loading…".localized)
+    private let loadingSpinner = WidgetMarketLoadingIndicator()
 
     private init() {
         super.init(contentRect: NSRect(origin: .zero, size: Self.designSize),
@@ -103,9 +101,9 @@ final class WidgetMarketPanel: NSPanel {
                                                name: NSWindow.didResizeNotification, object: parent)
         position(alongside: parent)
         parent.addChildWindow(self, ordered: .above)
-        makeKeyAndOrderFront(nil)
         if !hasAttemptedLoad { loadCatalog() }
         else if !isLoading { refreshFromServer(showLoading: false) }
+        makeKeyAndOrderFront(nil)
     }
 
     override func close() {
@@ -146,27 +144,30 @@ final class WidgetMarketPanel: NSPanel {
         // Keep installed entries available offline without inventing catalog rows.
         catalogIDs = []
         manifests = Self.mergeInstalled(into: [])
-        refreshCatalog(resetScroll: true)
-        refreshFromServer(showLoading: false)
+        refreshFromServer(showLoading: true)
     }
 
     private func refreshFromServer(showLoading: Bool) {
         guard !isLoading else { return }
         isLoading = true
-        if showLoading { setLoading(true) }
+        catalogLoadFailed = false
+        setLoading(showLoading || catalogIDs.isEmpty)
+        refreshCatalog(resetScroll: false)
         WidgetCatalogClient.shared.fetchAll { [weak self] result in
             guard let self else { return }
             self.isLoading = false
-            if showLoading { self.setLoading(false) }
+            self.hasFinishedLoad = true
+            self.setLoading(false)
             switch result {
             case .success(let remoteManifests):
                 Logger.info("WidgetMarketPanel: refreshed \(remoteManifests.count) widgets from server")
                 self.catalogIDs = Set(remoteManifests.map(\.id))
                 self.manifests = Self.mergeInstalled(into: remoteManifests)
-                self.refreshCatalog(resetScroll: true)
             case .failure(let error):
+                self.catalogLoadFailed = true
                 Logger.info("WidgetMarketPanel: catalog fetch failed: \(error.localizedDescription)")
             }
+            self.refreshCatalog(resetScroll: true)
         }
     }
 
@@ -194,6 +195,7 @@ final class WidgetMarketPanel: NSPanel {
                 local.name != remote.name || local.summary != remote.summary ||
                 local.localizations != remote.localizations ||
                 local.author != remote.author || local.iconURL != remote.iconURL ||
+                local.taskCreditCost != remote.taskCreditCost ||
                 local.privacy.notice != remote.privacy.notice {
                 result.insert(remote.id)
             }
@@ -263,6 +265,13 @@ final class WidgetMarketPanel: NSPanel {
         scrollView.documentView = catalogContainer
         scrollView.contentView.postsBoundsChangedNotifications = true
         rootView.addSubview(scrollView)
+        scrollIndicator.setAccessibilityLabel("Scroll widgets".localized)
+        scrollIndicator.onSeek = { [weak self] fraction in
+            guard let self else { return }
+            let overflow = max(0, self.catalogContainer.bounds.height - self.scrollView.contentView.bounds.height)
+            self.scrollView.contentView.scroll(to: NSPoint(x: 0, y: fraction * overflow))
+            self.scrollView.reflectScrolledClipView(self.scrollView.contentView)
+        }
         rootView.addSubview(scrollIndicator)
         NotificationCenter.default.addObserver(self, selector: #selector(listBoundsDidChange),
             name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
@@ -291,8 +300,12 @@ final class WidgetMarketPanel: NSPanel {
         rootView.addSubview(footerHintLabel)
 
         loadingOverlay.wantsLayer = true
-        loadingOverlay.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background.withAlphaComponent(0.94))
+        loadingOverlay.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background)
         loadingOverlay.addSubview(loadingSpinner)
+        loadingLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
+        loadingLabel.textColor = PanelStyle.textSecondary
+        loadingLabel.alignment = .center
+        loadingOverlay.addSubview(loadingLabel)
         rootView.addSubview(loadingOverlay)
         setLoading(false)
         layoutContent(in: rootView.bounds)
@@ -330,7 +343,8 @@ final class WidgetMarketPanel: NSPanel {
         scrollView.frame = NSRect(x: m, y: Self.listTop, width: rowWidth, height: max(0, listBottom - Self.listTop))
         catalogContainer.frame.size.width = rowWidth
         for row in catalogContainer.subviews { row.frame.size.width = rowWidth }
-        scrollIndicator.frame = NSRect(x: width - 12, y: Self.listTop + 8, width: 3, height: max(0, scrollView.frame.height - 16))
+        scrollIndicator.frame = NSRect(x: width - 17, y: Self.listTop + 8, width: 12,
+                                       height: max(0, scrollView.frame.height - 16))
 
         emptyTile.frame = NSRect(x: (width - 72) / 2, y: 300, width: 72, height: 72)
         emptyIcon.frame = NSRect(x: 22, y: 22, width: 28, height: 28)
@@ -340,10 +354,12 @@ final class WidgetMarketPanel: NSPanel {
         footerEdge.frame = NSRect(x: 0, y: listBottom, width: width, height: 1)
         footerCountLabel.frame = NSRect(x: m, y: listBottom + 8, width: 230, height: 14)
         footerHintLabel.frame = NSRect(x: width - m - 126, y: listBottom + 8, width: 126, height: 14)
-        loadingOverlay.frame = bounds
+        detailView?.frame = NSRect(x: 0, y: 52, width: width, height: max(0, height - 52))
+        loadingOverlay.frame = NSRect(x: 0, y: Self.listTop, width: width, height: max(0, listBottom - Self.listTop))
         let spinnerSize: CGFloat = 20
         loadingSpinner.frame = NSRect(x: (width - spinnerSize) / 2,
-            y: (height - spinnerSize) / 2, width: spinnerSize, height: spinnerSize)
+            y: loadingOverlay.bounds.height / 2 - 28, width: spinnerSize, height: spinnerSize)
+        loadingLabel.frame = NSRect(x: 0, y: loadingOverlay.bounds.height / 2 + 8, width: width, height: 16)
         updateScrollIndicator()
     }
 
@@ -361,27 +377,30 @@ final class WidgetMarketPanel: NSPanel {
                 isRemovedFromCatalog: !catalogIDs.contains(manifest.id))
             row.frame = NSRect(x: 0, y: CGFloat(index) * pitch, width: rowWidth, height: Self.rowHeight)
             row.onInstall = { [weak self] in self?.install(manifest) }
-            row.onRemove = { WidgetRegistry.shared.uninstall(id: manifest.id) }
+            row.onShowDetails = { [weak self] in self?.showDetails(manifest) }
             catalogContainer.addSubview(row)
         }
-        subtitleLabel.stringValue = String(format: "%d available  ·  %d installed  ·  %d updates".localized,
+        subtitleLabel.stringValue = isLoading && catalogIDs.isEmpty ? "Loading…".localized : String(format: "%d available  ·  %d installed  ·  %d updates".localized,
                                            catalogIDs.count, installedIDs.count, updates.count)
-        footerCountLabel.stringValue = String(format: "%d widgets  •  %@".localized, visible.count, filterTitle)
-        searchBox.placeholder = String(format: "Search %d widgets".localized, catalogIDs.count)
+        footerCountLabel.stringValue = isLoading ? "Loading…".localized : String(format: "%d widgets  •  %@".localized, visible.count, filterTitle)
+        searchBox.placeholder = isLoading && catalogIDs.isEmpty ? "Search widgets".localized : String(format: "Search %d widgets".localized, catalogIDs.count)
+        pills.showsCounts = !isLoading || !catalogIDs.isEmpty
         pills.counts = [catalogIDs.count, installedIDs.count, updates.count]
         pills.selectedSegment = catalogFilter.rawValue
         let none = visible.isEmpty
         scrollView.isHidden = none
-        [emptyTile, emptyTitle, emptyHint].forEach { $0.isHidden = !none }
-        if none {
+        let showEmpty = none && !isLoading && hasFinishedLoad
+        [emptyTile, emptyTitle, emptyHint].forEach { $0.isHidden = !showEmpty }
+        if showEmpty {
             let searching = !searchBox.query.isEmpty
-            emptyTitle.stringValue = searching ? "No matching widgets".localized : "No widgets available".localized
-            emptyHint.stringValue = searching ? "Try a different search, or clear it to see every widget.".localized
+            emptyTitle.stringValue = catalogLoadFailed ? "Could not load widgets".localized : searching ? "No matching widgets".localized : "No widgets available".localized
+            emptyHint.stringValue = !catalogLoadFailed && searching ? "Try a different search, or clear it to see every widget.".localized
                                               : "Refresh to load the catalog.".localized
         }
         if resetScroll { scrollView.contentView.scroll(to: .zero) }
         scrollView.reflectScrolledClipView(scrollView.contentView)
         updateScrollIndicator()
+        refreshDetail()
     }
 
     private var filterTitle: String {
@@ -394,15 +413,57 @@ final class WidgetMarketPanel: NSPanel {
 
     private func updateScrollIndicator() {
         let scrollable = catalogContainer.frame.height > scrollView.contentView.bounds.height + 1
-        scrollIndicator.update(contentHeight: catalogContainer.frame.height,
-            viewportHeight: scrollView.contentView.bounds.height, offset: scrollView.contentView.bounds.minY)
+        scrollIndicator.update(contentLength: catalogContainer.frame.height,
+            viewportLength: scrollView.contentView.bounds.height, offset: scrollView.contentView.bounds.minY)
+        scrollIndicator.isHidden = scrollView.isHidden || !scrollable
         footerHintLabel.isHidden = !scrollable || scrollView.isHidden
     }
 
     private func setLoading(_ loading: Bool) {
         loadingOverlay.isHidden = !loading
-        if loading { loadingSpinner.startAnimation(nil) }
-        else { loadingSpinner.stopAnimation(nil) }
+        loadingSpinner.setAnimating(loading)
+    }
+
+    private func showDetails(_ manifest: WidgetManifest) {
+        selectedWidgetID = manifest.id
+        refreshDetail()
+    }
+
+    private func refreshDetail() {
+        guard let selectedWidgetID else { return }
+        guard let manifest = manifests.first(where: { $0.id == selectedWidgetID }) else {
+            self.selectedWidgetID = nil
+            detailView?.removeFromSuperview()
+            detailView = nil
+            setCatalogControlsHidden(false)
+            return
+        }
+        let previousOffset = detailView?.scrollOffset
+        detailView?.removeFromSuperview()
+        let detail = WidgetMarketDetailView(manifest: manifest,
+            isInstalled: installedIDs.contains(manifest.id), hasUpdate: updatesAvailable.contains(manifest.id),
+            isAvailable: catalogIDs.contains(manifest.id))
+        detail.onBack = { [weak self] in
+            self?.selectedWidgetID = nil
+            self?.detailView?.removeFromSuperview()
+            self?.detailView = nil
+            self?.setCatalogControlsHidden(false)
+            self?.refreshCatalog(resetScroll: false)
+        }
+        detail.onInstall = { [weak self] in self?.install(manifest) }
+        detail.onRemove = { WidgetRegistry.shared.uninstall(id: manifest.id) }
+        detailView = detail
+        rootView.addSubview(detail, positioned: .above, relativeTo: loadingOverlay)
+        setCatalogControlsHidden(true)
+        subtitleLabel.stringValue = "Widget details".localized
+        layoutContent(in: rootView.bounds)
+        detail.layoutSubtreeIfNeeded()
+        if let previousOffset { detail.restoreScrollOffset(previousOffset) }
+    }
+
+    private func setCatalogControlsHidden(_ hidden: Bool) {
+        let controls: [NSView] = [searchBox, pills, sortButton]
+        controls.forEach { $0.isHidden = hidden }
     }
 
     private func filterTapped(_ index: Int) {
@@ -472,50 +533,147 @@ private final class WidgetMarketListDocumentView: NSView {
     override var isFlipped: Bool { true }
 }
 
-private final class WidgetMarketScrollIndicator: NSView {
-    private let thumb = NSView()
+/// A read-only Figma text slot. Drawing into its own bounds avoids the cell
+/// insets of NSTextField changing the specified x/y position or wrapping width.
+private final class WidgetMarketTextView: NSView {
+    var stringValue: String { didSet { setAccessibilityLabel(stringValue); needsDisplay = true } }
+    var font = PanelStyle.inspectFont(ofSize: 13) { didSet { needsDisplay = true } }
+    var textColor = PanelStyle.textSecondary { didSet { needsDisplay = true } }
+    var alignment: NSTextAlignment = .left { didSet { needsDisplay = true } }
+    var lineBreakMode: NSLineBreakMode = .byTruncatingTail { didSet { needsDisplay = true } }
+    var maximumNumberOfLines = 1 { didSet { needsDisplay = true } }
+    var maximumTextHeight: CGFloat?
+    override var isFlipped: Bool { true }
+
+    init(labelWithString string: String) {
+        stringValue = string
+        super.init(frame: .zero)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+        setAccessibilityLabel(string)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    private var attributedText: NSAttributedString {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = alignment
+        paragraph.lineBreakMode = lineBreakMode
+        return NSAttributedString(string: stringValue,
+            attributes: [.font: font, .foregroundColor: textColor, .paragraphStyle: paragraph])
+    }
+
+    func fittingTextHeight(width: CGFloat) -> CGFloat {
+        ceil(attributedText.boundingRect(with: NSSize(width: max(1, width), height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading]).height)
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        var size = newSize
+        if let maximumTextHeight {
+            size.height = min(maximumTextHeight, fittingTextHeight(width: size.width))
+        }
+        super.setFrameSize(size)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        var rect = bounds
+        if maximumNumberOfLines > 0 {
+            let lineHeight = NSLayoutManager().defaultLineHeight(for: font)
+            rect.size.height = min(rect.height, lineHeight * CGFloat(maximumNumberOfLines))
+        }
+        attributedText.draw(with: rect, options: [.usesLineFragmentOrigin, .usesFontLeading, .truncatesLastVisibleLine])
+    }
+}
+
+/// Uses the exact 16 pt Figma chevron, including its 180° rotation.
+private final class WidgetMarketBackButton: NSControl {
+    private let arrow = CALayer()
+    private let label = WidgetMarketTextView(labelWithString: "Back to widgets".localized)
+    override var isFlipped: Bool { true }
+    override var acceptsFirstResponder: Bool { true }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine.withAlphaComponent(0.72))
-        layer?.cornerRadius = 1.5
-        thumb.wantsLayer = true
-        thumb.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.9))
-        thumb.layer?.cornerRadius = 1.5
-        addSubview(thumb)
+        let image = HistoryStyle.icon("MarketIconBack", color: PanelStyle.textSecondary, size: 16)
+        arrow.contents = image?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        arrow.contentsGravity = .resizeAspect
+        layer?.addSublayer(arrow)
+        label.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        label.textColor = PanelStyle.textSecondary
+        addSubview(label)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("Back to widgets".localized)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override var isFlipped: Bool { true }
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    func update(contentHeight: CGFloat, viewportHeight: CGFloat, offset: CGFloat) {
-        guard bounds.height > 0, contentHeight > viewportHeight, viewportHeight > 0 else {
-            isHidden = true; return
-        }
-        isHidden = false
-        let thumbHeight = max(34, bounds.height * viewportHeight / contentHeight)
-        let progress = min(1, max(0, offset / max(1, contentHeight - viewportHeight)))
-        thumb.frame = NSRect(x: 0, y: progress * (bounds.height - thumbHeight), width: bounds.width, height: thumbHeight)
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        arrow.bounds = CGRect(x: 0, y: 0, width: 16, height: 16)
+        arrow.position = CGPoint(x: 8, y: 16)
+        arrow.transform = CATransform3DMakeRotation(.pi, 0, 0, 1)
+        CATransaction.commit()
+        label.frame = NSRect(x: 24, y: 8, width: max(0, bounds.width - 40), height: 15)
+    }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+    override func mouseDown(with event: NSEvent) { if isEnabled { sendAction(action, to: target) } }
+    override func keyDown(with event: NSEvent) {
+        if isEnabled && (event.keyCode == 36 || event.keyCode == 49) { sendAction(action, to: target) }
+        else { super.keyDown(with: event) }
+    }
+}
+
+/// The loading specimen's exported 20 pt refresh glyph, animated without a
+/// polling timer. Reduced-motion users retain the static glyph and loading text.
+private final class WidgetMarketLoadingIndicator: NSView {
+    private let glyph = CALayer()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        let image = HistoryStyle.icon("MarketIconLoading", color: PanelStyle.textSecondary, size: 20)
+        glyph.contents = image?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        glyph.contentsGravity = .resizeAspect
+        layer?.addSublayer(glyph)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func layout() {
+        super.layout()
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        glyph.bounds = bounds
+        glyph.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        CATransaction.commit()
+    }
+    func setAnimating(_ running: Bool) {
+        glyph.removeAnimation(forKey: "loading")
+        guard running, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
+        rotation.fromValue = 0
+        rotation.toValue = -Double.pi * 2
+        rotation.duration = 1.1
+        rotation.repeatCount = .infinity
+        glyph.add(rotation, forKey: "loading")
     }
 }
 
 // MARK: - Catalog row
 
 /// Board row (400 × 84, radius 9): icon tile 48 at (12, 18) with a monogram or
-/// the widget icon; name 13 semibold at (72, 14); one-line summary 11 at (72, 36);
-/// meta 10 at (72, 58) with the official dot; one action at the right edge, 12 pt
-/// inset, 32 pt tall. Hovering an installed row swaps "Installed" for "Remove".
+/// the widget icon; name 13 semibold at (72, 22); two-line summary 11 at (72, 44);
+/// one action at the right edge, 12 pt
+/// inset, 32 pt tall. Installed rows keep their status on hover; click for details.
 private final class WidgetMarketRowView: NSView {
     var onInstall: (() -> Void)?
-    var onRemove: (() -> Void)?
+    var onShowDetails: (() -> Void)?
     private let manifest: WidgetManifest
     private let isInstalled: Bool
     private let hasUpdate: Bool
     private let isRemovedFromCatalog: Bool
     private let iconTile = WidgetMarketIconTile()
-    private let nameLabel = NSTextField(labelWithString: "")
-    private let summaryLabel = NSTextField(labelWithString: "")
-    private let officialDot = NSView()
-    private let metaLabel = NSTextField(labelWithString: "")
+    private let nameLabel = WidgetMarketTextView(labelWithString: "")
+    private let summaryLabel = WidgetMarketTextView(labelWithString: "")
     private let action = WidgetMarketActionButton()
     private var trackingAreaRef: NSTrackingArea?
     private var hovering = false
@@ -548,21 +706,15 @@ private final class WidgetMarketRowView: NSView {
         summaryLabel.font = PanelStyle.inspectFont(ofSize: 11)
         summaryLabel.textColor = PanelStyle.textSecondary
         summaryLabel.stringValue = manifest.displaySummary
-        officialDot.wantsLayer = true
-        officialDot.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.success)
-        officialDot.layer?.cornerRadius = 3.5
-        officialDot.isHidden = !manifest.official
-        let count = manifest.commands.count
-        let commands = String(format: (count == 1 ? "%d command" : "%d commands").localized, count)
-        metaLabel.font = PanelStyle.inspectFont(ofSize: 10)
-        metaLabel.textColor = PanelStyle.textTertiary
-        metaLabel.stringValue = "\(manifest.author) · v\(manifest.version) · \(commands)"
-        for label in [nameLabel, summaryLabel, metaLabel] {
+        for label in [nameLabel, summaryLabel] {
             label.lineBreakMode = .byTruncatingTail
             label.maximumNumberOfLines = 1
             addSubview(label)
         }
-        addSubview(officialDot)
+        summaryLabel.maximumNumberOfLines = 2
+        summaryLabel.lineBreakMode = .byWordWrapping
+        nameLabel.toolTip = manifest.displayName
+        summaryLabel.toolTip = manifest.displaySummary
         action.target = self
         action.action = #selector(actionTapped)
         addSubview(action)
@@ -571,9 +723,9 @@ private final class WidgetMarketRowView: NSView {
 
     /// The one action this row offers right now.
     private var actionStyle: WidgetMarketActionButton.Style {
-        if isRemovedFromCatalog { return .remove }
+        if isRemovedFromCatalog { return .installed }
         if hasUpdate { return .update }
-        if isInstalled { return hovering ? .remove : .installed }
+        if isInstalled { return .installed }
         return .install
     }
 
@@ -589,11 +741,8 @@ private final class WidgetMarketRowView: NSView {
         let actionX = bounds.width - 12 - actionWidth
         action.frame = NSRect(x: actionX, y: 26, width: actionWidth, height: 32)
         let textWidth = max(0, actionX - 72 - 12)
-        nameLabel.frame = NSRect(x: 72, y: 14, width: textWidth, height: 16)
-        summaryLabel.frame = NSRect(x: 72, y: 36, width: textWidth, height: 14)
-        officialDot.frame = NSRect(x: 72, y: 61, width: 7, height: 7)
-        let metaX: CGFloat = manifest.official ? 84 : 72
-        metaLabel.frame = NSRect(x: metaX, y: 58, width: max(0, textWidth - (metaX - 72)), height: 12)
+        nameLabel.frame = NSRect(x: 72, y: 22, width: textWidth, height: 16)
+        summaryLabel.frame = NSRect(x: 72, y: 44, width: textWidth, height: 26)
     }
 
     override func updateTrackingAreas() {
@@ -607,8 +756,10 @@ private final class WidgetMarketRowView: NSView {
     override func mouseExited(with event: NSEvent) { hovering = false; applyAppearance(); updateAction() }
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
-        return action.frame.contains(local) ? action : nil
+        guard bounds.contains(local) else { return nil }
+        return action.frame.contains(local) ? action : self
     }
+    override func mouseDown(with event: NSEvent) { onShowDetails?() }
 
     private func applyAppearance() {
         // Board: surface #17181D with the line stroke; hover #1C1D22 with a white 14 % stroke.
@@ -619,14 +770,13 @@ private final class WidgetMarketRowView: NSView {
     @objc private func actionTapped() {
         switch action.style {
         case .install, .update: onInstall?()
-        case .remove: onRemove?()
-        case .installed: break
+        case .remove, .installed: onShowDetails?()
         }
     }
 
     /// Two Latin letters from the English name (first letters of the first two
     /// words); a non-Latin name falls back to its first character.
-    private static func monogram(for manifest: WidgetManifest) -> String {
+    fileprivate static func monogram(for manifest: WidgetManifest) -> String {
         let source = manifest.localizations?["en"]?.name ?? manifest.name
         let words = source.split(separator: " ").filter { !$0.isEmpty }
         let letters: String
@@ -639,10 +789,158 @@ private final class WidgetMarketRowView: NSView {
     }
 
     /// Board tile tints, chosen by the widget id so a widget keeps its colour.
-    private static func tint(for manifest: WidgetManifest) -> NSColor {
+    fileprivate static func tint(for manifest: WidgetManifest) -> NSColor {
         let palette: [Int] = [0x2F2A3A, 0x22312D, 0x342522, 0x202C38, 0x32273A, 0x303022, 0x26313A, 0x2E2A22, 0x223034]
         let index = abs(manifest.id.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0x7fffffff }) % palette.count
         return HistoryStyle.hex(palette[index])
+    }
+}
+
+/// The second page of the market. Its content scrolls independently while Back
+/// and the install/update/remove actions remain available at smaller sizes.
+private final class WidgetMarketDetailView: NSView {
+    var onBack: (() -> Void)?
+    var onInstall: (() -> Void)?
+    var onRemove: (() -> Void)?
+    private let backButton = WidgetMarketBackButton()
+    private let scrollView = NSScrollView()
+    private let document = WidgetMarketListDocumentView(frame: NSRect(x: 0, y: 0, width: 400, height: 600))
+    private let actionEdge = NSView()
+    private let primaryAction = WidgetMarketActionButton()
+    private let removeAction = WidgetMarketActionButton()
+    private let isInstalled: Bool
+    private let hasUpdate: Bool
+    private let isAvailable: Bool
+    private var contentHeight: CGFloat = 0
+    var scrollOffset: NSPoint { scrollView.contentView.bounds.origin }
+    override var isFlipped: Bool { true }
+
+    init(manifest: WidgetManifest, isInstalled: Bool, hasUpdate: Bool, isAvailable: Bool) {
+        self.isInstalled = isInstalled
+        self.hasUpdate = hasUpdate
+        self.isAvailable = isAvailable
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background)
+        backButton.target = self
+        backButton.action = #selector(goBack)
+        addSubview(backButton)
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: scrollView)
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+        scrollView.borderType = .noBorder
+        scrollView.documentView = document
+        addSubview(scrollView)
+        buildContent(manifest)
+        actionEdge.wantsLayer = true
+        actionEdge.layer?.backgroundColor = HistoryStyle.hairline.cgColor
+        addSubview(actionEdge)
+        primaryAction.style = hasUpdate ? .update : .install
+        primaryAction.target = self
+        primaryAction.action = #selector(installTapped)
+        primaryAction.isHidden = !isAvailable || (isInstalled && !hasUpdate)
+        addSubview(primaryAction)
+        removeAction.style = .remove
+        removeAction.target = self
+        removeAction.action = #selector(removeTapped)
+        removeAction.isHidden = !isInstalled
+        addSubview(removeAction)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    @discardableResult
+    private func label(_ value: String, in parent: NSView, x: CGFloat = 0, y: CGFloat,
+                       width: CGFloat = 400, height: CGFloat? = nil, size: CGFloat = 13,
+                       weight: NSFont.Weight = .regular, color: NSColor = PanelStyle.textSecondary,
+                       multiline: Bool = false) -> WidgetMarketTextView {
+        let view = WidgetMarketTextView(labelWithString: value)
+        view.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
+        view.textColor = color
+        let lineHeight: CGFloat = size <= 11 ? 13 : size <= 12 ? 15 : 16
+        view.frame = NSRect(x: x, y: y, width: width, height: height ?? lineHeight)
+        view.autoresizingMask = [.width]
+        view.maximumNumberOfLines = multiline ? 0 : 1
+        view.lineBreakMode = multiline ? .byWordWrapping : .byTruncatingTail
+        if multiline {
+            view.maximumTextHeight = height ?? lineHeight
+            view.setFrameSize(NSSize(width: width, height: height ?? lineHeight))
+        }
+        view.toolTip = value
+        parent.addSubview(view)
+        return view
+    }
+
+    private func card(y: CGFloat, height: CGFloat) -> NSView {
+        let view = WidgetMarketListDocumentView(frame: NSRect(x: 0, y: y, width: 400, height: height))
+        view.autoresizingMask = [.width]
+        view.wantsLayer = true
+        view.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        view.layer?.cornerRadius = 12
+        view.layer?.borderWidth = 1
+        view.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        document.addSubview(view)
+        return view
+    }
+
+    private func buildContent(_ manifest: WidgetManifest) {
+        let icon = WidgetMarketIconTile(frame: NSRect(x: 0, y: 8, width: 64, height: 64))
+        icon.configure(monogram: WidgetMarketRowView.monogram(for: manifest),
+                       tint: WidgetMarketRowView.tint(for: manifest), iconURL: manifest.iconURL)
+        document.addSubview(icon)
+        label(manifest.displayName, in: document, x: 84, y: 8, width: 316, height: 22,
+              size: 18, weight: .semibold, color: PanelStyle.textPrimary)
+        label((isInstalled ? "Installed" : "Not installed").localized, in: document,
+              x: 84, y: 40, width: 316, size: 11, color: isInstalled ? PanelStyle.success : PanelStyle.textTertiary)
+        label(manifest.displaySummary, in: document, y: 98, height: 48, multiline: true)
+        let price = card(y: 162, height: 64)
+        label("Cost per task".localized, in: price, x: 16, y: 23, width: 180, size: 12)
+        let value = label(manifest.taskCreditCost == 0 ? "Free of charge".localized : manifest.creditCostLabel,
+                          in: price, x: 196, y: 22, width: 188, height: 16, size: 13,
+                          weight: .semibold, color: PanelStyle.textPrimary)
+        value.alignment = .right
+        label("Commands".localized, in: document, y: 254, size: 12,
+              weight: .semibold, color: PanelStyle.textPrimary)
+        var y: CGFloat = 278
+        for command in manifest.localizedCommands {
+            let tile = card(y: y, height: 96)
+            label(command.name, in: tile, x: 16, y: 14, width: 368, size: 13,
+                  weight: .semibold, color: PanelStyle.textPrimary)
+            label(command.description, in: tile, x: 16, y: 40, width: 368, height: 42,
+                  size: 12, multiline: true)
+            y += 108
+        }
+        let inputs = Set(manifest.commands.flatMap(\.inputTypes)).sorted().map { $0.capitalized.localized }.joined(separator: ", ")
+        let outputs = Set(manifest.commands.flatMap(\.outputs)).sorted().map { $0.capitalized.localized }.joined(separator: ", ")
+        label("\("Input".localized): \(inputs)", in: document, y: y + 6, size: 12)
+        label("\("Output".localized): \(outputs)", in: document, y: y + 30, size: 12)
+        label("Privacy".localized, in: document, y: y + 80, size: 12,
+              weight: .semibold, color: PanelStyle.textPrimary)
+        label(manifest.privacy.notice, in: document, y: y + 106, height: 72, size: 12, multiline: true)
+        contentHeight = y + 196
+    }
+
+    override func layout() {
+        super.layout()
+        let width = max(0, bounds.width - 48)
+        backButton.frame = NSRect(x: 24, y: 16, width: width, height: 32)
+        scrollView.frame = NSRect(x: 24, y: 58, width: width, height: max(0, bounds.height - 158))
+        document.frame.size = NSSize(width: width, height: max(contentHeight, scrollView.contentSize.height))
+        actionEdge.frame = NSRect(x: 24, y: bounds.height - 100, width: width, height: 1)
+        let paired = !primaryAction.isHidden && !removeAction.isHidden
+        primaryAction.frame = NSRect(x: 24, y: bounds.height - 76, width: paired ? max(0, width - 132) : width, height: 40)
+        removeAction.frame = NSRect(x: paired ? bounds.width - 144 : 24, y: bounds.height - 76, width: paired ? 120 : width, height: 40)
+    }
+
+    @objc private func goBack() { onBack?() }
+    @objc private func installTapped() { onInstall?() }
+    @objc private func removeTapped() { onRemove?() }
+
+    func restoreScrollOffset(_ offset: NSPoint) {
+        let maxY = max(0, document.bounds.height - scrollView.contentView.bounds.height)
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: min(max(0, offset.y), maxY)))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 }
 

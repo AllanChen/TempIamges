@@ -52,6 +52,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         // comfortably without dominating the screen.
         let initialSize = NSSize(width: 1100, height: 720)
         let config = WKWebViewConfiguration()
+        PanelStyle.styleWebScrollbars(in: config)
         // Inject the find helper so every loaded document has window.__tdfind.
         let findScript = WKUserScript(
             source: Self.findHelperJS,
@@ -68,6 +69,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         let scroll = NSScrollView(frame: .zero)
         scroll.hasVerticalScroller = true
         scroll.hasHorizontalScroller = false
+        PanelStyle.styleScrollers(in: scroll)
         scroll.borderType = .noBorder
         scroll.documentView = tv
         textScroll = scroll
@@ -519,6 +521,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     }
 
     @objc private func saveTapped() {
+        guard BillingCoordinator.shared.requireLocalTool("Save".localized, over: self) else { return }
         guard kind == .text, let url = currentURL, url.isFileURL else { return }
         let body = textView.string
         do {

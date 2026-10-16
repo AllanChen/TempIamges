@@ -77,6 +77,7 @@ const figma = {
   getLocalPaintStylesAsync: async () => [],
   createPaintStyle: () => node('PAINT_STYLE'),
   createFrame: () => node('FRAME'),
+  createComponent: () => node('COMPONENT'),
   createRectangle: () => node('RECTANGLE'),
   createEllipse: () => node('ELLIPSE'),
   createText: () => node('TEXT'),
@@ -84,8 +85,8 @@ const figma = {
   createNodeFromSvg: () => node('SVG'),
   union: (nodes, parent) => booleanOp('UNION', nodes, parent),
   subtract: (nodes, parent) => booleanOp('SUBTRACT', nodes, parent),
-  createImage: () => ({
-    hash: 'test-image-hash',
+  createImage: bytes => ({
+    hash: 'test-image-' + Array.from(bytes || []).join('-'),
     getSizeAsync: async () => ({ width: 1920, height: 1080 })
   }),
   widget: {
@@ -107,6 +108,10 @@ assert.ok(uiSource.indexOf('<button id="generate-widget-multi-image-input"') < u
   'Multi-image Widget input action must be visible near the top of the plugin');
 assert.ok(uiSource.indexOf('<button id="generate-home-folder-scroll-study"') < uiSource.indexOf('<label for="reference">'),
   'Home folder scroll study action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-glance-scrollbar-system"') < uiSource.indexOf('<label for="reference">'),
+  'Glance scrollbar system action must be visible near the top of the plugin');
+assert.ok(uiSource.includes('<button id="replace-viewer-brand-images"'),
+  'two-photo replacement action must be available in the plugin');
 vm.runInNewContext(source, { figma, __html__: '' }, { filename: 'code.js' });
 
 const names = [
@@ -120,6 +125,52 @@ const names = [
 ];
 
 (async () => {
+  const beforePhoto = node('RECTANGLE');
+  beforePhoto.id = '38:3354';
+  beforePhoto.name = 'input-09672AEE-FC4D-4116-B8F9-20E27300A34F 1';
+  beforePhoto.fills = [{ type: 'IMAGE', imageHash: 'girl-a', scaleMode: 'CROP', opacity: .75 }];
+  page.appendChild(beforePhoto);
+  const afterPhoto = node('RECTANGLE');
+  afterPhoto.id = '38:3356';
+  afterPhoto.name = 'input-4146ACDB-17EC-42B8-98CE-E7BF4297D9D9 1';
+  afterPhoto.fills = [{ type: 'IMAGE', imageHash: 'girl-b', scaleMode: 'FILL' }];
+  page.appendChild(afterPhoto);
+  const focusReuse = node('RECTANGLE');
+  focusReuse.id = '49:3';
+  focusReuse.fills = [{ type: 'IMAGE', imageHash: 'girl-b', scaleMode: 'CROP' }];
+  page.appendChild(focusReuse);
+  const unrelatedImage = node('RECTANGLE');
+  unrelatedImage.fills = [{ type: 'IMAGE', imageHash: 'unrelated', scaleMode: 'FILL' }];
+  page.appendChild(unrelatedImage);
+  await figma.ui.onmessage({ type: 'replace-viewer-brand-images',
+    beforeBytes: [1, 2], afterBytes: [3, 4] });
+  assert.equal(beforePhoto.fills[0].imageHash, 'test-image-1-2');
+  assert.equal(afterPhoto.fills[0].imageHash, 'test-image-3-4');
+  assert.equal(focusReuse.fills[0].imageHash, 'test-image-3-4', 'Focus must reuse the edited landscape');
+  assert.equal(beforePhoto.fills[0].scaleMode, 'CROP', 'existing image crop must survive replacement');
+  assert.equal(beforePhoto.fills[0].opacity, .75, 'existing image opacity must survive replacement');
+  assert.equal(unrelatedImage.fills[0].imageHash, 'unrelated', 'other images must stay unchanged');
+  assert.equal(beforePhoto.name, 'Landscape / Natural Morning');
+  assert.equal(afterPhoto.name, 'Landscape / Warm Sunrise');
+  beforePhoto.remove();
+  afterPhoto.remove();
+  focusReuse.remove();
+  unrelatedImage.remove();
+
+  await figma.ui.onmessage({ type: 'generate-glance-scrollbar-system' });
+  const scrollbarBoard = page.children.find(child => child.name === 'Glance / Scrollbar System');
+  assert.ok(scrollbarBoard, 'shared scrollbar board should be created');
+  const scrollbarComponents = scrollbarBoard.findAll(child => child.type === 'COMPONENT');
+  assert.equal(scrollbarComponents.length, 4, 'both axes need idle and active reusable components');
+  assert.ok(scrollbarBoard.findOne(child => child.name === 'Account / Scrollbar Application'));
+  assert.equal(scrollbarBoard.findOne(child => child.name === 'Account Scroll Thumb / 4px').width, 4);
+  const scrollbarCount = page.children.length;
+  scrollbarBoard.findOne(child => child.name === 'Rules Title').characters = 'User-edited usage';
+  await figma.ui.onmessage({ type: 'generate-glance-scrollbar-system' });
+  assert.equal(page.children.length, scrollbarCount, 'rerun must preserve the existing scrollbar board');
+  assert.equal(scrollbarBoard.findOne(child => child.name === 'Rules Title').characters, 'User-edited usage');
+  scrollbarBoard.remove();
+
   await figma.ui.onmessage({ type: 'generate-result-badge-study' });
   const badgeStudy = page.children.find(child => child.name === 'Widget Result Badge Study');
   assert.ok(badgeStudy, 'result badge study should be created');
@@ -735,6 +786,134 @@ const names = [
   assert.equal(page.children.length, beforePricing);
   assert.equal(previousPricing.name, 'Pricing & Credits / Purchase + Usage Flow', 'redesign preserves the old review board');
   previousPricing.remove();
+
+  // PRD v0.4 pricing board: every state reachable, every link resolvable,
+  // content clear of the footer, and amounts consistent along each flow.
+  const beforePrd = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-pricing-prd-flows' });
+  assert.ok(!figma.ui.lastMessage.message.includes('failed'), figma.ui.lastMessage.message);
+  const prd = page.children.find(child => child.name === 'Pricing & Credits / PRD v0.4 Flow');
+  assert.ok(prd, 'PRD v0.4 pricing board is generated');
+  assert.equal(page.children.length, beforePrd + 1);
+  const prdScreens = prd.children.filter(child => child.name.startsWith('Screen / '));
+  const prdScreen = id => {
+    const found = prdScreens.find(screen => screen.name.startsWith('Screen / ' + id + ' / '));
+    assert.ok(found, 'missing PRD state ' + id);
+    return found;
+  };
+  const prdIDByNode = new Map(prdScreens.map(screen => [screen.id, screen.name.split(' / ')[1]]));
+  const incoming = new Map(prdScreens.map(screen => [screen.id, 0]));
+  const outgoing = new Map(prdScreens.map(screen => [screen.id, 0]));
+  const screenOf = layer => { let n = layer; while (n && !prdIDByNode.has(n.id)) n = n.parent; return n; };
+  for (const layer of prd.findAll(child => !!child.reactions)) {
+    for (const reaction of layer.reactions) for (const action of reaction.actions || []) {
+      assert.equal(action.type, 'NODE', 'prototype cannot initiate real payments');
+      assert.ok(incoming.has(action.destinationId), 'all PRD destinations exist on this board');
+      incoming.set(action.destinationId, incoming.get(action.destinationId) + 1);
+      const from = screenOf(layer);
+      if (from) outgoing.set(from.id, outgoing.get(from.id) + 1);
+    }
+  }
+  const entryStates = new Set(['freeSubmitted', 'highCostConfirm', 'priceChanged', 'trialEnding', 'offlineExpired', 'updateLocked']);
+  for (const screen of prdScreens) {
+    const id = prdIDByNode.get(screen.id);
+    if (!entryStates.has(id)) assert.ok(incoming.get(screen.id) > 0, `${id} must be reachable from another state or a route`);
+  }
+  const prdDest = (id, label) => {
+    const action = prdScreen(id).findOne(child => child.name === 'Action / ' + label);
+    assert.ok(action, `${id} has action ${label}`);
+    return prdIDByNode.get(action.reactions[0].actions[0].destinationId);
+  };
+  const prdText = (id, value) => !!prdScreen(id).findOne(child => child.type === 'TEXT' && child.characters === value);
+  // Trial and free tier.
+  assert.equal(prdDest('trialEnded', '继续使用免费版'), 'freeLocked');
+  assert.equal(prdDest('freeLocked', '了解 Pro'), 'proOffer');
+  assert.ok(!prdScreen('launchTrial').findOne(child => child.name === 'Input / Email'), 'first launch never asks for an account');
+  // Sign-in returns to the interrupted action, and only new accounts get the gift.
+  assert.equal(prdDest('login', '使用 Google 登录'), 'loginDone');
+  assert.equal(prdDest('login', '发送验证码'), 'codeSent');
+  assert.equal(prdDest('codeSent', '验证并登录'), 'loginDone');
+  assert.equal(prdDest('loginDone', '继续'), 'firstPaidNotice');
+  assert.equal(prdDest('loginReturning', '继续'), 'taskSubmitted', 'returning accounts skip the one-time notice');
+  assert.equal(prdDest('loginPurchase', '使用 Google 继续'), 'proOfferSignedIn', 'purchase login returns to the offer, not a checkout');
+  assert.equal(prdDest('proOffer', '购买 Pro · ¥99'), 'loginPurchase', 'signed-out buyers authenticate first');
+  assert.equal(prdDest('proOfferSignedIn', '购买 Pro · ¥99'), 'awaitPro');
+  // Charging, undo and refunds keep balances consistent: 100 gift, 8 per run.
+  assert.ok(prdText('loginDone', '100 点'));
+  assert.ok(prdText('taskSubmitted', '已扣 8 点，当前余额 92 点。'));
+  assert.equal(prdDest('taskSubmitted', '撤销'), 'taskUndone');
+  assert.ok(prdText('taskUndone', '100 点'), 'undo refunds the full charge');
+  assert.ok(prdText('taskFailedRefund', '100 点'), 'system failure refunds the full charge');
+  assert.ok(prdText('taskExpiredRefund', '100 点'));
+  assert.ok(prdText('taskCancelled', '92 点'), 'cancelling after processing starts does not refund');
+  assert.equal(prdDest('taskQueued', '取消并退回 8 点'), 'taskUndone');
+  assert.equal(prdDest('taskRunning', '取消任务'), 'cancelRunningConfirm');
+  assert.equal(prdDest('cancelRunningConfirm', '继续等待'), 'taskRunning');
+  assert.ok(prdText('highCostConfirm', '52 点') && prdText('highCostSubmitted', '已扣 40 点，当前余额 52 点。'));
+  assert.ok(prdText('priceChanged', '82 点') && prdText('priceChangedSubmitted', '已扣 10 点，当前余额 82 点。'));
+  // Insufficient balance: nothing is charged before payment; 2 + 330 - 8.
+  assert.equal(prdDest('insufficient', '前往支付 ¥30'), 'awaitTask');
+  assert.equal(prdDest('insufficientUSD', '前往支付 $4.99'), 'awaitTask');
+  assert.ok(prdText('insufficient', '332 点') && prdText('creditedManual', '332 点'));
+  assert.ok(prdText('creditedAutoSubmit', '324 点') && prdText('resumedSubmitted', '已扣 8 点，当前余额 324 点。'));
+  for (const id of ['insufficient', 'insufficientUSD', 'insufficientManual', 'topup', 'topupUSD']) {
+    const packs = prdScreen(id).findOne(child => child.name === 'Recharge Packages');
+    assert.equal(packs.children.length, 3, `${id} offers the three Admin packs`);
+    assert.ok(packs.children.reduce((sum, option) => sum + option.width, 24) <= packs.width + .01);
+    assert.ok(prdScreen(id).findOne(child => child.name === 'Segmented / Payment'), `${id} lets the buyer switch currency`);
+  }
+  assert.ok(prdScreen('insufficient').findOne(child => child.name === 'Checkbox / 到账后自动提交本次任务'));
+  // Every payment context runs the same verified chain.
+  for (const ctx of ['Task', 'Wallet', 'Pro', 'Renew']) {
+    assert.equal(prdDest('await' + ctx, '我已完成支付'), 'confirming' + ctx);
+    assert.equal(prdDest('await' + ctx, '放弃本次支付'), 'abandon' + ctx);
+    assert.equal(prdDest('abandon' + ctx, '我已付款，查询结果'), 'confirming' + ctx, 'abandoning never invites a second payment');
+    assert.equal(prdScreen('pancake' + ctx).findOne(child => child.name === 'Window Title').characters, 'Pancake 收银台 · 第三方页面');
+    const pay = prdScreen('pancake' + ctx).findOne(child => child.name.startsWith('Action / 支付 '));
+    assert.equal(prdIDByNode.get(pay.reactions[0].actions[0].destinationId), 'return' + ctx);
+    assert.equal(prdDest('return' + ctx, '打开 Glance'), 'confirming' + ctx, 'the return page never grants credits or Pro itself');
+  }
+  assert.ok(prdText('pancakeTask', '¥30') && prdText('pancakePro', '¥99') && prdText('pancakeRenew', '¥59'));
+  assert.ok(prdText('walletCredited', '422 点') && prdText('walletAfter', '422 点'));
+  // Pro activation, devices and refunds.
+  assert.ok(prdText('proActivated', '192 点'), '92 + 100 purchase gift');
+  assert.equal(prdDest('devicesFull', '释放 Mac mini'), 'deviceReleased');
+  assert.ok(prdText('refundedPro', '92 点'), 'refund claws back the 100-credit purchase gift');
+  assert.equal(prdDest('refundedPro', '完成'), 'accountFree');
+  assert.equal(prdDest('refundSubmitted', '完成'), 'account', 'nothing changes until Pancake confirms the refund');
+  assert.equal(prdDest('wechatLimit', '改用美元支付'), 'proOfferUSD');
+  assert.equal(prdDest('proPriceChanged', '按新价格购买 · ¥149'), 'awaitPro', 'a changed price is confirmed before checkout');
+  assert.equal(prdDest('pendingOrder', '继续支付'), 'awaitWallet', 'a second click resumes the pending order');
+  assert.ok(prdText('loginNoGift', '0 点'), 'the new-user gift is granted once per Mac');
+  assert.ok(prdScreen('releaseLimit'), 'device releases are rate limited');
+  assert.ok(!prd.findAll(child => child.type === 'TEXT').some(layer => layer.characters.includes('支付宝')),
+    'Pancake buyers cannot pay with Alipay');
+  layoutBillingNode(prd);
+  for (const screen of prdScreens) {
+    assert.equal(screen.width, 640); assert.equal(screen.height, 600);
+    const content = screen.findOne(child => child.name === 'Content');
+    assert.ok(content.y + content.height <= 492, `${screen.name}: content bottom ${content.y + content.height} must precede footer`);
+    const subtitle = screen.findOne(child => child.name === 'Subtitle');
+    assert.ok(subtitle.characters.length <= 38, `${screen.name}: subtitle stays on one line`);
+    for (const layer of screen.findAll(child => child.type === 'TEXT')) {
+      assert.equal(layer.fontName.family, 'Inter');
+      const foreground = luminance(layer.fills[0].color);
+      const background = luminance(backgroundFor(layer));
+      const contrast = (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+      assert.ok(contrast >= 4.5, `${screen.name}/${layer.name} contrast ${contrast.toFixed(2)} must pass AA`);
+      if (layer.name === 'Label' && layer.parent.name.startsWith('Action /')) {
+        assert.ok(layer.height <= layer.lineHeight.value, `${screen.name}: button label must stay on one line`);
+      }
+      assert.ok(!/[—–]/.test(layer.characters), 'avoid decorative dashes in billing copy');
+    }
+  }
+  const prdHeading = prdScreen('proOffer').findOne(child => child.name === 'Heading');
+  prdHeading.characters = 'User-edited PRD title';
+  await figma.ui.onmessage({ type: 'generate-pricing-prd-flows' });
+  assert.equal(page.children.length, beforePrd + 1, 'rerun must not duplicate the PRD board');
+  assert.equal(prdHeading.characters, 'User-edited PRD title', 'rerun preserves design edits');
+  assert.ok(uiSource.indexOf('id="generate-pricing-prd-flows"') < uiSource.indexOf('<label for="reference">'));
+  prd.remove();
 
   await figma.ui.onmessage({ type: 'generate-task-running-motion' });
   const motion = page.children.find(child => child.name === 'Task Running Motion');

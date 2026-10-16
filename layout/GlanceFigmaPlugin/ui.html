@@ -26,6 +26,14 @@
   <h1>Glance UI Builder <span style="color:#e8a87c">v2.1</span></h1>
   <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages. Includes the Result Badge Study.</p>
   <div id="mode">Checking Figma mode…</div>
+  <label for="brand-before">Landscape A · natural morning</label>
+  <input id="brand-before" type="file" accept="image/png,image/jpeg">
+  <label for="brand-after" style="margin-top:10px">Landscape B · warm sunrise</label>
+  <input id="brand-after" type="file" accept="image/png,image/jpeg">
+  <button id="replace-viewer-brand-images" class="generate-screens featured">Replace Two Viewer Photos</button>
+  <div class="hint">Choose both files from <code>layout/brand-assets</code>. Replaces the two portraits wherever those image assets are reused.</div>
+  <button id="generate-pricing-prd-flows" class="generate-screens featured">Generate Pricing Flow (PRD v0.4)</button>
+  <div class="hint">Free / Pro / credits flows from docs/glance-pricing-prd.md v0.4. Creates a separate board; older pricing boards stay.</div>
   <button id="generate-pricing-flows" class="generate-screens featured">Generate Pricing + Credits Flow</button>
   <div class="hint">Pricing redesign: centered welcome, pricing and results; structured orders and records. Creates a separate Refined board.</div>
   <button id="generate-widget-context-credits" class="generate-screens featured">Generate Compact Widget Menu</button>
@@ -43,6 +51,7 @@
   <button id="generate-app-logo-tangible" class="generate-screens featured">Generate App Logo / Tangible (A object, B character)</button>
   <button id="generate-menu-bar-icon-character" class="generate-screens featured">Generate Tray Icon / Character (states + animation)</button>
   <button id="generate-home-folder-scroll-study" class="generate-screens featured">Generate Home Folder Scroll Study</button>
+  <button id="generate-glance-scrollbar-system" class="generate-screens featured">Generate Glance Scrollbar System</button>
   <button id="generate-widget-oss-result" class="generate-screens featured">Refine OSS Result Page</button>
   <button id="generate-widget-task-running-study" class="generate-screens featured">Generate Widget Task Running Study</button>
   <button id="generate-widget-text-result-window" class="generate-screens featured">Generate Widget Text Result Side Window</button>
@@ -75,6 +84,23 @@
   <button id="export" class="export">Export selected frame (JSON + PNG)</button>
   <script>
     const status = document.getElementById('status');
+    document.getElementById('replace-viewer-brand-images').onclick = async () => {
+      const before = document.getElementById('brand-before').files[0];
+      const after = document.getElementById('brand-after').files[0];
+      if (!before || !after) {
+        status.textContent = 'Choose both landscape images first.';
+        return;
+      }
+      status.textContent = 'Replacing viewer photos in Figma...';
+      const [beforeBytes, afterBytes] = await Promise.all([
+        before.arrayBuffer(), after.arrayBuffer()
+      ]);
+      parent.postMessage({ pluginMessage: {
+        type: 'replace-viewer-brand-images',
+        beforeBytes: Array.from(new Uint8Array(beforeBytes)),
+        afterBytes: Array.from(new Uint8Array(afterBytes))
+      } }, '*');
+    };
     document.getElementById('close').onclick = () => parent.postMessage({ pluginMessage: { type: 'close' } }, '*');
     document.getElementById('generate').onclick = async () => {
       const file = document.getElementById('reference').files[0];
@@ -130,6 +156,10 @@
       status.textContent = 'Building Image Filmstrip Scroll Study...';
       parent.postMessage({ pluginMessage: { type: 'generate-image-filmstrip-scroll-study' } }, '*');
     };
+    document.getElementById('generate-glance-scrollbar-system').onclick = () => {
+      status.textContent = 'Building reusable Glance scrollbar components...';
+      parent.postMessage({ pluginMessage: { type: 'generate-glance-scrollbar-system' } }, '*');
+    };
     document.getElementById('generate-video-inspect-study').onclick = async () => {
       const file = document.getElementById('reference').files[0];
       status.textContent = 'Building Video Inspect v4 with consistent controls...';
@@ -163,6 +193,10 @@
     document.getElementById('hide-widget-market-version-info').onclick = () => {
       status.textContent = 'Removing Widget metadata...';
       parent.postMessage({ pluginMessage: { type: 'hide-widget-market-version-info' } }, '*');
+    };
+    document.getElementById('generate-pricing-prd-flows').onclick = () => {
+      status.textContent = 'Building PRD v0.4 pricing, credits and Pro flows…';
+      parent.postMessage({ pluginMessage: { type: 'generate-pricing-prd-flows' } }, '*');
     };
     document.getElementById('generate-pricing-flows').onclick = () => {
       status.textContent = 'Building software licensing, top-ups and task billing flows…';

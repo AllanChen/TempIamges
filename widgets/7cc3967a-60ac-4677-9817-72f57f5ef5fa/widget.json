@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "7cc3967a-60ac-4677-9817-72f57f5ef5fa",
   "version": "1.0.1",
   "name": "人物背景分离",

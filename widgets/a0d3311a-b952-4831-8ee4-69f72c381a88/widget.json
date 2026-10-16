@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "creditCost": 1,
+  "id": "a0d3311a-b952-4831-8ee4-69f72c381a88",
+  "version": "1.0.0",
+  "name": "Remove Background",
+  "summary": "Remove an image background while preserving fine subject edges.",
+  "author": "Glance",
+  "official": true,
+  "iconURL": "https://resouces.pppron.com/f2e11606-79b8-4af5-88eb-e84448d41bdc.png",
+  "execution": { "mode": "cloud" },
+  "commands": [
+    {
+      "id": "remove-background",
+      "name": "Remove Background",
+      "description": "Create a transparent-background copy of the selected image.",
+      "inputTypes": ["image"],
+      "inputMimeTypes": ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"],
+      "outputs": ["image"],
+      "taskType": "image.remove-background.v1",
+      "requiresUpload": true,
+      "parameterSchema": { "type": "object", "properties": {}, "additionalProperties": false }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "The selected image will be uploaded to Glance for cloud processing."
+  },
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "zh-Hans": {
+      "name": "移除背景",
+      "summary": "移除图片背景，保留精细的主体边缘。",
+      "commands": {
+        "remove-background": {
+          "name": "移除背景",
+          "description": "为选中的图片生成透明背景副本。"
+        }
+      }
+    }
+  }
+}

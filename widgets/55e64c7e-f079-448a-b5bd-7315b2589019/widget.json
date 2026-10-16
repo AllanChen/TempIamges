@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "55e64c7e-f079-448a-b5bd-7315b2589019",
   "version": "1.0.2",
   "name": "免费图床",

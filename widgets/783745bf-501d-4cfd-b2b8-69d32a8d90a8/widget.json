@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "783745bf-501d-4cfd-b2b8-69d32a8d90a8",
   "version": "0.2.2",
   "name": "视频去水印",

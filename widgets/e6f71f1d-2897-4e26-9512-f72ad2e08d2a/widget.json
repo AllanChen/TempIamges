@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
   "version": "0.1.2",
   "name": "图片转提示词",

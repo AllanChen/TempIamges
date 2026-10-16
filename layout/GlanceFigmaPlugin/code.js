@@ -712,6 +712,106 @@ async function generateHomeFolderScrollStudy() {
   figma.notify('Home folder scroll study created');
 }
 
+// Shared scrollbar system for every Glance scroll surface. Components keep the
+// visual geometry independent of the example Account window beside them.
+async function generateGlanceScrollbarSystem() {
+  await loadFonts();
+  await createStyles();
+  const name = 'Glance / Scrollbar System';
+  const existing = figma.currentPage.children.find(child => child.name === name);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Selected the existing Glance scrollbar system; edits were preserved.' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = frame(name, maxX + 196, 0, 1440, 820, COLORS.bg, 12);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+  text('Title', board, 'Glance / Scrollbar', 48, 40, 28, COLORS.text, 'semibold');
+  text('Subtitle', board, 'One quiet scroll cue for Account, Home, Inspect and every future scrolling surface',
+       48, 84, 13, COLORS.secondary, 'regular', 1000);
+  rect('Divider', board, 48, 122, 1344, 1, COLORS.line);
+  text('Component Section', board, 'COMPONENTS', 48, 154, 11, COLORS.accent, 'semibold');
+
+  function scrollbarComponent(axis, state, x, y) {
+    const vertical = axis === 'Vertical';
+    const width = vertical ? 12 : 240;
+    const height = vertical ? 240 : 12;
+    const component = figma.createComponent();
+    component.name = `Scrollbar / ${axis} / ${state}`;
+    component.x = x;
+    component.y = y;
+    component.resize(width, height);
+    component.fills = [];
+    component.clipsContent = false;
+    board.appendChild(component);
+    const track = rect('Track / 3px / #34353A', component,
+      vertical ? 4.5 : 0, vertical ? 0 : 4.5,
+      vertical ? 3 : width, vertical ? height : 3, COLORS.line, 1.5);
+    track.opacity = .8;
+    const thumb = rect('Thumb / 4px / #E8A87C', component,
+      vertical ? 4 : 26, vertical ? 26 : 4,
+      vertical ? 4 : 80, vertical ? 80 : 4, COLORS.accent, 2);
+    thumb.opacity = state === 'Active' ? 1 : .86;
+    return component;
+  }
+
+  text('Vertical Label', board, 'VERTICAL  ·  12px interaction lane', 48, 188, 12, COLORS.secondary, 'medium');
+  scrollbarComponent('Vertical', 'Idle', 78, 226);
+  scrollbarComponent('Vertical', 'Active', 228, 226);
+  text('Vertical Idle', board, 'Idle', 56, 480, 12, COLORS.text, 'medium', 56, 'CENTER');
+  text('Vertical Active', board, 'Hover / drag', 192, 480, 12, COLORS.text, 'medium', 84, 'CENTER');
+  text('Horizontal Label', board, 'HORIZONTAL  ·  12px interaction lane', 348, 188, 12, COLORS.secondary, 'medium');
+  scrollbarComponent('Horizontal', 'Idle', 348, 258);
+  scrollbarComponent('Horizontal', 'Active', 348, 350);
+  text('Horizontal Idle', board, 'Idle', 600, 254, 12, COLORS.text, 'medium');
+  text('Horizontal Active', board, 'Hover / drag', 600, 346, 12, COLORS.text, 'medium');
+
+  const spec = frame('Usage Rules', 48, 548, 624, 216, COLORS.surface, 12);
+  spec.strokes = [fill(COLORS.line)];
+  spec.strokeWeight = 1;
+  board.appendChild(spec);
+  text('Rules Title', spec, 'Usage', 20, 18, 16, COLORS.text, 'semibold');
+  text('Rule 1', spec, 'Track 3px · #34353A at 80% · radius 1.5px', 20, 55, 12, COLORS.secondary);
+  text('Rule 2', spec, 'Thumb 4px · #E8A87C at 86% idle / 100% active · radius 2px', 20, 82, 12, COLORS.secondary);
+  text('Rule 3', spec, 'Keep a 12px hit lane; minimum thumb 34px vertical / 28px horizontal', 20, 109, 12, COLORS.secondary);
+  text('Rule 4', spec, 'Overlay content; hide when no overflow; preserve native wheel, drag and accessibility',
+       20, 136, 12, COLORS.secondary);
+  text('Rule 5', spec, 'Track and thumb follow the viewport and scroll position proportionally',
+       20, 163, 12, COLORS.secondary);
+
+  const account = frame('Account / Scrollbar Application', 720, 152, 640, 600, '#0B0C0F', 14);
+  account.strokes = [fill('#FFFFFF', .12)];
+  account.strokeWeight = 1;
+  board.appendChild(account);
+  rect('Titlebar Divider', account, 0, 46, 640, 1, COLORS.line);
+  text('Window Title', account, 'Glance · 账户', 166, 15, 12, COLORS.secondary, 'medium', 308, 'CENTER');
+  text('Account Heading', account, '账户与授权', 64, 108, 25, COLORS.text, 'semibold');
+  text('Email', account, 'lin@example.com', 64, 149, 12, COLORS.secondary);
+  const card = frame('Account Card', 64, 190, 512, 80, COLORS.surface, 12);
+  card.strokes = [fill('#FFFFFF', .12)];
+  card.strokeWeight = 1;
+  account.appendChild(card);
+  text('Pro', card, 'Glance Pro · 已激活', 16, 17, 14, COLORS.accent, 'semibold');
+  text('Pro Detail', card, '买断授权，功能更新至 2027 年 10 月 16 日。', 16, 49, 12, COLORS.secondary);
+  text('Account Row 1', account, '已激活设备                                      1 / 2 台', 64, 294, 12, COLORS.secondary);
+  text('Account Row 2', account, '点数余额                                             192 点', 64, 334, 12, COLORS.secondary);
+  text('Account Row 3', account, '离线可用                                             30 天', 64, 374, 12, COLORS.secondary);
+  text('Overflow Row', account, '最近订单                                           查看全部', 64, 414, 12, COLORS.secondary);
+  rect('Account Scroll Track / 3px', account, 584, 190, 3, 272, COLORS.line, 1.5).opacity = .8;
+  rect('Account Scroll Thumb / 4px', account, 583.5, 190, 4, 104, COLORS.accent, 2).opacity = .86;
+  text('Account Caption', board, 'ACCOUNT / VERTICAL APPLICATION', 720, 770, 11, COLORS.accent, 'semibold');
+
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created reusable Glance scrollbar components and Account application.' });
+  figma.notify('Glance scrollbar system created');
+}
+
 function createHomeFolderScrollStudy(x) {
   const board = frame('Home / Folder Scroll / Thin Track Study', x, 0, 1080, 720, COLORS.bg, 12);
   board.strokes = [fill(COLORS.line)];
@@ -3965,6 +4065,7 @@ const BILLING = { w: 640, h: 600, gap: 48, columns: 4, surface: '#0B0C0F' };
 const billingContexts = new Map();
 
 function billingLayout(spec) {
+  if (spec.layout) return spec.layout;
   if (spec.id === 'login' || spec.id === 'loginPro') return 'auth';
   if (spec.id === 'plans') return 'offer';
   if (spec.id.startsWith('topup')) return 'topup';
@@ -4017,8 +4118,8 @@ function billingCard(parent, title, detail, options = {}) {
   if (elevated) historyStroke(card, '#FFFFFF', .12);
   const innerWidth = width - padding * 2;
   if (context.family === 'offer' && options.large) {
-    billingText(card, 'Plan Name', 'Glance Pro', 15, COLORS.text, 'semibold', innerWidth);
-    billingText(card, 'Card Title', '¥99', 44, COLORS.text, 'semibold', innerWidth);
+    billingText(card, 'Plan Name', options.planName || 'Glance Pro', 15, COLORS.text, 'semibold', innerWidth);
+    billingText(card, 'Card Title', options.price || '¥99', 44, COLORS.text, 'semibold', innerWidth);
   } else billingText(card, 'Card Title', title, options.large ? context.family === 'wallet' ? 48 : 32 : 14,
     options.success ? COLORS.success : options.accent ? COLORS.accent : COLORS.text, 'semibold', innerWidth);
   if (detail) billingText(card, 'Card Detail', detail, 12, COLORS.secondary, 'regular', innerWidth);
@@ -4060,7 +4161,7 @@ function billingWindow(board, spec, x, y) {
   board.appendChild(screen);
   historyStroke(screen, '#FFFFFF', .12);
   createBareSystemControls(screen);
-  text('Window Title', screen, spec.browser ? 'Glance · 安全结账' : 'Glance · 账户',
+  text('Window Title', screen, spec.windowTitle || (spec.browser ? 'Glance · 安全结账' : 'Glance · 账户'),
     166, 14, 12, COLORS.secondary, 'medium', 308, 'CENTER');
   rect('Titlebar Divider', screen, 0, 47, 640, 1, '#FFFFFF').opacity = .07;
   const family = billingLayout(spec);
@@ -4072,12 +4173,14 @@ function billingWindow(board, spec, x, y) {
   back.fills = []; back.strokes = [];
   if (!spec.back) back.visible = false;
   if (focus) {
-    const good = /^(paidPro|renewPaid|trial$|creditsPaid|freeCredits|taskDone|trialDone|taskRefund|trialRefund)/.test(spec.id);
-    const caution = /^(insufficient|paymentFailed|trialExpired|cancelled)/.test(spec.id);
+    const good = spec.tone ? spec.tone === 'good'
+      : /^(paidPro|renewPaid|trial$|creditsPaid|freeCredits|taskDone|trialDone|taskRefund|trialRefund)/.test(spec.id);
+    const caution = spec.tone ? spec.tone === 'caution'
+      : /^(insufficient|paymentFailed|trialExpired|cancelled)/.test(spec.id);
     const mark = frame('Status Mark', 296, 86, 48, 48,
       good ? '#1A2B23' : caution ? '#30241D' : COLORS.surface, 24);
     screen.appendChild(mark);
-    historyIcon(mark, good ? 'check' : caution ? 'warning' : spec.id.startsWith('email') ? 'file' : spec.id === 'free' ? 'focus' : 'tasks',
+    historyIcon(mark, spec.icon || (good ? 'check' : caution ? 'warning' : spec.id.startsWith('email') ? 'file' : spec.id === 'free' ? 'focus' : 'tasks'),
       13, 13, 22, good ? COLORS.success : caution ? COLORS.accent : COLORS.secondary);
   }
   const headingY = focus ? 152 : 110;
@@ -4474,6 +4577,627 @@ async function generatePricingFlows() {
   figma.currentPage.selection = [board];
   figma.viewport.scrollAndZoomIntoView([board]);
   figma.ui.postMessage({ message: 'Created Pricing + Credits Flow / Refined: ' + specs.length + ' editable states with centered welcome / pricing / result layouts and structured account / order / ledger layouts. Previous board preserved.' });
+}
+
+// PRD v0.4 billing storyboard (docs/glance-pricing-prd.md). Review only: no
+// checkout, wallet or app state is modified. Amounts are examples; production
+// prices come from Admin.
+const PRICING_PRD_FRAME = 'Pricing & Credits / PRD v0.4 Flow';
+const PRD_WINDOWS = {
+  launch: 'Glance',
+  sheet: 'portrait.png · 图片窗口',
+  toast: 'portrait.png · 提示',
+  tasks: 'Glance · 任务中心',
+  account: 'Glance · 账户',
+  pancake: 'Pancake 收银台 · 第三方页面',
+  web: 'glance.mcreator.ai · 支付返回'
+};
+const PRD_PACKS = {
+  CNY: [['120 点', '¥12'], ['330 点', '¥30'], ['1,200 点', '¥98']],
+  USD: [['120 点', '$2.99'], ['330 点', '$4.99'], ['1,200 点', '$14.99']]
+};
+const PRD_ORDER = 'GL20261016A7K2';
+
+function prdPacks(parent, currency, selected = 1) {
+  const width = parent.width;
+  const optionWidth = (width - 24) / 3;
+  const packs = frame('Recharge Packages', 0, 0, width, 88, null);
+  packs.layoutMode = 'HORIZONTAL'; packs.itemSpacing = 12;
+  packs.primaryAxisSizingMode = packs.counterAxisSizingMode = 'FIXED';
+  packs.clipsContent = false;
+  parent.appendChild(packs);
+  PRD_PACKS[currency].forEach(([points, price], index) => {
+    const active = index === selected;
+    const option = billingStack(packs, 'Package / ' + points, 0, 0, optionWidth, 6, 14,
+      active ? COLORS.accentSoft : COLORS.surface);
+    option.resize(optionWidth, 88); option.primaryAxisSizingMode = 'FIXED';
+    option.primaryAxisAlignItems = 'CENTER'; option.counterAxisAlignItems = 'CENTER';
+    historyStroke(option, active ? COLORS.accent : '#FFFFFF', active ? .7 : .1);
+    billingText(option, 'Points', points, 20, active ? COLORS.accent : COLORS.text, 'semibold', optionWidth - 28)
+      .textAlignHorizontal = 'CENTER';
+    billingText(option, 'Price', price, 13, COLORS.secondary, 'medium', optionWidth - 28).textAlignHorizontal = 'CENTER';
+  });
+  return packs;
+}
+
+function prdSegmented(parent, name, options, register) {
+  const width = parent.width;
+  const control = frame('Segmented / ' + name, 0, 0, width, 36, COLORS.surface, 8);
+  control.clipsContent = false;
+  historyStroke(control, '#FFFFFF', .1);
+  parent.appendChild(control);
+  const optionWidth = (width - 8) / options.length;
+  options.forEach(([label, target, active], index) => {
+    const option = frame('Option / ' + label, 4 + index * optionWidth, 4, optionWidth, 28,
+      active ? COLORS.accentSoft : COLORS.surface, 6);
+    control.appendChild(option);
+    text('Label', option, label, 0, 6, 12, active ? COLORS.accent : COLORS.secondary,
+      active ? 'semibold' : 'medium', optionWidth, 'CENTER');
+    if (target) register(option, target);
+  });
+  return control;
+}
+
+function prdCheckbox(parent, label, checked, target, register) {
+  const row = frame('Checkbox / ' + label, 0, 0, parent.width, 24, null);
+  row.clipsContent = false;
+  parent.appendChild(row);
+  const box = frame('Box', 0, 4, 16, 16, checked ? COLORS.accent : COLORS.surface, 4);
+  if (!checked) historyStroke(box, '#FFFFFF', .3);
+  row.appendChild(box);
+  if (checked) historyIcon(box, 'check', 2, 2, 12, '#21130D');
+  text('Label', row, label, 26, 3, 12, COLORS.text, 'medium', parent.width - 26);
+  if (target) register(row, target);
+  return row;
+}
+
+function prdLink(parent, label, target, register) {
+  const link = billingText(parent, 'Link / ' + label, label, 12, COLORS.accent, 'medium', parent.width);
+  if (target) register(link, target);
+  return link;
+}
+
+function prdAuth(p, register, o) {
+  if (o.code) {
+    const row = frame('Input / Code', 0, 0, p.width, 52, null);
+    row.clipsContent = false; p.appendChild(row);
+    '482917'.split('').forEach((digit, index) => {
+      const box = frame('Digit ' + (index + 1), index * 60, 0, 48, 52, COLORS.surface, 8);
+      historyStroke(box, o.error ? COLORS.danger : '#FFFFFF', o.error ? .8 : .18);
+      row.appendChild(box);
+      text('Digit', box, digit, 0, 15, 18, COLORS.text, 'semibold', 48, 'CENTER');
+    });
+    if (o.error) billingText(p, 'Error', o.error, 12, COLORS.danger, 'medium', p.width);
+    const verify = billingAction(p, o.primary, 0, 0, p.width, true);
+    register(verify, o.primaryTarget);
+    prdLink(p, '重新发送验证码（60 秒后可用）', o.resendTarget, register);
+    prdLink(p, '更换邮箱', o.changeTarget, register);
+    return;
+  }
+  const google = billingAction(p, o.google, 0, 0, p.width, false);
+  register(google, o.googleTarget);
+  billingText(p, 'Email Separator', '或使用邮箱验证码', 11, COLORS.secondary, 'regular', p.width);
+  const field = billingStack(p, 'Email Field', 0, 0, p.width, 6);
+  billingText(field, 'Email Label', '邮箱地址', 12, COLORS.text, 'medium', p.width).textAlignHorizontal = 'LEFT';
+  const input = frame('Input / Email', 0, 0, p.width, 44, COLORS.surface, 8);
+  field.appendChild(input); historyStroke(input, '#FFFFFF', .18);
+  text('Email Placeholder', input, 'you@example.com', 14, 12, 13, COLORS.secondary, 'regular', p.width - 28);
+  const send = billingAction(p, '发送验证码', 0, 0, p.width, true);
+  register(send, o.sendTarget);
+  billingText(p, 'Login Helper', o.helper, 12, COLORS.secondary, 'regular', p.width);
+}
+
+function prdSpecs() {
+  const specs = [];
+  const add = (group, id, title, subtitle, render, actions, extra = {}) =>
+    specs.push({ group, id, title, subtitle, render, actions, ...extra });
+  const card = billingCard, row = billingRow;
+  const hint = (p, value) => billingText(p, 'Explanation', value, 12, COLORS.secondary, 'regular', p.width);
+  const locked = '格式转换、压缩、导出、复制图片、编辑、OCR、Base64。';
+
+  // 01 First launch and trial. The trial starts locally with no account.
+  const G1 = '01 / 首次启动与试用';
+  add(G1, 'launchTrial', '已开启 14 天完整试用', '无需登录，全部功能可用，到期不会扣款。', p => {
+    row(p, '试用剩余', '14 天'); row(p, '本地工具', '全部可用'); row(p, '云端 Widget', '登录后按点数使用');
+    hint(p, '试用从首次启动开始计算，记录在钥匙串中，重装应用不会重置。');
+  }, [['开始看图', null]], { layout: 'center', windowTitle: PRD_WINDOWS.launch, tone: 'good',
+    note: '只提示一次，不打断看图。' });
+  add(G1, 'trialEnding', '试用还剩 3 天', '到期后查看、对比、截图和 AI Widget 继续可用。', p => {
+    card(p, '到期后需要 Pro 的功能', locked);
+    row(p, '文件、结果与点数', '全部保留');
+  }, [['了解 Pro', 'proOffer'], ['稍后再说', null]], { layout: 'center', windowTitle: PRD_WINDOWS.sheet,
+    icon: 'info', note: '剩余 3 天和 1 天时，由标题栏旁的试用角标各提示一次。' });
+  add(G1, 'trialEnded', '试用已结束', '文件、结果和点数都在，免费功能继续可用。', p => {
+    card(p, '继续免费使用', '查看、对比、截图，以及按点数使用 AI Widget。', { accent: true });
+    card(p, '需要 Pro', locked);
+  }, [['了解 Pro', 'proOffer'], ['继续使用免费版', 'freeLocked']], { layout: 'center',
+    windowTitle: PRD_WINDOWS.sheet, tone: 'caution', note: '只在试用结束后的下一次启动出现一次。' });
+  add(G1, 'freeLocked', '格式转换需要 Pro', '试用已结束。购买 Pro 后立即恢复全部本地工具。', p => {
+    row(p, '当前版本', '免费版');
+    row(p, '仍可使用', '查看、对比、截图、AI Widget');
+    hint(p, '被锁的入口保留并带锁标记，不会隐藏。点击任意被锁操作都会出现这里。');
+  }, [['了解 Pro', 'proOffer'], ['取消', null]], { layout: 'center', windowTitle: PRD_WINDOWS.sheet,
+    tone: 'caution', icon: 'shield' });
+
+  // 02 Sign-in only appears when a cloud Widget or a purchase needs an account.
+  const G2 = '02 / 登录：首次使用云端 Widget 或购买时';
+  add(G2, 'login', '登录后使用 AI Widget', '新账户赠送 100 点，可以直接运行云端 Widget。', (p, refs, register) =>
+    prdAuth(p, register, { google: '使用 Google 登录', googleTarget: 'loginDone', sendTarget: 'codeSent',
+      helper: '图片与 Widget 参数保留，登录后自动继续。' }), [],
+  { layout: 'auth', windowTitle: PRD_WINDOWS.sheet, note: '继续即表示你同意服务条款与隐私政策。' });
+  add(G2, 'codeSent', '输入验证码', '六位验证码已发送到 you@example.com，10 分钟内有效。', (p, refs, register) =>
+    prdAuth(p, register, { code: true, primary: '验证并登录', primaryTarget: 'loginDone',
+      resendTarget: 'codeSent', changeTarget: 'login' }), [],
+  { layout: 'auth', windowTitle: PRD_WINDOWS.sheet, back: 'login', extraLinks: [['验证码错误 →', 'codeError']] });
+  add(G2, 'codeError', '输入验证码', '六位验证码已发送到 you@example.com，10 分钟内有效。', (p, refs, register) =>
+    prdAuth(p, register, { code: true, error: '验证码不正确，还可以再试 4 次。', primary: '验证并登录',
+      primaryTarget: 'loginDone', resendTarget: 'codeSent', changeTarget: 'login' }), [],
+  { layout: 'auth', windowTitle: PRD_WINDOWS.sheet, back: 'login', extraLinks: [['次数用完或过期 →', 'codeLocked']] });
+  add(G2, 'codeLocked', '请重新获取验证码', '验证码已过期，或尝试次数已用完。', p => {
+    hint(p, '同一邮箱 60 秒内只能发送一次，每个网络每小时最多 20 次。');
+  }, [['重新发送验证码', 'codeSent'], ['更换邮箱', 'login']], { layout: 'center',
+    windowTitle: PRD_WINDOWS.sheet, tone: 'caution' });
+  add(G2, 'loginDone', '已登录，100 点已到账', '新账户赠送，每个账户只领取一次。', p => {
+    row(p, '账户', 'lin@example.com'); row(p, '当前余额', '100 点');
+    hint(p, '接下来继续提交你刚才选择的高清放大。');
+  }, [['继续', 'firstPaidNotice']], { layout: 'center', windowTitle: PRD_WINDOWS.sheet, tone: 'good',
+    extraLinks: [['已有账户登录 →', 'loginReturning'], ['此 Mac 已领过 →', 'loginNoGift']] });
+  add(G2, 'loginNoGift', '已登录', '这台 Mac 已领取过新用户赠送，本次不再发放。', p => {
+    row(p, '账户', 'lin@example.com'); row(p, '当前余额', '0 点');
+    hint(p, '新用户赠送每个账户一次，每台 Mac 也只发放一次。');
+  }, [['充值点数', 'insufficient'], ['取消', null]], { layout: 'center', windowTitle: PRD_WINDOWS.sheet, icon: 'info' });
+  add(G2, 'loginReturning', '欢迎回来', '已恢复你的点数、任务与授权。', p => {
+    row(p, '账户', 'lin@example.com'); row(p, '当前余额', '100 点');
+    hint(p, '赠送点数每个账户只领取一次。已看过付费说明的账户直接提交。');
+  }, [['继续', 'taskSubmitted']], { layout: 'center', windowTitle: PRD_WINDOWS.sheet, tone: 'good' });
+  add(G2, 'loginPurchase', '登录后购买 Pro', 'Pro 授权和赠送点数会绑定到你的账户。', (p, refs, register) =>
+    prdAuth(p, register, { google: '使用 Google 继续', googleTarget: 'proOfferSignedIn', sendTarget: 'codeSentPurchase',
+      helper: '登录后回到 Pro 介绍，确认后才会打开收银台。' }), [],
+  { layout: 'auth', windowTitle: PRD_WINDOWS.sheet, back: 'proOffer', note: '继续即表示你同意服务条款与隐私政策。' });
+  add(G2, 'codeSentPurchase', '输入验证码', '六位验证码已发送到 you@example.com，10 分钟内有效。', (p, refs, register) =>
+    prdAuth(p, register, { code: true, primary: '验证并继续购买', primaryTarget: 'proOfferSignedIn',
+      resendTarget: 'codeSentPurchase', changeTarget: 'loginPurchase' }), [],
+  { layout: 'auth', windowTitle: PRD_WINDOWS.sheet, back: 'loginPurchase' });
+
+  // 03 Widget billing: charge on acceptance, undo while queued, refund system failures.
+  const G3 = '03 / Widget 扣点、撤销与退点';
+  add(G3, 'firstPaidNotice', '运行前了解一下', '高清放大每次 8 点，点击即提交并扣点。', p => {
+    row(p, '系统失败或排队超时', '自动退回点数');
+    row(p, '开始处理前撤销', '全额退回');
+    row(p, '开始处理后取消', '不退点');
+    hint(p, '此说明每个账户只出现一次。之后不超过确认阈值的 Widget 直接提交。');
+  }, [['知道了，提交 · 8 点', 'taskSubmitted'], ['取消', null]], { layout: 'center',
+    windowTitle: PRD_WINDOWS.sheet, icon: 'info' });
+  add(G3, 'taskSubmitted', '已提交高清放大', '已扣 8 点，当前余额 92 点。', p => {
+    card(p, '开始处理前可以撤销', '撤销后 8 点全额退回，图片与参数保留。', { accent: true });
+    hint(p, '网络中断时使用同一提交编号重试，不会重复扣点。');
+  }, [['撤销', 'taskUndone'], ['查看任务', 'taskQueued']], { layout: 'center', windowTitle: PRD_WINDOWS.toast,
+    tone: 'good', note: '任务被领取后，撤销按钮消失。', extraLinks: [['队列已满 →', 'queueFull']] });
+  add(G3, 'freeSubmitted', '已提交免费图床', '免费 Widget，不扣点。', p => {
+    hint(p, '免费 Widget 也需要登录，任务与结果绑定到你的账户。');
+  }, [['查看任务', null]], { layout: 'center', windowTitle: PRD_WINDOWS.toast, tone: 'good' });
+  add(G3, 'taskUndone', '已撤销，8 点已退回', '任务还没开始处理，图片与参数保留。', p => {
+    row(p, '退回', '+8 点', COLORS.success); row(p, '当前余额', '100 点');
+  }, [['重新提交 · 8 点', 'taskSubmitted'], ['完成', null]], { layout: 'center', windowTitle: PRD_WINDOWS.toast, tone: 'good' });
+  add(G3, 'queueFull', '任务队列已满', '本次没有提交，也没有扣点。', p => {
+    hint(p, '请稍后再试，图片与参数已保留。');
+  }, [['重试', 'taskSubmitted'], ['取消', null]], { layout: 'center', windowTitle: PRD_WINDOWS.toast, tone: 'caution' });
+  add(G3, 'highCostConfirm', '确认运行视频去水印', '本次费用超过确认阈值，需要你确认。', p => {
+    card(p, '视频去水印', '输入：clip.mp4');
+    row(p, '本次费用', '40 点', COLORS.accent); row(p, '当前余额', '92 点'); row(p, '提交后余额', '52 点');
+    hint(p, '确认阈值由后台配置，此处示例为 20 点。');
+  }, [['确认提交 · 40 点', 'highCostSubmitted'], ['取消', null]], { layout: 'task', windowTitle: PRD_WINDOWS.sheet });
+  add(G3, 'highCostSubmitted', '已提交视频去水印', '已扣 40 点，当前余额 52 点。', p => {
+    card(p, '开始处理前可以撤销', '撤销后 40 点全额退回。', { accent: true });
+  }, [['撤销', null], ['查看任务', null]], { layout: 'center', windowTitle: PRD_WINDOWS.toast, tone: 'good',
+    note: '撤销与任务状态同高清放大示例。' });
+  add(G3, 'priceChanged', '价格已更新', '高清放大从 8 点调整为 10 点，尚未扣点。', p => {
+    row(p, '原价格', '8 点'); row(p, '本次费用', '10 点', COLORS.accent);
+    row(p, '当前余额', '92 点'); row(p, '提交后余额', '82 点');
+    hint(p, '价格变化时不会自动按新价扣点，必须由你确认。');
+  }, [['按新价提交 · 10 点', 'priceChangedSubmitted'], ['取消', null]], { layout: 'task', windowTitle: PRD_WINDOWS.sheet });
+  add(G3, 'priceChangedSubmitted', '已提交高清放大', '已扣 10 点，当前余额 82 点。', p => {
+    card(p, '开始处理前可以撤销', '撤销后 10 点全额退回。', { accent: true });
+  }, [['撤销', null], ['查看任务', null]], { layout: 'center', windowTitle: PRD_WINDOWS.toast, tone: 'good',
+    note: '撤销与任务状态同高清放大示例。' });
+  add(G3, 'taskQueued', '高清放大排队中', '前面还有 2 个任务，预计 1 分钟内开始。', p => {
+    card(p, 'portrait.png', '已扣 8 点。开始处理前取消，全额退回。');
+    row(p, '最长排队', '30 分钟');
+    hint(p, '排队超过 30 分钟会自动取消并退点。');
+  }, [['取消并退回 8 点', 'taskUndone'], ['返回图片', null]], { layout: 'task', windowTitle: PRD_WINDOWS.tasks,
+    extraLinks: [['开始处理 →', 'taskRunning'], ['排队超时 →', 'taskExpiredRefund']] });
+  add(G3, 'taskRunning', '高清放大处理中', '可以关闭窗口，任务会在后台继续。', p => {
+    card(p, 'portrait.png', '已扣 8 点。内部重试不重复扣点。');
+    row(p, '系统重试', '0 / 3 次');
+    hint(p, '开始处理后主动取消不退点。系统失败会自动退点。');
+  }, [['取消任务', 'cancelRunningConfirm'], ['返回图片', null]], { layout: 'task', windowTitle: PRD_WINDOWS.tasks,
+    extraLinks: [['处理完成 →', 'taskDone'], ['处理失败 →', 'taskFailedRefund']] });
+  add(G3, 'cancelRunningConfirm', '取消正在处理的任务？', '任务已开始处理，取消后不退回 8 点。', p => {
+    row(p, '本次已扣', '8 点');
+    hint(p, '原始图片与参数保留，可以稍后重新提交。');
+  }, [['继续等待', 'taskRunning'], ['确认取消', 'taskCancelled']], { layout: 'task', windowTitle: PRD_WINDOWS.tasks });
+  add(G3, 'taskCancelled', '任务已取消', '开始处理后主动取消，本次点数不退回。', p => {
+    row(p, '本次消耗', '8 点'); row(p, '当前余额', '92 点');
+  }, [['完成', null]], { layout: 'center', windowTitle: PRD_WINDOWS.tasks, tone: 'caution' });
+  add(G3, 'taskDone', '高清放大完成', '结果已进入对比视图，并保存到下载/Glance。', p => {
+    card(p, 'portrait_upscaled.png', '本次消耗 8 点。', { success: true });
+    row(p, '当前余额', '92 点');
+    hint(p, '查看和对比结果不再扣点。免费版也可以在 Finder 中使用这个文件。');
+  }, [['打开对比', null]], { layout: 'center', windowTitle: PRD_WINDOWS.toast, tone: 'good' });
+  add(G3, 'taskFailedRefund', '处理失败，8 点已退回', '服务暂时不可用，没有产生可用结果。', p => {
+    row(p, '退回', '+8 点', COLORS.success); row(p, '当前余额', '100 点');
+    hint(p, '重新提交会作为新任务，重新扣点。');
+  }, [['重新提交 · 8 点', 'taskSubmitted'], ['查看点数记录', 'ledgerAll']], { layout: 'center',
+    windowTitle: PRD_WINDOWS.toast, tone: 'good' });
+  add(G3, 'taskExpiredRefund', '排队超时，8 点已退回', '任务排队超过 30 分钟，已自动取消。', p => {
+    row(p, '退回', '+8 点', COLORS.success); row(p, '当前余额', '100 点');
+  }, [['重新提交 · 8 点', 'taskSubmitted'], ['完成', null]], { layout: 'center',
+    windowTitle: PRD_WINDOWS.toast, tone: 'good' });
+
+  // Browser payment chain, repeated per context so every step is concrete.
+  const payChain = (group, ctx, o) => {
+    add(group, 'await' + ctx, '请在浏览器完成支付', '已在浏览器打开 Pancake 收银台。', p => {
+      row(p, '订单号', PRD_ORDER); row(p, '订单有效期', '30 分钟');
+      hint(p, '付款完成后会自动返回 Glance。关闭收银台不会扣款。');
+    }, [['我已完成支付', 'confirming' + ctx], ['放弃本次支付', 'abandon' + ctx]], { layout: 'center',
+      windowTitle: o.window || PRD_WINDOWS.sheet, icon: 'tasks',
+      extraLinks: [['浏览器中 →', 'pancake' + ctx], ...(o.awaitExtra ? [o.awaitExtra] : [])] });
+    add(group, 'pancake' + ctx, o.item, 'Pancake 托管收银台，以下为示意。', p => {
+      card(p, o.item, o.detail, { accent: true });
+      row(p, '支付方式', o.method); row(p, '应付金额', o.amount, COLORS.accent);
+      hint(p, 'Pancake 是销售方，负责税费与支付合规。页面样式以 Pancake 为准。');
+    }, [['支付 ' + o.amount, 'return' + ctx], ['关闭收银台', 'await' + ctx]], { layout: 'receipt',
+      windowTitle: PRD_WINDOWS.pancake, browser: true, note: '没有取消回跳。关闭后订单在 30 分钟后自动失效。' });
+    add(group, 'return' + ctx, '付款完成，正在返回 Glance', 'glance.mcreator.ai/pay/return', p => {
+      row(p, '订单号', PRD_ORDER);
+      hint(p, '此页面不代表已到账。到账以服务端收到并验证的支付通知为准。');
+    }, [['打开 Glance', 'confirming' + ctx]], { layout: 'center', windowTitle: PRD_WINDOWS.web, browser: true,
+      tone: 'good', note: '如果没有自动返回，请点击按钮。' });
+    add(group, 'confirming' + ctx, '正在确认付款结果', '请勿重复支付，通常几秒内完成。', p => {
+      row(p, '订单号', PRD_ORDER); row(p, '状态', '等待支付渠道确认');
+      hint(p, '超过 2 分钟仍未确认时，会提示你联系支持。');
+    }, [['重新查询', 'confirming' + ctx], ['稍后再看', null]], { layout: 'center',
+      windowTitle: o.window || PRD_WINDOWS.sheet, icon: 'refresh', extraLinks: o.confirmLinks });
+    add(group, 'abandon' + ctx, '放弃本次支付？', '如果你已经付款，请不要放弃，也不要重复支付。', p => {
+      hint(p, '已付款的订单会自动到账。未付款的订单 30 分钟后失效，不会扣款。');
+    }, [['我已付款，查询结果', 'confirming' + ctx], ['放弃支付', o.backTarget]], { layout: 'center',
+      windowTitle: o.window || PRD_WINDOWS.sheet, tone: 'caution',
+      extraLinks: [['放弃后仍到账 →', 'lateCredit']] });
+  };
+
+  // 04 Insufficient balance: top up in place, then return to the same task.
+  const G4 = '04 / 余额不足：就地充值';
+  const topupSheet = (id, currency, auto) => add(G4, id, '还差 6 点', '高清放大需要 8 点，当前余额 2 点。尚未扣点。',
+    (p, refs, register) => {
+      prdPacks(p, currency);
+      prdSegmented(p, 'Payment', [['微信支付 · 人民币', currency === 'USD' ? 'insufficient' : null, currency === 'CNY'],
+        ['银行卡 · 美元', currency === 'CNY' ? 'insufficientUSD' : null, currency === 'USD']], register);
+      prdCheckbox(p, '到账后自动提交本次任务', auto, auto ? 'insufficientManual' : 'insufficient', register);
+      row(p, '到账后余额', '332 点');
+    }, [['前往支付 ' + (currency === 'USD' ? '$4.99' : '¥30'), 'awaitTask'], ['暂不充值', null]],
+  { layout: 'topup', windowTitle: PRD_WINDOWS.sheet,
+    note: currency === 'USD' ? '美元订单可用银行卡、Apple Pay、Google Pay 或微信支付。'
+      : '不足以支付本次费用的充值包会置灰。没有创建任务，也没有扣点。' });
+  topupSheet('insufficient', 'CNY', true);
+  topupSheet('insufficientUSD', 'USD', true);
+  topupSheet('insufficientManual', 'CNY', false);
+  payChain(G4, 'Task', { item: 'Glance 点数 · 330 点', detail: '长期有效，到账后余额 332 点', method: '微信支付',
+    amount: '¥30', backTarget: 'insufficient',
+    confirmLinks: [['到账，已勾选 →', 'creditedAutoSubmit'], ['到账，未勾选 →', 'creditedManual']] });
+  add(G4, 'creditedAutoSubmit', '330 点已到账，任务已提交', '已按你的选择自动提交高清放大。', p => {
+    row(p, '充值', '+330 点', COLORS.success); row(p, '高清放大', '−8 点'); row(p, '当前余额', '324 点');
+    hint(p, '充值和扣点在点数记录中分别显示。');
+  }, [['查看任务', 'taskQueued'], ['完成', null]], { layout: 'center', windowTitle: PRD_WINDOWS.sheet, tone: 'good',
+    note: '若到账前价格已变化或原窗口已关闭，不自动提交，只提示到账。' });
+  add(G4, 'creditedManual', '330 点已到账', '高清放大尚未提交，图片与参数保留。', p => {
+    row(p, '当前余额', '332 点'); row(p, '本次费用', '8 点', COLORS.accent); row(p, '提交后余额', '324 点');
+  }, [['确认提交 · 8 点', 'resumedSubmitted'], ['暂不提交', 'walletPending']], { layout: 'center',
+    windowTitle: PRD_WINDOWS.sheet, tone: 'good' });
+  add(G4, 'resumedSubmitted', '已提交高清放大', '已扣 8 点，当前余额 324 点。', p => {
+    card(p, '开始处理前可以撤销', '撤销后 8 点全额退回。', { accent: true });
+  }, [['查看任务', 'taskQueued']], { layout: 'center', windowTitle: PRD_WINDOWS.toast, tone: 'good' });
+  add(G4, 'walletPending', '点数钱包', '充值已到账，有 1 个任务等待你确认提交。', (p, refs, register) => {
+    card(p, '332 点', '长期有效，同一账户的 Mac 共享。', { large: true, accent: true });
+    const pending = card(p, '有 1 个任务等待提交', '高清放大，portrait.png。点击返回原窗口确认。');
+    register(pending, 'creditedManual');
+  }, [['充值点数', 'topup'], ['返回', null]], { layout: 'wallet', windowTitle: PRD_WINDOWS.account,
+    note: '原图片窗口关闭后，等待提交的任务一并清除。' });
+
+  // 05 Wallet and voluntary top-up.
+  const G5 = '05 / 钱包与主动充值';
+  add(G5, 'wallet', '点数钱包', '只为云端 Widget 付费，本地功能不扣点。', p => {
+    card(p, '92 点', '长期有效，同一账户的 Mac 共享。', { large: true, accent: true });
+    row(p, '今天 · 消耗 · 高清放大', '−8');
+    row(p, '今天 · 赠送 · 新用户', '+100', COLORS.success);
+  }, [['充值点数', 'topup'], ['全部记录', 'ledgerAll']], { layout: 'wallet', windowTitle: PRD_WINDOWS.account });
+  add(G5, 'ledgerAll', '点数记录', '赠送、充值、购买赠送、消耗、退回与调整分别标记。', p => {
+    card(p, '422 点', '当前余额', { large: true, accent: true });
+    row(p, '充值 · ¥30', '+330', COLORS.success);
+    row(p, '退回 · 高清放大系统失败', '+8', COLORS.success);
+    row(p, '消耗 · 高清放大', '−8');
+    row(p, '赠送 · 新用户', '+100', COLORS.success);
+  }, [['返回钱包', 'walletAfter']], { layout: 'ledger', windowTitle: PRD_WINDOWS.account, back: 'walletAfter',
+    note: '管理员调整显示为调整，并带备注。退款收回显示为收回。' });
+  const topup = (id, currency) => add(G5, id, '充值点数', '按需充值，没有订阅，点数长期有效。', (p, refs, register) => {
+    row(p, '当前余额', '92 点');
+    prdPacks(p, currency);
+    prdSegmented(p, 'Payment', [['微信支付 · 人民币', currency === 'USD' ? 'topup' : null, currency === 'CNY'],
+      ['银行卡 · 美元', currency === 'CNY' ? 'topupUSD' : null, currency === 'USD']], register);
+    row(p, '到账后余额', '422 点');
+  }, [['前往支付 ' + (currency === 'USD' ? '$4.99' : '¥30'), 'awaitWallet'], ['取消', 'wallet']],
+  { layout: 'topup', windowTitle: PRD_WINDOWS.account, back: 'wallet',
+    note: currency === 'USD' ? '美元价与点数可在后台单独设置。' : '默认币种按地区选择，可以手动切换。',
+    extraLinks: currency === 'CNY' ? [['已有待付订单 →', 'pendingOrder']] : [] });
+  topup('topup', 'CNY'); topup('topupUSD', 'USD');
+  payChain(G5, 'Wallet', { item: 'Glance 点数 · 330 点', detail: '长期有效，到账后余额 422 点', method: '微信支付',
+    amount: '¥30', backTarget: 'topup', window: PRD_WINDOWS.account,
+    awaitExtra: ['订单失效 →', 'orderExpired'],
+    confirmLinks: [['到账 →', 'walletCredited'], ['超过 2 分钟 →', 'confirmTimeout']] });
+  add(G5, 'walletCredited', '330 点已到账', '已同步到 lin@example.com。', p => {
+    row(p, '充值前余额', '92 点'); row(p, '当前余额', '422 点');
+    hint(p, '返回 Glance 即可使用云端 Widget。');
+  }, [['返回钱包', 'walletAfter']], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'good' });
+  add(G5, 'walletAfter', '点数钱包', '只为云端 Widget 付费，本地功能不扣点。', p => {
+    card(p, '422 点', '长期有效，同一账户的 Mac 共享。', { large: true, accent: true });
+    row(p, '今天 · 充值 · ¥30', '+330', COLORS.success);
+    row(p, '今天 · 消耗 · 高清放大', '−8');
+  }, [['充值点数', 'topup'], ['全部记录', 'ledgerAll']], { layout: 'wallet', windowTitle: PRD_WINDOWS.account });
+  add(G5, 'walletNegative', '点数钱包', '因退款收回点数，付费 Widget 已暂停。', p => {
+    card(p, '−40 点', '充值到 0 点以上后自动恢复。', { large: true, accent: true });
+    row(p, '今天 · 收回 · Pro 退款赠送', '−100');
+    hint(p, '免费 Widget 与本地功能不受影响。');
+  }, [['充值点数', 'topup'], ['全部记录', 'ledgerAll']], { layout: 'wallet', windowTitle: PRD_WINDOWS.account });
+
+  // 06 Pro purchase. Prices are Admin values; the sheet shows example values.
+  const G6 = '06 / 购买 Pro';
+  const offer = (id, currency, signedIn) => add(G6, id, 'Glance Pro', '一次买断本地工具箱。AI Widget 另按点数计费。',
+    (p, refs, register) => {
+      card(p, 'Glance Pro', currency === 'USD' ? '首发价，原价 $19.99，示例' : '首发价，原价 ¥149，截至 11 月 15 日',
+        { large: true, accent: true, planName: 'Glance Pro · 首发价', price: currency === 'USD' ? '$14.99' : '¥99' });
+      row(p, '包含', '转换、压缩、导出、编辑、OCR');
+      row(p, '更新与设备', '12 个月更新，2 台 Mac');
+      row(p, '购买赠送', '100 点');
+      if (signedIn) prdSegmented(p, 'Payment', [['微信支付 · 人民币', currency === 'USD' ? 'proOfferSignedIn' : null, currency === 'CNY'],
+        ['银行卡 · 美元', currency === 'CNY' ? 'proOfferUSD' : null, currency === 'USD']], register);
+    }, [['购买 Pro · ' + (currency === 'USD' ? '$14.99' : '¥99'), signedIn ? 'awaitPro' : 'loginPurchase'], ['暂不购买', null]],
+  { layout: 'offer', windowTitle: PRD_WINDOWS.sheet, note: '价格为示例，以后台配置为准。一次付费，不自动续费。',
+    extraLinks: signedIn && currency === 'CNY' ? [['首发价刚结束 →', 'proPriceChanged']] : [] });
+  offer('proOffer', 'CNY', false);
+  offer('proOfferSignedIn', 'CNY', true);
+  offer('proOfferUSD', 'USD', true);
+  add(G6, 'proPriceChanged', '价格已更新', '首发价已结束，Pro 当前价格为 ¥149。', p => {
+    row(p, '你看到的价格', '¥99'); row(p, '本次支付', '¥149', COLORS.accent);
+    hint(p, '尚未创建订单，也没有扣款。价格变化时必须由你重新确认。');
+  }, [['按新价格购买 · ¥149', 'awaitPro'], ['暂不购买', null]], { layout: 'center',
+    windowTitle: PRD_WINDOWS.sheet, tone: 'caution' });
+  payChain(G6, 'Pro', { item: 'Glance Pro', detail: '买断授权，2 台 Mac，赠送 100 点', method: '微信支付',
+    amount: '¥99', backTarget: 'proOfferSignedIn', awaitExtra: ['微信额度用完 →', 'wechatLimit'],
+    confirmLinks: [['到账 →', 'proActivated'], ['超过 2 分钟 →', 'confirmTimeout']] });
+  add(G6, 'proActivated', 'Pro 已激活', '全部本地工具已恢复，这台 Mac 已激活。', p => {
+    row(p, '购买赠送', '+100 点', COLORS.success); row(p, '当前余额', '192 点');
+    row(p, '功能更新至', '2027 年 10 月 16 日'); row(p, '已激活设备', '1 / 2 台');
+  }, [['完成', null], ['查看账户', 'account']], { layout: 'center', windowTitle: PRD_WINDOWS.sheet, tone: 'good',
+    note: '试用状态已作废，不再显示剩余天数。' });
+
+  // 07 Account, licence and devices.
+  const G7 = '07 / 账户、授权与设备';
+  add(G7, 'account', '账户与授权', 'lin@example.com', p => {
+    card(p, 'Glance Pro · 已激活', '买断授权，功能更新至 2027 年 10 月 16 日。', { accent: true });
+    row(p, '已激活设备', '1 / 2 台'); row(p, '点数余额', '192 点'); row(p, '离线可用', '30 天');
+  }, [['管理设备', 'devices'], ['点数钱包', 'wallet']], { layout: 'management', windowTitle: PRD_WINDOWS.account,
+    note: '付款 14 天内显示申请退款入口，之后隐藏。',
+    extraLinks: [['申请退款 →', 'refundRequest'], ['退出登录 →', 'signOut']] });
+  add(G7, 'accountFree', '账户与授权', 'lin@example.com', p => {
+    card(p, '免费版', '试用已于 10 月 30 日结束。', { accent: true });
+    row(p, '点数余额', '92 点');
+    hint(p, '查看、对比、截图与 AI Widget 可用。');
+  }, [['了解 Pro', 'proOfferSignedIn'], ['点数钱包', 'wallet']], { layout: 'management', windowTitle: PRD_WINDOWS.account,
+    extraLinks: [['充值退款 →', 'refundRequestCredits']] });
+  add(G7, 'signOut', '退出登录？', '退出后这台 Mac 回到免费版，设备名额仍然占用。', p => {
+    hint(p, '如需换机，请先在设备管理中释放这台 Mac。点数与授权保留在账户中。');
+  }, [['取消', 'account'], ['退出登录', 'accountSignedOut']], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'caution' });
+  add(G7, 'accountSignedOut', '已退出登录', '这台 Mac 现在是免费版，重新登录即可恢复 Pro。', p => {
+    hint(p, '试用不会因退出而重新开始。');
+  }, [['重新登录', 'login'], ['完成', null]], { layout: 'center', windowTitle: PRD_WINDOWS.account });
+  add(G7, 'devices', '你的 Mac', '同一账户最多同时激活 2 台 Mac。', p => {
+    card(p, 'MacBook Pro · 当前设备', '已激活，最近使用：今天', { accent: true });
+    card(p, '还有 1 个名额', '在另一台 Mac 登录同一账户即可激活。');
+  }, [['返回账户', 'account']], { layout: 'management', windowTitle: PRD_WINDOWS.account, back: 'account',
+    extraLinks: [['第三台 Mac 登录 →', 'devicesFull']] });
+  add(G7, 'devicesFull', '设备名额已用满', '在这台 iMac 上使用 Pro，需要先释放一台设备。', p => {
+    card(p, 'MacBook Pro', '已激活，最近使用：今天');
+    card(p, 'Mac mini', '已激活，最近使用：9 月 2 日');
+    hint(p, '释放不影响文件与点数。每 30 天最多释放 3 次。');
+  }, [['释放 Mac mini', 'deviceReleased'], ['暂不激活', null]], { layout: 'management', windowTitle: PRD_WINDOWS.account,
+    note: '暂不激活时，这台 iMac 按免费版使用。', extraLinks: [['释放次数用完 →', 'releaseLimit']] });
+  add(G7, 'releaseLimit', '本月释放次数已用完', '每 30 天最多释放 3 次设备，11 月 8 日恢复。', p => {
+    hint(p, '这个限制用来防止多人共用一份授权。换机遇到问题请联系支持。');
+  }, [['联系支持', null], ['返回账户', 'account']], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'caution' });
+  add(G7, 'deviceReleased', '这台 iMac 已激活', 'Mac mini 已释放，下次联网时回到免费版。', p => {
+    row(p, '已激活设备', '2 / 2 台');
+  }, [['完成', 'account']], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'good',
+    extraLinks: [['Mac mini 上 →', 'releasedMac']] });
+  add(G7, 'releasedMac', '这台 Mac 已被释放', '你的账户在另一台 Mac 上激活了 Pro。', p => {
+    hint(p, '文件和点数都在。重新激活需要先释放另一台设备。');
+  }, [['重新激活', 'devicesFull'], ['继续使用免费版', null]], { layout: 'center', windowTitle: PRD_WINDOWS.launch, tone: 'caution' });
+  add(G7, 'offlineExpired', '请联网验证 Pro', '这台 Mac 已超过 30 天没有联网验证授权。', p => {
+    hint(p, '联网后自动恢复，不需要重新登录。免费功能不受影响。');
+  }, [['立即验证', 'account'], ['稍后', null]], { layout: 'center', windowTitle: PRD_WINDOWS.launch, tone: 'caution' });
+
+  // 08 Refunds are approved in Admin and applied only after Pancake confirms.
+  const G8 = '08 / 退款';
+  add(G8, 'refundRequest', '申请退款', '审核通过后由 Pancake 原路退回。', p => {
+    row(p, '订单', 'Glance Pro · ¥99'); row(p, '付款时间', '10 月 16 日'); row(p, '可申请至', '10 月 30 日');
+    card(p, '退款后', 'Pro 授权撤销，所有设备回到免费版；赠送的 100 点收回。');
+  }, [['提交申请', 'refundSubmitted'], ['取消', 'account']], { layout: 'task', windowTitle: PRD_WINDOWS.account, back: 'account' });
+  add(G8, 'refundSubmitted', '退款申请已提交', '审核结果会发送到 lin@example.com。', p => {
+    hint(p, '退款完成前，授权与点数保持不变。');
+  }, [['完成', 'account']], { layout: 'center', windowTitle: PRD_WINDOWS.account, icon: 'tasks',
+    extraLinks: [['退款完成 →', 'refundedPro'], ['退款失败 →', 'refundFailed']] });
+  add(G8, 'refundedPro', 'Pro 已退款', '¥99 已原路退回，账户回到免费版。', p => {
+    row(p, '收回赠送点数', '−100 点'); row(p, '当前余额', '92 点');
+    hint(p, '退款后不会重新获得试用。赠送点数已用掉时，余额会变为负数。');
+  }, [['完成', 'accountFree']], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'caution',
+    extraLinks: [['余额为负 →', 'walletNegative']] });
+  add(G8, 'refundFailed', '退款暂未完成', '支付渠道退款失败，授权与点数保持不变。', p => {
+    hint(p, '后台会标记为待处理，处理结果通过邮件通知你。');
+  }, [['完成', 'account']], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'caution' });
+  add(G8, 'refundRequestCredits', '申请退款', '充值包 14 天内且完全未使用时可退。', p => {
+    row(p, '订单', '点数 330 点 · ¥30'); row(p, '付款时间', '10 月 16 日'); row(p, '当前余额', '422 点');
+    card(p, '退款后', '收回该订单的 330 点。当前余额不少于 330 点即视为未使用。');
+  }, [['提交申请', 'refundedCredits'], ['取消', 'accountFree']], { layout: 'task', windowTitle: PRD_WINDOWS.account,
+    back: 'accountFree', extraLinks: [['已部分使用 →', 'refundRejectedUsed']] });
+  add(G8, 'refundedCredits', '充值已退款', '¥30 已原路退回。', p => {
+    row(p, '收回点数', '−330 点'); row(p, '当前余额', '92 点');
+  }, [['完成', 'wallet']], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'good',
+    note: '收到 Pancake 退款成功通知后才收回点数。' });
+  add(G8, 'refundRejectedUsed', '这笔充值无法退款', '该订单的点数已部分使用。', p => {
+    hint(p, '系统失败的任务已经自动退点。如有其他问题，请联系支持并附订单号。');
+  }, [['返回钱包', 'wallet'], ['联系支持', null]], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'caution' });
+
+  // 09 Shared payment exceptions.
+  const G9 = '09 / 支付异常：所有订单通用';
+  add(G9, 'confirmTimeout', '付款确认较慢', '如果已经扣款，点数或授权会自动到账，请勿重复支付。', p => {
+    row(p, '订单号', PRD_ORDER);
+    hint(p, '联系支持时会自动附上订单号。');
+  }, [['重新查询', 'confirmingWallet'], ['联系支持', null]], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'caution' });
+  add(G9, 'pendingOrder', '你有一笔订单还没付款', '为避免重复扣款，请先完成或放弃这笔订单。', p => {
+    row(p, '订单', '点数 330 点 · ¥30'); row(p, '剩余有效期', '18 分钟');
+    hint(p, '同一账户同一商品只保留一笔待付款订单。重复点击支付会打开同一笔订单。');
+  }, [['继续支付', 'awaitWallet'], ['查询付款结果', 'confirmingWallet']], { layout: 'center',
+    windowTitle: PRD_WINDOWS.account, tone: 'caution' });
+  add(G9, 'orderExpired', '订单已失效', '30 分钟内没有完成支付，本次没有扣款。', p => {
+    row(p, '订单号', PRD_ORDER);
+  }, [['重新充值', 'topup'], ['返回钱包', 'wallet']], { layout: 'center', windowTitle: PRD_WINDOWS.account, tone: 'caution' });
+  add(G9, 'wechatLimit', '本月微信支付额度已用完', '微信限制每位买家每月向同一商户支付 ¥1,000。', p => {
+    hint(p, '可以改用美元订单，用银行卡、Apple Pay 或 Google Pay 支付。');
+  }, [['改用美元支付', 'proOfferUSD'], ['取消', null]], { layout: 'center', windowTitle: PRD_WINDOWS.sheet, tone: 'caution' });
+  add(G9, 'lateCredit', '330 点已到账', '你之前的付款已确认。', p => {
+    hint(p, '放弃支付后如果付款仍然成功，到账时用提示告知，不会重复扣款。');
+  }, [['查看钱包', 'walletAfter']], { layout: 'center', windowTitle: PRD_WINDOWS.toast, tone: 'good' });
+
+  // 10 Update period (phase 3).
+  const G10 = '10 / 功能更新期与续购（第三期）';
+  add(G10, 'updateLocked', '此版本需要续购更新', '你的更新期截至 2027 年 10 月 16 日，此版本在之后发布。', p => {
+    row(p, '已安装', 'Glance 2.0'); row(p, '可用的最后版本', 'Glance 1.9');
+    hint(p, '已购版本长期可用。查看、对比、截图与 AI Widget 不受影响。');
+  }, [['续购一年更新', 'renewOffer'], ['下载 1.9 版', null]], { layout: 'center', windowTitle: PRD_WINDOWS.sheet, tone: 'caution' });
+  add(G10, 'renewOffer', '续购功能更新', '从付款当天起 12 个月，不补收空档期。', p => {
+    card(p, 'Pro 功能更新', '一年，不自动续费', { large: true, accent: true, planName: 'Pro 功能更新 · 1 年', price: '¥59' });
+    row(p, '附赠点数', '无');
+  }, [['续购 · ¥59', 'awaitRenew'], ['暂不续购', null]], { layout: 'offer', windowTitle: PRD_WINDOWS.sheet,
+    note: '价格为示例，以后台配置为准。' });
+  payChain(G10, 'Renew', { item: 'Pro 功能更新 · 1 年', detail: '从付款当天起 12 个月', method: '微信支付',
+    amount: '¥59', backTarget: 'renewOffer', confirmLinks: [['到账 →', 'renewDone'], ['超过 2 分钟 →', 'confirmTimeout']] });
+  add(G10, 'renewDone', '更新期已延长', '功能更新至 2028 年 11 月 20 日。', p => {
+    hint(p, '买断授权与点数保持不变。重新打开 Glance 2.0 即可使用 Pro。');
+  }, [['完成', null]], { layout: 'center', windowTitle: PRD_WINDOWS.sheet, tone: 'good' });
+  return specs;
+}
+
+async function generatePricingPrdFlows() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === PRICING_PRD_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Pricing PRD v0.4 Flow already exists; selected it. Manual edits preserved.' });
+    return;
+  }
+  const specs = prdSpecs();
+  const ids = new Set();
+  for (const spec of specs) {
+    if (ids.has(spec.id)) throw new Error('Duplicate pricing state: ' + spec.id);
+    ids.add(spec.id);
+    if ((spec.extraLinks || []).length > 2) throw new Error('Too many state links: ' + spec.id);
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const width = BILLING.columns * BILLING.w + (BILLING.columns - 1) * BILLING.gap;
+  const board = frame(PRICING_PRD_FRAME, maxX + 196, 0, width, 800, null);
+  board.clipsContent = false; figma.currentPage.appendChild(board);
+  text('Board Title', board, 'Glance / 付费与点数 / PRD v0.4', 0, 0, 32, COLORS.text, 'semibold', width);
+  text('Board Summary', board, '免费：拿图、查看、对比、截图，AI Widget 按点数。Pro：本地工具箱一次买断。点数：¥1 = 10 点，长期有效。',
+    0, 56, 16, COLORS.secondary, 'regular', width);
+  text('Prototype Guide', board, '对应 docs/glance-pricing-prd.md v0.4。点击流程节点进入；窗口下方橙色入口切换分支。金额均为示例，以后台配置为准。',
+    0, 92, 13, COLORS.secondary, 'regular', width);
+  const routes = [
+    ['首次使用', [['首次启动试用', 'launchTrial'], ['用 Widget 时登录', 'login'], ['输入验证码', 'codeSent'], ['登录送 100 点', 'loginDone'], ['首次付费说明', 'firstPaidNotice']]],
+    ['Widget 扣点', [['提交可撤销', 'taskSubmitted'], ['排队中', 'taskQueued'], ['处理中', 'taskRunning'], ['完成进入对比', 'taskDone'], ['失败自动退点', 'taskFailedRefund']]],
+    ['余额不足', [['就地充值', 'insufficient'], ['浏览器付款', 'pancakeTask'], ['确认到账', 'confirmingTask'], ['自动提交', 'creditedAutoSubmit'], ['查看任务', 'taskQueued']]],
+    ['主动充值', [['点数钱包', 'wallet'], ['选择充值包', 'topup'], ['浏览器付款', 'pancakeWallet'], ['确认到账', 'confirmingWallet'], ['钱包已更新', 'walletAfter']]],
+    ['购买 Pro', [['试用结束', 'trialEnded'], ['Pro 介绍', 'proOffer'], ['登录后继续', 'loginPurchase'], ['浏览器付款', 'pancakePro'], ['Pro 已激活', 'proActivated']]],
+    ['授权与退款', [['账户与授权', 'account'], ['设备已满', 'devicesFull'], ['释放设备', 'deviceReleased'], ['申请退款', 'refundRequest'], ['退款完成', 'refundedPro']]]
+  ];
+  const links = [];
+  const stepWidth = (width - 208 - 4 * 32) / 5;
+  routes.forEach(([title, steps], i) => {
+    const y = 148 + i * 88;
+    text('Flow / ' + title, board, title, 0, y + 20, 16, COLORS.accent, 'semibold', 184);
+    steps.forEach(([label, target], index) => {
+      const x = 208 + index * (stepWidth + 32);
+      const step = billingStack(board, 'Flow Step / ' + label, x, y, stepWidth, 0, 16, COLORS.surface);
+      historyStroke(step, '#FFFFFF', .09);
+      billingText(step, 'Label', label, 14, COLORS.text, 'medium', stepWidth - 32).textAlignHorizontal = 'CENTER';
+      if (index < steps.length - 1) historyIcon(board, 'chevron', x + stepWidth + 9, y + 24, 14, COLORS.muted);
+      links.push([step, target]);
+    });
+  });
+  const rules = [
+    '规则 1：首次启动自动开始 14 天试用，无需登录。试用结束后免费版保留查看、对比、截图与 AI Widget。',
+    '规则 2：任务被服务端接受时扣点，与创建任务在同一事务。同一提交编号只扣一次。',
+    '规则 3：系统失败、超过 3 次重试、排队超过 30 分钟、排队中取消，全额退点；开始处理后主动取消不退。',
+    '规则 4：不超过后台确认阈值直接提交；超过阈值或价格变化时必须确认。',
+    '规则 5：到账与激活只以服务端验证的 Pancake 通知为准，浏览器跳转不代表到账。',
+    '规则 6：人民币订单只能微信支付；美元订单可用银行卡、Apple Pay、Google Pay、微信支付。',
+    '规则 7：Pro 14 天内可退；充值包 14 天内且未使用可退；退款完成后才收回权益，余额可变为负数。',
+    '规则 8：2 台 Mac，每 30 天最多释放 3 次；离线 30 天；退款或释放后，离线的 Mac 最晚 30 天内失效。',
+    '规则 9：新用户赠送每个账户一次、每台 Mac 一次；购买 Pro 后试用作废；退款后不再获得试用。',
+    '规则 10：同一商品只保留一笔待付款订单；下单时校验价格，价格变化必须重新确认。'
+  ];
+  const rulesY = 148 + routes.length * 88 + 8;
+  rules.forEach((rule, i) => text('Rule / ' + (i + 1), board, rule, 0, rulesY + i * 22, 13, COLORS.secondary, 'regular', width));
+  text('Review Note', board, '所有操作均为原型，不会发起真实交易。Pancake 收银台为第三方页面，仅示意内容与金额。',
+    0, rulesY + rules.length * 22 + 12, 12, COLORS.muted, 'regular', width);
+
+  const refs = new Map();
+  let groupY = rulesY + rules.length * 22 + 72;
+  const groups = [...new Set(specs.map(spec => spec.group))];
+  for (const group of groups) {
+    const members = specs.filter(spec => spec.group === group);
+    text('Group / ' + group, board, group, 0, groupY, 22, COLORS.text, 'semibold', width);
+    members.forEach((spec, index) => {
+      const x = (index % BILLING.columns) * (BILLING.w + BILLING.gap);
+      const y = groupY + 52 + Math.floor(index / BILLING.columns) * (BILLING.h + 64);
+      const ref = billingWindow(board, spec, x, y);
+      refs.set(spec.id, ref);
+      if (ref.family === 'auth') ref.body.y = 216;
+      spec.render(ref.body, refs, (source, target) => links.push([source, target]));
+      if (spec.back) links.push([ref.back, spec.back]);
+      if (spec.actions.length) billingFooterActions(ref, spec, links);
+      (spec.extraLinks || []).forEach(([label, target], i) => {
+        const link = text('Prototype State / ' + spec.id + ' / ' + label, board, label,
+          x + 352 + i * 144, y + 612, 10, COLORS.accent, 'medium', 140);
+        links.push([link, target]);
+      });
+      text('Screen Caption / ' + spec.id, board, spec.id + ' · ' + spec.title, x, y + 612, 11, COLORS.muted, 'regular', 340);
+    });
+    groupY += 52 + Math.ceil(members.length / BILLING.columns) * (BILLING.h + 64) + 36;
+  }
+  board.resize(width, groupY);
+  for (const [source, targetID] of links) {
+    const target = refs.get(targetID);
+    if (!target) throw new Error('Pricing prototype target is missing: ' + targetID);
+    const reactions = [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'NODE', destinationId: target.screen.id,
+      navigation: 'NAVIGATE', resetScrollPosition: true, transition: null }] }];
+    if (typeof source.setReactionsAsync === 'function') await source.setReactionsAsync(reactions);
+    else source.reactions = reactions;
+  }
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created Pricing PRD v0.4 Flow: ' + specs.length + ' states across ' + groups.length +
+    ' groups. Previous pricing boards preserved.' });
 }
 
 // Right-click Widget submenu: one short name and one independent price badge.
@@ -5663,6 +6387,62 @@ async function replaceStudyImages(bytes) {
   figma.notify('Image applied to ' + updated.length + ' frame(s)');
 }
 
+// The original viewer comparison uses two source photos, reused by Focus and
+// several thumbnail/motion frames. Swap by Figma image hash so every reuse gets
+// the matching landscape while each layer's crop, size and effects remain.
+async function replaceViewerBrandImages(beforeBytes, afterBytes) {
+  if (!beforeBytes || !beforeBytes.length || !afterBytes || !afterBytes.length) {
+    throw new Error('Choose both landscape images before replacing the portraits.');
+  }
+  const page = figma.currentPage;
+  const beforeSource = page.findOne(node => node.id === '38:3354') ||
+    page.findOne(node => node.name === 'input-09672AEE-FC4D-4116-B8F9-20E27300A34F 1');
+  const afterSource = page.findOne(node => node.id === '38:3356') ||
+    page.findOne(node => node.id === '49:3') ||
+    page.findOne(node => node.name === 'input-4146ACDB-17EC-42B8-98CE-E7BF4297D9D9 1');
+  const sourceHash = node => Array.isArray(node && node.fills)
+    ? (node.fills.find(paint => paint.type === 'IMAGE') || {}).imageHash : null;
+  const beforeOldHash = sourceHash(beforeSource);
+  const afterOldHash = sourceHash(afterSource);
+  if (!beforeOldHash || !afterOldHash || beforeOldHash === afterOldHash) {
+    throw new Error('The two original viewer photo layers could not be identified safely.');
+  }
+
+  const beforeHash = figma.createImage(new Uint8Array(beforeBytes)).hash;
+  const afterHash = figma.createImage(new Uint8Array(afterBytes)).hash;
+  const beforeName = 'input-09672AEE-FC4D-4116-B8F9-20E27300A34F';
+  const afterName = 'input-4146ACDB-17EC-42B8-98CE-E7BF4297D9D9';
+  const changed = [];
+  for (const node of page.findAll(candidate => Array.isArray(candidate.fills) &&
+      candidate.fills.some(paint => paint.type === 'IMAGE' &&
+        (paint.imageHash === beforeOldHash || paint.imageHash === afterOldHash ||
+         candidate.name.includes(beforeName) || candidate.name.includes(afterName))))) {
+    const isBeforeName = node.name.includes(beforeName);
+    const isAfterName = node.name.includes(afterName);
+    const fills = node.fills.map(paint => {
+      if (paint.type !== 'IMAGE') return paint;
+      if (paint.imageHash === beforeOldHash || isBeforeName) return { ...paint, imageHash: beforeHash };
+      if (paint.imageHash === afterOldHash || isAfterName) return { ...paint, imageHash: afterHash };
+      return paint;
+    });
+    node.fills = fills;
+    if (node.name === 'input-09672AEE-FC4D-4116-B8F9-20E27300A34F 1') {
+      node.name = 'Landscape / Natural Morning';
+    } else if (node.name === 'input-4146ACDB-17EC-42B8-98CE-E7BF4297D9D9 1') {
+      node.name = 'Landscape / Warm Sunrise';
+    }
+    changed.push(node);
+  }
+  if (!changed.length) throw new Error('No viewer photo layers were updated.');
+  const focus = page.findOne(node => node.id === '49:2');
+  const compare = page.findOne(node => node.id === '38:3289');
+  const shown = [focus, compare].filter(Boolean);
+  page.selection = shown.length ? shown : changed.slice(0, 2);
+  figma.viewport.scrollAndZoomIntoView(page.selection);
+  figma.ui.postMessage({ message: `Replaced ${changed.length} reused portrait layer(s) with the two Glance landscapes.` });
+  figma.notify('Viewer photos replaced with landscapes');
+}
+
 async function generateViewerChromeStudy(bytes) {
   await loadFonts();
   await createStyles();
@@ -6668,6 +7448,15 @@ figma.ui.onmessage = async message => {
       figma.notify('Image replace failed', { error: true });
     }
   }
+  if (message.type === 'replace-viewer-brand-images') {
+    try {
+      await replaceViewerBrandImages(message.beforeBytes, message.afterBytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Viewer photo replacement failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Viewer photo replacement failed', { error: true });
+    }
+  }
   if (message.type === 'generate-image-inspect-chrome-study') {
     try {
       await generateImageInspectChromeStudy();
@@ -6730,6 +7519,15 @@ figma.ui.onmessage = async message => {
       figma.notify('Home folder scroll study failed', { error: true });
     }
   }
+  if (message.type === 'generate-glance-scrollbar-system') {
+    try {
+      await generateGlanceScrollbarSystem();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Glance scrollbar system failed: ' + (error && error.message ? error.message : String(error)) });
+      figma.notify('Glance scrollbar system failed', { error: true });
+    }
+  }
   if (message.type === 'generate-tray') {
     try {
       await generateTrayPopover();
@@ -6780,6 +7578,14 @@ figma.ui.onmessage = async message => {
     } catch (error) {
       console.error(error);
       figma.ui.postMessage({ message: 'Remove Widget Version Info failed: ' + (error && error.message ? error.message : String(error)) });
+    }
+  }
+  if (message.type === 'generate-pricing-prd-flows') {
+    try {
+      await generatePricingPrdFlows();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Pricing PRD v0.4 Flow failed: ' + (error && error.message ? error.message : String(error)) });
     }
   }
   if (message.type === 'generate-pricing-flows') {

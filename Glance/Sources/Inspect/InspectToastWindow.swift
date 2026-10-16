@@ -226,6 +226,22 @@ final class ToastPanelContent: NSVisualEffectView {
 final class InspectToastWindow: NSPanel {
     private let content = ToastPanelContent()
     private var hideWorkItem: DispatchWorkItem?
+    private var toastAction: (() -> Void)?
+    private let actionButton = NSButton()
+    @objc private func invokeAction() { let action = toastAction; toastAction = nil; orderOut(nil); action?() }
+    func showAction(message: String, actionTitle: String, over parent: NSWindow, action: @escaping () -> Void) {
+        actionButton.isHidden = true
+        let bodySize = content.apply(kind: .info, title: message, detail: nil, maxWidth: max(160,parent.frame.width*0.5-64), maxHeight: max(48,parent.frame.height*0.5))
+        present(size: NSSize(width: bodySize.width+64,height: bodySize.height),over:parent,duration:6)
+        toastAction = action
+        actionButton.title = actionTitle; actionButton.target = self; actionButton.action = #selector(invokeAction)
+        actionButton.isBordered = false; actionButton.contentTintColor = PanelStyle.warmCue
+        actionButton.font = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
+        content.card.frame = NSRect(origin:.zero,size:bodySize)
+        content.card.autoresizingMask = [.height]
+        actionButton.frame = NSRect(x: bodySize.width, y: (bodySize.height-28)/2, width: 60, height: 28)
+        content.addSubview(actionButton); actionButton.isHidden = false
+    }
 
     init() {
         super.init(contentRect: NSRect(x: 0, y: 0, width: 200, height: 48),
@@ -252,6 +268,7 @@ final class InspectToastWindow: NSPanel {
     /// line. A trailing "✓" is dropped (the badge says it). Without `kind`,
     /// "✓" messages are success ("copied" ones info) and anything else is info.
     func show(message: String, kind: ToastKind? = nil, over parentWindow: NSWindow, duration: TimeInterval? = nil) {
+        actionButton.isHidden = true; toastAction = nil; content.card.autoresizingMask = [.width, .height]
         let parts = message.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
         let rawTitle = parts.first ?? ""
         let title = rawTitle.replacingOccurrences(of: "✓", with: "").trimmingCharacters(in: .whitespaces)

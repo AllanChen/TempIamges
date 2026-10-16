@@ -14,11 +14,12 @@ class StatusBarController: NSObject, NSMenuDelegate {
     weak var delegate: StatusBarControllerDelegate?
 
     private var statusItem: NSStatusItem!
-    private var menu: NSMenu!
-    private var enableMenuItem: NSMenuItem!
-    private var permissionMenuItem: NSMenuItem!
-    private var loginMenuItem: NSMenuItem!
-    private var tasksMenuItem: NSMenuItem!
+    // Items of the former native status menu. The tray popover replaced that
+    // menu, so these stay nil unless a native menu is built again; never force-unwrap.
+    private var enableMenuItem: NSMenuItem?
+    private var permissionMenuItem: NSMenuItem?
+    private var loginMenuItem: NSMenuItem?
+    private var tasksMenuItem: NSMenuItem?
     private var trayPanel: TrayPopoverPanel?
     /// Runs only while a Widget task is active; plays the "glancing around" loop.
     private var runningAnimation: Timer?
@@ -28,6 +29,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
     override init() {
         super.init()
         setupStatusBar()
+        NotificationCenter.default.addObserver(self, selector: #selector(accountDidChange), name: .authDidChange, object: nil)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(preferencesDidChange),
@@ -47,6 +49,8 @@ class StatusBarController: NSObject, NSMenuDelegate {
         runningAnimation?.invalidate()
         NotificationCenter.default.removeObserver(self)
     }
+
+    @objc private func accountDidChange() { trayPanel?.refreshState() }
 
     @objc private func preferencesDidChange() {
         enableMenuItem?.state = Preferences.shared.peekEnabled ? .on : .off
@@ -170,8 +174,9 @@ class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func toggleEnable() {
         Preferences.shared.peekEnabled.toggle()
-        enableMenuItem.state = Preferences.shared.peekEnabled ? .on : .off
+        enableMenuItem?.state = Preferences.shared.peekEnabled ? .on : .off
         updateMenuBarIcon()
+        trayPanel?.refreshState()
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
     }
 
@@ -245,7 +250,7 @@ extension StatusBarController: TrayPopoverDelegate {
     func trayOpenHistory() { delegate?.openHistory() }
     func trayOpenPreferences() { delegate?.openPreferences() }
     func trayOpenPermissions() { delegate?.checkAndRequestPermissions() }
-    func trayOpenAccount() { delegate?.openLogin(at: loginPanelAnchorPoint()) }
+    func trayOpenAccount() { BillingCoordinator.shared.showAccount(wallet: true) }
     func trayTogglePreview() { toggleEnable() }
     func trayShowAbout() { showAbout() }
     func trayQuit() { quitApp() }

@@ -14,6 +14,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
         let config = WKWebViewConfiguration()
         let contentController = WKUserContentController()
         config.userContentController = contentController
+        PanelStyle.styleWebScrollbars(in: config)
         webView = WKWebView(frame: .zero, configuration: config)
 
         super.init(
@@ -119,7 +120,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
         loadCurrentState()
 
         let size = NSSize(width: 400, height: 500)
-        let frame = NSRect(origin: CGPoint(x: point.x - size.width / 2, y: point.y - size.height), size: size)
+        let frame = ScreenManager.shared.centeredFrame(for: size, near: point)
         setFrame(frame, display: true)
         showAsKeyPanel()
     }
@@ -236,6 +237,12 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
     private func loadCurrentState() {
         if let session = AuthManager.shared.session {
             loadAccountPage(session: session)
+            AuthManager.shared.refreshAccount { [weak self] result in
+                guard let self, self.isVisible else { return }
+                if case .success = result, let updated = AuthManager.shared.session {
+                    self.loadAccountPage(session: updated)
+                } else if !AuthManager.shared.isSignedIn { self.loadAuthPage() }
+            }
         } else {
             loadAuthPage()
         }
@@ -524,6 +531,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
                 <div class="info">
                     <div class="row"><span class="label">\(htmlEscape("Provider".localized))</span><span class="value">\(htmlEscape(provider))</span></div>
                     <div class="row"><span class="label">\(htmlEscape("User ID".localized))</span><span class="value">\(htmlEscape(userID))</span></div>
+                    <div class="row"><span class="label">\(htmlEscape("Credits".localized))</span><span class="value">\(session.user.credits.map(String.init) ?? "—")</span></div>
                     \(statusRow)
                     \(expiresRow)
                 </div>

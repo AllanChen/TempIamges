@@ -73,6 +73,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private var durations: [Double]
     private var videoMetadata: [VideoTechnicalMetadata?]
     private let pathDetector = PathDetector()
+    private let trialBadge = BillingTrialBadge()
     private var currentTime = 0.0
     private var isPlaying = false
     private var displayedPlaybackState: Bool?
@@ -262,6 +263,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         canvas.onDrop = { [weak self] url, point in
             self?.handleDroppedResource(url: url, at: point)
         }
+        identityBar.addSubview(trialBadge)
         [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].forEach(identityBar.addSubview)
         canvas.addSubview(identityBar)
         focusButton.target = self; focusButton.action = #selector(focusTapped)
@@ -331,6 +333,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         guard b.width > 0, b.height > 0 else { return }
         canvas.layer?.cornerRadius = 16
         canvas.layer?.borderWidth = 1
+        trialBadge.frame=NSRect(x:max(92,b.width-166),y:8,width:min(146,max(0,b.width-102)),height:26)
+        trialBadge.refresh()
         identityBar.frame = NSRect(x: 0, y: b.height - 44, width: b.width, height: 44)
         for (offset, button) in [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].enumerated() {
             // Figma's 12pt traffic lights sit at top 18 inside its 16pt group.
@@ -699,6 +703,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             compareIndices = widgetPair
         }
         if compareIndices == nil { compareIndices = (focusedIndex, focusedIndex == 0 ? 1 : 0) }
+        BillingManager.shared.trackTrialActivity("compare")
         mode = .compare; pausePlayback(); render()
     }
 
@@ -958,6 +963,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                                        action: { [weak self] in self?.pinTapped() }))
         let widgets = WidgetRegistry.shared.compatible(with: "video")
         let marketEntry = ActionMenuEntry(title: "Widget Market…".localized,
+                                          showsDisclosure: true,
                                           action: { [weak self] in self?.widgetMarketTapped() })
         var widgetEntries: [ActionMenuEntry] = widgets.compactMap { widget in
             let commands = widget.localizedCommands.filter { $0.inputTypes.contains("video") }
@@ -969,11 +975,12 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                         $0.widgetID == widget.id && $0.commandID == command.id
                     }
                 } ?? false
-                return ActionMenuEntry(title: command.name, enabled: !duplicate,
+                return ActionMenuEntry(title: commands.count == 1 ? widget.displayName : command.name,
+                                       creditCost: widget.taskCreditCost, enabled: !duplicate,
                                        action: { [weak self] in self?.runWidget(widget: widget, command: command) })
             }
             if commands.count == 1 { return entry(commands[0]) }
-            return ActionMenuEntry(title: widget.displayName, submenu: commands.map(entry))
+            return ActionMenuEntry(title: widget.displayName, creditCost: widget.taskCreditCost, submenu: commands.map(entry))
         }
         entries.append(.separator())
         if widgetEntries.isEmpty {

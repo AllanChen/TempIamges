@@ -7,8 +7,28 @@ final class ImageRevealView: NSView {
     private let failureView = LoadFailedAnimationView(frame: .zero)
     private let maskLayer = CALayer()
     private let divider = NSView()
+    private weak var textSelectionViewport: InspectImageViewport?
     private var fraction: CGFloat = 0.5
     var revealFraction: CGFloat { fraction }
+    var hasSelectedText: Bool { textSelectionViewport?.hasSelectedText == true }
+
+    @discardableResult
+    func copySelectedText() -> Bool { textSelectionViewport?.copySelectedText() == true }
+
+    func setRecognizedText(a: InspectOCRResult?, b: InspectOCRResult?) {
+        viewport.setRecognizedText(a)
+        overlayViewport.setRecognizedText(b)
+    }
+
+    func setTextSelectionEnabled(_ enabled: Bool) {
+        viewport.textSelectionEnabled = enabled
+        overlayViewport.textSelectionEnabled = enabled
+    }
+
+    func containsRecognizedText(at point: NSPoint) -> Bool {
+        let target = point.x < bounds.width * fraction ? overlayViewport : viewport
+        return target.containsRecognizedText(at: target.convert(point, from: self))
+    }
     /// The two panes behind the slider: `base` (image A, shown on the right of
     /// the divider) and `overlay` (image B, shown on the left). They share one
     /// viewport state.
@@ -55,7 +75,9 @@ final class ImageRevealView: NSView {
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        bounds.contains(point) ? self : nil
+        // AppKit passes hit-test points in the parent coordinate system. Let
+        // NSView check the frame, then keep slider gestures on this parent.
+        super.hitTest(point) == nil ? nil : self
     }
 
     /// A mousedown on the slider drags the reveal divider, never the window.
@@ -85,6 +107,7 @@ final class ImageRevealView: NSView {
     func setImages(a: NSImage?, b: NSImage?, failed: Bool = false) {
         viewport.image = a
         overlayViewport.image = b
+        if textSelectionViewport?.hasSelectedText != true { textSelectionViewport = nil }
         let isWaitingForPair = a == nil || b == nil
         viewport.isHidden = isWaitingForPair
         overlayViewport.isHidden = isWaitingForPair
@@ -111,17 +134,36 @@ final class ImageRevealView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        if let textSelectionViewport {
+            let point = textSelectionViewport.convert(event.locationInWindow, from: nil)
+            textSelectionViewport.extendTextSelection(to: point)
+            return
+        }
         fraction = max(0, min(1, convert(event.locationInWindow, from: nil).x / max(bounds.width, 1)))
         updateMask()
     }
 
+    override func mouseUp(with event: NSEvent) {
+        textSelectionViewport?.endTextSelection()
+    }
+
     override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let textViewport = point.x < bounds.width * fraction ? overlayViewport : viewport
+        let textPoint = textViewport.convert(event.locationInWindow, from: nil)
+        if textViewport.beginTextSelection(at: textPoint, clickCount: event.clickCount) {
+            if textSelectionViewport !== textViewport { textSelectionViewport?.clearTextSelection() }
+            textSelectionViewport = textViewport
+            return
+        }
+        textSelectionViewport?.clearTextSelection()
+        textSelectionViewport = nil
         if event.clickCount == 2 {
             viewport.mouseDown(with: event)
             overlayViewport.apply(state: viewport.viewportState, notify: false)
             return
         }
-        fraction = max(0, min(1, convert(event.locationInWindow, from: nil).x / max(bounds.width, 1)))
+        fraction = max(0, min(1, point.x / max(bounds.width, 1)))
         updateMask()
     }
 

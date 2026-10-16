@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "creditCost": 1,
   "id": "1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f",
   "version": "0.1.3",
   "name": "图片去水印",

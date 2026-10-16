@@ -32,6 +32,7 @@ final class OCRResultWindow: NSPanel {
 
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: scroll)
         scroll.autohidesScrollers = true
         scroll.scrollerStyle = .overlay
         textView.isEditable = false

@@ -169,8 +169,8 @@ final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
                                    color: granted ? PanelStyle.success : PanelStyle.danger)
 
         let signedIn = AuthManager.shared.isSignedIn
-        accountRow.setTitle(signedIn ? "Account".localized : "Sign in".localized)
-        accountRow.setTrailing(signedIn ? "Signed in".localized : nil, color: PanelStyle.textTertiary)
+        accountRow.setTitle(BillingManager.shared.trialBadge ?? (BillingManager.shared.hasPro ? "Glance Pro" : signedIn ? "Account".localized : "Sign in".localized))
+        accountRow.setTrailing(AuthManager.shared.session?.user.credits.map { String(format: "%d credits".localized, $0) }, color: PanelStyle.textSecondary)
     }
 
     /// Show the panel anchored under the status-bar button; close on outside click.

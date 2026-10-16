@@ -76,6 +76,19 @@ class CLITest(unittest.TestCase):
             self.assertEqual(len(eligible(db, {})), 1)
             self.assertEqual(eligible(db, {manifest["id"]: 1}), [])
 
+    def test_widget_credit_cost_is_a_nonnegative_integer(self):
+        _, manifest = self.create_widget()
+        self.assertEqual(manifest["creditCost"], 1)
+        for value in (0, 1, 7, 1_000_000):
+            manifest["creditCost"] = value
+            validate(manifest)
+        for value in (-1, 1.5, True, "5", None, 1_000_001):
+            manifest["creditCost"] = value
+            with self.assertRaisesRegex(ValueError, "creditCost"):
+                validate(manifest)
+        del manifest["creditCost"]
+        validate(manifest)  # Legacy manifests keep the one-credit default.
+
     def test_result_url_preference_requires_media_output(self):
         _, manifest = self.create_widget()
         command = manifest["commands"][0]

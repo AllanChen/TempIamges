@@ -155,6 +155,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         table.doubleAction = #selector(openSelected)
         scroll.documentView = table
         scroll.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: scroll)
         scroll.autohidesScrollers = true
         scroll.scrollerStyle = .overlay
         scroll.drawsBackground = false
@@ -540,19 +541,19 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         // Properties follow the state: live tasks poll, finished ones report a
         // duration and a file, stopped ones say where and why.
         let rows: [(String, String, NSColor)]
-        let worker = record.remoteTaskID == nil ? "—" : "Remote"
+        // Billing is part of every task state, including failure and cancellation.
         if record.phase.isActive {
             rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.source?.lastPathComponent ?? "Media", PanelStyle.textPrimary),
-                    ("Worker", worker, PanelStyle.textPrimary), ("Progress", "\(record.progress)%", PanelStyle.textPrimary),
+                    ("Credits", record.billingStatusText ?? "—", (record.refundedCredits ?? 0) > 0 ? PanelStyle.success : PanelStyle.textPrimary), ("Progress", "\(record.progress)%", PanelStyle.textPrimary),
                     ("Polling", "2 seconds".localized, PanelStyle.textPrimary)]
         } else if stopped {
             rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.source?.lastPathComponent ?? "Media", PanelStyle.textPrimary),
-                    ("Worker", worker, PanelStyle.textPrimary),
+                    ("Credits", record.billingStatusText ?? "—", (record.refundedCredits ?? 0) > 0 ? PanelStyle.success : PanelStyle.textPrimary),
                     ("Progress", String(format: "Stopped at %d%%".localized, record.progress), PanelStyle.textPrimary),
                     ("Error", record.phase == .cancelled ? "Cancelled".localized : reasonText, record.phase == .cancelled ? PanelStyle.textPrimary : PanelStyle.failure)]
         } else {
             rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.source?.lastPathComponent ?? "Media", PanelStyle.textPrimary),
-                    ("Worker", worker, PanelStyle.textPrimary),
+                    ("Credits", record.billingStatusText ?? "—", (record.refundedCredits ?? 0) > 0 ? PanelStyle.success : PanelStyle.textPrimary),
                     ("Duration", Self.durationText(record.updatedAt.timeIntervalSince(record.createdAt)), PanelStyle.textPrimary),
                     ("Result", record.output?.lastPathComponent ?? "—", PanelStyle.textPrimary)]
         }
@@ -772,7 +773,7 @@ private final class TaskCenterCellView: NSTableCellView {
             loadThumbnail(candidates, token: token)
         }
         titleLabel.stringValue = record.commandName
-        detailLabel.stringValue = "\(relativeDate(record.createdAt))  •  \(record.source?.lastPathComponent ?? "Media")"
+        detailLabel.stringValue = "\(relativeDate(record.createdAt))  •  \(record.billingStatusText ?? record.source?.lastPathComponent ?? "Media")"
         let color: NSColor = record.phase.isActive ? PanelStyle.accent : (record.phase.isFailure ? PanelStyle.failure : (record.phase == .cancelled ? PanelStyle.textSecondary : PanelStyle.success))
         runningScrim.isHidden = !record.phase.isActive
         runningPeeker.isHidden = !record.phase.isActive
@@ -922,6 +923,7 @@ private final class TaskPreviewView: NSView {
         captionLabel.isHidden = true
         textScroll.drawsBackground = false
         textScroll.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: textScroll)
         textScroll.autohidesScrollers = true
         textScroll.scrollerStyle = .overlay
         textScroll.borderType = .noBorder
@@ -1421,6 +1423,7 @@ final class TaskPillBar: NSView {
     var onSelect: ((Int) -> Void)?
     var selectedSegment = 0 { didSet { needsDisplay = true } }
     var counts: [Int] = [0, 0, 0, 0] { didSet { needsDisplay = true } }
+    var showsCounts = true { didSet { needsDisplay = true } }
     var uiScale: CGFloat = 1 { didSet { needsDisplay = true } }
     private let titles: [String]
     override var isFlipped: Bool { true }
@@ -1437,8 +1440,8 @@ final class TaskPillBar: NSView {
         var x: CGFloat = 0
         return titles.indices.map { index in
             let active = index == selectedSegment
-            let w = (12 + HistoryStyle.width(titles[index], size: 12, weight: active ? .semibold : .medium) + 6
-                     + HistoryStyle.width(String(counts[index]), size: 12) + 12) * s
+            let countWidth = showsCounts ? 6 + HistoryStyle.width(String(counts[index]), size: 12) : 0
+            let w = (24 + HistoryStyle.width(titles[index], size: 12, weight: active ? .semibold : .medium) + countWidth) * s
             defer { x += w + 8 * s }
             return CGRect(x: x, y: 0, width: w, height: 30 * s)
         }
@@ -1456,8 +1459,10 @@ final class TaskPillBar: NSView {
             let labelW = HistoryStyle.width(titles[index], size: 12 * s, weight: weight)
             HistoryStyle.draw(titles[index], in: CGRect(x: rect.minX + 12 * s, y: 7 * s, width: labelW + 2, height: 16 * s), size: 12 * s,
                               weight: weight, color: active ? HistoryStyle.accent : HistoryStyle.secondary)
-            HistoryStyle.draw(String(counts[index]), in: CGRect(x: rect.minX + 12 * s + labelW + 6 * s, y: 7 * s, width: 50, height: 16 * s), size: 12 * s,
-                              color: active ? HistoryStyle.accent : HistoryStyle.muted)
+            if showsCounts {
+                HistoryStyle.draw(String(counts[index]), in: CGRect(x: rect.minX + 12 * s + labelW + 6 * s, y: 7 * s, width: 50, height: 16 * s), size: 12 * s,
+                                  color: active ? HistoryStyle.accent : HistoryStyle.muted)
+            }
         }
     }
 

@@ -12,13 +12,21 @@ set -e
 #   every build, so macOS treats each build as a brand-new app and wipes the
 #   grant. A persistent certificate keeps the identity constant.
 
-CERT_NAME="Glance Self-Signed"
+CERT_NAME="${GLANCE_SIGN_IDENTITY:-Glance Self-Signed}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> Checking for an existing '$CERT_NAME' identity..."
 if security find-identity -v -p codesigning | grep -q "$CERT_NAME"; then
     echo "    Already present. Nothing to do."
     security find-identity -v -p codesigning | grep "$CERT_NAME"
     exit 0
+fi
+
+# An existing but untrusted certificate needs repair, not another identity
+# with the same name (which would also change the app's identity).
+if security find-certificate -c "$CERT_NAME" >/dev/null 2>&1; then
+    echo "    Certificate already exists; repairing trust and signing access."
+    exec bash "$SCRIPT_DIR/trust-signing-cert.sh"
 fi
 
 WORKDIR="$(mktemp -d)"
@@ -67,7 +75,7 @@ openssl pkcs12 -export -legacy \
     -passout "pass:$P12_PASS" >/dev/null 2>&1
 
 echo "==> Importing into the login keychain (key + certificate)..."
-# -T /usr/bin/codesign lets codesign use the key without an interactive prompt.
+# Trusted applications plus the partition list below authorize codesign.
 security import "$P12" \
     -k "$HOME/Library/Keychains/login.keychain-db" \
     -P "$P12_PASS" \
@@ -79,15 +87,10 @@ echo "==> Adding the certificate to the trust store (may prompt for your passwor
 sudo security add-trusted-cert -d -r trustRoot \
     -p codeSign \
     -k /Library/Keychains/System.keychain \
-    "$CRT" >/dev/null 2>&1 || \
-    echo "    (Trust step skipped/failed — local signing still works for TCC persistence.)"
+    "$CRT"
 
 # Allow codesign to access the private key without a keychain prompt on each use.
-security set-key-partition-list \
-    -S apple-tool:,apple: \
-    -k "" \
-    "$HOME/Library/Keychains/login.keychain-db" \
-    >/dev/null 2>&1 || true
+bash "$SCRIPT_DIR/configure-signing-key.sh"
 
 echo ""
 echo "Done. Available signing identity:"

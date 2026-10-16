@@ -36,9 +36,9 @@ if ! security find-identity -v -p codesigning | grep -Fq "\"$SIGN_IDENTITY\""; t
     echo "Signing identity '$SIGN_IDENTITY' is missing."
     echo "Running one-time Glance signing setup..."
     if ! "$SIGNING_SETUP_SCRIPT"; then
-        echo "Warning: signing setup failed; continuing with a local Debug ad-hoc build."
-        echo "Stable Accessibility/Input Monitoring permissions require fixing the Keychain later."
-        export GLANCE_ALLOW_ADHOC=1
+        echo "Error: signing setup failed. Fix the login keychain before rebuilding."
+        echo "Run bash scripts/trust-signing-cert.sh in a local terminal."
+        exit 1
     fi
 fi
 

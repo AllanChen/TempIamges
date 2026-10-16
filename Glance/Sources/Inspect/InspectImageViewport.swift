@@ -1,5 +1,32 @@
 import AppKit
 
+/// Vision coordinates use a bottom-left origin and are independent of the
+/// viewport's current zoom, pan, quarter-turn, or mirror transform.
+struct InspectOCRGlyph {
+    let character: String
+    let boundingBox: CGRect
+    let line: Int
+}
+
+struct InspectOCRResult {
+    let text: String
+    let lineBounds: [CGRect]
+    let glyphs: [InspectOCRGlyph]
+}
+
+private final class InspectTextSelectionView: NSView {
+    var rects: [CGRect] = [] { didSet { needsDisplay = true } }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        let fill = NSColor.selectedTextBackgroundColor.withAlphaComponent(0.48)
+        fill.setFill()
+        for rect in rects where rect.intersects(dirtyRect) {
+            NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
+        }
+    }
+}
+
 struct InspectViewportState {
     var zoomRelativeToFit: CGFloat
     var normalizedCenter: CGPoint
@@ -12,7 +39,10 @@ final class InspectImageViewport: NSView {
         didSet {
             // Only reset rotation when a DIFFERENT image is assigned — session
             // re-renders re-assign the same instance after async metadata loads.
-            if image !== oldValue { rotationQuarters = 0 }
+            guard image !== oldValue else { return }
+            rotationQuarters = 0
+            recognizedText = nil
+            textSelection = nil
             imageLayer.contents = image
             updateLoadStatus()
             fitToView()
@@ -65,6 +95,17 @@ final class InspectImageViewport: NSView {
     }
 
     private let imageLayer = CALayer()
+    private let textSelectionView = InspectTextSelectionView()
+    private var recognizedText: InspectOCRResult?
+    private var textSelection: ClosedRange<Int>?
+    private var textAnchor: Int?
+    private var draggingText = false
+    var textSelectionEnabled = true {
+        didSet {
+            if !textSelectionEnabled { clearTextSelection() }
+            window?.invalidateCursorRects(for: self)
+        }
+    }
     private let activeIndicator = CALayer()
     private let loadingView = FocusSweepLoadingView(frame: .zero)
     private let failureView = LoadFailedAnimationView(frame: .zero)
@@ -110,6 +151,7 @@ final class InspectImageViewport: NSView {
         activeIndicator.shadowOpacity = 0
         activeIndicator.opacity = 0
         layer?.addSublayer(activeIndicator)
+        addSubview(textSelectionView)
         addSubview(loadingView)
         addSubview(failureView)
         failureView.isHidden = true
@@ -130,6 +172,7 @@ final class InspectImageViewport: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         dropTarget?.acceptsDragging(sender) == true ? .copy : []
     }
@@ -141,7 +184,10 @@ final class InspectImageViewport: NSView {
     }
     override func hitTest(_ point: NSPoint) -> NSView? {
         if !widgetOverlay.isHidden { return widgetOverlay.hitTest(point) ?? widgetOverlay }
-        return isInteractionEnabled ? super.hitTest(point) : nil
+        guard isInteractionEnabled else { return nil }
+        // The image and selection overlay are visual layers. Keep the viewport
+        // itself as the mouse target so a child view cannot absorb text drags.
+        return super.hitTest(point) == nil ? nil : self
     }
 
     override func layout() {
@@ -163,6 +209,7 @@ final class InspectImageViewport: NSView {
                                    width: failureSize.width,
                                    height: failureSize.height)
         widgetOverlay.frame = bounds
+        textSelectionView.frame = bounds
         let widgetLoaderSize = FocusSweepLoadingView.preferredSize
         widgetLoadingView.frame = NSRect(x: bounds.midX - widgetLoaderSize.width / 2,
                                          y: bounds.midY - widgetLoaderSize.height / 2 + 14,
@@ -275,6 +322,76 @@ final class InspectImageViewport: NSView {
         notify()
     }
 
+    func setRecognizedText(_ result: InspectOCRResult?) {
+        guard recognizedText?.text != result?.text || recognizedText?.glyphs.count != result?.glyphs.count else { return }
+        recognizedText = result
+        clearTextSelection()
+        window?.invalidateCursorRects(for: self)
+    }
+
+    var hasSelectedText: Bool { textSelection != nil }
+
+    @discardableResult
+    func copySelectedText() -> Bool {
+        guard let result = recognizedText, let selection = textSelection,
+              result.glyphs.indices.contains(selection.lowerBound),
+              result.glyphs.indices.contains(selection.upperBound) else { return false }
+        var copied = ""
+        var previousLine = result.glyphs[selection.lowerBound].line
+        for glyph in result.glyphs[selection] {
+            if glyph.line != previousLine {
+                copied += "\n"
+                previousLine = glyph.line
+            }
+            copied += glyph.character
+        }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(copied, forType: .string)
+        return true
+    }
+
+    func clearTextSelection() {
+        textSelection = nil
+        textAnchor = nil
+        draggingText = false
+        textSelectionView.rects = []
+    }
+
+    /// The slider parent owns mouse dispatch, so it forwards text gestures to
+    /// whichever image is visible at the pointer before moving its divider.
+    func beginTextSelection(at point: CGPoint, clickCount: Int) -> Bool {
+        guard textSelectionEnabled, let result = recognizedText,
+              let index = glyphIndex(at: point, in: result) else { return false }
+        textAnchor = index
+        draggingText = true
+        if clickCount > 1 {
+            let line = result.glyphs[index].line
+            let indices = result.glyphs.indices.filter { result.glyphs[$0].line == line }
+            if let first = indices.first, let last = indices.last {
+                textSelection = first...last
+            }
+        } else {
+            textSelection = index...index
+        }
+        updateTextSelectionGeometry()
+        window?.makeFirstResponder(self)
+        return true
+    }
+
+    func extendTextSelection(to point: CGPoint) {
+        guard draggingText, let result = recognizedText, let anchor = textAnchor,
+              let index = nearestGlyphIndex(to: point, in: result) else { return }
+        textSelection = min(anchor, index)...max(anchor, index)
+        updateTextSelectionGeometry()
+    }
+
+    func endTextSelection() { draggingText = false }
+
+    func containsRecognizedText(at point: CGPoint) -> Bool {
+        guard textSelectionEnabled, let result = recognizedText else { return false }
+        return glyphIndex(at: point, in: result) != nil
+    }
+
     override func rightMouseDown(with event: NSEvent) {
         if let onActionMenu {
             onActionMenu(event)
@@ -311,6 +428,9 @@ final class InspectImageViewport: NSView {
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
+        let point = convert(event.locationInWindow, from: nil)
+        if beginTextSelection(at: point, clickCount: event.clickCount) { return }
+        clearTextSelection()
         if event.clickCount == 2 {
             zoom > 1.01 ? fitToView() : setActualSize()
             return
@@ -321,6 +441,10 @@ final class InspectImageViewport: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        if draggingText {
+            extendTextSelection(to: convert(event.locationInWindow, from: nil))
+            return
+        }
         guard dragging else { return }
         let location = event.locationInWindow
         let delta = CGPoint(x: location.x - lastMouseLocation.x,
@@ -336,11 +460,26 @@ final class InspectImageViewport: NSView {
         notify()
     }
 
-    override func mouseUp(with event: NSEvent) { dragging = false }
+    override func mouseUp(with event: NSEvent) {
+        dragging = false
+        endTextSelection()
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        guard textSelectionEnabled, let result = recognizedText else { return }
+        for line in result.lineBounds {
+            let rect = viewRect(for: line).intersection(bounds)
+            if !rect.isNull && rect.width > 0 && rect.height > 0 {
+                addCursorRect(rect, cursor: .iBeam)
+            }
+        }
+    }
 
     private func updateLayerGeometry() {
         guard let image, bounds.width > 0, bounds.height > 0 else {
             imageLayer.frame = bounds
+            textSelectionView.rects = []
             return
         }
         let rendered = renderedSize(for: image)
@@ -358,6 +497,71 @@ final class InspectImageViewport: NSView {
         transform = CATransform3DScale(transform, flipX, flipY, 1)
         imageLayer.transform = transform
         CATransaction.commit()
+        updateTextSelectionGeometry()
+        if recognizedText != nil { window?.invalidateCursorRects(for: self) }
+    }
+
+    private func viewPoint(for normalized: CGPoint) -> CGPoint {
+        guard let image else { return .zero }
+        let size = contentSize(for: image)
+        let x = (normalized.x - 0.5) * size.width * flipX
+        let y = (normalized.y - 0.5) * size.height * flipY
+        let angle = -CGFloat(rotationQuarters) * .pi / 2
+        let c = cos(angle), s = sin(angle)
+        return CGPoint(x: mediaRect.midX + panOffset.x + c * x - s * y,
+                       y: mediaRect.midY + panOffset.y + s * x + c * y)
+    }
+
+    private func viewRect(for normalized: CGRect) -> CGRect {
+        let corners = [CGPoint(x: normalized.minX, y: normalized.minY),
+                       CGPoint(x: normalized.maxX, y: normalized.minY),
+                       CGPoint(x: normalized.minX, y: normalized.maxY),
+                       CGPoint(x: normalized.maxX, y: normalized.maxY)].map(viewPoint(for:))
+        guard let first = corners.first else { return .zero }
+        let xs = corners.map(\.x), ys = corners.map(\.y)
+        return CGRect(x: xs.min() ?? first.x, y: ys.min() ?? first.y,
+                      width: max(2, (xs.max() ?? first.x) - (xs.min() ?? first.x)),
+                      height: max(2, (ys.max() ?? first.y) - (ys.min() ?? first.y)))
+    }
+
+    private func glyphIndex(at point: CGPoint, in result: InspectOCRResult) -> Int? {
+        guard result.lineBounds.contains(where: { viewRect(for: $0).insetBy(dx: -4, dy: -4).contains(point) }) else {
+            return nil
+        }
+        return nearestGlyphIndex(to: point, in: result)
+    }
+
+    private func nearestGlyphIndex(to point: CGPoint, in result: InspectOCRResult) -> Int? {
+        guard let image else { return nil }
+        let size = contentSize(for: image)
+        guard size.width > 0, size.height > 0 else { return nil }
+        let angle = -CGFloat(rotationQuarters) * .pi / 2
+        let c = cos(angle), s = sin(angle)
+        let dx = point.x - mediaRect.midX - panOffset.x
+        let dy = point.y - mediaRect.midY - panOffset.y
+        let normalized = CGPoint(x: 0.5 + (c * dx + s * dy) / (size.width * flipX),
+                                 y: 0.5 + (-s * dx + c * dy) / (size.height * flipY))
+        return result.glyphs.indices.min { left, right in
+            let a = result.glyphs[left].boundingBox
+            let b = result.glyphs[right].boundingBox
+            let ax = (a.midX - normalized.x) * size.width
+            let ay = (a.midY - normalized.y) * size.height
+            let bx = (b.midX - normalized.x) * size.width
+            let by = (b.midY - normalized.y) * size.height
+            let ad = ax * ax + ay * ay
+            let bd = bx * bx + by * by
+            return ad < bd
+        }
+    }
+
+    private func updateTextSelectionGeometry() {
+        guard let result = recognizedText, let selection = textSelection else {
+            textSelectionView.rects = []
+            return
+        }
+        textSelectionView.rects = result.glyphs[selection].map {
+            viewRect(for: $0.boundingBox).intersection(bounds)
+        }.filter { !$0.isNull && $0.width > 0 && $0.height > 0 }
     }
 
     /// Fit scale against the (possibly width/height-swapped) rotated size.

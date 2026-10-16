@@ -1,0 +1,197 @@
+<frame id="267:1112" name="Widget Context Menu / Compact Credits" x="27166" y="0" width="1552" height="584">
+  <frame id="267:1113" name="01 / Right Click / Widget Submenu" x="0" y="0" width="600" height="504">
+    <text id="267:1114" name="Study Title" x="24" y="24" width="552" height="21" />
+    <text id="267:1115" name="Study Caption" x="24" y="54" width="552" height="13" />
+    <frame id="267:1116" name="Context Menu" x="24" y="104" width="216" height="212">
+      <frame id="267:1117" name="Menu Item / Widget" x="6" y="6" width="204" height="26">
+        <text id="267:1118" name="Name" x="10" y="5" width="160" height="16" />
+        <frame id="267:1119" name="Icon / chevron" x="182" y="7" width="12" height="12" />
+      </frame>
+      <rounded-rectangle id="267:1121" name="Divider" x="12" y="36" width="192" height="1" />
+      <frame id="267:1122" name="Menu Item / 复制图片" x="6" y="41" width="204" height="26">
+        <text id="267:1123" name="Name" x="10" y="5" width="160" height="16" />
+        <text id="267:1124" name="Shortcut" x="158" y="6" width="34" height="13" />
+      </frame>
+      <frame id="267:1125" name="Menu Item / 编辑" x="6" y="67" width="204" height="26">
+        <text id="267:1126" name="Name" x="10" y="5" width="160" height="16" />
+        <frame id="267:1127" name="Icon / chevron" x="182" y="7" width="12" height="12" />
+      </frame>
+      <frame id="267:1129" name="Menu Item / 导出" x="6" y="93" width="204" height="26">
+        <text id="267:1130" name="Name" x="10" y="5" width="160" height="16" />
+        <frame id="267:1131" name="Icon / chevron" x="182" y="7" width="12" height="12" />
+      </frame>
+      <frame id="267:1133" name="Menu Item / 工具" x="6" y="119" width="204" height="26">
+        <text id="267:1134" name="Name" x="10" y="5" width="160" height="16" />
+        <frame id="267:1135" name="Icon / chevron" x="182" y="7" width="12" height="12" />
+      </frame>
+      <rounded-rectangle id="267:1137" name="Divider" x="12" y="149" width="192" height="1" />
+      <frame id="267:1138" name="Menu Item / 在 Finder 中显示" x="6" y="154" width="204" height="26">
+        <text id="267:1139" name="Name" x="10" y="5" width="160" height="16" />
+      </frame>
+      <frame id="267:1140" name="Menu Item / 图像信息" x="6" y="180" width="204" height="26">
+        <text id="267:1141" name="Name" x="10" y="5" width="160" height="16" />
+        <text id="267:1142" name="Shortcut" x="158" y="6" width="34" height="13" />
+      </frame>
+    </frame>
+    <frame id="267:1143" name="Widget Submenu" x="242" y="104" width="280" height="327">
+      <text id="267:1144" name="Menu Heading" x="16" y="10" width="140" height="13" />
+      <text id="267:1145" name="Cost Unit" x="172" y="10" width="92" height="13" />
+      <frame id="267:1146" name="Widget Item / 人物背景分离" x="6" y="32" width="268" height="28">
+        <frame id="267:1147" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1148" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1149" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1150" name="Widget Item / 高清放大" x="6" y="60" width="268" height="28">
+        <frame id="267:1151" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1152" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1153" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1154" name="Widget Item / 图生图" x="6" y="88" width="268" height="28">
+        <frame id="267:1155" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1156" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1157" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1158" name="Widget Item / 视频去水印" x="6" y="116" width="268" height="28">
+        <frame id="267:1159" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1160" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1161" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1162" name="Widget Item / AI 换装" x="6" y="144" width="268" height="28">
+        <frame id="267:1163" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1164" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1165" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1166" name="Widget Item / 智能扩图" x="6" y="172" width="268" height="28">
+        <frame id="267:1167" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1168" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1169" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1170" name="Widget Item / 图片去水印" x="6" y="200" width="268" height="28">
+        <frame id="267:1171" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1172" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1173" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1174" name="Widget Item / 图片转提示词" x="6" y="228" width="268" height="28">
+        <frame id="267:1175" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1176" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1177" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1178" name="Widget Item / 免费图床" x="6" y="256" width="268" height="28">
+        <frame id="267:1179" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1180" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1181" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <rounded-rectangle id="267:1182" name="Market Divider" x="12" y="292" width="256" height="1" />
+      <frame id="267:1183" name="Open Widget Market" x="6" y="298" width="268" height="24">
+        <text id="267:1184" name="Label" x="10" y="4" width="230" height="15" />
+        <frame id="267:1185" name="Icon / chevron" x="244" y="6" width="12" height="12" />
+      </frame>
+    </frame>
+  </frame>
+  <frame id="267:1187" name="02 / Long Names / Full Name Hint" x="680" y="0" width="388" height="504">
+    <text id="267:1188" name="Study Title" x="24" y="24" width="340" height="21" />
+    <text id="267:1189" name="Study Caption" x="24" y="54" width="340" height="13" />
+    <frame id="267:1190" name="Widget Submenu" x="24" y="160" width="280" height="215">
+      <text id="267:1191" name="Menu Heading" x="16" y="10" width="140" height="13" />
+      <text id="267:1192" name="Cost Unit" x="172" y="10" width="92" height="13" />
+      <frame id="267:1193" name="Widget Item / Background Remover Pro — Fine Hair &amp; Edge Refinement" x="6" y="32" width="268" height="28">
+        <frame id="267:1194" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1195" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1196" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1197" name="Widget Item / Video Watermark Remover" x="6" y="60" width="268" height="28">
+        <frame id="267:1198" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1199" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1200" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1201" name="Widget Item / Redraw &amp; Reframe" x="6" y="88" width="268" height="28">
+        <frame id="267:1202" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1203" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1204" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1205" name="Widget Item / Image to Prompt" x="6" y="116" width="268" height="28">
+        <frame id="267:1206" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1207" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1208" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1209" name="Widget Item / Free Image Host" x="6" y="144" width="268" height="28">
+        <frame id="267:1210" name="Credit Badge" x="214" y="4" width="44" height="20">
+          <text id="267:1211" name="Credit Value" x="0" y="3" width="44" height="14" />
+        </frame>
+        <text id="267:1212" name="Widget Name" x="10" y="6" width="194" height="16" />
+      </frame>
+      <rounded-rectangle id="267:1213" name="Market Divider" x="12" y="180" width="256" height="1" />
+      <frame id="267:1214" name="Open Widget Market" x="6" y="186" width="268" height="24">
+        <text id="267:1215" name="Label" x="10" y="4" width="230" height="15" />
+        <frame id="267:1216" name="Icon / chevron" x="244" y="6" width="12" height="12" />
+      </frame>
+    </frame>
+    <frame id="267:1218" name="Full Name Tooltip / Hover or Focus" x="24" y="94" width="340" height="48">
+      <text id="267:1219" name="Complete Widget Name" x="12" y="10" width="316" height="30" />
+    </frame>
+  </frame>
+  <frame id="267:1220" name="03 / Credit Values / Interaction States" x="1148" y="0" width="404" height="504">
+    <text id="267:1221" name="Study Title" x="24" y="24" width="356" height="21" />
+    <text id="267:1222" name="Study Caption" x="24" y="54" width="356" height="13" />
+    <frame id="267:1223" name="Widget Submenu" x="24" y="104" width="280" height="243">
+      <text id="267:1224" name="Menu Heading" x="16" y="10" width="140" height="13" />
+      <text id="267:1225" name="Cost Unit" x="172" y="10" width="92" height="13" />
+      <frame id="267:1226" name="Widget Item / 免费示例" x="6" y="32" width="268" height="28">
+        <frame id="267:1227" name="Credit Badge" x="220" y="4" width="38" height="20">
+          <text id="267:1228" name="Credit Value" x="0" y="3" width="38" height="14" />
+        </frame>
+        <text id="267:1229" name="Widget Name" x="10" y="6" width="200" height="16" />
+      </frame>
+      <frame id="267:1230" name="Widget Item / 悬停示例" x="6" y="60" width="268" height="28">
+        <frame id="267:1231" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1232" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1233" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <frame id="267:1234" name="Widget Item / 高清放大" x="6" y="88" width="268" height="28">
+        <frame id="267:1235" name="Credit Badge" x="228" y="4" width="30" height="20">
+          <text id="267:1236" name="Credit Value" x="0" y="3" width="30" height="14" />
+        </frame>
+        <text id="267:1237" name="Widget Name" x="10" y="6" width="208" height="16" />
+      </frame>
+      <frame id="267:1238" name="Widget Item / 视频处理" x="6" y="116" width="268" height="28">
+        <frame id="267:1239" name="Credit Badge" x="221" y="4" width="37" height="20">
+          <text id="267:1240" name="Credit Value" x="0" y="3" width="37" height="14" />
+        </frame>
+        <text id="267:1241" name="Widget Name" x="10" y="6" width="201" height="16" />
+      </frame>
+      <frame id="267:1242" name="Widget Item / 高点数示例" x="6" y="144" width="268" height="28">
+        <frame id="267:1243" name="Credit Badge" x="193" y="4" width="65" height="20">
+          <text id="267:1244" name="Credit Value" x="0" y="3" width="65" height="14" />
+        </frame>
+        <text id="267:1245" name="Widget Name" x="10" y="6" width="173" height="16" />
+      </frame>
+      <frame id="267:1246" name="Widget Item / 任务进行中示例" x="6" y="172" width="268" height="28">
+        <frame id="267:1247" name="Credit Badge" x="230" y="4" width="28" height="20">
+          <text id="267:1248" name="Credit Value" x="0" y="3" width="28" height="14" />
+        </frame>
+        <text id="267:1249" name="Widget Name" x="10" y="6" width="210" height="16" />
+      </frame>
+      <rounded-rectangle id="267:1250" name="Market Divider" x="12" y="208" width="256" height="1" />
+      <frame id="267:1251" name="Open Widget Market" x="6" y="214" width="268" height="24">
+        <text id="267:1252" name="Label" x="10" y="4" width="230" height="15" />
+        <frame id="267:1253" name="Icon / chevron" x="244" y="6" width="12" height="12" />
+      </frame>
+    </frame>
+  </frame>
+  <text id="267:1255" name="Interaction Note" x="0" y="526" width="1000" height="15" />
+  <text id="267:1256" name="Pricing Note" x="0" y="558" width="1000" height="13" />
+</frame>

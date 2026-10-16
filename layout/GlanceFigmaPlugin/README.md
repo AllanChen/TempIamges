@@ -171,6 +171,21 @@ review frame. It shows a 12-image folder in the current two-column Home layout,
 with a clipped thumbnail row, a 3px inset track, an apricot draggable thumb,
 and a compact next-images control. The original Home frame is preserved.
 
+Click **Generate Glance Scrollbar System** to add four reusable Figma components:
+vertical and horizontal scrollbars in idle and active states. The board specifies
+the shared track, thumb, interaction lane, overflow behavior, and an Account
+example. Run it in Design Mode. Re-running selects the existing board without
+overwriting edits. In AppKit, apply the matching `PanelStyle.styleScrollers(in:)`
+after enabling a scroll view's scrollers.
+
+To replace the two portrait photos in the Image Viewer marketing frames, choose
+`layout/brand-assets/glance-alpine-before.png` for **Landscape A · natural
+morning** and `layout/brand-assets/glance-alpine-after.png` for **Landscape B ·
+warm sunrise**, then click **Replace Two Viewer Photos** in Design Mode. The
+plugin updates the two source image assets across Focus, Compare, and any reused
+layers while preserving each layer's crop, size, and effects. It does not alter
+other artwork.
+
 ## Generate the Image Compression Flow
 
 Click **Generate Image Compression Flow** to add a single `Image Compression

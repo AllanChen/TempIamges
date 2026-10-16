@@ -166,6 +166,7 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
         let scroll = NSScrollView(frame: promptField.bounds.insetBy(dx: 17, dy: 13))
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: scroll)
         scroll.autohidesScrollers = true
         scroll.borderType = .noBorder
         promptView.frame = scroll.contentView.bounds

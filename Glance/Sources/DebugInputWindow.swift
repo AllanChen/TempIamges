@@ -72,6 +72,7 @@ final class DebugInputWindow: NSWindow {
         let scroll = NSScrollView(frame: NSRect(x: 16, y: 56, width: w - 32, height: h - 80))
         scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: scroll)
         scroll.borderType = .bezelBorder
         scroll.documentView = tv
         root.addSubview(scroll)

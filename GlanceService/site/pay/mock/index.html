@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>Glance 模拟支付</title>
+  <style>
+    :root { font-family: Inter,-apple-system,BlinkMacSystemFont,sans-serif; color:#f3eee8; background:#0b0c0f }
+    body { margin:0; min-height:100svh; display:grid; place-items:center }
+    main { width:min(440px,calc(100% - 64px)); text-align:center; padding:48px 24px }
+    h1 { font-size:28px; letter-spacing:-.035em }
+    p { color:#aaa4a0; font-size:14px; line-height:1.7 }
+    a { display:block; margin:30px auto 20px; padding:14px; border-radius:8px; background:#e8a87c; color:#21130d; text-decoration:none; font-weight:600 }
+    code { overflow-wrap:anywhere; font-size:12px }
+  </style>
+</head>
+<body>
+  <main>
+    <div>Glance · TEST</div>
+    <h1>模拟订单已完成</h1>
+    <p>这是审核期间的测试流程。没有发生真实付款，订单金额为 0。测试积分已记入当前账户。</p>
+    <a id="return" hidden>返回 Glance 查看积分</a>
+    <p id="order"></p>
+  </main>
+  <script>
+    const id=new URLSearchParams(location.search).get('order');
+    if(id&&/^order_[A-Za-z0-9-]{1,80}$/.test(id)){
+      const link='glance://payment/return?order='+encodeURIComponent(id);
+      const button=document.querySelector('#return');button.href=link;button.hidden=false;
+      document.querySelector('#order').textContent='测试订单：'+id;
+      setTimeout(()=>location.assign(link),700);
+    }else{
+      document.querySelector('#order').textContent='订单编号无效。请从 Glance 账户页查看订单。';
+    }
+  </script>
+</body>
+</html>

@@ -4,6 +4,31 @@ import CryptoKit
 import ImageIO
 import QuickLookThumbnailing
 
+/// A successful HTTP status may still contain a login or error page.
+enum RemoteImageResponse {
+    static func isHTML(_ data: Data, mimeType: String? = nil) -> Bool {
+        let mime = mimeType?.split(separator: ";", maxSplits: 1).first?
+            .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if mime == "text/html" || mime == "application/xhtml+xml" { return true }
+        let prefix = Data(data.prefix(1024))
+        let encoding: String.Encoding = prefix.starts(with: [0xff, 0xfe]) || prefix.starts(with: [0xfe, 0xff])
+            ? .utf16 : .utf8
+        guard let text = String(data: prefix, encoding: encoding)
+            ?? String(data: prefix, encoding: .isoLatin1) else { return false }
+        let start = text.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{feff}")))
+            .lowercased()
+        return start.hasPrefix("<!doctype html") || start.hasPrefix("<html>")
+            || start.hasPrefix("<html ") || start.hasPrefix("<html\n") || start.hasPrefix("<html\r")
+    }
+
+    static func isHTMLFile(_ url: URL) -> Bool {
+        guard let file = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? file.close() }
+        guard let prefix = try? file.read(upToCount: 1024) else { return false }
+        return isHTML(prefix)
+    }
+}
+
 /// Persistent cache shared by remote images and videos. All filesystem and
 /// download work stays off the main thread.
 final class RemoteMediaDiskCache {
@@ -26,12 +51,15 @@ final class RemoteMediaDiskCache {
         queue.async {
             let url = self.cacheURL(for: remoteURL)
             let exists = FileManager.default.fileExists(atPath: url.path)
-            DispatchQueue.main.async { completion(exists ? url : nil) }
+            let invalid = exists && RemoteImageResponse.isHTMLFile(url)
+            if invalid { try? FileManager.default.removeItem(at: url) }
+            DispatchQueue.main.async { completion(exists && !invalid ? url : nil) }
         }
     }
 
     func store(_ data: Data, for remoteURL: URL, completion: ((URL?) -> Void)? = nil) {
         queue.async {
+            guard !RemoteImageResponse.isHTML(data) else { completion?(nil); return }
             do {
                 try FileManager.default.createDirectory(at: self.directory,
                                                         withIntermediateDirectories: true)
@@ -197,6 +225,7 @@ enum LoadedMedia {
 
 class ImageLoader {
     private let imageCache = NSCache<NSString, NSImage>()
+    private let folderThumbnailCache = NSCache<NSString, NSImage>()
     private let videoThumbnailCache = NSCache<NSString, NSImage>()
     private let originalImageCache = NSCache<NSString, NSImage>()
     private let maxCacheSize: Int = 50 * 1024 * 1024
@@ -215,6 +244,7 @@ class ImageLoader {
 
     init() {
         imageCache.totalCostLimit = maxCacheSize
+        folderThumbnailCache.totalCostLimit = 16 * 1024 * 1024
         originalImageCache.totalCostLimit = maxOriginalCacheSize
         videoThumbnailCache.totalCostLimit = 24 * 1024 * 1024
     }
@@ -336,6 +366,21 @@ class ImageLoader {
         } else {
             loadRemoteCachedImage(from: url, cacheKey: cacheKey, fullResolution: false,
                                   completion: completion)
+        }
+    }
+
+    /// Home's 84-point folder tiles need only a Retina-sized decode. Keep
+    /// these separate from the 800-pixel preview cache used by Image Inspect.
+    func loadThumbnail(from url: URL, completion: @escaping (NSImage?) -> Void) {
+        let key = url.absoluteString as NSString
+        if let cached = folderThumbnailCache.object(forKey: key) {
+            completion(cached)
+            return
+        }
+        decodeLocalImage(from: url, quickLookMaxDimension: 192, maxPixel: 192) { [weak self] image in
+            guard let self else { return }
+            if let image { self.folderThumbnailCache.setObject(image, forKey: key, cost: 192 * 192 * 4) }
+            DispatchQueue.main.async { completion(image) }
         }
     }
 
@@ -523,6 +568,10 @@ class ImageLoader {
                                   completion: @escaping (NSImage?) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { completion(nil); return }
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                completion(nil)
+                return
+            }
             self.loadSemaphore.wait()
             let image = Self.decodeWithImageIO(from: url, maxPixel: maxPixel) ?? NSImage(contentsOf: url)
             self.loadSemaphore.signal()
@@ -643,6 +692,11 @@ class ImageLoader {
                 return
             }
             guard data.count <= 50 * 1024 * 1024 else {
+                finish(nil)
+                return
+            }
+            guard !RemoteImageResponse.isHTML(data, mimeType: response?.mimeType) else {
+                Logger.warning("Remote image returned an HTML page: \(Logger.redact(url.absoluteString))")
                 finish(nil)
                 return
             }
