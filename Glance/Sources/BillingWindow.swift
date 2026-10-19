@@ -234,22 +234,31 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
   }
   private func row(
     _ name: String, _ value: String, y: CGFloat, color: NSColor? = nil, width: CGFloat = 512,
-    x: CGFloat = 64
+    x: CGFloat = 64, singleLine: Bool = false
   ) {
-    label(name, x: x, y: y + 5, width: width * 0.57, color: secondary)
-    label(
+    let nameLabel = label(name, x: x, y: y + 5, width: width * 0.57, color: secondary)
+    let valueLabel = label(
       value, x: x + width * 0.60, y: y + 5, width: width * 0.40, weight: .medium, align: .right,
       color: color)
+    if singleLine {
+      for node in [nameLabel, valueLabel] {
+        node.maximumNumberOfLines = 1
+        node.lineBreakMode = .byTruncatingTail
+      }
+    }
   }
   private func note(_ value: String) {
     label(value, x: 40, y: 578, width: 560, size: 11, align: .center, color: secondary, height: 20)
   }
-  private func inlineError(_ message: String) {
+  private func inlineError(_ message: String, footer: Bool = false) {
     root.subviews.filter { $0.identifier?.rawValue == "billing-error" }.forEach {
       $0.removeFromSuperview()
     }
-    let text = label(
-      message, x: 100, y: 458, width: 440, align: .center, color: PanelStyle.failure, height: 38)
+    let text = footer
+      ? label(message, x: 40, y: 578, width: 560, size: 11, align: .center,
+              color: PanelStyle.failure, height: 20)
+      : label(
+        message, x: 100, y: 458, width: 440, align: .center, color: PanelStyle.failure, height: 38)
     text.identifier = NSUserInterfaceItemIdentifier("billing-error")
     inFlight = false
     root.subviews.compactMap { $0 as? NSButton }.forEach { $0.isEnabled = true }
@@ -639,9 +648,11 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
     autoSubmit = sender.state == .on
     onAutoSubmitChange?(autoSubmit)
   }
-  private func paymentSwitch(y: CGFloat) {
-    // Figma 286:976 / 286:1018: one 512×36 track with two inset 252×28 options.
-    let track = Root(frame: NSRect(x: 64, y: y, width: 512, height: 36))
+  private func paymentSwitch(y: CGFloat, x: CGFloat = 64, width: CGFloat = 512) {
+    // Figma 286:976 / 286:1018: one 36 pt track with two inset 28 pt options
+    // (512 wide on top-up; 432 wide in the Pro offer column).
+    let optionWidth = (width - 8) / 2
+    let track = Root(frame: NSRect(x: x, y: y, width: width, height: 36))
     track.wantsLayer = true
     track.layer?.backgroundColor = surface.cgColor
     track.layer?.cornerRadius = 8
@@ -652,7 +663,7 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       let label =
         currency == "CNY" ? "WeChat Pay · CNY".localized : "Card · USD".localized
       let option = button(
-        label, frame: NSRect(x: 4 + CGFloat(i) * 252, y: 4, width: 252, height: 28),
+        label, frame: NSRect(x: 4 + CGFloat(i) * optionWidth, y: 4, width: optionWidth, height: 28),
         primary: false, parent: track
       ) { [weak self] in
         guard let self else { return }
@@ -665,7 +676,7 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       option.showsOutline = false
       option.labelSize = 12
       option.labelWeight = currency == self.currency ? .semibold : .medium
-      option.labelFrame = NSRect(x: 0, y: 6, width: 252, height: 15)
+      option.labelFrame = NSRect(x: 0, y: 6, width: optionWidth, height: 15)
       option.fillColor = currency == self.currency
         ? NSColor(srgbRed: 58 / 255, green: 44 / 255, blue: 38 / 255, alpha: 1) : surface
       option.inkColor = currency == self.currency ? accent : secondary
@@ -689,40 +700,54 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
     reset(
       renewal ? "Renew feature updates".localized : "Glance Pro",
       subtitle: "Buy local tools once. Cloud Widgets use credits separately.".localized)
-    label(
-      renewal
-        ? String(format: "%d months of feature updates".localized, config.renewalMonths)
-        : "Glance Pro", x: 104, y: 191,
-      width: 432,
-      size: 15, weight: .semibold, align: .center)
-    label(
-      manager.money(price.amount, currency: currency), x: 104, y: 230, width: 432, size: 44,
-      weight: .semibold, align: .center, height: 65)
-    if !renewal, let cutoff = product.launchUntil,
-      (BillingDates.parse(cutoff) ?? .distantPast) > Date(),
-      price.amount != (currency == "CNY" ? product.CNY.amount : product.USD.amount)
-    {
-      let original = manager.money(
-        currency == "CNY" ? product.CNY.amount : product.USD.amount, currency: currency)
-      let caption = label(
-        original + "  "
-          + String(format: "Launch price until %@".localized, BillingDates.display(cutoff)), x: 104,
-        y: 300, width: 432, align: .center, color: secondary)
-      let string = NSMutableAttributedString(attributedString: caption.attributedStringValue)
-      string.addAttribute(
-        .strikethroughStyle, value: NSUnderlineStyle.single.rawValue,
-        range: NSRange(location: 0, length: (original as NSString).length))
-      caption.attributedStringValue = string
+    // Offer column (Figma "Screen / proOfferSignedIn" grid: 432 pt at x 104, rows
+    // at 325/365/405, payment switch at 445). The title already names the plan,
+    // so the column holds only the price and the rows. With no price set the
+    // price block is omitted rather than shown as a placeholder bar.
+    let column: (x: CGFloat, width: CGFloat) = (104, 432)
+    if let amount = price.amount {
+      var launchCaption: String?
+      var original = ""
+      if !renewal, let cutoff = product.launchUntil,
+        (BillingDates.parse(cutoff) ?? .distantPast) > Date(),
+        amount != (currency == "CNY" ? product.CNY.amount : product.USD.amount)
+      {
+        original = manager.money(
+          currency == "CNY" ? product.CNY.amount : product.USD.amount, currency: currency)
+        launchCaption = original + "  "
+          + String(format: "Launch price until %@".localized, BillingDates.display(cutoff))
+      }
+      // Centre the block between the subtitle (ends y 188) and the first row (y 325).
+      let blockHeight: CGFloat = launchCaption == nil ? 69 : 69 + 6 + 19
+      let top = (191 + (315 - 191 - blockHeight) / 2).rounded()
+      let priceLabel = label(
+        manager.money(amount, currency: currency), x: column.x, y: top, width: column.width,
+        size: 44, weight: .semibold, align: .center, height: 69)
+      priceLabel.maximumNumberOfLines = 1
+      priceLabel.lineBreakMode = .byTruncatingTail
+      if let launchCaption {
+        let caption = label(
+          launchCaption, x: column.x, y: top + 75, width: column.width, align: .center,
+          color: secondary, height: 19)
+        caption.maximumNumberOfLines = 1
+        caption.lineBreakMode = .byTruncatingTail
+        let string = NSMutableAttributedString(attributedString: caption.attributedStringValue)
+        string.addAttribute(
+          .strikethroughStyle, value: NSUnderlineStyle.single.rawValue,
+          range: NSRange(location: 0, length: (original as NSString).length))
+        caption.attributedStringValue = string
+      }
     }
     row(
       "Included".localized,
-      renewal ? "Feature updates".localized : "Convert, compress, export, edit".localized,
-      y: 330)
+      renewal ? "Feature updates".localized : "All features".localized,
+      y: 325, width: column.width, x: column.x, singleLine: true)
     row(
       "Updates / devices".localized,
       String(
         format: "%d months / %d Macs".localized,
-        renewal ? config.renewalMonths : config.updatesMonths, config.deviceLimit), y: 370)
+        renewal ? config.renewalMonths : config.updatesMonths, config.deviceLimit),
+      y: 365, width: column.width, x: column.x, singleLine: true)
     row(
       "Purchase gift".localized,
       renewal
@@ -730,19 +755,27 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         : String(
           format: "%d credits".localized,
           manager.entitlements?.proBonusEligible == false ? 0 : config.proBonusCredits),
-      y: 410)
-    paymentSwitch(y: 448)
+      y: 405, width: column.width, x: column.x, singleLine: true)
+    paymentSwitch(y: 445, x: column.x, width: column.width)
     primary(
-      (renewal ? "Renew updates".localized : "Buy Pro".localized) + " · "
-        + manager.money(price.amount, currency: currency)
+      (renewal ? "Renew updates".localized : "Buy Pro".localized)
+        + (price.amount == nil ? "" : " · " + manager.money(price.amount, currency: currency))
     ) { [weak self] in
       guard let self else { return }
       self.onCheckout?(renewal ? "renewal" : "pro", nil, self.currency, price)
     }
     quiet("Not now".localized) { [weak self] in self?.dismiss() }
-    if !config.paymentsAvailable || price.amount == nil || product.productID.isEmpty {
-      inlineError("This product is not available yet.".localized)
+    // Signed out, the button leads to sign-in and the refreshed, per-account
+    // offer (the owner's test account gets mock checkout), so it stays enabled.
+    if AuthManager.shared.isSignedIn
+      && (!config.paymentsAvailable || price.amount == nil || product.productID.isEmpty)
+    {
+      // Footer-note line (Figma "Footer Note", y 578): the inline-error slot at
+      // y 458 would sit on the payment switch.
+      inlineError("This product is not available yet.".localized, footer: true)
       disablePrimary()
+    } else if config.mockCheckout == true {
+      note("Simulated payment for testing. No money is charged.".localized)
     }
   }
   func refreshAccountState() {
@@ -1175,14 +1208,15 @@ private final class BillingLabel: NSTextField {
       paragraph.minimumLineHeight = 19
       paragraph.maximumLineHeight = 19
     }
-    NSAttributedString(
-      string: stringValue,
-      attributes: [
+    // Start from the attributed value so ranges such as the launch-price
+    // strikethrough survive; font, colour and paragraph apply to the whole string.
+    let text = NSMutableAttributedString(attributedString: attributedStringValue)
+    text.addAttributes(
+      [
         .font: font ?? PanelStyle.inspectFont(ofSize: 12),
         .foregroundColor: textColor ?? PanelStyle.textPrimary, .paragraphStyle: paragraph,
-      ]
-    )
-    .draw(with: bounds, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+      ], range: NSRange(location: 0, length: text.length))
+    text.draw(with: bounds, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
   }
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

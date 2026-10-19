@@ -497,6 +497,7 @@
 "The Widget Market is unavailable." = "The Widget Market is unavailable.";
 "The Widget task failed without reporting a reason." = "The Widget task failed without reporting a reason.";
 "Widget request failed (HTTP %d)." = "Widget request failed (HTTP %d).";
+"This Widget is no longer available." = "This Widget is no longer available.";
 "Freeimage upload failed." = "Freeimage upload failed.";
 "Task was reset and can be submitted again." = "Task was reset and can be submitted again.";
 "Color profile" = "Color profile";
@@ -673,7 +674,9 @@
 "Continue free" = "Continue free";
 "Continue payment" = "Continue payment";
 "Continue to payment %@" = "Continue to payment %@";
-"Convert, compress, export, edit" = "Convert, compress, export, edit";
+"Convert, compress, export, edit" = "Convert, compress, export";
+"All features" = "All features";
+"Simulated payment for testing. No money is charged." = "Simulated payment for testing. No money is charged.";
 "Could not complete this action" = "Could not complete this action";
 "Credit top-up" = "Credit top-up";
 "Credits have arrived" = "Credits have arrived";

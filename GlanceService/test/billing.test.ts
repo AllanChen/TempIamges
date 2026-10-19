@@ -110,6 +110,36 @@ describe('temporary mock credit checkout',()=>{
   });
 });
 
+describe('temporary mock Pro checkout',()=>{
+  it('activates Pro for the designated account, with a placeholder price when none is set',async()=>{
+    const mockEnv:Env={...billingEnv,WAFFO_MERCHANT_ID:undefined,WAFFO_PRIVATE_KEY:undefined,
+      WAFFO_STORE_ID:undefined,WAFFO_WEBHOOK_PUBLIC_KEY_TEST:undefined,MOCK_CHECKOUT_USER_ID:'1'};
+    const mockCall=(path:string,token?:string,body?:unknown,key?:string)=>worker.fetch(new Request('https://example.com'+path,{
+      method:body===undefined?'GET':'POST',headers:{...(token?{Authorization:'Bearer '+token}:{}),
+        'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})},
+      body:body===undefined?undefined:JSON.stringify(body)}),mockEnv);
+    const stored=await env.DB.prepare('SELECT json FROM billing_settings WHERE id=1').first<{json:string}>();
+    if (stored) {
+      const config=JSON.parse(stored.json);
+      config.pro={...config.pro,CNY:{amount:null},USD:{amount:null},launchCNY:{amount:null},launchUSD:{amount:null},launchUntil:null,productID:''};
+      await env.DB.prepare('UPDATE billing_settings SET json=? WHERE id=1').bind(JSON.stringify(config)).run();
+    }
+    expect((await (await mockCall('/api/v2/pricing','other-user')).json() as any).result.pro.productID).not.toBe('mock_pro');
+    const offer=(await (await mockCall('/api/v2/pricing',USER_TOKEN)).json() as any).result;
+    expect(offer.mockCheckout).toBe(true);
+    expect(offer.pro.productID).toBeTruthy();
+    expect(offer.pro.CNY.amount).toBeGreaterThan(0);
+    const response=await mockCall('/api/v2/orders',USER_TOKEN,{product:'pro',currency:'CNY',expectedPrice:offer.pro.CNY},crypto.randomUUID());
+    expect(response.status).toBe(200);
+    const checkout=await response.json() as any;
+    expect(checkout.result.order).toMatchObject({product:'pro',status:'paid',mock:true,amount:0});
+    expect(checkout.result.checkoutUrl).toContain('/pay/mock/');
+    expect((await env.DB.prepare('SELECT status FROM licenses WHERE user_id=1').first<any>())?.status).toBe('active');
+    expect(checkoutCalls).toHaveLength(0);
+    expect((await mockCall('/api/v2/orders','other-user',{product:'pro',currency:'CNY',expectedPrice:offer.pro.CNY},crypto.randomUUID())).status).toBe(503);
+  });
+});
+
 describe('administrator Pro grants',()=>{
   const grant=(userID=1,note='Beta tester',key:string=crypto.randomUUID(),token=env.ADMIN_TOKEN)=>
     call('/api/admin/v2/users/'+userID+'/pro',{note},token,{'Idempotency-Key':key});

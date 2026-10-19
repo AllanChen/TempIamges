@@ -106,6 +106,9 @@ struct BillingPricing: Codable {
   let lastCompatibleVersionURL: String
   let defaultCurrency: String
   let paymentsAvailable: Bool
+  /// True only for the owner's test account while Pancake is pending; orders
+  /// complete without collecting money.
+  let mockCheckout: Bool?
   let serverTime: String
 }
 struct BillingTransaction: Decodable {

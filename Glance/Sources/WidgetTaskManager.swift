@@ -116,6 +116,12 @@ final class WidgetTaskManager {
     @discardableResult
     func start(widget: WidgetManifest, command: WidgetCommand, media: MediaInfo,
                input: WidgetTaskInput? = nil) -> UUID? {
+        // A menu or input panel opened before the Widget was taken down must
+        // not start a run the service will reject.
+        guard WidgetRegistry.shared.isAvailable(id: widget.id) else {
+            Logger.info("WidgetTaskManager: ignored run of unavailable Widget \(widget.id)")
+            return nil
+        }
         let matching = records.filter { $0.phase.isActive && $0.source?.taskKey == media.url.taskKey && $0.widgetID == widget.id && $0.commandID == command.id }
         if !matching.isEmpty {
             // A task that never received a remote ID cannot be running. Older
@@ -151,7 +157,7 @@ final class WidgetTaskManager {
 
     func retry(_ id: UUID) {
         guard let record = records.first(where: { $0.id == id }), let source = record.source,
-              let widget = WidgetRegistry.shared.installed.first(where: { $0.id == record.widgetID }),
+              let widget = WidgetRegistry.shared.available.first(where: { $0.id == record.widgetID }),
               let command = widget.commands.first(where: { $0.id == record.commandID }) else { return }
         if (record.phase == .failed || record.phase == .completed), record.outputURLString != nil,
            (record.output == nil || record.output.map({ !FileManager.default.fileExists(atPath: $0.path) }) == true),

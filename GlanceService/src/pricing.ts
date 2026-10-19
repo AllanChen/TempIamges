@@ -57,6 +57,12 @@ export function mockCheckoutUser(env: Env, userID: number) {
   return env.WAFFO_ENVIRONMENT === 'test' && !paymentReady(env)
     && env.MOCK_CHECKOUT_USER_ID === String(userID);
 }
+/** Mock checkout price: the configured amount, or a 1.00 placeholder while
+ *  none is set (orders require amount > 0). Mock orders never collect money. */
+export function mockPrice(price: Price): Price { return price.amount == null ? { ...price, amount: 100 } : price; }
+function mockProduct<T extends { CNY: Price; USD: Price; productID: string }>(product: T, productID: string): T {
+  return { ...product, CNY: mockPrice(product.CNY), USD: mockPrice(product.USD), productID: product.productID || productID };
+}
 export async function publicPricing(env: Env, request: Request) {
   const config = await readPricing(env);
   const country = (request as Request & {cf?:{country?:string}}).cf?.country || request.headers.get('CF-IPCountry');
@@ -66,7 +72,12 @@ export async function publicPricing(env: Env, request: Request) {
     catch { /* Public pricing remains available when a session is invalid. */ }
   }
   return billingReply({ ...config, defaultCurrency:country === 'CN' ? 'CNY' : 'USD',
+    // The owner's test account can complete every purchase while Pancake is
+    // pending: unset prices become a 1.00 placeholder and product IDs get a mock ID.
     packs:mock ? config.packs.map(pack=>({...pack,productID:pack.productID||'mock_credits'})) : config.packs,
+    pro:mock ? mockProduct(config.pro,'mock_pro') : config.pro,
+    renewal:mock ? mockProduct(config.renewal,'mock_renewal') : config.renewal,
+    mockCheckout:mock,
     paymentsAvailable:config.enabled && paymentReady(env) || mock, serverTime:isoNow() });
 }
 export function validatePricing(value: unknown): asserts value is Pricing {

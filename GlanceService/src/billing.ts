@@ -1,7 +1,7 @@
 import { WaffoPancake, type PriceSnapshot, type TaxCategory, type WebhookEventData } from '@waffo/pancake-ts';
 import type { Env } from './index';
 import { authenticatedUser, type User } from './users';
-import { BillingError, billingBody, billingReply, isoNow, mockCheckoutUser, paymentReady, readPricing, sha256, type Currency } from './pricing';
+import { BillingError, billingBody, billingReply, isoNow, mockCheckoutUser, mockPrice, paymentReady, readPricing, sha256, type Currency } from './pricing';
 
 type Order = {
   id:string; user_id:number; product:'pro'|'renewal'|'credits'; pack_id:string|null; currency:Currency;
@@ -84,7 +84,8 @@ async function checkoutResponse(env:Env,order:Order,user:User) {
 }
 export async function createOrder(env:Env,request:Request) {
   const user=await authenticatedUser(env,request), body=await billingBody(request);
-  const mock=body.product==='credits' && mockCheckoutUser(env,user.id);
+  // Mock checkout covers every product, for the configured owner test account only.
+  const mock=mockCheckoutUser(env,user.id);
   const key=request.headers.get('Idempotency-Key')||'';
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(key) || !['pro','renewal','credits'].includes(String(body.product)) || !['CNY','USD'].includes(String(body.currency))) throw new BillingError('invalid_order','Product, currency and Idempotency-Key are required.');
   if (body.product==='credits' && typeof body.packID!=='string') throw new BillingError('invalid_pack','Select a credit package.');
@@ -104,7 +105,8 @@ export async function createOrder(env:Env,request:Request) {
   const launch=!!config.pro.launchUntil && Date.parse(config.pro.launchUntil)>Date.now() && config.pro[currency==='CNY'?'launchCNY':'launchUSD'].amount!==null;
   const product=body.product==='credits'?config.packs.find(p=>p.id===body.packID && p.enabled):body.product==='pro'?config.pro:config.renewal;
   if (!product) throw new BillingError('pack_unavailable','This package is no longer available.',409);
-  const price=body.product==='pro' && launch?config.pro[currency==='CNY'?'launchCNY':'launchUSD']:product[currency];
+  const configured=body.product==='pro' && launch?config.pro[currency==='CNY'?'launchCNY':'launchUSD']:product[currency];
+  const price=mock?mockPrice(configured):configured;
   if (!price.amount || (!mock && !product.productID)) throw new BillingError('product_unavailable','This product is not available in this currency.',503);
   const expected=body.expectedPrice as {amount?:number;points?:number}|undefined;
   if (!expected || expected.amount!==price.amount || (body.product==='credits' && expected.points!==price.points)) throw new BillingError('price_changed','The price changed. Confirm the current price.',409,{amount:price.amount,points:price.points,currency});
@@ -122,7 +124,7 @@ export async function createOrder(env:Env,request:Request) {
     await env.DB.prepare(`INSERT INTO orders(id,user_id,product,pack_id,currency,amount,credits,bonus_credits,product_id,tax_category,tax_included,updates_months,
       request_key,request_hash,checkout_expires_at,previous_updates_until,created_at,language,billing_intent_id,payment_method) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .bind(id,user.id,body.product,body.product==='credits'?body.packID:null,currency,price.amount,body.product==='credits'?price.points:0,
-        body.product==='pro' && !bonusAlreadyGranted?config.proBonusCredits:0,mock?'mock_credits':product.productID,config.taxCategory,config.taxIncluded?1:0,
+        body.product==='pro' && !bonusAlreadyGranted?config.proBonusCredits:0,mock?'mock_'+body.product:product.productID,config.taxCategory,config.taxIncluded?1:0,
         body.product==='renewal'?config.renewalMonths:config.updatesMonths,key,hash,new Date(Date.now()+1800000).toISOString(),license?.updates_until??null,created,body.language==='zh-Hans'?'zh-Hans':'en',body.intentID??null,mock?'mock':currency==='CNY'?'wechat':null).run();
   } catch(error) {
     if (!String(error).includes('UNIQUE')) throw error;

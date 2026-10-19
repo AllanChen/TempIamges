@@ -225,6 +225,10 @@ final class BillingManager {
     let id = AuthManager.shared.storedUserID
     let token = AuthManager.shared.session?.token
     guard id != authenticatedUserID || token != authenticatedToken else { return }
+    // Only a real sign-in, sign-out or account switch gets here (balance updates
+    // also post authDidChange). The offer is per account: the owner's test
+    // account gets mock checkout.
+    refreshPricing { _ in }
     let shouldActivate =
       allowActivation && token != launchSessionToken && token != authenticatedToken
     authenticatedUserID = id

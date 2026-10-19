@@ -159,8 +159,12 @@ final class WidgetMarketPanel: NSPanel {
             self.hasFinishedLoad = true
             self.setLoading(false)
             switch result {
-            case .success(let remoteManifests):
+            case .success(let catalog):
+                let remoteManifests = catalog.widgets
                 Logger.info("WidgetMarketPanel: refreshed \(remoteManifests.count) widgets from server")
+                // Hide installed Widgets the service has taken down before
+                // merging, so they disappear from the Installed tab too.
+                WidgetAvailabilitySync.shared.apply(catalog)
                 self.catalogIDs = Set(remoteManifests.map(\.id))
                 self.manifests = Self.mergeInstalled(into: remoteManifests)
             case .failure(let error):
@@ -174,12 +178,12 @@ final class WidgetMarketPanel: NSPanel {
     private static func mergeInstalled(into catalog: [WidgetManifest]) -> [WidgetManifest] {
         var merged = catalog
         let known = Set(catalog.map(\.id))
-        merged.append(contentsOf: WidgetRegistry.shared.installed.filter { !known.contains($0.id) })
+        merged.append(contentsOf: WidgetRegistry.shared.available.filter { !known.contains($0.id) })
         return merged
     }
 
     private func refreshInstalledState() {
-        installedIDs = Set(WidgetRegistry.shared.installed.map(\.id))
+        installedIDs = Set(WidgetRegistry.shared.available.map(\.id))
         if hasAttemptedLoad {
             manifests = Self.mergeInstalled(into: manifests)
         }

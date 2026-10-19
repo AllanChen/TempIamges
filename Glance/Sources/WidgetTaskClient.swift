@@ -483,6 +483,11 @@ final class WidgetTaskClient {
                 completion(.success(AcceptedTask(taskID: result.taskID, queue: result.queueInfo)))
             } catch let failure as WidgetTaskRequestError where failure.statusCode == 429 {
                 completion(.failure(WidgetServiceBusyError()))
+            } catch let failure as WidgetTaskRequestError
+                        where failure.code == "widget_unavailable" || failure.code == "widget_not_found" {
+                // Taken down after this client last synced: hide it everywhere now.
+                DispatchQueue.main.async { WidgetRegistry.shared.markDelisted(id: widgetID) }
+                completion(.failure(WidgetUnavailableError()))
             } catch { completion(.failure(error)) }
         }
     }
@@ -587,7 +592,8 @@ final class WidgetTaskClient {
         guard (200..<300).contains(http.statusCode) else {
             let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             let failure = payload?["error"] as? [String: Any]
-            throw WidgetTaskRequestError(statusCode: http.statusCode, message: failure?["message"] as? String)
+            throw WidgetTaskRequestError(statusCode: http.statusCode, message: failure?["message"] as? String,
+                                         code: failure?["code"] as? String)
         }
         return try JSONDecoder().decode(T.self, from: data)
     }
@@ -635,9 +641,14 @@ private struct WidgetTaskExecutionError: LocalizedError {
     }
 }
 
+struct WidgetUnavailableError: LocalizedError {
+    var errorDescription: String? { "This Widget is no longer available.".localized }
+}
+
 private struct WidgetTaskRequestError: LocalizedError {
     let statusCode: Int
     let message: String?
+    var code: String? = nil
 
     var errorDescription: String? {
         if statusCode == 401 {

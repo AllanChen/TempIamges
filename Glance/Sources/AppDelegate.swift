@@ -68,6 +68,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         setupNotifications()
         setupDeepLinkHandler()
         BillingManager.shared.start()
+        // Hide installed Widgets that were taken down while Glance was closed.
+        WidgetAvailabilitySync.shared.start()
         AuthManager.shared.refreshAccount()
         checkPermissions()
         // As a regular (Dock/Cmd-Tab) app, a fresh launch with no window would

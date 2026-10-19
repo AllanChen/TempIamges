@@ -264,9 +264,18 @@ final class WidgetRegistry {
     static let didChange = Notification.Name("GlanceWidgetRegistryDidChange")
     private let storageKey = "glance.widgets.installed.v2"
     private let legacyStorageKey = "glance.widgets.installed.v1"
+    private let delistedKey = "glance.widgets.delisted.v1"
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    /// Every Widget the user installed, including ones the service no longer
+    /// publishes. Old task records still read names and outputs from here.
     private(set) var installed: [WidgetManifest]
+    /// Installed Widgets the service has taken down. They stay stored so a
+    /// re-published Widget comes back without reinstalling, but they are never
+    /// offered for new runs.
+    private(set) var delistedIDs: Set<String>
+    /// Installed Widgets that can be offered and run right now.
+    var available: [WidgetManifest] { installed.filter { !delistedIDs.contains($0.id) } }
 
     private init() {
         let cachedData = UserDefaults.standard.data(forKey: storageKey)
@@ -292,6 +301,7 @@ final class WidgetRegistry {
         if installed.count != cached.count || installed != cached, let data = try? encoder.encode(installed) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
+        delistedIDs = Set(UserDefaults.standard.stringArray(forKey: delistedKey) ?? [])
     }
 
     private static func canonicalManifest(_ manifest: WidgetManifest, id: String) -> WidgetManifest {
@@ -352,17 +362,104 @@ final class WidgetRegistry {
     func install(_ manifest: WidgetManifest) {
         installed.removeAll { $0.id == manifest.id }
         installed.append(manifest)
+        // Installing comes from the live catalog, so the Widget is published.
+        delistedIDs.remove(manifest.id)
+        saveDelisted()
         if let data = try? encoder.encode(installed) { UserDefaults.standard.set(data, forKey: storageKey) }
         NotificationCenter.default.post(name: Self.didChange, object: nil)
     }
 
     func uninstall(id: String) {
         installed.removeAll { $0.id == id }
+        delistedIDs.remove(id)
+        saveDelisted()
         if let data = try? encoder.encode(installed) { UserDefaults.standard.set(data, forKey: storageKey) }
         NotificationCenter.default.post(name: Self.didChange, object: nil)
     }
 
-    func compatible(with inputType: String) -> [WidgetManifest] { installed.filter { $0.isCompatible(with: inputType) } }
+    func isAvailable(id: String) -> Bool { !delistedIDs.contains(id) && installed.contains { $0.id == id } }
+
+    /// Apply a complete snapshot of the published catalog: installed Widgets
+    /// missing from it are hidden, and ones that reappear are offered again.
+    /// Call only with a complete catalog; a partial page would hide live Widgets.
+    func reconcile(publishedIDs: Set<String>) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let delisted = Set(installed.map(\.id)).subtracting(publishedIDs)
+        guard delisted != delistedIDs else { return }
+        let removed = delisted.subtracting(delistedIDs), restored = delistedIDs.subtracting(delisted)
+        delistedIDs = delisted
+        saveDelisted()
+        Logger.info("WidgetRegistry: delisted \(removed.sorted()), restored \(restored.sorted())")
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
+    }
+
+    /// The service rejected a run because the Widget is no longer published.
+    func markDelisted(id: String) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard installed.contains(where: { $0.id == id }), delistedIDs.insert(id).inserted else { return }
+        saveDelisted()
+        Logger.info("WidgetRegistry: delisted \(id) after the service rejected a run")
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
+    }
+
+    private func saveDelisted() {
+        UserDefaults.standard.set(delistedIDs.sorted(), forKey: delistedKey)
+    }
+
+    func compatible(with inputType: String) -> [WidgetManifest] { available.filter { $0.isCompatible(with: inputType) } }
+}
+
+/// Keeps the installed Widget list in step with the published catalog without
+/// polling: once at launch, then when Glance becomes active (throttled), and
+/// whenever the Widget Market loads the catalog.
+final class WidgetAvailabilitySync {
+    static let shared = WidgetAvailabilitySync()
+    private let minimumInterval: TimeInterval = 300
+    private var lastSync: Date?
+    private var inFlight = false
+    private var observer: NSObjectProtocol?
+
+    func start() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard observer == nil else { return }
+        observer = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
+                                                          object: nil, queue: .main) { [weak self] _ in
+            self?.syncIfNeeded()
+        }
+        syncIfNeeded(force: true)
+    }
+
+    func syncIfNeeded(force: Bool = false) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard !inFlight, !WidgetRegistry.shared.installed.isEmpty else { return }
+        if !force, let lastSync, Date().timeIntervalSince(lastSync) < minimumInterval { return }
+        inFlight = true
+        WidgetCatalogClient.shared.fetchAll { [weak self] result in
+            guard let self else { return }
+            self.inFlight = false
+            // Offline or a failed request changes nothing: never hide Widgets on a guess.
+            guard case .success(let catalog) = result else { return }
+            self.apply(catalog)
+        }
+    }
+
+    /// Shared by the Market so both paths apply the same completeness rule.
+    func apply(_ catalog: WidgetCatalogSnapshot) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard catalog.isComplete else {
+            Logger.info("WidgetAvailabilitySync: catalog snapshot incomplete; keeping installed Widgets")
+            return
+        }
+        lastSync = Date()
+        WidgetRegistry.shared.reconcile(publishedIDs: Set(catalog.widgets.map(\.id)))
+    }
+}
+
+/// One fetch of the published catalog. `isComplete` is true only when the
+/// response covers every page, so it is safe to treat missing IDs as removed.
+struct WidgetCatalogSnapshot {
+    let widgets: [WidgetManifest]
+    let isComplete: Bool
 }
 
 final class WidgetCatalogClient {
@@ -393,7 +490,7 @@ final class WidgetCatalogClient {
     /// Fetch the full catalog of published widgets. The catalog is served by
     /// GlanceService, so the list itself is trusted; signature validation is
     /// deferred to the per-widget install path.
-    func fetchAll(completion: @escaping (Result<[WidgetManifest], Error>) -> Void) {
+    func fetchAll(completion: @escaping (Result<WidgetCatalogSnapshot, Error>) -> Void) {
         var request = URLRequest(url: baseURL)
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 8
@@ -402,8 +499,11 @@ final class WidgetCatalogClient {
             guard let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { DispatchQueue.main.async { completion(.failure(WidgetError.unavailable)) }; return }
             do {
                 let envelope = try JSONDecoder().decode(WidgetListEnvelope.self, from: data)
-                guard envelope.success else { throw WidgetError.unavailable }
-                DispatchQueue.main.async { completion(.success(envelope.result?.widgets ?? [])) }
+                guard envelope.success, let result = envelope.result else { throw WidgetError.unavailable }
+                let page = result.pagination
+                let complete = page.page >= page.totalPages && result.widgets.count >= page.total
+                let snapshot = WidgetCatalogSnapshot(widgets: result.widgets, isComplete: complete)
+                DispatchQueue.main.async { completion(.success(snapshot)) }
             } catch { DispatchQueue.main.async { completion(.failure(error)) } }
         }.resume()
     }

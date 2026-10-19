@@ -188,6 +188,10 @@ final class ToastPanelContent: NSVisualEffectView {
         layer?.masksToBounds = true
         layer?.borderWidth = 1
         layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        // A behind-window material ignores the layer's corner radius and fills
+        // the whole borderless window, which showed as a square plate (and a
+        // square shadow) behind the rounded card. The mask clips both.
+        maskImage = Self.roundedMask(radius: 16)
         tint.backgroundColor = NSColor(srgbRed: 0x16 / 255, green: 0x17 / 255, blue: 0x19 / 255, alpha: 0.94).cgColor
         layer?.addSublayer(tint)
         for view in [card, shortcuts] {
@@ -197,6 +201,20 @@ final class ToastPanelContent: NSVisualEffectView {
         shortcuts.isHidden = true
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    /// Resizable rounded-rect mask: the cap insets keep the corners fixed while
+    /// the toast hugs its text at any size.
+    private static func roundedMask(radius: CGFloat) -> NSImage {
+        let edge = radius * 2 + 1
+        let image = NSImage(size: NSSize(width: edge, height: edge), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
+        image.resizingMode = .stretch
+        return image
+    }
 
     override func layout() {
         super.layout()
@@ -278,7 +296,7 @@ final class InspectToastWindow: NSPanel {
         let size = content.apply(kind: resolved, title: title, detail: detail,
                                  maxWidth: max(160, parentWindow.frame.width * 0.5),
                                  maxHeight: max(48, parentWindow.frame.height * 0.5))
-        present(size: size, over: parentWindow, duration: duration ?? (detail == nil ? 1.4 : 3))
+        present(size: size, over: parentWindow, duration: duration ?? 3)
     }
 
     func showShortcuts(over parentWindow: NSWindow, duration: TimeInterval = 7) {

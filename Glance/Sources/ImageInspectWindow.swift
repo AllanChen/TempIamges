@@ -1742,7 +1742,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
 
     private func runWidget(widgetID: String, commandID: String) {
         guard let info = currentRevealInfo, info.kind == .image,
-              let widget = WidgetRegistry.shared.installed.first(where: { $0.id == widgetID }),
+              let widget = WidgetRegistry.shared.available.first(where: { $0.id == widgetID }),
               let command = widget.localizedCommand(id: commandID) else { return }
         let capabilities = command.inputCapabilities
         guard capabilities.needsImageDialog else {

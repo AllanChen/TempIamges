@@ -498,6 +498,7 @@
 "The Widget Market is unavailable." = "Widget 市场暂时不可用。";
 "The Widget task failed without reporting a reason." = "Widget 任务失败，未报告原因。";
 "Widget request failed (HTTP %d)." = "Widget 请求失败（HTTP %d）。";
+"This Widget is no longer available." = "这个 Widget 已下架，无法继续使用。";
 "Freeimage upload failed." = "Freeimage 上传失败。";
 "Task was reset and can be submitted again." = "任务已重置，可以重新提交。";
 "Color profile" = "色彩配置";
@@ -675,6 +676,8 @@
 "Continue payment" = "继续支付";
 "Continue to payment %@" = "前往支付 %@";
 "Convert, compress, export, edit" = "转换、压缩、导出、编辑";
+"All features" = "全部";
+"Simulated payment for testing. No money is charged." = "模拟支付，仅用于测试，不会真实扣款。";
 "Could not complete this action" = "暂时无法完成此操作";
 "Credit top-up" = "充值点数";
 "Credits have arrived" = "点数已到账";
