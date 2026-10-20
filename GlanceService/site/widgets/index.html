@@ -21,7 +21,7 @@
 </head>
 <body><main class="wrap"><header class="hero"><h1>Widget Market</h1></header><div id="message" aria-live="polite"></div><section id="catalog" class="grid" aria-label="Official Widgets"><div class="empty">正在加载 Widget...</div></section></main>
 <script>
-const API="https://glance-service.allanchanni.workers.dev/api/v2/widgets";const catalog=document.getElementById("catalog"),message=document.getElementById("message");
+const API="https://api.glancepreview.com/api/v2/widgets";const catalog=document.getElementById("catalog"),message=document.getElementById("message");
 function bridge(id){const h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.glanceWidgetMarket;if(!h)return false;h.postMessage({type:"installWidget",widgetID:id});return true}
 function show(text,kind="notice"){message.innerHTML="";const el=document.createElement("div");el.className=kind;el.textContent=text;message.appendChild(el)}
 // Widget text in the visitor's language: localizations[tag] overrides the base fields.

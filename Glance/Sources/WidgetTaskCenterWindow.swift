@@ -663,7 +663,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
                 case .success(let url): self.copyURLToPasteboard(url.absoluteString)
                 case .failure:
                     if let url = URL(string: storedURL),
-                       url.host != "api.glance.mcreator.ai" {
+                       !GlanceAPIHosts.contains(url.host ?? "") {
                         self.copyURLToPasteboard(storedURL)
                     } else {
                         self.toast.show(message: "Could not refresh result URL".localized, kind: .error, over: self)

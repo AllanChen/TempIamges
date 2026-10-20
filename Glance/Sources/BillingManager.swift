@@ -6,7 +6,7 @@ import CryptoKit
 final class BillingManager {
   static let shared = BillingManager()
   static let didChange = Notification.Name("Glance.BillingDidChange")
-  private let api = URL(string: "https://api.glance.mcreator.ai")!
+  private let api = URL(string: "https://api.glancepreview.com")!
   private(set) var pricing: BillingPricing?
   private(set) var entitlements: BillingEntitlements?
   private(set) var wallet: BillingWallet?

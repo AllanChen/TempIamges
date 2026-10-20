@@ -23,7 +23,13 @@ binding = "ASSETS"
 [vars]
 # New accounts receive this many credits once; set to "0" for admin-only grants.
 NEW_USER_CREDITS = "100"
+# TODO(domain move): PUBLIC_ORIGIN also forms the developer OAuth redirect URI; switch it to
+# "https://api.glancepreview.com" together with GOOGLE_REDIRECT_URI below once both new URIs
+# are registered in the Google OAuth client.
 PUBLIC_ORIGIN = "https://glance-service.allanchanni.workers.dev"
+# TODO(domain move): switch to "https://glancepreview.com/auth/google/callback" only after
+# adding it (and "https://api.glancepreview.com/api/v2/developer/auth/google/callback")
+# to the Google OAuth client; the Worker route for the new host already exists.
 GOOGLE_REDIRECT_URI = "https://glance.mcreator.ai/auth/google/callback"
 # Set ADMIN_PATH as a secret, e.g. "ops-7f3c9a2e". The admin UI is only served at that path.
 # Production tasks must be claimed by an authorized Widget Worker. The

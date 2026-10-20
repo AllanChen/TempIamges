@@ -2615,7 +2615,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 switch result {
                 case .success(let url): self.copyWidgetResultURLToPasteboard(url.absoluteString)
                 case .failure:
-                    if let url = URL(string: storedURL), url.host != "api.glance.mcreator.ai" {
+                    if let url = URL(string: storedURL), !GlanceAPIHosts.contains(url.host ?? "") {
                         self.copyWidgetResultURLToPasteboard(storedURL)
                     } else {
                         self.toastWindow.show(message: "Could not refresh result URL".localized, kind: .error, over: self)

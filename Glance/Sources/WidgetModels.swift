@@ -462,9 +462,13 @@ struct WidgetCatalogSnapshot {
     let isComplete: Bool
 }
 
+/// Hosts that serve Glance result assets. The former host stays accepted so
+/// results saved before the domain move still refresh instead of re-uploading.
+let GlanceAPIHosts: Set<String> = ["api.glancepreview.com", "api.glance.mcreator.ai"]
+
 final class WidgetCatalogClient {
     static let shared = WidgetCatalogClient()
-    private let baseURL = URL(string: "https://api.glance.mcreator.ai/api/v2/widgets")!
+    private let baseURL = URL(string: "https://api.glancepreview.com/api/v2/widgets")!
     private let publicKeyData = Data(base64Encoded: "zFrAHRuvuZVpWbAFaetTG+d27XeLkxicodlTFt1+cv8=")!
     private let developerPublicKeyData = Data(base64Encoded: "F4eg6N56Z8z3CC7E4CUV0YecA6NpeHpAtx0/NFsUGFs=")!
 
@@ -562,7 +566,7 @@ struct WidgetSubmission: Codable, Hashable, Identifiable {
 /// displays workflow state; it never executes third-party code locally.
 final class WidgetPlatformClient {
     static let shared = WidgetPlatformClient()
-    private let baseURL = URL(string: "https://api.glance.mcreator.ai/api/v2")!
+    private let baseURL = URL(string: "https://api.glancepreview.com/api/v2")!
     private let session = URLSession(configuration: .ephemeral)
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()

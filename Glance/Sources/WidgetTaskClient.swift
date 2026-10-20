@@ -41,7 +41,7 @@ struct WidgetTaskExpiredError: LocalizedError {
 
 final class WidgetTaskClient {
     static let shared = WidgetTaskClient()
-    private let apiBase = URL(string: "https://api.glance.mcreator.ai/api/v2")!
+    private let apiBase = URL(string: "https://api.glancepreview.com/api/v2")!
     private let session: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 40

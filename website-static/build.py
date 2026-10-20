@@ -16,7 +16,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
 OUT = ROOT / "public"
-SITE = "https://glance.mcreator.ai"
+SITE = "https://glancepreview.com"
+# Former address; every page there redirects to SITE once the new domain is live.
+OLD_SITE = "https://glance.mcreator.ai"
 SUPPORT_EMAIL = "support@mcreator.ai"
 VERSION = "1.0.0-beta.1"
 DMG = f"/download/Glance-{VERSION}.dmg"
@@ -196,7 +198,9 @@ def main() -> None:
 /pay/*
   Cache-Control: no-store
 """, encoding="utf-8")
-    (OUT / "_redirects").write_text(f"""/refund /refunds/ 301
+    (OUT / "_redirects").write_text(f"""{OLD_SITE}/* {SITE}/:splat 301
+https://www.glancepreview.com/* {SITE}/:splat 301
+/refund /refunds/ 301
 /refund/ /refunds/ 301
 /Glance-1.0.0.dmg {DMG} 302
 /download {DMG} 302

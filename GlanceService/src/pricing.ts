@@ -41,8 +41,8 @@ export function defaultPricing(env: Env): Pricing {
       { id:'small',name:'Small',enabled:true,recommended:false,CNY:{amount:1200,points:120},USD:{amount:299,points:120},productID:'' },
       { id:'standard',name:'Standard',enabled:true,recommended:true,CNY:{amount:3000,points:330},USD:{amount:499,points:330},productID:'' },
       { id:'large',name:'Large',enabled:true,recommended:false,CNY:{amount:9800,points:1200},USD:{amount:1499,points:1200},productID:'' }
-    ], taxCategory:'software',taxIncluded:true,supportEmail:'',termsURL:'https://glance.mcreator.ai/terms',
-    privacyURL:'https://glance.mcreator.ai/privacy',refundURL:'https://glance.mcreator.ai/refunds',lastCompatibleVersionURL:'' };
+    ], taxCategory:'software',taxIncluded:true,supportEmail:'',termsURL:'https://glancepreview.com/terms',
+    privacyURL:'https://glancepreview.com/privacy',refundURL:'https://glancepreview.com/refunds',lastCompatibleVersionURL:'' };
 }
 export async function readPricing(env: Env): Promise<Pricing & { revision: number }> {
   const row = await env.DB.prepare('SELECT revision,json FROM billing_settings WHERE id=1').first<{revision:number;json:string}>();

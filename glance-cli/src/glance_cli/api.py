@@ -13,7 +13,7 @@ from . import __version__
 from .registry import read_token
 
 
-BASE_URL = os.environ.get("GLANCE_API_URL", "https://glance-service.allanchanni.workers.dev").rstrip("/")
+BASE_URL = os.environ.get("GLANCE_API_URL", "https://api.glancepreview.com").rstrip("/")
 USER_AGENT = f"glance-cli/{__version__}"
 
 
@@ -31,7 +31,7 @@ def _open(req: Request, timeout: float):
     direct_setting = os.environ.get("GLANCE_API_DIRECT")
     direct_first = (direct_setting == "1" or
                     (direct_setting is None and
-                     urlsplit(req.full_url).hostname == "api.glance.mcreator.ai"))
+                     urlsplit(req.full_url).hostname in ("api.glancepreview.com", "api.glance.mcreator.ai")))
     if direct_first and getproxies():
         try:
             return _direct_opener.open(req, timeout=timeout)

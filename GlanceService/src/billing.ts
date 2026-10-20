@@ -58,7 +58,7 @@ async function checkoutResponse(env:Env,order:Order,user:User) {
     if (!completed.meta.changes) return billingReply({order:orderPublic((await readOrder(env,order.id,user.id))!),orderID:order.id,checkoutUrl:null});
     const fulfilled=(await readOrder(env,order.id,user.id))!;
     return billingReply({order:orderPublic(fulfilled),orderID:order.id,
-      checkoutUrl:`https://api.glance.mcreator.ai/pay/mock/?order=${encodeURIComponent(order.id)}`});
+      checkoutUrl:`https://api.glancepreview.com/pay/mock/?order=${encodeURIComponent(order.id)}`});
   }
   if (order.status!=='pending') return billingReply({order:orderPublic(order),orderID:order.id,checkoutUrl:null});
   let url:string;
@@ -70,7 +70,7 @@ async function checkoutResponse(env:Env,order:Order,user:User) {
         priceSnapshot:{amount:displayAmount(order.amount),taxCategory:order.tax_category as TaxCategory,taxIncluded:!!order.tax_included} as PriceSnapshot & {taxIncluded:boolean},
         includePaymentMethods:order.currency==='CNY'?['wechat']:['card','applepay','googlepay','wechat'],
         expiresInSeconds:1800,darkMode:true,language:order.language==='zh-Hans'?'zh-Hans':'en',
-        successUrl:`https://glance.mcreator.ai/pay/return?order=${encodeURIComponent(order.id)}`,
+        successUrl:`https://glancepreview.com/pay/return?order=${encodeURIComponent(order.id)}`,
         metadata:{product:order.product} },{idempotencyKey:order.id});
       const checkout = new URL(session.checkoutUrl);
       if (checkout.protocol!=='https:') throw new Error('Invalid checkout URL');

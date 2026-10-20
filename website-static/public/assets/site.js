@@ -1,6 +1,6 @@
 // Glance website runtime: language switch, live Widget catalog and live pricing.
 (function () {
-  var API = 'https://api.glance.mcreator.ai/api/v2';
+  var API = 'https://api.glancepreview.com/api/v2';
   var root = document.documentElement;
 
   // Language. The head script already set data-lang before first paint.
