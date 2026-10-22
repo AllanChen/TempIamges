@@ -237,8 +237,8 @@ export async function adminGrantPro(env: Env, request: Request, userID: number) 
   if (!user) throw new BillingError('user_not_found','User not found.',404);
   const config=await readPricing(env);
   try {
-    await env.DB.prepare(`INSERT OR IGNORE INTO admin_pro_grants(id,user_id,note,actor_id,created_at,updates_months)
-      VALUES(?,?,?,'admin',?,?)`).bind(id,userID,note,stamp(),config.updatesMonths).run();
+    await env.DB.prepare(`INSERT OR IGNORE INTO admin_pro_grants(id,user_id,note,actor_id,created_at,updates_months,device_limit)
+      VALUES(?,?,?,'admin',?,12,?)`).bind(id,userID,note,stamp(),config.deviceLimit).run();
   } catch (error) {
     const message=String(error);
     if (message.includes('already_pro')) throw new BillingError('already_pro','This user already has Pro.',409);

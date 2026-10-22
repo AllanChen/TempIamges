@@ -11,7 +11,7 @@
 
       <h2>2. The Service</h2>
       <p>Glance is an image and video viewer for macOS. You can view, browse and compare images and video, capture frames and screenshots, process files locally with built-in tools, and send selected media to cloud AI Widgets that return a modified result (for example upscaling, outpainting or background removal). Glance is a digital product: the app is delivered by download, and Pro features and credits are delivered immediately after a confirmed payment.</p>
-      <p>Cloud AI Widgets rely on third-party processing services, including AI workflows hosted on RunningHub and image hosting on Freeimage.host, as described on the <a href="/widgets/#models">AI Widgets page</a>. Their availability can affect the Service.</p>
+      <p>Cloud AI Widgets rely on third-party AI models and processing services. Glance has no text-to-image or image-to-video generation; each Widget edits media you supply. The models in use are: Google Nano Banana 2 (Gemini 3.1 Flash Image) for Upscale; Black Forest Labs FLUX.1 Kontext [dev] for Image Watermark Removal; BRIA RMBG 1.4 with ViTMatte for Portrait Background Removal; U²-Net (rembg) for Remove Background; Google Gemini 3.5 Flash for Image to Prompt; and MiniMax-Remover 1.3B, built on Wan 2.1, with an Ultralytics YOLO detector for Video Watermark Removal. Inference for the RunningHub-hosted models runs on RunningHub (runninghub.cn); image hosting uses Freeimage.host and Cloudflare R2. The current list, including any Widget whose model is still being confirmed, is kept on the <a href="/widgets/#models">AI Widgets page</a>. The availability of these providers can affect the Service.</p>
 
       <h2>3. Accounts</h2>
       <p>Viewing, compare, capture and the trial work without an account. Cloud Widgets and purchases require an account, created with Google sign-in or an email verification code. Keep your sign-in method secure, keep your email address current, and tell us at {{SUPPORT_EMAIL}} if you suspect unauthorized use. You are responsible for activity under your account.</p>
@@ -20,8 +20,7 @@
       <ul>
         <li><strong>Free.</strong> Viewing images and video, compare, capture (including saving and copying the capture), image text recognition and copying, and cloud AI Widgets paid with credits. Free forever.</li>
         <li><strong>Trial.</strong> A 14-day trial of all local features starts on first launch. It requires no account or payment method and never converts into a charge. Each Mac and each account receives one trial.</li>
-        <li><strong>Glance Pro.</strong> A one-time purchase that unlocks the local toolbox (conversion, compression, export and image copying, editing, Base64 and future local tools) on up to 2 Macs per account, with 12 months of feature updates and a one-time bonus of 100 credits. Cloud AI Widgets are not included in Pro.</li>
-        <li><strong>Feature-update renewal.</strong> After the update period, versions released during it keep working. You may optionally buy another 12 months of updates, counted from the payment date.</li>
+        <li><strong>Glance Pro.</strong> A one-time purchase that unlocks the local toolbox (conversion, compression, export and copy, editing, Base64 and future local tools) with lifetime free feature updates and a one-time bonus of 100 credits. Pro is sold in tiers that only differ in how many Macs one account may activate at the same time (currently 1 or 2). A higher tier can be bought later as an upgrade at its full price. Cloud AI Widgets are not included in Pro.</li>
         <li><strong>Credits.</strong> Credits pay for cloud AI Widget runs at the per-run price shown in the app and on the <a href="/widgets/">AI Widgets page</a>. New accounts receive 100 credits once; the new-account bonus is also limited to once per Mac. Credits have no cash value, cannot be transferred, and do not expire while your account exists.</li>
       </ul>
       <p>Current prices are listed on the <a href="/pricing/">Pricing page</a>. We may change prices for future purchases; a price change never affects an order you already paid for or a task already accepted.</p>
@@ -41,10 +40,10 @@
       </ul>
 
       <h2>7. Refunds</h2>
-      <p>Refunds are governed by the <a href="/refunds/">Refund Policy</a>. In short: Glance Pro and update renewals are refundable in full within 14 days; credit packs are refundable in full within 14 days if none of their credits have been used. Statutory consumer rights in your country are not affected.</p>
+      <p>Refunds are governed by the <a href="/refunds/">Refund Policy</a>. In short: Glance Pro is refundable in full within 14 days; credit packs are refundable in full within 14 days if none of their credits have been used. Statutory consumer rights in your country are not affected.</p>
 
       <h2>8. Licence and devices</h2>
-      <p>Glance Pro grants you a personal, non-transferable licence to use Pro features on up to 2 Macs signed in to your account at the same time. You may release a Mac yourself up to 3 times in any 30 days. Pro keeps working offline for up to 30 days. You may not share, resell or sublicense your licence or account.</p>
+      <p>Glance Pro grants you a personal, non-transferable licence to use Pro features on as many Macs as your tier allows, signed in to your account at the same time. You may release a Mac yourself up to 3 times in any 30 days. Pro keeps working offline for up to 30 days. You may not share, resell or sublicense your licence or account.</p>
 
       <h2>9. Your content and AI output</h2>
       <p>Files you open in Glance stay on your Mac. When you run a cloud Widget, you grant us a limited licence to transmit, store and process the selected media only to provide that Widget and its result. We do not use your media to train AI models. You own the results you create, to the extent the law allows, and you are responsible for having the rights to everything you upload.</p>
@@ -79,7 +78,7 @@
 
       <h2>2. 服务说明</h2>
       <p>Glance 是 macOS 上的看图看视频工具。你可以查看、浏览和对比图片与视频，截取画面和截图，用内置工具在本地处理文件，并把选中的媒体交给云端 AI Widget 处理后返回结果（例如高清放大、智能扩图、背景分离）。Glance 是数字产品：应用通过下载交付，Pro 功能与点数在付款确认后立即交付。</p>
-      <p>云端 AI Widget 依赖第三方处理服务，包括 RunningHub 托管的 AI 工作流和 Freeimage.host 图床，详见 <a href="/widgets/#models">AI Widget 页面</a>。这些服务的可用性会影响本服务。</p>
+      <p>云端 AI Widget 依赖第三方 AI 模型和处理服务。Glance 没有文生图和图生视频功能，每个 Widget 只修改你提供的媒体。所用模型为：高清放大使用 Google Nano Banana 2（Gemini 3.1 Flash Image）；图片去水印使用 Black Forest Labs FLUX.1 Kontext [dev]；人物背景分离使用 BRIA RMBG 1.4 与 ViTMatte；Remove Background 使用 U²-Net（rembg）；图片转提示词使用 Google Gemini 3.5 Flash；视频去水印使用基于 Wan 2.1 的 MiniMax-Remover 1.3B 及 Ultralytics YOLO 检测器。RunningHub（runninghub.cn）负责托管上述模型的推理；图床使用 Freeimage.host 与 Cloudflare R2。当前清单（含仍在核实模型的 Widget）见 <a href="/widgets/#models">AI Widget 页面</a>。这些服务的可用性会影响本服务。</p>
 
       <h2>3. 账户</h2>
       <p>查看、对比、截图和试用都不需要账户。云端 Widget 和购买需要账户，可通过 Google 登录或邮箱验证码创建。请妥善保管登录方式并保持邮箱有效；如发现未经授权的使用，请发邮件到 {{SUPPORT_EMAIL}}。你需要对账户下的活动负责。</p>
@@ -88,8 +87,7 @@
       <ul>
         <li><strong>免费版：</strong>查看图片与视频、对比、截图（包括保存和复制截图）、图片文字识别与复制，以及用点数运行云端 AI Widget。永久免费。</li>
         <li><strong>试用：</strong>首次启动即开始 14 天全部本地功能试用，不需要账户或支付方式，到期不会产生任何扣费。每台 Mac、每个账户各一次。</li>
-        <li><strong>Glance Pro：</strong>一次买断，解锁本地工具箱（格式转换、压缩、导出与复制图片、编辑、Base64 及以后新增的本地工具），同一账户最多 2 台 Mac，含 12 个月功能更新，并一次性赠送 100 点。云端 AI Widget 不包含在 Pro 内。</li>
-        <li><strong>功能更新续购：</strong>更新期结束后，更新期内发布的版本继续可用。你可以自愿续购 12 个月更新，从付款当天起算。</li>
+        <li><strong>Glance Pro：</strong>一次买断，解锁本地工具箱（格式转换、压缩、导出与复制图片、编辑、Base64 及以后新增的本地工具），终身免费功能更新，并一次性赠送 100 点。Pro 按档位销售，档位只决定同一账户可同时激活的 Mac 数量（目前为 1 台或 2 台）；之后可按更高档位的全价升级。云端 AI Widget 不包含在 Pro 内。</li>
         <li><strong>点数：</strong>点数用于支付云端 AI Widget，每次价格以应用内和 <a href="/widgets/">AI Widget 页面</a>显示为准。新账户一次性赠送 100 点，且每台 Mac 只发放一次。点数不可兑现、不可转让，账户存续期间不会过期。</li>
       </ul>
       <p>当前价格见<a href="/pricing/">价格页</a>。我们可能调整之后购买的价格；价格调整不影响你已付款的订单或已被接受的任务。</p>
@@ -109,10 +107,10 @@
       </ul>
 
       <h2>7. 退款</h2>
-      <p>退款依照<a href="/refunds/">退款政策</a>执行。简要来说：Glance Pro 与功能更新续购在 14 天内可全额退款；点数充值包在 14 天内且完全未使用时可全额退款。你所在地法律赋予的消费者权利不受影响。</p>
+      <p>退款依照<a href="/refunds/">退款政策</a>执行。简要来说：Glance Pro 在 14 天内可全额退款；点数充值包在 14 天内且完全未使用时可全额退款。你所在地法律赋予的消费者权利不受影响。</p>
 
       <h2>8. 授权与设备</h2>
-      <p>Glance Pro 授予你个人的、不可转让的使用许可，可在同一账户登录的最多 2 台 Mac 上同时使用 Pro 功能。你可以自行释放设备，每 30 天最多 3 次。离线时 Pro 最多可继续使用 30 天。不得共享、转售或再许可你的授权或账户。</p>
+      <p>Glance Pro 授予你个人的、不可转让的使用许可，可在同一账户登录的 Mac 上同时使用 Pro 功能，数量以所购档位为准。你可以自行释放设备，每 30 天最多 3 次。离线时 Pro 最多可继续使用 30 天。不得共享、转售或再许可你的授权或账户。</p>
 
       <h2>9. 你的内容与 AI 结果</h2>
       <p>你在 Glance 中打开的文件保留在你的 Mac 上。当你运行云端 Widget 时，你授予我们有限许可，仅为提供该 Widget 及其结果而传输、存储和处理所选媒体。我们不会用你的素材训练 AI 模型。在法律允许的范围内，你拥有自己生成的结果，并需确保对上传的所有内容拥有相应权利。</p>

@@ -35,7 +35,8 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
   var taskName: String?
   var taskCost: Int?
   var pendingTaskCount = 0
-  var onCheckout: ((String, BillingPack?, String, BillingPrice) -> Void)?
+  var onCheckout: ((String, BillingPack?, BillingTier?, String, BillingPrice) -> Void)?
+  private var selectedTierID: String?
   var onResumeTask: (() -> Void)?
   var onResumeOrder: ((BillingOrder) -> Void)?
   var onAutoSubmitChange: ((Bool) -> Void)?
@@ -599,7 +600,7 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
     let amount = BillingManager.shared.money(selected?.price(currency).amount, currency: currency)
     primary(String(format: "Continue to payment %@".localized, amount)) { [weak self] in
       guard let self, let selected else { return }
-      self.onCheckout?("credits", selected, self.currency, selected.price(self.currency))
+      self.onCheckout?("credits", selected, nil, self.currency, selected.price(self.currency))
     }
     quiet("Not now".localized) { [weak self] in self?.dismiss() }
     note("You can switch to USD card payments if WeChat Pay is unavailable.".localized)
@@ -669,7 +670,7 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         guard let self else { return }
         self.currency = currency
         self.selectedPackID = nil
-        self.page == .topup ? self.showTopup() : self.showPro(renewal: self.returnPage == .pro)
+        self.page == .topup ? self.showTopup() : self.showPro()
       }
       guard let option = option as? BillingActionButton else { continue }
       option.cornerRadius = 6
@@ -682,53 +683,56 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       option.inkColor = currency == self.currency ? accent : secondary
     }
   }
-  func showPro(renewal: Bool = false) {
+  /// Pro offer: a lifetime licence sold in tiers by number of Macs. With Pro
+  /// already active only larger tiers are offered, as an upgrade.
+  func showPro() {
     page = .pro
     BillingManager.shared.track("pro_offer", feature: "pro")
-    returnPage = renewal ? .pro : .account
+    returnPage = .account
     let manager = BillingManager.shared
     guard let config = manager.pricing else {
       showError("Pricing is unavailable. Please try again.".localized)
       return
     }
-    if !renewal && (manager.hasPro || manager.entitlements?.licenseStatus == "active") {
-      if manager.hasPro { showAccount() } else { showDevices() }
+    if manager.entitlements?.licenseStatus == "active" && !manager.hasPro {
+      showDevices()
       return
     }
-    let product = renewal ? config.renewal : config.pro
-    let price = product.price(currency)
+    let tiers = manager.purchasableTiers
+    guard !tiers.isEmpty else { showAccount(); return }
+    let upgrade = manager.hasPro
+    if !tiers.contains(where: { $0.id == selectedTierID }) {
+      selectedTierID = (tiers.first { $0.recommended } ?? tiers[0]).id
+    }
+    let tier = tiers.first { $0.id == selectedTierID } ?? tiers[0]
+    let price = tier.price(currency, launchUntil: config.launchUntil)
     reset(
-      renewal ? "Renew feature updates".localized : "Glance Pro",
+      upgrade ? "Add Macs to Pro".localized : "Glance Pro",
       subtitle: "Buy local tools once. Cloud Widgets use credits separately.".localized)
-    // Offer column (Figma "Screen / proOfferSignedIn" grid: 432 pt at x 104, rows
-    // at 325/365/405, payment switch at 445). The title already names the plan,
-    // so the column holds only the price and the rows. With no price set the
-    // price block is omitted rather than shown as a placeholder bar.
+    // Offer column (Figma "Screen / proOfferSignedIn"): 432 pt at x 104. The tier
+    // switch takes the top of the column; price and rows follow the grid.
     let column: (x: CGFloat, width: CGFloat) = (104, 432)
+    if tiers.count > 1 {
+      tierSwitch(tiers, y: 191, x: column.x, width: column.width)
+    } else {
+      label(
+        String(format: "%d Macs".localized, tier.deviceLimit) + " · " + tier.localizedName,
+        x: column.x, y: 197, width: column.width, size: 15, weight: .semibold, align: .center,
+        height: 24)
+    }
     if let amount = price.amount {
-      var launchCaption: String?
-      var original = ""
-      if !renewal, let cutoff = product.launchUntil,
-        (BillingDates.parse(cutoff) ?? .distantPast) > Date(),
-        amount != (currency == "CNY" ? product.CNY.amount : product.USD.amount)
-      {
-        original = manager.money(
-          currency == "CNY" ? product.CNY.amount : product.USD.amount, currency: currency)
-        launchCaption = original + "  "
-          + String(format: "Launch price until %@".localized, BillingDates.display(cutoff))
-      }
-      // Centre the block between the subtitle (ends y 188) and the first row (y 325).
-      let blockHeight: CGFloat = launchCaption == nil ? 69 : 69 + 6 + 19
-      let top = (191 + (315 - 191 - blockHeight) / 2).rounded()
+      let regular = tier.regularPrice(currency)
+      let discounted = regular.amount != nil && regular.amount != amount
       let priceLabel = label(
-        manager.money(amount, currency: currency), x: column.x, y: top, width: column.width,
-        size: 44, weight: .semibold, align: .center, height: 69)
+        manager.money(amount, currency: currency), x: column.x, y: 236, width: column.width,
+        size: 44, weight: .semibold, align: .center, height: 60)
       priceLabel.maximumNumberOfLines = 1
       priceLabel.lineBreakMode = .byTruncatingTail
-      if let launchCaption {
+      if discounted, let cutoff = config.launchUntil {
+        let original = manager.money(regular.amount, currency: currency)
         let caption = label(
-          launchCaption, x: column.x, y: top + 75, width: column.width, align: .center,
-          color: secondary, height: 19)
+          original + "  " + String(format: "Launch price until %@".localized, BillingDates.display(cutoff)),
+          x: column.x, y: 296, width: column.width, align: .center, color: secondary, height: 19)
         caption.maximumNumberOfLines = 1
         caption.lineBreakMode = .byTruncatingTail
         let string = NSMutableAttributedString(attributedString: caption.attributedStringValue)
@@ -738,37 +742,31 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         caption.attributedStringValue = string
       }
     }
+    row("Included".localized, "All features".localized, y: 325, width: column.width, x: column.x,
+        singleLine: true)
     row(
-      "Included".localized,
-      renewal ? "Feature updates".localized : "All features".localized,
-      y: 325, width: column.width, x: column.x, singleLine: true)
-    row(
-      "Updates / devices".localized,
-      String(
-        format: "%d months / %d Macs".localized,
-        renewal ? config.renewalMonths : config.updatesMonths, config.deviceLimit),
+      "Macs / updates".localized,
+      String(format: "%d Macs".localized, tier.deviceLimit) + " · " + "Lifetime, free".localized,
       y: 365, width: column.width, x: column.x, singleLine: true)
     row(
       "Purchase gift".localized,
-      renewal
-        ? "None".localized
-        : String(
-          format: "%d credits".localized,
-          manager.entitlements?.proBonusEligible == false ? 0 : config.proBonusCredits),
+      String(
+        format: "%d credits".localized,
+        upgrade || manager.entitlements?.proBonusEligible == false ? 0 : config.proBonusCredits),
       y: 405, width: column.width, x: column.x, singleLine: true)
     paymentSwitch(y: 445, x: column.x, width: column.width)
     primary(
-      (renewal ? "Renew updates".localized : "Buy Pro".localized)
+      (upgrade ? "Upgrade".localized : "Buy Pro".localized)
         + (price.amount == nil ? "" : " · " + manager.money(price.amount, currency: currency))
     ) { [weak self] in
       guard let self else { return }
-      self.onCheckout?(renewal ? "renewal" : "pro", nil, self.currency, price)
+      self.onCheckout?("pro", nil, tier, self.currency, price)
     }
     quiet("Not now".localized) { [weak self] in self?.dismiss() }
     // Signed out, the button leads to sign-in and the refreshed, per-account
     // offer (the owner's test account gets mock checkout), so it stays enabled.
     if AuthManager.shared.isSignedIn
-      && (!config.paymentsAvailable || price.amount == nil || product.productID.isEmpty)
+      && (!config.paymentsAvailable || price.amount == nil || tier.productID.isEmpty)
     {
       // Footer-note line (Figma "Footer Note", y 578): the inline-error slot at
       // y 458 would sit on the payment switch.
@@ -776,6 +774,42 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       disablePrimary()
     } else if config.mockCheckout == true {
       note("Simulated payment for testing. No money is charged.".localized)
+    }
+  }
+  /// Tier selector in the segmented style of the payment switch: one option per
+  /// tier, "N Macs · price", with the selected tier in the accent colour.
+  private func tierSwitch(_ tiers: [BillingTier], y: CGFloat, x: CGFloat, width: CGFloat) {
+    guard let config = BillingManager.shared.pricing else { return }
+    let track = Root(frame: NSRect(x: x, y: y, width: width, height: 36))
+    track.wantsLayer = true
+    track.layer?.backgroundColor = surface.cgColor
+    track.layer?.cornerRadius = 8
+    track.layer?.borderWidth = 1
+    track.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+    root.addSubview(track)
+    let optionWidth = (width - 8) / CGFloat(tiers.count)
+    for (i, tier) in tiers.enumerated() {
+      let selected = tier.id == selectedTierID
+      let amount = tier.price(currency, launchUntil: config.launchUntil).amount
+      let title = String(format: "%d Macs".localized, tier.deviceLimit)
+        + (amount == nil ? "" : " · " + BillingManager.shared.money(amount, currency: currency))
+      let option = button(
+        title, frame: NSRect(x: 4 + CGFloat(i) * optionWidth, y: 4, width: optionWidth, height: 28),
+        primary: false, parent: track
+      ) { [weak self] in
+        guard let self else { return }
+        self.selectedTierID = tier.id
+        self.showPro()
+      }
+      guard let option = option as? BillingActionButton else { continue }
+      option.cornerRadius = 6
+      option.showsOutline = false
+      option.labelSize = 12
+      option.labelWeight = selected ? .semibold : .medium
+      option.labelFrame = NSRect(x: 0, y: 6, width: optionWidth, height: 15)
+      option.fillColor = selected
+        ? NSColor(srgbRed: 58 / 255, green: 44 / 255, blue: 38 / 255, alpha: 1) : surface
+      option.inkColor = selected ? accent : secondary
     }
   }
   func refreshAccountState() {
@@ -799,8 +833,8 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       height: 22)
     let info =
       manager.hasPro
-      ? "Feature updates until".localized + " "
-        + BillingDates.display(manager.verifiedClaims?.updatesUntil)
+      ? String(format: "%d Macs".localized, manager.entitlements?.deviceLimit ?? 1) + " · "
+        + "Lifetime, free".localized
       : String(format: "Trial: %d days left".localized, manager.remainingTrialDays)
     label(info, x: 80, y: 235, width: 480, color: secondary, height: 19)
     row(
@@ -813,14 +847,15 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         max(0, Int(ceil($0.timeIntervalSinceNow / 86400)))
       } ?? 0
     row("Offline authorization".localized, String(format: "%d days".localized, offlineDays), y: 360)
-    let links: [(String, () -> Void)] = [
-      ("Orders and refunds".localized, { [weak self] in self?.showOrders() }),
-      (
-        manager.hasPro ? "Renew feature updates".localized : "View Pro".localized,
-        { [weak self] in self?.showPro(renewal: manager.hasPro) }
-      ),
-      ("Sign out".localized, { [weak self] in self?.confirmSignOut() }),
+    var links: [(String, () -> Void)] = [
+      ("Orders and refunds".localized, { [weak self] in self?.showOrders() })
     ]
+    if !manager.hasPro {
+      links.append(("View Pro".localized, { [weak self] in self?.showPro() }))
+    } else if !manager.purchasableTiers.isEmpty {
+      links.append(("Add Macs".localized, { [weak self] in self?.showPro() }))
+    }
+    links.append(("Sign out".localized, { [weak self] in self?.confirmSignOut() }))
     for (i, item) in links.enumerated() {
       let link = button(
         item.0, frame: NSRect(x: 64 + CGFloat(i) * 174, y: 414, width: 164, height: 28),

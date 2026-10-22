@@ -51,11 +51,11 @@ final class BillingCoordinator {
   private func makePanel(over parent: NSWindow?) -> BillingWindow {
     let panel = BillingWindow()
     panel.currency = BillingManager.shared.pricing?.defaultCurrency ?? "USD"
-    panel.onCheckout = { [weak self, weak panel, weak parent] product, pack, currency, price in
+    panel.onCheckout = { [weak self, weak panel, weak parent] product, pack, tier, currency, price in
       guard let panel else { return }
       self?.checkout(
-        product: product, pack: pack, currency: currency, displayedPrice: price, panel: panel,
-        parent: parent)
+        product: product, pack: pack, tier: tier, currency: currency, displayedPrice: price,
+        panel: panel, parent: parent)
     }
     panel.onResumeOrder = { [weak self, weak panel, weak parent] order in
       guard let panel else { return }
@@ -130,37 +130,13 @@ final class BillingCoordinator {
       panel.present(over: parent)
       return false
     }
-    if manager.needsUpdates {
-      panel.showStatus(
-        title: "This version needs renewed feature updates".localized,
-        subtitle: "Your previous compatible version keeps Pro permanently.".localized,
-        rows: [
-          (
-            "Feature updates until".localized,
-            BillingDates.display(manager.verifiedClaims?.updatesUntil)
-          )
-        ],
-        primary: "Renew feature updates".localized,
-        secondary: "Download compatible version".localized,
-        onPrimary: { panel.showPro(renewal: true) },
-        onSecondary: {
-          if let raw = manager.pricing?.lastCompatibleVersionURL, let url = URL(string: raw),
-            url.scheme == "https"
-          {
-            NSWorkspace.shared.open(url)
-          }
-        })
-      retain(panel)
-      panel.present(over: parent)
-      return false
-    }
     panel.showStatus(
       title: String(format: "%@ requires Pro".localized, title),
       subtitle:
         "Viewing, comparing, capturing and AI Widgets remain available. Files and results are kept."
         .localized,
       primary: "View Pro".localized, secondary: "Cancel".localized,
-      onPrimary: { [weak panel] in panel?.showPro(renewal: manager.needsUpdates) },
+      onPrimary: { [weak panel] in panel?.showPro() },
       onSecondary: { [weak panel] in panel?.dismiss() })
     retain(panel)
     panel.present(over: parent)
@@ -197,15 +173,15 @@ final class BillingCoordinator {
     retain(panel)
     BillingManager.shared.refreshPricing { result in
       switch result {
-      case .success: panel.showPro(renewal: BillingManager.shared.needsUpdates)
+      case .success: panel.showPro()
       case .failure(let error): panel.showError(error.localizedDescription)
       }
       panel.present(over: parent)
     }
   }
   private func checkout(
-    product: String, pack: BillingPack?, currency: String, displayedPrice: BillingPrice,
-    panel: BillingWindow, parent: NSWindow?
+    product: String, pack: BillingPack?, tier: BillingTier?, currency: String,
+    displayedPrice: BillingPrice, panel: BillingWindow, parent: NSWindow?
   ) {
     guard AuthManager.shared.isSignedIn else {
       panel.showLogin(purchase: product != "credits") {
@@ -215,7 +191,7 @@ final class BillingCoordinator {
           if product == "credits" {
             panel.showTopup()
           } else {
-            panel.showPro(renewal: product == "renewal")
+            panel.showPro()
           }
         }
       }
@@ -224,7 +200,8 @@ final class BillingCoordinator {
     let key = UUID().uuidString
     func create() {
       BillingManager.shared.createOrder(
-        product: product, pack: pack, currency: currency, key: key, displayedPrice: displayedPrice
+        product: product, pack: pack, tier: tier, currency: currency, key: key,
+        displayedPrice: displayedPrice
       ) { [weak self, weak panel, weak parent] result in
         guard let self, let panel else { return }
         switch result {
@@ -238,7 +215,7 @@ final class BillingCoordinator {
                 if product == "credits" {
                   panel.showTopup()
                 } else {
-                  panel.showPro(renewal: product == "renewal")
+                  panel.showPro()
                 }
               })
           }
@@ -334,7 +311,7 @@ final class BillingCoordinator {
             if payment.order.product == "credits" {
               payment.panel.showTopup()
             } else {
-              payment.panel.showPro(renewal: payment.order.product == "renewal")
+              payment.panel.showPro()
             }
           }
         }
@@ -391,7 +368,7 @@ final class BillingCoordinator {
                 if payment.order.product == "credits" {
                   payment.panel.showTopup()
                 } else {
-                  payment.panel.showPro(renewal: payment.order.product == "renewal")
+                  payment.panel.showPro()
                 }
               })
           }
@@ -425,18 +402,6 @@ final class BillingCoordinator {
         {
           payment.panel.showDevices()
         } else {
-          if payment.order.product == "renewal" {
-            payment.panel.showStatus(
-              title: "Feature updates extended".localized,
-              subtitle: "Feature updates until".localized + " "
-                + BillingDates.display(BillingManager.shared.entitlements?.updatesUntil),
-              primary: "Done".localized, onPrimary: { payment.panel.dismiss() },
-              iconName: "BillingSuccess",
-              explanation:
-                "Your buyout license and credits are unchanged. This version can now use Pro."
-                .localized)
-            return
-          }
           var rows = [("Current balance".localized, String(status.balance))]
           if payment.order.product != "credits" {
             rows = [
@@ -445,10 +410,7 @@ final class BillingCoordinator {
                 String(format: "%d credits".localized, status.order.bonusCredits)
               ),
               ("Current balance".localized, String(status.balance)),
-              (
-                "Feature updates until".localized,
-                BillingDates.display(BillingManager.shared.entitlements?.updatesUntil)
-              ),
+              ("Updates".localized, "Lifetime, free".localized),
               (
                 "Active Macs".localized,
                 "\(BillingManager.shared.entitlements?.devices.count ?? 0) / \(BillingManager.shared.entitlements?.deviceLimit ?? 2)"

@@ -125,32 +125,45 @@
       return (cur === 'CNY' ? '¥' : '$') + text;
     };
     var launchActive = function () {
-      return pricing.pro.launchUntil && new Date(pricing.pro.launchUntil) > new Date();
+      return pricing.launchUntil && new Date(pricing.launchUntil) > new Date();
+    };
+    var tierPrice = function (tier, cur) {
+      var launch = launchActive() && tier['launch' + cur] && tier['launch' + cur].amount != null ? tier['launch' + cur].amount : null;
+      var regular = tier[cur] && tier[cur].amount;
+      return { amount: launch != null ? launch : regular, regular: regular, discounted: launch != null && launch !== regular };
     };
     var fill = function () {
       var cur = currency;
-      var regular = money(pricing.pro[cur] && pricing.pro[cur].amount, cur);
-      var launch = launchActive() ? money(pricing.pro['launch' + cur] && pricing.pro['launch' + cur].amount, cur) : null;
       document.querySelectorAll('[data-zero]').forEach(function (n) { n.textContent = cur === 'CNY' ? '¥0' : '$0'; });
-      document.querySelectorAll('[data-pro-price]').forEach(function (n) {
+      var tiers = (pricing.proTiers || []).filter(function (t) { return t.enabled; });
+      var anyDiscount = false;
+      document.querySelectorAll('[data-tiers]').forEach(function (n) {
         n.textContent = '';
-        if (!regular) { n.appendChild(both('span', '', '待公布', 'TBA')); return; }
-        n.appendChild(document.createTextNode(launch || regular));
-        if (launch && launch !== regular) { var del = el('del', '', regular); n.appendChild(del); }
+        tiers.forEach(function (t) {
+          var p = tierPrice(t, cur);
+          var row = el('div', 'tier' + (t.recommended ? ' recommended' : ''));
+          var head = el('div', 'tier-head');
+          head.appendChild(both('b', '', t.name === 'Personal' ? '个人版' : t.name === 'Duo' ? '双机版' : t.name, t.name));
+          head.appendChild(both('span', 'tier-macs', t.deviceLimit + ' 台 Mac', t.deviceLimit + (t.deviceLimit === 1 ? ' Mac' : ' Macs')));
+          row.appendChild(head);
+          var priceNode = el('div', 'tier-price');
+          if (p.amount == null) priceNode.appendChild(both('span', '', '待公布', 'TBA'));
+          else {
+            priceNode.appendChild(document.createTextNode(money(p.amount, cur)));
+            if (p.discounted) { priceNode.appendChild(el('del', '', money(p.regular, cur))); anyDiscount = true; }
+          }
+          row.appendChild(priceNode);
+          if (t.recommended) row.appendChild(both('span', 'tier-badge', '最受欢迎', 'Most popular'));
+          n.appendChild(row);
+        });
       });
       document.querySelectorAll('[data-pro-launch]').forEach(function (n) {
-        n.hidden = !(launch && launch !== regular);
+        n.hidden = !anyDiscount;
         if (!n.hidden) {
-          var d = new Date(pricing.pro.launchUntil);
+          var d = new Date(pricing.launchUntil);
           n.querySelector('[lang="zh"]').textContent = '首发价，截至 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
           n.querySelector('[lang="en"]').textContent = 'Launch price until ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         }
-      });
-      var renewal = money(pricing.renewal[cur] && pricing.renewal[cur].amount, cur);
-      document.querySelectorAll('[data-renewal-price]').forEach(function (n) {
-        n.textContent = '';
-        if (renewal) n.appendChild(document.createTextNode(renewal));
-        else n.appendChild(both('span', '', '待公布', 'TBA'));
       });
       document.querySelectorAll('[data-packs]').forEach(function (n) {
         n.textContent = '';

@@ -60,19 +60,17 @@ final class BillingManager {
   }
   var offlineAuthorizationExpired: Bool { signedClaims != nil && verifiedClaims == nil }
   var hasPro: Bool { verifiedClaims != nil }
-  var needsUpdates: Bool {
-    guard let claims = verifiedClaims,
-      let release = Bundle.main.object(forInfoDictionaryKey: "GlanceFeatureReleaseDate") as? String,
-      let releasedAt = BillingDates.parse(release),
-      let until = BillingDates.parse(claims.updatesUntil),
-      Bundle.main.object(forInfoDictionaryKey: "GlanceSecurityUpdate") as? Bool != true
-    else { return false }
-    return releasedAt > until
+  /// Tiers the account can still buy: all of them without Pro, otherwise only
+  /// tiers with more Macs than the current licence (an upgrade).
+  var purchasableTiers: [BillingTier] {
+    let current = hasPro ? (entitlements?.deviceLimit ?? 0) : 0
+    return (pricing?.proTiers ?? []).filter { $0.enabled && $0.deviceLimit > current }
+      .sorted { $0.deviceLimit < $1.deviceLimit }
   }
   var localToolsAllowed: Bool {
     // Roll out gating only with a working purchase path, per PRD P2.
     if !enforcementEnabled { return true }
-    return (hasPro && !needsUpdates) || (!trial.voided && remainingTrialDays > 0)
+    return hasPro || (!trial.voided && remainingTrialDays > 0)
   }
   func start() {
     trial.observe(Date())
@@ -255,7 +253,7 @@ final class BillingManager {
     }
   }
   func createOrder(
-    product: String, pack: BillingPack?, currency: String, key: String,
+    product: String, pack: BillingPack?, tier: BillingTier? = nil, currency: String, key: String,
     displayedPrice: BillingPrice, intentID: String? = nil,
     completion: @escaping (Result<BillingCheckout, Error>) -> Void
   ) {
@@ -275,6 +273,7 @@ final class BillingManager {
       "language": Locale.preferredLanguages.first?.hasPrefix("zh") == true ? "zh-Hans" : "en",
     ]
     if let pack { body["packID"] = pack.id }
+    if let tier { body["tierID"] = tier.id }
     if let intentID { body["intentID"] = intentID }
     request("/api/v2/orders", body: body, idempotencyKey: key, completion: completion)
   }

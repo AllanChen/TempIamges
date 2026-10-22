@@ -11,7 +11,7 @@ python3 -m venv .venv && source .venv/bin/activate && pip install glance-cli
 glance --help
 ```
 
-默认连接 `https://glance-service.allanchanni.workers.dev`；需要连接其他服务时设置环境变量 `GLANCE_API_URL`。
+默认连接 `https://api.glancepreview.com`；需要连接其他服务时设置环境变量 `GLANCE_API_URL`。
 
 下面的步骤适用于在本仓库里开发 CLI 本身。
 

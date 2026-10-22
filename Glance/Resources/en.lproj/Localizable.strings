@@ -676,6 +676,14 @@
 "Continue to payment %@" = "Continue to payment %@";
 "Convert, compress, export, edit" = "Convert, compress, export";
 "All features" = "All features";
+"Add Macs to Pro" = "Add Macs to Pro";
+"%d Macs" = "%d Macs";
+"Macs / updates" = "Macs / updates";
+"Lifetime, free" = "Lifetime, free";
+"Upgrade" = "Upgrade";
+"Add Macs" = "Add Macs";
+"Personal" = "Personal";
+"Duo" = "Duo";
 "Simulated payment for testing. No money is charged." = "Simulated payment for testing. No money is charged.";
 "Could not complete this action" = "Could not complete this action";
 "Credit top-up" = "Credit top-up";

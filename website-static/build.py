@@ -17,22 +17,23 @@ ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
 OUT = ROOT / "public"
 SITE = "https://glancepreview.com"
-# Former address; every page there redirects to SITE once the new domain is live.
-OLD_SITE = "https://glance.mcreator.ai"
+# The former address and www redirect to SITE in functions/_middleware.js.
 SUPPORT_EMAIL = "support@mcreator.ai"
 VERSION = "1.0.0-beta.1"
 DMG = f"/download/Glance-{VERSION}.dmg"
 UPDATED = "2026-10-16"
-RUNTIME_VERSION = "2026-10-16-bilingual-media"
 
 # Last published pricing. The live page replaces it with /api/v2/pricing,
 # which is edited in Admin. Amounts are minor units (fen / cents).
 PRICING_FALLBACK = {
     "trialDays": 14, "signupCredits": 100, "proBonusCredits": 100, "deviceLimit": 2,
-    "offlineDays": 30, "updatesMonths": 12, "renewalMonths": 12,
-    "pro": {"CNY": {"amount": None}, "USD": {"amount": None}, "launchCNY": {"amount": None},
-            "launchUSD": {"amount": None}, "launchUntil": None},
-    "renewal": {"CNY": {"amount": None}, "USD": {"amount": None}},
+    "offlineDays": 30, "launchUntil": None,
+    "proTiers": [
+        {"id": "personal", "name": "Personal", "enabled": True, "recommended": False, "deviceLimit": 1,
+         "CNY": {"amount": 9800}, "USD": {"amount": 1490}, "launchCNY": {"amount": 6800}, "launchUSD": {"amount": 990}},
+        {"id": "duo", "name": "Duo", "enabled": True, "recommended": True, "deviceLimit": 2,
+         "CNY": {"amount": 13800}, "USD": {"amount": 1990}, "launchCNY": {"amount": 9800}, "launchUSD": {"amount": 1490}},
+    ],
     "packs": [
         {"id": "small", "enabled": True, "recommended": False,
          "CNY": {"amount": 1200, "points": 120}, "USD": {"amount": 299, "points": 120}},
@@ -102,6 +103,8 @@ def page(meta: dict, body: str) -> str:
                             "Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.")
     canonical = SITE + meta["path"]
     robots = '<meta name="robots" content="noindex">' if meta.get("noindex") else ""
+    # Pancake by Waffo store verification; checked on the homepage only.
+    verify = '<meta name="waffo-verify" content="26c71f44eeec84b752100c39e4b32fc3">' if meta["path"] == "/" else ""
     return f"""<!doctype html>
 <html lang="zh-CN" data-lang="zh">
 <head>
@@ -116,10 +119,11 @@ def page(meta: dict, body: str) -> str:
 <meta property="og:url" content="{canonical}">
 <meta name="theme-color" content="#08090c">
 {robots}
+{verify}
 <link rel="icon" type="image/png" href="/assets/img/favicon-64.png">
 <link rel="apple-touch-icon" href="/assets/img/logo-256.png">
 <script>(function(){{var l;try{{l=localStorage.getItem('glance.lang')}}catch(e){{}}if(!l)l=/^zh/i.test(navigator.language||'')?'zh':'en';document.documentElement.setAttribute('data-lang',l);document.documentElement.setAttribute('lang',l==='zh'?'zh-CN':'en')}})();</script>
-<link rel="stylesheet" href="/assets/site.css?v={UPDATED}">
+<link rel="stylesheet" href="/assets/site.css?v={ASSET_VERSION}">
 </head>
 <body>
 <span hidden data-title-zh="{title_zh}" data-title-en="{title_en}"></span>
@@ -128,7 +132,7 @@ def page(meta: dict, body: str) -> str:
 {body}
 </main>
 {footer()}
-<script src="/assets/site.js?v={RUNTIME_VERSION}" defer></script>
+<script src="/assets/site.js?v={ASSET_VERSION}" defer></script>
 </body>
 </html>
 """
@@ -147,6 +151,19 @@ def render(text: str) -> str:
     if leftover:
         raise SystemExit(f"Unresolved placeholders: {leftover}")
     return text
+
+
+def asset_version() -> str:
+    """Content hash of the shared CSS and JS, so every change gets a new URL
+    and no browser or edge cache can serve a stale script."""
+    import hashlib
+    digest = hashlib.sha256()
+    for name in ("site.css", "site.js"):
+        digest.update((SRC / "assets" / name).read_bytes())
+    return digest.hexdigest()[:10]
+
+
+ASSET_VERSION = asset_version()
 
 
 def dmg_facts() -> tuple[str, str]:
@@ -198,9 +215,7 @@ def main() -> None:
 /pay/*
   Cache-Control: no-store
 """, encoding="utf-8")
-    (OUT / "_redirects").write_text(f"""{OLD_SITE}/* {SITE}/:splat 301
-https://www.glancepreview.com/* {SITE}/:splat 301
-/refund /refunds/ 301
+    (OUT / "_redirects").write_text(f"""/refund /refunds/ 301
 /refund/ /refunds/ 301
 /Glance-1.0.0.dmg {DMG} 302
 /download {DMG} 302

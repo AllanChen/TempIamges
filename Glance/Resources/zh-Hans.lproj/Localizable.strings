@@ -677,6 +677,14 @@
 "Continue to payment %@" = "前往支付 %@";
 "Convert, compress, export, edit" = "转换、压缩、导出、编辑";
 "All features" = "全部";
+"Add Macs to Pro" = "升级 Pro 设备数";
+"%d Macs" = "%d 台 Mac";
+"Macs / updates" = "设备 / 更新";
+"Lifetime, free" = "终身免费更新";
+"Upgrade" = "升级";
+"Add Macs" = "增加 Mac";
+"Personal" = "个人版";
+"Duo" = "双机版";
 "Simulated payment for testing. No money is charged." = "模拟支付，仅用于测试，不会真实扣款。";
 "Could not complete this action" = "暂时无法完成此操作";
 "Credit top-up" = "充值点数";

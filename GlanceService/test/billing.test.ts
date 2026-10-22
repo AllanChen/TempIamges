@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import worker, { type Env } from '../src/index';
-import { defaultPricing, readPricing, expireTasks } from '../src/pricing';
+import { defaultPricing, readPricing, expireTasks, tierPrice } from '../src/pricing';
 import { api, seedWidget, USER_TOKEN, WIDGET_ID, claimTask, createTask } from './helpers';
 
 let privateKey: string;
@@ -45,15 +45,19 @@ async function call(path: string, body?: unknown, token=USER_TOKEN, extra: Heade
   return worker.fetch(new Request('https://example.com'+path,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+token,'X-Glance-Device':device,'Content-Type':'application/json',...extra},body:body===undefined?undefined:JSON.stringify(body)}),billingEnv);
 }
 async function configure() {
-  const config=defaultPricing(billingEnv); config.enabled=true;config.pro.CNY.amount=10000;config.pro.USD.amount=2000;
-  config.renewal.CNY.amount=5000;config.renewal.USD.amount=1000;config.supportEmail='support@example.com';
-  for(const product of [config.pro,config.renewal,...config.packs])product.productID='PROD_1234567890123456789012';
+  const config=defaultPricing(billingEnv); config.enabled=true;config.supportEmail='support@example.com';
+  // Tier prices used by the webhook amounts below: personal 100.00 / 20.00, duo 150.00 / 30.00; no launch price.
+  Object.assign(config.proTiers[0],{CNY:{amount:10000},USD:{amount:2000},launchCNY:{amount:null},launchUSD:{amount:null}});
+  Object.assign(config.proTiers[1],{CNY:{amount:15000},USD:{amount:3000},launchCNY:{amount:null},launchUSD:{amount:null}});
+  config.launchUntil=null;
+  for(const product of [...config.proTiers,...config.packs])product.productID='PROD_1234567890123456789012';
   await env.DB.prepare('INSERT INTO billing_settings(id,revision,json,updated_at) VALUES(1,1,?,?)').bind(JSON.stringify(config),new Date().toISOString()).run();
   return config;
 }
-async function buy(product='credits', currency='CNY', key=crypto.randomUUID(), expectedPrice?: unknown) {
-  const config=await readPricing(billingEnv), price=product==='credits'?config.packs[0][currency as 'CNY'|'USD']:config[product as 'pro'|'renewal'][currency as 'CNY'|'USD'];
-  const response=await call('/api/v2/orders',{product,currency,...(product==='credits'?{packID:'small'}:{}),expectedPrice:expectedPrice??price},USER_TOKEN,{'Idempotency-Key':key});
+async function buy(product='credits', currency='CNY', key=crypto.randomUUID(), expectedPrice?: unknown, tierID='personal') {
+  const config=await readPricing(billingEnv), cur=currency as 'CNY'|'USD';
+  const price=product==='credits'?config.packs[0][cur]:tierPrice(config,config.proTiers.find(t=>t.id===tierID)!,cur);
+  const response=await call('/api/v2/orders',{product,currency,...(product==='credits'?{packID:'small'}:{tierID}),expectedPrice:expectedPrice??price},USER_TOKEN,{'Idempotency-Key':key});
   const body=await response.json() as any;
   return {response,body,id:body.result?.orderID as string};
 }
@@ -121,22 +125,23 @@ describe('temporary mock Pro checkout',()=>{
     const stored=await env.DB.prepare('SELECT json FROM billing_settings WHERE id=1').first<{json:string}>();
     if (stored) {
       const config=JSON.parse(stored.json);
-      config.pro={...config.pro,CNY:{amount:null},USD:{amount:null},launchCNY:{amount:null},launchUSD:{amount:null},launchUntil:null,productID:''};
+      config.proTiers=config.proTiers.map((t:any)=>({...t,CNY:{amount:null},USD:{amount:null},launchCNY:{amount:null},launchUSD:{amount:null},productID:''}));config.launchUntil=null;
       await env.DB.prepare('UPDATE billing_settings SET json=? WHERE id=1').bind(JSON.stringify(config)).run();
     }
-    expect((await (await mockCall('/api/v2/pricing','other-user')).json() as any).result.pro.productID).not.toBe('mock_pro');
+    expect((await (await mockCall('/api/v2/pricing','other-user')).json() as any).result.proTiers[0].productID).not.toContain('mock_pro');
     const offer=(await (await mockCall('/api/v2/pricing',USER_TOKEN)).json() as any).result;
     expect(offer.mockCheckout).toBe(true);
-    expect(offer.pro.productID).toBeTruthy();
-    expect(offer.pro.CNY.amount).toBeGreaterThan(0);
-    const response=await mockCall('/api/v2/orders',USER_TOKEN,{product:'pro',currency:'CNY',expectedPrice:offer.pro.CNY},crypto.randomUUID());
+    const tier=offer.proTiers[0];
+    expect(tier.productID).toBeTruthy();
+    expect(tier.CNY.amount).toBeGreaterThan(0);
+    const response=await mockCall('/api/v2/orders',USER_TOKEN,{product:'pro',tierID:tier.id,currency:'CNY',expectedPrice:tier.CNY},crypto.randomUUID());
     expect(response.status).toBe(200);
     const checkout=await response.json() as any;
     expect(checkout.result.order).toMatchObject({product:'pro',status:'paid',mock:true,amount:0});
     expect(checkout.result.checkoutUrl).toContain('/pay/mock/');
     expect((await env.DB.prepare('SELECT status FROM licenses WHERE user_id=1').first<any>())?.status).toBe('active');
     expect(checkoutCalls).toHaveLength(0);
-    expect((await mockCall('/api/v2/orders','other-user',{product:'pro',currency:'CNY',expectedPrice:offer.pro.CNY},crypto.randomUUID())).status).toBe(503);
+    expect((await mockCall('/api/v2/orders','other-user',{product:'pro',tierID:tier.id,currency:'CNY',expectedPrice:tier.CNY},crypto.randomUUID())).status).toBe(503);
   });
 });
 
@@ -174,11 +179,12 @@ describe('administrator Pro grants',()=>{
     const listed=await (await api('/api/admin/v2/users',{token:env.ADMIN_TOKEN})).json() as any;
     expect(listed.result.users.find((user:any)=>user.id===1)).toMatchObject({license_status:'active',license_source:'admin',updates_until:license.updates_until});
   });
-  it('uses configured update months and preserves existing paid Pro unchanged',async()=>{
-    const config=await configure();config.updatesMonths=24;
+  it('uses the configured Mac limit for grants and preserves existing paid Pro unchanged',async()=>{
+    const config=await configure();config.deviceLimit=3;
     await env.DB.prepare('UPDATE billing_settings SET json=?').bind(JSON.stringify(config)).run();
     expect((await grant(2)).status).toBe(200);
-    const free=await env.DB.prepare('SELECT updates_until FROM licenses WHERE user_id=2').first<any>();
+    const free=await env.DB.prepare('SELECT updates_until,device_limit,tier_id FROM licenses WHERE user_id=2').first<any>();
+    expect(free).toMatchObject({device_limit:3,tier_id:null});
     expect(Date.parse(free.updates_until)).toBeGreaterThan(Date.now()+720*86400000);
     const {id}=await buy('pro');await webhook(id,'order.completed',{listPrice:{total:'100.00'},chargedAmount:'100.00'});
     const original=await env.DB.prepare('SELECT * FROM licenses WHERE user_id=1').first();
@@ -198,7 +204,7 @@ describe('administrator Pro grants',()=>{
 
 describe('pricing and checkout',()=>{
   it('keeps payments unavailable until configured, and requires admin with optimistic revisions',async()=>{
-    expect(await (await call('/api/v2/pricing')).json()).toMatchObject({result:{enabled:false,paymentsAvailable:false,pro:{CNY:{amount:null}}}});
+    expect(await (await call('/api/v2/pricing')).json()).toMatchObject({result:{enabled:false,paymentsAvailable:false,launchUntil:null,proTiers:[{id:'personal',deviceLimit:1},{id:'duo',deviceLimit:2}]}});
     expect((await buy()).response.status).toBe(503);
     expect((await api('/api/admin/v2/pricing',{token:USER_TOKEN})).status).toBe(401);
     const config=await configure();
@@ -270,7 +276,7 @@ describe('verified payment and refund accounting',()=>{
     await configure();const {id}=await buy('pro');expect((await webhook(id,'order.completed',{listPrice:{total:'100.00'},chargedAmount:'100.00'})).status).toBe(200);
     expect(await balance()).toBe(10100);
     const activated=await call('/api/v2/account/devices/activate',{deviceID:device,name:'Test Mac'});expect(activated.status).toBe(200);
-    const result=await activated.json() as any;expect(result.result).toMatchObject({pro:true,trialVoided:true,deviceLimit:2,credential:{keyID:'glance-market-2026-02'}});
+    const result=await activated.json() as any;expect(result.result).toMatchObject({pro:true,trialVoided:true,deviceLimit:1,tierID:'personal',credential:{keyID:'glance-market-2026-02'}});
     expect(await crypto.subtle.verify('Ed25519',licensePublicKey,Uint8Array.from(atob(result.result.credential.signature),c=>c.charCodeAt(0)),new TextEncoder().encode(result.result.credential.payload))).toBe(true);
     const claims=JSON.parse(atob(result.result.credential.payload));expect(claims.userID).toBe(1);expect(Date.parse(claims.expiresAt)-Date.parse(claims.issuedAt)).toBe(30*86400000);
     await env.DB.prepare('UPDATE users SET credits=0 WHERE id=1').run();
@@ -289,13 +295,26 @@ describe('verified payment and refund accounting',()=>{
     expect(await balance()).toBe(10000);
     expect(await (await call('/api/v2/orders/'+second.id)).json()).toMatchObject({result:{order:{bonusCredits:0}}});
   });
-  it('restores the previous update period when renewal is refunded',async()=>{
-    await configure();const pro=await buy('pro');await webhook(pro.id,'order.completed',{listPrice:{total:'100.00'},chargedAmount:'100.00'});
-    await env.DB.prepare("UPDATE licenses SET updates_until='2027-01-01T00:00:00Z' WHERE user_id=1").run();
-    const renewal=await buy('renewal');await webhook(renewal.id,'order.completed',{listPrice:{total:'50.00'},chargedAmount:'50.00'});
-    expect((await env.DB.prepare('SELECT updates_until FROM licenses WHERE user_id=1').first<any>()).updates_until).not.toBe('2027-01-01T00:00:00Z');
-    await webhook(renewal.id,'refund.succeeded',{refundedAmount:'50.00'});
-    expect((await env.DB.prepare('SELECT updates_until,status FROM licenses WHERE user_id=1').first())).toEqual({updates_until:'2027-01-01T00:00:00Z',status:'active'});
+  it('sells lifetime tiers by Mac count, allows only upgrades, and restores the lower tier when an upgrade is refunded',async()=>{
+    await configure();
+    const personal=await buy('pro');await webhook(personal.id,'order.completed',{listPrice:{total:'100.00'},chargedAmount:'100.00'});
+    expect(await env.DB.prepare('SELECT status,device_limit,tier_id,updates_until FROM licenses WHERE user_id=1').first()).toEqual({status:'active',device_limit:1,tier_id:'personal',updates_until:'9999-12-31T00:00:00.000Z'});
+    expect((await buy('pro','CNY',crypto.randomUUID(),undefined,'personal')).response.status).toBe(409);
+    expect((await call('/api/v2/orders',{product:'renewal',currency:'CNY',expectedPrice:{amount:5000}},USER_TOKEN,{'Idempotency-Key':crypto.randomUUID()})).status).toBe(400);
+    expect((await (await call('/api/v2/account/entitlements')).json() as any).result).toMatchObject({deviceLimit:1,tierID:'personal'});
+    const duo=await buy('pro','CNY',crypto.randomUUID(),undefined,'duo');
+    expect(duo.response.status).toBe(200);
+    expect(duo.body.result.order).toMatchObject({tierID:'duo',deviceLimit:2,bonusCredits:0});
+    await webhook(duo.id,'order.completed',{listPrice:{total:'150.00'},chargedAmount:'150.00'});
+    expect(await env.DB.prepare('SELECT status,device_limit,tier_id,source_order FROM licenses WHERE user_id=1').first()).toEqual({status:'active',device_limit:2,tier_id:'duo',source_order:duo.id});
+    expect(await balance()).toBe(10100);
+    await call('/api/v2/account/devices/activate',{deviceID:device,name:'Mac one'});
+    await call('/api/v2/account/devices/activate',{deviceID:'second-device-identifier-0001',name:'Mac two'});
+    expect((await env.DB.prepare('SELECT COUNT(*) n FROM license_devices WHERE user_id=1 AND released_at IS NULL').first<any>()).n).toBe(2);
+    await webhook(duo.id,'refund.succeeded',{refundedAmount:'150.00'});
+    expect(await env.DB.prepare('SELECT status,device_limit,tier_id,source_order FROM licenses WHERE user_id=1').first()).toEqual({status:'active',device_limit:1,tier_id:'personal',source_order:personal.id});
+    expect((await env.DB.prepare('SELECT COUNT(*) n FROM license_devices WHERE user_id=1 AND released_at IS NULL').first<any>()).n).toBe(1);
+    expect(await balance()).toBe(10100);
   });
 });
 describe('trial, devices and task refunds',()=>{
@@ -306,7 +325,7 @@ describe('trial, devices and task refunds',()=>{
   });
   it('enforces device slots, owner isolation and release throttling atomically',async()=>{
     const config=await configure();config.releaseLimit=1;await env.DB.prepare('UPDATE billing_settings SET json=?').bind(JSON.stringify(config)).run();
-    const pro=await buy('pro');await webhook(pro.id,'order.completed',{listPrice:{total:'100.00'},chargedAmount:'100.00'});
+    const pro=await buy('pro','CNY',crypto.randomUUID(),undefined,'duo');await webhook(pro.id,'order.completed',{listPrice:{total:'150.00'},chargedAmount:'150.00'});
     const activate=(n:number)=>call('/api/v2/account/devices/activate',{deviceID:'test-device-number-000'+n,name:'Mac '+n});
     const results=await Promise.all([activate(1),activate(2),activate(3)]);expect(results.map(r=>r.status).sort()).toEqual([200,200,409]);
     const devices=await env.DB.prepare('SELECT id FROM license_devices WHERE released_at IS NULL').all<{id:string}>();

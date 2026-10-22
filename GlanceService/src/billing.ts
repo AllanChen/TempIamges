@@ -1,10 +1,10 @@
 import { WaffoPancake, type PriceSnapshot, type TaxCategory, type WebhookEventData } from '@waffo/pancake-ts';
 import type { Env } from './index';
 import { authenticatedUser, type User } from './users';
-import { BillingError, billingBody, billingReply, isoNow, mockCheckoutUser, mockPrice, paymentReady, readPricing, sha256, type Currency } from './pricing';
+import { BillingError, billingBody, billingReply, isoNow, mockCheckoutUser, mockPrice, paymentReady, readPricing, sha256, tierPrice, type Currency } from './pricing';
 
 type Order = {
-  id:string; user_id:number; product:'pro'|'renewal'|'credits'; pack_id:string|null; currency:Currency;
+  id:string; user_id:number; product:'pro'|'renewal'|'credits'; pack_id:string|null; currency:Currency; device_limit:number;
   amount:number; credits:number; bonus_credits:number; product_id:string; tax_category:string; tax_included:number;
   updates_months:number; status:string; request_key:string; request_hash:string; checkout_url:string|null;
   checkout_session_id:string|null; checkout_expires_at:string; provider_order_id:string|null; provider_payment_id:string|null;
@@ -37,7 +37,9 @@ async function checkoutCipher(env:Env,value:string,decrypt=false) {
   return btoa(String.fromCharCode(...iv,...encrypted));
 }
 function orderPublic(order:Order) {
-  return { id:order.id,product:order.product,packID:order.pack_id,currency:order.currency,
+  // pack_id holds the credit pack for credit orders and the Pro tier for Pro orders.
+  return { id:order.id,product:order.product,packID:order.product==='credits'?order.pack_id:null,
+    tierID:order.product==='pro'?order.pack_id:null,deviceLimit:order.product==='pro'?order.device_limit:null,currency:order.currency,
     amount:order.payment_method==='mock'?0:order.amount,mock:order.payment_method==='mock',credits:order.credits,
     bonusCredits:order.bonus_credits,status:order.status,createdAt:order.created_at,paidAt:order.paid_at,refundedAt:order.refunded_at,
     expiresAt:order.checkout_expires_at,refundStatus:order.refund_status,refundReason:order.refund_reason,intentID:order.billing_intent_id };
@@ -87,10 +89,13 @@ export async function createOrder(env:Env,request:Request) {
   // Mock checkout covers every product, for the configured owner test account only.
   const mock=mockCheckoutUser(env,user.id);
   const key=request.headers.get('Idempotency-Key')||'';
-  if (!/^[A-Za-z0-9_-]{16,128}$/.test(key) || !['pro','renewal','credits'].includes(String(body.product)) || !['CNY','USD'].includes(String(body.currency))) throw new BillingError('invalid_order','Product, currency and Idempotency-Key are required.');
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(key) || !['pro','credits'].includes(String(body.product)) || !['CNY','USD'].includes(String(body.currency))) throw new BillingError('invalid_order','Product, currency and Idempotency-Key are required.');
   if (body.product==='credits' && typeof body.packID!=='string') throw new BillingError('invalid_pack','Select a credit package.');
+  if (body.product==='pro' && typeof body.tierID!=='string') throw new BillingError('invalid_tier','Select a Pro tier.');
+  // Both credit packs and Pro tiers are stored in pack_id; one pending order per product+option.
+  const option=String(body.product==='credits'?body.packID:body.tierID);
   if(body.intentID!=null && (typeof body.intentID!=='string' || !/^[A-Za-z0-9_-]{16,128}$/.test(body.intentID))) throw new BillingError('invalid_order','Invalid purchase context.');
-  const hash=await sha256(JSON.stringify([body.product,body.packID??null,body.currency,body.expectedPrice,body.intentID??null]));
+  const hash=await sha256(JSON.stringify([body.product,option,body.currency,body.expectedPrice,body.intentID??null]));
   const previous=await env.DB.prepare('SELECT * FROM orders WHERE user_id=? AND request_key=?').bind(user.id,key).first<Order>();
   if (previous) {
     if (previous.request_hash!==hash) throw new BillingError('idempotency_conflict','This request key belongs to a different order.',409);
@@ -99,21 +104,23 @@ export async function createOrder(env:Env,request:Request) {
   const config=await readPricing(env);
   if (!mock && (!config.enabled || !paymentReady(env))) throw new BillingError('payments_unavailable','Payments are not available yet.',503);
   const currency=body.currency as Currency;
-  const license=await env.DB.prepare('SELECT * FROM licenses WHERE user_id=?').bind(user.id).first<{status:string;updates_until:string}>();
-  if (body.product==='pro' && license?.status==='active') throw new BillingError('already_pro','Pro is already active.',409);
-  if (body.product==='renewal' && license?.status!=='active') throw new BillingError('pro_required','An active Pro license is required.',409);
-  const launch=!!config.pro.launchUntil && Date.parse(config.pro.launchUntil)>Date.now() && config.pro[currency==='CNY'?'launchCNY':'launchUSD'].amount!==null;
-  const product=body.product==='credits'?config.packs.find(p=>p.id===body.packID && p.enabled):body.product==='pro'?config.pro:config.renewal;
+  const license=await env.DB.prepare('SELECT status,device_limit FROM licenses WHERE user_id=?').bind(user.id).first<{status:string;device_limit:number}>();
+  const tier=body.product==='pro'?config.proTiers.find(t=>t.id===option && t.enabled):undefined;
+  if (body.product==='pro' && !tier) throw new BillingError('tier_unavailable','This Pro tier is no longer available.',409);
+  // An active licence can only move up to a tier with more Macs (an upgrade, charged at full price).
+  if (tier && license?.status==='active' && (license.device_limit??config.deviceLimit)>=tier.deviceLimit) throw new BillingError('already_pro','Pro is already active for this many Macs.',409);
+  const product=body.product==='credits'?config.packs.find(p=>p.id===option && p.enabled):tier;
   if (!product) throw new BillingError('pack_unavailable','This package is no longer available.',409);
-  const configured=body.product==='pro' && launch?config.pro[currency==='CNY'?'launchCNY':'launchUSD']:product[currency];
+  const configured=tier?tierPrice(config,tier,currency):product[currency];
   const price=mock?mockPrice(configured):configured;
   if (!price.amount || (!mock && !product.productID)) throw new BillingError('product_unavailable','This product is not available in this currency.',503);
   const expected=body.expectedPrice as {amount?:number;points?:number}|undefined;
   if (!expected || expected.amount!==price.amount || (body.product==='credits' && expected.points!==price.points)) throw new BillingError('price_changed','The price changed. Confirm the current price.',409,{amount:price.amount,points:price.points,currency});
   await expireOrders(env);
   const pending=await env.DB.prepare("SELECT * FROM orders WHERE user_id=? AND product=? AND COALESCE(pack_id,'')=? AND status='pending'")
-    .bind(user.id,body.product,body.product==='credits'?body.packID:'').first<Order>();
-  const compatible=(order:Order)=>order.currency===currency && order.amount===price.amount && order.credits===(body.product==='credits'?price.points:0);
+    .bind(user.id,body.product,option).first<Order>();
+  const compatible=(order:Order)=>order.currency===currency && order.amount===price.amount && order.credits===(body.product==='credits'?price.points:0)
+    && (!tier || order.device_limit===tier.deviceLimit);
   if (pending) {
     if (!compatible(pending)) throw new BillingError('pending_order','Continue the existing pending order before changing its currency or price.',409,orderPublic(pending));
     return checkoutResponse(env,pending,user);
@@ -121,15 +128,15 @@ export async function createOrder(env:Env,request:Request) {
   const bonusAlreadyGranted=body.product==='pro' && !!await env.DB.prepare('SELECT id FROM user_credit_ledger WHERE id=?').bind('pro-bonus:'+user.id).first();
   const id='order_'+crypto.randomUUID(), created=isoNow();
   try {
-    await env.DB.prepare(`INSERT INTO orders(id,user_id,product,pack_id,currency,amount,credits,bonus_credits,product_id,tax_category,tax_included,updates_months,
-      request_key,request_hash,checkout_expires_at,previous_updates_until,created_at,language,billing_intent_id,payment_method) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-      .bind(id,user.id,body.product,body.product==='credits'?body.packID:null,currency,price.amount,body.product==='credits'?price.points:0,
-        body.product==='pro' && !bonusAlreadyGranted?config.proBonusCredits:0,mock?'mock_'+body.product:product.productID,config.taxCategory,config.taxIncluded?1:0,
-        body.product==='renewal'?config.renewalMonths:config.updatesMonths,key,hash,new Date(Date.now()+1800000).toISOString(),license?.updates_until??null,created,body.language==='zh-Hans'?'zh-Hans':'en',body.intentID??null,mock?'mock':currency==='CNY'?'wechat':null).run();
+    await env.DB.prepare(`INSERT INTO orders(id,user_id,product,pack_id,currency,amount,credits,bonus_credits,product_id,tax_category,tax_included,device_limit,
+      request_key,request_hash,checkout_expires_at,created_at,language,billing_intent_id,payment_method) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .bind(id,user.id,body.product,option,currency,price.amount,body.product==='credits'?price.points:0,
+        tier && !bonusAlreadyGranted?config.proBonusCredits:0,mock?'mock_'+body.product:product.productID,config.taxCategory,config.taxIncluded?1:0,
+        tier?.deviceLimit??config.deviceLimit,key,hash,new Date(Date.now()+1800000).toISOString(),created,body.language==='zh-Hans'?'zh-Hans':'en',body.intentID??null,mock?'mock':currency==='CNY'?'wechat':null).run();
   } catch(error) {
     if (!String(error).includes('UNIQUE')) throw error;
     const winner=await env.DB.prepare("SELECT * FROM orders WHERE user_id=? AND product=? AND COALESCE(pack_id,'')=? AND status='pending'")
-      .bind(user.id,body.product,body.product==='credits'?body.packID:'').first<Order>();
+      .bind(user.id,body.product,option).first<Order>();
     if (!winner || !compatible(winner)) throw new BillingError('pending_order','A pending order already exists.',409);
     return checkoutResponse(env,winner,user);
   }

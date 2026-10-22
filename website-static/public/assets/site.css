@@ -150,6 +150,15 @@ section { padding: 104px 0; }
 .plan li::before { content: "✓"; color: var(--success); margin-right: 10px; }
 .plan li.no::before { content: "–"; color: var(--text-3); }
 .plan .btn { margin-top: auto; }
+.tiers { display: grid; gap: 10px; margin: 18px 0 8px; }
+.tier { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line-2); border-radius: 14px; padding: 14px 16px; background: var(--bg-2); }
+.tier.recommended { border-color: rgba(232, 168, 124, .6); background: var(--accent-soft); }
+.tier-head { display: flex; flex-direction: column; gap: 2px; }
+.tier-head b { font-size: 16px; }
+.tier-macs { color: var(--text-2); font-size: 13px; }
+.tier-price { font-size: 26px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.tier-price del { font-size: 14px; color: var(--text-3); font-weight: 500; margin-left: 8px; }
+.tier-badge { position: absolute; top: -10px; right: 14px; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
 .packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0 8px; }
 .pack { border: 1px solid var(--line-2); border-radius: 14px; padding: 14px 10px; text-align: center; background: var(--bg-2); }
 .pack.recommended { border-color: rgba(232, 168, 124, .6); background: var(--accent-soft); }

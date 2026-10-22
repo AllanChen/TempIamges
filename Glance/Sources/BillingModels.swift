@@ -57,14 +57,20 @@ struct BillingPrice: Codable {
   let amount: Int?
   let points: Int?
 }
-struct BillingProduct: Codable {
+/// A Pro tier: one lifetime licence for `deviceLimit` Macs.
+struct BillingTier: Codable {
+  let id: String
+  let name: String
+  let enabled: Bool
+  let recommended: Bool
+  let deviceLimit: Int
   let CNY: BillingPrice
   let USD: BillingPrice
   let launchCNY: BillingPrice?
   let launchUSD: BillingPrice?
-  let launchUntil: String?
   let productID: String
-  func price(_ currency: String, now: Date = Date()) -> BillingPrice {
+  /// Launch price while `launchUntil` lies ahead and is set for the currency; else regular.
+  func price(_ currency: String, launchUntil: String?, now: Date = Date()) -> BillingPrice {
     if let cutoff = BillingDates.parse(launchUntil), cutoff > now,
       let launch = currency == "CNY" ? launchCNY : launchUSD, launch.amount != nil
     {
@@ -72,6 +78,8 @@ struct BillingProduct: Codable {
     }
     return currency == "CNY" ? CNY : USD
   }
+  func regularPrice(_ currency: String) -> BillingPrice { currency == "CNY" ? CNY : USD }
+  var localizedName: String { name.localized }
 }
 struct BillingPack: Codable {
   let id: String
@@ -94,10 +102,8 @@ struct BillingPricing: Codable {
   let confirmationThreshold: Int
   let queueMinutes: Int
   let maxAttempts: Int
-  let updatesMonths: Int
-  let renewalMonths: Int
-  let pro: BillingProduct
-  let renewal: BillingProduct
+  let proTiers: [BillingTier]
+  let launchUntil: String?
   let packs: [BillingPack]
   let supportEmail: String
   let termsURL: String
@@ -166,6 +172,7 @@ struct BillingEntitlements: Decodable {
   let proBonusEligible: Bool?
   let licenseStatus: String
   let updatesUntil: String?
+  let tierID: String?
   let purchasedAt: String?
   let currentDeviceID: String?
   let devices: [BillingDevice]
@@ -184,6 +191,8 @@ struct BillingOrder: Codable {
   let id: String
   let product: String
   let packID: String?
+  let tierID: String?
+  let deviceLimit: Int?
   let currency: String
   let amount: Int
   let credits: Int
