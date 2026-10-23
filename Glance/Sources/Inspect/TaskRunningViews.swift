@@ -73,6 +73,7 @@ final class PeekerView: NSView {
     private let hands = [CAShapeLayer(), CAShapeLayer()]
     private var sparkLayers: [CAShapeLayer] = []
     private let body = CALayer()
+    private var animationState: String?
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
@@ -160,6 +161,10 @@ final class PeekerView: NSView {
     }
 
     private func restartAnimations(animated: Bool) {
+        let visible = window != nil && !isHiddenOrHasHiddenAncestor
+        let state = "\(unit)-\(isDone)-\(showsSparks)-\(PeekerMotion.reduced)"
+        if visible, animationState == state { return }
+        animationState = visible ? state : nil
         let all = [head, edge] + eyes + hands + sparkLayers
         all.forEach { $0.removeAllAnimations() }
         body.removeAllAnimations()
@@ -217,6 +222,19 @@ final class PeekerView: NSView {
 /// widget name, and a highlight sweeping along a thin track. `showDone` turns
 /// it into frame 7: "Done ✓", the track filled green, the peeker celebrating.
 final class TaskRunningChip: NSView {
+    enum Style { case full, compact }
+    var style: Style = .full {
+        didSet {
+            guard style != oldValue else { return }
+            needsLayout = true
+            needsDisplay = true
+        }
+    }
+    /// Placement uses the plain peeker; the Task Center motion study has sparks.
+    var showsSparks: Bool {
+        get { peeker.showsSparks }
+        set { peeker.showsSparks = newValue }
+    }
     private(set) var detail = ""
     private(set) var isDone = false
     private let peeker = PeekerView()
@@ -224,6 +242,7 @@ final class TaskRunningChip: NSView {
     private let shimmer = CAGradientLayer()
     private let barFill = CALayer()
     private var dots: [CALayer] = []
+    private var animationState: String?
 
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -263,6 +282,7 @@ final class TaskRunningChip: NSView {
 
     /// Frames 1–6: "Generating…" for `detail` (the widget name).
     func showRunning(detail: String) {
+        guard self.detail != detail || isDone else { return }
         self.detail = detail
         isDone = false
         peeker.setDone(false, animated: false)
@@ -285,7 +305,11 @@ final class TaskRunningChip: NSView {
     override func viewDidHide() { super.viewDidHide(); restartAnimations() }
     override func viewDidUnhide() { super.viewDidUnhide(); restartAnimations() }
 
-    private var scale: CGFloat { bounds.width / 360 }
+    private var compact: Bool { style == .compact }
+    private var scale: CGFloat { bounds.width / (compact ? 240 : 360) }
+    private var textX: CGFloat { compact ? 54 : 84 }
+    private var textY: CGFloat { compact ? 8 : 14 }
+    private var titleSize: CGFloat { compact ? 13 : 14 }
     private var title: String { (isDone ? "Done" : "Generating").localized }
 
     override func layout() {
@@ -295,24 +319,35 @@ final class TaskRunningChip: NSView {
         CATransaction.setDisableActions(true)
         layer?.shadowRadius = 16 * s
         layer?.shadowOffset = CGSize(width: 0, height: -12 * s)
-        peeker.frame = CGRect(x: 16 * s, y: 16 * s, width: 44 * s, height: 44 * s)
-        track.frame = CGRect(x: 84 * s, y: 60 * s, width: 252 * s, height: 4 * s)
-        track.cornerRadius = 2 * s
-        shimmer.frame = CGRect(x: -90 * s, y: 0, width: 90 * s, height: 4 * s)
-        shimmer.cornerRadius = 2 * s
-        barFill.frame = CGRect(x: 0, y: 0, width: 252 * s, height: 4 * s)
-        barFill.cornerRadius = 2 * s
+        peeker.frame = compact
+            ? CGRect(x: 10 * s, y: 8 * s, width: 32 * s, height: 32 * s)
+            : CGRect(x: 16 * s, y: 16 * s, width: 44 * s, height: 44 * s)
+        track.frame = CGRect(x: textX * s, y: (compact ? 32 : 60) * s,
+                             width: (compact ? 164 : 252) * s, height: (compact ? 3 : 4) * s)
+        track.cornerRadius = track.bounds.height / 2
+        let shimmerWidth = (compact ? 59 : 91) * s
+        shimmer.frame = CGRect(x: -shimmerWidth, y: 0, width: shimmerWidth, height: track.bounds.height)
+        shimmer.cornerRadius = track.cornerRadius
+        barFill.frame = track.bounds
+        barFill.cornerRadius = track.cornerRadius
         // Board: "Generating" ends at 160, dots at 166 / 174 / 182 — a 6 pt gap.
-        let titleWidth = HistoryStyle.width(title, size: 14 * s, weight: .semibold)
+        let titleWidth = HistoryStyle.width(title, size: titleSize * s, weight: .semibold)
+        let dotsX = title == "Generating" ? (compact ? 124.0 : 166.0) * s : textX * s + titleWidth + 6 * s
         for (index, dot) in dots.enumerated() {
-            dot.frame = CGRect(x: 84 * s + titleWidth + 6 * s + CGFloat(index) * 8 * s, y: 26 * s, width: 4 * s, height: 4 * s)
-            dot.cornerRadius = 2 * s
+            let d: CGFloat = compact ? 3.5 : 4
+            dot.frame = CGRect(x: dotsX + CGFloat(index) * (compact ? 7 : 8) * s,
+                               y: (compact ? 19 : 26) * s, width: d * s, height: d * s)
+            dot.cornerRadius = d * s / 2
         }
         CATransaction.commit()
         restartAnimations()
     }
 
     private func restartAnimations() {
+        let visible = window != nil && !isHiddenOrHasHiddenAncestor
+        let state = "\(scale)-\(track.bounds.width)-\(compact)-\(isDone)-\(PeekerMotion.reduced)"
+        if visible, animationState == state { return }
+        animationState = visible ? state : nil
         shimmer.removeAllAnimations()
         dots.forEach { $0.removeAllAnimations() }
         guard window != nil, !isHiddenOrHasHiddenAncestor else { return }
@@ -336,7 +371,7 @@ final class TaskRunningChip: NSView {
             dot.add(PeekerMotion.animation("opacity", PeekerMotion.dots.map { $0[index] }), forKey: "count")
         }
         guard !PeekerMotion.reduced else { return }
-        let s = scale
+        let s = track.bounds.width / 252
         // Highlight sweeps the track and fades out before it wraps.
         let offsets = PeekerMotion.shimmerX.map { $0 - PeekerMotion.shimmerX[0] }
         shimmer.add(PeekerMotion.animation("transform.translation.x", offsets, scale: s), forKey: "sweep")
@@ -345,18 +380,127 @@ final class TaskRunningChip: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let s = scale
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 20 * s, yRadius: 20 * s)
+        let radius = (compact ? 14.0 : 20.0) * s
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius)
         HistoryStyle.hex(0x18191D, alpha: 0.96).setFill(); path.fill()
         NSColor.white.withAlphaComponent(0.12).setStroke()
         path.lineWidth = max(1, s); path.stroke()
-        let titleWidth = HistoryStyle.draw(title, in: CGRect(x: 84 * s, y: 14 * s, width: 200 * s, height: 18 * s), size: 14 * s,
+        let titleWidth = HistoryStyle.draw(title, in: CGRect(x: textX * s, y: textY * s, width: (compact ? 150 : 200) * s, height: 18 * s), size: titleSize * s,
                                            weight: .semibold, color: HistoryStyle.text)
         if isDone {
             // Board: check 16 pt, 8 pt after "Done".
             HistoryStyle.drawIcon("ToastCheck", color: PanelStyle.success,
-                                  in: CGRect(x: 84 * s + titleWidth + 8 * s, y: 14 * s, width: 16 * s, height: 16 * s))
+                                  in: CGRect(x: textX * s + titleWidth + 8 * s, y: textY * s, width: 16 * s, height: 16 * s))
         }
-        HistoryStyle.draw(detail, in: CGRect(x: 84 * s, y: 36 * s, width: 250 * s, height: 16 * s), size: 12 * s,
-                          color: HistoryStyle.secondary)
+        if !compact {
+            HistoryStyle.draw(detail, in: CGRect(x: 84 * s, y: 36 * s, width: 250 * s, height: 16 * s), size: 12 * s,
+                              color: HistoryStyle.secondary)
+        }
+    }
+}
+
+/// Figma 215:5628. Sizes stay fixed as the window resizes; placement uses
+/// bottom-origin AppKit coordinates, above the actual visible filmstrip.
+enum TaskRunningPlacement {
+    static func chip(canvas: CGSize, stripTop: CGFloat, toolbarBottom: CGFloat)
+        -> (style: TaskRunningChip.Style, frame: CGRect)? {
+        guard canvas.width >= 360 else { return nil }
+        let full = canvas.width >= 520 && canvas.height >= 360
+        let size = full ? CGSize(width: 360, height: 76) : CGSize(width: 240, height: 48)
+        let y = stripTop + (full ? 16 : 14)
+        guard y + size.height + 14 <= toolbarBottom else { return nil }
+        return (full ? .full : .compact,
+                CGRect(x: (canvas.width - size.width) / 2, y: y, width: size.width, height: size.height))
+    }
+}
+
+/// Tile-only overlay. It never changes the thumbnail's geometry or hit target.
+final class TaskRunningTileOverlay: NSView {
+    private let peeker = PeekerView()
+    private let track = CALayer()
+    private let shimmer = CAGradientLayer()
+    private var animationState: String?
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.black.withAlphaComponent(0.35).cgColor
+        layer?.masksToBounds = true
+        addSubview(peeker)
+        track.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        track.cornerRadius = 1
+        track.masksToBounds = true
+        let accent = PanelStyle.warmCue
+        shimmer.colors = [accent.withAlphaComponent(0).cgColor, accent.cgColor, accent.withAlphaComponent(0).cgColor]
+        shimmer.startPoint = CGPoint(x: 0, y: 0.5)
+        shimmer.endPoint = CGPoint(x: 1, y: 0.5)
+        track.addSublayer(shimmer)
+        layer?.addSublayer(track)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); refreshAnimation() }
+    override func viewDidHide() { super.viewDidHide(); refreshAnimation() }
+    override func viewDidUnhide() { super.viewDidUnhide(); refreshAnimation() }
+    override func layout() {
+        super.layout()
+        let size = max(16, (min(bounds.width, bounds.height) * 0.45).rounded())
+        peeker.frame = CGRect(x: (bounds.width - size) / 2, y: (bounds.height - size) / 2 + 2, width: size, height: size)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer?.cornerRadius = max(5, bounds.width * 0.12)
+        track.frame = CGRect(x: 4, y: 5, width: max(0, bounds.width - 8), height: 2)
+        let w = max(24, (track.bounds.width * 0.36).rounded())
+        shimmer.frame = CGRect(x: -w, y: 0, width: w, height: 2)
+        CATransaction.commit()
+        refreshAnimation()
+    }
+    private func refreshAnimation() {
+        let visible = window != nil && !isHiddenOrHasHiddenAncestor
+        let state = "\(bounds.size)-\(track.bounds.width)-\(PeekerMotion.reduced)"
+        if visible, animationState == state { return }
+        animationState = visible ? state : nil
+        shimmer.removeAllAnimations()
+        guard visible else { return }
+        shimmer.opacity = PeekerMotion.reduced ? 0 : 1
+        guard !PeekerMotion.reduced else { return }
+        let distance = track.bounds.width + shimmer.bounds.width
+        shimmer.add(PeekerMotion.animation("transform.translation.x", [0, distance * 0.2, distance * 0.4, distance * 0.6, distance * 0.8, distance]), forKey: "sweep")
+        shimmer.add(PeekerMotion.animation("opacity", PeekerMotion.shimmerOpacity), forKey: "fade")
+    }
+}
+
+/// A counting ellipsis for the Task Center's state badge, without a UI timer.
+final class TaskRunningEllipsis: NSView {
+    private let dots = [CALayer(), CALayer(), CALayer()]
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        for dot in dots {
+            dot.backgroundColor = PanelStyle.warmCue.cgColor
+            layer?.addSublayer(dot)
+        }
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func layout() {
+        super.layout()
+        let s = bounds.width / 10
+        for (i, dot) in dots.enumerated() {
+            dot.frame = CGRect(x: CGFloat(i) * 4 * s, y: 0, width: 2 * s, height: 2 * s)
+            dot.cornerRadius = s
+        }
+        refreshAnimation()
+    }
+    override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); refreshAnimation() }
+    override func viewDidHide() { super.viewDidHide(); refreshAnimation() }
+    override func viewDidUnhide() { super.viewDidUnhide(); refreshAnimation() }
+    private func refreshAnimation() {
+        for (i, dot) in dots.enumerated() {
+            if window == nil || isHiddenOrHasHiddenAncestor { dot.removeAllAnimations() }
+            else if dot.animation(forKey: "count") == nil {
+                dot.add(PeekerMotion.animation("opacity", PeekerMotion.dots.map { $0[i] }), forKey: "count")
+            }
+        }
     }
 }

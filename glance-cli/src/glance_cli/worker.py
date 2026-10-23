@@ -14,7 +14,8 @@ from urllib.parse import urlparse
 from .api import APIError, request, upload_task_file
 from .registry import connect, eligible, rows, update, utc_now
 from .result_spool import discard as discard_results, load as load_results, save as save_results
-from .runtime import TaskCancelledError, execute
+from .result_spool import load_failure, save_failure
+from .runtime import TaskCancelledError, TaskTimeoutError, execute
 from .worker_logs import configure_worker_logging, logger
 
 
@@ -29,6 +30,17 @@ LOOP_ERROR_BACKOFF = 5
 
 class DeliveryDeferredError(RuntimeError):
     """Keep the generated output so the next task claim can deliver it."""
+
+
+class TaskSettledError(RuntimeError):
+    """The authoritative server has already ended this task."""
+
+
+def _terminal_status(error: APIError) -> str | None:
+    if (error.status == 409 and error.code == "task_not_active"
+            and error.task_status in ("succeeded", "completed", "failed", "expired", "cancelled")):
+        return error.task_status
+    return None
 
 
 def _read_int_env(name: str, default: int, minimum: int, maximum: int | None) -> int:
@@ -59,11 +71,14 @@ def _concurrency_settings() -> tuple[int, int]:
     return max_concurrent, per_widget
 
 
-def _deliver(operation, label: str, task_log):
+def _deliver(operation, label: str, task_log, check_cancelled=lambda: None):
     for attempt in range(1, DELIVERY_ATTEMPTS + 1):
+        check_cancelled()
         try:
             return operation()
         except APIError as error:
+            if terminal := _terminal_status(error):
+                raise TaskSettledError(terminal) from error
             status = error.status
             if status is not None and 400 <= status < 500 and status not in (
                 401, 403, 404, 408, 409, 429,
@@ -120,6 +135,7 @@ def _run_task(row: dict, task: dict) -> None:
     claim = task["claimToken"]
     stopped = threading.Event()
     cancelled = threading.Event()
+    terminal_status = None
     progress_directory = tempfile.TemporaryDirectory(prefix="glance-progress-")
     progress_file = Path(progress_directory.name) / "progress.json"
     started = time.monotonic()
@@ -128,13 +144,15 @@ def _run_task(row: dict, task: dict) -> None:
         logger.info("[%s] %s", task_id, message)
 
     def heartbeat() -> None:
+        nonlocal terminal_status
         while not stopped.wait(HEARTBEAT_INTERVAL):
             try:
                 request("POST", f"/api/v2/widget-tasks/{task_id}/heartbeat",
                         _read_progress(progress_file), headers={"X-Task-Claim": claim})
             except APIError as error:
-                if error.status in (404, 409):
-                    task_log("任务已被取消/不再活动，停止执行")
+                if error.status in (401, 403, 404, 409):
+                    terminal_status = _terminal_status(error)
+                    task_log(f"停止执行：服务端状态={terminal_status or '领取凭证失效，状态待确认'}")
                     cancelled.set()
                     return
                 logger.warning("[%s] 心跳失败：%s", task_id, error)
@@ -145,9 +163,23 @@ def _run_task(row: dict, task: dict) -> None:
         if cancelled.is_set():
             raise TaskCancelledError("任务已被取消")
 
+    def report(body: dict) -> dict:
+        response = request("POST", f"/api/v2/widget-tasks/{task_id}/result", body,
+                           headers={"X-Task-Claim": claim})
+        if response.get("status") not in (("succeeded", "completed") if body["status"] == "succeeded" else ("failed",)):
+            raise APIError("服务端未确认任务结果，保留本机记录等待重试")
+        return response
+
     thread = threading.Thread(target=heartbeat, daemon=True)
     thread.start()
     try:
+        pending_failure = load_failure(task_id)
+        if pending_failure is not None:
+            task_log("恢复上次未确认的失败上报，不重新执行 Widget")
+            _deliver(lambda: report(pending_failure), "失败状态回报", task_log, check_cancelled)
+            discard_results(task_id)
+            task_log("服务端已确认失败；积分退款由服务端处理")
+            return
         outputs = load_results(task_id)
         if outputs is None:
             with execute(Path(row["code_path"]), task, python_path=row["python_path"],
@@ -171,35 +203,46 @@ def _run_task(row: dict, task: dict) -> None:
                 task_log(f"上传结果 {index}/{len(outputs)}：类型={output['type']}，文件={path.name}，大小={path.stat().st_size} 字节")
                 uploaded = _deliver(
                     lambda: upload_task_file(task_id, path, claim_token=claim),
-                    f"结果 {index} 上传", task_log,
+                    f"结果 {index} 上传", task_log, check_cancelled,
                 )
                 task_log(f"结果上传完成：assetID={uploaded['assetID']}，类型={uploaded.get('type', output['type'])}")
                 artifacts.append({"type": output["type"], "assetID": uploaded["assetID"]})
         check_cancelled()
         task_log(f"回传任务结果：状态=succeeded，输出={len(artifacts)} 个")
         response = _deliver(
-            lambda: request("POST", f"/api/v2/widget-tasks/{task_id}/result",
-                            {"status": "succeeded", "artifacts": artifacts},
-                            headers={"X-Task-Claim": claim}),
-            "成功状态回报", task_log,
+            lambda: report({"status": "succeeded", "artifacts": artifacts}),
+            "成功状态回报", task_log, check_cancelled,
         )
         task_log(f"服务端确认：状态={response.get('status', 'unknown')}，taskID={response.get('taskID', task_id)}")
         discard_results(task_id)
-        task_log(f"任务完成：输出={len(artifacts)} 个，总耗时={time.monotonic() - started:.1f} 秒")
-    except TaskCancelledError:
+        task_log(f"生成结果已上报：输出={len(artifacts)} 个，总耗时={time.monotonic() - started:.1f} 秒；用户交付与积分结算由客户端和服务端确认")
+    except TaskSettledError as error:
         discard_results(task_id)
-        task_log("任务已取消，已终止 Widget 进程并丢弃本机结果，不回传")
+        task_log(f"服务端任务已结束：{error}；清理本机记录，不重复执行或上报")
+    except TaskCancelledError:
+        if terminal_status:
+            discard_results(task_id)
+        task_log("已停止 Widget；" + ("任务已结束，清理本机记录" if terminal_status else "状态待确认，保留本机记录等待重新领取"))
     except DeliveryDeferredError as error:
-        logger.warning("[%s] 结果仍保存在本机；等待服务器重新分配任务后继续上传：%s",
+        logger.warning("[%s] 本机记录保留；等待服务器重新分配任务后继续上报，当前未确认结算：%s",
                        task_id, error)
         raise
     except Exception as error:
+        failure = {"status": "failed", "errorCode": "worker_timeout" if isinstance(error, TaskTimeoutError) else "worker_error",
+                   "message": str(error)[:1000], "artifacts": []}
         try:
-            request("POST", f"/api/v2/widget-tasks/{task_id}/result",
-                    {"status": "failed", "errorCode": "worker_error",
-                     "message": str(error)[:1000], "artifacts": []}, headers={"X-Task-Claim": claim})
-        except APIError as report_error:
-            logger.error("[%s] 失败且无法回报：%s", task_id, report_error)
+            save_failure(task_id, failure)
+        except Exception as storage_error:
+            logger.error("[%s] 无法保存失败记录：%s；仍尝试上报，无法上报时由服务端超时退款兜底", task_id, storage_error)
+        try:
+            _deliver(lambda: report(failure), "失败状态回报", task_log, check_cancelled)
+            discard_results(task_id)
+            task_log("服务端已确认失败；积分退款由服务端处理")
+        except TaskSettledError as settled:
+            discard_results(task_id)
+            task_log(f"服务端任务已结束：{settled}")
+        except (APIError, DeliveryDeferredError, TaskCancelledError) as report_error:
+            logger.error("[%s] 失败上报待确认，保留记录；服务端超时退款兜底：%s", task_id, report_error)
         logger.error("[%s] 失败：%s", task_id, error)
         raise
     finally:

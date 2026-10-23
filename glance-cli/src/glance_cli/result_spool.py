@@ -77,3 +77,30 @@ def save(task_id: str, outputs: list[dict]) -> list[dict]:
 
 def discard(task_id: str) -> None:
     shutil.rmtree(_directory(task_id), ignore_errors=True)
+
+
+def load_failure(task_id: str) -> dict | None:
+    path = _directory(task_id) / "failure.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if (not isinstance(data, dict) or data.get("status") != "failed"
+            or not isinstance(data.get("errorCode"), str)
+            or not isinstance(data.get("message"), str)):
+        raise ValueError("本机任务失败记录损坏，不能重新执行已失败任务")
+    return data
+
+
+def save_failure(task_id: str, body: dict) -> None:
+    """Persist the failure before reporting; a new claim must not run it again."""
+    directory = _directory(task_id)
+    directory.mkdir(mode=0o700, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=".failure-", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(body, handle, ensure_ascii=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(name, directory / "failure.json")
+    finally:
+        Path(name).unlink(missing_ok=True)

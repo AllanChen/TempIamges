@@ -147,6 +147,25 @@ final class BillingCoordinator {
     panels[key] = panel
     panel.onDismiss = { [weak self] in self?.panels.removeValue(forKey: key) }
   }
+  @discardableResult
+  func requireWidgetSignIn(
+    over parent: NSWindow?, freeWidget: Bool, completion: @escaping () -> Void
+  ) -> Bool {
+    guard !AuthManager.shared.isSignedIn else { return true }
+    let panel = makePanel(over: parent)
+    let hasParent = parent != nil
+    retain(panel)
+    panel.showLogin(freeWidget: freeWidget) { [weak panel, weak parent] in
+      panel?.dismiss()
+      // Let the login sheet detach before presenting a Widget input sheet.
+      DispatchQueue.main.async { [weak parent] in
+        guard (!hasParent || parent?.isVisible == true), AuthManager.shared.isSignedIn else { return }
+        completion()
+      }
+    }
+    panel.present(over: parent)
+    return false
+  }
   func showAuthenticationError(_ message: String) {
     if panels.values.contains(where: { $0.displayAuthenticationError(message) }) { return }
     let panel = makePanel(over: NSApp.mainWindow)

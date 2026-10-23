@@ -20,6 +20,16 @@ final class WidgetTaskCancellation {
 }
 
 /// Where a queued task stands; shown so the user knows how long to wait.
+struct WidgetTaskBilling {
+    let taskID: String
+    let status: String
+    let creditCost: Int?
+    let refundedCredits: Int?
+    let balance: Int?
+    let deliveryRequired: Bool?
+    let delivered: Bool?
+}
+
 struct WidgetQueueInfo: Equatable {
     let position: Int
     let estimatedWaitSeconds: Int?
@@ -36,7 +46,7 @@ struct WidgetTaskCancelledError: LocalizedError {
 
 /// The task waited too long in the queue and the service gave up on it.
 struct WidgetTaskExpiredError: LocalizedError {
-    var errorDescription: String? { "The task expired before a worker picked it up.".localized }
+    var errorDescription: String? { "The task timed out. Its credits will be refunded automatically. Please try again.".localized }
 }
 
 final class WidgetTaskClient {
@@ -95,12 +105,14 @@ final class WidgetTaskClient {
     func run(widgetID: String, commandID: String, mediaURL: URL,
              mediaKind: MediaInfo.Kind,
              input: WidgetTaskInput? = nil,
+             requestKey: String = UUID().uuidString,
+             billing: @escaping (WidgetTaskBilling) -> Void = { _ in },
              cancellation: WidgetTaskCancellation? = nil,
              progress: @escaping (WidgetTaskPhase, Int) -> Void,
              queue: @escaping (WidgetQueueInfo?) -> Void = { _ in },
              submitted: @escaping (String) -> Void,
              completion: @escaping (Result<URL, Error>) -> Void) {
-        guard AuthManager.shared.session != nil else {
+        guard let ownerID = AuthManager.shared.session?.user.id else {
             completion(.failure(WidgetTaskRequestError(statusCode: 401, message: nil)))
             return
         }
@@ -120,6 +132,9 @@ final class WidgetTaskClient {
                     case .success(let urls):
                         if cancellation?.isCancelled == true { completion(.failure(WidgetTaskCancelledError())); return }
                         let submitTask: (String?) -> Void = { mask in
+                            guard AuthManager.shared.session?.user.id == ownerID else {
+                                completion(.failure(WidgetTaskRequestError(statusCode: 401, message: nil))); return
+                            }
                             progress(.submitting, 0)
                             self.submit(widgetID: widgetID, commandID: commandID,
                                         mediaURLs: urls, prompt: input?.prompt,
@@ -127,12 +142,13 @@ final class WidgetTaskClient {
                                         usesMultipleImages: input?.usesMultipleImages == true,
                                         usesMultipleVideos: input?.usesMultipleVideos == true,
                                         mediaType: mediaKind == .video ? "video" : "image",
-                                        location: country) { submission in
+                                        location: country, requestKey: requestKey) { submission in
                                 switch submission {
                                 case .failure(let error): completion(.failure(error))
                                 case .success(let accepted):
                                     let taskID = accepted.taskID
                                     submitted(taskID)
+                                    billing(accepted.billing)
                                     queue(accepted.queue)
                                     if cancellation?.isCancelled == true {
                                         // Cancelled while the submit request was in flight.
@@ -141,7 +157,7 @@ final class WidgetTaskClient {
                                     }
                                     progress(.processing, 0)
                                     self.poll(taskID: taskID, started: Date(), cancellation: cancellation,
-                                              progress: progress, queue: queue, completion: completion)
+                                              progress: progress, queue: queue, billing: billing, completion: completion)
                                 }
                             }
                         }
@@ -175,9 +191,10 @@ final class WidgetTaskClient {
     func resume(taskID: String, cancellation: WidgetTaskCancellation? = nil,
                 progress: @escaping (WidgetTaskPhase, Int) -> Void,
                 queue: @escaping (WidgetQueueInfo?) -> Void = { _ in },
+                billing: @escaping (WidgetTaskBilling) -> Void = { _ in },
                 completion: @escaping (Result<URL, Error>) -> Void) {
         progress(.processing, 0)
-        poll(taskID: taskID, started: Date(), cancellation: cancellation, progress: progress, queue: queue, completion: completion)
+        poll(taskID: taskID, started: Date(), cancellation: cancellation, progress: progress, queue: queue, billing: billing, completion: completion)
     }
 
     /// Asks the service to cancel a queued or running task. Best effort: a task
@@ -188,6 +205,57 @@ final class WidgetTaskClient {
         apiDataTask(with: request) { _, response, error in
             if let error { Logger.warning("Widget task cancel request failed: \(error.localizedDescription)") }
             else if let http = response as? HTTPURLResponse { Logger.info("Widget task cancel answered HTTP \(http.statusCode)") }
+        }
+    }
+
+    func settle(taskID: String?, requestKey: String?, outcome: String,
+                completion: @escaping (Result<WidgetTaskBilling, Error>) -> Void) {
+        let url: URL
+        if outcome == "failed", let requestKey {
+            url = apiBase.appendingPathComponent("task-requests").appendingPathComponent(requestKey).appendingPathComponent("abandon")
+        } else if let taskID {
+            url = apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID).appendingPathComponent("settle")
+        } else { completion(.failure(WidgetError.unavailable)); return }
+        var request = authorizedRequest(url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["outcome": outcome])
+        apiDataTask(with: request) { data, response, error in
+            do {
+                if let error { throw error }
+                let envelope: TaskEnvelope = try Self.decode(data, response)
+                guard let result = envelope.result, envelope.success else { throw WidgetError.unavailable }
+                completion(.success(result.billing))
+            } catch { completion(.failure(error)) }
+        }
+    }
+
+    func fetchBilling(taskID: String, completion: @escaping (Result<WidgetTaskBilling, Error>) -> Void) {
+        let request = authorizedRequest(apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
+        apiDataTask(with: request) { data, response, error in
+            do {
+                if let error { throw error }
+                let envelope: TaskEnvelope = try Self.decode(data, response)
+                guard let result = envelope.result, envelope.success else { throw WidgetError.unavailable }
+                completion(.success(result.billing))
+            } catch { completion(.failure(error)) }
+        }
+    }
+
+    /// Reject HTTP error pages and empty/non-media downloads before confirming delivery.
+    static func validateDownload(_ file: URL, response: URLResponse?, allowedTypes: [String]?) throws {
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > 0 else {
+            throw WidgetTaskExecutionError(message: "The result could not be downloaded. Please check your connection and try again.".localized)
+        }
+        let mime = http.mimeType?.lowercased() ?? ""
+        if mime.contains("html") || mime.contains("json") { throw WidgetError.unavailable }
+        let types = allowedTypes ?? ["image", "video", "audio"]
+        if types == ["image"] {
+            guard let source = CGImageSourceCreateWithURL(file as CFURL, nil), CGImageSourceGetCount(source) > 0,
+                  CGImageSourceCreateImageAtIndex(source, 0, nil) != nil else { throw WidgetError.unavailable }
+        } else if !types.contains(where: { mime.hasPrefix($0 + "/") }) && mime != "application/octet-stream" {
+            throw WidgetError.unavailable
         }
     }
 
@@ -447,7 +515,7 @@ final class WidgetTaskClient {
     private func submit(widgetID: String, commandID: String, mediaURLs: [String],
                         prompt: String?, maskURL: String?, usesMultipleImages: Bool,
                         usesMultipleVideos: Bool, mediaType: String,
-                        location: String,
+                        location: String, requestKey: String,
                         completion: @escaping (Result<AcceptedTask, Error>) -> Void) {
         guard let primaryURL = mediaURLs.first else {
             completion(.failure(WidgetTaskInputError.invalidImageCount))
@@ -455,6 +523,7 @@ final class WidgetTaskClient {
         }
         var request = authorizedRequest(apiBase.appendingPathComponent("tasks")); request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(requestKey, forHTTPHeaderField: "Idempotency-Key")
         var taskParams: [String: Any] = [
             "url": primaryURL,
             "prompt": prompt ?? "",
@@ -471,6 +540,7 @@ final class WidgetTaskClient {
         }
         request.httpBody = try? JSONSerialization.data(withJSONObject: [
             "widgetID": widgetID,
+            "deliveryRequired": true,
             "commandID": commandID,
             "input": taskInput,
             "taskParams": taskParams
@@ -480,7 +550,7 @@ final class WidgetTaskClient {
                 if let error { throw error }
                 let envelope: TaskEnvelope = try Self.decode(data, response)
                 guard envelope.success, let result = envelope.result else { throw WidgetError.unavailable }
-                completion(.success(AcceptedTask(taskID: result.taskID, queue: result.queueInfo)))
+                completion(.success(AcceptedTask(taskID: result.taskID, queue: result.queueInfo, billing: result.billing)))
             } catch let failure as WidgetTaskRequestError where failure.statusCode == 429 {
                 completion(.failure(WidgetServiceBusyError()))
             } catch let failure as WidgetTaskRequestError
@@ -492,18 +562,19 @@ final class WidgetTaskClient {
         }
     }
 
-    struct AcceptedTask { let taskID: String; let queue: WidgetQueueInfo? }
+    struct AcceptedTask { let taskID: String; let queue: WidgetQueueInfo?; let billing: WidgetTaskBilling }
 
     private func poll(taskID: String, started: Date, cancellation: WidgetTaskCancellation?,
                       progress: @escaping (WidgetTaskPhase, Int) -> Void,
                       queue: @escaping (WidgetQueueInfo?) -> Void,
+                      billing: @escaping (WidgetTaskBilling) -> Void,
                       completion: @escaping (Result<URL, Error>) -> Void) {
         if cancellation?.isCancelled == true { completion(.failure(WidgetTaskCancelledError())); return }
         guard Date().timeIntervalSince(started) <= 1800 else {
             // Giving up locally must also stop the remote task; otherwise a
             // worker still runs it and bills for a result nobody will see.
             cancel(taskID: taskID)
-            completion(.failure(WidgetError.unavailable)); return
+            completion(.failure(WidgetTaskExpiredError())); return
         }
         let request = authorizedRequest(apiBase.appendingPathComponent("tasks").appendingPathComponent(taskID))
         apiDataTask(with: request) { [weak self] data, response, error in
@@ -513,6 +584,7 @@ final class WidgetTaskClient {
                 if let error { throw error }
                 let envelope: TaskEnvelope = try Self.decode(data, response)
                 guard envelope.success, let result = envelope.result else { throw WidgetError.unavailable }
+                billing(result.billing)
                 if result.status == "completed" || result.status == "succeeded" {
                     if let artifacts = result.result, !artifacts.isEmpty {
                         self.prepareResults(artifacts, taskID: taskID, completion: completion)
@@ -539,7 +611,7 @@ final class WidgetTaskClient {
             } catch { /* transient query errors retry until the overall timeout */ }
             DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
                 self.poll(taskID: taskID, started: started, cancellation: cancellation,
-                          progress: progress, queue: queue, completion: completion)
+                          progress: progress, queue: queue, billing: billing, completion: completion)
             }
         }
     }
@@ -576,6 +648,7 @@ final class WidgetTaskClient {
                     completion(.failure(error ?? WidgetError.unavailable)); return
                 }
                 do {
+                    try Self.validateDownload(temporary, response: response, allowedTypes: artifact.type.map { [$0] })
                     let mimeExtension = response?.mimeType.flatMap { UTType(mimeType: $0)?.preferredFilenameExtension }
                     let ext = mimeExtension ?? (artifact.type == "audio" ? "m4a" : artifact.type == "video" ? "mp4" : "png")
                     let destination = folder.appendingPathComponent("result-\(index + 1).\(ext)")
@@ -619,6 +692,16 @@ final class WidgetTaskClient {
         let resultURL: String?
         let result: [TaskArtifact]?
         let error: String?
+        let creditCost: Int?
+        let refundedCredits: Int?
+        let balance: Int?
+        let deliveryRequired: Bool?
+        let delivered: Bool?
+        var billing: WidgetTaskBilling {
+            WidgetTaskBilling(taskID: taskID, status: status, creditCost: creditCost,
+                              refundedCredits: refundedCredits, balance: balance,
+                              deliveryRequired: deliveryRequired, delivered: delivered)
+        }
     }
     private struct TaskArtifact: Codable { let type: String?; let text: String?; let url: String? }
 }
@@ -645,7 +728,7 @@ struct WidgetUnavailableError: LocalizedError {
     var errorDescription: String? { "This Widget is no longer available.".localized }
 }
 
-private struct WidgetTaskRequestError: LocalizedError {
+struct WidgetTaskRequestError: LocalizedError {
     let statusCode: Int
     let message: String?
     var code: String? = nil

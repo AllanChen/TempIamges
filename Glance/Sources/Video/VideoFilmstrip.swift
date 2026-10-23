@@ -114,10 +114,12 @@ final class VideoFilmstripScrollView: NSScrollView {
 final class VideoFilmstripItem: NSView {
     var onClick: (() -> Void)?
     private let imageView = VideoThumbnailImageView()
+    private let runningOverlay = TaskRunningTileOverlay()
     private let newBadge = VideoNonHitTestingView()
     private let newLabel = PanelCenteredTextView()
     private var previewInset: CGFloat = 3
     private var emphasized = false
+    private var showsTaskProgress = false
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
@@ -128,6 +130,8 @@ final class VideoFilmstripItem: NSView {
         imageView.image = NSImage(systemSymbolName: "film", accessibilityDescription: nil)
         imageView.contentTintColor = PanelStyle.textTertiary
         addSubview(imageView)
+        runningOverlay.isHidden = true
+        addSubview(runningOverlay, positioned: .above, relativeTo: imageView)
         newBadge.wantsLayer = true
         newBadge.layer?.backgroundColor = PanelStyle.success.cgColor
         newBadge.layer?.cornerRadius = 4
@@ -137,7 +141,7 @@ final class VideoFilmstripItem: NSView {
         newLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
         newLabel.textColor = PanelStyle.accentInk
         newBadge.addSubview(newLabel)
-        addSubview(newBadge, positioned: .above, relativeTo: imageView)
+        addSubview(newBadge, positioned: .above, relativeTo: runningOverlay)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     // Selection is communicated by the warm-cue border only (mirrors the image
@@ -157,11 +161,14 @@ final class VideoFilmstripItem: NSView {
         let processing = phase?.isActive == true
         let failed = phase?.isFailure == true
         let showsProgress = processing && progress > 0 && !isResult
+        showsTaskProgress = showsProgress
+        runningOverlay.isHidden = !processing
         layer?.borderWidth = emphasized || processing ? 2 : 1
         previewInset = emphasized || processing ? 2 : 3
         layer?.borderColor = (failed ? PanelStyle.failure :
             (emphasized || processing ? PanelStyle.warmCue : PanelStyle.inspectLine)).cgColor
-        newBadge.isHidden = !(isResult || showsProgress)
+        newBadge.isHidden = !(isResult || (showsProgress && bounds.width >= 56))
+        newLabel.textColor = showsProgress ? HistoryStyle.hex(0x0B2018) : PanelStyle.accentInk
         newLabel.string = showsProgress ? "\(min(99, progress))%" : "NEW"
         if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             if layer?.animation(forKey: "widgetBreathing") == nil {
@@ -190,6 +197,7 @@ final class VideoFilmstripItem: NSView {
         let scale = bounds.height / 96
         layer?.cornerRadius = 9 * scale
         imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
+        runningOverlay.frame = bounds
         newBadge.layer?.cornerRadius = 4 * scale
         newLabel.font = PanelStyle.inspectFont(ofSize: max(9, 10 * scale), weight: .semibold)
         let badgeSize = CGSize(width: max(28, 48 * scale), height: max(14, 22 * scale))
@@ -198,6 +206,13 @@ final class VideoFilmstripItem: NSView {
         let textHeight = max(8, 12 * scale)
         newLabel.frame = NSRect(x: 0, y: (badgeSize.height - textHeight) / 2,
                                 width: badgeSize.width, height: textHeight)
+        if showsTaskProgress {
+            newBadge.isHidden = bounds.width < 56
+            newBadge.frame = NSRect(x: bounds.width - 36, y: bounds.height - 19, width: 31, height: 14)
+            newBadge.layer?.cornerRadius = 4
+            newLabel.font = PanelStyle.inspectFont(ofSize: 9, weight: .semibold)
+            newLabel.frame = newBadge.bounds
+        }
     }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { onClick?() }

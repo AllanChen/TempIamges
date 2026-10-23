@@ -129,6 +129,17 @@ glance worker logs --follow
 
 日志文件最多 5 MB，保留 3 份轮换文件。`glance worker logs` 只读取日志，不会启动 Worker。
 
+## 失败、超时与积分
+
+积分由 GlanceService 扣除和退还，CLI 不直接修改用户余额。失败、取消、超时任务由服务端全额退点；Worker 日志中的“生成结果已上报”仅代表服务端接收了生成结果，不代表用户已下载，也不代表退款已经到账。
+
+- 下载输入与运行 `main.py` 共用默认 1500 秒时限；超时会终止子进程及其子进程组，并上报 `worker_timeout`。输入下载在网络读取之间检查取消和时限，阻塞中的读取受网络超时限制。
+- 执行失败会先将失败记录保存到 CLI 配置目录的 `pending-results/`，再上报服务端。临时网络错误最多尝试 4 次；仍无法确认时保留记录，之后同一任务重新分配到本机时只补报失败，不重复运行模型。机器离线或不再领取时，由服务端的超时清理与退款兜底。
+- 服务端明确返回 failed / expired / cancelled / completed 后清理本机记录；仅登录或领取凭证失效时停止执行并保留记录，不把未知结果当作成功或已退款。
+- 空白文本、空文件、缺失文件或类型不符的输出不能报为成功。远端 URL 能否下载、结果是否可被用户使用，仍需客户端交付校验；CLI 的文件类型检查不等于完整媒体解码或质量评估。
+
+更新本仓库的 CLI 后，运行 `./glance-cli-run.sh` 安装当前源码，再由开发者重新启动 `.venv/bin/glance worker`。脚本不会自动重启已运行的 Worker。无需为 CLI 更新重新发布 Widget 或部署服务端；服务端需已包含失败退款迁移和超时清理。
+
 CLI 数据放在 `~/.config/glance/`，可通过 `GLANCE_CLI_HOME` 调整。开发或本地联调可通过 `GLANCE_API_URL` 指向其他 GlanceService。这个包尚未上传到 PyPI。
 
 联调期间，可将临时开发者 token 放在 `~/.config/glance/mock-token`（权限 `0600`），或通过 `GLANCE_MOCK_TOKEN` 环境变量提供。`glance whoami`、`glance widget add`、发布和 Worker 请求会直接使用该 token，无须执行 `glance login`。测试 token 必须与 Service 中的 `DEVELOPER_TEST_TOKEN` 一致；未配置服务端 Secret 时仍会被拒绝。移除 token 文件或环境变量后，CLI 恢复使用已有登录会话。

@@ -679,7 +679,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         toast.show(message: "Result URL copied".localized, kind: .info, over: self)
     }
 
-    private func retrySelected() { if let id = selected?.id { WidgetTaskManager.shared.retry(id) } }
+    private func retrySelected() { if let id = selected?.id { WidgetTaskManager.shared.retry(id, over: self) } }
     private func removeSelected() { if let id = selected?.id { WidgetTaskManager.shared.remove(id) } }
     private func cancelSelected() { if let id = selected?.id { WidgetTaskManager.shared.cancel(id) } }
 
@@ -721,6 +721,7 @@ private final class TaskCenterCellView: NSTableCellView {
     private let detailLabel = NSTextField(labelWithString: "")
     private let stateBadge = NSView()
     private let stateLabel = PanelCenteredTextView()
+    private let stateEllipsis = TaskRunningEllipsis()
     private let runningScrim = NSView()
     private let runningPeeker = PeekerView()
     /// Which thumbnail request this cell is waiting for; a reused cell ignores
@@ -746,6 +747,8 @@ private final class TaskCenterCellView: NSTableCellView {
         stateBadge.wantsLayer = true; stateBadge.layer?.cornerRadius = 6; stateBadge.layer?.masksToBounds = true
         stateLabel.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
         stateBadge.addSubview(stateLabel)
+        stateEllipsis.isHidden = true
+        stateBadge.addSubview(stateEllipsis)
         [preview, titleLabel, detailLabel, stateBadge].forEach(addSubview)
         runningScrim.wantsLayer = true
         runningScrim.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.38).cgColor
@@ -777,10 +780,13 @@ private final class TaskCenterCellView: NSTableCellView {
         let color: NSColor = record.phase.isActive ? PanelStyle.accent : (record.phase.isFailure ? PanelStyle.failure : (record.phase == .cancelled ? PanelStyle.textSecondary : PanelStyle.success))
         runningScrim.isHidden = !record.phase.isActive
         runningPeeker.isHidden = !record.phase.isActive
-        stateLabel.string = taskState(record)
+        let state = taskState(record)
+        stateEllipsis.isHidden = !record.phase.isActive || record.queueText != nil
+        stateLabel.string = stateEllipsis.isHidden ? state : state.replacingOccurrences(of: "…", with: "")
         stateLabel.textColor = color
         stateBadge.layer?.backgroundColor = color.withAlphaComponent(0.16).cgColor
-        setAccessibilityLabel("\(record.commandName), \(stateLabel.string)")
+        setAccessibilityLabel("\(record.commandName), \(state)")
+        needsLayout = true
     }
 
     private func setThumbnail(_ image: NSImage?) {
@@ -814,6 +820,17 @@ private final class TaskCenterCellView: NSTableCellView {
         detailLabel.frame = NSRect(x: 82 * sx, y: 43 * sy, width: 160 * sx, height: 14 * sy)
         stateBadge.frame = NSRect(x: 250 * sx, y: 28 * sy, width: 70 * sx, height: 26 * sy)
         stateLabel.frame = stateBadge.bounds.insetBy(dx: 2 * sx, dy: 0)
+        if !stateEllipsis.isHidden {
+            let textWidth = min(HistoryStyle.width(stateLabel.string, size: 11 * scale, weight: .semibold),
+                                max(0, stateBadge.bounds.width - 18 * scale))
+            let groupWidth = textWidth + 13 * scale
+            let x = (stateBadge.bounds.width - groupWidth) / 2
+            stateLabel.frame = CGRect(x: x, y: 0, width: textWidth, height: stateBadge.bounds.height)
+            // The badge itself is bottom-origin, even inside this flipped row.
+            stateEllipsis.frame = CGRect(x: x + textWidth + 3 * scale,
+                                         y: stateBadge.bounds.midY - 5 * scale,
+                                         width: 10 * scale, height: 2 * scale)
+        }
         runningScrim.frame = preview.frame
         runningScrim.layer?.cornerRadius = 7 * scale
         runningPeeker.frame = NSRect(x: 24 * sx, y: 24 * sy, width: 32 * sx, height: 32 * sy)
@@ -976,6 +993,10 @@ private final class TaskPreviewView: NSView {
 
     /// A running task: the peeker chip instead of a "waiting" label.
     func showRunning(detail: String) {
+        if isShowingRunning && !runningChip.isDone {
+            runningChip.showRunning(detail: detail)
+            return
+        }
         loadGeneration = UUID()
         imageView.image = nil
         textScroll.isHidden = true

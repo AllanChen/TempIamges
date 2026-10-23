@@ -19,11 +19,18 @@ struct VideoInspectChromeLayout {
     let filmstrip: NSRect
     let capture: NSRect
 
-    init(size: NSSize, videoCount: Int) {
+    init(size: NSSize, videoCount: Int, showsRunningTask: Bool = false) {
         func fromTop(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> NSRect {
             NSRect(x: x, y: size.height - y - height, width: width, height: height)
         }
-        toolbar = fromTop((size.width - 274) / 2, size.width < 520 ? 56 : 24, 274, 54)
+        // Reserve the same 34pt badge / 12pt gap as Image Inspect while a
+        // focused video runs a task; keep every toolbar button uniformly scaled.
+        let badgeX = max(8, size.width - 58)
+        let toolbarScale = showsRunningTask ? max(0.1, min(1, (badgeX - 20) / 274)) : 1
+        let toolbarWidth = 274 * toolbarScale
+        let centeredX = (size.width - toolbarWidth) / 2
+        let toolbarX = showsRunningTask ? min(centeredX, badgeX - 12 - toolbarWidth) : centeredX
+        toolbar = fromTop(toolbarX, size.width < 520 ? 56 : 24, toolbarWidth, 54 * toolbarScale)
         let barWidth = min(1306, size.width - 48)
         playback = fromTop((size.width - barWidth) / 2, size.height - 88, barWidth, 64)
         // These four frames are local to the 64pt playback bar.
@@ -118,6 +125,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private let separatorLabel = VideoTimeLabel("/")
     private let durationLabel = VideoTimeLabel("00:00")
     private let filmstrip = VideoFilmstripView()
+    private let runningStripShade = VideoNonHitTestingView()
+    private let runningVideoChip = TaskRunningChip()
     private let copyResultURLButton = WidgetResultURLButton()
     private let toastWindow = InspectToastWindow()
     /// Fired with the temp-file URL of a captured frame; AppDelegate routes it
@@ -305,7 +314,15 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         // The video fills the window; the controls float over it.
         inspectToolbar.isHidden = false; inspectToolbar.alphaValue = 1
         identityBar.isHidden = false; identityBar.alphaValue = 1
-        filmstrip.isHidden = infos.count < 2; filmstrip.alphaValue = 1
+        filmstrip.isHidden = !showsVideoFilmstrip; filmstrip.alphaValue = 1
+        runningStripShade.wantsLayer = true
+        runningStripShade.layer?.backgroundColor = HistoryStyle.hex(0x07080A, alpha: 0.55).cgColor
+        runningStripShade.isHidden = true
+        canvas.addSubview(runningStripShade, positioned: .below, relativeTo: filmstrip)
+        runningVideoChip.showsSparks = false
+        runningVideoChip.isHidden = true
+        runningVideoChip.setAccessibilityElement(true)
+        canvas.addSubview(runningVideoChip, positioned: .above, relativeTo: filmstrip)
         playbackBar.isHidden = false; playbackBar.alphaValue = 1
         infoPanel.autoresizingMask = [.width, .height]
         infoPanel.isHidden = true
@@ -343,16 +360,20 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         let infoWidth = infoVisible ? min(434, max(0, b.width - 320)) : 0
         let canvasW = b.width - infoWidth
         let geometry = VideoInspectChromeLayout(size: NSSize(width: canvasW, height: b.height),
-                                               videoCount: infos.count)
+                                               videoCount: infos.count,
+                                               showsRunningTask: currentRunningTask != nil)
         inspectToolbar.frame = geometry.toolbar
+        let toolbarScale = geometry.toolbar.width / 274
+        inspectToolbar.layer?.cornerRadius = 15 * toolbarScale
         copyResultURLButton.frame = NSRect(x: max(8, canvasW - 24 - 34),
                                            y: geometry.toolbar.midY - 17,
                                            width: 34, height: 34)
         func place(_ button: InspectToolbarButton, x: CGFloat) {
-            button.frame = NSRect(x: x, y: 8, width: 38, height: 38)
-            button.layer?.cornerRadius = 9
+            button.frame = NSRect(x: x * toolbarScale, y: 8 * toolbarScale,
+                                 width: 38 * toolbarScale, height: 38 * toolbarScale)
+            button.layer?.cornerRadius = 9 * toolbarScale
             button.layer?.borderWidth = 0
-            button.setSymbolPointSize(18)
+            button.setSymbolPointSize(18 * toolbarScale)
         }
         place(captureButton, x: 14)
         place(focusButton, x: 66)
@@ -413,6 +434,18 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         separatorLabel.frame = geometry.separator
         durationLabel.frame = geometry.duration
         filmstrip.frame = geometry.filmstrip
+        runningStripShade.frame = NSRect(x: 8, y: geometry.filmstrip.minY - 12,
+                                         width: max(0, canvasW - 16), height: geometry.filmstrip.height + 29)
+        if currentRunningTask != nil,
+           let placement = TaskRunningPlacement.chip(canvas: videoRect.size,
+               stripTop: filmstrip.isHidden ? geometry.playback.maxY : runningStripShade.frame.maxY,
+               toolbarBottom: geometry.toolbar.minY) {
+            runningVideoChip.style = placement.style
+            runningVideoChip.frame = placement.frame
+            runningVideoChip.isHidden = false
+        } else {
+            runningVideoChip.isHidden = true
+        }
         captureFeedback.frame = videoRect
         captureThumbnail.contentWidth = 220
         if !captureThumbnail.isHidden, pendingCaptureURL != nil {
@@ -500,7 +533,9 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         // Keep all chrome above the AVPlayer surfaces after every mode switch.
         canvas.addSubview(identityBar, positioned: .above, relativeTo: nil)
         canvas.addSubview(playbackBar, positioned: .above, relativeTo: nil)
+        canvas.addSubview(runningStripShade, positioned: .above, relativeTo: nil)
         canvas.addSubview(filmstrip, positioned: .above, relativeTo: nil)
+        canvas.addSubview(runningVideoChip, positioned: .above, relativeTo: nil)
         canvas.addSubview(infoPanel, positioned: .above, relativeTo: nil)
         canvas.addSubview(inspectToolbar, positioned: .above, relativeTo: nil)
         canvas.addSubview(captureFeedback, positioned: .above, relativeTo: nil)
@@ -511,7 +546,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         focusButton.isActive = mode == .focus
         compareButton.isActive = mode == .compare
         revealButton.isEnabled = activeIndices.contains { infos[$0].isLocal }
-        filmstrip.isHidden = infos.count < 2
+        filmstrip.isHidden = !showsVideoFilmstrip
         filmstrip.configure(infos: infos, selectedIndex: focusedIndex,
                             compareIndices: mode == .compare ? compareIndices : nil,
                             generatedResultPaths: generatedResultPaths)
@@ -1043,19 +1078,25 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         guard let index = activeIndices[safe: mode == .compare ? activeCompareSlot : 0],
               infos.indices.contains(index) else { return }
         let info = infos[index]
+        guard BillingCoordinator.shared.requireWidgetSignIn(over: self, freeWidget: widget.taskCreditCost == 0, completion: { [weak self] in
+            guard let self,
+                  let currentIndex = self.activeIndices[safe: self.mode == .compare ? self.activeCompareSlot : 0],
+                  self.infos[safe: currentIndex]?.url == info.url else { return }
+            self.runWidget(widget: widget, command: command)
+        }) else { return }
         let capabilities = command.inputCapabilities
         guard capabilities.needsVideoDialog else {
-            _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info)
+            _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info, over: self)
             return
         }
         widgetInputPanel?.close()
         let panel = WidgetVideoInputPanel(widgetName: widget.displayName, sourceURL: info.url,
                                           capabilities: capabilities)
-        panel.onSubmit = { input in
-            guard let first = input.mediaURLs.first else { return }
+        panel.onSubmit = { [weak self] input in
+            guard let self, let first = input.mediaURLs.first else { return }
             let media = MediaInfo(url: first, isLocal: first.isFileURL, kind: .video)
             _ = WidgetTaskManager.shared.start(widget: widget, command: command,
-                                               media: media, input: input)
+                                               media: media, input: input, over: self)
         }
         panel.onDismiss = { [weak self, weak panel] in
             if self?.widgetInputPanel === panel { self?.widgetInputPanel = nil }
@@ -1102,13 +1143,29 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         render()
     }
 
+    private var currentRunningTask: WidgetTaskRecord? {
+        guard mode == .focus, let info = infos[safe: focusedIndex] else { return nil }
+        return WidgetTaskManager.shared.activeRecords(for: info.url).first
+    }
+
+    private var showsVideoFilmstrip: Bool {
+        infos.count > 1 || infos.contains { !WidgetTaskManager.shared.activeRecords(for: $0.url).isEmpty }
+    }
+
     private func updateWidgetTaskIndicators() {
         for viewport in viewports {
             guard let info = infos[safe: viewport.index] else { continue }
-            viewport.setWidgetProcessing(!WidgetTaskManager.shared.activeRecords(for: info.url).isEmpty)
+            viewport.setWidgetProcessing(WidgetTaskManager.shared.activeRecords(for: info.url).first)
+        }
+        filmstrip.isHidden = !showsVideoFilmstrip
+        runningStripShade.isHidden = !infos.contains { !WidgetTaskManager.shared.activeRecords(for: $0.url).isEmpty }
+        if let task = currentRunningTask {
+            runningVideoChip.showRunning(detail: task.commandName)
+            runningVideoChip.setAccessibilityLabel("\(task.commandName), \("Task running".localized)")
         }
         filmstrip.updateTaskStates(infos: infos, generatedResultPaths: generatedResultPaths)
         copyResultURLButton.isHidden = currentWidgetResultRecord == nil
+        layoutContent()
     }
 
     private var currentWidgetResultRecord: WidgetTaskRecord? {

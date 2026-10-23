@@ -157,10 +157,17 @@ export async function savePricing(env: Env, request: Request) {
 export async function expireTasks(env: Env) {
   const config = await readPricing(env), now = isoNow();
   const cutoff = new Date(Date.now()-config.queueMinutes*60000).toISOString();
+  const executionCutoff = new Date(Date.now()-30*60000).toISOString();
   await env.DB.batch([
     env.DB.prepare(`UPDATE widget_tasks SET status='expired',error_code='queue_expired',completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL
       WHERE status='queued' AND created_at<?`).bind(now,cutoff),
     env.DB.prepare(`UPDATE widget_tasks SET status='expired',error_code='max_attempts',completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL
-      WHERE status IN ('claimed','running') AND lease_expires_at<? AND attempts>=?`).bind(now,now,config.maxAttempts)
+      WHERE status IN ('claimed','running') AND lease_expires_at<? AND attempts>=?`).bind(now,now,config.maxAttempts),
+    env.DB.prepare(`UPDATE widget_tasks SET status='expired',error_code='task_timeout',completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL
+      WHERE status IN ('claimed','running') AND created_at<?`).bind(now,executionCutoff),
+    env.DB.prepare(`UPDATE widget_tasks SET status='queued',worker_id=NULL,lease_expires_at=NULL,claim_token_hash=NULL
+      WHERE status IN ('claimed','running') AND (lease_expires_at IS NULL OR lease_expires_at<?)`).bind(now),
+    env.DB.prepare(`UPDATE widget_tasks SET status='expired',error_code='delivery_timeout',completed_at=?
+      WHERE status='succeeded' AND delivery_required=1 AND delivered_at IS NULL AND completed_at<?`).bind(now,executionCutoff)
   ]);
 }

@@ -2,6 +2,10 @@
 
 输入一个视频。Worker 使用 FFmpeg 将它分成时长不超过 8 秒的 MP4 片段，把每段上传到 RunningHub（runninghub.cn）workflow `2109559022260154369` 的视频输入节点，等待全部生成完成后按原顺序合并为一个 MP4。Glance Worker 将最终文件上传到 Glance 服务端。
 
+输入节点是 `184`，最终去水印输出必须取 **`183`（Minmaxremover）**。该 workflow 同时返回 `283`（Eraser）的中间视频，不能按列表顺序选择第一个 MP4。最终节点缺失、重复或返回非视频时任务失败，不会退回中间结果，也不会为已经成功运行的 workflow 再次提交生成。
+
+只有一段结果时保留 RunningHub 视频原文件，不重新编码或补音；多段合并时按每段视频流时长限制音频填充，避免尾部静音把视频拖长。
+
 ## Worker 环境
 
 - 设置 `RUNNINGHUB_API_KEY`（runninghub.cn 的 key；旧的 `RUNNINGHUB_API_KEY_AI` 仍可作为回退）。不要将密钥写入代码、Manifest 或日志。

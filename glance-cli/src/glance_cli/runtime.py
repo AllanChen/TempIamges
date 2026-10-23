@@ -37,7 +37,10 @@ def resolve_python(value: str | Path | None = None) -> Path:
 
 
 def prepare_input(task: dict, temporary: Path,
-                  on_log: Callable[[str], None] | None = None) -> dict:
+                  on_log: Callable[[str], None] | None = None, *,
+                  cancel_event: threading.Event | None = None,
+                  deadline: float | None = None) -> dict:
+    _check_active(cancel_event, deadline)
     task = dict(task)
     input_info = dict(task.get("input") or {})
     image_urls = input_info.get("images")
@@ -50,6 +53,7 @@ def prepare_input(task: dict, temporary: Path,
     downloaded: dict[str, str] = {}
 
     def download(source: str, name: str, label: str) -> str:
+        _check_active(cancel_event, deadline)
         parsed = urlparse(source)
         if parsed.scheme != "https":
             raise ValueError("任务输入必须是 HTTPS 地址")
@@ -59,11 +63,17 @@ def prepare_input(task: dict, temporary: Path,
         if on_log:
             on_log(f"下载输入{label}：来源={parsed.hostname}，目标={destination.name}")
         try:
-            with urlopen(Request(source, headers={"User-Agent": USER_AGENT}), timeout=60) as response, destination.open("wb") as output:
+            timeout = min(60, max(0.001, deadline - time.monotonic())) if deadline is not None else 60
+            with urlopen(Request(source, headers={"User-Agent": USER_AGENT}), timeout=timeout) as response, destination.open("wb") as output:
                 remaining = MAX_FILE
                 downloaded_bytes = 0
                 next_report = 5 * 1024 * 1024
-                while chunk := response.read(min(1024 * 1024, remaining + 1)):
+                # HTTPResponse.read(n) can wait indefinitely for n bytes from
+                # a trickling peer. read1 returns available data so cancellation
+                # and the total deadline are checked between socket reads.
+                read_chunk = getattr(response, "read1", response.read)
+                while chunk := read_chunk(min(1024 * 1024, remaining + 1)):
+                    _check_active(cancel_event, deadline)
                     remaining -= len(chunk)
                     if remaining < 0:
                         raise ValueError("输入文件超过 50 MB")
@@ -72,6 +82,9 @@ def prepare_input(task: dict, temporary: Path,
                     if on_log and downloaded_bytes >= next_report:
                         on_log(f"输入{label}下载进度：{downloaded_bytes / (1024 * 1024):.1f} MB")
                         next_report += 5 * 1024 * 1024
+                _check_active(cancel_event, deadline)
+                if downloaded_bytes == 0:
+                    raise ValueError(f"输入{label}为空，请重新选择有效文件后重试")
                 if on_log:
                     on_log(f"输入{label}下载完成：HTTP {response.status}，{downloaded_bytes} 字节，耗时 {time.monotonic() - started:.1f} 秒")
         except HTTPError as error:
@@ -113,8 +126,8 @@ def validate_outputs(result: dict, code_path: Path) -> list[dict]:
             raise ValueError("输出类型必须是 text、image、video 或 audio")
         kind = output["type"]
         if kind == "text":
-            if not isinstance(output.get("text"), str):
-                raise ValueError("text 输出需要 text 字符串")
+            if not isinstance(output.get("text"), str) or not output["text"].strip():
+                raise ValueError("text 输出需要非空 text 字符串")
             if len(output["text"].encode()) > 1024 * 1024:
                 raise ValueError("text 输出不能超过 1 MB")
             checked.append({"type": kind, "text": output["text"]})
@@ -143,8 +156,8 @@ def validate_outputs(result: dict, code_path: Path) -> list[dict]:
             if not path.is_absolute():
                 path = code_path / path
             path = path.resolve(strict=True)
-            if not path.is_file() or path.stat().st_size > MAX_FILE:
-                raise ValueError(f"{kind} 输出文件不存在或超过 50 MB")
+            if not path.is_file() or not 0 < path.stat().st_size <= MAX_FILE:
+                raise ValueError(f"{kind} 输出文件不存在、为空或超过 50 MB")
             mime = mimetypes.guess_type(path.name)[0] or ""
             if not mime.startswith(f"{kind}/"):
                 raise ValueError(f"{kind} 输出文件格式与类型不符：{path.name}")
@@ -154,6 +167,17 @@ def validate_outputs(result: dict, code_path: Path) -> list[dict]:
 
 class TaskCancelledError(RuntimeError):
     """The server no longer wants this task; the widget process was stopped."""
+
+
+class TaskTimeoutError(RuntimeError):
+    """The local input/execution deadline elapsed; report failure for refund."""
+
+
+def _check_active(cancel_event: threading.Event | None, deadline: float | None) -> None:
+    if cancel_event is not None and cancel_event.is_set():
+        raise TaskCancelledError("任务已停止")
+    if deadline is not None and time.monotonic() >= deadline:
+        raise TaskTimeoutError("任务下载输入或执行超时，请稍后重试或减少输入大小")
 
 
 def terminate_process(process: subprocess.Popen, grace: float = 5) -> None:
@@ -191,12 +215,15 @@ def execute(code_path: Path, task: dict, *, timeout: int = 1500,
             on_log: Callable[[str], None] | None = None,
             cancel_event: threading.Event | None = None,
             progress_file: Path | None = None):
+    deadline = time.monotonic() + timeout
+    _check_active(cancel_event, deadline)
     code_path = code_path.resolve(strict=True)
     if not (code_path / "main.py").is_file():
         raise ValueError(f"找不到 {code_path / 'main.py'}")
     with tempfile.TemporaryDirectory(prefix="glance-task-") as directory:
         temporary = Path(directory)
-        prepared = prepare_input(task, temporary, on_log=on_log) if download_input else task
+        prepared = prepare_input(task, temporary, on_log=on_log, cancel_event=cancel_event,
+                                 deadline=deadline) if download_input else task
         task_path = temporary / "task.json"
         result_path = temporary / "result.json"
         task_path.write_text(json.dumps(prepared, ensure_ascii=False), encoding="utf-8")
@@ -205,8 +232,7 @@ def execute(code_path: Path, task: dict, *, timeout: int = 1500,
         progress_path = progress_file or (temporary / "progress.json")
         environment = {**os.environ, "GLANCE_TASK_OUTPUT_DIR": str(temporary),
                        "GLANCE_TASK_PROGRESS_FILE": str(progress_path)}
-        if cancel_event is not None and cancel_event.is_set():
-            raise TaskCancelledError("任务已被取消")
+        _check_active(cancel_event, deadline)
         if on_log:
             on_log(f"启动 Widget 进程：{code_path.name}，Python={command[0]}")
         recent_lines: deque[str] = deque(maxlen=80)
@@ -228,7 +254,6 @@ def execute(code_path: Path, task: dict, *, timeout: int = 1500,
 
         reader = threading.Thread(target=forward_output, daemon=True)
         reader.start()
-        deadline = time.monotonic() + timeout
         try:
             while True:
                 try:
@@ -241,18 +266,20 @@ def execute(code_path: Path, task: dict, *, timeout: int = 1500,
                     raise TaskCancelledError("任务已被取消")
                 if time.monotonic() >= deadline:
                     terminate_process(process)
-                    raise RuntimeError(f"main.py 运行超过 {timeout} 秒")
+                    raise TaskTimeoutError(f"任务下载输入和执行超过 {timeout} 秒，请稍后重试或减少输入大小")
         finally:
             if process.poll() is None:
                 terminate_process(process)
             reader.join(timeout=2)
             if process.stdout is not None:
                 process.stdout.close()
+        _check_active(cancel_event, deadline)
         if returncode:
             raise RuntimeError("\n".join(recent_lines)[-4000:] or "main.py 执行失败")
         if on_log:
             on_log("Widget 进程完成，开始校验输出")
         outputs = validate_outputs(json.loads(result_path.read_text(encoding="utf-8")), code_path)
+        _check_active(cancel_event, deadline)
         if on_log:
             on_log(f"输出校验通过：{len(outputs)} 个结果，类型={','.join(output['type'] for output in outputs)}")
         yield outputs

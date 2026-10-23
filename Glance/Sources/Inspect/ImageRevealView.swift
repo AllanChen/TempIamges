@@ -9,6 +9,7 @@ final class ImageRevealView: NSView {
     private let divider = NSView()
     private weak var textSelectionViewport: InspectImageViewport?
     private var fraction: CGFloat = 0.5
+    private var textCursorTrackingArea: NSTrackingArea?
     var revealFraction: CGFloat { fraction }
     var hasSelectedText: Bool { textSelectionViewport?.hasSelectedText == true }
 
@@ -27,6 +28,7 @@ final class ImageRevealView: NSView {
 
     func containsRecognizedText(at point: NSPoint) -> Bool {
         let target = point.x < bounds.width * fraction ? overlayViewport : viewport
+        guard !target.isHidden, bounds.contains(point) else { return false }
         return target.containsRecognizedText(at: target.convert(point, from: self))
     }
     /// The two panes behind the slider: `base` (image A, shown on the right of
@@ -46,6 +48,10 @@ final class ImageRevealView: NSView {
         wantsLayer = true
         viewport.loadingIndicatorEnabled = false
         overlayViewport.loadingIndicatorEnabled = false
+        for pane in [viewport, overlayViewport] {
+            pane.managesTextCursor = false
+            pane.onTextCursorGeometryChange = { [weak self] in self?.invalidateTextCursor() }
+        }
         addSubview(viewport)
         addSubview(overlayViewport)
         addSubview(loadingView)
@@ -78,6 +84,44 @@ final class ImageRevealView: NSView {
         // AppKit passes hit-test points in the parent coordinate system. Let
         // NSView check the frame, then keep slider gestures on this parent.
         super.hitTest(point) == nil ? nil : self
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(visibleRect, cursor: .arrow)
+        let split = bounds.width * fraction
+        for (pane, clip) in [
+            (overlayViewport, CGRect(x: 0, y: 0, width: split, height: bounds.height)),
+            (viewport, CGRect(x: split, y: 0, width: bounds.width - split, height: bounds.height))
+        ] where !pane.isHidden {
+            for rect in pane.recognizedTextCursorRects {
+                let visible = convert(rect, from: pane).intersection(clip).intersection(visibleRect)
+                if !visible.isNull && !visible.isEmpty { addCursorRect(visible, cursor: .iBeam) }
+            }
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let textCursorTrackingArea { removeTrackingArea(textCursorTrackingArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.inVisibleRect, .activeInKeyWindow, .cursorUpdate, .mouseMoved], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        textCursorTrackingArea = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) { updateTextCursor(at: event.locationInWindow) }
+    override func mouseMoved(with event: NSEvent) { updateTextCursor(at: event.locationInWindow) }
+
+    private func updateTextCursor(at location: NSPoint) {
+        guard !isHiddenOrHasHiddenAncestor, let content = window?.contentView else { return }
+        let hitPoint = content.superview?.convert(location, from: nil) ?? location
+        guard content.hitTest(hitPoint) === self else { return }
+        (containsRecognizedText(at: convert(location, from: nil)) ? NSCursor.iBeam : NSCursor.arrow).set()
+    }
+
+    private func invalidateTextCursor() {
+        window?.invalidateCursorRects(for: self)
+        if let window, window.isKeyWindow { updateTextCursor(at: window.mouseLocationOutsideOfEventStream) }
     }
 
     /// A mousedown on the slider drags the reveal divider, never the window.
@@ -114,6 +158,7 @@ final class ImageRevealView: NSView {
         divider.isHidden = isWaitingForPair
         failureView.isHidden = !failed
         loadingView.setLoading(isWaitingForPair && !failed)
+        invalidateTextCursor()
     }
 
     override func layout() {
@@ -201,5 +246,6 @@ final class ImageRevealView: NSView {
         maskLayer.frame = NSRect(x: 0, y: 0, width: bounds.width * fraction, height: bounds.height)
         divider.frame = NSRect(x: bounds.width * fraction - 1, y: 0, width: 2, height: bounds.height)
         CATransaction.commit()
+        invalidateTextCursor()
     }
 }

@@ -5,6 +5,7 @@
     <h1 lang="zh">右键，就地用 AI 改。</h1><h1 lang="en">Right-click. Fix it with AI.</h1>
     <p class="lead" lang="zh">在 Glance 里右键图片或视频，选择 Widget 即可运行。结果出现在原图旁边，可以直接对比。下面的列表和价格实时读取自 Glance 服务。</p>
     <p class="lead" lang="en">Right-click an image or video in Glance and pick a Widget. The result appears next to the original so you can compare right away. The list and prices below are read live from the Glance service.</p>
+    <p><a class="accent" href="/ai-models/"><span lang="zh">查看底层 AI 模型与功能说明</span><span lang="en">See underlying AI models and capabilities</span></a></p>
   </div>
 </section>
 
@@ -20,48 +21,9 @@
 
 <section style="padding-top:24px" id="models">
   <div class="wrap">
-    <div class="section-head">
-      <h2 lang="zh">底层 AI 模型说明</h2><h2 lang="en">Underlying AI models</h2>
-      <p class="lead" lang="zh">Glance 没有文生图和图生视频功能。每个云端 Widget 只对你自己选中的图片或视频做一种修改，使用的模型如下。运行时所选媒体会上传到 Glance 服务，再交给对应模型处理；Glance 不会用你的素材训练模型。</p>
-      <p class="lead" lang="en">Glance has no text-to-image and no image-to-video generation. Each cloud Widget applies one edit to an image or video you selected, using the models below. The selected media is uploaded to the Glance service and processed by that model; Glance does not use your media to train models.</p>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Widget</th><th><span lang="zh">功能</span><span lang="en">What it does</span></th><th><span lang="zh">底层模型</span><span lang="en">Underlying model</span></th><th><span lang="zh">运行位置</span><span lang="en">Runs on</span></th></tr></thead>
-      <tbody>
-        <tr><td><span lang="zh">高清放大</span><span lang="en">Upscale</span></td>
-          <td><span lang="zh">图生图：放大并重绘细节，最高 4K</span><span lang="en">Image to image: upscales and re-renders detail, up to 4K</span></td>
-          <td>Google Nano Banana 2 (Gemini 3.1 Flash Image)</td>
-          <td>RunningHub</td></tr>
-        <tr><td><span lang="zh">图片去水印</span><span lang="en">Image Watermark Removal</span></td>
-          <td><span lang="zh">图像修复：擦除水印与文字并补全画面</span><span lang="en">Image inpainting: removes marks and text and fills the area</span></td>
-          <td>Black Forest Labs FLUX.1 Kontext [dev]<span lang="zh">（Nunchaku INT4 量化版）</span><span lang="en"> (Nunchaku INT4 build)</span></td>
-          <td>RunningHub</td></tr>
-        <tr><td><span lang="zh">人物背景分离</span><span lang="en">Portrait Background Removal</span></td>
-          <td><span lang="zh">抠图：输出透明背景图片</span><span lang="en">Segmentation: returns a transparent-background image</span></td>
-          <td>BRIA RMBG 1.4 + ViTMatte<span lang="zh">（ComfyUI LayerStyle RmBgUltra V2）</span><span lang="en"> (ComfyUI LayerStyle RmBgUltra V2)</span></td>
-          <td>RunningHub</td></tr>
-        <tr><td>Remove Background</td>
-          <td><span lang="zh">抠图：输出透明背景图片</span><span lang="en">Segmentation: returns a transparent-background image</span></td>
-          <td>U²-Net (rembg)</td>
-          <td><span lang="zh">Glance Worker</span><span lang="en">Glance worker</span></td></tr>
-        <tr><td><span lang="zh">图片转提示词</span><span lang="en">Image to Prompt</span></td>
-          <td><span lang="zh">图像理解：生成文字描述</span><span lang="en">Image understanding: writes a text description</span></td>
-          <td>Google Gemini 3.5 Flash</td>
-          <td>RunningHub</td></tr>
-        <tr><td><span lang="zh">视频去水印</span><span lang="en">Video Watermark Removal</span></td>
-          <td><span lang="zh">视频修复：按 8 秒分段擦除水印后合并</span><span lang="en">Video inpainting: cleans 8-second segments and rejoins them</span></td>
-          <td>MiniMax-Remover 1.3B<span lang="zh">（基于 Wan 2.1，UMT5-XXL 文本编码器）</span><span lang="en"> (built on Wan 2.1, UMT5-XXL text encoder)</span> + Ultralytics YOLO<span lang="zh"> 水印检测</span><span lang="en"> watermark detector</span></td>
-          <td>RunningHub</td></tr>
-        <tr><td><span lang="zh">图生图、AI 换装、智能扩图</span><span lang="en">Image to Image, Outfit Swap, Outpaint</span></td>
-          <td><span lang="zh">图生图：重绘、换装、向四周扩展画面</span><span lang="en">Image to image: redraw, change clothing, extend the canvas</span></td>
-          <td><span lang="zh">模型信息核实中，确认后更新此表</span><span lang="en">Model details being confirmed; this table is updated once verified</span></td>
-          <td>RunningHub</td></tr>
-        <tr><td><span lang="zh">免费图床</span><span lang="en">Image Hosting</span></td>
-          <td><span lang="zh">上传并生成分享链接，不使用 AI</span><span lang="en">Uploads and returns a share link; no AI involved</span></td>
-          <td>—</td>
-          <td><span lang="zh">Freeimage.host（中国大陆图片）/ Cloudflare R2</span><span lang="en">Freeimage.host (images from mainland China) / Cloudflare R2</span></td></tr>
-      </tbody>
-    </table></div>
-    <p class="small" style="margin-top:14px"><span lang="zh">RunningHub（runninghub.cn）是托管上述开源与第三方模型推理的云平台；模型名称以各模型官方发布为准，Glance 与这些模型的开发方无关联。换装 Widget 只改变服装，不替换人脸或身份；只能上传你本人或已获得当事人同意的照片。去水印 Widget 只能用于你拥有或已获授权的内容。使用 Widget 即表示你同意<a class="accent" href="/acceptable-use/">可接受使用政策</a>；发现违规结果，请<a class="accent" href="/acceptable-use/#report">举报</a>。</span><span lang="en">RunningHub (runninghub.cn) is the cloud platform that hosts inference for the open-source and third-party models above. Model names follow each model's official release; Glance is not affiliated with their developers. Outfit Swap changes clothing only and never swaps faces or identities; upload only photos of yourself or of people who have given consent. Watermark removal is only for content you own or are licensed to edit. Using a Widget means you agree to the <a class="accent" href="/acceptable-use/">Acceptable Use Policy</a>; to report a harmful result, <a class="accent" href="/acceptable-use/#report">contact us</a>.</span></p>
+    <h2 lang="zh">底层 AI 模型说明</h2><h2 lang="en">Underlying AI models</h2>
+    <p class="lead" lang="zh">查看每个 Widget 对应的模型名称、版本信息和处理服务，以及图生图、图片理解和视频修复的功能范围。</p>
+    <p class="lead" lang="en">See each Widget’s model name, version information and processing service, and the scope of image generation, image understanding and video inpainting.</p>
+    <a class="btn btn-primary" href="/ai-models/"><span lang="zh">阅读 AI 模型说明（无需登录）</span><span lang="en">Read AI model disclosure — no login required</span></a>
   </div>
 </section>

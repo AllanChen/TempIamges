@@ -109,7 +109,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private let taskOverlayShade = InspectNonHitTestingView()
     private let runningImageBorder = InspectNonHitTestingView()
     private let runningImageIndicator = InspectNonHitTestingView()
-    private let runningImageDot = PanelStyle.makeStatusDot(color: PanelStyle.success)
+    private let runningImagePeeker = PeekerView()
+    private let runningImageChip = TaskRunningChip()
     private let copyResultURLButton = WidgetResultURLButton()
     /// Themed action menu panel (frosted dark, warm-cue selection); rebuilt
     /// per presentation so enabled states and titles are always fresh.
@@ -873,23 +874,27 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         runningImageBorder.layer?.borderWidth = 2
         runningImageBorder.layer?.borderColor = PanelStyle.accent.withAlphaComponent(0.8).cgColor
         runningImageBorder.layer?.cornerRadius = 12
-        runningImageBorder.layer?.shadowColor = PanelStyle.accent.cgColor
-        runningImageBorder.layer?.shadowOpacity = 0.28
-        runningImageBorder.layer?.shadowOffset = .zero
-        runningImageBorder.layer?.shadowRadius = 16
         runningImageBorder.isHidden = true
         canvasContainer.addSubview(runningImageBorder, positioned: .above, relativeTo: nil)
         runningImageIndicator.isHidden = true
-        runningImageDot.frame = NSRect(x: 9, y: 9, width: 16, height: 16)
-        runningImageDot.layer?.cornerRadius = 8
-        runningImageDot.layer?.shadowColor = PanelStyle.success.cgColor
-        runningImageDot.layer?.shadowOpacity = 0.85
-        runningImageDot.layer?.shadowOffset = .zero
-        runningImageDot.layer?.shadowRadius = 10
-        runningImageIndicator.addSubview(runningImageDot)
+        runningImageIndicator.wantsLayer = true
+        runningImageIndicator.layer?.backgroundColor = HistoryStyle.hex(0x161719, alpha: 0.9).cgColor
+        runningImageIndicator.layer?.cornerRadius = 17
+        runningImageIndicator.layer?.borderWidth = 1
+        runningImageIndicator.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        runningImageIndicator.layer?.shadowColor = PanelStyle.warmCue.cgColor
+        runningImageIndicator.layer?.shadowOpacity = 0.35
+        runningImageIndicator.layer?.shadowOffset = .zero
+        runningImageIndicator.layer?.shadowRadius = 10
+        runningImagePeeker.frame = NSRect(x: 5, y: 5, width: 24, height: 24)
+        runningImageIndicator.addSubview(runningImagePeeker)
         runningImageIndicator.setAccessibilityElement(true)
         runningImageIndicator.setAccessibilityLabel("Task running".localized)
         canvasContainer.addSubview(runningImageIndicator, positioned: .above, relativeTo: nil)
+        runningImageChip.showsSparks = false
+        runningImageChip.isHidden = true
+        runningImageChip.setAccessibilityElement(true)
+        canvasContainer.addSubview(runningImageChip, positioned: .above, relativeTo: nil)
         copyResultURLButton.isHidden = true
         copyResultURLButton.onPress = { [weak self] in self?.copyWidgetResultURL() }
         canvasContainer.addSubview(copyResultURLButton, positioned: .above, relativeTo: nil)
@@ -933,7 +938,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // icons remain legible on ordinary image window sizes.
         let scale = min(max(min(width / Self.designSize.width,
                                 height / Self.designSize.height), 0.62), 1.25)
-        // The running dot is pinned to the window's right inset. Keep the
+        // The running badge is pinned to the window's right inset. Keep the
         // toolbar clear of it on narrow windows without changing idle layout.
         let runningIndicatorX = max(8, width - 24 - 34)
         let toolbarAvailableW = runningImageIndicator.isHidden
@@ -985,8 +990,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let mediaInsetX = 8 * scale
         let mediaInsetY = 12 * scale
         let canvasRect = canvasContainer.bounds.insetBy(dx: mediaInsetX, dy: mediaInsetY)
-        runningImageBorder.frame = canvasRect
-        runningImageBorder.layer?.cornerRadius = 12 * scale
+        runningImageBorder.frame = canvasContainer.bounds.insetBy(dx: 8, dy: 12)
+        runningImageBorder.layer?.cornerRadius = max(12, 16 * scale)
         let toolbarCenterY = toolbarBar.frame.midY
         runningImageIndicator.frame = NSRect(x: runningIndicatorX,
                                              y: toolbarCenterY - 17,
@@ -1061,6 +1066,21 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         taskSummaryDot.isHidden = true
         taskSummaryLabel.isHidden = true
         taskToast.isHidden = true
+        layoutRunningImageChip()
+    }
+
+    private func layoutRunningImageChip() {
+        let stripTop = filmstrip.isHidden ? runningImageBorder.frame.minY : taskOverlayShade.frame.maxY
+        guard !runningImageIndicator.isHidden,
+              let placement = TaskRunningPlacement.chip(canvas: canvasContainer.bounds.size,
+                                                       stripTop: stripTop,
+                                                       toolbarBottom: toolbarBar.frame.minY) else {
+            runningImageChip.isHidden = true
+            return
+        }
+        runningImageChip.style = placement.style
+        runningImageChip.frame = placement.frame
+        runningImageChip.isHidden = false
     }
 
     /// Image-first icon toolbar. Text remains available through tooltips and
@@ -1129,6 +1149,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         updateTaskChrome()
         updateRunningImageIndicator(for: session)
         copyResultURLButton.isHidden = session.mode == .compare || currentWidgetResultURLString == nil
+            || !runningImageIndicator.isHidden
 
         primaryViewport.isHidden = true
         secondaryViewport.isHidden = true
@@ -1561,12 +1582,14 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 self.toolbarBar.isHidden = true
                 self.filmstrip.isHidden = !keepFilmstrip
                 self.taskOverlayShade.isHidden = !keepFilmstrip
+                self.layoutRunningImageChip()
             })
         } else {
             apply()
             toolbarBar.isHidden = true
             filmstrip.isHidden = !keepFilmstrip
             taskOverlayShade.isHidden = !keepFilmstrip
+            layoutRunningImageChip()
         }
     }
 
@@ -1744,9 +1767,13 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         guard let info = currentRevealInfo, info.kind == .image,
               let widget = WidgetRegistry.shared.available.first(where: { $0.id == widgetID }),
               let command = widget.localizedCommand(id: commandID) else { return }
+        guard BillingCoordinator.shared.requireWidgetSignIn(over: self, freeWidget: widget.taskCreditCost == 0, completion: { [weak self] in
+            guard let self, self.currentRevealInfo?.url == info.url else { return }
+            self.runWidget(widgetID: widgetID, commandID: commandID)
+        }) else { return }
         let capabilities = command.inputCapabilities
         guard capabilities.needsImageDialog else {
-            _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info)
+            _ = WidgetTaskManager.shared.start(widget: widget, command: command, media: info, over: self)
             return
         }
         widgetInputPanel?.close()
@@ -1757,10 +1784,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         let panel = WidgetInputPanel(widgetName: widget.displayName, sourceURL: info.url,
                                      sourceImage: sourceImage, capabilities: capabilities)
         panel.onSubmit = { [weak self] input in
-            guard self != nil, let source = input.mediaURLs.first else { return }
+            guard let self, let source = input.mediaURLs.first else { return }
             let media = MediaInfo(url: source, isLocal: source.isFileURL, kind: .image)
             _ = WidgetTaskManager.shared.start(widget: widget, command: command,
-                                               media: media, input: input)
+                                               media: media, input: input, over: self)
         }
         panel.onDismiss = { [weak self, weak panel] in
             if self?.widgetInputPanel === panel { self?.widgetInputPanel = nil }
@@ -1770,8 +1797,8 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     @objc private func widgetTasksDidChange() {
-        // Task state remains available from Widget Market / the tasks window;
-        // it never grows extra chrome inside the v3 Simple Operation canvas.
+        // Refresh the non-interactive running overlays from the same task state
+        // used by Widget Market and the Task Center.
         taskBadge.isHidden = true
         statusDot.isHidden = true
         statusRightLabel.isHidden = true
@@ -1950,41 +1977,27 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     }
 
     private func updateRunningImageIndicator(for session: ImageInspectSession) {
-        let isRunning: Bool
+        let task: WidgetTaskRecord?
         if session.mode != .compare,
            session.infos.indices.contains(session.focusedIndex) {
             let info = session.infos[session.focusedIndex]
-            isRunning = info.kind == .image &&
-                !WidgetTaskManager.shared.activeRecords(for: info.url).isEmpty
+            task = info.kind == .image ? WidgetTaskManager.shared.activeRecords(for: info.url).first : nil
         } else {
-            isRunning = false
+            task = nil
+        }
+        let isRunning = task != nil
+        taskOverlayShade.layer?.backgroundColor = HistoryStyle.hex(0x07080A, alpha: isRunning ? 0.55 : 0.34).cgColor
+        if let task {
+            runningImageChip.showRunning(detail: task.commandName)
+            runningImageChip.setAccessibilityLabel("\(task.commandName), \("Task running".localized)")
+        } else {
+            runningImageChip.isHidden = true
         }
         if runningImageBorder.isHidden != !isRunning {
             runningImageBorder.isHidden = !isRunning
         }
         if runningImageIndicator.isHidden != !isRunning {
             runningImageIndicator.isHidden = !isRunning
-        }
-        if let dotLayer = runningImageDot.layer {
-            if isRunning && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-                if dotLayer.animation(forKey: "widgetRunningDotBreathing") == nil {
-                    let glow = CABasicAnimation(keyPath: "shadowOpacity")
-                    glow.fromValue = 0.3
-                    glow.toValue = 1.0
-                    let fade = CABasicAnimation(keyPath: "opacity")
-                    fade.fromValue = 0.55
-                    fade.toValue = 1.0
-                    let breathing = CAAnimationGroup()
-                    breathing.animations = [glow, fade]
-                    breathing.duration = 0.9
-                    breathing.autoreverses = true
-                    breathing.repeatCount = .infinity
-                    breathing.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                    dotLayer.add(breathing, forKey: "widgetRunningDotBreathing")
-                }
-            } else {
-                dotLayer.removeAnimation(forKey: "widgetRunningDotBreathing")
-            }
         }
         guard let layer = runningImageBorder.layer else { return }
         if isRunning && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {

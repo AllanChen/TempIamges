@@ -339,10 +339,10 @@ describe('trial, devices and task refunds',()=>{
     const next=await createTask();await env.DB.prepare("UPDATE widget_tasks SET created_at='2020-01-01T00:00:00Z' WHERE id=?").bind(next.taskID).run();await expireTasks(billingEnv);expect(await balance()).toBe(10000);
     expect((await env.DB.prepare("SELECT COUNT(*) n FROM user_credit_ledger WHERE reason='task_refund'").first<any>()).n).toBe(2);
   });
-  it('undo refunds queued tasks but refuses to undo a claimed task without confirmation',async()=>{
+  it('queued-only undo refuses claimed tasks, while explicit cancellation refunds them',async()=>{
     await configure();const {taskID}=await createTask();await claimTask();
     const undo=await api('/api/v2/tasks/'+taskID+'?queuedOnly=true',{method:'DELETE',token:USER_TOKEN});expect(undo.status).toBe(409);expect(await balance()).toBe(9999);
-    expect((await api('/api/v2/tasks/'+taskID,{method:'DELETE',token:USER_TOKEN})).status).toBe(200);expect(await balance()).toBe(9999);
+    expect((await api('/api/v2/tasks/'+taskID,{method:'DELETE',token:USER_TOKEN})).status).toBe(200);expect(await balance()).toBe(10000);
   });
   it('expires a task after three failed leases and refunds its original price',async()=>{
     await configure();

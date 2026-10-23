@@ -2,6 +2,36 @@
 
 Engineering rules for this codebase. These are hard constraints — do not violate them.
 
+## Product principles: task success, user trust, and credits
+
+18. **Help users successfully complete their tasks.** Judge task quality by
+    whether users can consistently rely on Glance to accomplish their intended
+    work. A request being accepted, a model returning, or a progress bar reaching
+    100% is not success by itself: the expected result must be valid and
+    accessible to the user. Prioritize reliable outcomes and recovery paths in
+    every feature, Widget, and service integration. Never silently fail or
+    present an incomplete or unusable result as a completed task.
+19. **Make failures understandable and recoverable.** When a task cannot be
+    completed, explain what failed, the confirmed reason (or clearly state when
+    it is unknown), and the concrete steps the user can take next. This also
+    applies to invalid input, missing permissions, login requirements, or other
+    user-side issues: describe the exact requirement and how to correct it
+    without blaming the user. Preserve inputs where possible, offer an
+    appropriate retry or alternative, and explain when retrying will not help.
+    Show the task's actual credit/refund status. Do not leave users with only a
+    generic error, raw error code, endless loading state, or an unresponsive UI.
+20. **Failed tasks must not cost the user credits. This is non-negotiable.**
+    Apply this rule regardless of whether the failure originates in Glance,
+    an external provider, the network, or the user's input or configuration.
+    Release any reserved credits; if credits were already deducted, refund the
+    full amount automatically. Enforce this in authoritative server-side billing,
+    not only in client messages. Settlement and refunds must be idempotent so
+    retries, duplicate callbacks, or app restarts cannot cause duplicate charges
+    or refunds. A timeout or interruption is not proof of success: reconcile
+    uncertain outcomes and do not finalize a charge without confirmed success.
+    Never claim a refund has completed until billing confirms it; unresolved
+    refunds must remain recoverable and visible to the user.
+
 ## Global keyboard event tap (CGEventTap)
 
 Glance installs an **active global `CGEventTap`** to detect the activation hotkey

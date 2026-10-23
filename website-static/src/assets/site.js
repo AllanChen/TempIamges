@@ -1,9 +1,9 @@
-// Glance website runtime: language switch, live Widget catalog and live pricing.
+// Glance website runtime: localized media, live Widget catalog and live pricing.
 (function () {
   var API = 'https://api.glancepreview.com/api/v2';
   var root = document.documentElement;
 
-  // Language. The head script already set data-lang before first paint.
+  // The URL and generated HTML determine language; language links navigate.
   function switchMedia(lang) {
     document.querySelectorAll('img[data-src-en]').forEach(function (img) {
       var src = img.getAttribute('data-src-' + lang);
@@ -23,20 +23,8 @@
       video.play().catch(function () {});
     });
   }
-  function setLang(lang) {
-    root.setAttribute('data-lang', lang);
-    root.setAttribute('lang', lang === 'zh' ? 'zh-CN' : 'en');
-    switchMedia(lang);
-    try { localStorage.setItem('glance.lang', lang); } catch (e) {}
-    document.querySelectorAll('[data-title-' + lang + ']').forEach(function (node) {
-      document.title = node.getAttribute('data-title-' + lang);
-    });
-    document.dispatchEvent(new CustomEvent('glance:lang', { detail: lang }));
-  }
-  document.querySelectorAll('.lang-toggle').forEach(function (button) {
-    button.addEventListener('click', function () { setLang(root.getAttribute('data-lang') === 'zh' ? 'en' : 'zh'); });
-  });
-  setLang(root.getAttribute('data-lang') || 'zh');
+  var language = root.getAttribute('data-lang') || 'zh';
+  switchMedia(language);
 
   // Bilingual anchors: #report resolves to #report-zh or #report-en.
   function followHash() {
@@ -55,10 +43,9 @@
     return node;
   }
   function both(tag, cls, zh, en) {
-    var wrap = document.createDocumentFragment();
-    var a = el(tag, cls, zh); a.setAttribute('lang', 'zh'); wrap.appendChild(a);
-    var b = el(tag, cls, en); b.setAttribute('lang', 'en'); wrap.appendChild(b);
-    return wrap;
+    var node = el(tag, cls, language === 'en' ? en : zh);
+    node.setAttribute('lang', language);
+    return node;
   }
 
   // Live Widget catalog: names, summaries and per-run credit prices come from
@@ -117,7 +104,7 @@
   var fallbackNode = document.getElementById('pricing-fallback');
   if (fallbackNode) {
     var pricing = JSON.parse(fallbackNode.textContent);
-    var currency = 'CNY';
+    var currency = language === 'en' ? 'USD' : 'CNY';
     var money = function (cents, cur) {
       if (cents == null) return null;
       var value = cents / 100;
@@ -161,8 +148,10 @@
         n.hidden = !anyDiscount;
         if (!n.hidden) {
           var d = new Date(pricing.launchUntil);
-          n.querySelector('[lang="zh"]').textContent = '首发价，截至 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
-          n.querySelector('[lang="en"]').textContent = 'Launch price until ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          var zhLabel = n.querySelector('[lang="zh"]');
+          var enLabel = n.querySelector('[lang="en"]');
+          if (zhLabel) zhLabel.textContent = '首发价，截至 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+          if (enLabel) enLabel.textContent = 'Launch price until ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         }
       });
       document.querySelectorAll('[data-packs]').forEach(function (n) {

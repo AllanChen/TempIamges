@@ -54,10 +54,41 @@ class ProviderContractTests(unittest.TestCase):
 
     def test_prefers_video_result_over_preview_image(self):
         url = widget.video_result_url({"results": [
-            {"url": "https://example.com/preview.png"},
-            {"url": "https://example.com/output.mp4"},
+            {"nodeId": "preview", "url": "https://example.com/preview.png"},
+            {"nodeId": "183", "url": "https://example.com/output.mp4"},
         ]})
         self.assertEqual(url, "https://example.com/output.mp4")
+
+    def test_task_2113532658553413633_selects_cleaned_node_not_first_video(self):
+        # Sanitized structure of the actual provider response for this incident.
+        entries = [
+            {"nodeId": "283", "outputType": "mp4", "url": "https://example.com/Eraser.mp4"},
+            {"nodeId": "183", "outputType": "mp4", "url": "https://example.com/Minmaxremover.mp4"},
+        ]
+        for ordered in (entries, list(reversed(entries))):
+            self.assertEqual(widget.video_result_url({"results": ordered}), entries[1]["url"])
+
+    def test_missing_ambiguous_or_invalid_final_node_never_falls_back(self):
+        final = {"nodeId": "183", "url": "https://example.com/final.mp4"}
+        for entries in ([{"nodeId": "283", "url": "https://example.com/preview.mp4"}],
+                        [final, final], [{"nodeId": "183", "url": "https://example.com/image.png"}],
+                        [{"nodeId": "183", "url": "http://example.com/final.mp4"}]):
+            with self.subTest(entries=entries), self.assertRaises(widget.ResultSelectionError):
+                widget.video_result_url({"results": entries})
+
+    def test_completed_workflow_with_missing_final_node_is_not_regenerated(self):
+        with tempfile.TemporaryDirectory() as directory:
+            clip = Path(directory) / "clip.mp4"
+            clip.write_bytes(b"video")
+            with patch.object(widget, "upload_video", return_value="uploaded.mp4"), \
+                 patch.object(widget, "submit_task", return_value="remote-task") as submit, \
+                 patch.object(widget, "post_json", return_value={"status": "SUCCESS", "results": [
+                     {"nodeId": "283", "url": "https://example.com/preview.mp4"}
+                 ]}), patch.object(widget, "download_video") as download:
+                with self.assertRaises(widget.ResultSelectionError):
+                    widget.process_clip(0, clip, Path(directory), "secret", time.monotonic() + 60)
+            submit.assert_called_once()
+            download.assert_not_called()
 
     def test_structured_audit_code_is_not_a_normal_failure(self):
         self.assertTrue(widget.is_audit_rejection({"errorCode": "CONTENT_AUDIT_REJECTED"}))
@@ -92,6 +123,15 @@ class VideoPipelineTests(unittest.TestCase):
             self.assertEqual(len(clips), 3)
             self.assertTrue(all(widget.probe_video(path, deadline)[0] <= 8.0 for path in clips))
 
+    def test_single_result_is_preserved_without_reencoding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            source = folder / "cleaned.mp4"
+            self.make_video(source, "blue", 1.0)
+            before = source.read_bytes()
+            result = widget.normalize_and_merge([source], folder, time.monotonic() + 60)
+            self.assertEqual(result.read_bytes(), before)
+
     def test_eight_second_video_with_audio_stays_within_limit(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
@@ -121,6 +161,11 @@ class VideoPipelineTests(unittest.TestCase):
                 self.make_video(path, color, 0.5)
                 clips.append(path)
             merged = widget.normalize_and_merge(clips, folder, time.monotonic() + 120)
+            metadata = subprocess.run([
+                "ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(merged),
+            ], check=True, capture_output=True, text=True)
+            self.assertLess(abs(float(metadata.stdout) - 1.5), 0.15,
+                            "silent audio padding must not extend each clip")
             red, green, blue = (self.pixel_at(merged, second) for second in (0.2, 0.7, 1.2))
             self.assertGreater(red[0], max(red[1], red[2]) + 80)
             self.assertGreater(green[1], max(green[0], green[2]) + 40)

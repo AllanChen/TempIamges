@@ -883,3 +883,11 @@
 "Request a new code. This code expired or has no attempts left." = "请重新获取验证码。验证码已过期或尝试次数已用完。";
 "abandoned" = "已放弃支付";
 "Incorrect code. %d attempts left." = "验证码不正确，还可尝试 %d 次。";
+
+/* Task settlement and refunds */
+"Refund confirmation pending" = "正在确认退点";
+"Confirming task result" = "正在确认任务结果";
+"The task timed out. Its credits will be refunded automatically. Please try again." = "任务已超时，所扣点数将自动退还。请稍后重新运行任务。";
+"The result could not be downloaded. Please check your connection and try again." = "无法下载任务结果。请检查网络连接后重试；本次未成功交付的任务将退还点数。";
+"Result confirmation timed out. Credits were refunded. Please run the task again." = "结果确认已超时，点数已退还。请重新运行任务。";
+"Could not save the task. Check available disk space and try again." = "无法保存任务记录，任务尚未提交。请检查磁盘剩余空间和目录权限后重试。";

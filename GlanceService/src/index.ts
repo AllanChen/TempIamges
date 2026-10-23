@@ -646,12 +646,14 @@ async function taskStatus(env: Env, request: Request, taskID: string) {
   await expireTasks(env);
   const actor = isFlowTestToken(env, bearer(request)) ? null : await requireUser(request, env);
   const row = isFlowTestToken(env, bearer(request))
-    ? await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at,credit_cost FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
-    : await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at,credit_cost FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
+    ? await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at,credit_cost,delivery_required,delivered_at FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
+    : await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at,credit_cost,delivery_required,delivered_at FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
   if (!row) return fail("task_not_found", "Task not found.", 404);
   const result: Record<string, unknown> = { taskID: row.id, status: row.status === "succeeded" ? "completed" : row.status, processCount: row.status === "succeeded" ? 100 : 0, attempts: row.attempts };
   const refund=await env.DB.prepare('SELECT amount FROM user_credit_ledger WHERE id=?').bind(`refund:${taskID}`).first<{amount:number}>();
-  result.creditCost=row.credit_cost; result.refundedCredits=refund?.amount??0;
+  const debit=await env.DB.prepare('SELECT amount FROM user_credit_ledger WHERE id=?').bind(`task:${taskID}`).first<{amount:number}>();
+  result.creditCost=debit ? -debit.amount : row.credit_cost; result.refundedCredits=refund?.amount??0;
+  result.deliveryRequired=row.delivery_required===1; result.delivered=row.delivered_at!==null;
   result.balance=(await env.DB.prepare("SELECT credits FROM users WHERE 'user_'||id=?").bind(row.owner_id).first<{credits:number}>())?.credits;
   if (typeof row.progress === "number") result.progress = row.progress;
   if (typeof row.phase === "string" && row.phase) result.phase = row.phase;
@@ -659,7 +661,7 @@ async function taskStatus(env: Env, request: Request, taskID: string) {
     result.pollAfterMs = 3000;
     Object.assign(result, await queueEstimate(env, String(row.widget_id), String(row.created_at)));
   } else if (row.status === "claimed" || row.status === "running") result.pollAfterMs = 2000;
-  if (row.result_json) {
+  if (row.result_json && row.status === 'succeeded') {
     const artifacts = await publicTaskArtifacts(env, request, JSON.parse(String(row.result_json)));
     result.result = artifacts;
     if (Array.isArray(artifacts) && typeof artifacts[0]?.url === "string") result.resultURL = artifacts[0].url;
@@ -796,6 +798,9 @@ async function createTask(env: Env, request: Request, admin = false) {
   const requestKey = request.headers.get("Idempotency-Key");
   if (requestKey !== null && !/^[A-Za-z0-9_-]{16,128}$/.test(requestKey)) return fail("invalid_request_key", "Invalid Idempotency-Key.");
   const requestHash = await digest(canonicalJSON(body));
+  if (requestKey && await env.DB.prepare('SELECT 1 FROM task_abandonments WHERE owner_id=? AND request_key=?').bind(actor,requestKey).first()) {
+    return fail('request_abandoned','This task was cancelled. Start a new task to try again.',409);
+  }
   const previousTask = async () => requestKey ? env.DB.prepare("SELECT id,widget_id,created_at,credit_cost,request_hash FROM widget_tasks WHERE owner_id=? AND request_key=?")
     .bind(actor, requestKey).first<{ id: string; widget_id: string; created_at: string; credit_cost: number; request_hash: string }>() : null;
   const accepted = async (task: { id: string; widget_id: string; created_at: string; credit_cost: number; request_hash: string }) => {
@@ -849,9 +854,10 @@ async function createTask(env: Env, request: Request, admin = false) {
     .bind(body.topupOrderID,actor,intentID).first<{id:string}>():null;
   const createdAt = now();
   try {
-    await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at,credit_cost,request_key,request_hash,billing_intent_id,topup_order_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-      .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt, creditCost, requestKey, requestHash,intentID,topup?.id??null).run();
+    await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at,credit_cost,request_key,request_hash,billing_intent_id,topup_order_id,delivery_required) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt, creditCost, requestKey, requestHash,intentID,topup?.id??null,body.deliveryRequired===true?1:0).run();
   } catch (error) {
+    if (String(error).includes('request_abandoned')) return fail('request_abandoned','This task was cancelled.',409);
     const existing = await previousTask();
     if (existing) return accepted(existing);
     if (String(error).includes("insufficient_credits")) return fail("insufficient_credits", "Not enough credits to run this Widget.", 402);
@@ -919,6 +925,45 @@ async function cancelTask(env: Env, request: Request, taskID: string) {
   return json({ success: false, error: { code: "task_not_active", message: "Task is no longer active." }, status: publicTaskStatus(existing.status) }, 409);
 }
 function publicTaskStatus(status: unknown) { return status === "succeeded" ? "completed" : status; }
+
+// Authenticated receipt protocol. Success is acknowledged only after the client
+// saves the result. Before that acknowledgement an unsuccessful delivery can be
+// refunded once; confirmed deliveries cannot be converted into free successes.
+async function settleTask(env: Env, request: Request, taskID: string) {
+  const owner = await requireUser(request,env);
+  const body = await readJSON(request);
+  if (!['delivered','failed'].includes(String(body.outcome))) return fail('invalid_outcome','Expected delivered or failed.');
+  await expireTasks(env);
+  if (body.outcome==='delivered') {
+    await env.DB.prepare(`UPDATE widget_tasks SET delivered_at=COALESCE(delivered_at,?)
+      WHERE id=? AND owner_id=? AND status='succeeded'`).bind(now(),taskID,owner).run();
+  } else {
+    await env.DB.prepare(`UPDATE widget_tasks SET status='failed',error_code='delivery_failed',completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL
+      WHERE id=? AND owner_id=? AND (status IN ('queued','claimed','running')
+        OR (status='succeeded' AND delivered_at IS NULL))`).bind(now(),taskID,owner).run();
+  }
+  const row = await env.DB.prepare('SELECT status,delivered_at FROM widget_tasks WHERE id=? AND owner_id=?').bind(taskID,owner).first<{status:string;delivered_at:string|null}>();
+  if (!row) return fail('task_not_found','Task not found.',404);
+  if (body.outcome==='delivered' ? row.status!=='succeeded' : row.status==='succeeded') {
+    return fail('task_already_settled','The task outcome has already been settled. Refresh its status.',409);
+  }
+  return taskStatus(env,request,taskID);
+}
+
+async function abandonTaskRequest(env: Env, request: Request, key: string) {
+  const owner = await requireUser(request,env);
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(key)) return fail('invalid_request_key','Invalid request key.');
+  await env.DB.batch([
+    env.DB.prepare('INSERT OR IGNORE INTO task_abandonments(owner_id,request_key,created_at) VALUES(?,?,?)').bind(owner,key,now()),
+    env.DB.prepare(`UPDATE widget_tasks SET status='failed',error_code='client_abandoned',completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL
+      WHERE owner_id=? AND request_key=? AND (status IN ('queued','claimed','running')
+        OR (status='succeeded' AND delivered_at IS NULL))`).bind(now(),owner,key)
+  ]);
+  const row = await env.DB.prepare('SELECT id FROM widget_tasks WHERE owner_id=? AND request_key=?').bind(owner,key).first<{id:string}>();
+  if (row) return taskStatus(env,request,row.id);
+  const balance=(await env.DB.prepare("SELECT credits FROM users WHERE 'user_'||id=?").bind(owner).first<{credits:number}>())?.credits;
+  return ok({taskID:'',status:'cancelled',creditCost:0,refundedCredits:0,balance},200,{'Cache-Control':'no-store'});
+}
 
 async function pullTask(env: Env, request: Request, url: URL) {
   await expireTasks(env);
@@ -1072,36 +1117,44 @@ async function taskResult(env: Env, request: Request, taskID: string) {
     const inactive = await inactiveTaskStatusForDeveloper(env, request, taskID);
     return inactive ? taskNotActive(inactive) : fail("task_not_found", "Task not found or Worker is not authorized.", 404);
   }
+  const finishTask = (nextStatus:string, outputs:unknown[], errorCode:string|null) => env.DB.prepare(`UPDATE widget_tasks
+    SET status=?,result_json=?,error_code=?,completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL
+    WHERE id=? AND status IN ('claimed','running') AND lease_expires_at>?
+      AND claim_token_hash IS ? AND worker_id IS ?`)
+    .bind(nextStatus,JSON.stringify(outputs),errorCode,now(),taskID,now(),task.claim_token_hash??null,task.worker_id??null).run();
+  const rejectOutput = async (code:string,message:string,httpStatus=422) => {
+    const result=await finishTask('failed',[],code);
+    return result.meta.changes ? fail(code,message,httpStatus) : taskNotActive('settled');
+  };
   const body = await readJSON(request);
   const status = body.status === "succeeded" ? "succeeded" : body.status === "failed" ? "failed" : "failed";
   const artifacts = Array.isArray(body.artifacts) ? body.artifacts : Array.isArray(body.result) ? body.result : [];
-  if (developerTask && status === "succeeded" && artifacts.length === 0) return fail("empty_result", "Successful tasks need an output.", 422);
-  for (const value of developerTask ? artifacts : []) {
-    if (!value || typeof value !== "object") return fail("invalid_result", "Invalid output.", 422);
+  if (status === "succeeded" && artifacts.length === 0) return rejectOutput("empty_result", "Successful tasks need an output.", 422);
+  for (const value of status === 'succeeded' ? artifacts : []) {
+    if (!value || typeof value !== "object") return rejectOutput("invalid_result", "Invalid output.", 422);
     const artifact = value as Record<string, unknown>;
     if (artifact.type === "text") {
       if (typeof artifact.assetID === "string") {
         const asset = await env.DB.prepare("SELECT mime_type FROM widget_assets WHERE id=? AND widget_id=? AND owner_id=? AND object_key=?")
           .bind(artifact.assetID, task.widget_id, task.owner_id, `results/${taskID}/${artifact.assetID}`).first<{ mime_type: string }>();
-        if (!asset?.mime_type.startsWith("image/")) return fail("invalid_asset", "Output asset does not match this task and type.", 403);
-      } else if (typeof artifact.text !== "string" || artifact.text.length > 1024 * 1024) {
-        return fail("invalid_text", "Invalid text output.", 422);
+        if (!asset?.mime_type.startsWith("image/")) return rejectOutput("invalid_asset", "Output asset does not match this task and type.", 403);
+      } else if (typeof artifact.text !== "string" || !artifact.text.trim() || artifact.text.length > 1024 * 1024) {
+        return rejectOutput("invalid_text", "Invalid text output.", 422);
       }
     } else if (["image", "video", "audio"].includes(String(artifact.type))) {
       if (artifact.url !== undefined) {
         if (artifact.assetID !== undefined || !validRemoteMediaURL(artifact.url)) {
-          return fail("invalid_url", "Output needs a public HTTPS media URL.", 422);
+          return rejectOutput("invalid_url", "Output needs a public HTTPS media URL.", 422);
         }
         continue;
       }
-      if (typeof artifact.assetID !== "string") return fail("invalid_asset", "Output asset is required.", 422);
+      if (typeof artifact.assetID !== "string") return rejectOutput("invalid_asset", "Output asset is required.", 422);
       const asset = await env.DB.prepare("SELECT mime_type FROM widget_assets WHERE id=? AND widget_id=? AND owner_id=? AND object_key=?")
         .bind(artifact.assetID, task.widget_id, task.owner_id, `results/${taskID}/${artifact.assetID}`).first<{ mime_type: string }>();
-      if (!asset || !asset.mime_type.startsWith(`${artifact.type}/`)) return fail("invalid_asset", "Output asset does not match this task and type.", 403);
-    } else return fail("invalid_result", "Unsupported output type.", 422);
+      if (!asset || !asset.mime_type.startsWith(`${artifact.type}/`)) return rejectOutput("invalid_asset", "Output asset does not match this task and type.", 403);
+    } else return rejectOutput("invalid_result", "Unsupported output type.", 422);
   }
-  const updated = await env.DB.prepare("UPDATE widget_tasks SET status=?,result_json=?,error_code=?,completed_at=?,lease_expires_at=NULL WHERE id=? AND status IN ('claimed','running')")
-    .bind(status, JSON.stringify(artifacts), typeof body.errorCode === "string" ? body.errorCode : null, now(), taskID).run();
+  const updated = await finishTask(status,artifacts,typeof body.errorCode === "string" ? body.errorCode : null);
   if (!updated.meta.changes) {
     const current = await env.DB.prepare("SELECT status FROM widget_tasks WHERE id=?").bind(taskID).first<{ status: string }>();
     return taskNotActive(current?.status);
@@ -1364,6 +1417,8 @@ export default {
       if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-submissions" && parts[3]) return await submissionDetail(env, request, parts[3]);
       if (request.method === "POST" && url.pathname === "/api/v2/widget-jobs") return await createTask(env, request);
       if (request.method === "POST" && url.pathname === "/api/v2/tasks") return await createTask(env, request);
+      if (request.method === 'POST' && parts[0]==='api' && parts[1]==='v2' && parts[2]==='task-requests' && parts[3] && parts[4]==='abandon') return await abandonTaskRequest(env,request,parts[3]);
+      if (request.method === 'POST' && parts[0]==='api' && parts[1]==='v2' && parts[2]==='tasks' && parts[3] && parts[4]==='settle') return await settleTask(env,request,parts[3]);
       if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) return await taskStatus(env, request, parts[3]);
       if (request.method === "DELETE" && parts[0] === "api" && parts[1] === "v2" && (parts[2] === "tasks" || parts[2] === "widget-jobs") && parts[3]) {
         return await cancelTask(env, request, parts[3]);

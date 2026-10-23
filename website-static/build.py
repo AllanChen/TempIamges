@@ -11,7 +11,9 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from html import escape
 from pathlib import Path
+from localize import localize
 
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
@@ -51,12 +53,33 @@ NAV = [
     ("install", "/install/", "安装", "Install"),
 ]
 
+DESCRIPTIONS = {
+    '/': ('Glance 是 Mac 图片和视频查看器，支持并排对比、图片文字识别和就地 AI 工具。免费下载 Apple 芯片 Mac 内测版。',
+          'View images and videos on your Mac, compare changes side by side, and run AI tools where you work. Download the Glance beta for Apple silicon.'),
+    '/pricing/': ('了解 Glance 免费查看、Pro 一次买断和云端 AI Widget 按次消耗点数的价格与功能。',
+                 'Compare Glance Free and Pro, one-time Mac licenses, and credits for cloud AI Widgets. See what is included before you download.'),
+    '/widgets/': ('查看 Glance AI Widget 的功能、每次点数价格、处理模型与媒体上传说明。',
+                 'Explore Glance AI Widgets for your images and videos, including upscaling and background removal. See per-run credits and processing details.'),
+    '/ai-models/': ('公开了解 Glance 各 AI Widget 的底层模型、版本信息、第三方处理服务和功能范围，无需登录。',
+                    'Public disclosure of the AI models, version information, processing services and capabilities behind Glance Widgets. No login required.'),
+    '/install/': ('下载 Glance macOS 内测版，查看系统要求、安装步骤、首次启动说明和文件校验值。',
+                 'Download Glance for Apple silicon Macs. Find system requirements, beta installation instructions, first-launch help, and the download checksum.'),
+    '/terms/': ('阅读 Glance 的服务条款、账户与许可、云端任务和付款规则。',
+               'Read the Glance terms of service for the Mac app, accounts, licenses, cloud tasks, and payments.'),
+    '/privacy/': ('了解 Glance 的本地处理、云端 Widget 媒体上传和账户数据隐私政策。',
+                 'Learn how Glance handles local processing, media uploaded for cloud Widgets, and account data in its privacy policy.'),
+    '/refunds/': ('阅读 Glance Pro 和点数充值包退款政策，以及云端任务失败的退点说明。',
+                 'Read the refund policy for Glance Pro and credit packs, and how refunds work when cloud Widget tasks fail.'),
+    '/acceptable-use/': ('阅读 Glance AI Widget 的可接受使用政策、素材授权要求和违规内容举报方式。',
+                        'Read the acceptable use policy for Glance AI Widgets, media permissions, and how to report prohibited content.'),
+}
+
 
 def bi(zh: str, en: str, tag: str = "span") -> str:
     return f'<{tag} lang="zh">{zh}</{tag}><{tag} lang="en">{en}</{tag}>'
 
 
-def header(active: str) -> str:
+def header(active: str, alternate: str) -> str:
     links = "".join(
         f'<a class="hide-sm" href="{href}"{" aria-current=\"page\"" if key == active else ""}>{bi(zh, en)}</a>'
         for key, href, zh, en in NAV)
@@ -64,7 +87,7 @@ def header(active: str) -> str:
 <header class="site-header"><div class="wrap">
   <a class="brand" href="/"><img src="/assets/img/logo-256.png" alt="" width="30" height="30">Glance</a>
   <nav class="nav" aria-label="Main">{links}
-    <button class="lang-toggle" type="button" aria-label="Switch language">{bi("EN", "中文")}</button>
+    <a class="lang-toggle" href="{alternate}" aria-label="Switch language">{bi("EN", "中文")}</a>
     <a class="btn btn-primary" href="/#download">{bi("下载", "Download")}</a>
   </nav>
 </div></header>"""
@@ -80,6 +103,7 @@ def footer() -> str:
     </div>
     <div><h4>{bi("产品", "Product")}</h4>
       <a href="/#loop">{bi("功能", "Features")}</a><a href="/widgets/">{bi("AI Widget", "AI Widgets")}</a>
+      <a href="/ai-models/">{bi("AI 模型说明", "AI Model Disclosure")}</a>
       <a href="/pricing/">{bi("价格", "Pricing")}</a><a href="/install/">{bi("下载与安装", "Download & install")}</a></div>
     <div><h4>{bi("政策", "Legal")}</h4>
       <a href="/terms/">{bi("服务条款", "Terms of Service")}</a><a href="/privacy/">{bi("隐私政策", "Privacy Policy")}</a>
@@ -96,42 +120,52 @@ def footer() -> str:
 </div></footer>"""
 
 
-def page(meta: dict, body: str) -> str:
-    title_zh = f'{meta["zh"]} · Glance' if meta["path"] != "/" else "Glance · AI 时代的 Preview"
-    title_en = f'{meta["en"]} · Glance' if meta["path"] != "/" else "Glance · The Preview for the AI era"
-    desc = meta.get("desc", "Glance 是 macOS 上的看图看视频工具：不满意就地用 AI 改，改完对比确认。"
-                            "Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.")
-    canonical = SITE + meta["path"]
+def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
+    base_path = meta['path']
+    path = '/en' + base_path if lang == 'en' else base_path
+    title = f'{meta[lang]} · Glance'
+    if base_path == '/':
+        title = 'Glance — Mac Image Viewer with AI Tools & Comparison' if lang == 'en' else 'Glance — Mac 图片与视频查看器、AI 工具和图片对比'
+    desc = DESCRIPTIONS.get(base_path, (meta['zh'] + ' · Glance', meta['en'] + ' · Glance'))[lang == 'en']
+    title, desc = escape(title, quote=True), escape(desc, quote=True)
+    canonical = SITE + path
+    alternate = base_path if lang == 'en' else '/en' + base_path
+    alternatives = ''
+    if base_path in page_paths:
+        alternatives = f'''<link rel="alternate" hreflang="zh-Hans" href="{SITE}{base_path}">
+<link rel="alternate" hreflang="en" href="{SITE}/en{base_path}">
+<link rel="alternate" hreflang="x-default" href="{SITE}/en{base_path}">'''
+    else:
+        alternate = '/en/'
     robots = '<meta name="robots" content="noindex">' if meta.get("noindex") else ""
     # Pancake by Waffo store verification; checked on the homepage only.
     verify = '<meta name="waffo-verify" content="26c71f44eeec84b752100c39e4b32fc3">' if meta["path"] == "/" else ""
     return f"""<!doctype html>
-<html lang="zh-CN" data-lang="zh">
+<html lang="{'en' if lang == 'en' else 'zh-CN'}" data-lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title_zh}</title>
+<title>{title}</title>
 <meta name="description" content="{desc}">
 <link rel="canonical" href="{canonical}">
-<meta property="og:title" content="{title_zh} | {title_en}">
+{alternatives}
+<meta property="og:title" content="{title}">
 <meta property="og:description" content="{desc}">
-<meta property="og:image" content="{SITE}/assets/video/glance-demo-poster.jpg?v=222cee43">
+<meta property="og:image" content="{SITE}/assets/video/glance-demo-poster{'-en' if lang == 'en' else ''}.jpg">
 <meta property="og:url" content="{canonical}">
 <meta name="theme-color" content="#08090c">
 {robots}
 {verify}
 <link rel="icon" type="image/png" href="/assets/img/favicon-64.png">
 <link rel="apple-touch-icon" href="/assets/img/logo-256.png">
-<script>(function(){{var l;try{{l=localStorage.getItem('glance.lang')}}catch(e){{}}if(!l)l=/^zh/i.test(navigator.language||'')?'zh':'en';document.documentElement.setAttribute('data-lang',l);document.documentElement.setAttribute('lang',l==='zh'?'zh-CN':'en')}})();</script>
 <link rel="stylesheet" href="/assets/site.css?v={ASSET_VERSION}">
 </head>
 <body>
-<span hidden data-title-zh="{title_zh}" data-title-en="{title_en}"></span>
-{header(meta.get("nav", ""))}
+{localize(header(meta.get('nav', ''), alternate), lang, page_paths)}
 <main id="main">
-{body}
+{localize(body, lang, page_paths)}
 </main>
-{footer()}
+{localize(footer(), lang, page_paths)}
 <script src="/assets/site.js?v={ASSET_VERSION}" defer></script>
 </body>
 </html>
@@ -178,13 +212,10 @@ def dmg_facts() -> tuple[str, str]:
 DMG_SIZE, DMG_SHA256 = dmg_facts()
 
 
-def main() -> None:
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    shutil.copytree(SRC / "assets", OUT / "assets")
-    shutil.copytree(SRC / "download", OUT / "download")
-    paths = []
-    for source in sorted((SRC / "pages").glob("*.html")):
+def load_pages(folder: Path) -> list[tuple[dict, str]]:
+    pages = []
+    seen = {}
+    for source in sorted(folder.glob('*.html')):
         raw = source.read_text(encoding="utf-8")
         match = re.match(r"<!--(.*?)-->\s*", raw, re.S)
         if not match:
@@ -193,13 +224,35 @@ def main() -> None:
         meta = {k.strip(): v.strip() for k, v in meta.items()}
         if "noindex" in meta:
             meta["noindex"] = meta["noindex"] == "true"
-        html = render(page(meta, raw[match.end():]))
-        if meta["path"] == "/404":
+        path = meta['path']
+        if path in seen:
+            raise ValueError(f'Duplicate page path {path}: {seen[path]} and {source.name}')
+        seen[path] = source.name
+        pages.append((meta, raw[match.end():]))
+    return pages
+
+
+def main() -> None:
+    pages = load_pages(SRC / 'pages')
+    page_paths = {meta['path'] for meta, _ in pages if not meta.get('noindex')}
+    # Validate and render everything before replacing the generated output.
+    rendered = []
+    for meta, body in pages:
+        for lang in (('zh', 'en') if meta['path'] in page_paths else ('zh',)):
+            path = '/en' + meta['path'] if lang == 'en' else meta['path']
+            rendered.append((path, meta.get('noindex'), render(page(meta, body, lang, page_paths))))
+    if OUT.exists():
+        shutil.rmtree(OUT)
+    shutil.copytree(SRC / 'assets', OUT / 'assets')
+    shutil.copytree(SRC / 'download', OUT / 'download')
+    paths = []
+    for path, noindex, html in rendered:
+        if path == '/404':
             target = OUT / "404.html"
         else:
-            target = OUT / meta["path"].strip("/") / "index.html"
-            if not meta.get("noindex"):
-                paths.append(meta["path"])
+            target = OUT / path.strip('/') / 'index.html'
+            if not noindex:
+                paths.append(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(html, encoding="utf-8")
     (OUT / "_headers").write_text(f"""/*
@@ -214,6 +267,7 @@ def main() -> None:
   Content-Disposition: attachment
 /pay/*
   Cache-Control: no-store
+  X-Robots-Tag: noindex
 """, encoding="utf-8")
     (OUT / "_redirects").write_text(f"""/refund /refunds/ 301
 /refund/ /refunds/ 301
@@ -222,8 +276,9 @@ def main() -> None:
 /download/ {DMG} 302
 /aup /acceptable-use/ 301
 """, encoding="utf-8")
-    (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /pay/\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
-    urls = "".join(f"<url><loc>{SITE}{p}</loc><lastmod>{UPDATED}</lastmod></url>" for p in paths)
+    (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /pay/return/\nDisallow: /pay/\nAllow: /\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
+    # Omit optional lastmod until per-page content dates are maintained.
+    urls = "".join(f"<url><loc>{SITE}{p}</loc></url>" for p in paths)
     (OUT / "sitemap.xml").write_text(
         f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n',
         encoding="utf-8")

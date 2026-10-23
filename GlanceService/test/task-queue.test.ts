@@ -103,6 +103,7 @@ describe("estimated wait", () => {
     // Two tasks that overlapped within the last 10 minutes → concurrency 2 halves the estimate.
     // task_run_2 is a 90 s success, so the mean of the three successes stays at 90 s.
     await seedTask("task_run_1", { status: "running", claimedAt: iso(-30_000), completedAt: null });
+    await env.DB.prepare("UPDATE widget_tasks SET lease_expires_at=? WHERE id='task_run_1'").bind(iso(120_000)).run();
     await seedTask("task_run_2", { status: "succeeded", claimedAt: iso(-100_000), completedAt: iso(-10_000) });
     expect((await taskStatus(second.taskID!)).body.estimatedWaitSeconds).toBe(90);
   });

@@ -25,6 +25,9 @@ QUERY_URL = f"{BASE_URL}/openapi/v2/query"
 # The "load video" node of workflow 2109559022260154369 that receives each
 # uploaded clip (RunningHub sample: nodeId 184, fieldName video).
 NODE_ID = "184"
+# This workflow also exposes Eraser preview node 283, which still contains the
+# watermark. Only Minmaxremover node 183 is the final cleaned video.
+OUTPUT_NODE_ID = "183"
 MAX_CLIP_SECONDS = 8.0
 SPLIT_TARGET_SECONDS = 7.8  # Leave room for MP4 frame/audio packet rounding.
 MAX_SEGMENTS = 24  # Glance runs one Widget for at most 25 minutes.
@@ -48,6 +51,10 @@ class GenerationFailedError(RuntimeError):
 
 class SubmissionStateUnknownError(RuntimeError):
     """Do not repeat a potentially billed submission with an unknown task ID."""
+
+
+class ResultSelectionError(RuntimeError):
+    """A completed workflow lacks an unambiguous final output; do not regenerate."""
 
 
 def safe_error(value: object, api_key: str) -> str:
@@ -170,12 +177,14 @@ def run_media_tool(command: list[str], deadline: float, label: str) -> str:
 
 def probe_video(path: Path, deadline: float) -> tuple[float, int, int, bool]:
     result = run_media_tool(["ffprobe", "-v", "error", "-show_entries",
-                             "format=duration:stream=codec_type,width,height", "-of", "json", str(path)],
+                             "format=duration:stream=codec_type,width,height,duration", "-of", "json", str(path)],
                             deadline, "ffprobe")
     try:
         data = json.loads(result)
-        duration = float(data["format"]["duration"])
         video = next(stream for stream in data["streams"] if stream["codec_type"] == "video")
+        # Audio padding must not determine the length of the video timeline.
+        raw_duration = video.get("duration")
+        duration = float(raw_duration if raw_duration not in (None, "N/A") else data["format"]["duration"])
         width, height = int(video["width"]), int(video["height"])
         audio = any(stream["codec_type"] == "audio" for stream in data["streams"])
     except (KeyError, ValueError, TypeError, StopIteration) as error:
@@ -267,16 +276,24 @@ def submit_task(api_key: str, uploaded_name: str, deadline: float) -> str:
 def video_result_url(result: dict) -> str:
     entries = result.get("results")
     if not isinstance(entries, list):
-        raise GenerationFailedError("RunningHub completed without video results")
-    urls = [entry.get("url") for entry in entries if isinstance(entry, dict)]
-    urls = [url for url in urls if isinstance(url, str)]
-    preferred = next((url for url in urls if Path(urlparse(url).path).suffix.lower()
-                      in (".mp4", ".mov", ".webm", ".mkv")), None)
-    url = preferred or (urls[0] if urls else None)
+        raise ResultSelectionError("RunningHub completed without final video results; check workflow output node 183")
+    final_outputs = [entry for entry in entries if isinstance(entry, dict)
+                     and str(entry.get("nodeId")) == OUTPUT_NODE_ID]
+    if len(final_outputs) != 1:
+        raise ResultSelectionError(
+            f"Expected one cleaned video from RunningHub node {OUTPUT_NODE_ID}, got {len(final_outputs)}; "
+            "check the workflow output configuration instead of using a preview")
+    entry = final_outputs[0]
+    url = entry.get("url")
+    if not isinstance(url, str) or not (
+        str(entry.get("outputType", "")).lower() in ("mp4", "mov", "webm", "mkv", "video")
+        or Path(urlparse(url).path).suffix.lower() in (".mp4", ".mov", ".webm", ".mkv")
+    ):
+        raise ResultSelectionError(f"RunningHub node {OUTPUT_NODE_ID} did not return a video")
     parsed = urlparse(url or "")
     if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
             or parsed.hostname.lower() in ("localhost", "127.0.0.1", "::1")):
-        raise GenerationFailedError("RunningHub returned no valid HTTPS video URL")
+        raise ResultSelectionError("RunningHub final video URL is invalid")
     return url
 
 
@@ -353,12 +370,17 @@ def process_clip(index: int, clip: Path, directory: Path, api_key: str,
 
 
 def normalize_and_merge(results: list[Path], directory: Path, deadline: float) -> Path:
+    if not results:
+        raise ValueError("No cleaned video clips to merge")
     _, width, height, _ = probe_video(results[0], deadline)
+    if len(results) == 1 and 0 < results[0].stat().st_size <= MAX_RESULT_BYTES:
+        # No join is needed: preserve the provider's video/audio bytes exactly.
+        return results[0]
     width += width % 2
     height += height % 2
     normalized = []
     for index, source in enumerate(results):
-        _, _, _, has_audio = probe_video(source, deadline)
+        clip_duration, _, _, has_audio = probe_video(source, deadline)
         destination = directory / f"normalized-{index:03d}.mp4"
         command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(source)]
         if not has_audio:
@@ -370,7 +392,7 @@ def normalize_and_merge(results: list[Path], directory: Path, deadline: float) -
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "24",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
             "-ar", "48000", "-ac", "2", "-af", "aresample=async=1:first_pts=0,apad",
-            "-shortest", "-movflags", "+faststart", str(destination),
+            "-shortest", "-t", f"{clip_duration:.6f}", "-movflags", "+faststart", str(destination),
         ]
         run_media_tool(command, deadline, f"normalize result {index + 1}/{len(results)}")
         probe_video(destination, deadline)

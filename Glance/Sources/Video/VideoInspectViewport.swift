@@ -18,7 +18,7 @@ final class VideoInspectViewport: NSView {
     private let failureView = LoadFailedAnimationView(frame: .zero)
     private let widgetProcessingBorder = VideoNonHitTestingView()
     private let widgetProcessingIndicator = VideoNonHitTestingView()
-    private let widgetProcessingDot = PanelStyle.makeStatusDot(color: PanelStyle.success)
+    private let widgetProcessingPeeker = PeekerView()
     private var widgetIndicatorCenterY: CGFloat?
     private var statusObservation: NSKeyValueObservation?
     var onActivate: (() -> Void)?
@@ -131,19 +131,19 @@ final class VideoInspectViewport: NSView {
         widgetProcessingBorder.layer?.borderWidth = 2
         widgetProcessingBorder.layer?.borderColor = PanelStyle.accent.withAlphaComponent(0.8).cgColor
         widgetProcessingBorder.layer?.cornerRadius = 12
-        widgetProcessingBorder.layer?.shadowColor = PanelStyle.accent.cgColor
-        widgetProcessingBorder.layer?.shadowOpacity = 0.28
-        widgetProcessingBorder.layer?.shadowOffset = .zero
-        widgetProcessingBorder.layer?.shadowRadius = 16
         widgetProcessingBorder.isHidden = true
         addSubview(widgetProcessingBorder, positioned: .above, relativeTo: nil)
-        widgetProcessingDot.wantsLayer = true
-        widgetProcessingDot.layer?.cornerRadius = 8
-        widgetProcessingDot.layer?.shadowColor = PanelStyle.success.cgColor
-        widgetProcessingDot.layer?.shadowOpacity = 0.85
-        widgetProcessingDot.layer?.shadowOffset = .zero
-        widgetProcessingDot.layer?.shadowRadius = 10
-        widgetProcessingIndicator.addSubview(widgetProcessingDot)
+        // Same 34pt Task Running badge as Image Inspect (Figma 215:5801).
+        widgetProcessingIndicator.wantsLayer = true
+        widgetProcessingIndicator.layer?.backgroundColor = HistoryStyle.hex(0x161719, alpha: 0.9).cgColor
+        widgetProcessingIndicator.layer?.cornerRadius = 17
+        widgetProcessingIndicator.layer?.borderWidth = 1
+        widgetProcessingIndicator.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        widgetProcessingIndicator.layer?.shadowColor = PanelStyle.warmCue.cgColor
+        widgetProcessingIndicator.layer?.shadowOpacity = 0.35
+        widgetProcessingIndicator.layer?.shadowOffset = .zero
+        widgetProcessingIndicator.layer?.shadowRadius = 10
+        widgetProcessingIndicator.addSubview(widgetProcessingPeeker)
         widgetProcessingIndicator.setAccessibilityElement(true)
         widgetProcessingIndicator.setAccessibilityLabel("Task running".localized)
         widgetProcessingIndicator.isHidden = true
@@ -168,20 +168,24 @@ final class VideoInspectViewport: NSView {
         failureView.frame = NSRect(x: bounds.midX - failed.width / 2,
                                    y: bounds.midY - failed.height / 2,
                                    width: failed.width, height: failed.height)
-        widgetProcessingBorder.frame = bounds.insetBy(dx: 2, dy: 2)
-        widgetProcessingIndicator.frame = NSRect(x: max(0, bounds.maxX - 48),
-                                                  y: max(0, (widgetIndicatorCenterY ?? bounds.maxY - 30) - 18),
-                                                  width: 36, height: 36)
-        widgetProcessingDot.frame = NSRect(x: 10, y: 10, width: 16, height: 16)
+        widgetProcessingBorder.frame = bounds.insetBy(dx: 8, dy: 12)
+        widgetProcessingIndicator.frame = NSRect(x: max(8, bounds.maxX - 58),
+                                                  y: max(0, (widgetIndicatorCenterY ?? bounds.maxY - 51) - 17),
+                                                  width: 34, height: 34)
+        widgetProcessingPeeker.frame = NSRect(x: 5, y: 5, width: 24, height: 24)
     }
     func setWidgetIndicatorCenterY(_ centerY: CGFloat?) {
         guard widgetIndicatorCenterY != centerY else { return }
         widgetIndicatorCenterY = centerY
         needsLayout = true
     }
-    func setWidgetProcessing(_ processing: Bool) {
+    func setWidgetProcessing(_ task: WidgetTaskRecord?) {
+        let processing = task != nil
         widgetProcessingBorder.isHidden = !processing
         widgetProcessingIndicator.isHidden = !processing
+        widgetProcessingIndicator.setAccessibilityLabel(task.map {
+            "\($0.commandName), \("Task running".localized)"
+        } ?? "Task running".localized)
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         if let layer = widgetProcessingBorder.layer {
             if processing && !reduceMotion && layer.animation(forKey: "widgetMainBreathing") == nil {
@@ -195,25 +199,6 @@ final class VideoInspectViewport: NSView {
                 layer.add(animation, forKey: "widgetMainBreathing")
             } else if !processing || reduceMotion {
                 layer.removeAnimation(forKey: "widgetMainBreathing")
-            }
-        }
-        if let layer = widgetProcessingDot.layer {
-            if processing && !reduceMotion && layer.animation(forKey: "widgetRunningDotBreathing") == nil {
-                let glow = CABasicAnimation(keyPath: "shadowOpacity")
-                glow.fromValue = 0.3
-                glow.toValue = 1.0
-                let fade = CABasicAnimation(keyPath: "opacity")
-                fade.fromValue = 0.55
-                fade.toValue = 1.0
-                let animation = CAAnimationGroup()
-                animation.animations = [glow, fade]
-                animation.duration = 0.9
-                animation.autoreverses = true
-                animation.repeatCount = .infinity
-                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                layer.add(animation, forKey: "widgetRunningDotBreathing")
-            } else if !processing || reduceMotion {
-                layer.removeAnimation(forKey: "widgetRunningDotBreathing")
             }
         }
     }

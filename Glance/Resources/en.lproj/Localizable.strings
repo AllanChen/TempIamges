@@ -882,3 +882,11 @@
 "Request a new code. This code expired or has no attempts left." = "Request a new code. This code expired or has no attempts left.";
 "abandoned" = "abandoned";
 "Incorrect code. %d attempts left." = "Incorrect code. %d attempts left.";
+
+/* Task settlement and refunds */
+"Refund confirmation pending" = "Refund confirmation pending";
+"Confirming task result" = "Confirming task result";
+"The task timed out. Its credits will be refunded automatically. Please try again." = "The task timed out. Its credits will be refunded automatically. Please try again.";
+"The result could not be downloaded. Please check your connection and try again." = "The result could not be downloaded. Please check your connection and try again.";
+"Result confirmation timed out. Credits were refunded. Please run the task again." = "Result confirmation timed out. Credits were refunded. Please run the task again.";
+"Could not save the task. Check available disk space and try again." = "Could not save the task. Check available disk space and try again.";

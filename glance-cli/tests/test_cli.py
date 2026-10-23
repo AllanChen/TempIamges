@@ -258,7 +258,7 @@ class CLITest(unittest.TestCase):
         task = {"taskId": "task_1", "claimToken": "claim_1"}
         with patch("glance_cli.worker.execute", side_effect=fake_execute), \
              patch("glance_cli.worker.upload_task_file", return_value={"assetID": "asset_1"}), \
-             patch("glance_cli.worker.request") as api:
+             patch("glance_cli.worker.request", return_value={"status": "succeeded"}) as api:
             _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
         result_call = next(call for call in api.call_args_list if call.args[1].endswith("/result"))
         self.assertEqual(result_call.args[2]["artifacts"],
@@ -279,7 +279,7 @@ class CLITest(unittest.TestCase):
         with patch("glance_cli.worker.execute", side_effect=fake_execute), \
              patch("glance_cli.worker.upload_task_file",
                    side_effect=[APIError("Broken pipe"), {"assetID": "asset_1"}]) as upload, \
-             patch("glance_cli.worker.request") as api, \
+             patch("glance_cli.worker.request", return_value={"status": "succeeded"}) as api, \
              patch("glance_cli.worker.time.sleep"):
             _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
         self.assertEqual(upload.call_count, 2)
@@ -301,7 +301,7 @@ class CLITest(unittest.TestCase):
         task = {"taskId": "task_resume", "claimToken": "claim_1"}
         with patch("glance_cli.worker.execute", side_effect=fake_execute) as execute_widget, \
              patch("glance_cli.worker.upload_task_file", side_effect=APIError("Broken pipe")) as upload, \
-             patch("glance_cli.worker.request") as api, \
+             patch("glance_cli.worker.request", return_value={"status": "succeeded"}) as api, \
              patch("glance_cli.worker.time.sleep"):
             with self.assertRaises(DeliveryDeferredError):
                 _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
@@ -362,7 +362,7 @@ class CLITest(unittest.TestCase):
         task = {"taskId": "task_1", "claimToken": "claim_1"}
         with patch("glance_cli.worker.execute", side_effect=fake_execute), \
              patch("glance_cli.worker.upload_task_file") as upload, \
-             patch("glance_cli.worker.request") as api:
+             patch("glance_cli.worker.request", return_value={"status": "succeeded"}) as api:
             _run_task({"code_path": str(widget), "python_path": sys.executable}, task)
         upload.assert_not_called()
         result_call = next(call for call in api.call_args_list if call.args[1].endswith("/result"))
@@ -608,7 +608,7 @@ class CLITest(unittest.TestCase):
             if path.endswith("/heartbeat"):
                 heartbeats.append(body)
                 if len(heartbeats) >= 2:
-                    raise APIError("not active", 409)
+                    raise APIError("not active", 409, code="task_not_active", task_status="cancelled")
             return {}
 
         task = {"taskId": "task_cancel", "claimToken": "claim_1", "input": {}}

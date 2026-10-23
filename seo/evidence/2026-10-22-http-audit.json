@@ -1,0 +1,2032 @@
+{
+  "date": "2026-10-22",
+  "method": "Public HTTP requests; original HTML only, no browser rendering or Search Console access. Redirects followed. Download checked with HEAD only.",
+  "entries": [
+    {
+      "name": "home",
+      "url": "https://glancepreview.com/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 06:59:25 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 23799,
+      "sha256": "1581d6fecabc27136b5bff375ed75004267ebe6d8dd73bfb33b104486a6f7afe",
+      "html": {
+        "lang": "zh-CN",
+        "title": "Glance · AI 时代的 Preview",
+        "description": "Glance 是 macOS 上的看图看视频工具：不满意就地用 AI 改，改完对比确认。Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "AI 时代的 Preview。看、改、比，一个窗口。"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "The Preview for the AI era.View, fix, compare."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "看清 → 就地改 → 对比确认"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "View → fix in place → compare"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "还有这些"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "And more"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "右键就能用的 AI 工具"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "AI tools, one right-click away"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "免费看，Pro 一次买断，AI 按次付费"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Free to view. Pro is one purchase. AI is pay-per-run."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "免费下载内测版"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Download the free beta"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "常见问题"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "FAQ"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#download",
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#582b2d2828372a2c18353b2a3d392c372a763931",
+          "/download/Glance-1.0.0-beta.1.dmg",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/focus.jpg?v=996ac99d",
+            "alt": "Glance image viewer",
+            "width": "1400",
+            "height": "912",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/widget-menu.jpg?v=dc5a8aba",
+            "alt": "Widget menu in Glance",
+            "width": "1400",
+            "height": "916",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/compare.jpg?v=aaf01fc2",
+            "alt": "Side-by-side compare in Glance",
+            "width": "1400",
+            "height": "940",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/video-capture.jpg?v=0573b03f",
+            "alt": "",
+            "width": "1400",
+            "height": "884",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/widget-result.jpg?v=d97fadff",
+            "alt": "",
+            "width": "1400",
+            "height": "949",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "robots",
+      "url": "https://glancepreview.com/robots.txt",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-type": "text/plain; charset=utf-8",
+            "content-length": "86",
+            "cache-control": "public, max-age=14400, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 86,
+      "sha256": "d6f895e7e55e25cc2de69f4fa708856b224d43ee00521f21bfed6037593e64a2",
+      "text": "User-agent: *\nAllow: /\nDisallow: /pay/\nSitemap: https://glancepreview.com/sitemap.xml\n"
+    },
+    {
+      "name": "sitemap",
+      "url": "https://glancepreview.com/sitemap.xml",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-type": "application/xml",
+            "content-length": "873",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 873,
+      "sha256": "77a2fd277b750a79e0380bacbaa36653ca0c2f408cd4d26885ab89f9f2dc4503",
+      "urls": [
+        {
+          "loc": "https://glancepreview.com/",
+          "lastmod": "2026-10-16"
+        },
+        {
+          "loc": "https://glancepreview.com/pricing/",
+          "lastmod": "2026-10-16"
+        },
+        {
+          "loc": "https://glancepreview.com/widgets/",
+          "lastmod": "2026-10-16"
+        },
+        {
+          "loc": "https://glancepreview.com/install/",
+          "lastmod": "2026-10-16"
+        },
+        {
+          "loc": "https://glancepreview.com/terms/",
+          "lastmod": "2026-10-16"
+        },
+        {
+          "loc": "https://glancepreview.com/privacy/",
+          "lastmod": "2026-10-16"
+        },
+        {
+          "loc": "https://glancepreview.com/refunds/",
+          "lastmod": "2026-10-16"
+        },
+        {
+          "loc": "https://glancepreview.com/acceptable-use/",
+          "lastmod": "2026-10-16"
+        },
+        {
+          "loc": "https://glancepreview.com/pay/return/",
+          "lastmod": "2026-10-16"
+        }
+      ]
+    },
+    {
+      "name": "pricing",
+      "url": "https://glancepreview.com/pricing/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 19554,
+      "sha256": "9a0927f24d6161e536cb69f5634213f894fe359c31532eec967f540f2b14b968",
+      "html": {
+        "lang": "zh-CN",
+        "title": "价格 · Glance",
+        "description": "Glance 价格：免费版、Glance Pro 一次买断、云端 AI Widget 按点数计费。Glance pricing: Free, one-time Glance Pro, and pay-per-run credits for cloud AI Widgets.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/pricing/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "免费看。Pro 一次买断。AI 用多少付多少。"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "Free to view. Pro once.AI as you go."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "功能对比"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Compare plans"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "每个 AI Widget 的价格"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Price per AI Widget"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#b8cbcdc8c8d7caccf8d5dbcaddd9ccd7ca96d9d1",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/",
+          "/widgets/#models"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "install",
+      "url": "https://glancepreview.com/install/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 11221,
+      "sha256": "d31f13250f78e03c8b043ef563551d9eb72a324bc30b71ecc541bcb9fbf0701e",
+      "html": {
+        "lang": "zh-CN",
+        "title": "下载与安装 · Glance",
+        "description": "下载并安装 Glance 内测版。Download and install the Glance beta for macOS.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/install/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "下载与安装"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "Download & install"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "安装"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "首次打开被拦截怎么办"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "开始使用"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "可选：Peek（选中文本秒开预览）"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "反馈与问题"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "卸载"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Install"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "If macOS blocks the first launch"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Getting started"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Optional: Peek"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Feedback and help"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Uninstall"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#3744424747584543775a5445525643584519565e",
+          "/cdn-cgi/l/email-protection#7a090f0a0a15080e3a1719081f1b0e1508541b13",
+          "/cdn-cgi/l/email-protection#cab9bfbabaa5b8be8aa7a9b8afabbea5b8e4aba3",
+          "/download/Glance-1.0.0-beta.1.dmg",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "widgets",
+      "url": "https://glancepreview.com/widgets/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 12585,
+      "sha256": "ad248cf7b1f6797e3a6d69f014c6190cd8f49b84514c6fdc2ce4e6ff020d7259",
+      "html": {
+        "lang": "zh-CN",
+        "title": "AI Widget · Glance",
+        "description": "Glance 云端 AI Widget 列表、每次价格与处理服务说明。Glance cloud AI Widgets, per-run prices and processing disclosures.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/widgets/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "右键，就地用 AI 改。"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "Right-click. Fix it with AI."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "底层 AI 模型说明"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Underlying AI models"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#cebdbbbebea1bcba8ea3adbcabafbaa1bce0afa7",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "terms",
+      "url": "https://glancepreview.com/terms/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:01:18 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 24298,
+      "sha256": "8c978680289d606a534ce41b535a83b64ac3f4237ad41beecc6f0e1be38231e3",
+      "html": {
+        "lang": "zh-CN",
+        "title": "服务条款 · Glance",
+        "description": "Glance 服务条款。Glance Terms of Service.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/terms/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "服务条款"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "Terms of Service"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "1. Introduction and acceptance"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "2. The Service"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "3. Accounts"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "4. Plans, trial and credits"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "5. Billing and payment"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "6. Credit charges for AI Widgets"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "7. Refunds"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "8. Licence and devices"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "9. Your content and AI output"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "10. Acceptable use"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "11. Suspension and termination"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "12. Disclaimers"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "13. Limitation of liability"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "14. Billing disputes and governing law"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "15. Changes"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "16. Contact"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "1. 简介与接受"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "2. 服务说明"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "3. 账户"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "4. 版本、试用与点数"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "5. 账单与付款"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "6. AI Widget 扣点规则"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "7. 退款"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "8. 授权与设备"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "9. 你的内容与 AI 结果"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "10. 可接受使用"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "11. 暂停与终止"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "12. 免责声明"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "13. 责任限制"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "14. 账单争议与适用法律"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "15. 条款变更"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "16. 联系方式"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection",
+          "/cdn-cgi/l/email-protection#2754525757485553674a4455424653485509464e",
+          "/cdn-cgi/l/email-protection#e3909693938c9197a38e80918682978c91cd828a",
+          "/cdn-cgi/l/email-protection#f5868085859a8781b59896879094819a87db949c",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/",
+          "/widgets/#models"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "privacy",
+      "url": "https://glancepreview.com/privacy/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:01:18 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 14803,
+      "sha256": "618ad7c2b8d542bde1d97b18a1c486fada30432e4ac7c32a92497b78ec71dc05",
+      "html": {
+        "lang": "zh-CN",
+        "title": "隐私政策 · Glance",
+        "description": "Glance 隐私政策。Glance Privacy Policy.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/privacy/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "隐私政策"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "Privacy Policy"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "1. What stays on your Mac"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "2. What we collect"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "3. How we use it"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "4. Where it is stored"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "5. Who we share it with"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "6. Retention"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "7. Your rights"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "8. Security"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "9. Children"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "10. Changes and contact"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "1. 只留在你 Mac 上的数据"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "2. 我们收集的数据"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "3. 数据用途"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "4. 存储位置"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "5. 共享对象"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "6. 保存期限"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "7. 你的权利"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "8. 安全"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "9. 儿童"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "10. 变更与联系"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection",
+          "/cdn-cgi/l/email-protection#2b585e5b5b44595f6b4648594e4a5f4459054a42",
+          "/cdn-cgi/l/email-protection#5c2f292c2c332e281c313f2e393d28332e723d35",
+          "/cdn-cgi/l/email-protection#74070104041b0600341917061115001b065a151d",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "refunds",
+      "url": "https://glancepreview.com/refunds/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:01:18 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 10418,
+      "sha256": "476f96b0997dc0e46ede817cdc2362f803128b096b287a1275d3ed69cc7e901c",
+      "html": {
+        "lang": "zh-CN",
+        "title": "退款政策 · Glance",
+        "description": "Glance 退款政策。Glance Refund Policy.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/refunds/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "退款政策"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "Refund Policy"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Credits for failed Widget tasks"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "How to request a refund"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Your statutory rights"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "失败任务退点"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "如何申请退款"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "法定权利"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#23505653534c5157634e40514642574c510d424a",
+          "/cdn-cgi/l/email-protection#384b4d4848574a4c78555b4a5d594c574a165951",
+          "/cdn-cgi/l/email-protection#6c1f191c1c031e182c010f1e090d18031e420d05",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "acceptable-use",
+      "url": "https://glancepreview.com/acceptable-use/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:01:19 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 13462,
+      "sha256": "616b0ea90b3471ea653677acf81a10c9c7baa9f2aad167a732a59bf1912741ee",
+      "html": {
+        "lang": "zh-CN",
+        "title": "可接受使用政策 · Glance",
+        "description": "Glance 可接受使用政策与内容政策。Glance Acceptable Use and content policy.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/acceptable-use/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "可接受使用政策"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "Acceptable Use Policy"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "1. Prohibited content"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "2. Photos of real people"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "3. Watermark removal"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "4. AI output disclosure"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "5. Models and moderation"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "6. Reporting violations"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "7. Enforcement"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "1. 禁止的内容"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "2. 真人照片"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "3. 去水印"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "4. AI 结果标识"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "5. 模型与审核"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "6. 举报违规"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "7. 处理措施"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection",
+          "/cdn-cgi/l/email-protection#4f3c3a3f3f203d3b0f222c3d2a2e3b203d612e26",
+          "/cdn-cgi/l/email-protection#98ebede8e8f7eaecd8f5fbeafdf9ecf7eab6f9f1",
+          "/cdn-cgi/l/email-protection#c6b5b3b6b6a9b4b286aba5b4a3a7b2a9b4e8a7af",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/",
+          "/widgets/#models"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "payment",
+      "url": "https://glancepreview.com/pay/return/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:07 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store"
+          }
+        }
+      ],
+      "bodyBytes": 6803,
+      "sha256": "b14372197a7b1707e5423bb475c1973e57aceae4ae329a856da391c20a7e8194",
+      "html": {
+        "lang": "zh-CN",
+        "title": "返回 Glance · Glance",
+        "description": "Glance 是 macOS 上的看图看视频工具：不满意就地用 AI 改，改完对比确认。Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/pay/return/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": null,
+            "text": "Return to Glance"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#e5969095958a9791a58886978084918a97cb848c",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "www",
+      "url": "https://www.glancepreview.com/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 301,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-length": "0",
+            "location": "https://glancepreview.com/"
+          }
+        },
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:07 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 23799,
+      "sha256": "ec81444aa296cf338a7430af58353e498241c07799e4723b378e7bb5bc785f63",
+      "html": {
+        "lang": "zh-CN",
+        "title": "Glance · AI 时代的 Preview",
+        "description": "Glance 是 macOS 上的看图看视频工具：不满意就地用 AI 改，改完对比确认。Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "AI 时代的 Preview。看、改、比，一个窗口。"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "The Preview for the AI era.View, fix, compare."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "看清 → 就地改 → 对比确认"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "View → fix in place → compare"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "还有这些"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "And more"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "右键就能用的 AI 工具"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "AI tools, one right-click away"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "免费看，Pro 一次买断，AI 按次付费"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Free to view. Pro is one purchase. AI is pay-per-run."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "免费下载内测版"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Download the free beta"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "常见问题"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "FAQ"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#download",
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#83f0f6f3f3ecf1f7c3eee0f1e6e2f7ecf1ade2ea",
+          "/download/Glance-1.0.0-beta.1.dmg",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/focus.jpg?v=996ac99d",
+            "alt": "Glance image viewer",
+            "width": "1400",
+            "height": "912",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/widget-menu.jpg?v=dc5a8aba",
+            "alt": "Widget menu in Glance",
+            "width": "1400",
+            "height": "916",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/compare.jpg?v=aaf01fc2",
+            "alt": "Side-by-side compare in Glance",
+            "width": "1400",
+            "height": "940",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/video-capture.jpg?v=0573b03f",
+            "alt": "",
+            "width": "1400",
+            "height": "884",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/widget-result.jpg?v=d97fadff",
+            "alt": "",
+            "width": "1400",
+            "height": "949",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "legacy",
+      "url": "https://glance.mcreator.ai/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 301,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:08 GMT",
+            "content-length": "0",
+            "location": "https://glancepreview.com/"
+          }
+        },
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:08 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 23799,
+      "sha256": "d089bee378145c8025f3845b783efe53ff3bf212d74104fa3138a9c6d5cdfac0",
+      "html": {
+        "lang": "zh-CN",
+        "title": "Glance · AI 时代的 Preview",
+        "description": "Glance 是 macOS 上的看图看视频工具：不满意就地用 AI 改，改完对比确认。Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "AI 时代的 Preview。看、改、比，一个窗口。"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "The Preview for the AI era.View, fix, compare."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "看清 → 就地改 → 对比确认"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "View → fix in place → compare"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "还有这些"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "And more"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "右键就能用的 AI 工具"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "AI tools, one right-click away"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "免费看，Pro 一次买断，AI 按次付费"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Free to view. Pro is one purchase. AI is pay-per-run."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "免费下载内测版"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Download the free beta"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "常见问题"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "FAQ"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#download",
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#72010702021d0006321f11001713061d005c131b",
+          "/download/Glance-1.0.0-beta.1.dmg",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/focus.jpg?v=996ac99d",
+            "alt": "Glance image viewer",
+            "width": "1400",
+            "height": "912",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/widget-menu.jpg?v=dc5a8aba",
+            "alt": "Widget menu in Glance",
+            "width": "1400",
+            "height": "916",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/compare.jpg?v=aaf01fc2",
+            "alt": "Side-by-side compare in Glance",
+            "width": "1400",
+            "height": "940",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/video-capture.jpg?v=0573b03f",
+            "alt": "",
+            "width": "1400",
+            "height": "884",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/widget-result.jpg?v=d97fadff",
+            "alt": "",
+            "width": "1400",
+            "height": "949",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "http",
+      "url": "http://glancepreview.com/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 301,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-type": "text/html; charset=UTF-8",
+            "location": "https://glancepreview.com/"
+          }
+        },
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:07 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 23799,
+      "sha256": "c52ff993c6e97f5890be1f9d4c89d5655308271aff3b452baab4b0d9b56be11d",
+      "html": {
+        "lang": "zh-CN",
+        "title": "Glance · AI 时代的 Preview",
+        "description": "Glance 是 macOS 上的看图看视频工具：不满意就地用 AI 改，改完对比确认。Glance is a macOS image and video viewer with in-place AI fixes and side-by-side compare.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "AI 时代的 Preview。看、改、比，一个窗口。"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "The Preview for the AI era.View, fix, compare."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "看清 → 就地改 → 对比确认"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "View → fix in place → compare"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "还有这些"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "And more"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "右键就能用的 AI 工具"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "AI tools, one right-click away"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "免费看，Pro 一次买断，AI 按次付费"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Free to view. Pro is one purchase. AI is pay-per-run."
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "免费下载内测版"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "Download the free beta"
+          },
+          {
+            "level": "h2",
+            "lang": "zh",
+            "text": "常见问题"
+          },
+          {
+            "level": "h2",
+            "lang": "en",
+            "text": "FAQ"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#download",
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#7b080e0b0b14090f3b1618091e1a0f1409551a12",
+          "/download/Glance-1.0.0-beta.1.dmg",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/focus.jpg?v=996ac99d",
+            "alt": "Glance image viewer",
+            "width": "1400",
+            "height": "912",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/widget-menu.jpg?v=dc5a8aba",
+            "alt": "Widget menu in Glance",
+            "width": "1400",
+            "height": "916",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/compare.jpg?v=aaf01fc2",
+            "alt": "Side-by-side compare in Glance",
+            "width": "1400",
+            "height": "940",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/video-capture.jpg?v=0573b03f",
+            "alt": "",
+            "width": "1400",
+            "height": "884",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/widget-result.jpg?v=d97fadff",
+            "alt": "",
+            "width": "1400",
+            "height": "949",
+            "loading": "lazy"
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "install-noslash",
+      "url": "https://glancepreview.com/install",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 308,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-length": "0",
+            "location": "/install/"
+          }
+        },
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:07 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          }
+        }
+      ],
+      "bodyBytes": 11221,
+      "sha256": "38cdd6af4223bda9c30b04df552f4866740761e309266fb28a170fd76635ac7c",
+      "html": {
+        "lang": "zh-CN",
+        "title": "下载与安装 · Glance",
+        "description": "下载并安装 Glance 内测版。Download and install the Glance beta for macOS.",
+        "robots": null,
+        "canonical": [
+          "https://glancepreview.com/install/"
+        ],
+        "hreflang": [],
+        "headings": [
+          {
+            "level": "h1",
+            "lang": "zh",
+            "text": "下载与安装"
+          },
+          {
+            "level": "h1",
+            "lang": "en",
+            "text": "Download & install"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "安装"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "首次打开被拦截怎么办"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "开始使用"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "可选：Peek（选中文本秒开预览）"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "反馈与问题"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "卸载"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Install"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "If macOS blocks the first launch"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Getting started"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Optional: Peek"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Feedback and help"
+          },
+          {
+            "level": "h2",
+            "lang": null,
+            "text": "Uninstall"
+          }
+        ],
+        "jsonLdCount": 0,
+        "externalScripts": [
+          "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+          "/assets/site.js?v=6f29ac3c5f"
+        ],
+        "links": [
+          "#main",
+          "/",
+          "/#download",
+          "/#loop",
+          "/acceptable-use/",
+          "/acceptable-use/#report",
+          "/cdn-cgi/l/email-protection#7c0f090c0c130e083c111f0e191d08130e521d15",
+          "/cdn-cgi/l/email-protection#96e5e3e6e6f9e4e2d6fbf5e4f3f7e2f9e4b8f7ff",
+          "/cdn-cgi/l/email-protection#ddaea8adadb2afa99db0beafb8bca9b2aff3bcb4",
+          "/download/Glance-1.0.0-beta.1.dmg",
+          "/install/",
+          "/pricing/",
+          "/privacy/",
+          "/refunds/",
+          "/terms/",
+          "/widgets/"
+        ],
+        "images": [
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          },
+          {
+            "src": "/assets/img/logo-256.png",
+            "alt": "",
+            "width": "30",
+            "height": "30",
+            "loading": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "notfound",
+      "url": "https://glancepreview.com/seo-audit-not-found-20261022/",
+      "method": "GET",
+      "responses": [
+        {
+          "status": 404,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:06 GMT",
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store"
+          }
+        }
+      ]
+    },
+    {
+      "name": "download",
+      "url": "https://glancepreview.com/download/Glance-1.0.0-beta.1.dmg",
+      "method": "HEAD",
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "date": "Thu, 22 Oct 2026 07:00:07 GMT",
+            "content-type": "application/octet-stream",
+            "content-length": "4987319",
+            "cache-control": "public, max-age=14400"
+          }
+        }
+      ]
+    }
+  ]
+}

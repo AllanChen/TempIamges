@@ -1,0 +1,537 @@
+{
+  "date": "2026-10-22",
+  "project": "glance",
+  "deployment": "6c3b9874-8676-4169-abc8-100e48036226",
+  "previous_deployment": "083e6743-ed80-45ef-9f2c-da31a545f876",
+  "passed": false,
+  "failures": [
+    "Deployed disclosure matches built page https://glancepreview.com/ai-models/",
+    "Deployed disclosure matches built page https://glancepreview.com/en/ai-models/"
+  ],
+  "requests": [
+    {
+      "url": "https://glancepreview.com/sitemap.xml",
+      "effective_url": "https://glancepreview.com/sitemap.xml",
+      "status": 200,
+      "bytes": 1141,
+      "sha256": "07e253c96eae8308940b5c2c3f7e47b4137ad67a599105ead6200b8d0525763c",
+      "redirects": 0,
+      "content_type": "application/xml",
+      "x_robots_tag": null
+    },
+    {
+      "url": "https://glancepreview.com/",
+      "effective_url": "https://glancepreview.com/",
+      "status": 200,
+      "bytes": 16513,
+      "sha256": "e54ba9f8719d0b76e49810e0acb4c333c0609008f75559ed281bd435a959b617",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/",
+        "en": "https://glancepreview.com/en/",
+        "x-default": "https://glancepreview.com/en/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/",
+      "effective_url": "https://glancepreview.com/en/",
+      "status": 200,
+      "bytes": 16664,
+      "sha256": "6481eae43a472828ad4c0f807b84f14fd3cbadf4dea2013f255a56af223fc2ac",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/",
+        "en": "https://glancepreview.com/en/",
+        "x-default": "https://glancepreview.com/en/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/pricing/",
+      "effective_url": "https://glancepreview.com/pricing/",
+      "status": 200,
+      "bytes": 13804,
+      "sha256": "45c00f21e7fcb37458d4234b7aa2696a9137e7de424802d01ac0a851d1d36c64",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/pricing/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/pricing/",
+        "en": "https://glancepreview.com/en/pricing/",
+        "x-default": "https://glancepreview.com/en/pricing/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/pricing/",
+      "effective_url": "https://glancepreview.com/en/pricing/",
+      "status": 200,
+      "bytes": 13996,
+      "sha256": "1f79aebdaa28a4aeb47cf0f2276f916c23a0e25eb2dd3557371dc2b310d550bf",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/pricing/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/pricing/",
+        "en": "https://glancepreview.com/en/pricing/",
+        "x-default": "https://glancepreview.com/en/pricing/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/widgets/",
+      "effective_url": "https://glancepreview.com/widgets/",
+      "status": 200,
+      "bytes": 5483,
+      "sha256": "ccaed6100fc4d925729e4066ee4a6696ebb16262cc3be0a46e40bd9abc88266c",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/widgets/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/widgets/",
+        "en": "https://glancepreview.com/en/widgets/",
+        "x-default": "https://glancepreview.com/en/widgets/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/widgets/",
+      "effective_url": "https://glancepreview.com/en/widgets/",
+      "status": 200,
+      "bytes": 5789,
+      "sha256": "b910734db1c6046b79657370b489d61e497cf9dfaa1ee549c94a93e4b2d13aec",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/widgets/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/widgets/",
+        "en": "https://glancepreview.com/en/widgets/",
+        "x-default": "https://glancepreview.com/en/widgets/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/ai-models/",
+      "effective_url": "https://glancepreview.com/ai-models/",
+      "status": 200,
+      "bytes": 10422,
+      "sha256": "5ce22c9a15923294b0da0515d61809a76a49d1f0aa6ddcb35a1f18ef640d2a4a",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/ai-models/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/ai-models/",
+        "en": "https://glancepreview.com/en/ai-models/",
+        "x-default": "https://glancepreview.com/en/ai-models/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/ai-models/",
+      "effective_url": "https://glancepreview.com/en/ai-models/",
+      "status": 200,
+      "bytes": 10914,
+      "sha256": "2c78430a879d181dda3fb4822b2d529540af679f52109bb37af62776e1840deb",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/ai-models/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/ai-models/",
+        "en": "https://glancepreview.com/en/ai-models/",
+        "x-default": "https://glancepreview.com/en/ai-models/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/install/",
+      "effective_url": "https://glancepreview.com/install/",
+      "status": 200,
+      "bytes": 7330,
+      "sha256": "ef51708f2488f8c32f2acb3441828e454bdc8dac1149a9f459a80611b9e08f2a",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/install/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/install/",
+        "en": "https://glancepreview.com/en/install/",
+        "x-default": "https://glancepreview.com/en/install/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/install/",
+      "effective_url": "https://glancepreview.com/en/install/",
+      "status": 200,
+      "bytes": 7402,
+      "sha256": "0a530bc29a59d20a23f22f8b2c417805822baeb2c0d09d64bbb8b817a7b66be9",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/install/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/install/",
+        "en": "https://glancepreview.com/en/install/",
+        "x-default": "https://glancepreview.com/en/install/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/terms/",
+      "effective_url": "https://glancepreview.com/terms/",
+      "status": 200,
+      "bytes": 12872,
+      "sha256": "e6a63986b833f6d4ea5b0102a604299ca53dcae3ccce7f89da9daa71080ad581",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/terms/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/terms/",
+        "en": "https://glancepreview.com/en/terms/",
+        "x-default": "https://glancepreview.com/en/terms/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/terms/",
+      "effective_url": "https://glancepreview.com/en/terms/",
+      "status": 200,
+      "bytes": 14127,
+      "sha256": "a38c2dce568312196e25038196fbcccfb51979b91c1a8b3e35719204cea4d3fa",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/terms/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/terms/",
+        "en": "https://glancepreview.com/en/terms/",
+        "x-default": "https://glancepreview.com/en/terms/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/privacy/",
+      "effective_url": "https://glancepreview.com/privacy/",
+      "status": 200,
+      "bytes": 8860,
+      "sha256": "5a572fb1340a4d2a6c8387e425b33047b69c3eba8511dea2fec88432b2080648",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/privacy/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/privacy/",
+        "en": "https://glancepreview.com/en/privacy/",
+        "x-default": "https://glancepreview.com/en/privacy/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/privacy/",
+      "effective_url": "https://glancepreview.com/en/privacy/",
+      "status": 200,
+      "bytes": 9222,
+      "sha256": "fcab6291a1ae529165e3ee1b9820e2a21640e930f3f29654e9bc3a73017fcac2",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/privacy/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/privacy/",
+        "en": "https://glancepreview.com/en/privacy/",
+        "x-default": "https://glancepreview.com/en/privacy/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/refunds/",
+      "effective_url": "https://glancepreview.com/refunds/",
+      "status": 200,
+      "bytes": 6631,
+      "sha256": "0c93e23e566cee681aca7ffac6539b1bcaaf5bb3453b2b9a040493608aa20f51",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/refunds/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/refunds/",
+        "en": "https://glancepreview.com/en/refunds/",
+        "x-default": "https://glancepreview.com/en/refunds/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/refunds/",
+      "effective_url": "https://glancepreview.com/en/refunds/",
+      "status": 200,
+      "bytes": 7061,
+      "sha256": "1c59c58765886d689d358886ec7e98d29747063f51c3494b990b213fa25442f0",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/refunds/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/refunds/",
+        "en": "https://glancepreview.com/en/refunds/",
+        "x-default": "https://glancepreview.com/en/refunds/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/acceptable-use/",
+      "effective_url": "https://glancepreview.com/acceptable-use/",
+      "status": 200,
+      "bytes": 8107,
+      "sha256": "1122fa72b7b3eb504d15452ac962c4a690b236c8f85d041ec36202c7db100c16",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/acceptable-use/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/acceptable-use/",
+        "en": "https://glancepreview.com/en/acceptable-use/",
+        "x-default": "https://glancepreview.com/en/acceptable-use/"
+      },
+      "html_lang": "zh-CN",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/en/acceptable-use/",
+      "effective_url": "https://glancepreview.com/en/acceptable-use/",
+      "status": 200,
+      "bytes": 8626,
+      "sha256": "3173c8dc368c0b65692fc9f51445a46abac408e1275efce14cc68607fdd1dfb0",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null,
+      "canonical": [
+        {
+          "rel": "canonical",
+          "href": "https://glancepreview.com/en/acceptable-use/"
+        }
+      ],
+      "hreflang": {
+        "zh-Hans": "https://glancepreview.com/acceptable-use/",
+        "en": "https://glancepreview.com/en/acceptable-use/",
+        "x-default": "https://glancepreview.com/en/acceptable-use/"
+      },
+      "html_lang": "en",
+      "h1_count": 1
+    },
+    {
+      "url": "https://glancepreview.com/pay/return/",
+      "effective_url": "https://glancepreview.com/pay/return/",
+      "status": 200,
+      "bytes": 5318,
+      "sha256": "83b2a84efde8cb4d62552726ae8904ee1fc20aa87d63d8cd5739ec8e78059a2c",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": "noindex"
+    },
+    {
+      "url": "https://glancepreview.com/pay/return/?order=order_seo-verification",
+      "effective_url": "https://glancepreview.com/pay/return/?order=order_seo-verification",
+      "status": 200,
+      "bytes": 5318,
+      "sha256": "053acaa74e014c22992a26eb6b43d23543a656872e3b8f6339ac096c6a894ece",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": "noindex"
+    },
+    {
+      "url": "https://glancepreview.com/robots.txt",
+      "effective_url": "https://glancepreview.com/robots.txt",
+      "status": 200,
+      "bytes": 106,
+      "sha256": "4b61232eaeaf5c98916a2394e09a89a474686c1d5a592d377bc92bf03b6ed737",
+      "redirects": 0,
+      "content_type": "text/plain; charset=utf-8",
+      "x_robots_tag": null
+    },
+    {
+      "url": "https://www.glancepreview.com/en/",
+      "effective_url": "https://glancepreview.com/en/",
+      "status": 200,
+      "bytes": 16664,
+      "sha256": "b7f1c350915e876c5ba9210998424b0765421869d75ffaed2719610246c5c4e7",
+      "redirects": 1,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null
+    },
+    {
+      "url": "https://glance.mcreator.ai/en/install/?source=seo-check",
+      "effective_url": "https://glancepreview.com/en/install/?source=seo-check",
+      "status": 200,
+      "bytes": 7402,
+      "sha256": "0e000248b2f8a7e747ecdab06cbc2ec2320843484284b8ffe1ff437f32cb1f8d",
+      "redirects": 1,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null
+    },
+    {
+      "url": "https://glancepreview.com/en",
+      "effective_url": "https://glancepreview.com/en/",
+      "status": 200,
+      "bytes": 16664,
+      "sha256": "c7748d6ebdeee91619d30f4d47d156817e5f19b627c5663e1532eea8ad5d3a55",
+      "redirects": 1,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null
+    },
+    {
+      "url": "http://glancepreview.com/en/",
+      "effective_url": "https://glancepreview.com/en/",
+      "status": 200,
+      "bytes": 16664,
+      "sha256": "8a66ae38f98f1a2d80823d1d09d154d91f27f99f97624f72d624bb433feef84f",
+      "redirects": 1,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null
+    },
+    {
+      "url": "https://glancepreview.com/seo-release-not-found-20261022/",
+      "effective_url": "https://glancepreview.com/seo-release-not-found-20261022/",
+      "status": 404,
+      "bytes": 4049,
+      "sha256": "1361172294bdc496e598d62d3839a942c5f1796696ee10b9ce52d6838ba27b26",
+      "redirects": 0,
+      "content_type": "text/html; charset=utf-8",
+      "x_robots_tag": null
+    },
+    {
+      "url": "https://glancepreview.com/download/Glance-1.0.0-beta.1.dmg",
+      "effective_url": "https://glancepreview.com/download/Glance-1.0.0-beta.1.dmg",
+      "status": 200,
+      "bytes": 4987319,
+      "sha256": "aad58a57f4e157fecc311746d3b69e36a88fec75587a4ad844e036e940622c95",
+      "redirects": 0,
+      "content_type": "application/octet-stream",
+      "x_robots_tag": null
+    },
+    {
+      "url": "https://glancepreview.com/assets/site.js?v=613fbd3444",
+      "effective_url": "https://glancepreview.com/assets/site.js?v=613fbd3444",
+      "status": 200,
+      "bytes": 9713,
+      "sha256": "e4a5d4ed911f7c8f70dd616ae986ada16ab3504c0e226233677a4e655bd5adca",
+      "redirects": 0,
+      "content_type": "application/javascript",
+      "x_robots_tag": null
+    }
+  ]
+}

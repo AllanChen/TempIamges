@@ -240,6 +240,8 @@ final class NonHitTestingImageView: NSImageView {
 final class ImageFilmstripItem: NSView {
     var onClick: ((NSEvent.ModifierFlags) -> Void)?
     private let imageView = NonHitTestingImageView()
+    private let runningOverlay = TaskRunningTileOverlay()
+    private var showsTaskProgress = false
     private let taskBadge = CALayer()
     private let tagBackground = InspectNonHitTestingView()
     private let tagLabel = PanelCenteredTextView()
@@ -255,6 +257,8 @@ final class ImageFilmstripItem: NSView {
         layer?.masksToBounds = true
         layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
         addSubview(imageView)
+        runningOverlay.isHidden = true
+        addSubview(runningOverlay)
         taskBadge.cornerRadius = 3.5
         taskBadge.isHidden = true
         layer?.addSublayer(taskBadge)
@@ -265,7 +269,7 @@ final class ImageFilmstripItem: NSView {
         tagBackground.layer?.cornerRadius = 4
         tagBackground.layer?.masksToBounds = true
         tagBackground.isHidden = true
-        addSubview(tagBackground, positioned: .above, relativeTo: imageView)
+        addSubview(tagBackground, positioned: .above, relativeTo: runningOverlay)
         tagLabel.string = "NEW"
         tagLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
         tagLabel.textColor = PanelStyle.accentInk
@@ -274,7 +278,7 @@ final class ImageFilmstripItem: NSView {
         ossCaptionBackground.layer?.cornerRadius = 5
         ossCaptionBackground.layer?.masksToBounds = true
         ossCaptionBackground.isHidden = true
-        addSubview(ossCaptionBackground, positioned: .above, relativeTo: imageView)
+        addSubview(ossCaptionBackground, positioned: .above, relativeTo: tagBackground)
         ossCaptionLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
         ossCaptionBackground.addSubview(ossCaptionLabel)
         // "+" glyph for the add tile.
@@ -297,6 +301,9 @@ final class ImageFilmstripItem: NSView {
 
     /// The trailing "+" tile (spec `.thumb.add`).
     func configureAddTile() {
+        runningOverlay.isHidden = true
+        showsTaskProgress = false
+        layer?.removeAnimation(forKey: "widgetBreathing")
         imageView.image = nil
         layer?.borderWidth = 1
         layer?.borderColor = PanelStyle.hairline.cgColor
@@ -322,6 +329,7 @@ final class ImageFilmstripItem: NSView {
         setAccessibilityLabel(title)
         plusLabel.isHidden = true
         let processing = taskPhase?.isActive == true
+        runningOverlay.isHidden = !processing
         let failed = taskPhase?.isFailure == true
         let completedResult = isResult
         let emphasized = selected || compared || processing
@@ -333,7 +341,9 @@ final class ImageFilmstripItem: NSView {
         // The same corner badge shows progress while a task runs on this image
         // and NEW once a result arrived — one overlay, no extra geometry.
         let showsProgress = processing && taskProgress > 0 && !completedResult
-        tagBackground.isHidden = !(completedResult || showsProgress)
+        showsTaskProgress = showsProgress
+        tagLabel.textColor = showsProgress ? HistoryStyle.hex(0x0B2018) : PanelStyle.accentInk
+        tagBackground.isHidden = !(completedResult || (showsProgress && bounds.width >= 56))
         if showsProgress { tagLabel.string = "\(min(99, taskProgress))%" }
         else if completedResult { tagLabel.string = "NEW" }
         ossCaptionBackground.isHidden = ossCaption == nil
@@ -365,6 +375,7 @@ final class ImageFilmstripItem: NSView {
         if processing { setAccessibilityLabel("\(title), \(activeTaskCount) Widget task running") }
         else if failed { setAccessibilityLabel("\(title), Widget task failed") }
         else if completedResult { setAccessibilityLabel("\(title), Widget result just completed") }
+        needsLayout = true
     }
 
     override func layout() {
@@ -379,6 +390,7 @@ final class ImageFilmstripItem: NSView {
         tagLabel.font = PanelStyle.inspectFont(ofSize: max(9, 10 * scale), weight: .semibold)
         taskBadge.cornerRadius = 3.5 * scale
         imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
+        runningOverlay.frame = bounds
         taskBadge.frame = NSRect(x: bounds.maxX - 9 * scale, y: bounds.maxY - 9 * scale,
                                  width: 7 * scale, height: 7 * scale)
         let tagSize = CGSize(width: max(28, 48 * scale), height: max(14, 22 * scale))
@@ -388,6 +400,13 @@ final class ImageFilmstripItem: NSView {
         let tagTextHeight = max(8, 12 * scale)
         tagLabel.frame = NSRect(x: 0, y: (tagSize.height - tagTextHeight) / 2,
                                 width: tagSize.width, height: tagTextHeight)
+        if showsTaskProgress {
+            tagBackground.isHidden = bounds.width < 56
+            tagBackground.frame = CGRect(x: bounds.width - 36, y: bounds.height - 19, width: 31, height: 14)
+            tagBackground.layer?.cornerRadius = 4
+            tagLabel.font = PanelStyle.inspectFont(ofSize: 9, weight: .semibold)
+            tagLabel.frame = tagBackground.bounds
+        }
         ossCaptionBackground.layer?.cornerRadius = 5 * scale
         ossCaptionBackground.frame = NSRect(x: 4 * scale, y: 4 * scale,
                                              width: bounds.width - 8 * scale, height: 23 * scale)

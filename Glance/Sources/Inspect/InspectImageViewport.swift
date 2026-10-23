@@ -100,10 +100,15 @@ final class InspectImageViewport: NSView {
     private var textSelection: ClosedRange<Int>?
     private var textAnchor: Int?
     private var draggingText = false
+    /// Slider comparison owns the cursor because its mask is not an NSView clip.
+    var managesTextCursor = true
+    var onTextCursorGeometryChange: (() -> Void)?
+    private var textCursorTrackingArea: NSTrackingArea?
     var textSelectionEnabled = true {
         didSet {
+            guard textSelectionEnabled != oldValue else { return }
             if !textSelectionEnabled { clearTextSelection() }
-            window?.invalidateCursorRects(for: self)
+            invalidateTextCursor()
         }
     }
     private let activeIndicator = CALayer()
@@ -326,7 +331,7 @@ final class InspectImageViewport: NSView {
         guard recognizedText?.text != result?.text || recognizedText?.glyphs.count != result?.glyphs.count else { return }
         recognizedText = result
         clearTextSelection()
-        window?.invalidateCursorRects(for: self)
+        invalidateTextCursor()
     }
 
     var hasSelectedText: Bool { textSelection != nil }
@@ -465,21 +470,52 @@ final class InspectImageViewport: NSView {
         endTextSelection()
     }
 
+    var recognizedTextCursorRects: [CGRect] {
+        guard textSelectionEnabled, image != nil, let result = recognizedText,
+              !result.glyphs.isEmpty else { return [] }
+        return result.lineBounds.map { textHitRect(for: $0).intersection(visibleRect) }
+            .filter { !$0.isNull && !$0.isEmpty }
+    }
+
     override func resetCursorRects() {
         super.resetCursorRects()
-        guard textSelectionEnabled, let result = recognizedText else { return }
-        for line in result.lineBounds {
-            let rect = viewRect(for: line).intersection(bounds)
-            if !rect.isNull && rect.width > 0 && rect.height > 0 {
-                addCursorRect(rect, cursor: .iBeam)
-            }
-        }
+        guard managesTextCursor, isInteractionEnabled else { return }
+        addCursorRect(visibleRect, cursor: .arrow)
+        for rect in recognizedTextCursorRects { addCursorRect(rect, cursor: .iBeam) }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let textCursorTrackingArea { removeTrackingArea(textCursorTrackingArea) }
+        textCursorTrackingArea = nil
+        guard managesTextCursor, isInteractionEnabled else { return }
+        let area = NSTrackingArea(rect: .zero, options: [.inVisibleRect, .activeInKeyWindow, .cursorUpdate, .mouseMoved], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        textCursorTrackingArea = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) { updateTextCursor(at: event.locationInWindow) }
+    override func mouseMoved(with event: NSEvent) { updateTextCursor(at: event.locationInWindow) }
+
+    private func updateTextCursor(at location: NSPoint) {
+        guard managesTextCursor, isInteractionEnabled, !isHiddenOrHasHiddenAncestor,
+              let content = window?.contentView else { return }
+        let hitPoint = content.superview?.convert(location, from: nil) ?? location
+        guard content.hitTest(hitPoint) === self else { return }
+        (draggingText || containsRecognizedText(at: convert(location, from: nil)) ? NSCursor.iBeam : NSCursor.arrow).set()
+    }
+
+    private func invalidateTextCursor() {
+        window?.invalidateCursorRects(for: self)
+        onTextCursorGeometryChange?()
+        if let window, window.isKeyWindow { updateTextCursor(at: window.mouseLocationOutsideOfEventStream) }
     }
 
     private func updateLayerGeometry() {
         guard let image, bounds.width > 0, bounds.height > 0 else {
             imageLayer.frame = bounds
             textSelectionView.rects = []
+            invalidateTextCursor()
             return
         }
         let rendered = renderedSize(for: image)
@@ -498,7 +534,7 @@ final class InspectImageViewport: NSView {
         imageLayer.transform = transform
         CATransaction.commit()
         updateTextSelectionGeometry()
-        if recognizedText != nil { window?.invalidateCursorRects(for: self) }
+        invalidateTextCursor()
     }
 
     private func viewPoint(for normalized: CGPoint) -> CGPoint {
@@ -524,8 +560,12 @@ final class InspectImageViewport: NSView {
                       height: max(2, (ys.max() ?? first.y) - (ys.min() ?? first.y)))
     }
 
+    private func textHitRect(for line: CGRect) -> CGRect {
+        viewRect(for: line).insetBy(dx: -4, dy: -4).intersection(bounds)
+    }
+
     private func glyphIndex(at point: CGPoint, in result: InspectOCRResult) -> Int? {
-        guard result.lineBounds.contains(where: { viewRect(for: $0).insetBy(dx: -4, dy: -4).contains(point) }) else {
+        guard result.lineBounds.contains(where: { textHitRect(for: $0).contains(point) }) else {
             return nil
         }
         return nearestGlyphIndex(to: point, in: result)

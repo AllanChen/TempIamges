@@ -43,9 +43,25 @@ def _open(req: Request, timeout: float):
 
 
 class APIError(RuntimeError):
-    def __init__(self, message: str, status: int | None = None):
+    def __init__(self, message: str, status: int | None = None, *,
+                 code: str | None = None, task_status: str | None = None):
         super().__init__(message)
         self.status = status
+        self.code = code
+        self.task_status = task_status
+
+
+def _http_error(error: HTTPError) -> APIError:
+    try:
+        detail = json.load(error)
+    except (ValueError, OSError):
+        detail = {}
+    if not isinstance(detail, dict):
+        detail = {}
+    info = detail.get("error")
+    return APIError(_error_message(detail, str(error)), error.code,
+                    code=info.get("code") if isinstance(info, dict) else None,
+                    task_status=detail.get("status"))
 
 
 def _error_message(envelope: dict, fallback: str) -> str:
@@ -74,12 +90,7 @@ def request(method: str, path: str, body: dict | None = None, *,
         with _open(req, timeout=timeout) as response:
             envelope = json.load(response)
     except HTTPError as error:
-        try:
-            detail = json.load(error)
-            message = _error_message(detail, str(error)) if isinstance(detail, dict) else str(error)
-        except (ValueError, OSError):
-            message = str(error)
-        raise APIError(message, error.code) from error
+        raise _http_error(error) from error
     except (URLError, TimeoutError, OSError, ValueError) as error:
         raise APIError(str(error)) from error
     if not isinstance(envelope, dict):
@@ -113,12 +124,7 @@ def upload_task_file(task_id: str, path: Path, *, token: str | None = None,
         with _open(req, timeout=120) as response:
             envelope = json.load(response)
     except HTTPError as error:
-        try:
-            detail = json.load(error)
-            message = _error_message(detail, str(error)) if isinstance(detail, dict) else str(error)
-        except (ValueError, OSError):
-            message = str(error)
-        raise APIError(message, error.code) from error
+        raise _http_error(error) from error
     except (URLError, TimeoutError, OSError, ValueError) as error:
         raise APIError(str(error)) from error
     if not isinstance(envelope, dict):
