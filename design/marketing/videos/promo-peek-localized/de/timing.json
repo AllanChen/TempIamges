@@ -1,0 +1,51 @@
+[
+  {
+    "start": 1.6,
+    "end": 6.550000000000001,
+    "raw_seconds": 5.041375,
+    "tempo": 1.018459595959596,
+    "text": "Du bist im Flow. Dann nennt dir die KI einen\nlokalen Dateipfad, den du prüfen sollst."
+  },
+  {
+    "start": 6.8,
+    "end": 9.525813,
+    "raw_seconds": 2.725813,
+    "tempo": 1.0,
+    "text": "Dafür die App wechseln?\nSchon ist der Fokus weg."
+  },
+  {
+    "start": 10.0,
+    "end": 14.850000000000001,
+    "raw_seconds": 5.370479,
+    "tempo": 1.1073152577319585,
+    "text": "Mit Glance: Pfad markieren, Option + Leertaste drücken.\nSofort erscheint die Vorschau."
+  },
+  {
+    "start": 15.1,
+    "end": 18.655708,
+    "raw_seconds": 3.555708,
+    "tempo": 1.0,
+    "text": "Dateien, Dokumente, Links.\nVorschau direkt im Chat."
+  },
+  {
+    "start": 28.0,
+    "end": 29.921146,
+    "raw_seconds": 1.921146,
+    "tempo": 1.0,
+    "text": "Und die Vorschau ist erst der Anfang."
+  },
+  {
+    "start": 36.35,
+    "end": 39.75,
+    "raw_seconds": 3.473521,
+    "tempo": 1.021623823529413,
+    "text": "Glance. Schnell ansehen.\nBei Bedarf mit KI bearbeiten."
+  },
+  {
+    "start": 39.95,
+    "end": 41.461021,
+    "raw_seconds": 1.511021,
+    "tempo": 1.0,
+    "text": "glancepreview.com"
+  }
+]

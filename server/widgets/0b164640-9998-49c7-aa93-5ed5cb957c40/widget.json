@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "creditCost": 30,
+  "id": "0b164640-9998-49c7-aa93-5ed5cb957c40",
+  "version": "0.1.0",
+  "name": "移除物体",
+  "summary": "用英文描述要移除的物体，智能补全背景。每次 30 积分。",
+  "author": "Glance",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "移除物体",
+      "description": "输入一张图片，用英文描述要移除的物体及位置，例如 Remove the red ball. 尽量保持其余内容不变。",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.0b164640-9998-49c7-aa93-5ed5cb957c40.run",
+      "requiresUpload": true,
+      "parameterSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "请用英文描述要移除的物体及位置 / Describe the objects to remove and their location in English."
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "图片和文字描述将上传至 Glance 及 RunningHub 处理。 / Your image and description are uploaded to Glance and RunningHub for processing."
+  },
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Remove Objects",
+      "summary": "Describe unwanted objects in English and fill the background. 30 credits per run.",
+      "commands": {
+        "run": {
+          "name": "Remove Objects",
+          "description": "Provide one image and describe the objects to remove in English, e.g. Remove the red ball. Other content is preserved where possible."
+        }
+      }
+    }
+  }
+}

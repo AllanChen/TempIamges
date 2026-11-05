@@ -1,0 +1,1023 @@
+/* 
+  Localizable.strings
+  Glance
+
+  简体中文 (Simplified Chinese)
+*/
+
+// MARK: - App Name
+"Glance" = "Glance";
+
+// MARK: - Onboarding Window
+"Welcome to Glance" = "欢迎使用 Glance";
+"Welcome to Glance!" = "欢迎使用 Glance！";
+"Before you can start previewing, we need to ask you for a few permissions." = "在开始预览之前，我们需要向你申请几项权限。";
+"Continue" = "继续";
+"Don't show again" = "不再显示";
+"Input Monitoring Permission" = "输入监听权限";
+"Glance needs to detect when you hold the hotkey to activate preview mode." = "Glance 需要检测你按住热键以激活预览模式。";
+"Input Monitoring Enabled" = "输入监听已启用";
+"❌ Not Granted" = "❌ 未授权";
+"Open Settings" = "打开设置";
+"Accessibility Permission" = "辅助功能权限";
+"Glance needs to read the selected text in the active app so we know what to preview." = "Glance 需要读取当前应用中选中的文本，以便我们知道要预览什么。";
+"Accessibility access enabled" = "辅助功能已启用";
+"Full Disk Access Permission" = "完全磁盘访问权限";
+"Full Disk Access (Recommended)" = "完全磁盘访问（推荐）";
+"Optional — lets the app preview files in Desktop / Documents / iCloud without per-folder prompts." = "可选 — 让应用无需逐文件夹授权即可预览桌面/文稿/iCloud 中的文件。";
+"Full Disk Access enabled" = "完全磁盘访问已启用";
+"Required — Glance needs access to search and preview files in Desktop, Documents, and Downloads." = "必需 — Glance 需要访问桌面、文稿和下载文件夹中的文件，以便搜索和预览。";
+"Glance Needs Permissions" = "Glance 需要权限";
+"To enable image previews on hover, please grant the following permissions:" = "要启用悬停图片预览，请授予以下权限：";
+"Input Monitoring" = "输入监听";
+"Required — detect when you hold the hotkey to activate preview mode." = "必需 — 检测你按住热键以激活预览模式。";
+"Accessibility" = "辅助功能";
+"Required — read the selected text in the active app so we know what to preview." = "必需 — 读取当前应用中选中的文本，以便我们知道要预览什么。";
+"ℹ️ Optional" = "ℹ️ 可选";
+"✅ Granted" = "✅ 已授权";
+
+// MARK: - Onboarding V2
+"Set up essential permissions" = "先完成必要权限";
+"Glance needs permission to read the current selection and respond to your keyboard shortcut. You can change these settings later." = "Glance 需要读取当前选择内容并响应快捷键。你可以稍后在系统设置中修改权限。";
+"Read the current selection" = "读取当前选择内容";
+"Recognize the global shortcut" = "识别全局快捷键";
+"Full Disk Access" = "完全磁盘访问";
+"Preview files in protected locations" = "预览受保护位置中的文件";
+"Allowed" = "已允许";
+"Optional" = "可选";
+"Permissions stay under your control in macOS System Settings." = "权限始终由你在 macOS 系统设置中控制。";
+
+// MARK: - Preferences Window
+"Preferences" = "偏好设置";
+"Glance Preferences" = "Glance 偏好设置";
+"Appearance" = "外观";
+"Language" = "语言";
+"System" = "跟随系统";
+"Light" = "浅色";
+"Dark" = "深色";
+"General" = "通用";
+"Read clipboard when no text is selected" = "未选中文本时读取剪贴板";
+ "Launch at Login" = "登录时启动";
+"Activation Hotkey" = "激活热键";
+"Hold these keys while hovering to show previews:" = "悬停时按住这些键以显示预览：";
+"Select a path, then press the shortcut to show or hide Peek:" = "选中路径，然后按快捷键显示或关闭快速预览：";
+"Option + Space (⌥␣)" = "Option + Space (⌥␣)";
+"Option (⌥)" = "Option (⌥)";
+"Custom" = "自定义";
+"Click to record shortcut" = "点击录制热键";
+"Press shortcut..." = "按下热键…";
+"Reset to Defaults" = "恢复默认";
+"(no hotkey — preview disabled)" = "（无热键 — 预览已禁用）";
+"Current: " = "当前：";
+
+// MARK: - Status Bar Menu
+"Preferences..." = "偏好设置…";
+"Enable Preview" = "启用预览";
+"Permissions..." = "权限…";
+"History" = "历史记录";
+"Clear Cache" = "清除缓存";
+"Theme" = "主题";
+"Login" = "登录";
+"Account" = "账户";
+"About Glance" = "关于 Glance";
+"Quit Glance" = "退出 Glance";
+"OK" = "好";
+"Permissions ✅" = "权限 ✅";
+"Permissions ⚠️" = "权限 ⚠️";
+
+// MARK: - Preview Panel
+"Loading…" = "加载中…";
+"Preparing preview" = "正在准备预览";
+"Failed" = "失败";
+"Folder" = "文件夹";
+"Failed to load" = "加载失败";
+"Searching…" = "正在查找…";
+"File not found" = "未找到文件";
+"No matching file found" = "未找到匹配文件";
+"Reveal in Finder" = "在 Finder 中显示";
+"Download" = "下载";
+"Download failed" = "下载失败";
+"in %@" = "位于 %@";
+"%d files" = "%d 个文件";
+
+// MARK: - Image Inspect
+"Image Inspect" = "图片检查";
+"Focus" = "聚焦";
+"Side by side" = "左右并排";
+"Video Inspect" = "视频预览";
+"Mute" = "静音";
+"Unmute" = "取消静音";
+"Mute Left" = "静音左侧";
+"Unmute Left" = "取消左侧静音";
+"Mute Right" = "静音右侧";
+"Unmute Right" = "取消右侧静音";
+"Capture frame" = "截帧";
+"Open captured frame" = "打开截帧";
+"Replay" = "重播";
+"Video information" = "视频信息";
+"More" = "更多";
+"Duration" = "时长";
+"Size" = "大小";
+"Path" = "路径";
+"Slider" = "滑杆";
+"Image information" = "图片信息";
+"Pixel alignment" = "像素对齐";
+"Relative alignment" = "相对对齐";
+"%d differences" = "%d 项差异";
+"Dimensions" = "尺寸";
+"Aspect ratio" = "宽高比";
+"File size" = "文件大小";
+"Format" = "格式";
+"Frame rate" = "帧率";
+"Video codec" = "视频编码";
+"Audio codec" = "音频编码";
+"Video bitrate" = "视频码率";
+"Actions" = "操作";
+"Automatic hide" = "自动隐藏";
+"Refresh" = "刷新";
+"Direction" = "方向";
+"Copy Image" = "复制图片";
+"Save to Documents" = "存储到 Documents";
+"Rotate Left" = "向左旋转";
+"Rotate Right" = "向右旋转";
+"Flip Horizontally" = "左右翻转";
+"Flip Vertically" = "上下翻转";
+"Export failed" = "导出失败";
+"Exported ✓" = "导出成功 ✓";
+"Recognize Text" = "识别文字";
+"Compress Image" = "压缩图片";
+"Quality" = "质量";
+"Compressed size" = "压缩后大小";
+"Keep original dimensions" = "保持原始尺寸";
+"Compress" = "压缩";
+"Lower quality means a smaller file." = "质量越低，文件越小。";
+"Compressed ✓" = "压缩成功 ✓";
+"Compression failed" = "压缩失败";
+"Base64 to Image" = "Base64 转图片";
+"Paste a Base64 image string below" = "请在下方粘贴 Base64 图片字符串";
+"Convert" = "转换";
+"Base64 copied ✓" = "Base64 已复制 ✓";
+"No Base64 image found" = "剪贴板中没有 Base64 图片";
+"Invalid Base64 image" = "无效的 Base64 图片";
+"Recognizing…" = "正在识别…";
+"No text found" = "未识别到文字";
+"Copy All" = "全部复制";
+"Copied ✓" = "已复制 ✓";
+"Open image URL" = "打开图片链接";
+"Paste an image URL or local path" = "粘贴图片链接或本地路径";
+"Open" = "打开";
+"No image URL found" = "未找到图片链接";
+"Pin on Top" = "置顶";
+"Unpin" = "取消置顶";
+"Color space" = "色彩空间";
+"Bit depth" = "位深度";
+"Alpha" = "透明通道";
+"Yes" = "是";
+"No" = "否";
+
+// MARK: - Content Panel / Viewer
+"Save" = "保存";
+"Saved ✓" = "已保存 ✓";
+"Edit" = "编辑";
+"View" = "查看";
+"Diff" = "差异";
+"Compare with Git" = "与 Git 比较";
+"Find in page" = "在页面中查找";
+"Done" = "完成";
+"0 results" = "0 个结果";
+"Modified " = "修改于 ";
+"Couldn't load Git diff" = "无法加载 Git 差异";
+"Couldn't save %@" = "无法保存 %@";
+"# Could not read file\n\nPath: `%@`" = "# 无法读取文件\n\n路径：`%@`";
+"# Could not decode content\n\nURL: %@" = "# 无法解码内容\n\nURL：%@";
+"# Failed to load\n\n%@\n\n`%@`" = "# 加载失败\n\n%@\n\n`%@`";
+
+// MARK: - Git Diff
+"Before - HEAD" = "修改前 - HEAD";
+"Before - New file" = "修改前 - 新文件";
+"After - Working Tree" = "修改后 - 工作区";
+"Last committed change" = "上次提交更改";
+"No working-tree changes" = "工作区无更改";
+
+// MARK: - History Window
+"Preview History" = "预览历史";
+"No preview history yet." = "暂无预览历史。";
+"Clear History" = "清除历史";
+"Clear all history?" = "清除所有历史？";
+"This removes the saved list of past previews. It does not affect any actual files." = "这将移除已保存的历史预览列表。不会影响任何实际文件。";
+"Clear" = "清除";
+"Cancel" = "取消";
+
+// MARK: - Login Panel
+"Sign In" = "登录";
+"Sign in to Glance to connect this Mac." = "登录 Glance，将这台 Mac 连接到你的账户。";
+"Continue with Google" = "使用 Google 继续";
+"or" = "或";
+"Email address" = "邮箱地址";
+"Send code" = "发送验证码";
+"6 digit code" = "6 位验证码";
+"Verify and sign in" = "验证并登录";
+"Opening Google sign-in in your browser." = "正在浏览器中打开 Google 登录…";
+"Continue in your browser to finish Google sign-in." = "请在浏览器中继续完成 Google 登录。";
+"Enter your email address." = "请输入邮箱地址。";
+"Sending code..." = "正在发送验证码…";
+"Enter the 6 digit code from your email." = "请输入邮件中的 6 位验证码。";
+"Enter your email and 6 digit code." = "请输入邮箱和 6 位验证码。";
+"Verifying code..." = "正在验证验证码…";
+"Code sent. Check your email and enter the 6 digit code." = "验证码已发送，请查看邮件并输入 6 位验证码。";
+"Provider" = "登录方式";
+"User ID" = "用户 ID";
+"Status" = "状态";
+"Session expires" = "会话到期";
+"Sign out" = "退出登录";
+"Active" = "正常";
+
+// MARK: - Error Messages / Tooltips
+"No text selected" = "未选中文本";
+"No image or video found in selection" = "选中内容中未找到图片或视频";
+"No file found matching '%@'" = "未找到匹配 '%@' 的文件";
+"No media to preview" = "没有可预览的媒体";
+"Failed to load media" = "加载媒体失败";
+"Video comparison" = "视频对比";
+"Compare videos" = "对比视频";
+"Play" = "播放";
+"Pause" = "暂停";
+"Full Disk Access Required" = "需要完全磁盘访问权限";
+"Glance needs Full Disk Access to search files in protected locations (Desktop, Documents, Downloads). Enable it in System Settings to improve search results." = "Glance 需要完全磁盘访问权限才能搜索受保护位置中的文件。你可以在系统设置中启用它以改善搜索结果。";
+
+// MARK: - Language Change Alert
+"Language Changed" = "语言已更改";
+"The language has been updated." = "语言已更新。";
+
+// MARK: - File Access
+"Allow Glance to access your files" = "允许 Glance 访问你的文件";
+"fda_alert_body" = "要查找 Spotlight 尚未索引的文件，Glance 需要完全磁盘访问权限。在此处授权意味着我们不会再针对每个文件夹（文稿、桌面、下载）重复请求。\n\n点击「打开设置」在系统设置 → 隐私与安全性 → 完全磁盘访问中启用，然后将 Glance（或 Glance）开关打开。你可能需要重启应用才能生效。";
+"Not Now" = "稍后";
+"Widget Market" = "Widget 市场";
+"Widgets" = "Widget";
+"Tasks" = "任务";
+"All" = "全部";
+"Running" = "进行中";
+"Completed" = "已完成";
+"Interrupted" = "已中断";
+"Missing File" = "文件不存在";
+"Task" = "任务";
+"Retry" = "重试";
+"Remove Record" = "删除记录";
+"Processing Widget…" = "Widget 处理中…";
+"Processing…" = "处理中…";
+"Uploading…" = "上传中…";
+"Submitting…" = "提交中…";
+"Downloading result…" = "正在下载结果…";
+"Widget completed" = "Widget 已完成";
+"Clear finished task history?" = "清除已结束的任务记录？";
+"Downloaded files will not be deleted." = "已下载的文件不会被删除。";
+
+// MARK: - Debug Window
+"Run" = "运行";
+"Clean" = "清空";
+
+// MARK: - Workbench V2
+"Fit to Window" = "适应窗口";
+"Zoom Out" = "缩小";
+"Zoom In" = "放大";
+"Run %@" = "运行 %@";
+"%d task(s) polling" = "%d 个任务正在轮询";
+"You can keep inspecting; the result appears in the filmstrip." = "可以继续查看主图，完成后结果会出现在下方。";
+"New" = "刚完成";
+"Add" = "添加";
+
+// MARK: - Video Inspect workbench
+"Video Information" = "视频信息";
+"Codec" = "编码";
+"Audio" = "音频";
+"Bitrate" = "码率";
+"Fit" = "适应窗口";
+"Compare" = "比较";
+"Close" = "关闭";
+"Minimize" = "最小化";
+"Zoom" = "缩放窗口";
+"Space to play or pause" = "空格键播放或暂停";
+
+// MARK: - Home / Launcher
+"Open Home" = "打开主页";
+"Open images to inspect" = "打开图片开始查看";
+"Open media to inspect" = "打开图片或视频开始查看";
+"Open something to inspect" = "打开内容开始查看";
+"Glance works from a file. Drop images here, or pick files and folders — Glance reads every image inside a folder." = "Glance 从文件开始工作。把图片拖到这里，或选择文件和文件夹——Glance 会读取文件夹里的每一张图片。";
+"Drop images or videos here, or choose files and folders." = "把图片或视频拖到这里，也可以选择文件或文件夹。";
+"Drag images or a folder here" = "拖入图片或文件夹";
+"Drag images, videos or a folder here" = "拖入图片、视频或文件夹";
+"PNG · JPEG · HEIC · WebP · TIFF · RAW  and more" = "PNG · JPEG · HEIC · WebP · TIFF · RAW  等";
+"PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM  and more" = "PNG · JPEG · HEIC · WebP · MP4 · MOV · WebM 等";
+"Open Files…" = "打开文件…";
+"Open Folder…" = "打开文件夹…";
+"FOLDER" = "文件夹";
+"%d images found" = "找到 %d 张图片";
+"%d images ready" = "%d 张图片已就绪";
+"No images in that folder" = "该文件夹内没有图片";
+"Inspect all %d images" = "查看全部 %d 张图片";
+"Recent" = "最近";
+"Reopen what you inspected before." = "重新打开你查看过的内容。";
+"Nothing here yet. Inspected files show up here." = "还没有记录。查看过的文件会显示在这里。";
+"Today" = "今天";
+"%d items" = "%d 项";
+"%d items today" = "今天 %d 项";
+"Search filename" = "搜索文件名";
+"Open in Inspect" = "在查看器中打开";
+"Search by filename, inspect again with one click" = "按文件名搜索，一键重新查看";
+
+// MARK: - Tray popover
+"Open Glance Home" = "打开 Glance 主页";
+"Permissions" = "权限";
+"All set" = "已就绪";
+"Action needed" = "需要处理";
+"Sign in" = "登录";
+"Signed in" = "已登录";
+"No file open  •  Open images to begin" = "未打开文件  •  打开图片以开始";
+"Drop files anywhere  •  ⌘O to open  •  ⌘⇧O for a folder" = "可拖入任意位置  •  ⌘O 打开文件  •  ⌘⇧O 打开文件夹";
+
+// MARK: - Widget input
+"Run Widget" = "运行 Widget";
+"Images and prompt" = "图片与提示词";
+"Images" = "图片";
+"Image, prompt and mask" = "图片、提示词与遮罩";
+"Image and mask" = "图片与遮罩";
+"Image and prompt" = "图片与提示词";
+"Use up to four images. The first image is the base." = "最多使用四张图片，第一张为基础图。";
+"Use two images. The first image is the base." = "使用两张图片，第一张为基础图。";
+"Choose the image, describe the edit, then add a mask." = "选择图片，描述修改内容，然后添加遮罩。";
+"Choose an image, then mark the area to change." = "选择图片，然后标记需要修改的区域。";
+"The prompt tells the Widget what to make or change." = "用提示词告诉 Widget 要生成或修改什么。";
+"Describe what the Widget should do…" = "描述希望 Widget 执行的操作…";
+"Prompt unavailable for this Widget" = "此 Widget 不支持提示词";
+"No mask selected" = "尚未选择遮罩";
+"Select the area to change" = "选择需要修改的区域";
+"Upload mask" = "上传遮罩";
+"Draw mask" = "绘制遮罩";
+"Change image" = "更换图片";
+"＋  Add image" = "＋  添加图片";
+"4 images maximum · remove one to add another" = "最多四张图片 · 移除一张后可继续添加";
+"Images are sent from left to right · up to 4" = "图片从左到右依次提交 · 最多四张";
+"This Widget requires exactly two images." = "此 Widget 需要恰好两张图片。";
+"A Widget accepts at most four images." = "一个 Widget 任务最多使用四张图片。";
+"This Widget accepts at most two images." = "此 Widget 最多使用两张图片。";
+"The source image is still loading." = "原图仍在加载中。";
+"Use mask" = "使用遮罩";
+"Paint the area the Widget should change." = "涂抹希望 Widget 修改的区域。";
+"Brush" = "画笔";
+"Erase" = "橡皮擦";
+"Undo" = "撤销";
+"Clear mask" = "清空遮罩";
+"Orange shows the selected area." = "橙色表示选中的区域。";
+"Draw a mask before using it." = "请先绘制遮罩。";
+"Could not export the mask PNG." = "无法导出 PNG 遮罩。";
+"A Widget task needs between one and four media inputs." = "Widget 任务需要一至四个媒体输入。";
+"Videos and prompt" = "视频与提示词";
+"Video and prompt" = "视频与提示词";
+"Use up to four videos. The first video is the base." = "最多使用四段视频，第一段为基础视频。";
+"Add video" = "添加视频";
+"Videos" = "视频";
+"Video" = "视频";
+"Select the video to process." = "选择要处理的视频。";
+"Remove" = "移除";
+"Widget Market…" = "Widget 市场…";
+"Cancelled" = "已取消";
+"Expired" = "已过期";
+"Cancel %@" = "取消%@";
+"The task expired before a worker picked it up." = "任务排队过久，已过期。";
+"Enable Peek (preview selected text)" = "启用 Peek（选中文本秒开预览）";
+"Peek is on" = "Peek 已开启";
+"Peek is off" = "Peek 已关闭";
+"Version %@\n\nThe Preview for the AI era: view images and videos, fix them with AI in place, and compare the result." = "版本 %@\n\nAI 时代的 Preview：看图看视频，不满意就地用 AI 改，改完对比确认。";
+"File" = "文件";
+"Window" = "窗口";
+"Open…" = "打开…";
+"Close Window" = "关闭窗口";
+"Redo" = "重做";
+"Cut" = "剪切";
+"Copy" = "拷贝";
+"Paste" = "粘贴";
+"Select All" = "全选";
+"Hide Glance" = "隐藏 Glance";
+"Hide Others" = "隐藏其他";
+"Show All" = "全部显示";
+"Set as Default Viewer…" = "设为默认看图器…";
+"Set Glance as the default viewer?" = "将 Glance 设为默认看图器？";
+"Images and videos you open from Finder will open in Glance." = "在访达中打开的图片和视频将使用 Glance 打开。";
+"Set as Default" = "设为默认";
+"Could not set the default viewer" = "无法设为默认看图器";
+"Glance is now the default viewer" = "Glance 已成为默认看图器";
+"Queued · %d ahead · ~%@" = "排队中 · 前面 %d 个 · 约 %@";
+"Queued · %d ahead" = "排队中 · 前面 %d 个";
+"The service is busy right now. Please try again later." = "服务繁忙，请稍后再试。";
+"Loading preview…" = "正在加载预览…";
+"Dismiss" = "忽略";
+"Keyboard Shortcuts" = "键盘快捷键";
+"← →  Previous / next\n0  Fit to window    1  Actual size    + −  Zoom\nEsc  Exit compare / close    ⌥-click  Compare with\n⌘C Copy   ⌘S Save   ⌘L / ⌘R Rotate   ⌘I Info" = "← →  上一张 / 下一张\n0  适应窗口    1  实际大小    + −  缩放\nEsc  退出对比 / 关闭    ⌥-点击  与之对比\n⌘C 拷贝   ⌘S 保存   ⌘L / ⌘R 旋转   ⌘I 信息";
+"Make Glance your default viewer?" = "把 Glance 设为默认看图器？";
+"Images and videos you open from Finder will open in Glance. You can change this anytime from the Glance menu." = "在访达中打开的图片和视频将用 Glance 打开。之后可以随时在 Glance 菜单里更改。";
+"Glance, Widget task running" = "Glance，Widget 任务进行中";
+"Glance, Peek off" = "Glance，Peek 已关闭";
+
+// Task Center、Widget 市场与查看器文案（2026-10-13 本地化补齐）
+"Search" = "搜索";
+"Show in Image Inspect" = "在 Image Inspect 中查看";
+"Task information" = "任务信息";
+"Copy URL" = "拷贝链接";
+"Local and polling Widget tasks" = "本机与轮询中的 Widget 任务";
+"Select a task" = "选择一个任务";
+"Source" = "来源";
+"Waiting for result" = "等待结果";
+"Timeline" = "时间线";
+"Task Details" = "任务详情";
+"Select a task to inspect details" = "选择任务查看详情";
+"Search tasks" = "搜索任务";
+"Task submitted" = "任务已提交";
+"Client uploaded the source image" = "客户端已上传源图";
+"Worker claimed" = "Worker 已领取";
+"GPU worker" = "GPU Worker";
+"Processing" = "处理中";
+"Polling every 2 seconds" = "每 2 秒轮询一次";
+"Download result" = "下载结果";
+"Waiting for output file" = "等待输出文件";
+"Now" = "现在";
+"2 seconds" = "2 秒";
+"The task stopped without reporting a reason." = "任务已停止，未报告原因。";
+"Uploading" = "上传中";
+"Submitting" = "提交中";
+"Downloading" = "下载中";
+"Could not refresh result URL" = "无法刷新结果链接";
+"Result URL copied" = "结果链接已拷贝";
+"Preview unavailable" = "无法预览";
+"Loading text…" = "正在加载文本…";
+"No text returned" = "未返回文本";
+"Unable to read text result" = "无法读取文本结果";
+"Quit" = "退出";
+"Marketplace" = "市场";
+"Installed" = "已安装";
+"Updates" = "更新";
+"Sort Widgets" = "排序 Widget";
+"Scroll for more" = "滚动查看更多";
+"%d available" = "%d 个可用";
+"%d widgets  •  %@" = "%d 个 Widget  •  %@";
+"Search %d widgets" = "搜索 %d 个 Widget";
+"Install" = "安装";
+"Update" = "更新";
+"URL copied ✓" = "链接已拷贝 ✓";
+"Flip" = "翻转";
+"Rotate" = "旋转";
+"•  Tasks" = "•  任务";
+"Widget" = "Widget";
+"Task running" = "任务进行中";
+"Unable to read Widget text result" = "无法读取 Widget 文本结果";
+"Previous images" = "上一组图片";
+"Next images" = "下一组图片";
+"Scroll folder images" = "滚动文件夹图片";
+"Load failed" = "加载失败";
+"Copy result URL" = "拷贝结果链接";
+"INPUT IMAGE" = "输入图片";
+"Plain text" = "纯文本";
+"0 characters" = "0 个字符";
+"Widget Result" = "Widget 结果";
+"Waiting for Widget result…" = "等待 Widget 结果…";
+"Copy result" = "拷贝结果";
+"Copied" = "已拷贝";
+"Launch at Login" = "登录时启动";
+"UPDATE" = "更新";
+"A  Flip ▾" = "A  翻转 ▾";
+"Task %@  •  %@" = "任务 %@  •  %@";
+"Task Center" = "任务中心";
+"%d tasks" = "%d 个任务";
+"%d tasks  •  %d running" = "%d 个任务  •  %d 个进行中";
+"Scroll to zoom  •  Drag to pan" = "滚动缩放  •  拖动平移";
+"The Widget manifest is invalid." = "Widget 清单无效。";
+"The Widget signature could not be verified." = "无法验证 Widget 签名。";
+"The Widget Market is unavailable." = "Widget 市场暂时不可用。";
+"The Widget task failed without reporting a reason." = "Widget 任务失败，未报告原因。";
+"Widget request failed (HTTP %d)." = "Widget 请求失败（HTTP %d）。";
+"This Widget is no longer available." = "这个 Widget 已下架，无法继续使用。";
+"Freeimage upload failed." = "Freeimage 上传失败。";
+"Task was reset and can be submitted again." = "任务已重置，可以重新提交。";
+"Color profile" = "色彩配置";
+"Created" = "创建时间";
+"Name" = "名称";
+"Failure reason" = "失败原因";
+"Input" = "输入";
+"Polling" = "轮询";
+"Progress" = "进度";
+"Worker" = "Worker";
+"email" = "邮箱";
+"Export" = "导出";
+"Save as PNG…" = "存储为 PNG…";
+"Save as JPG…" = "存储为 JPG…";
+"Save as WebP…" = "存储为 WebP…";
+"Save as Icon…" = "存储为图标…";
+"Compress…" = "压缩…";
+"Copy as Base64" = "拷贝为 Base64";
+"Base64 → Image…" = "Base64 转图片…";
+"Tools" = "工具";
+
+/* Capture */
+"Capture" = "截图";
+"Ratio" = "比例";
+"Free" = "自由";
+"Capture…" = "截图…";
+"Capture saved ✓" = "截图已保存 ✓";
+"Could not save capture" = "无法保存截图";
+
+/* Preview History */
+"Yesterday" = "昨天";
+"Earlier" = "更早";
+"Documents" = "文档";
+"%d previews" = "%d 个预览";
+"%d results" = "%d 个结果";
+"Results for “%@”" = "“%@”的搜索结果";
+"No previews yet" = "还没有预览记录";
+"Select a file path or image link anywhere and use your Glance shortcut.\nEverything you preview shows up here." = "在任意位置选中文件路径或图片链接，按下 Glance 快捷键。\n你预览过的内容都会出现在这里。";
+"No matches" = "没有匹配项";
+"Try a different filename or filter." = "换个文件名或筛选条件试试。";
+"Remove from History" = "从历史中移除";
+"Result" = "结果";
+
+/* Toast */
+"Previous / next" = "上一张 / 下一张";
+"Fit to window" = "适应窗口";
+"Actual size" = "实际大小";
+"Exit compare / close" = "退出对比 / 关闭";
+"Compare with" = "与…对比";
+"Info" = "信息";
+
+/* Task Center */
+"Show Source" = "查看源图";
+"Clear Finished" = "清除已完成";
+"No tasks yet" = "还没有任务";
+"No matching tasks" = "没有匹配的任务";
+"Run a Widget on an image and it will show up here." = "对图片运行一个 Widget，进度会显示在这里。";
+"Try a different search or filter." = "换个搜索词或筛选条件试试。";
+"Its progress, result and timeline appear here." = "任务的进度、结果和时间线会显示在这里。";
+
+/* Task Center states */
+"Generating" = "生成中";
+"Task failed" = "任务失败";
+"Task cancelled" = "任务已取消";
+"You cancelled this task." = "你取消了这个任务。";
+"Finished in %@" = "用时 %@";
+"Saved next to the source" = "已保存在源文件旁";
+"Skipped" = "已跳过";
+"Stopped at %d%%" = "停在 %d%%";
+"Error" = "错误";
+"Running…" = "运行中…";
+"Source · %@" = "来源 · %@";
+"Media" = "媒体";
+"%d available  ·  %d installed  ·  %d updates" = "%d 个可用  ·  %d 个已安装  ·  %d 个更新";
+"No matching widgets" = "没有匹配的 Widget";
+"Try a different search, or clear it to see every widget." = "换个关键词试试，或清空搜索查看全部 Widget。";
+"No widgets available" = "暂无可用 Widget";
+"Refresh to load the catalog." = "点击刷新加载目录。";
+"%d command" = "%d 个命令";
+"%d commands" = "%d 个命令";
+"Sort by name" = "按名称排序";
+"Control startup, language, previews, and the way Glance works in the background." = "控制启动、语言、预览，以及 Glance 在后台的工作方式。";
+"Startup" = "启动";
+"Launch Glance at login" = "登录时启动 Glance";
+"Keep the menu bar companion ready when macOS starts." = "macOS 启动后菜单栏助手随时待命。";
+"Peek" = "Peek";
+"Enable Peek" = "启用 Peek";
+"Preview the selected text with the activation hotkey." = "按激活快捷键预览选中的文本。";
+"Activation hotkey" = "激活快捷键";
+"Press %@ to show or hide Peek." = "按 %@ 显示或隐藏 Peek。";
+"No hotkey while Peek is disabled." = "Peek 已停用，没有快捷键。";
+"Custom shortcut" = "自定义快捷键";
+"Click the field, then press up to three keys." = "点击输入框，然后按下最多三个按键。";
+"Language & Appearance" = "语言与外观";
+"Interface language" = "界面语言";
+"Reopen windows to apply the new language." = "重新打开窗口以应用新语言。";
+"Follow the system, or pin Glance to light or dark." = "跟随系统，或固定为浅色 / 深色。";
+"Clipboard" = "剪贴板";
+"Read clipboard when nothing is selected" = "未选中文本时读取剪贴板";
+"Peek shows the clipboard when no text is selected." = "没有选中文本时，Peek 显示剪贴板内容。";
+"Changes are saved automatically" = "更改会自动保存";
+"Privacy & Permissions" = "隐私与权限";
+"Privacy" = "隐私";
+"Information" = "信息";
+
+/* User accounts and Widget credits */
+"Credits" = "积分";
+"%d credits" = "%d 积分";
+"%d credits / task" = "每次 %d 积分";
+"Please sign in to use Widgets." = "请先登录后再使用 Widget。";
+"Not enough credits to run this Widget." = "积分不足，无法运行此 Widget。";
+"The Widget credit price changed. Refresh the Widget and try again." = "此 Widget 的积分价格已更新，请刷新 Widget 后重试。";
+"Could not refresh your account." = "无法刷新账户信息。";
+"This sign-in request expired. Please sign in again." = "本次登录请求已过期，请重新登录。";
+"Please start sign-in again." = "请重新发起登录。";
+
+/* Widget Market details and loading */
+"Back to widgets" = "返回 Widget 列表";
+"Widget details" = "Widget 详情";
+"Cost per task" = "每次任务消耗";
+"Commands" = "命令";
+"Output" = "输出";
+"Not installed" = "未安装";
+"Could not load widgets" = "无法加载 Widget";
+"Free of charge" = "免费";
+"%d credit / task" = "每次任务 %d 积分";
+"Search widgets" = "搜索 Widget";
+
+/* Compact Widget context menu */
+"pts/task" = "点/次";
+"%d points per task" = "每次任务 %d 点";
+
+/* Pricing, credits, payments and licenses */
+"%@ costs %d credits per task." = "%@ 每次任务消耗 %d 点。";
+"%@ costs %d credits. Current balance: %d. Nothing has been charged." = "%@ 需要 %d 点，当前余额 %d 点。尚未扣点。";
+"%@ refunded" = "%@ 已退点";
+"%@ requires Pro" = "%@ 需要 Pro";
+"%d Macs per account. Device releases remaining: %d." = "每个账户可用 %d 台 Mac，剩余释放次数：%d。";
+"%d credits are recovered after the refund succeeds." = "退款成功后回收 %d 点。";
+"%d credits have arrived." = "已到账 %d 点。";
+"%d months / %d Macs" = "%d 个月 / %d 台 Mac";
+"%d more credits needed" = "还差 %d 点";
+"%d days" = "%d 天";
+"Abandon payment" = "放弃本次支付";
+"Abandon this payment?" = "放弃本次支付？";
+"Account and license" = "账户与授权";
+"Activate this Mac" = "激活这台 Mac";
+"Activate this Mac or connect to verify your Pro license." = "请激活这台 Mac，或联网验证 Pro 授权。";
+"Active Macs" = "已激活设备";
+"After refund" = "退款后";
+"Amount" = "金额";
+"Approved refunds are returned by Pancake to the original payment method." = "审核通过后由 Pancake 原路退回。";
+"Automatically refunded" = "自动退回点数";
+"Automatically submit this task after credits arrive" = "到账后自动提交本次任务";
+"Back" = "返回";
+"Back to account" = "返回账户";
+"Balance adjustment" = "余额调整";
+"Balance after submission" = "提交后余额";
+"Balance after top-up" = "充值后余额";
+"Before your first paid Widget" = "首次使用付费 Widget";
+"Buy Pro" = "购买 Pro";
+"Buy local tools once. Cloud Widgets use credits separately." = "本地工具一次买断，云端 Widget 另按点数计费。";
+"Cancel after processing starts" = "开始处理后取消";
+"Cancel task without refund" = "取消任务，不退点";
+"Cancelling this task will not refund its %d credits." = "取消本次任务不会退回已扣除的 %d 点。";
+"Card / Apple Pay · USD" = "银行卡 / Apple Pay · 美元";
+"Card · USD" = "银行卡 · 美元";
+"Charged %d credits" = "已扣除 %d 点";
+"Check again" = "重新查询";
+"Complete payment in your browser" = "请在浏览器完成支付";
+"Confirm this Widget task" = "确认本次 Widget 任务";
+"Confirming your payment" = "正在确认付款结果";
+"Contact support" = "联系支持";
+"Continue free" = "继续使用免费版";
+"Continue payment" = "继续支付";
+"Continue to payment %@" = "前往支付 %@";
+"Convert, compress, export, edit" = "转换、压缩、导出、编辑";
+"All features" = "全部";
+"Add Macs to Pro" = "升级 Pro 设备数";
+"%d Macs" = "%d 台 Mac";
+"Macs / updates" = "设备 / 更新";
+"Lifetime, free" = "终身免费更新";
+"Upgrade" = "升级";
+"Add Macs" = "增加 Mac";
+"Personal" = "个人版";
+"Duo" = "双机版";
+"Simulated payment for testing. No money is charged." = "模拟支付，仅用于测试，不会真实扣款。";
+"Could not complete this action" = "暂时无法完成此操作";
+"Credit top-up" = "充值点数";
+"Credits have arrived" = "点数已到账";
+"Credits wallet" = "点数钱包";
+"Current balance" = "当前余额";
+"Devices" = "管理设备";
+"Download compatible version" = "下载可用的最后版本";
+"Enter a valid email address." = "请输入有效的邮箱地址。";
+"Enter the six-digit code sent to %@. It expires in 10 minutes." = "六位验证码已发送到 %@，10 分钟内有效。";
+"Enter the six-digit code." = "请输入六位验证码。";
+"Enter your code" = "输入验证码";
+"Feature updates" = "功能更新";
+"Feature updates until" = "功能更新至";
+"Full refund" = "全额退回点数";
+"I have completed payment" = "我已完成支付";
+"I have paid, check again" = "我已付款，重新查询";
+"I understand, continue" = "我已了解，继续";
+"If payment was completed, it will still be credited after confirmation." = "如已付款，确认后仍会自动到账。";
+"If you have already paid, check the result instead of paying again. Unpaid checkout sessions expire automatically." = "如已付款，请先查询结果，避免重复支付。未付款的订单会自动过期。";
+"If you have been charged, your purchase will arrive automatically. Please do not pay again." = "若已扣款，购买内容会自动到账，请勿重复支付。";
+"Included" = "包含功能";
+"Keep processing" = "继续处理";
+"Kept" = "保留";
+"Launch price until %@" = "首发价截止 %@";
+"Local files and credits" = "本地文件与点数";
+"More packages" = "更多积分包";
+"New account gift" = "新用户赠送";
+"New accounts receive %d credits." = "新用户登录送 %d 点。";
+"No expiry. Shared by your Macs." = "长期有效，同一账户的 Mac 共享。";
+"No orders yet." = "暂无订单。";
+"No refund" = "不退点";
+"No transactions yet." = "暂无积分记录。";
+"None" = "无";
+"Not available yet" = "暂未开放";
+"Not now" = "暂不处理";
+"Offline authorization" = "离线授权";
+"One more year of feature updates" = "再获得一年的功能更新";
+"Only cloud Widgets use credits. Local tools do not." = "只为云端 Widget 付费，本地功能不扣点。";
+"Or use an email code" = "或使用邮箱验证码";
+"Order" = "订单";
+"Order expired" = "订单已过期";
+"Order refund recovery" = "退款回收点数";
+"Orders and refunds" = "订单与退款";
+"Paid Widgets are paused until the negative balance is cleared." = "余额为负，补足后可继续使用付费 Widget。";
+"Paid on" = "付款时间";
+"Payment confirmation is taking longer" = "付款确认较慢";
+"Payments are not available yet. Contact support for credits." = "支付暂未开放，可联系支持获取点数。";
+"Pending task submissions will be cleared. Files and account credits are kept." = "待提交任务将被清除，文件与账户点数保留。";
+"Please sign in to continue." = "请先登录再继续。";
+"Prices are shown in the order's original currency." = "金额以订单原始币种显示。";
+"Pricing is unavailable. Please try again." = "暂时无法获取定价，请重试。";
+"Privacy policy" = "隐私说明";
+"Pro activated" = "Pro 已激活";
+"Pro is activated" = "Pro 已激活";
+"Pro is revoked on all Macs. The %d-credit purchase gift is recovered." = "Pro 授权撤销，所有设备回到免费版；赠送的 %d 点收回。";
+"Pro purchase gift" = "购买 Pro 赠送";
+"Processing has already started" = "任务已开始处理";
+"Purchase gift" = "购买赠送";
+"Refund request submitted" = "退款申请已提交";
+"Refund window ends" = "可申请至";
+"Refunded %d credits" = "已退回 %d 点";
+"Release" = "释放";
+"Release this Mac?" = "释放这台 Mac？";
+"Renew feature updates" = "续购功能更新";
+"Renew updates" = "续购更新";
+"Request a refund" = "申请退款";
+"Request refund" = "申请退款";
+"Requires Pro" = "需要 Pro";
+"Resend code" = "重新发送验证码";
+"Resend in %d seconds" = "%d 秒后可重新发送";
+"Return to pending task" = "返回待提交任务";
+"Review price" = "查看新价格";
+"Review the latest price before paying." = "请确认最新价格后再支付。";
+"Sign in to buy Pro" = "登录后购买 Pro";
+"Sign in to keep your tasks and results together." = "登录以保存任务与结果。";
+"Sign in to use AI Widgets" = "登录使用 AI Widget";
+"Sign out?" = "退出登录？";
+"Software license" = "软件授权";
+"Submit for %d credits" = "消耗 %d 点提交";
+"Submit request" = "提交申请";
+"System failure or queue expiry" = "系统失败或排队超时";
+"Task submitted · %d credits" = "任务已提交 · %d 点";
+"Terms of service" = "服务条款";
+"The Widget price changed" = "Widget 价格已变化";
+"The account changed. Please try again." = "账户已切换，请重试。";
+"The price changed" = "价格已变化";
+"This Mac" = "这台 Mac";
+"This product is not available yet." = "此商品暂未开放购买。";
+"This task" = "本次任务";
+"This version needs renewed feature updates" = "此版本需要续购更新";
+"Top up as needed. No subscription or expiry." = "按需充值，无订阅，长期有效。";
+"Top up credits" = "充值点数";
+"Trial" = "试用中";
+"Trial: %d days left" = "试用剩余 %d 天";
+"Try again" = "重试";
+"Undo before processing starts" = "开始处理前撤销";
+"Updates / devices" = "功能更新 / 设备";
+"Use another email" = "更换邮箱";
+"View Pro" = "了解 Pro";
+"Viewing, comparing, capturing and AI Widgets remain available. Files and results are kept." = "仍可查看、对比、截图并使用 AI Widget。文件与结果均保留。";
+"WeChat Pay · CNY" = "微信支付 · 人民币";
+"Widget task" = "Widget 任务";
+"You can switch to USD card payments if WeChat Pay is unavailable." = "如微信支付不可用，可切换美元银行卡支付。";
+"You have an unpaid order" = "你有一笔待付款订单";
+"Your %d-day full trial has started." = "已开启 %d 天完整试用。";
+"Your Macs" = "你的 Mac";
+"Your full trial ends tomorrow." = "完整试用将于明天结束。";
+"Your full trial has ended" = "完整试用已结束";
+"Your image and Widget inputs are kept while you sign in." = "登录期间会保留图片和 Widget 参数。";
+"Your image and inputs are kept. The task has not been submitted." = "图片与参数已保留，任务尚未提交。";
+"Your previous compatible version keeps Pro permanently." = "更新期覆盖的旧版本仍可永久使用 Pro。";
+"Your previous feature update deadline is restored." = "恢复续购前的功能更新截止日。";
+"Your purchase has arrived." = "购买内容已到账。";
+"Your purchase is confirmed only after the payment provider notifies Glance." = "Glance 收到支付平台确认后，才会发放点数或激活授权。";
+"credits" = "点";
+"Payments are not available yet." = "支付暂未开放。";
+"Payments are not configured yet." = "支付暂未配置完成。";
+"Could not open checkout. Retry this order." = "暂时无法打开收银台，请重试此订单。";
+"Pro is already active." = "Pro 已激活，无需重复购买。";
+"An active Pro license is required." = "需要有效的 Pro 授权。";
+"The price changed. Confirm the current price." = "价格已变化，请确认当前价格。";
+"This package is no longer available." = "此积分包已下架。";
+"This product is not available in this currency." = "此商品暂不支持该币种。";
+"Device slots are full. Release an old Mac to activate this one." = "设备名额已满，请先释放一台 Mac 再激活。";
+"The device release limit has been reached. Contact support." = "已达到设备释放次数上限，请联系支持。";
+"This order cannot be refunded." = "此订单暂不支持退款。";
+"Refunds require payment within 14 days and an unused credit package." = "退款需在付款后 14 天内申请，积分包还需保持未使用。";
+"Refund request could not be sent. The entitlement is unchanged." = "退款申请未能发送，原有权益保持不变。";
+"Order not found." = "未找到此订单。";
+"Continue the existing pending order before changing its currency or price." = "已有待付款订单，请先处理该订单再更换币种或价格。";
+"Request failed. Please try again." = "请求失败，请重试。";
+"pro" = "Pro 买断";
+"renewal" = "功能更新续购";
+"pending" = "待付款";
+"paid" = "已付款";
+"refunded" = "已退款";
+"refund_failed" = "退款失败";
+"expired" = "已过期";
+"processing" = "处理中";
+
+"Connect to verify your Pro license" = "联网验证 Pro 授权";
+"Your offline authorization has expired. Connect to refresh it without purchasing again." = "离线授权已到期，请联网刷新，无需再次购买。";
+"Verify license" = "验证授权";
+
+"Estimated %d credits" = "预计消耗 %d 点";
+"Not charged" = "未扣点";
+
+"No credit packages are available yet." = "暂时没有可购买的积分包。";
+
+"Ready to submit" = "可以提交任务了";
+
+"requested" = "待审核";
+"rejected" = "未通过";
+"succeeded" = "已完成";
+"failed" = "失败";
+"partial" = "部分退款";
+"Refund declined" = "退款申请未通过";
+
+/* Billing states and recovery */
+"%d months of feature updates" = "%d 个月的功能更新";
+"Credit top-up has been refunded" = "充值已退款";
+"Device releases are limited over a rolling 30 days." = "设备释放次数按最近 30 天累计计算。";
+"Device slots are full" = "设备名额已用满";
+"Duplicate payments or undelivered purchases can be reviewed by support at any time." = "重复付款或购买未交付，可随时联系支持复核。";
+"Feature updates extended" = "更新期已延长";
+"If you have paid, check the order first. Otherwise you can use a USD order with card, Apple Pay or Google Pay." = "如已付款，请先查询订单。未付款时，可改用美元订单，通过银行卡、Apple Pay 或 Google Pay 支付。";
+"One code per email every 60 seconds, up to 20 per network each hour." = "同一邮箱 60 秒内只能发送一次，每个网络每小时最多 20 次。";
+"Payment abandoned" = "已放弃本次支付";
+"Pro has been refunded" = "Pro 已退款";
+"Reactivate this Mac" = "重新激活这台 Mac";
+"Refund in progress" = "退款处理中";
+"Refund not completed" = "退款暂未完成";
+"Request a new code" = "请重新获取验证码";
+"Standard refunds are available within 14 days of payment." = "常规退款需在付款后 14 天内申请。";
+"Support can review this order. Include its order number when contacting support." = "可联系支持复核此订单，请提供订单号。";
+"Switch to USD payment" = "改用美元支付";
+"The available balance is lower than this order's credits." = "当前可用余额低于这笔订单发放的点数。";
+"The cashier may hide WeChat Pay when the buyer's monthly merchant limit is reached." = "达到买家每月向同一商户付款的限额后，收银台可能不显示微信支付。";
+"The payment provider could not complete the refund. Your license and credits are unchanged." = "支付渠道退款失败，授权与点数保持不变。";
+"The refund window has ended" = "已超过退款申请期限";
+"The release limit has been reached" = "释放次数已用完";
+"This Mac is activated" = "这台 Mac 已激活";
+"This Mac was released" = "这台 Mac 已被释放";
+"This code expired or has no attempts left." = "验证码已过期，或尝试次数已用完。";
+"This limit prevents sharing a license among many people. Contact support if you need help." = "这个限制用于防止多人共用一份授权。如需帮助，请联系支持。";
+"This top-up cannot be refunded" = "这笔充值无法退款";
+"Update renewal has been refunded" = "功能更新续购已退款";
+"View details" = "查看详情";
+"WeChat Pay is unavailable?" = "微信支付不可用？";
+"Your buyout license and credits are unchanged. This version can now use Pro." = "买断授权与点数保持不变，此版本现已可使用 Pro。";
+"Your entitlement changes only after the payment provider confirms the refund." = "支付平台确认退款成功后，才会变更权益。";
+"Your files and credits are kept." = "文件与点数均保留。";
+"Your files, history and credits are kept." = "文件、历史和点数均保留。";
+"The code is incorrect. Please try again." = "验证码不正确，请重试。";
+"Request a new code. This code expired or has no attempts left." = "请重新获取验证码。验证码已过期或尝试次数已用完。";
+"abandoned" = "已放弃支付";
+"Incorrect code. %d attempts left." = "验证码不正确，还可尝试 %d 次。";
+
+/* Task settlement and refunds */
+"Refund confirmation pending" = "正在确认退点";
+"Confirming task result" = "正在确认任务结果";
+"The task timed out. Its credits will be refunded automatically. Please try again." = "任务已超时，所扣点数将自动退还。请稍后重新运行任务。";
+"The result could not be downloaded. Please check your connection and try again." = "无法下载任务结果。请检查网络连接后重试；本次未成功交付的任务将退还点数。";
+"Result confirmation timed out. Credits were refunded. Please run the task again." = "结果确认已超时，点数已退还。请重新运行任务。";
+"Could not save the task. Check available disk space and try again." = "无法保存任务记录，任务尚未提交。请检查磁盘剩余空间和目录权限后重试。";
+
+/* Widget duration quotes and explicit confirmation */
+"%d credits / 10 seconds" = "每 10 秒 %d 点";
+"%.3f seconds · %d × %d credits / 10 seconds" = "%.3f 秒 · %d 份 × 每 10 秒 %d 点";
+"Partial 10-second units are rounded up." = "不足 10 秒按一份计费。";
+"Save this video locally before checking its duration and price." = "请先将视频保存到本地，再检查时长和费用。";
+"Video must be nonempty and at most 50 MiB. Compress it and try again." = "视频不能为空，且不能超过 50 MiB。请压缩后重试。";
+"Cannot read this video's duration. Save it as MP4 and try again." = "无法读取视频时长，请另存为 MP4 后重试。";
+"This video is too long. Trim it to 187.2 seconds or less before submitting. Nothing has been charged." = "视频过长，请裁剪至 187.2 秒以内再提交。本次未扣点。";
+"The video changed. Check its price again." = "视频文件已发生变化，请重新确认费用。";
+"Select one video per task." = "每个任务请选择一个视频。";
+"Checking task price" = "正在检查任务费用";
+"No upload or charge until you confirm." = "确认前不会上传文件或扣点。";
+"Confirm %@" = "确认运行%@";
+"Balance after task" = "扣点后余额";
+"On failure" = "失败处理";
+"Full refund; retries cost no extra" = "失败全额退点，自动重试不另收费";
+"Confirm and start · %d credits" = "确认并开始 · %d 点";
+"Review task price" = "重新确认任务费用";
+"Pricing" = "计费明细";
+"The video could not be verified against its quote. Review the refund status, then select the video and confirm its price again." = "视频与已确认报价不一致，任务已停止。请查看退款状态，再重新选择视频并确认费用。";
+"Video duration billing is being updated. Please try again later." = "视频按时长计费正在更新，请稍后重试。";
+"Read the video duration and fingerprint before requesting a quote." = "请先读取视频时长和文件信息，再查询费用。";
+"Video must be at most 187.2 seconds and 50 MiB. Trim or compress it before trying again." = "视频不能超过 187.2 秒和 50 MiB，请裁剪或压缩后重试。";
+"The quote expired. Review the price again." = "报价已过期，请重新确认费用。";
+"The Widget price changed. Review a new quote." = "Widget 价格已更新，请重新确认费用。";
+"Update Glance and confirm a duration quote before submitting." = "请更新 Glance，并在提交前确认按时长计算的费用。";
+"Request a new quote for this task." = "请重新查询并确认本次任务费用。";
+"This quote has already been submitted." = "该报价已提交，请在任务中心查看进度。";
+"This Widget has an invalid billing configuration." = "此 Widget 的计费配置无效，请稍后重试。";
+"The total credit price exceeds the task limit." = "本次费用超过单任务上限，请缩短视频后重试。";
+
+"Check for Updates…" = "检查更新…";
+
+"Team account" = "团队账户";
+
+"Delete account" = "删除账户";
+
+"Invite a member" = "邀请成员";
+
+"Remove member" = "移除成员";
+
+"Revoke invitation" = "撤销邀请";
+
+"Leave team" = "退出团队";
+
+"Accept invitation" = "接受邀请";
+
+"Your team Pro access will end. Your credits remain yours." = "你的团队 Pro 授权将结束，个人点数保留。";
+
+"Sign in with the invited email and paste the invitation code." = "请使用受邀邮箱登录，并粘贴邀请码。";
+
+"A five-person plan includes the purchaser and four invited accounts. Each account has one Mac and its own credits." = "多人版包含购买者及 4 位受邀成员，每人 1 台 Mac，点数各自独立。";
+
+"%d of 5 seats in use. Each account has one Mac and its own credits." = "已使用 %d / 5 个名额，每人 1 台 Mac，点数各自独立。";
+
+"Enter their Glance account email. The invitation expires in 7 days." = "输入对方的 Glance 账户邮箱，邀请 7 天内有效。";
+
+"Invitation ready" = "邀请已创建";
+
+"Copy code" = "复制邀请码";
+
+"Share this code privately. The recipient opens Glance → Team account and accepts it while signed in with the invited email." = "请私下分享邀请码。对方使用受邀邮箱登录后，在 Glance → 团队账户中接受邀请。";
+
+"This permanently deletes your account and Pro access, revokes all sessions and queues uploaded media for removal. Unspent credits are forfeited; no automatic cash refund is issued. Resolve refunds and active tasks first. Required financial records are retained. If you own a team, all members lose team access. Type your account email to continue." = "此操作会永久删除账户及 Pro 授权、撤销全部登录，并清理上传文件。未使用的点数会作废，不会自动退款。请先完成任务及退款申请。必要的账务记录会保留。若你是团队购买者，全体成员会失去团队授权。请输入账户邮箱继续。";
+
+"Permanently delete account?" = "永久删除账户？";
+
+"Account deleted. Uploaded media cleanup is queued and retried automatically." = "账户已删除。上传文件已进入清理队列，失败时会自动重试。";
+
+"5 people · 1 Mac each" = "5 人 · 每人 1 台 Mac";
+
+"Team (5 people)" = "多人版（5 人）";
+
+"Upgrade Pro" = "升级 Pro";
+
+"Card" = "银行卡";
+
+"Finish or cancel active tasks and pending checkouts, and resolve refund requests before deleting your account." = "请先完成或取消正在进行的任务与待付款订单，并处理完退款申请后再删除账户。";
+
+"The invitation expired, was revoked, or belongs to another email." = "邀请已过期、被撤销，或受邀邮箱与当前账户不符。";
+
+"All five seats are in use." = "5 个名额已用完。";
+
+"This account already has an active Pro licence or team." = "此账户已有有效的 Pro 授权或团队。";
+
+"An active five-person Pro licence is required." = "此操作需要有效的 5 人版 Pro 授权。";
+
+"Enter another member’s email address." = "请输入其他成员的邮箱地址。";
+
+"Enter a valid invitation code." = "请输入有效的邀请码。";
+
+"The team is full or your membership changed. Refresh and retry." = "团队名额已满或成员状态已改变，请刷新后重试。";
+
+"The email does not match your signed-in account." = "邮箱与当前登录账户不一致，请输入当前账户邮箱。";
+
+"Enter a value to continue." = "请填写内容后继续。";
+
+// MARK: - Optional permission setup and manual registration
+"Set up permissions" = "设置权限";
+"Permissions enable shortcuts and access to protected files. You can skip setup and keep using Glance." = "权限用于快捷预览和访问受保护文件。你可以跳过设置，继续使用 Glance。";
+"Optional: access protected files" = "可选：访问受保护的文件";
+"Glance not listed?" = "列表中找不到 Glance？";
+"Add Glance to System Settings" = "在系统设置中添加 Glance";
+"Open System Settings > Privacy & Security, then the permission you want to enable. If Glance is missing, click +, press Command-Shift-G, and enter the app path below. Select Glance, click Open, then turn on its switch." = "打开“系统设置 > 隐私与安全”，选择要启用的权限。如果列表中没有 Glance，点击“＋”，按 Command-Shift-G，输入下方 App 路径。选中 Glance，点击“打开”，再开启对应开关。";
+"If you are running Glance from a downloaded disk image, move it to Applications and reopen it there before granting permissions. If an older Glance entry does not work, remove it and add the current app again." = "如果正从下载的磁盘映像运行 Glance，请先将它拖到“应用程序”，退出后从“应用程序”重新打开，再授权。如果旧的 Glance 条目无法生效，请移除旧条目并重新添加当前 App。";
+"Show Glance in Finder" = "在访达中显示 Glance";
+"Copy App Path" = "复制 App 路径";
+
+/* Optional HID permission; Accessibility covers Peek. */
+"Read selection and recognize shortcuts" = "读取选中内容和识别快捷键";
+"Optional when Accessibility is enabled" = "已启用辅助功能时，无需单独授权";
+"Not needed" = "无需单独授权";
+"Accessibility already allows Glance to recognize shortcuts. Input Monitoring does not need a separate grant." = "辅助功能已允许 Glance 识别快捷键，无需单独授予输入监控权限。";
+"Redeem a code" = "兑换 Pro";
+"Redeem Pro" = "兑换 Pro";
+"Enter your Pro redemption code. Cloud Widget credits are not included." = "输入 Pro 兑换码。不包含云端 Widget 点数。";
+"Lifetime and one-year codes unlock local Pro tools. Your files and credits stay unchanged." = "终身或一年兑换码可解锁本地 Pro 工具，文件与点数保持不变。";
+"Enter a redemption code." = "请输入兑换码。";
+"Code redeemed" = "兑换成功";
+"Lifetime Pro" = "终身 Pro";
+"Pro until %@" = "Pro 有效期至 %@";
+"License" = "授权";
+"Your files and credits are unchanged." = "文件与点数保持不变。";
+"Your files and credits are unchanged. Activate this Mac from Devices." = "文件与点数保持不变。请在“管理设备”中激活这台 Mac。";
+"Enter a valid Glance Pro redemption code." = "请输入有效的 Glance Pro 兑换码。";
+"This redemption code is invalid." = "兑换码无效。";
+"This code has already been redeemed." = "此兑换码已被使用。";
+"This code has been revoked." = "此兑换码已被撤销。";
+"This code has expired." = "此兑换码已过期。";
+"This account already has an active Pro license. The code was not consumed." = "此账户已有有效的 Pro 授权，兑换码未被使用。";
+"The code was not redeemed. Please try again." = "兑换未完成，请重试。";

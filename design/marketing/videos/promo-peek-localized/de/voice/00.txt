@@ -1,0 +1,1 @@
+Du bist im Flow. Dann nennt dir die KI einen lokalen Dateipfad, den du prüfen sollst.

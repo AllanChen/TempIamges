@@ -22,21 +22,21 @@ Package.resolved
 *.dSYM
 *.dSYM.zip
 
-# Built app bundle (build.sh writes this at repo root)
-/Glance.app/
+# Built app bundle (build.sh writes this under clients/macos)
+/clients/macos/Glance.app/
 
 # Debug build output
-Glance/debug/
+clients/macos/Glance/debug/
 
 # Claude session data
 .claude/
 
 # prototype: keep sources, drop compiled binaries
-prototype/*
-!prototype/*.swift
-!prototype/*.sh
-!prototype/*.html
-!prototype/.gitignore
+clients/macos/prototypes/*
+!clients/macos/prototypes/*.swift
+!clients/macos/prototypes/*.sh
+!clients/macos/prototypes/*.html
+!clients/macos/prototypes/.gitignore
 .gstack/
 
 # Cloudflare Pages build output
@@ -44,7 +44,7 @@ dist/
 
 # Local tool state
 .wrangler/
-website/.openai/
+website/app/.openai/
 __pycache__/
 .venv/
 *.py[cod]
@@ -52,7 +52,22 @@ __pycache__/
 .glance-test-output/
 
 # Local upload provider credentials
-docs/designs/upload_info.txt
+design/app/specs/plans/upload_info.txt
 
 # Release artifacts (publish via GitHub Releases / Sparkle, not git)
 *.dmg
+
+# Local legacy project and session state
+/clients/macos/legacy/ImageHoverPreview/
+/docs/archive/local-state/
+
+# Keep dependency locks after moving them (override global lockfile ignores)
+!/server/GlanceService/package-lock.json
+!/website/app/package-lock.json
+
+# Local payment credentials; never commit.
+/infomation/info.txt
+/infomation/sparkle-update-key.txt
+
+# Local credentials (never commit)
+/account_info.txt

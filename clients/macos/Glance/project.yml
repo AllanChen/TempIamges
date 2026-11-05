@@ -1,0 +1,61 @@
+name: Glance
+options:
+  defaultConfig: Debug
+  bundleIdPrefix: com.glance
+  deploymentTarget:
+    macOS: "12.3"
+  xcodeVersion: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "12.3"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_IDENTITY: "-"
+
+# Swift Package Manager 依赖配置
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: "2.10.1"
+  # 语法高亮（highlight.js 封装，离线可用），用于可编辑代码视图。
+  Highlightr:
+    url: https://github.com/raspu/Highlightr
+    from: "2.1.0"
+  # macOS ImageIO can decode WebP but does not provide a WebP encoder.
+  libwebp:
+    url: https://github.com/SDWebImage/libwebp-Xcode.git
+    exactVersion: "1.6.0"
+
+targets:
+  Glance:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+        excludes:
+          - "*.bak"
+      - path: Resources
+        buildPhase: resources
+      - path: LoadFailed.gif
+        buildPhase: resources
+    dependencies:
+      - package: Sparkle
+      - package: Highlightr
+      - package: libwebp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.glance.app
+        INFOPLIST_FILE: Info.plist
+        PRODUCT_NAME: Glance
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path/../Frameworks"
+        SWIFT_EMIT_LOC_STRINGS: YES
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Glance.Debug.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Glance.entitlements

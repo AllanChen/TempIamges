@@ -44,7 +44,7 @@
 | 286:1036 | insufficientManual · 还差 6 点 | BillingWindow.showTopup；BillingCoordinator.Intent / decide | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1076 | awaitTask · 请在浏览器完成支付 | BillingCoordinator.showPayment / poll；orders API | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1107 | pancakeTask · Glance 点数 · 330 点 | Pancake hosted checkout；official SDK priceSnapshot / includePaymentMethods / darkMode / language | 外部收银台；App 不仿制支付页面。待商户配置后实测渠道 UI |
-| 286:1136 | returnTask · 付款完成，正在返回 Glance | site/pay/return；website-static/src/pages/50-payment-return.html；handlePaymentReturn | 官网尝试唤起 App，仅服务端验签通知发放权益；待真实浏览器回跳联调 |
+| 286:1136 | returnTask · 付款完成，正在返回 Glance | site/pay/return；website/static/src/pages/50-payment-return.html；handlePaymentReturn | 官网尝试唤起 App，仅服务端验签通知发放权益；待真实浏览器回跳联调 |
 | 286:1160 | confirmingTask · 正在确认付款结果 | BillingCoordinator.showPayment / poll；orders API | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1192 | abandonTask · 放弃本次支付？ | BillingCoordinator.confirmAbandon；abandonOrder；billingWebhook | 明确放弃只改变本站待付状态，不假装取消渠道订单；迟到成功仍交付 |
 | 286:1217 | creditedAutoSubmit · 330 点已到账，任务已提交 | BillingCoordinator.fulfilled / restorePendingPayments；BillingTaskContext | 自动提交仅本次勾选；重新校验价格和源窗口；到账不等于任务已受理，统计基于任务记录 |
@@ -57,7 +57,7 @@
 | 286:1430 | topupUSD · 充值点数 | BillingWindow.showTopup；BillingCoordinator.Intent / decide | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1470 | awaitWallet · 请在浏览器完成支付 | BillingCoordinator.showPayment / poll；orders API | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1502 | pancakeWallet · Glance 点数 · 330 点 | Pancake hosted checkout；official SDK priceSnapshot / includePaymentMethods / darkMode / language | 外部收银台；App 不仿制支付页面。待商户配置后实测渠道 UI |
-| 286:1531 | returnWallet · 付款完成，正在返回 Glance | site/pay/return；website-static/src/pages/50-payment-return.html；handlePaymentReturn | 官网尝试唤起 App，仅服务端验签通知发放权益；待真实浏览器回跳联调 |
+| 286:1531 | returnWallet · 付款完成，正在返回 Glance | site/pay/return；website/static/src/pages/50-payment-return.html；handlePaymentReturn | 官网尝试唤起 App，仅服务端验签通知发放权益；待真实浏览器回跳联调 |
 | 286:1555 | confirmingWallet · 正在确认付款结果 | BillingCoordinator.showPayment / poll；orders API | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1587 | abandonWallet · 放弃本次支付？ | BillingCoordinator.confirmAbandon；abandonOrder；billingWebhook | 明确放弃只改变本站待付状态，不假装取消渠道订单；迟到成功仍交付 |
 | 286:1612 | walletCredited · 330 点已到账 | BillingCoordinator.fulfilled / restorePendingPayments；BillingTaskContext | 自动提交仅本次勾选；重新校验价格和源窗口；到账不等于任务已受理，统计基于任务记录 |
@@ -69,7 +69,7 @@
 | 286:1801 | proPriceChanged · 价格已更新 | BillingCoordinator.checkout；createOrder 409 price_changed / pending_order | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1831 | awaitPro · 请在浏览器完成支付 | BillingCoordinator.showPayment / poll；orders API | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1863 | pancakePro · Glance Pro | Pancake hosted checkout；official SDK priceSnapshot / includePaymentMethods / darkMode / language | 外部收银台；App 不仿制支付页面。待商户配置后实测渠道 UI |
-| 286:1892 | returnPro · 付款完成，正在返回 Glance | site/pay/return；website-static/src/pages/50-payment-return.html；handlePaymentReturn | 官网尝试唤起 App，仅服务端验签通知发放权益；待真实浏览器回跳联调 |
+| 286:1892 | returnPro · 付款完成，正在返回 Glance | site/pay/return；website/static/src/pages/50-payment-return.html；handlePaymentReturn | 官网尝试唤起 App，仅服务端验签通知发放权益；待真实浏览器回跳联调 |
 | 286:1916 | confirmingPro · 正在确认付款结果 | BillingCoordinator.showPayment / poll；orders API | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:1948 | abandonPro · 放弃本次支付？ | BillingCoordinator.confirmAbandon；abandonOrder；billingWebhook | 明确放弃只改变本站待付状态，不假装取消渠道订单；迟到成功仍交付 |
 | 286:1973 | proActivated · Pro 已激活 | BillingCoordinator.fulfilled；BillingManager.refreshEntitlements | 续购完成使用独立说明，不再误报新买断或赠点 |
@@ -99,7 +99,7 @@
 | 286:2612 | renewOffer · 续购功能更新 | BillingWindow.showPro；BillingManager.createOrder(displayedPrice)；readPricing | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:2638 | awaitRenew · 请在浏览器完成支付 | BillingCoordinator.showPayment / poll；orders API | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:2669 | pancakeRenew · Pro 功能更新 · 1 年 | Pancake hosted checkout；official SDK priceSnapshot / includePaymentMethods / darkMode / language | 外部收银台；App 不仿制支付页面。待商户配置后实测渠道 UI |
-| 286:2698 | returnRenew · 付款完成，正在返回 Glance | site/pay/return；website-static/src/pages/50-payment-return.html；handlePaymentReturn | 官网尝试唤起 App，仅服务端验签通知发放权益；待真实浏览器回跳联调 |
+| 286:2698 | returnRenew · 付款完成，正在返回 Glance | site/pay/return；website/static/src/pages/50-payment-return.html；handlePaymentReturn | 官网尝试唤起 App，仅服务端验签通知发放权益；待真实浏览器回跳联调 |
 | 286:2722 | confirmingRenew · 正在确认付款结果 | BillingCoordinator.showPayment / poll；orders API | 客户端代码覆盖；待用户运行 UI 验收 |
 | 286:2754 | abandonRenew · 放弃本次支付？ | BillingCoordinator.confirmAbandon；abandonOrder；billingWebhook | 明确放弃只改变本站待付状态，不假装取消渠道订单；迟到成功仍交付 |
 | 286:2779 | renewDone · 更新期已延长 | BillingCoordinator.fulfilled；BillingManager.refreshEntitlements | 续购完成使用独立说明，不再误报新买断或赠点 |

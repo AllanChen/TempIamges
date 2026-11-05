@@ -1,0 +1,265 @@
+{
+  "fetchedAt": "2026-11-04T23:43:30+00:00",
+  "widgets": [
+    {
+      "id": "0b164640-9998-49c7-aa93-5ed5cb957c40",
+      "name": "移除物体",
+      "summary": "用英文描述要移除的物体，智能补全背景。每次 30 积分。",
+      "enName": "Remove Objects",
+      "enSummary": "Describe unwanted objects in English and fill the background. 30 credits per run.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "783745bf-501d-4cfd-b2b8-69d32a8d90a8",
+      "name": "视频去水印",
+      "summary": "每 10 秒 100 点，不足 10 秒按一份计费；分段去水印后合成为一个视频。",
+      "enName": "Video Watermark Remover",
+      "enSummary": "100 credits per 10 seconds, rounded up. Clean segments and merge them into one video.",
+      "creditCost": 100,
+      "billing": {
+        "mode": "duration",
+        "unitSeconds": 10
+      },
+      "uploadsMedia": true
+    },
+    {
+      "id": "ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f",
+      "name": "高清放大",
+      "summary": "图生图超分辨率，提升图片清晰度与细节。",
+      "enName": "Upscale",
+      "enSummary": "Upscale images to higher resolution with sharper detail.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "7cc3967a-60ac-4677-9817-72f57f5ef5fa",
+      "name": "人物背景分离",
+      "summary": "图生图高级背景移除，保留精细主体边缘。",
+      "enName": "Background Remover Pro",
+      "enSummary": "Precise background removal that keeps fine edges such as hair.",
+      "creditCost": 20,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "55e64c7e-f079-448a-b5bd-7315b2589019",
+      "name": "免费图床",
+      "summary": "上传图片或视频，获得可分享的链接。",
+      "enName": "Free Image Host",
+      "enSummary": "Upload an image or video and get a shareable link.",
+      "creditCost": 29,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
+      "name": "图片转提示词",
+      "summary": "分析图片内容，生成可直接复用的文字描述。",
+      "enName": "Image to Prompt",
+      "enSummary": "Describe an image in words you can reuse as a prompt.",
+      "creditCost": 20,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f",
+      "name": "图片去水印",
+      "summary": "去除图片上的水印、文字和标记。",
+      "enName": "Watermark Remover",
+      "enSummary": "Remove watermarks, text and marks from an image.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "d13ef3be-9d60-4283-a8f5-d75d4e550944",
+      "name": "智能扩图",
+      "summary": "向四周延展画面，自动补全图片之外的内容。",
+      "enName": "Expand Image",
+      "enSummary": "Extend the canvas beyond the edges with matching content.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "754acd48-5029-4f8f-b4a4-b750903767bb",
+      "name": "AI 换装",
+      "summary": "把第二张图里的服装穿到第一张图的人物身上。",
+      "enName": "Outfit Swap",
+      "enSummary": "Dress the person in the first image in the outfit from the second.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "0d7a1de4-af33-4df1-9607-a47323c07a52",
+      "name": "图生图",
+      "summary": "重新生成图片，并按指定画幅比例输出。",
+      "enName": "Redraw & Reframe",
+      "enSummary": "Regenerate the image at the aspect ratio you choose.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    }
+  ],
+  "pricing": {
+    "enabled": false,
+    "paymentsAvailable": false,
+    "trialDays": 14,
+    "signupCredits": 100,
+    "proBonusCredits": 100,
+    "launchUntil": null,
+    "defaultCurrency": "CNY",
+    "proTiers": [
+      {
+        "id": "personal",
+        "name": "个人版（测试）",
+        "enabled": true,
+        "recommended": false,
+        "deviceLimit": 1,
+        "launchCNY": {
+          "amount": null
+        },
+        "launchUSD": {
+          "amount": null
+        },
+        "productID": "PROD_6HhJPAncCJXoQw8f787YZ2",
+        "taxCategory": "software",
+        "CNY": {
+          "amount": 1699
+        },
+        "USD": {
+          "amount": 999
+        },
+        "JPY": {
+          "amount": 1480
+        },
+        "EUR": {
+          "amount": 999
+        },
+        "HKD": {
+          "amount": 7800
+        }
+      },
+      {
+        "id": "team",
+        "name": "多人版（5 人，测试）",
+        "enabled": true,
+        "recommended": true,
+        "deviceLimit": 1,
+        "launchCNY": {
+          "amount": null
+        },
+        "launchUSD": {
+          "amount": null
+        },
+        "productID": "PROD_3EEhN2Aa9T6Samr4scP12Y",
+        "taxCategory": "software",
+        "CNY": {
+          "amount": 4999
+        },
+        "USD": {
+          "amount": 1999
+        },
+        "JPY": {
+          "amount": 2980
+        },
+        "EUR": {
+          "amount": 1999
+        },
+        "HKD": {
+          "amount": 15800
+        }
+      }
+    ],
+    "packs": [
+      {
+        "id": "small",
+        "name": "600 credits",
+        "enabled": true,
+        "recommended": false,
+        "productID": "PROD_7VyOkeOxSCq9PsuizMmSBV",
+        "taxCategory": "software",
+        "CNY": {
+          "amount": 1200,
+          "points": 600
+        },
+        "USD": {
+          "amount": 299,
+          "points": 600
+        },
+        "JPY": {
+          "amount": 480,
+          "points": 600
+        },
+        "EUR": {
+          "amount": 299,
+          "points": 600
+        },
+        "HKD": {
+          "amount": 2400,
+          "points": 600
+        }
+      },
+      {
+        "id": "standard",
+        "name": "1500 credits",
+        "enabled": true,
+        "recommended": true,
+        "productID": "PROD_3BBl200ladK588VckFGSF5",
+        "taxCategory": "software",
+        "CNY": {
+          "amount": 3000,
+          "points": 1500
+        },
+        "USD": {
+          "amount": 699,
+          "points": 1500
+        },
+        "JPY": {
+          "amount": 1080,
+          "points": 1500
+        },
+        "EUR": {
+          "amount": 699,
+          "points": 1500
+        },
+        "HKD": {
+          "amount": 5400,
+          "points": 1500
+        }
+      },
+      {
+        "id": "large",
+        "name": "5000 credits",
+        "enabled": true,
+        "recommended": false,
+        "productID": "PROD_5nFQoArD19XfIIyCsOp0ED",
+        "taxCategory": "software",
+        "CNY": {
+          "amount": 9800,
+          "points": 5000
+        },
+        "USD": {
+          "amount": 1999,
+          "points": 5000
+        },
+        "JPY": {
+          "amount": 2980,
+          "points": 5000
+        },
+        "EUR": {
+          "amount": 1999,
+          "points": 5000
+        },
+        "HKD": {
+          "amount": 15800,
+          "points": 5000
+        }
+      }
+    ]
+  }
+}

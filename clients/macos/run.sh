@@ -1,0 +1,77 @@
+#!/bin/bash
+set -e
+
+# Default to the local test configuration; release requires an explicit argument.
+if [ "$#" -eq 0 ]; then set -- Debug; fi
+
+APP_NAME="Glance"
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_PATH="$ROOT_DIR/$APP_NAME.app"
+BUILD_SCRIPT="$ROOT_DIR/Glance/build.sh"
+SIGNING_SETUP_SCRIPT="$ROOT_DIR/scripts/create-signing-cert.sh"
+SIGN_IDENTITY="${GLANCE_SIGN_IDENTITY:-Glance Self-Signed}"
+LOG_FILE="$HOME/Library/Application Support/$APP_NAME/app.log"
+
+echo "Killing any running $APP_NAME instances..."
+stop_running_instances() {
+    pkill -x "$APP_NAME" 2>/dev/null || true
+    for ((attempt = 0; attempt < 50; attempt++)); do
+        if ! pgrep -x "$APP_NAME" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    echo "Error: an older $APP_NAME instance is still running. Close it before launching the new build."
+    return 1
+}
+stop_running_instances
+
+if [ ! -x "$BUILD_SCRIPT" ]; then
+    echo "Error: $BUILD_SCRIPT is missing or not executable."
+    exit 1
+fi
+
+if ! security find-identity -v -p codesigning | grep -Fq "\"$SIGN_IDENTITY\""; then
+    if [ ! -x "$SIGNING_SETUP_SCRIPT" ]; then
+        echo "Error: signing identity '$SIGN_IDENTITY' is missing and setup script was not found."
+        exit 1
+    fi
+    echo "Signing identity '$SIGN_IDENTITY' is missing."
+    echo "Running one-time Glance signing setup..."
+    if ! "$SIGNING_SETUP_SCRIPT"; then
+        echo "Error: signing setup failed. Fix the login keychain before rebuilding."
+        echo "Run bash clients/macos/scripts/trust-signing-cert.sh in a local terminal."
+        exit 1
+    fi
+fi
+
+if [ "${GLANCE_ALLOW_ADHOC:-0}" = "1" ] && [ "$1" != "Debug" ]; then
+    echo "Using Debug configuration for the ad-hoc fallback."
+    set -- Debug
+fi
+
+echo "Building $APP_NAME..."
+"$BUILD_SCRIPT" "$@"
+
+# A second launch can finish while this build is running. Stop it before
+# opening the just-built bundle so an older window cannot mask new changes.
+stop_running_instances
+
+if [ ! -d "$APP_PATH" ]; then
+    echo "Error: build completed but $APP_PATH was not created."
+    exit 1
+fi
+
+mkdir -p "$(dirname "$LOG_FILE")"
+touch "$LOG_FILE"
+
+echo "Launching $APP_PATH ..."
+# Pass the bundle path directly to LaunchServices. Using `open -a <path>` can
+# resolve through the app registry and reuse another Glance.app copy (for
+# example one in DerivedData or /Applications), which makes a successful build
+# appear to have no UI changes. `-n <path>` always launches this exact bundle.
+open -n "$APP_PATH"
+
+echo "Tailing $LOG_FILE (Ctrl+C to stop)"
+echo "---"
+exec tail -F "$LOG_FILE"

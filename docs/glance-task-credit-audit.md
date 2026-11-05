@@ -34,18 +34,18 @@
 - 空白文本和零字节文件能通过输出校验：现在拒绝并走失败上报。文件扩展名/MIME 校验不等于媒体完整性或质量判断，远端 URL 的交付仍由客户端验证。
 - 输入下载不计入执行超时、缺少取消检查：下载与执行共享 1500 秒预算，下载分段检查，超时终止子进程并上报 `worker_timeout`；结果上传重试前也检查取消。
 
-验证：CLI 完整 **60 项测试通过**（含新增 14 项失败恢复测试），网络请求均使用 mock；已有取消测试还验证了子进程组终止。未启动真实 Worker、未调用生成模型或修改生产余额。本次修改尚未更新运行中的 Worker，需要安装当前源码并重启 Worker 生效；操作见 `glance-cli/README.md`。
+验证：CLI 完整 **60 项测试通过**（含新增 14 项失败恢复测试），网络请求均使用 mock；已有取消测试还验证了子进程组终止。未启动真实 Worker、未调用生成模型或修改生产余额。本次修改尚未更新运行中的 Worker，需要安装当前源码并重启 Worker 生效；操作见 `server/glance-cli/README.md`。
 
 ## 原始审计记录（修复前）
 
-以下内容保留初次复现证据，路径行号对应修复前代码。临时审计用例断言的是旧错误行为，不应作为修复后回归测试运行；正式回归测试在 `GlanceService/test/task-refunds.test.ts`。
+以下内容保留初次复现证据，路径行号对应修复前代码。临时审计用例断言的是旧错误行为，不应作为修复后回归测试运行；正式回归测试在 `server/GlanceService/test/task-refunds.test.ts`。
 
 ## 验证范围和结果
 
 - 本地 Cloudflare Workers / D1 测试环境，使用仓库全部迁移和当前服务端代码；不代表线上迁移或历史账目已验证。
 - 原有测试：`npm test -- test/billing.test.ts test/accounts-credits.test.ts test/task-lifecycle.test.ts test/task-queue.test.ts`，60 项通过。
 - 临时审计用例：5 项完成复现。它们断言当前行为以确认问题，**不是**「失败不扣费」验收通过。
-- 临时用例保存在 `/private/tmp/glance-task-credit-audit.test.ts`；需要复现时复制至 `GlanceService/test/task-billing-audit-temp.test.ts`，在 `GlanceService` 执行 `npm test -- test/task-billing-audit-temp.test.ts`。核查结束后移出正式测试目录，以免将错误行为固化成产品契约。
+- 临时用例保存在 `/private/tmp/glance-task-credit-audit.test.ts`；需要复现时复制至 `server/GlanceService/test/task-billing-audit-temp.test.ts`，在 `GlanceService` 执行 `npm test -- test/task-billing-audit-temp.test.ts`。核查结束后移出正式测试目录，以免将错误行为固化成产品契约。
 
 ## 正常路径
 
@@ -55,40 +55,40 @@
 
 ## P1：超时自动取消会留下扣费
 
-- `Glance/Sources/WidgetTaskClient.swift:502`：轮询超过 1800 秒，客户端调用 DELETE 取消远端任务并向用户报失败。
-- `GlanceService/migrations/0013_pricing_licenses_payments.sql:79`：退款触发器只退 queued → cancelled，claimed / running → cancelled 不退。
+- `clients/macos/Glance/Sources/WidgetTaskClient.swift:502`：轮询超过 1800 秒，客户端调用 DELETE 取消远端任务并向用户报失败。
+- `server/GlanceService/migrations/0013_pricing_licenses_payments.sql:79`：退款触发器只退 queued → cancelled，claimed / running → cancelled 不退。
 - API 复现：创建并运行 7 点任务后调用同一 DELETE 路径，返回 cancelled、refundedCredits=0，余额仍为 9993。
 - 用户主动取消运行中任务也采用此路径。无论主动取消政策如何，系统超时导致的失败不能套用不退款取消政策。
 - 修复要求：区分系统失败与主动取消；所有失败必须全额退款，并审视运行中主动取消的产品政策和明确告知。退款迁移、客户端错误处理与测试要一致。
 
 ## P1：Worker 掉线可能永久占款
 
-- `GlanceService/src/pricing.ts:157`：cron 仅处理超时 queued，以及达到 maxAttempts 的 claimed / running。
+- `server/GlanceService/src/pricing.ts:157`：cron 仅处理超时 queued，以及达到 maxAttempts 的 claimed / running。
 - 未达到重试上限的失效租约，仅在 Worker 再次拉取任务时回队。若 Worker 不再上线，任务不会回队，也不会满足队列过期条件。
 - 复现：第一次领取后，将创建时间和租约到期时间设为一天前；反复执行清理和查询后仍为 claimed、attempts=1、refundedCredits=0，余额 9993。
 - 修复要求：定时任务独立回收失效租约；设置有界的全生命周期截止时间，在没有 Worker 和客户端的情况下也能结束失败任务并退点。
 
 ## P1：结果未成功交付仍可能保留扣费
 
-- `GlanceService/src/index.ts:1076`：空结果和输出结构检查只在 developerTask 路径执行。旧 Worker token 路径绕过这些检查。
+- `server/GlanceService/src/index.ts:1076`：空结果和输出结构检查只在 developerTask 路径执行。旧 Worker token 路径绕过这些检查。
 - API 复现：注册并分配旧 Worker，提交 succeeded 和空 artifacts，接口返回 200，查询为 completed、result=[]、refundedCredits=0，余额仍为 9993。
-- `Glance/Sources/WidgetTaskManager.swift:260`：下载网络错误或本地保存失败只改变本地状态，未向服务端发起交付失败确认或退款。服务端已有 succeeded 状态不会触发失败退款。
+- `clients/macos/Glance/Sources/WidgetTaskManager.swift:260`：下载网络错误或本地保存失败只改变本地状态，未向服务端发起交付失败确认或退款。服务端已有 succeeded 状态不会触发失败退款。
 - 同一下载路径未检查 HTTP 成功状态及实际结果有效性，存在把 HTTP 错误响应文件保存为成功结果的风险（代码检查发现，未运行 App 复现）。
 - 修复要求：统一所有 Worker 成功结果校验，检查下载响应和结果有效性；建立可验证、可重试的交付失败处理，避免仅相信客户端声明就开放任意退款。不能把「Worker 返回成功」直接等同于用户收到可用结果。
 
 ## P1：网络自动重发可能产生重复扣费
 
-- `Glance/Sources/WidgetTaskClient.swift:82`：直连发生 NSURLError 后，会通过系统网络自动重发同一请求，包含任务创建 POST。
-- `Glance/Sources/WidgetTaskClient.swift:450`：提交任务没有携带 Idempotency-Key，也没有跨重启保存请求标识。
+- `clients/macos/Glance/Sources/WidgetTaskClient.swift:82`：直连发生 NSURLError 后，会通过系统网络自动重发同一请求，包含任务创建 POST。
+- `clients/macos/Glance/Sources/WidgetTaskClient.swift:450`：提交任务没有携带 Idempotency-Key，也没有跨重启保存请求标识。
 - 服务端支持按用户和请求标识去重，但客户端未接入。
 - API 复现：相同请求不带标识提交两次，得到不同任务 ID，7 点扣两次，余额 9986。若首个请求已被服务端受理、只是响应丢失，就会触发该风险；本次未模拟真实网络丢包。
 - 修复要求：每次逻辑任务提交前生成并持久化稳定请求标识；网络回退、响应丢失恢复和重启对账复用该标识。重新生成一个新任务与重试原请求必须明确区分。
 
 ## P2：客户端没有接收实际扣费和退点信息
 
-- `GlanceService/src/index.ts:653`：任务状态返回 creditCost、refundedCredits 和 balance。
-- `Glance/Sources/WidgetTaskClient.swift:607`：TaskResult 未解码这些字段。
-- `Glance/Sources/WidgetTaskManager.swift:45`：记录存在字段和展示文案，但当前运行链路没有为它们写入服务端账务结果。
+- `server/GlanceService/src/index.ts:653`：任务状态返回 creditCost、refundedCredits 和 balance。
+- `clients/macos/Glance/Sources/WidgetTaskClient.swift:607`：TaskResult 未解码这些字段。
+- `clients/macos/Glance/Sources/WidgetTaskManager.swift:45`：记录存在字段和展示文案，但当前运行链路没有为它们写入服务端账务结果。
 - 影响：即使实际已经退款，任务中心也无法可靠告知用户退款金额。取消 API 的响应仅记录日志，没有同步账务。
 - 修复要求：以服务端流水为准同步账务状态；区分已退款、等待确认和无需扣费，不能未经确认显示已退款。
 

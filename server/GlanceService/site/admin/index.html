@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Glance Ops Console</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14211f;background:#f3f7f6;--ink:#14211f;--muted:#657470;--line:#d8e4e1;--teal:#0d9488;--teal-dark:#08746b;--orange:#e85d25;--red:#c93737;--card:#fff}*{box-sizing:border-box}body{margin:0;min-width:320px}button,input{font:inherit}.hidden{display:none!important}.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}.side{background:#102a27;color:#d8eeea;padding:28px 18px;display:flex;flex-direction:column}.brand{font-weight:800;letter-spacing:-.04em;font-size:20px;color:#fff;margin:0 12px 42px}.brand small{display:block;color:#82b5ae;font:500 10px ui-monospace,monospace;letter-spacing:.13em;text-transform:uppercase;margin-top:7px}.nav{display:grid;gap:6px}.nav button{border:0;background:transparent;color:#a9c7c1;text-align:left;padding:12px;border-radius:8px;cursor:pointer;font-weight:600}.nav button:hover,.nav button.active{background:#1d4842;color:#fff}.side-foot{margin-top:auto;font:12px ui-monospace,monospace;color:#80aaa4;line-height:1.6}.main{padding:34px clamp(20px,4vw,58px);max-width:1500px;width:100%}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:28px}.eyebrow{font:600 11px ui-monospace,monospace;letter-spacing:.15em;text-transform:uppercase;color:var(--teal);margin:0 0 7px}.top h1{font-size:32px;letter-spacing:-.05em;margin:0}.top p{color:var(--muted);margin:9px 0 0}.outline{border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 14px;border-radius:7px;cursor:pointer;font-weight:700}.outline:hover{border-color:var(--teal);color:var(--teal-dark)}.cards{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:14px;margin-bottom:22px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}.stat-label{font-size:12px;color:var(--muted);font-weight:700}.stat-value{font-size:30px;font-weight:800;letter-spacing:-.05em;margin-top:10px}.section{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:18px}.section-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}.section-head h2{font-size:16px;margin:0;letter-spacing:-.02em}.section-head span{font-size:12px;color:var(--muted)}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px;min-width:720px}th,td{text-align:left;padding:13px 20px;border-bottom:1px solid #edf2f1;white-space:nowrap}th{font:600 10px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);background:#fbfdfc}tr:last-child td{border-bottom:0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#edf3f1;color:#53625f}.pill.good{background:#d9f4e5;color:#176b42}.pill.warn{background:#fff0d9;color:#9a5b00}.pill.bad{background:#ffe2e2;color:#a12e2e}.pill.blue{background:#dceefd;color:#1f5c8f}.login{min-height:100vh;display:grid;place-items:center;background:#102a27;padding:20px}.login-box{background:#fff;width:min(420px,100%);padding:34px;border-radius:12px}.login-box h1{margin:0;font-size:27px;letter-spacing:-.05em}.login-box p{color:var(--muted);font-size:14px;line-height:1.6}.field{display:grid;gap:7px;margin:18px 0}.field label{font-size:12px;font-weight:800;color:#38504b}.field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:7px;outline:none}.field input:focus{border-color:var(--teal);box-shadow:0 0 0 3px #bcebe5}.primary{width:100%;padding:13px;border:0;border-radius:7px;background:var(--teal);color:#fff;font-weight:800;cursor:pointer}.primary:hover{background:var(--teal-dark)}.error{background:#fff0f0;color:var(--red);padding:10px;border-radius:7px;font-size:13px;margin:14px 0}.empty{padding:30px 20px;color:var(--muted);font-size:14px}.json{max-width:260px;overflow:hidden;text-overflow:ellipsis;color:#50706a}.media-cell{min-width:150px;max-width:220px;white-space:normal}.media-strip{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start}.media-strip a{display:block;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#f7faf9}.media-strip img{display:block;width:68px;height:52px;object-fit:cover}.media-strip video{display:block;width:140px;height:80px;object-fit:cover;background:#102a27}.media-empty{color:#96a6a2;font-size:12px}.error-cell{max-width:100px;white-space:normal}.error-cell summary{cursor:pointer;color:var(--red);font-weight:700;list-style:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.error-cell summary::-webkit-details-marker{display:none}.error-detail{margin-top:6px;max-width:230px;white-space:normal;color:var(--red);font-size:12px;line-height:1.4}.row-action{border:0;background:none;color:var(--teal-dark);font-weight:800;cursor:pointer;padding:6px}.row-action:hover{text-decoration:underline}@media(max-width:850px){.shell{grid-template-columns:1fr}.side{padding:16px;display:block}.brand{margin:0 0 14px}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.side-foot{display:none}.main{padding:24px 16px}.cards{grid-template-columns:repeat(2,1fr)}.top h1{font-size:26px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+  <style>
+    .media-strip audio{width:220px;max-width:100%}
+    .media-strip pre{max-width:100%;max-height:160px;margin:0;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+    .modal-mask{position:fixed;inset:0;background:rgba(10,25,23,.46);display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;z-index:50;overflow-y:auto}
+    .modal{background:#fff;border:1px solid var(--line);border-radius:14px;width:min(760px,100%);padding:26px;box-shadow:0 24px 60px rgba(16,42,39,.22)}
+    .modal h2{margin:0 0 4px;font-size:22px;letter-spacing:-.03em}
+    .modal .hint{color:var(--muted);font-size:12px;margin:0 0 18px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+    .form-grid .span2{grid-column:span 2}
+    .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+    .field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 11px;background:#fbfcfc;color:var(--ink)}
+    .field textarea{min-height:64px;resize:vertical}
+    .check-row{display:flex;gap:16px;align-items:center;padding-top:22px;font-size:13px;font-weight:600;color:var(--ink)}
+    .check-row label{display:flex;gap:7px;align-items:center;font-weight:600}
+    .input-choice{display:flex;gap:18px;align-items:center;min-height:40px;font-size:13px;font-weight:600}
+    .output-choice{flex-wrap:wrap}
+    .input-choice label{display:flex;gap:7px;align-items:center;margin:0;color:var(--ink)}
+    .input-choice input[type=checkbox]{width:16px;height:16px;margin:0;padding:0;flex:none;accent-color:var(--teal)}
+    .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+    .primary-btn{border:0;background:var(--teal);color:#fff;padding:11px 18px;border-radius:8px;font-weight:800;cursor:pointer}
+    .primary-btn:hover{background:var(--teal-dark)}
+    .ghost-btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer}
+    .create-error{margin-top:14px;background:#fdf1ee;border:1px solid #f2c9bd;color:var(--red);border-radius:8px;padding:10px 12px;font-size:13px}
+    .token-result{margin-top:14px;background:#eef8f3;border:1px solid #bfe3d4;border-radius:8px;padding:12px 14px;font-size:13px;color:#14423a}
+    .token-result code{display:block;margin-top:8px;background:#fff;border:1px dashed #9ed3bf;border-radius:6px;padding:8px;word-break:break-all;font:12px ui-monospace,monospace;user-select:all}
+    .config-editor{display:block;width:100%;min-height:340px;padding:16px;border:1px solid var(--line);border-radius:8px;background:#f8fbfa;color:var(--ink);font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;tab-size:2}
+    .config-editor:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px #bcebe5}
+    .config-actions{display:flex;align-items:center;gap:12px;margin-top:14px}.config-actions .primary-btn:disabled{opacity:.55;cursor:wait}.config-note{color:var(--muted);font-size:13px;line-height:1.6}.config-feedback{font-size:13px;font-weight:700}
+    .test-media-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.test-media-fields .field{margin:8px 0}.test-media-fields .field:first-child:last-child{grid-column:span 2}
+    .test-media-fields input{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}.test-media-note{font-size:12px;color:var(--muted);margin:4px 0 10px}
+    @media(max-width:600px){.test-media-fields{grid-template-columns:1fr}.test-media-fields .field:first-child:last-child{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <div id="login" class="login"><form id="loginForm" class="login-box"><p class="eyebrow">GLANCE / PRIVATE OPS</p><h1>Admin Console</h1><p>管理任务队列、Widget 审核和 Worker 运行状态。</p><div id="loginError" class="error hidden" role="alert"></div><div class="field"><label for="username">用户名</label><input id="username" name="username" autocomplete="username" required></div><div class="field"><label for="password">密码</label><input id="password" name="password" type="password" autocomplete="current-password" required></div><button class="primary" type="submit">登录控制台</button></form></div>
+  <div id="app" class="shell hidden"><aside class="side"><div class="brand">Glance <small>Operations Console</small></div><nav class="nav" aria-label="后台导航"><button class="active" data-view="overview">Overview</button><button data-view="tasks">Task Center</button><button data-view="widgets">Widget Review</button><button data-view="users">用户与授权</button><button data-view="redemptions">兑换码</button><button data-view="metrics">收费指标</button><button data-view="pricing">定价与授权</button><button data-view="orders">订单与退款</button><button data-view="config">Glance 配置</button></nav><div class="side-foot">Private surface<br>Session protected</div></aside><main class="main"><header class="top"><div><p class="eyebrow">SERVICE CONTROL PLANE</p><h1 id="title">运营概览</h1><p id="subtitle">任务、审核与 Worker 的实时摘要。</p></div><div style="display:flex;gap:8px"><button id="refresh" class="outline">刷新数据</button><button id="logout" class="outline">退出登录</button></div></header><div id="content"></div></main></div>
+  <div id="createWidgetModal" class="modal-mask hidden" role="dialog" aria-modal="true">
+    <form id="createWidgetForm" class="modal">
+      <h2 id="cw-title">新建 Widget</h2>
+      <p class="hint">填写 Widget 信息与命令内容。系统会自动生成 Widget ID 和命令 ID；创建成功后会显示这些 ID 与一次性 Worker Token。</p>
+      <div class="form-grid">
+        <div class="field"><label for="cw-version">版本号</label><input id="cw-version" required placeholder="1.0.0"></div>
+        <div class="field"><label for="cw-name">名称</label><input id="cw-name" required placeholder="Blur Background"></div>
+        <div class="field"><label for="cw-credit-cost">每次任务消耗积分（0 为免费）</label><input id="cw-credit-cost" type="number" min="0" max="1000000" step="1" value="1" required></div>
+        <div class="field"><label for="cw-author">作者</label><input id="cw-author" required placeholder="Example Studio"></div>
+        <div class="field span2"><label for="cw-summary">一句话摘要</label><input id="cw-summary" required placeholder="Blur the background of the selected image."></div>
+        <div class="field span2"><label for="cw-icon">图标 URL（可选）</label><input id="cw-icon" placeholder="https://example.com/icon.png"></div>
+        <div class="field"><label for="cw-command-name">命令名称</label><input id="cw-command-name" required placeholder="Blur Background"></div>
+        <div class="field span2"><label for="cw-command-desc">命令说明</label><input id="cw-command-desc" required placeholder="Upload an image and blur its background."></div>
+        <div class="field"><label for="cw-name-en">英文名称（localizations.en）</label><input id="cw-name-en" placeholder="Blur Background"></div>
+        <div class="field span2"><label for="cw-summary-en">英文摘要</label><input id="cw-summary-en" placeholder="Blur the background of the selected image."></div>
+        <div class="field"><label for="cw-command-name-en">英文命令名称</label><input id="cw-command-name-en" placeholder="Blur Background"></div>
+        <div class="field span2"><label for="cw-command-desc-en">英文命令说明</label><input id="cw-command-desc-en" placeholder="Upload an image and blur its background."></div>
+        <div class="field"><label>输出类型</label><div class="input-choice output-choice"><label><input type="checkbox" id="cw-output-image" checked> image</label><label><input type="checkbox" id="cw-output-video"> video</label><label><input type="checkbox" id="cw-output-text"> text</label><label><input type="checkbox" id="cw-output-audio"> audio</label></div></div>
+        <div class="field"><label>媒体结果</label><div class="input-choice"><label><input type="checkbox" id="cw-show-result-url"> 显示复制 URL 按钮</label></div></div>
+        <div class="field"><label for="cw-status">状态</label><select id="cw-status"><option value="manual_review">manual_review（走审核流程）</option><option value="gray_release">gray_release（灰度可见）</option><option value="published">published（立即发布）</option><option value="suspended">suspended（暂停）</option><option value="rejected">rejected（拒绝）</option></select></div>
+        <div class="field span2"><label for="cw-privacy">隐私说明（必填，用户可读）</label><textarea id="cw-privacy" required placeholder="The selected image is uploaded to the Widget service for processing."></textarea></div>
+        <div class="field"><label>输入媒体</label><div class="input-choice"><label><input type="checkbox" id="cw-input-image" checked> image</label><label><input type="checkbox" id="cw-input-video"> video</label></div></div>
+        <div class="field"><label for="cw-image-count">图片输入</label><select id="cw-image-count"><option value="1">单图</option><option value="4">多图（最多 4 张）</option></select></div>
+        <div class="field"><label for="cw-video-count">视频输入</label><select id="cw-video-count" disabled><option value="1">单视频</option><option value="4">多视频（最多 4 段）</option></select></div>
+        <div class="field"><label>附加输入</label><div class="input-choice"><label><input type="checkbox" id="cw-input-prompt"> 文字 prompt</label><label><input type="checkbox" id="cw-input-mask"> mask</label></div></div>
+        <div class="field span2"><p class="hint">图片和视频同时勾选表示两种媒体都可触发此 Widget。文字可与媒体一起提交；mask 目前仅支持单图。多图和多视频按顺序传入。</p></div>
+      </div>
+      <div id="cw-error" class="create-error hidden"></div>
+      <div id="cw-result" class="token-result hidden"></div>
+      <div class="modal-actions"><button type="button" class="ghost-btn" onclick="closeCreateWidget()">取消</button><button id="cw-submit" class="primary-btn" type="submit">创建 Widget</button></div>
+    </form>
+  </div>
+  <div id="testWidgetModal" class="modal-mask hidden" role="dialog" aria-modal="true" aria-labelledby="tw-title">
+    <form id="testWidgetForm" class="modal">
+      <h2 id="tw-title">发送 Widget 测试</h2>
+      <p id="tw-subtitle" class="hint"></p>
+      <div id="tw-command-wrap" class="field"><label for="tw-command">测试命令</label><select id="tw-command"></select></div>
+      <div id="tw-media-kind-wrap" class="field hidden"><label for="tw-media-kind">输入类型</label><select id="tw-media-kind"></select></div>
+      <div id="tw-media-wrap"><div id="tw-media-fields" class="test-media-fields"></div><p id="tw-media-note" class="test-media-note"></p></div>
+      <div id="tw-prompt-wrap" class="field hidden"><label for="tw-prompt">文字 prompt</label><textarea id="tw-prompt" rows="4" placeholder="输入测试提示词"></textarea></div>
+      <div id="tw-mask-wrap" class="field hidden"><label for="tw-mask">Mask HTTPS URL</label><input id="tw-mask" type="url" placeholder="https://example.com/mask.png"></div>
+      <div id="tw-error" class="create-error hidden" role="alert"></div>
+      <div class="modal-actions"><button type="button" class="ghost-btn" onclick="closeTestWidget()">取消</button><button id="tw-submit" class="primary-btn" type="submit">发送测试任务</button></div>
+    </form>
+  </div>
+  <script>
+    const $=s=>document.querySelector(s), state={overview:null,tasks:[],widgets:[],versions:[],uploadSettings:null,glanceConfig:null}; let currentView='overview',editingWidgetId=null,testVersion=null,loadSeq=0,loadController=null;
+    const api=async(path,options={})=>{const r=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const b=await r.json().catch(()=>({}));if(!r.ok)throw Error(b.error?.message||'请求失败');return b.result};
+    const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const count=(rows,statuses)=>rows.filter(x=>statuses.includes(x.status)).reduce((n,x)=>n+Number(x.count||0),0);
+    const pill=s=>{const cls=['succeeded','completed','published','gray_release','test_passed'].includes(s)?'good':['failed','rejected','suspended'].includes(s)?'bad':['queued','claimed','running','manual_review'].includes(s)?'warn':'blue';return `<span class="pill ${cls}">${esc(s)}</span>`};
+    function mediaMarkup(value){
+      const items=[],seen=new Set();
+      const addURL=(url,type)=>{if(typeof url==='string'&&/^https?:\/\//i.test(url)&&!seen.has(url)){seen.add(url);items.push({url,type})}};
+      const walk=(entry,hint='')=>{
+        if(Array.isArray(entry)){entry.forEach(item=>walk(item,hint));return}
+        if(entry&&typeof entry==='object'){
+          if(entry.type==='text'&&typeof entry.text==='string'){items.push({text:entry.text,type:'text'});return}
+          if(Array.isArray(entry.images))entry.images.forEach(url=>addURL(url,'image'));
+          if(Array.isArray(entry.videos))entry.videos.forEach(url=>addURL(url,'video'));
+          if(typeof entry.url==='string'){addURL(entry.url,entry.type||hint);return}
+          if(!entry.images&&!entry.videos)Object.values(entry).forEach(item=>walk(item,hint));
+        }else addURL(entry,hint)
+      };
+      walk(value);
+      if(!items.length)return '<span class="media-empty">—</span>';
+      return `<div class="media-strip">${items.slice(0,4).map(item=>{
+        if(item.type==='text')return `<pre class="json">${esc(item.text)}</pre>`;
+        if(item.type==='audio')return `<audio controls src="${esc(item.url)}"></audio>`;
+        const video=/video/i.test(item.type)||/\.(mp4|mov|webm|m4v)(?:$|[?#])/i.test(item.url);
+        return `<a href="${esc(item.url)}" target="_blank" rel="noopener" title="打开媒体"><${video?'video controls preload="metadata"':'img loading="lazy"'} src="${esc(item.url)}"${video?'':' alt="任务媒体"'}></${video?'video':'img'}></a>`
+      }).join('')}</div>`
+    }
+    function renderOverview(){const o=state.overview,t=o.tasks,w=o.widgets;$('#title').textContent='运营概览';$('#subtitle').textContent='任务、审核与 Worker 的实时摘要。点击“刷新数据”获取最新状态。';$('#content').innerHTML=`<div class="cards"><div class="card"><div class="stat-label">运行中任务</div><div class="stat-value">${count(t,['running','claimed'])}</div></div><div class="card"><div class="stat-label">待审核版本</div><div class="stat-value">${count(w,['manual_review'])}</div></div><div class="card"><div class="stat-label">失败任务</div><div class="stat-value">${count(t,['failed'])}</div></div><div class="card"><div class="stat-label">在线 Worker</div><div class="stat-value">${count(o.workers,['active'])}</div></div></div><div class="section"><div class="section-head"><h2>任务状态</h2><span>来自 D1 当前聚合</span></div><div class="table-wrap"><table><thead><tr><th>状态</th><th>数量</th><th>含义</th></tr></thead><tbody>${t.map(x=>`<tr><td>${pill(x.status)}</td><td>${x.count}</td><td>${esc({queued:'等待 Worker',claimed:'已领取',running:'处理中',succeeded:'已完成',failed:'失败',cancelled:'已取消'}[x.status]||'—')}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">暂无任务</td></tr>'}</tbody></table></div></div><div class="section"><div class="section-head"><h2>最近任务</h2><span>最近 100 条中的最新 10 条</span></div><div class="table-wrap"><table><thead><tr><th>任务</th><th>Widget</th><th>类型</th><th>状态</th><th>尝试</th><th>错误</th><th>结果</th></tr></thead><tbody>${state.tasks.slice(0,10).map(x=>`<tr><td class="mono">${esc(x.id).slice(0,22)}</td><td>${esc(x.widget_name||x.widget_id)}<br><span class="mono">${esc(x.command_id)}</span></td><td>${pill(x.type)}</td><td>${pill(x.status)}</td><td>${x.attempts}</td><td>${esc(x.error_code||'—')}</td><td class="json" title="${esc(JSON.stringify(x.result))}">${esc(x.result?JSON.stringify(x.result):'—')}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">暂无任务</td></tr>'}</tbody></table></div></div>`}
+    function renderUploadSettings(){const s=state.uploadSettings;$('#content').insertAdjacentHTML('beforeend',`<div class="section"><div class="section-head"><h2>图片上传策略</h2><button class="row-action" onclick="load('config')">编辑 Glance 配置</button></div><div style="padding:18px 20px"><label class="check-row" style="padding-top:0"><input id="locationUploadToggle" type="checkbox" ${s.locationBasedUpload?'checked':''}> 按地区选择存储</label><p style="color:var(--muted);font-size:13px;line-height:1.6">开启：Glance 客户端在中国地区优先上传图片到 Freeimage，失败时回退 R2；其他地区使用 R2。关闭：所有媒体统一上传 R2。客户端每次上传前读取此配置。</p></div></div>`);$('#locationUploadToggle').addEventListener('change',e=>setLocationBasedUpload(e.target.checked))}
+    async function setLocationBasedUpload(enabled){const input=$('#locationUploadToggle');input.disabled=true;try{state.uploadSettings=await api('/api/admin/v2/upload-settings',{method:'PUT',body:JSON.stringify({locationBasedUpload:enabled})});await load('overview')}catch(e){input.checked=!enabled;input.disabled=false;alert(e.message)}}
+    function renderConfig(){
+      $('#title').textContent='Glance 配置';$('#subtitle').textContent='编辑下发给 Glance 客户端的配置。保存后，新请求会读取最新值。';
+      $('#content').innerHTML=`<div class="section"><div class="section-head"><h2>glance_config</h2><span>JSON 配置</span></div><div style="padding:20px"><p class="config-note">可新增或修改字段。<strong>locationBasedUpload</strong> 必须是布尔值；开启时中国地区图片优先使用本机 Freeimage，关闭时全部使用 R2。此处所有字段都会下发给客户端，请勿填写 API Key、Token 或其他密钥。</p><label for="configJson" class="mono" style="display:block;margin:16px 0 8px">配置内容</label><textarea id="configJson" class="config-editor" spellcheck="false">${esc(JSON.stringify(state.glanceConfig,null,2))}</textarea><div class="config-actions"><button id="saveConfig" class="primary-btn" onclick="saveConfig()">保存配置</button><span id="configFeedback" class="config-feedback" role="status"></span></div></div></div>`;
+    }
+    async function saveConfig(){
+      const feedback=$('#configFeedback'),button=$('#saveConfig');feedback.textContent='';
+      let config;try{config=JSON.parse($('#configJson').value);if(!config||Array.isArray(config)||typeof config!=='object'||typeof config.locationBasedUpload!=='boolean')throw Error('配置必须是 JSON 对象，且 locationBasedUpload 必须为 true 或 false。')}catch(e){feedback.style.color='var(--red)';feedback.textContent=e.message;return}
+      button.disabled=true;try{state.glanceConfig=await api('/api/admin/v2/glance-config',{method:'PUT',body:JSON.stringify(config)});$('#configJson').value=JSON.stringify(state.glanceConfig,null,2);feedback.style.color='var(--teal-dark)';feedback.textContent='已保存，客户端新请求将读取此配置。'}catch(e){feedback.style.color='var(--red)';feedback.textContent=e.message}finally{button.disabled=false}
+    }
+    let userQuery='',userBefore=null,userNextBefore=null;
+    function renderUsers(users){
+      $('#title').textContent='用户与授权';$('#subtitle').textContent='按邮箱、姓名或用户 ID 查找账户。免费赠送为终身 Pro 与终身功能更新，Mac 名额沿用授权配置；云端积分单独发放。';
+      $('#content').innerHTML=`<div class="section"><div class="section-head"><h2>用户账户</h2><form id="userSearch"><input id="userQuery" aria-label="邮箱、姓名或用户 ID" maxlength="200" placeholder="邮箱、姓名或用户 ID" value="${esc(userQuery)}"><button class="row-action">搜索</button></form><button class="row-action" onclick="load('users')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>用户</th><th>状态</th><th>Pro 授权</th><th>积分余额</th><th>发放积分</th></tr></thead><tbody>${users.map(user=>`<tr><td>${esc(user.name||user.email)}<br><span class="mono">${esc(user.email)} · #${user.id}</span></td><td>${pill(user.status)}</td><td>${user.license_status==='active'?`<strong>Pro · ${user.license_source==='admin'?'管理员授予':user.license_source==='redemption'?'兑换码':'购买'}</strong><br><span class="mono">${user.access_expires_at?'至 '+new Date(user.access_expires_at).toLocaleDateString():'终身免费更新'} · ${user.device_limit??'—'} 台 Mac · 已激活 ${user.active_devices??0} 台</span>`:`<span>${user.license_status==='refunded'?'已退款':'免费版'}</span>${user.status==='active'?`<form data-pro-user="${user.id}" data-pro-email="${esc(user.email)}" style="margin-top:8px"><label>赠送备注 <input name="note" aria-label="赠送终身 Pro 原因" maxlength="500" required style="width:150px"></label> <button class="row-action" type="submit">免费赠送终身 Pro</button><span role="status" class="config-feedback"></span></form>`:''}`}${user.grant_count?`<br><button class="row-action" data-grant-history="${user.id}">赠送记录（${user.grant_count}）</button><div data-grant-details="${user.id}"></div>`:''}</td><td data-user-balance>${user.credits}</td><td><form data-credit-user="${user.id}"><label>数量 <input name="amount" aria-label="发放积分数量" type="number" min="1" max="1000000000" step="1" required style="width:90px"></label> <label>备注 <input name="note" aria-label="发放原因" maxlength="500" required style="width:150px"></label> <button class="row-action" type="submit">发放</button><span role="status" class="config-feedback"></span></form></td></tr>`).join('')||'<tr><td colspan="5" class="empty">暂无用户</td></tr>'}</tbody></table></div></div>`;
+      $('#content').insertAdjacentHTML('beforeend',`<div class="config-actions"><button class="row-action" id="usersFirst">回到第一页</button><button class="row-action" id="usersNext" ${userNextBefore?'':'disabled'}>下一页</button></div>`);
+      $('#userSearch').onsubmit=event=>{event.preventDefault();userQuery=$('#userQuery').value.trim();userBefore=null;load('users')};
+      $('#usersFirst').onclick=()=>{userBefore=null;load('users')};
+      $('#usersNext').onclick=()=>{userBefore=userNextBefore;load('users')};
+      document.querySelectorAll('[data-grant-history]').forEach(button=>button.onclick=async()=>{
+        const target=document.querySelector('[data-grant-details="'+button.dataset.grantHistory+'"]');button.disabled=true;
+        try{const data=await api('/api/admin/v2/users/'+button.dataset.grantHistory+'/pro');target.innerHTML=data.grants.map(g=>`<p>${esc(new Date(g.created_at).toLocaleString())} · ${g.device_limit} 台 Mac · ${g.active?'生效中':'已失效'}<br>${esc(g.note)}<br><span class="mono">${esc(g.id)} · ${esc(g.actor_id)}</span></p>`).join('')||'暂无赠送记录'}
+        catch(error){target.textContent=error.message}finally{button.disabled=false}
+      });
+      document.querySelectorAll('[data-credit-user]').forEach(form=>form.addEventListener('submit',async event=>{
+        event.preventDefault();const button=form.querySelector('button'),feedback=form.querySelector('[role=status]');
+        const payload=JSON.stringify({amount:Number(form.elements.amount.value),note:form.elements.note.value.trim()});
+        if(!form.requestKey||form.lastPayload!==payload){form.requestKey=crypto.randomUUID();form.lastPayload=payload}
+        button.disabled=true;feedback.textContent='正在发放…';
+        try{const result=await api('/api/admin/v2/users/'+form.dataset.creditUser+'/credits',{method:'POST',headers:{'Idempotency-Key':form.requestKey},body:payload});form.closest('tr').querySelector('[data-user-balance]').textContent=result.balance;feedback.textContent='已发放';form.reset();form.requestKey=null}
+        catch(error){feedback.textContent=error.message}finally{button.disabled=false}
+      }));
+      document.querySelectorAll('[data-pro-user]').forEach(form=>form.addEventListener('submit',async event=>{
+        event.preventDefault();const button=form.querySelector('button'),feedback=form.querySelector('[role=status]');
+        const note=form.elements.note.value.trim();if(!note)return;
+        const payload=JSON.stringify({note});
+        if(!form.requestKey||form.lastPayload!==payload){
+          if(!confirm('将 '+form.dataset.proEmail+' 免费赠送终身 Pro？包含终身功能更新，Mac 名额按授权配置；不发放云端积分。'))return;
+          form.requestKey=crypto.randomUUID();form.lastPayload=payload;
+        }
+        button.disabled=true;form.setAttribute('aria-busy','true');feedback.textContent='正在升级…';
+        try{
+          const result=await api('/api/admin/v2/users/'+form.dataset.proUser+'/pro',{method:'POST',headers:{'Idempotency-Key':form.requestKey},body:payload});
+          const user=users.find(user=>String(user.id)===form.dataset.proUser);
+          Object.assign(user,{license_status:result.license.status,license_source:'admin',updates_until:result.license.updates_until,device_limit:result.license.device_limit,grant_count:(user.grant_count||0)+1});
+          renderUsers(users);
+        }catch(error){feedback.textContent=error.message;button.disabled=false;form.setAttribute('aria-busy','false')}
+      }));
+    }
+    let lastRedemptionResult=null;
+    function renderRedemptions(batches){
+      $('#title').textContent='Pro 兑换码';$('#subtitle').textContent='生成终身或一年 Pro 兑换码。明文仅在生成时显示一次；兑换不赠送点数，也不计入付费收入。';
+      const kindLabel=kind=>kind==='one_year'?'一年 Pro':'终身 Pro';
+      $('#content').innerHTML=`<div class="section"><div class="section-head"><h2>生成兑换码批次</h2><span>当前环境：${esc(batches[0]?.billing_mode||'由 Worker 决定')}</span></div><div style="padding:20px"><form id="redemptionForm"><div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))"><label class="field"><span>授权类型</span><select name="kind"><option value="lifetime">终身 Pro</option><option value="one_year">一年 Pro（到期回免费版）</option></select></label><label class="field"><span>数量</span><input name="quantity" type="number" min="1" max="100" step="1" value="10" required></label><label class="field"><span>每账户 Mac 名额</span><input name="deviceLimit" type="number" min="1" max="20" step="1" value="1" required></label><label class="field"><span>兑换截止日期（可选）</span><input name="expiresAt" type="datetime-local"></label></div><label class="field" style="margin-top:14px"><span>批次备注</span><input name="note" maxlength="500" required placeholder="例如：V2EX 首发用户"></label><div class="config-actions" style="margin-top:16px"><button class="primary-btn" type="submit">生成兑换码</button><span id="redemptionFeedback" class="config-feedback" role="status"></span></div></form><div id="redemptionResult" ${lastRedemptionResult?'':'hidden'} style="margin-top:18px">${lastRedemptionResult?`<p class="config-note">批次 <span class="mono">${esc(lastRedemptionResult.batchID)}</span> 已生成。请现在复制并安全保存，关闭或刷新后无法找回明文。</p><textarea id="redemptionCodesText" class="config-editor" style="min-height:180px" readonly>${esc(lastRedemptionResult.codes.join('\n'))}</textarea><div class="config-actions"><button id="copyRedemptionCodes" class="row-action" type="button">复制全部兑换码</button><span id="copyRedemptionFeedback" class="config-feedback" role="status"></span></div>`:''}</div></div></div><div class="section"><div class="section-head"><h2>最近 100 个批次</h2><button class="row-action" onclick="load('redemptions')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>批次 / 备注</th><th>类型 / 环境</th><th>发放</th><th>兑换</th><th>有效 / 激活</th><th>到期 / 撤销</th><th>兑换截止</th><th>操作</th></tr></thead><tbody>${batches.map(batch=>`<tr><td><span class="mono">${esc(batch.batch_id)}</span><br>${esc(batch.note)}<br><span class="mono">${esc(new Date(batch.created_at).toLocaleString())} · ${esc(batch.actor_id)}</span></td><td>${esc(kindLabel(batch.kind))}<br>${pill(batch.billing_mode)} · ${batch.device_limit} 台 Mac</td><td>${batch.issued}</td><td>${batch.redeemed}</td><td>${batch.active} / ${batch.activated}</td><td>${batch.expired} / ${batch.revoked}</td><td>${batch.expires_at?esc(new Date(batch.expires_at).toLocaleString()):'长期有效'}</td><td><button class="row-action" data-revoke-batch="${esc(batch.batch_id)}" ${Number(batch.issued)-Number(batch.redeemed)-Number(batch.revoked)<=0?'disabled':''}>撤销未使用码</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">暂无兑换码批次</td></tr>'}</tbody></table></div></div>`;
+      $('#redemptionForm').onsubmit=async event=>{
+        event.preventDefault();const form=event.currentTarget,button=form.querySelector('button[type=submit]'),feedback=$('#redemptionFeedback');
+        const expiry=form.elements.expiresAt.value;
+        const payload={kind:form.elements.kind.value,quantity:Number(form.elements.quantity.value),deviceLimit:Number(form.elements.deviceLimit.value),note:form.elements.note.value.trim(),expiresAt:expiry?new Date(expiry).toISOString():null};
+        button.disabled=true;feedback.textContent='正在生成…';
+        try{
+          const result=await api('/api/admin/v2/redemption-codes',{method:'POST',body:JSON.stringify(payload)});
+          lastRedemptionResult={batchID:result.batch.id,codes:result.codes};await load('redemptions');
+        }catch(error){feedback.textContent=error.message;button.disabled=false}
+      };
+      if(lastRedemptionResult)$('#copyRedemptionCodes').onclick=async()=>{
+        const text=lastRedemptionResult.codes.join('\n'),feedback=$('#copyRedemptionFeedback');
+        try{if(navigator.clipboard)await navigator.clipboard.writeText(text);else{$('#redemptionCodesText').select();document.execCommand('copy')}feedback.textContent='已复制'}catch(error){feedback.textContent='复制失败，请手动全选复制'}
+      };
+      document.querySelectorAll('[data-revoke-batch]').forEach(button=>button.onclick=async()=>{
+        if(!confirm('撤销此批次全部未使用兑换码？已兑换的 Pro 不受影响。'))return;
+        button.disabled=true;try{await api('/api/admin/v2/redemption-codes/'+encodeURIComponent(button.dataset.revokeBatch)+'/revoke',{method:'POST'});await load('redemptions')}catch(error){alert(error.message);button.disabled=false}
+      });
+    }
+    function renderTasks(){ $('#title').textContent='Task Center';$('#subtitle').textContent='查看任务响应、输入媒体、输出产物和失败原因。';$('#content').innerHTML=`<div class="section"><div class="section-head"><h2>最近 100 个任务</h2><button class="row-action" onclick="load('tasks')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>任务</th><th>Widget</th><th>类型</th><th>状态</th><th>输入媒体</th><th>输出结果</th><th>最近领取机器</th><th>尝试</th><th>错误</th><th>创建时间</th></tr></thead><tbody>${state.tasks.map(x=>`<tr><td class="mono">${esc(x.id).slice(0,22)}</td><td>${esc(x.widget_name||x.widget_id)}<br><span class="mono">${esc(x.command_id)}</span></td><td>${pill(x.type)}</td><td>${pill(x.status)}</td><td class="media-cell">${mediaMarkup(x.input)}</td><td class="media-cell">${mediaMarkup(x.result)}</td><td>${x.machine_name?`${esc(x.machine_name)}<br><span class="mono">${esc(x.machine_platform||'')}${x.machine_cli_version?` · CLI ${esc(x.machine_cli_version)}`:''}</span>`:'<span class="media-empty">未上报</span>'}</td><td>${x.attempts}</td><td class="error-cell">${x.error_code?`<details><summary>${esc(x.error_code)}</summary><div class="error-detail">${esc(x.error_code)}<br>Task: <span class="mono">${esc(x.id)}</span></div></details>`:'<span class="media-empty">—</span>'}</td><td>${esc(new Date(x.created_at).toLocaleString())}</td></tr>`).join('')||'<tr><td colspan="10" class="empty">暂无任务</td></tr>'}</tbody></table></div></div>`}
+    function renderWidgets(){ $('#title').textContent='Widget Review';$('#subtitle').textContent='先发送测试任务并检查输出，再决定灰度和正式发布。';const pending=state.versions.filter(x=>['manual_review','test_passed','gray_release'].includes(x.status));$('#content').innerHTML=`<div class="section"><div class="section-head"><h2>待审核与灰度版本</h2><button class="row-action" onclick="load('widgets')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>Widget / 版本</th><th>状态</th><th>最近测试</th><th>操作</th></tr></thead><tbody>${pending.map(x=>{const tests=state.tasks.filter(t=>t.version_id===x.version_id&&t.type==='review_test');const latest=tests[0];return `<tr><td><strong>${esc(x.name)}</strong><br><span class="mono">${esc(x.widget_id)} v${esc(x.version)}</span></td><td>${pill(x.status)}</td><td>${latest?`${pill(latest.status)} ${mediaMarkup(latest.result)}<br><span class="mono">${esc(latest.id)}</span>`:'尚未测试'}</td><td>${x.status!=='gray_release'?`<button class="row-action" onclick="sendTest('${esc(x.version_id)}')">发送测试</button><button class="row-action" onclick="review('${esc(x.version_id)}','approve')">灰度发布</button><button class="row-action" onclick="review('${esc(x.version_id)}','reject')">拒绝</button>`:`<button class="row-action" onclick="review('${esc(x.version_id)}','promote')">正式发布</button>`}</td></tr>`}).join('')||'<tr><td colspan="4" class="empty">暂无待审核版本</td></tr>'}</tbody></table></div></div><div class="section"><div class="section-head"><h2>全部 Widget</h2><button class="row-action" onclick="openCreateWidget()">新建 Widget</button></div><div class="table-wrap"><table><thead><tr><th>Widget / ID</th><th>当前版本</th><th>作者 / 积分</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead><tbody>${state.widgets.map(x=>`<tr><td><strong>${esc(x.name)}</strong><br><span class="mono">${esc(x.widgetId)}</span></td><td class="mono">v${esc(x.currentVersion)}</td><td>${esc(x.author)}<br>${x.manifest?.creditCost??1} 积分 / ${x.manifest?.billing?.mode==='duration'?'10 秒（向上取整）':'次'}</td><td>${pill(x.status)}</td><td>${esc(new Date(x.updatedAt).toLocaleString())}</td><td><button class="row-action" onclick="openCreateWidget('${esc(x.widgetId)}')">编辑</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">暂无 Widget</td></tr>'}</tbody></table></div></div>`}
+    function attachWidgetDeleteButtons(){
+      const rows=$('#content').querySelectorAll('.section:nth-of-type(2) tbody tr');
+      state.widgets.forEach((widget,index)=>{
+        if(!widget.deletable||!rows[index])return;
+        const button=document.createElement('button');button.type='button';button.className='row-action';button.textContent='删除';
+        button.addEventListener('click',()=>deleteWidget(widget.widgetId,widget.name));
+        rows[index].lastElementChild.appendChild(button);
+      });
+    }
+    async function deleteWidget(id,name){
+      if(!confirm(`确认删除「${name}」？Widget 会从市场移除，Worker 绑定会失效；历史任务仍保留。`))return;
+      try{await api('/api/admin/v2/widgets/'+encodeURIComponent(id),{method:'DELETE'});await load('widgets')}
+      catch(e){alert(e.message||'删除失败')}
+    }
+
+
+    function renderBillingMetrics(data){
+      $('#title').textContent='上线漏斗与授权指标';$('#subtitle').textContent='支付、扣点、退点使用服务端记录；界面埋点为尽力采集。没有足够样本时不显示虚假的 0% 或 100%。';
+      const percent=r=>r.rate===null?'暂无成熟样本':(r.rate*100).toFixed(1)+'%';
+      const stats=[['登录转化',data.login],['赠送耗尽率（7 天成熟队列）',data.giftDepletion],['余额不足 → 充值',data.insufficientTopup],['充值 → 原任务已受理',data.topupTaskSubmission],['试用期活跃',data.trialActivity],['试用 → Pro（到期后 7 天成熟）',data.trialConversion],['任务撤销率',data.cancellations]];
+      const table=(title,headers,rows)=>`<div class="section"><div class="section-head"><h2>${esc(title)}</h2></div><div class="table-wrap"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(v=>`<td>${esc(String(v))}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${headers.length}" class="empty">暂无数据</td></tr>`}</tbody></table></div></div>`;
+      const rangeOptions=[['today','今日（本地时间 0 点起）'],...[7,30,90].map(n=>[String(n),`最近 ${n} 天`]),['custom','自定义起始时间']];
+      $('#content').innerHTML=`<div class="card"><label>统计区间 <select id="metricsDays">${rangeOptions.map(([value,label])=>`<option value="${value}" ${value===metricsRange.mode?'selected':''}>${esc(label)}</option>`).join('')}</select></label> <label id="metricsFromLabel" class="${metricsRange.mode==='custom'?'':'hidden'}">起始 <input id="metricsFrom" type="datetime-local" value="${esc(metricsRange.custom)}"></label><p>当前统计：${esc(new Date(data.from).toLocaleString())} 至 ${esc(new Date(data.until).toLocaleString())}${data.from!==data.requestedFrom?'（早于埋点开始的部分已截去）':''}。埋点开始：${esc(new Date(data.instrumentedSince).toLocaleString())}。只统计采集开始后的记录；成熟队列排除尚未观察满时间的用户。</p></div><div class="cards" style="margin-top:18px">${stats.map(([label,value])=>`<div class="card"><div class="stat-label">${esc(label)}</div><div class="stat-value" style="font-size:24px">${percent(value)}</div><div class="stat-label">${value.numerator} / ${value.denominator}</div></div>`).join('')}</div>`+
+      table('官网访问 → 下载点击（按标签页会话）',['访问会话','点击下载会话','转化率'],[[data.launch.website.sessions,data.launch.website.downloaded,data.launch.website.sessions?(data.launch.website.downloaded/data.launch.website.sessions*100).toFixed(1)+'%':'—']])+
+      '<p class="empty">下载点击不代表安装成功。官网会话不与 Mac 或账户身份关联；尊重浏览器 DNT / GPC，原始官网事件保留 90 天。</p>'+
+      table('渠道（UTM）访问 → 下载点击',['source','medium','campaign','content','访问会话','点击下载会话','转化率'],(data.launch.channels||[]).map(p=>[p.source==='(none)'?'无渠道参数':p.source,p.medium||'—',p.campaign||'—',p.content||'—',p.sessions,p.downloaded,p.sessions?(p.downloaded/p.sessions*100).toFixed(1)+'%':'—']))+
+      '<p class="empty">只采集 utm_source / medium / campaign / content 四个白名单参数，且仅接受小写字母、数字、点、下划线和连字符；会话按区间内首次带参数的访问归属。流量很低时请看原始数量，不要只看转化率。</p>'+
+      table('Pro 漏斗（同一购买流程）',['展示','点击购买','正式建单','正式付款'],[[data.launch.proFunnel.offered,data.launch.proFunnel.clicked,data.launch.proFunnel.ordered,data.launch.proFunnel.paid]])+
+      '<p class="empty">仅统计正式环境，按区间内首次展示的流程去重，后续步骤须按顺序发生；付款不含沙盒、模拟付款和免费赠送。客户端漏报或乱序到达会低估漏斗。</p>'+
+      table('免费终身 Pro 发放',['发放次数','获赠用户','当前有效','当前已激活'],[[data.launch.grants.issued,data.launch.grants.users,data.launch.grants.active,data.launch.grants.activated]])+
+      table('Pro 兑换码',['类型','发放','兑换','当前有效','当前已激活','已到期'],(data.launch.redemptions||[]).map(p=>[p.kind==='one_year'?'一年 Pro':'终身 Pro',p.issued,p.redeemed,p.active,p.activated,p.expired]))+
+      table('官网点击',['页面','语言','目标','位置','次数','会话数'],data.launch.clicks.map(p=>[p.page,p.language,p.target,p.placement,p.clicks,p.sessions]))+
+      table('客户端事件',['事件','功能','环境','次数','设备数'],data.launch.events.map(p=>[p.kind,p.feature||'—',p.billing_mode||'旧版未记录',p.events,p.devices]))+
+      table('支付成功率 / 币种',['币种','已建订单','已到账','成功率'],data.payments.map(p=>[p.currency,p.created,p.paid,p.created?(p.paid/p.created*100).toFixed(1)+'%':'—']))+
+      table('支付方式',['币种','平台确认的方式','订单','已到账'],data.paymentMethods.map(p=>[p.currency,p.method==='unreported'?'尚未回报':p.method,p.orders,p.paid]))+
+      '<p class="empty">Pancake 只在成功通知中提供实际支付方式；未付款美元订单归为「尚未回报」，无法据此计算银行卡 / 钱包各自的失败率。</p>'+
+      table('退点率 / Widget',['Widget','付费任务','已退点','退点率'],data.taskRefunds.map(p=>[p.name||p.widget_id,p.tasks,p.refunded,p.tasks?(p.refunded/p.tasks*100).toFixed(1)+'%':'—']))+
+      table('退款率 / 商品',['商品','已支付','已退款','退款率'],data.refunds.map(p=>[p.product,p.paid,p.refunded,p.paid?(p.refunded/p.paid*100).toFixed(1)+'%':'—']))+
+      table('免费版锁定点击',['功能','次数'],data.lockedClicks.map(p=>[p.feature,p.clicks]));
+      $('#metricsDays').onchange=()=>{metricsRange.mode=$('#metricsDays').value;if(metricsRange.mode==='custom'&&!metricsRange.custom){$('#metricsFromLabel').classList.remove('hidden');return}load('metrics')};
+      $('#metricsFrom').onchange=()=>{metricsRange.custom=$('#metricsFrom').value;if(metricsRange.custom)load('metrics')};
+    }
+    let metricsRange={mode:'30',custom:''};
+    function metricsQuery(){
+      if(metricsRange.mode==='today'){const d=new Date();d.setHours(0,0,0,0);return 'from='+encodeURIComponent(d.toISOString())}
+      if(metricsRange.mode==='custom')return 'from='+encodeURIComponent(new Date(metricsRange.custom).toISOString());
+      return 'days='+metricsRange.mode;
+    }
+    function renderPricing(settings){
+      $('#title').textContent='定价与授权';$('#subtitle').textContent='独立配置 CNY、USD、JPY、EUR、HKD。JPY 使用整数日元，其他币种使用分 / cents。保存后影响新订单，已创建订单保留价格快照。';
+      const numeric={trialDays:'试用天数',signupCredits:'注册赠点',proBonusCredits:'Pro 首购赠点',deviceLimit:'Mac 数量',offlineDays:'离线授权天数',releaseLimit:'30 天释放设备次数',confirmationThreshold:'任务二次确认阈值',queueMinutes:'排队最长分钟数',maxAttempts:'Worker 最大领取次数'};
+      const field=(name,label,value,type='text')=>`<label class="field"><span>${esc(label)}</span><input data-pricing="${esc(name)}" type="${type}" ${type==='number'?'min="0" step="1"':''} value="${esc(value??'')}"></label>`;
+      $('#content').innerHTML=`<form id="pricingForm"><div class="section"><div class="section-head"><h2>销售开关</h2><label><input id="salesEnabled" type="checkbox" ${settings.enabled?'checked':''}> 开启销售与客户端权限限制</label></div><div class="card">支付密钥未配置时，客户端购买按钮保持禁用，且不会锁定本地工具。商户私钥与 webhook 公钥通过 Worker secrets 配置。</div></div><div class="section"><div class="section-head"><h2>Pro 档位（team = 含购买者共 5 个账号，每账号 Mac 数见下表）</h2><button id="addTier" class="outline" type="button">新增档位</button></div><div class="table-wrap"><table><thead><tr><th>档位</th><th>Mac 数</th><th>CNY 分（正式 / 首发）</th><th>USD cents（正式 / 首发）</th><th>JPY 整数日元</th><th>EUR cents</th><th>HKD 分</th><th>商品 ID</th><th>启用 / 推荐</th><th></th></tr></thead><tbody id="tierRows"></tbody></table></div><div class="card" style="margin-top:12px">${field('launchUntil','首发价结束时间 UTC（ISO 8601，留空则不启用首发价）',settings.launchUntil)}</div></div><div class="section"><div class="section-head"><h2>积分包</h2><button id="addPack" class="outline" type="button">新增积分包</button></div><div class="table-wrap"><table><thead><tr><th>积分包</th><th>CNY 分 / 积分</th><th>USD cents / 积分</th><th>JPY 日元 / 积分</th><th>EUR cents / 积分</th><th>HKD 分 / 积分</th><th>商品 ID</th><th>启用 / 推荐</th><th></th></tr></thead><tbody id="packRows"></tbody></table></div></div><div class="section"><div class="section-head"><h2>授权、任务与退款联系</h2></div><div class="card" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">${Object.entries(numeric).map(([key,label])=>field(key,label,settings[key],'number')).join('')}${['taxCategory','supportEmail','termsURL','privacyURL','refundURL','lastCompatibleVersionURL'].map(key=>field(key,key,settings[key])).join('')}<label class="field"><span>价格含税</span><input id="taxIncluded" type="checkbox" ${settings.taxIncluded?'checked':''}></label></div></div><div class="card"><button class="outline" type="submit">保存定价</button> <span id="pricingResult" role="status"></span></div></form>`;
+      let packs=structuredClone(settings.packs), tiers=structuredClone(settings.proTiers);
+      const currencies=['CNY','USD','JPY','EUR','HKD'];
+      function drawTiers(){
+        tiers.forEach(t=>currencies.forEach(c=>t[c]??={amount:null}));
+        $('#tierRows').innerHTML=tiers.map((t,i)=>`<tr data-tier="${i}"><td><input name="id" aria-label="档位 ID" value="${esc(t.id)}" style="width:100px"><br><input name="name" aria-label="档位名称" value="${esc(t.name)}" style="width:100px"></td><td><input name="deviceLimit" type="number" min="1" max="20" aria-label="Mac 数" value="${t.deviceLimit}" style="width:60px"></td>${currencies.map(c=>`<td><input name="${c}.amount" type="number" aria-label="${c} 正式价" value="${t[c].amount??''}" style="width:90px">${['CNY','USD'].includes(c)?` / <input name="launch${c}.amount" type="number" aria-label="${c} 首发价" value="${t['launch'+c].amount??''}" style="width:90px">`:''}</td>`).join('')}<td><input name="productID" aria-label="Pancake 商品 ID" value="${esc(t.productID)}"></td><td><input name="enabled" aria-label="启用" type="checkbox" ${t.enabled?'checked':''}> / <input name="recommended" aria-label="推荐" type="checkbox" ${t.recommended?'checked':''}></td><td><button type="button" data-remove-tier="${i}" class="row-action">移除</button></td></tr>`).join('');
+        $('#tierRows').querySelectorAll('[data-remove-tier]').forEach(b=>b.onclick=()=>{readTiers();tiers.splice(Number(b.dataset.removeTier),1);drawTiers()});
+      }
+      function readTiers(){$('#tierRows').querySelectorAll('tr').forEach(row=>row.querySelectorAll('input').forEach(input=>assign(tiers[Number(row.dataset.tier)],input.name,input.type==='checkbox'?input.checked:input.type==='number'?(input.value===''?null:Number(input.value)):input.value.trim())))}
+      function drawPacks(){
+        packs.forEach(p=>currencies.forEach(c=>p[c]??={amount:null,points:p.USD.points}));
+        $('#packRows').innerHTML=packs.map((p,i)=>`<tr data-pack="${i}"><td><input name="id" aria-label="积分包 ID" value="${esc(p.id)}" style="width:110px"><br><input name="name" aria-label="积分包名称" value="${esc(p.name)}" style="width:110px"></td>${currencies.map(c=>`<td><input name="${c}.amount" type="number" aria-label="${c} 金额" value="${p[c].amount??''}" style="width:90px"> / <input name="${c}.points" type="number" aria-label="${c} 积分" value="${p[c].points}" style="width:90px"></td>`).join('')}<td><input name="productID" aria-label="Pancake 商品 ID" value="${esc(p.productID)}"></td><td><input name="enabled" aria-label="启用" type="checkbox" ${p.enabled?'checked':''}> / <input name="recommended" aria-label="推荐" type="checkbox" ${p.recommended?'checked':''}></td><td><button type="button" data-remove="${i}" class="row-action">移除</button></td></tr>`).join('');
+        $('#packRows').querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{readPacks();packs.splice(Number(b.dataset.remove),1);drawPacks()});
+      }
+      const assign=(target,path,value)=>{const parts=path.split('.');let obj=target;for(const part of parts.slice(0,-1))obj=obj[part];obj[parts.at(-1)]=value};
+      function readPacks(){$('#packRows').querySelectorAll('tr').forEach(row=>row.querySelectorAll('input').forEach(input=>assign(packs[Number(row.dataset.pack)],input.name,input.type==='checkbox'?input.checked:input.type==='number'?(input.value===''?null:Number(input.value)):input.value.trim())))}
+      drawTiers();$('#addTier').onclick=()=>{readTiers();if(tiers.length>=6)return;tiers.push({id:'tier_'+Date.now(),name:'New tier',enabled:false,recommended:false,deviceLimit:1,CNY:{amount:null},USD:{amount:null},launchCNY:{amount:null},launchUSD:{amount:null},productID:''});drawTiers()};
+      drawPacks();$('#addPack').onclick=()=>{readPacks();if(packs.length>=12)return;packs.push({id:'pack_'+Date.now(),name:'New package',enabled:false,recommended:false,CNY:{amount:null,points:120},USD:{amount:null,points:120},productID:''});drawPacks()};
+      $('#pricingForm').onsubmit=async event=>{event.preventDefault();readPacks();readTiers();const config=structuredClone(settings);delete config.revision;delete config.defaultCurrency;delete config.paymentsAvailable;delete config.serverTime;delete config.mockCheckout;config.packs=packs;config.proTiers=tiers;config.enabled=$('#salesEnabled').checked;config.taxIncluded=$('#taxIncluded').checked;document.querySelectorAll('[data-pricing]').forEach(input=>assign(config,input.dataset.pricing,input.type==='number'?(input.value===''?null:Number(input.value)):input.value.trim()|| (input.dataset.pricing==='launchUntil'?null:'')));const button=event.submitter;button.disabled=true;try{const saved=await api('/api/admin/v2/pricing',{method:'PUT',body:{revision:settings.revision,config}});renderPricing(saved);$('#pricingResult').textContent='已保存'}catch(error){$('#pricingResult').textContent=error.message}finally{button.disabled=false}};
+    }
+    function renderOrders(orders){
+      $('#title').textContent='订单与退款';$('#subtitle').textContent='仅支付平台确认成功后到账。批准退款会提交平台申请；refund.succeeded 后才撤销权益。';
+      $('#content').innerHTML=`<div class="section"><div class="section-head"><h2>最近 200 笔订单</h2><button class="outline" onclick="load('orders')">刷新</button></div><div class="table-wrap"><table><thead><tr><th>订单 / 用户</th><th>商品</th><th>金额 / 积分</th><th>支付状态</th><th>退款申请</th><th>创建时间</th><th>操作</th></tr></thead><tbody>${orders.map(o=>`<tr><td class="mono">${esc(o.id)}<br>${esc(o.email)}</td><td>${esc(o.product)} ${esc(o.pack_id||'')}<br>${o.billing_mode==='test'?'测试订单':'正式订单'}</td><td>${esc(o.currency)} ${(o.amount/(o.currency==='JPY'?1:100)).toFixed(o.currency==='JPY'?0:2)}<br>${o.credits} 积分</td><td>${pill(o.status)}<br>${esc(o.refund_status||'')}</td><td>${esc(o.refund_request_status||'—')}<br><span style="white-space:normal">${esc(o.refund_reason||'')}</span></td><td>${esc(new Date(o.created_at).toLocaleString())}</td><td>${['paid','refund_failed'].includes(o.status)&&o.refund_request_status!=='processing'?`<button class="row-action" data-refund="${esc(o.id)}">${o.refund_request_status==='requested'?'审核退款':'特殊退款'}</button>${o.refund_request_status==='requested'?`<button class="row-action" data-deny-refund="${esc(o.id)}">拒绝申请</button>`:''}`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">暂无订单</td></tr>'}</tbody></table></div></div>`;
+      document.querySelectorAll('[data-deny-refund]').forEach(button=>button.onclick=async()=>{const reason=prompt('请填写拒绝退款的原因：');if(!reason?.trim())return;button.disabled=true;try{await api('/api/admin/v2/orders/'+encodeURIComponent(button.dataset.denyRefund)+'/refund/deny',{method:'POST',body:{reason}});await load('orders')}catch(error){alert(error.message);button.disabled=false}});
+      document.querySelectorAll('[data-refund]').forEach(button=>button.onclick=async()=>{const reason=prompt('填写审批原因（特殊退款请记录重复支付 / 未到账等依据）：');if(!reason?.trim())return;if(!confirm('向支付平台提交这笔订单的退款申请？权益会在平台确认退款成功后撤销。'))return;button.disabled=true;try{await api('/api/admin/v2/orders/'+encodeURIComponent(button.dataset.refund)+'/refund',{method:'POST',body:{reason}});await load('orders')}catch(error){alert(error.message);button.disabled=false}});
+    }
+    async function load(view){
+      const seq=++loadSeq;
+      loadController?.abort();
+      const controller=new AbortController();loadController=controller;
+      const timer=setTimeout(()=>controller.abort(),15000);
+      const fetchView=path=>api(path,{signal:controller.signal});
+      const current=()=>seq===loadSeq;
+      currentView=view;
+      document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-current',b.dataset.view===view?'page':'false')});
+      $('#title').textContent={overview:'运营概览',tasks:'Task Center',widgets:'Widget Review',config:'Glance 配置',users:'用户与授权'}[view]||view;
+      $('#subtitle').textContent='正在加载数据…';
+      $('#content').innerHTML='<div class="section"><div class="empty" role="status">正在加载，请稍候…</div></div>';
+      try{
+        if(view==='overview'){
+          const extras=Promise.allSettled([fetchView('/api/admin/v2/tasks'),fetchView('/api/admin/v2/upload-settings')]);
+          state.overview=await fetchView('/api/admin/v2/overview');if(!current())return;
+          renderOverview();if(state.uploadSettings)renderUploadSettings();
+          const [tasks,settings]=await extras;if(!current())return;
+          if(tasks.status==='fulfilled')state.tasks=tasks.value;
+          if(settings.status==='fulfilled')state.uploadSettings=settings.value;
+          renderOverview();if(state.uploadSettings)renderUploadSettings();
+          if(tasks.status==='rejected'||settings.status==='rejected')$('#subtitle').textContent='部分数据未更新，请点击刷新数据重试。';
+        }else if(view==='tasks'){
+          state.tasks=await fetchView('/api/admin/v2/tasks');if(current())renderTasks();
+        }else if(view==='widgets'){
+          const extras=Promise.allSettled([fetchView('/api/admin/v2/widget-versions'),fetchView('/api/admin/v2/tasks')]);
+          const result=await fetchView('/api/admin/v2/widgets');if(!current())return;
+          state.widgets=result.widgets||[];renderWidgets();attachWidgetDeleteButtons();
+          const [versions,tasks]=await extras;if(!current())return;
+          if(versions.status==='fulfilled')state.versions=versions.value;
+          if(tasks.status==='fulfilled')state.tasks=tasks.value;
+          renderWidgets();attachWidgetDeleteButtons();
+          if(versions.status==='rejected'||tasks.status==='rejected')$('#subtitle').textContent='部分数据未更新，请点击刷新数据重试。';
+        }else if(view==='users'){
+          const result=await fetchView('/api/admin/v2/users?q='+encodeURIComponent(userQuery)+(userBefore?'&before='+userBefore:''));if(current()){userNextBefore=result.nextBefore;renderUsers(result.users||[])}
+        }else if(view==='redemptions'){
+          const result=await fetchView('/api/admin/v2/redemption-codes');if(current())renderRedemptions(result.batches||[]);
+        }else if(view==='metrics'){
+          const result=await fetchView('/api/admin/v2/billing/metrics?'+metricsQuery());if(current())renderBillingMetrics(result);
+        }else if(view==='pricing'){
+          const result=await fetchView('/api/admin/v2/pricing');if(current())renderPricing(result);
+        }else if(view==='orders'){
+          const result=await fetchView('/api/admin/v2/orders');if(current())renderOrders(result.orders||[]);
+        }else if(view==='config'){
+          state.glanceConfig=await fetchView('/api/admin/v2/glance-config');if(current())renderConfig();
+        }
+      }catch(e){
+        if(!current())return;
+        if(e.message==='Unauthorized'){showLogin();return}
+        const message=e.name==='AbortError'?'请求超时，请重试。':e.message||'加载失败，请重试。';
+        $('#subtitle').textContent=message;
+        $('#content').innerHTML=`<div class="section"><div class="empty" role="alert">${esc(message)} <button id="retryView" class="row-action" type="button">重试</button></div></div>`;
+        $('#retryView').addEventListener('click',()=>load(view));
+      }finally{
+        clearTimeout(timer);if(current())loadController=null;
+      }
+    }
+    function testInputSpec(command,kind){
+      const types=command.inputTypes||[],schema=command.parameterSchema||{},properties=schema.properties||schema;
+      const list=kind==='image'
+        ? properties.images||properties.imageUrls||properties.multipleImages
+        : properties.videos||properties.videoUrls||properties.multipleVideos;
+      const aliases=kind==='image'?['multiple_images','multi_image','multiple-images','multi-image']:['multiple_videos','multi_video','multiple-videos','multi-video'];
+      const multiple=!!list||aliases.some(type=>types.includes(type));
+      const max=multiple?Math.max(1,Math.min(4,Number.isInteger(list?.maxItems)?list.maxItems:4)):1;
+      const min=multiple?Math.max(1,Math.min(max,Number.isInteger(list?.minItems)?list.minItems:1)):1;
+      return {min,max,multiple,properties,requiresPrompt:Array.isArray(schema.required)&&schema.required.includes('prompt')};
+    }
+    function testMediaKinds(command){
+      const types=command.inputTypes||[];
+      return ['image','video'].filter(kind=>types.includes(kind)||testInputSpec(command,kind).multiple);
+    }
+    function currentTestCommand(){return testVersion?.manifest?.commands?.find(command=>command.id===$('#tw-command').value)}
+    function renderTestMedia(){
+      const command=currentTestCommand();if(!command)return;
+      const kinds=testMediaKinds(command);
+      $('#tw-media-kind-wrap').classList.toggle('hidden',kinds.length<2);
+      $('#tw-media-kind').innerHTML=kinds.map(kind=>`<option value="${kind}">${kind==='image'?'图片':'视频'}</option>`).join('');
+      renderTestFields();
+    }
+    function renderTestFields(){
+      const command=currentTestCommand();if(!command)return;
+      const kinds=testMediaKinds(command),kind=kinds.length>1?$('#tw-media-kind').value:kinds[0];
+      const spec=kind?testInputSpec(command,kind):null;
+      const properties=command.parameterSchema?.properties||command.parameterSchema||{};
+      $('#tw-media-wrap').classList.toggle('hidden',!kind);
+      $('#tw-media-fields').innerHTML=spec?Array.from({length:spec.max},(_,index)=>`<div class="field"><label for="tw-media-${index}">${kind==='image'?'图片':'视频'} ${index+1}${index<spec.min?' · 必填':' · 可选'}</label><input id="tw-media-${index}" type="url" inputmode="url" placeholder="https://example.com/${kind==='image'?'image.png':'video.mp4'}" ${index<spec.min?'required':''}></div>`).join(''):'';
+      $('#tw-media-note').textContent=spec?`按顺序填写 HTTPS URL · 至少 ${spec.min} ${kind==='image'?'张图片':'段视频'}，最多 ${spec.max} ${kind==='image'?'张':'段'}`:'';
+      const acceptsPrompt=!!properties.prompt||(command.inputTypes||[]).some(type=>['text','txt','prompt'].includes(type));
+      $('#tw-prompt-wrap').classList.toggle('hidden',!acceptsPrompt);
+      $('#tw-prompt').required=acceptsPrompt&&(spec?.requiresPrompt||!kind);
+      const acceptsMask=kind==='image'&&(!!properties.mask||(command.inputTypes||[]).includes('mask'));
+      $('#tw-mask-wrap').classList.toggle('hidden',!acceptsMask);
+      $('#tw-mask').required=acceptsMask;
+      if(!acceptsMask)$('#tw-mask').value='';
+    }
+    function sendTest(id){
+      testVersion=state.versions.find(version=>version.version_id===id);
+      if(!testVersion?.manifest?.commands?.length){alert('无法读取该版本的命令配置，请刷新后重试。');return}
+      $('#testWidgetForm').reset();$('#tw-error').classList.add('hidden');
+      $('#tw-subtitle').textContent=`${testVersion.name} · v${testVersion.version} · 按此待审核版本的输入要求发送测试`;
+      $('#tw-command').innerHTML=testVersion.manifest.commands.map(command=>`<option value="${esc(command.id)}">${esc(command.name||command.id)}</option>`).join('');
+      $('#tw-command-wrap').classList.toggle('hidden',testVersion.manifest.commands.length<2);
+      renderTestMedia();$('#testWidgetModal').classList.remove('hidden');$('#tw-media-0')?.focus();
+    }
+    function closeTestWidget(){testVersion=null;$('#testWidgetModal').classList.add('hidden')}
+    $('#tw-command').addEventListener('change',renderTestMedia);
+    $('#tw-media-kind').addEventListener('change',renderTestFields);
+    $('#testWidgetForm').addEventListener('submit',async event=>{
+      event.preventDefault();
+      const command=currentTestCommand();if(!command||!testVersion)return;
+      const kinds=testMediaKinds(command),kind=kinds.length>1?$('#tw-media-kind').value:kinds[0];
+      const spec=kind?testInputSpec(command,kind):null;
+      const values=[...document.querySelectorAll('#tw-media-fields input')].map(field=>field.value.trim());
+      const urls=values.filter(Boolean);
+      const error=$('#tw-error');
+      const failTest=message=>{error.textContent=message;error.classList.remove('hidden')};
+      error.classList.add('hidden');
+      if(spec&&(urls.length<spec.min||urls.length>spec.max||values.slice(0,urls.length).some(value=>!value))){failTest(`请按顺序填写 ${spec.min}–${spec.max} 个${kind==='image'?'图片':'视频'} URL。`);return}
+      const promptText=$('#tw-prompt').value.trim(),mask=$('#tw-mask').value.trim();
+      const allURLs=[...urls,...(mask?[mask]:[])];
+      if(allURLs.some(value=>{try{const url=new URL(value);return url.protocol!=='https:'||!url.hostname}catch{return true}})){failTest('所有媒体和 mask URL 都必须是有效的 HTTPS 地址。');return}
+      if($('#tw-prompt').required&&!promptText){failTest('请填写文字 prompt。');return}
+      if($('#tw-mask').required&&!mask){failTest('请填写 mask 的 HTTPS URL。');return}
+      const input=kind?{type:kind,url:urls[0]}:{},parameters={};
+      if(kind){parameters.url=urls[0];if(spec.multiple){const key=kind==='image'?'images':'videos';input[key]=urls;parameters[key]=urls}}
+      if(!$('#tw-prompt-wrap').classList.contains('hidden'))parameters.prompt=promptText;
+      if(!$('#tw-mask-wrap').classList.contains('hidden'))parameters.mask=mask||null;
+      const button=$('#tw-submit');button.disabled=true;button.textContent='发送中…';
+      try{
+        const result=await api('/api/admin/v2/widget-submissions/'+encodeURIComponent(testVersion.version_id)+'/test',{method:'POST',body:JSON.stringify({commandID:command.id,input,parameters})});
+        closeTestWidget();alert('测试任务已发送：'+result.taskID+'。开发者 Worker 在线时会领取。');load('widgets');
+      }catch(e){failTest(e.message)}finally{button.disabled=false;button.textContent='发送测试任务'}
+    });
+    async function review(id,action){const message={approve:'确认已检查测试输出，将此版本灰度发布？',reject:'确认拒绝此版本？',promote:'确认将灰度版本正式发布？'}[action];if(!confirm(message))return;try{await api('/api/admin/v2/widget-submissions/'+id+'/'+action,{method:'POST',body:JSON.stringify({note:'Admin Console action'})});await load('widgets')}catch(e){alert(e.message)}}
+    function updateInputControls(){
+      const image=$('#cw-input-image').checked,video=$('#cw-input-video').checked;
+      $('#cw-image-count').disabled=!image;$('#cw-video-count').disabled=!video;
+      $('#cw-input-mask').disabled=!image;if(!image)$('#cw-input-mask').checked=false;
+    }
+    $('#cw-input-image').addEventListener('change',updateInputControls);
+    $('#cw-input-video').addEventListener('change',updateInputControls);
+    function selectedOutputTypes(){return ['image','video','text','audio'].filter(type=>$('#cw-output-'+type).checked)}
+    function updateOutputControls(){
+      const media=$('#cw-output-image').checked||$('#cw-output-video').checked;
+      $('#cw-show-result-url').disabled=!media;
+      if(!media)$('#cw-show-result-url').checked=false;
+    }
+    ['image','video','text','audio'].forEach(type=>$('#cw-output-'+type).addEventListener('change',updateOutputControls));
+    function openCreateWidget(widgetId=null){
+      $('label[for="cw-credit-cost"]').textContent='每次任务消耗积分（0 为免费）';
+      editingWidgetId=widgetId;$('#createWidgetForm').reset();$('#cw-error').classList.add('hidden');$('#cw-result').classList.add('hidden');
+      $('#cw-title').textContent=widgetId?'编辑 Widget':'新建 Widget';$('#cw-submit').textContent=widgetId?'保存修改':'创建 Widget';
+      if(widgetId){
+        const x=state.widgets.find(w=>w.widgetId===widgetId),m=x?.manifest,c=m?.commands?.[0];
+        if(m){
+          const properties=c?.parameterSchema?.properties||c?.parameterSchema||{};
+          $('#cw-version').value=m.version||'';$('#cw-name').value=m.name||'';$('#cw-author').value=m.author||'';
+          $('label[for="cw-credit-cost"]').textContent=m.billing?.mode==='duration'?'每 10 秒消耗积分（不足 10 秒向上取整）':'每次任务消耗积分（0 为免费）';
+          $('#cw-credit-cost').value=m.creditCost??1;$('#cw-summary').value=m.summary||'';$('#cw-icon').value=m.iconURL||'';
+          $('#cw-command-name').value=c?.name||'';$('#cw-command-desc').value=c?.description||'';
+          const en=m.localizations?.en||{},enCommand=c?.id?en.commands?.[c.id]||{}:{};
+          $('#cw-name-en').value=en.name||'';$('#cw-summary-en').value=en.summary||'';
+          $('#cw-command-name-en').value=enCommand.name||'';$('#cw-command-desc-en').value=enCommand.description||'';
+          ['image','video','text','audio'].forEach(type=>$('#cw-output-'+type).checked=c?.outputs?.includes(type)||false);
+          $('#cw-status').value=x.status||'manual_review';
+          $('#cw-show-result-url').checked=c?.showResultURL===true||
+            (c?.showResultURL===undefined&&widgetId==='55e64c7e-f079-448a-b5bd-7315b2589019'&&c?.outputs?.includes('image'));
+          $('#cw-privacy').value=m.privacy?.notice||'';
+          $('#cw-input-image').checked=c?.inputTypes?.includes('image')||false;
+          $('#cw-input-video').checked=c?.inputTypes?.includes('video')||false;
+          $('#cw-input-prompt').checked=!!properties.prompt||c?.inputTypes?.includes('text')||false;
+          $('#cw-input-mask').checked=!!properties.mask||c?.inputTypes?.includes('mask')||false;
+          $('#cw-image-count').value=(properties.images||c?.inputTypes?.includes('multiple_images'))?'4':'1';
+          $('#cw-video-count').value=(properties.videos||c?.inputTypes?.includes('multiple_videos'))?'4':'1';
+        }
+      }
+      updateInputControls();updateOutputControls();$('#createWidgetModal').classList.remove('hidden');
+    }
+    function closeCreateWidget(){ editingWidgetId=null;$('#createWidgetModal').classList.add('hidden') }
+    // English text from the form becomes localizations.en; other languages and other
+    // commands' translations are kept from the previous manifest. Empty = no override.
+    function englishLocalizations(previous,commandId){
+      const text=id=>$('#'+id).value.trim()||undefined;
+      const base={...(previous?.localizations||{})};
+      const en={...(base.en||{}),name:text('cw-name-en'),summary:text('cw-summary-en')};
+      const commands={...(en.commands||{})};
+      if(commandId){
+        const command={name:text('cw-command-name-en'),description:text('cw-command-desc-en')};
+        if(command.name||command.description)commands[commandId]=command;else delete commands[commandId];
+      }
+      if(Object.keys(commands).length)en.commands=commands;else delete en.commands;
+      if(en.name||en.summary||en.commands)base.en=en;else delete base.en;
+      return Object.keys(base).length?base:undefined;
+    }
+    $('#createWidgetForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const outputs=selectedOutputTypes();
+      if(!outputs.length){$('#cw-error').textContent='至少选择一种输出类型。';$('#cw-error').classList.remove('hidden');return}
+      const inputTypes=[$('#cw-input-image').checked&&'image',$('#cw-input-video').checked&&'video'].filter(Boolean);
+      if(!inputTypes.length){$('#cw-error').textContent='至少选择一种输入类型。';$('#cw-error').classList.remove('hidden');return}
+      if(inputTypes.includes('video')&&$('#cw-input-mask').checked){$('#cw-error').textContent='mask 只能用于图片输入；请取消视频输入或 mask。';$('#cw-error').classList.remove('hidden');return}
+      if($('#cw-image-count').value==='4'&&$('#cw-input-mask').checked){$('#cw-error').textContent='mask 目前仅支持单图输入。';$('#cw-error').classList.remove('hidden');return}
+      const imageMimes=['image/jpeg','image/png','image/webp','image/heic','image/heif'];
+      const videoMimes=['video/mp4','video/quicktime','video/webm'];
+      const previous=editingWidgetId?state.widgets.find(w=>w.widgetId===editingWidgetId)?.manifest:null;
+      const previousCommand=previous?.commands?.[0];
+      const previousSchema=previousCommand?.parameterSchema||{};
+      const properties={...(previousSchema.properties||previousSchema)};
+      if($('#cw-input-prompt').checked)properties.prompt={type:'string'};
+      else delete properties.prompt;
+      if($('#cw-input-mask').checked)properties.mask={type:'string',format:'uri'};
+      else delete properties.mask;
+      if(inputTypes.includes('image')&&$('#cw-image-count').value==='4')properties.images={type:'array',items:{type:'string',format:'uri'},minItems:1,maxItems:4};
+      else {delete properties.images;delete properties.imageUrls;delete properties.multipleImages}
+      if(inputTypes.includes('video')&&$('#cw-video-count').value==='4')properties.videos={type:'array',items:{type:'string',format:'uri'},minItems:1,maxItems:4};
+      else {delete properties.videos;delete properties.videoUrls;delete properties.multipleVideos}
+      const parameterSchema=previousSchema.properties?{...previousSchema,properties}:{type:'object',properties,additionalProperties:false};
+      const selectedInputs=[...inputTypes,...(previousCommand?.inputTypes||[]).filter(type=>!['image','video','text','txt','prompt','mask','multiple_images','multi_image','multiple-images','multi-image','multiple_videos','multi_video','multiple-videos','multi-video'].includes(type))];
+      const originalMimes=previousCommand?.inputMimeTypes||[];
+      const inputMimeTypes=[...new Set([...(inputTypes.includes('image')?imageMimes:[]),...(inputTypes.includes('video')?videoMimes:[]),...originalMimes.filter(mime=>inputTypes.some(type=>mime.startsWith(type+'/')))])];
+      const manifest={
+        ...previous,
+        schemaVersion:1,
+        ...(editingWidgetId?{id:editingWidgetId}:{}),
+        version:$('#cw-version').value.trim(),
+        name:$('#cw-name').value.trim(),
+        summary:$('#cw-summary').value.trim(),
+        author:$('#cw-author').value.trim(),
+        creditCost:Number($('#cw-credit-cost').value),
+        iconURL:$('#cw-icon').value.trim()||undefined,
+        execution:{mode:'cloud'},
+        commands:[{
+          ...previousCommand,
+          name:$('#cw-command-name').value.trim(),
+          description:$('#cw-command-desc').value.trim(),
+          inputTypes:selectedInputs,
+          inputMimeTypes,
+          outputs,
+          showResultURL:outputs.some(type=>type==='image'||type==='video')&&$('#cw-show-result-url').checked,
+          requiresUpload:true,
+          parameterSchema
+        },...(previous?.commands?.slice(1)||[])],
+        localizations:englishLocalizations(previous,previousCommand?.id),
+        privacy:{...previous?.privacy,uploadsMedia:true,notice:$('#cw-privacy').value.trim()},
+        minimumGlanceVersion:'2.0.0',
+        updatedAt:new Date().toISOString()
+      };
+      $('#cw-error').classList.add('hidden'); $('#cw-result').classList.add('hidden');
+      try{
+        const method=editingWidgetId?'PUT':'POST',path=editingWidgetId?'/api/admin/v2/widgets/'+encodeURIComponent(editingWidgetId):'/api/admin/v2/widgets';
+        const result=await api(path,{method,body:JSON.stringify({manifest,status:$('#cw-status').value,note:editingWidgetId?'Edited from Admin Console':'Created from Admin Console'})});
+        $('#cw-result').innerHTML=editingWidgetId?`保存成功：Widget <strong>${esc(result.widgetId)}</strong> v${esc(result.version)}（${esc(result.status)}）。`:`创建成功：v${esc(result.version)}（${esc(result.status)}）<br>Widget ID（系统生成）：<code>${esc(result.widgetId)}</code>命令 ID（系统生成）：<code>${esc(result.commandIds?.[0])}</code>Worker Token 只显示一次，请立即复制并配置到该 Widget 的任务 Worker。<code>${esc(result.workerToken)}</code>`;
+        $('#cw-result').classList.remove('hidden');
+        await load('widgets');
+      }catch(x){ $('#cw-error').textContent=x.message; $('#cw-error').classList.remove('hidden') }
+    });
+    function showLogin(){loadSeq++;loadController?.abort();$('#login').classList.remove('hidden');$('#app').classList.add('hidden')};function showApp(){$('#login').classList.add('hidden');$('#app').classList.remove('hidden');load('overview')}
+    $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();$('#loginError').classList.add('hidden');try{await api('/api/admin/auth/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});showApp()}catch(x){$('#loginError').textContent=x.message;$('#loginError').classList.remove('hidden')}});
+    $('#refresh').addEventListener('click',()=>load(currentView));$('#logout').addEventListener('click',async()=>{await api('/api/admin/auth/logout',{method:'POST'});showLogin()});document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('active'));b.classList.add('active');load(b.dataset.view)}));
+    api('/api/admin/auth/me').then(showApp).catch(showLogin);
+  </script>
+</body>
+</html>

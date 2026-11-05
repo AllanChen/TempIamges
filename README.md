@@ -1,8 +1,19 @@
 # Glance
 
-Glance 是一个原生 macOS 菜单栏工具，用来从任意应用中选中的文本里识别图片、视频、文档、网页 URL 或本地文件路径，并在鼠标附近快速打开预览或内容查看器。
+Glance 是一个原生 macOS 菜单栏工具，用来从任意应用中选中的文本里识别图片、视频、文档、网页 URL 或本地文件路径，并在当前屏幕中央打开预览或内容查看器。
 
-这个项目当前的主实现位于 `Glance/`。仓库根目录保留运行脚本、历史验证资料、界面截图和早期原型脚本。
+这个仓库按客户端、服务端、官网、文档和设计分类。macOS 是当前客户端；Windows 仅预留目录。
+
+| 类别 | 入口 | 关联 |
+|---|---|---|
+| macOS 客户端 | [clients/macos](clients/macos/README.md) | 通过 HTTPS 调用服务端，通过 `glance://` 接收认证／支付回跳 |
+| Windows 客户端 | [clients/windows](clients/windows/README.md) | 仅占位，没有源码、安装包或构建任务 |
+| 服务端 | [server](server/README.md) | API、账户、支付、Widget 市场、任务队列与执行器 |
+| 官网 | [website](website/README.md) | 当前生产源为 `website/static/`，连接 API、下载与支付返回页 |
+| 文档 | [docs](docs/README.md) | 产品、架构、安装、计费、审计和历史记录 |
+| 设计 | [design](design/README.md) | App 页面、官网设计、品牌与宣传资料 |
+
+目录契约见 [spec.md](spec.md)，完整结构见 [项目结构](docs/project-structure.md)。
 
 ## 主要能力
 
@@ -51,7 +62,7 @@ PDF、网页 URL，以及常见 Office 文档、设计稿、音频、压缩包�
 
 - macOS 12.3 或更高版本
 - Xcode 14 或更高版本
-- 可选：XcodeGen，用于从 `Glance/project.yml` 重新生成 Xcode 工程
+- 可选：XcodeGen，用于从 `clients/macos/Glance/project.yml` 重新生成 Xcode 工程
 - 系统权限：Input Monitoring、Accessibility
 - 可选权限：Full Disk Access，仅用于 Spotlight 找不到文件时的受控文件系统回退搜索
 
@@ -60,16 +71,16 @@ PDF、网页 URL，以及常见 Office 文档、设计稿、音频、压缩包�
 构建 Release 版本：
 
 ```bash
-./Glance/build.sh
+./clients/macos/Glance/build.sh
 ```
 
-构建完成后，脚本会把应用复制到仓库根目录：
+构建完成后，脚本会把应用复制到 macOS 客户端目录：
 
 ```text
-./Glance.app
+./clients/macos/Glance.app
 ```
 
-启动应用并跟踪日志：
+重新构建、启动应用并跟踪日志（仅启动已有产物可用 `./run`）：
 
 ```bash
 ./run.sh
@@ -78,7 +89,7 @@ PDF、网页 URL，以及常见 Office 文档、设计稿、音频、压缩包�
 构建 Debug 版本：
 
 ```bash
-./Glance/build.sh Debug
+./clients/macos/Glance/build.sh Debug
 ```
 
 Debug 构建会启用 `DebugInputWindow`，便于直接输入样本文本测试路径识别和预览流程。
@@ -88,14 +99,14 @@ Debug 构建会启用 `DebugInputWindow`，便于直接输入样本文本测试�
 如果需要直接使用 Xcode 工具链：
 
 ```bash
-cd Glance
+cd clients/macos/Glance
 xcodebuild -project Glance.xcodeproj -scheme Glance -configuration Release -derivedDataPath ./DerivedData build
 ```
 
 如果安装了 XcodeGen，可以先重新生成工程：
 
 ```bash
-cd Glance
+cd clients/macos/Glance
 xcodegen generate
 ```
 
@@ -143,6 +154,6 @@ tccutil reset All com.glance.app
 
 ## 相关文档
 
-- [项目结构](PROJECT_STRUCTURE.md)
-- [Glance 子项目入口](Glance/)
+- [项目结构](docs/project-structure.md)
+- [Glance 子项目入口](clients/macos/Glance/)
 - [历史实现计划](.sisyphus/plans/mac-image-hover-preview.md)

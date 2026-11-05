@@ -1,11 +1,11 @@
 ---
 name: glance-widget-publish
-description: 根据用户提供的代码或处理流程，在本项目的 widgets 目录创建、验证并按要求发布 Glance Widget。适用于本机处理、外部 API 或混合流程。
+description: 根据用户提供的代码或处理流程，在本项目的 server/widgets 目录创建、验证并按要求发布 Glance Widget。适用于本机处理、外部 API 或混合流程。
 ---
 
 # 创建与发布 Glance Widget
 
-在项目根目录工作并遵守 `CLAUDE.md`。先查看最相近的 `widgets/<id>/main.py` 和 `widget.json`，以及 `glance-cli/src/glance_cli/runtime.py`、`worker.py`、`cli.py` 的当前约定。`GlanceService/site/widgets` 是市场页面；Widget 执行代码的例子在项目根目录的 `widgets/`。
+在项目根目录工作并遵守 `CLAUDE.md`。先查看最相近的 `server/widgets/<id>/main.py` 和 `widget.json`，以及 `server/glance-cli/src/glance_cli/runtime.py`、`worker.py`、`cli.py` 的当前约定。`server/GlanceService/site/widgets` 是市场页面；Widget 执行代码的例子在项目的 `server/widgets/`。
 
 ## 用户只问怎么使用时
 
@@ -24,7 +24,7 @@ description: 根据用户提供的代码或处理流程，在本项目的 widget
 ## 创建 Widget
 
 1. 从用户给出的代码或描述确定名称、输入类型与数量、参数、输出类型和处理顺序。区分示例值与真实任务输入。只有关键映射无法推断时才询问用户。不要默认使用 RunningHub、特定 API、节点格式或网络上传。
-2. 在 `widgets/` 下创建 UUID 目录，包含 `main.py` 和 `widget.json`；可使用项目的 `glance widget init --directory widgets` 创建骨架。更新已有 Widget 时沿用 ID，并按发布要求更新版本。不要覆盖无关文件。
+2. 在 `server/widgets/` 下创建 UUID 目录，包含 `main.py` 和 `widget.json`；可使用项目的 `glance widget init --directory server/widgets` 创建骨架。更新已有 Widget 时沿用 ID，并按发布要求更新版本。不要覆盖无关文件。
 3. 将实现整理为 `main(task: dict) -> dict`。从 Glance 任务读取实际输入：单个媒体文件可读 `task["input"]["path"]`；多个图片或视频分别读 `imagePaths` 或 `videoPaths`；可编辑参数从 `task["parameters"]` 读取。外部 API 的字段、节点和顺序只按该服务的实际协议映射，不能留下示例文件名。
 4. 让 Manifest 与代码一致：声明实际输入类型、媒体数量、可编辑参数及输出类型。只有代码支持 prompt 时才声明 prompt。需要外部 API 时按其要求上传、提交和查询；本机处理不增加多余的外部步骤。凭证从环境变量读取，不写入代码、Manifest 或日志；需要额外 Python 依赖时使用适合该 Widget 的解释器并说明安装要求。
 5. 名称和文案提供中英文：Manifest 的 `name`、`summary` 和每个 command 的 `name`、`description` 写一种语言，另一种语言写在 `localizations` 里（键为语言标签 `en` 或 `zh-Hans`，command 按 id 组织）。Glance 按当前界面语言显示，缺少时回退到基础文案。名称用 2–4 个汉字的动宾短语或 1–3 个英文单词的 Title Case，例如基础 `"name": "高清放大"`，`"localizations": {"en": {"name": "Upscale", "summary": "...", "commands": {"run": {"name": "Upscale", "description": "..."}}}}`。
@@ -53,6 +53,6 @@ Glance Worker 会把本地媒体文件上传到 Glance 服务器并回报任务�
 
 ## 验证与发布
 
-1. 运行 `glance widget validate --manifest widgets/<id>/widget.json`，并做适合该 Widget 的非 UI 检查。对外部 API 流程，优先用模拟响应验证输入映射、重试、审核拒绝和输出。不要为了验证擅自发起付费任务；遵守项目不运行 Glance UI 测试的规则。
-2. 只有本次请求包含发布时，运行 `glance widget publish --manifest widgets/<id>/widget.json --code widgets/<id>`。该命令提交审核，不代表已在市场公开上架；不要代替管理员审批或部署 GlanceService。
+1. 运行 `glance widget validate --manifest server/widgets/<id>/widget.json`，并做适合该 Widget 的非 UI 检查。对外部 API 流程，优先用模拟响应验证输入映射、重试、审核拒绝和输出。不要为了验证擅自发起付费任务；遵守项目不运行 Glance UI 测试的规则。
+2. 只有本次请求包含发布时，运行 `glance widget publish --manifest server/widgets/<id>/widget.json --code server/widgets/<id>`。该命令提交审核，不代表已在市场公开上架；不要代替管理员审批或部署 GlanceService。
 3. 汇报 Widget ID、目录、版本、输入与输出、验证结果及发布状态。发布失败时保留本地成果并说明错误，不声称已发布。

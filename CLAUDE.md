@@ -35,7 +35,7 @@ Engineering rules for this codebase. These are hard constraints — do not viola
 ## Global keyboard event tap (CGEventTap)
 
 Glance installs an **active global `CGEventTap`** to detect the activation hotkey
-(`Glance/Sources/KeyboardMonitor.swift`). An active head-insert session tap makes
+(`clients/macos/Glance/Sources/KeyboardMonitor.swift`). An active head-insert session tap makes
 the WindowServer **block delivery of every keystroke system-wide until the
 callback returns**. Getting this wrong freezes the whole Mac and "intercepts" all
 keyboard input. Rules:
@@ -126,7 +126,7 @@ keyboard input. Rules:
     spacing in every state, including Widget results. Result indicators are
     overlays; do not add a result-specific thumbnail geometry branch.
 
-## Figma plugin (layout/GlanceFigmaPlugin)
+## Figma plugin (design/app/layout/GlanceFigmaPlugin)
 
 10. The user imports and runs the Figma plugin themselves. Do NOT try to trigger
     it via AppleScript / GUI automation / `screencapture` / CGEvent clicks — this

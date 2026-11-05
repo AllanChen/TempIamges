@@ -1,5 +1,7 @@
 # Glance 付费与点数 PRD
 
+> 2026-10-27 计费 V1：人民币充值包更新为 **¥12 / 600 点、¥30 / 1,500 点、¥98 / 5,000 点**，保留当前线上 Widget 扣点。完整 CNY、USD、JPY、EUR、HKD 商品价格与待补充的购买链接见 [Glance 计费逻辑 V1](glance-billing-v1.md)，该文档取代本 PRD 对应的旧商品价格。视频时长规则和多人版授权仍有待确定；文档记录不代表线上已配置，应用内 JPY、EUR、HKD 支持仍待实现。
+
 > 当前实施范围调整（2026-10-16）：本轮聚焦 Pro 购买、点数充值、支付退款及后台授权管理。Widget 沿用原有上传、提交、查询结果和取消流程，不接入新增的定价 / 余额 / 授权前置检查，也不加入首次付费确认、充值续提交和新任务弹窗。账户及收费状态恢复为本地设置存储，不新增交互式钥匙串访问。下文涉及这些 Widget 扩展流程及钥匙串强化的内容暂缓实施；不扩展修改其他业务流程。
 
 | 项 | 内容 |
@@ -8,7 +10,7 @@
 | 范围 | 账户、Pro 买断、试用、设备、功能更新续购、点数钱包、充值、Widget 扣点 / 退点、余额不足恢复、支付与退款 |
 | 支付渠道 | Pancake by Waffo（Merchant of Record，申请中） |
 | 设计稿 | Figma `Pricing & Credits / PRD v0.4 Flow`，由插件按钮「Generate Pricing Flow (PRD v0.4)」生成，93 个状态 |
-| 参考 | Figma `Pricing & Credits / Purchase + Usage Flow / Refined`（node 278:10，生成源 `layout/GlanceFigmaPlugin/code.js`）；服务端 `GlanceService/src/users.ts`、`src/index.ts`、`migrations/0010`、`0012`；客户端 `AuthManager`、`WidgetTaskClient`、`Inspect/ActionMenu`；Pancake 文档 https://docs.waffo.ai |
+| 参考 | Figma `Pricing & Credits / Purchase + Usage Flow / Refined`（node 278:10，生成源 `design/app/layout/GlanceFigmaPlugin/code.js`）；服务端 `server/GlanceService/src/users.ts`、`src/index.ts`、`migrations/0010`、`0012`；客户端 `AuthManager`、`WidgetTaskClient`、`Inspect/ActionMenu`；Pancake 文档 https://docs.waffo.ai |
 | 判断标尺 | Glance 是「AI 时代的 Preview」：看 → 不满意就地 AI 改 → 对比确认。免费版完整保留这条主路径；Pro 是本地工具箱（D14） |
 
 ### 已确认的决定
@@ -128,11 +130,12 @@ Glance 采用两条独立的收费线：
 - 每一笔到账、扣点、退点、购买都可以在账户里查到。
 - 系统原因导致没有结果时，不收用户的点数。
 - 所有价格可在后台修改，修改后无需发版。
+- 支持 App 内自助兑换终身或一年 Pro；一年到期回到免费版，不附送云端点数，不覆盖已有有效 Pro。
 
 ### 非目标
 
 - 订阅制、自动续费。
-- 发票、企业采购、团队钱包、兑换码。
+- 发票、企业采购、团队钱包。
 - Mac App Store 内购。
 - 人民币、美元以外的币种（见 10.3）。
 

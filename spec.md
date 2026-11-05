@@ -1,5 +1,73 @@
 # Glance 系统设计与技术规范 (Specification)
 
+> 目录规范更新：2026-10-27。以下目录为当前仓库路径；本次只整理文件与路径引用，不改变功能、线上价格、部署或数据库结构。后续技术章节保留原有设计记录，具体实现状态以源码和对应审计文档为准。
+
+## 0. 仓库组织与模块连接
+
+```text
+.
+├── clients/                     # 客户端
+│   ├── macos/
+│   │   ├── Glance/              # 生产源码、资源、Xcode 工程与 build.sh
+│   │   ├── scripts/             # 签名、打包、图标生成、非 UI 检查
+│   │   ├── prototypes/          # 历史 macOS 技术实验；部分脚本会操作 UI
+│   │   ├── legacy/              # 早期 ImageHoverPreview 工程残留
+│   │   ├── Glance.app/          # 本地构建产物，忽略提交
+│   │   └── dist/               # 本地 DMG，忽略提交
+│   └── windows/                # 占位，尚无实现
+├── server/                      # 服务端与任务执行
+│   ├── GlanceService/          # Cloudflare Worker、D1 migrations、管理后台、测试
+│   ├── glance-cli/             # Python CLI 与开发者 Worker
+│   ├── widgets/                # Widget manifest 与处理代码
+│   └── glance-cli-run.sh       # CLI 安装／命令入口
+├── website/                     # 官网
+│   ├── static/                 # 当前生产静态官网：src → build.py → public
+│   ├── app/                    # 保留的 React / Vinext 网站实现
+│   └── seo/                    # SEO、合规、内容、发布证据
+├── docs/                        # 产品、架构、计费、审计、安装与历史文档
+├── design/                      # 设计
+│   ├── app/                    # App 页面、交互、规格与 Figma 插件
+│   │   ├── layout/             # HTML 原型、Figma 导出、原生布局演示
+│   │   └── specs/              # UI 规格与历史设计计划
+│   ├── marketing/              # 宣传资料
+│   │   ├── brand-assets/       # Logo、样例图片与品牌素材
+│   │   ├── videos/             # 宣传／教程视频、脚本、音频、分镜
+│   │   └── scripts/            # 宣传素材生成脚本
+│   └── website/                # 官网设计截图与历史 HTML 方案
+├── README.md                    # 仓库入口
+├── spec.md                      # 系统规范与目录契约
+├── AGENTS.md                    # 自动化代理规则入口
+├── agent.md                     # 指向 AGENTS.md 的兼容入口
+├── CLAUDE.md                    # 工程硬约束
+└── run.sh / run / glance-cli-run.sh  # 保留原命令的轻量转发入口
+```
+
+| 类别 | 入口 | 关联 |
+|---|---|---|
+| macOS 客户端 | [clients/macos](clients/macos/README.md) | 通过 HTTPS 调用服务端，通过 `glance://` 接收认证／支付回跳 |
+| Windows 客户端 | [clients/windows](clients/windows/README.md) | 仅占位，没有源码、安装包或构建任务 |
+| 服务端 | [server](server/README.md) | API、账户、支付、Widget 市场、任务队列与执行器 |
+| 官网 | [website](website/README.md) | 当前生产源为 `website/static/`，连接 API、下载与支付返回页 |
+| 文档 | [docs](docs/README.md) | 产品、架构、安装、计费、审计和历史记录 |
+| 设计 | [design](design/README.md) | App 页面、官网设计、品牌与宣传资料 |
+
+### 目录与依赖契约
+
+1. 每个文件按职责进入上述分类。根目录只保留说明、规则、规范、配置和稳定启动入口；不要再新增根目录截图、视频、产品源码或设计原型。
+2. `clients/macos/Glance/` 整体保留 Xcode 工程内部相对布局。用户自行运行 `./run.sh` 或 `./clients/macos/Glance/build.sh`；构建输出为 `clients/macos/Glance.app`，可选 DMG 输出在 `clients/macos/dist/`。代理不得自行构建或操作 UI。
+3. `server/GlanceService/` 的 `wrangler.toml`、`src/`、`site/`、`migrations/`、`test/` 相对关系不变。CI 的 CLI 工作目录为 `server/glance-cli/`，包名及发布 tag 仍为 `glance-cli`、`glance-cli-v*`。
+4. Worker CLI 代码在 `server/glance-cli/`，Widget 代码在 `server/widgets/<id>/`。根目录 `.venv/` 保留位置以避免破坏虚拟环境的绝对解释器路径；`./glance-cli-run.sh` 从新目录安装代码。本机 Widget 注册表中的旧绝对路径已单独迁移并备份，遗留缺失项见目录整理记录；其他机器需独立核对。
+5. 正式官网源为 `website/static/`：`src/pages`、`src/assets` 由 `build.py` 生成 `public/`；发布时工作目录为 `website/static/`，保留 `functions/` 中间件。`website/app/` 是另一套保留实现，不是此次生产发布入口。
+6. App UI 设计在 `design/app/`；宣传视频脚本从 `design/marketing/brand-assets/` 和 App 的 Figma 导出读取素材。官网仅引用其自身 assets 中的发布副本，制作源与部署资源分开保存。
+7. 目录移动不改变公网域名、API 路由、Widget ID、Waffo 商品 ID、Bundle ID 或用户运行数据目录。文档中的本地相对链接应随移动更新；不得将文件系统目录映射误用于 URL 路由。
+8. 本轮价格方案见 [计费 V1](docs/glance-billing-v1.md)。文档记录不代表已配置上线；视频时长计费的服务端、迁移和 Widget 已部署，macOS 客户端待用户构建验证，流程与接口见 [视频按时长计费](docs/video-duration-billing.md)；多人版的 5 账号授权、账户删除与五币种订单实现见 [账户与团队](docs/account-and-team.md)，官网发行状态见 [上线清单](docs/launch-readiness.md)。
+
+详细迁移映射、命令与验证范围见 [目录整理记录](docs/repository-reorganization.md)。
+
+### 0.1 官网发行准备（2026-10-29）
+
+已实现 5 人独立账号授权、账户删除清理、五币种订单与沙盒／正式授权隔离；服务端迁移 0020–0023 已部署。macOS 源码接入团队／账户菜单及 Sparkle 更新，尚待用户构建验收。线上仍为沙盒且关闭公开销售；部署证据、正式收款切换条件和已知视频限制统一见 [上线清单](docs/launch-readiness.md)。
+
 ## 1. 项目概述 (Overview)
 
 Glance 是一款面向 macOS 的原生菜单栏效率工具应用（`LSUIElement = true`，无 Dock 图标）。
@@ -56,7 +124,7 @@ Glance 是一款面向 macOS 的原生菜单栏效率工具应用（`LSUIElement
 | **路径与实体探测** | `PathDetector.swift` | 综合运用正则与规则识别绝对路径、相对路径、`~` 路径、`file://`、HTTP(S) URL、裸域名及裸文件名。 |
 | **文件名智能解析** | `FileNameResolver.swift` | 针对不完整路径分层搜索：内存缓存 -> 快速浅层遍历 -> Spotlight (`mdfind`) & 深度遍历。 |
 | **解析缓存** | `FilenameCache.swift` | 基于 LRU 策略持久化已解析的 token -> 绝对路径映射，限额 500 条。 |
-| **媒体加载器** | `ImageLoader.swift` | 异步加载/缩略图生成、解码限制尺寸 (800px)、提取视频时长与尺寸、并发控制 (`loadSemaphore`)。 |
+| **媒体加载器** | `ImageLoader.swift`、`AnimatedImage.swift` | 异步加载/静态缩略图生成 (800px)、动图原始数据保留与后台逐帧播放、提取视频时长与尺寸、并发控制 (`loadSemaphore`)。 |
 | **悬浮预览面板** | `PreviewPanel.swift` | 悬浮 `NSPanel`（`.floating`, `.nonactivatingPanel`），支持 Single Card、Split View，集成毛玻璃效果。 |
 | **内容查看面板** | `ContentPanel.swift` | 沉浸式查看器：内置 WKWebView（网页/Markdown/PDF）、NSTextView（代码/高亮/编辑保存）、Git Diff 对比。 |
 | **屏幕与定位管理器** | `ScreenManager.swift` | 计算面板坐标，防跨屏越界、自适应 Dock/MenuBar 可视区域，支持居中收容。 |
@@ -147,10 +215,10 @@ Glance 是一款面向 macOS 的原生菜单栏效率工具应用（`LSUIElement
 
 | 存储项 | 文件路径 | 格式与策略 |
 |---|---|---|
-| 运行日志 | `Glance/app.log` | 文本追加写入，同时分发至 Console/os_log。 |
-| 历史记录 | `Glance/history.json` | JSON 格式，ISO-8601 时间戳，最多存储 200 条，I/O 独立队列写盘。 |
-| 解析缓存 | `Glance/filename-cache.json` | 键值对字典（Token -> FilePath），限额 500 条 LRU。 |
-| 启动调试标记 | `Glance/debug_marker.txt` | 记录进程冷启动时间与标记。 |
+| 运行日志 | `clients/macos/Glance/app.log` | 文本追加写入，同时分发至 Console/os_log。 |
+| 历史记录 | `clients/macos/Glance/history.json` | JSON 格式，ISO-8601 时间戳，最多存储 200 条，I/O 独立队列写盘。 |
+| 解析缓存 | `clients/macos/Glance/filename-cache.json` | 键值对字典（Token -> FilePath），限额 500 条 LRU。 |
+| 启动调试标记 | `clients/macos/Glance/debug_marker.txt` | 记录进程冷启动时间与标记。 |
 | 用户偏好 | `UserDefaults` (Suite: `com.glance`) | 存储快捷键组合、界面主题、首选语言、窗口拖动尺寸记录等。 |
 
 ---
@@ -169,8 +237,8 @@ Glance 是一款面向 macOS 的原生菜单栏效率工具应用（`LSUIElement
 
 1. **部署目标**：macOS 12.3+，架构支持 Apple Silicon (arm64) 与 Intel (x86_64)。
 2. **构建方式**：
-   - 自动化构建：`./Glance/build.sh [Release|Debug]`，产物打包生成 `Glance.app`。
-   - 工程维护：支持使用 `xcodegen` 读取 `Glance/project.yml` 重新生成 `Glance.xcodeproj`。
+   - 自动化构建：`./clients/macos/Glance/build.sh [Debug|Release]`，默认 Debug 本地测试，产物生成 `clients/macos/Glance.app`。正式 Release 必须明确指定，并在用户验收通过后准备发布。
+   - 工程维护：支持使用 `xcodegen` 读取 `clients/macos/Glance/project.yml` 重新生成 `Glance.xcodeproj`。
 3. **工程红线约束**：
    - 严格禁止在主线程执行同步 I/O、`semaphore.wait()` 或网络请求。
    - `CGEventTap` 回调必须极简并运行在专属线程，禁止在回调内构建 UI。
@@ -396,3 +464,11 @@ struct ImageMetadata {
 3. **最小尺寸**：600×400
 4. **视觉风格**：复用 `PanelStyle.makeFrostedBase()` 深色毛玻璃背景。
 5. **工具栏**：顶部工具栏包含：缩放控制、布局切换、锁定开关、Inspector 按钮、关闭按钮。
+
+### 动图显示与导入（2026-10-29）
+
+图片画布与预览卡片按文件内容识别 GIF/APNG/WebP 动画，不依赖 URL 后缀；保留逐帧时长与循环次数，缩略图流程不将动画压成静态图。播放器在后台解码，窗口不可见／视图隐藏时停止调度，切换图片时取消旧帧回调。胶片栏保持现有静态缩略图布局。
+
+主页、图片窗口粘贴和原始图片拖入保留编码数据；浏览器同时提供图片 URL 与静态位图时优先获取源 URL。如果剪贴板仅含静态 PNG/TIFF 而没有源链接，无法还原已经丢失的动画。显式转码／静态图片导出仍为独立流程，本次不增加动画编辑或动图转码能力。
+
+非 UI 回归：`python3 clients/macos/scripts/test-animated-image.py [本地动图路径]`；可选文件检查用于本次 LinkedIn 80 帧 GIF。未自动构建、启动或操作 Glance。

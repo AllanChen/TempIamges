@@ -1,0 +1,332 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root { color-scheme: dark; font-family: Inter, -apple-system, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 18px; background: #111114; color: #f3eee8; font-size: 12px; }
+    h1 { margin: 0 0 6px; font-size: 16px; }
+    p { margin: 0 0 16px; color: #aaa4a0; line-height: 1.5; }
+    label { display: block; margin-bottom: 7px; color: #aaa4a0; font-weight: 600; }
+    input { width: 100%; padding: 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: #17171c; color: #f3eee8; }
+    .hint { margin: 7px 0 16px; color: #726d69; font-size: 11px; }
+    .actions { display: flex; gap: 8px; margin-bottom: 8px; }
+    button { min-height: 34px; padding: 0 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: #201f25; color: #f3eee8; cursor: pointer; }
+    button.primary { flex: 1; border: 0; background: #e8a87c; color: #21130d; font-weight: 700; }
+    button.export, button.generate-screens { width: 100%; border-color: rgba(232,168,124,.35); color: #e8a87c; }
+    button.generate-screens { margin-top: 8px; background: rgba(232,168,124,.10); font-weight: 700; }
+    button.featured { min-height: 44px; margin-bottom: 18px; background: #e8a87c; border: 0; color: #21130d; }
+    #mode { margin: 0 0 12px; color: #aaa4a0; font-size: 11px; }
+    #mode.dev { color: #f18b86; }
+    #status { min-height: 18px; margin-top: 14px; color: #8fd0af; }
+  </style>
+</head>
+<body>
+  <h1>Glance UI Builder <span style="color:#e8a87c">v2.1</span></h1>
+  <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages. Includes the Result Badge Study.</p>
+  <div id="mode">Checking Figma mode…</div>
+  <label for="brand-before">Landscape A · natural morning</label>
+  <input id="brand-before" type="file" accept="image/png,image/jpeg">
+  <label for="brand-after" style="margin-top:10px">Landscape B · warm sunrise</label>
+  <input id="brand-after" type="file" accept="image/png,image/jpeg">
+  <button id="replace-viewer-brand-images" class="generate-screens featured">Replace Two Viewer Photos</button>
+  <div class="hint">Choose both files from <code>design/app/layout/brand-assets</code>. Replaces the two portraits wherever those image assets are reused.</div>
+  <button id="generate-pricing-prd-flows" class="generate-screens featured">Generate Pricing Flow (PRD v0.4)</button>
+  <div class="hint">Free / Pro / credits flows from docs/glance-pricing-prd.md v0.4. Creates a separate board; older pricing boards stay.</div>
+  <button id="generate-pricing-flows" class="generate-screens featured">Generate Pricing + Credits Flow</button>
+  <div class="hint">Pricing redesign: centered welcome, pricing and results; structured orders and records. Creates a separate Refined board.</div>
+  <button id="generate-widget-context-credits" class="generate-screens featured">Generate Compact Widget Menu</button>
+  <button id="generate-task-running-placement" class="generate-screens featured">Generate Task Running Placement</button>
+  <button id="generate-widget-market-redesign" class="generate-screens featured">Generate Widget Market Redesign</button>
+  <button id="generate-widget-market-details" class="generate-screens featured">Generate Widget Details + Loading</button>
+  <button id="hide-widget-market-version-info" class="generate-screens featured">Remove Widget Version Info</button>
+  <button id="generate-task-center-redesign" class="generate-screens featured">Generate Task Center Redesign</button>
+  <button id="generate-task-running-motion" class="generate-screens featured">Generate Task Running Motion</button>
+  <button id="generate-toast" class="generate-screens featured">Generate Toast</button>
+  <button id="generate-preview-history-redesign" class="generate-screens featured">Generate Preview History Redesign</button>
+  <button id="generate-capture-editor" class="generate-screens featured">Generate Capture Editor</button>
+  <button id="generate-menu-bar-icon" class="generate-screens featured">Generate Menu Bar Icon</button>
+  <button id="generate-app-logo" class="generate-screens featured">Generate App Logo</button>
+  <button id="generate-app-logo-tangible" class="generate-screens featured">Generate App Logo / Tangible (A object, B character)</button>
+  <button id="generate-menu-bar-icon-character" class="generate-screens featured">Generate Tray Icon / Character (states + animation)</button>
+  <button id="generate-home-folder-scroll-study" class="generate-screens featured">Generate Home Folder Scroll Study</button>
+  <button id="generate-glance-scrollbar-system" class="generate-screens featured">Generate Glance Scrollbar System</button>
+  <button id="generate-widget-oss-result" class="generate-screens featured">Refine OSS Result Page</button>
+  <button id="generate-widget-task-running-study" class="generate-screens featured">Generate Widget Task Running Study</button>
+  <button id="generate-widget-text-result-window" class="generate-screens featured">Generate Widget Text Result Side Window</button>
+  <button id="generate-widget-multi-image-input" class="generate-screens featured">Generate Multi-Image Widget Input (4 Max)</button>
+  <button id="generate-widget-flow" class="generate-screens featured">Generate Revised Widget Pages (7 Screens)</button>
+  <button id="generate-result-badge-study" class="generate-screens featured">Generate Widget Result Badge Study</button>
+  <label for="reference">Reference image</label>
+  <input id="reference" type="file" accept="image/png,image/jpeg">
+  <div class="hint">Choose <code>design/app/layout/image-inspect-ui.png</code> to place a locked reference beside the editable design.</div>
+  <div class="actions">
+    <button id="close">Cancel</button>
+    <button id="generate" class="primary">Create editable design</button>
+  </div>
+  <div id="status"></div>
+  <button id="generate-simple-viewer" class="generate-screens">Generate Simple Image Viewer</button>
+  <button id="generate-dark-refresh" class="generate-screens">Generate Dark Refresh v2 (13 Screens)</button>
+  <button id="generate-viewer-study" class="generate-screens">Generate Viewer Chrome Study</button>
+  <button id="generate-preview-study" class="generate-screens">Generate Preview Chrome Study</button>
+  <button id="generate-compare-study" class="generate-screens">Generate Compare Mode (bordered)</button>
+  <button id="replace-study-images" class="generate-screens">Replace color blocks with image (Focus + Compare)</button>
+  <button id="generate-image-inspect-study" class="generate-screens">Generate Image Inspect Chrome Study</button>
+  <button id="generate-image-filmstrip-study" class="generate-screens">Generate Image Filmstrip Scroll Study</button>
+  <button id="generate-video-inspect-study" class="generate-screens">Generate Video Inspect v4 (Focus + Compare)</button>
+  <button id="generate-image-compression-flow" class="generate-screens">Generate Image Compression Flow</button>
+  <button id="generate-screens" class="generate-screens">Generate Video + Tasks + Widget Market</button>
+  <button id="redesign-market" class="generate-screens">Update Widget Market (50 widgets)</button>
+    <button id="generate-home" class="generate-screens">Generate Home / Launcher</button>
+    <button id="generate-tray" class="generate-screens">Generate Tray Popover</button>
+  <button id="generate-remaining" class="generate-screens">Generate Remaining Screens (Home + 6)</button>
+  <button id="export" class="export">Export selected frame (JSON + PNG)</button>
+  <script>
+    const status = document.getElementById('status');
+    document.getElementById('replace-viewer-brand-images').onclick = async () => {
+      const before = document.getElementById('brand-before').files[0];
+      const after = document.getElementById('brand-after').files[0];
+      if (!before || !after) {
+        status.textContent = 'Choose both landscape images first.';
+        return;
+      }
+      status.textContent = 'Replacing viewer photos in Figma...';
+      const [beforeBytes, afterBytes] = await Promise.all([
+        before.arrayBuffer(), after.arrayBuffer()
+      ]);
+      parent.postMessage({ pluginMessage: {
+        type: 'replace-viewer-brand-images',
+        beforeBytes: Array.from(new Uint8Array(beforeBytes)),
+        afterBytes: Array.from(new Uint8Array(afterBytes))
+      } }, '*');
+    };
+    document.getElementById('close').onclick = () => parent.postMessage({ pluginMessage: { type: 'close' } }, '*');
+    document.getElementById('generate').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building Figma layers...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate', bytes } }, '*');
+    };
+    document.getElementById('generate-simple-viewer').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the full-image operation view...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate-simple-image-viewer', bytes } }, '*');
+    };
+    document.getElementById('generate-dark-refresh').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building 13 Dark Refresh screens...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate-dark-refresh-screens', bytes } }, '*');
+    };
+    document.getElementById('generate-viewer-study').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the borderless window-control study...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate-viewer-chrome-study', bytes } }, '*');
+    };
+    document.getElementById('generate-preview-study').onclick = () => {
+      status.textContent = 'Building the macOS Preview-style chrome study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-preview-chrome-study' } }, '*');
+    };
+    document.getElementById('generate-compare-study').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the bordered Compare Mode study...';
+      let bytes = null;
+      if (file) bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'generate-compare-chrome-study', bytes } }, '*');
+    };
+    document.getElementById('replace-study-images').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      if (!file) { status.textContent = 'Pick a Reference image first, then click again.'; return; }
+      status.textContent = 'Replacing color blocks with your image...';
+      const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+      parent.postMessage({ pluginMessage: { type: 'replace-study-images', bytes } }, '*');
+    };
+    document.getElementById('generate-image-inspect-study').onclick = () => {
+      status.textContent = 'Building v3 Image Inspect...';
+      parent.postMessage({ pluginMessage: { type: 'generate-image-inspect-chrome-study' } }, '*');
+    };
+    document.getElementById('generate-image-filmstrip-study').onclick = () => {
+      status.textContent = 'Building Image Filmstrip Scroll Study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-image-filmstrip-scroll-study' } }, '*');
+    };
+    document.getElementById('generate-glance-scrollbar-system').onclick = () => {
+      status.textContent = 'Building reusable Glance scrollbar components...';
+      parent.postMessage({ pluginMessage: { type: 'generate-glance-scrollbar-system' } }, '*');
+    };
+    document.getElementById('generate-video-inspect-study').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building Video Inspect v4 with consistent controls...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-video-inspect-controls-study', bytes } }, '*');
+    };
+    document.getElementById('generate-menu-bar-icon-character').onclick = () => {
+      status.textContent = 'Building Tray Icon / Character...';
+      parent.postMessage({ pluginMessage: { type: 'generate-menu-bar-icon-character' } }, '*');
+    };
+    document.getElementById('generate-app-logo-tangible').onclick = () => {
+      status.textContent = 'Building App Logo / Tangible...';
+      parent.postMessage({ pluginMessage: { type: 'generate-app-logo-tangible' } }, '*');
+    };
+    document.getElementById('generate-app-logo').onclick = () => {
+      status.textContent = 'Building App Logo...';
+      parent.postMessage({ pluginMessage: { type: 'generate-app-logo' } }, '*');
+    };
+    document.getElementById('generate-task-running-placement').onclick = () => {
+      status.textContent = 'Building Task Running Placement...';
+      parent.postMessage({ pluginMessage: { type: 'generate-task-running-placement' } }, '*');
+    };
+    document.getElementById('generate-widget-market-redesign').onclick = () => {
+      status.textContent = 'Building Widget Market Redesign...';
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-market-redesign' } }, '*');
+    };
+    document.getElementById('generate-widget-market-details').onclick = () => {
+      status.textContent = 'Building Widget Details + Loading...';
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-market-details' } }, '*');
+    };
+    document.getElementById('hide-widget-market-version-info').onclick = () => {
+      status.textContent = 'Removing Widget metadata...';
+      parent.postMessage({ pluginMessage: { type: 'hide-widget-market-version-info' } }, '*');
+    };
+    document.getElementById('generate-pricing-prd-flows').onclick = () => {
+      status.textContent = 'Building PRD v0.4 pricing, credits and Pro flows…';
+      parent.postMessage({ pluginMessage: { type: 'generate-pricing-prd-flows' } }, '*');
+    };
+    document.getElementById('generate-pricing-flows').onclick = () => {
+      status.textContent = 'Building software licensing, top-ups and task billing flows…';
+      parent.postMessage({ pluginMessage: { type: 'generate-pricing-flows' } }, '*');
+    };
+    document.getElementById('generate-widget-context-credits').onclick = () => {
+      status.textContent = 'Building Compact Widget Menu...';
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-context-credits' } }, '*');
+    };
+    document.getElementById('generate-task-center-redesign').onclick = () => {
+      status.textContent = 'Building Task Center Redesign...';
+      parent.postMessage({ pluginMessage: { type: 'generate-task-center-redesign' } }, '*');
+    };
+    document.getElementById('generate-task-running-motion').onclick = () => {
+      status.textContent = 'Building Task Running Motion...';
+      parent.postMessage({ pluginMessage: { type: 'generate-task-running-motion' } }, '*');
+    };
+    document.getElementById('generate-toast').onclick = () => {
+      status.textContent = 'Building Toast...';
+      parent.postMessage({ pluginMessage: { type: 'generate-toast' } }, '*');
+    };
+    document.getElementById('generate-preview-history-redesign').onclick = () => {
+      status.textContent = 'Building Preview History Redesign...';
+      parent.postMessage({ pluginMessage: { type: 'generate-preview-history-redesign' } }, '*');
+    };
+    document.getElementById('generate-capture-editor').onclick = () => {
+      status.textContent = 'Building Capture Editor...';
+      parent.postMessage({ pluginMessage: { type: 'generate-capture-editor' } }, '*');
+    };
+    document.getElementById('generate-menu-bar-icon').onclick = () => {
+      status.textContent = 'Building Menu Bar Icon...';
+      parent.postMessage({ pluginMessage: { type: 'generate-menu-bar-icon' } }, '*');
+    };
+    document.getElementById('generate-image-compression-flow').onclick = () => {
+      status.textContent = 'Building Image Compression Flow...';
+      parent.postMessage({ pluginMessage: { type: 'generate-image-compression-flow' } }, '*');
+    };
+    document.getElementById('generate-widget-flow').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building seven revised Widget pages...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-flow', bytes } }, '*');
+    };
+    document.getElementById('generate-widget-multi-image-input').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the 3/4 and 4/4 multi-image Widget input states...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-multi-image-input', bytes } }, '*');
+    };
+    document.getElementById('generate-widget-oss-result').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Refining the Widget OSS result page...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-oss-result', bytes } }, '*');
+    };
+    document.getElementById('generate-widget-task-running-study').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building two Widget task-running states...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-task-running-study', bytes } }, '*');
+    };
+    document.getElementById('generate-widget-text-result-window').onclick = async () => {
+      const file = document.getElementById('reference').files[0];
+      status.textContent = 'Building the main image and text result side window...';
+      const bytes = file ? Array.from(new Uint8Array(await file.arrayBuffer())) : null;
+      parent.postMessage({ pluginMessage: { type: 'generate-widget-text-result-window', bytes } }, '*');
+    };
+    document.getElementById('export').onclick = () => {
+      status.textContent = 'Exporting selected frame...';
+      parent.postMessage({ pluginMessage: { type: 'export-selection' } }, '*');
+    };
+    document.getElementById('generate-screens').onclick = () => {
+      status.textContent = 'Building three production screens...';
+      parent.postMessage({ pluginMessage: { type: 'generate-production-screens' } }, '*');
+    };
+    document.getElementById('generate-remaining').onclick = () => {
+      status.textContent = 'Building the remaining seven screens...';
+      parent.postMessage({ pluginMessage: { type: 'generate-remaining-screens' } }, '*');
+    };
+    document.getElementById('redesign-market').onclick = () => {
+      status.textContent = 'Building the VS Code-inspired 50-widget Market...';
+      parent.postMessage({ pluginMessage: { type: 'redesign-widget-market' } }, '*');
+    };
+    document.getElementById('generate-home').onclick = () => {
+      status.textContent = 'Building the Home / Launcher screen...';
+      parent.postMessage({ pluginMessage: { type: 'generate-home' } }, '*');
+    };
+    document.getElementById('generate-home-folder-scroll-study').onclick = () => {
+      status.textContent = 'Building the Home folder scroll study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-home-folder-scroll-study' } }, '*');
+    };
+    document.getElementById('generate-tray').onclick = () => {
+      status.textContent = 'Building the Tray Popover screen...';
+      parent.postMessage({ pluginMessage: { type: 'generate-tray' } }, '*');
+    };
+    document.getElementById('generate-result-badge-study').onclick = () => {
+      status.textContent = 'Building Widget Result Badge Study...';
+      parent.postMessage({ pluginMessage: { type: 'generate-result-badge-study' } }, '*');
+    };
+
+    function download(filename, blob) {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    onmessage = event => {
+      const message = event.data.pluginMessage;
+      if (!message) return;
+      if (message.type === 'editor-mode') {
+        const mode = document.getElementById('mode');
+        mode.className = message.editorType === 'dev' ? 'dev' : '';
+        mode.textContent = message.editorType === 'dev'
+          ? 'Dev Mode: switch to Design before generating screens.'
+          : 'Design Mode: ready to generate editable screens.';
+        return;
+      }
+      if (message.type === 'export-ready') {
+        download(message.basename + '.json', new Blob([message.json], { type: 'application/json' }));
+        download(message.basename + '.png', new Blob([new Uint8Array(message.png)], { type: 'image/png' }));
+        status.textContent = 'Downloaded JSON and PNG.';
+        return;
+      }
+      status.textContent = message.message || '';
+    };
+    parent.postMessage({ pluginMessage: { type: 'get-editor-mode' } }, '*');
+  </script>
+</body>
+</html>

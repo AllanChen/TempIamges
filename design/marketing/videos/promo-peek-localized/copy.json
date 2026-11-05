@@ -1,0 +1,58 @@
+{
+  "ja": {
+    "voice": "Kyoko",
+    "rate": 220,
+    "language": "jpn",
+    "font": "/System/Library/Fonts/ヒラギノ角ゴシック W4.ttc",
+    "intro": "素早く確認。流れを止めない。",
+    "outro": "素早く確認。必要なときはAIで編集。",
+    "shortcut": "Option + スペース",
+    "instruction": "パスを選択 → プレビュー",
+    "spoken": [
+      "集中していると、AIがファイルのパスを示し、確認を求めてきます。",
+      "アプリを切り替えると、集中が途切れます。",
+      "パスを選び、オプションとスペース。その場でプレビュー。",
+      "ファイルも、文書も、リンクも。チャットを離れずに確認。",
+      "そして、プレビューは始まりにすぎません。",
+      "グランス。すぐに確認。必要ならAIで編集。",
+      "グランスプレビュードットコム。"
+    ],
+    "subtitles": [
+      "集中していると、AIがファイルのパスを示し、\n確認を求めてきます。",
+      "アプリを切り替えると、集中が途切れます。",
+      "パスを選び、Option + スペース。\nその場でプレビュー。",
+      "ファイルも、文書も、リンクも。\nチャットを離れずに確認。",
+      "そして、プレビューは始まりにすぎません。",
+      "Glance。すぐに確認。必要ならAIで編集。",
+      "glancepreview.com"
+    ]
+  },
+  "de": {
+    "voice": "Anna",
+    "rate": 190,
+    "language": "deu",
+    "font": "/System/Library/Fonts/Helvetica.ttc",
+    "intro": "Schnell ansehen. Im Flow bleiben.",
+    "outro": "Schnell ansehen. Bei Bedarf mit KI bearbeiten.",
+    "shortcut": "Option + Leertaste",
+    "instruction": "Pfad auswählen → Vorschau",
+    "spoken": [
+      "Du bist im Flow. Dann nennt dir die KI einen lokalen Dateipfad, den du prüfen sollst.",
+      "Dafür die App wechseln? Schon ist der Fokus weg.",
+      "Mit Glance: Pfad markieren, Option und Leertaste drücken. Sofort erscheint die Vorschau.",
+      "Dateien, Dokumente, Links. Vorschau direkt im Chat.",
+      "Und die Vorschau ist erst der Anfang.",
+      "Glance. Schnell ansehen. Bei Bedarf mit KI bearbeiten.",
+      "Glance Preview Punkt com."
+    ],
+    "subtitles": [
+      "Du bist im Flow. Dann nennt dir die KI einen\nlokalen Dateipfad, den du prüfen sollst.",
+      "Dafür die App wechseln?\nSchon ist der Fokus weg.",
+      "Mit Glance: Pfad markieren, Option + Leertaste drücken.\nSofort erscheint die Vorschau.",
+      "Dateien, Dokumente, Links.\nVorschau direkt im Chat.",
+      "Und die Vorschau ist erst der Anfang.",
+      "Glance. Schnell ansehen.\nBei Bedarf mit KI bearbeiten.",
+      "glancepreview.com"
+    ]
+  }
+}

@@ -1,10 +1,10 @@
 # Glance 全栈执行任务清单（AI 可执行）
 
 > 方向与工期：`docs/glance-ai-preview-plan.md`。本文件是执行版，覆盖三个代码库：
-> - **G**：macOS App（`Glance/`，Swift/AppKit）
-> - **S**：服务端（`GlanceService/`，Cloudflare Worker + D1 + R2，TypeScript）
-> - **C**：开发者 CLI 与 Worker（`glance-cli/`，Python ≥3.11，仅用标准库）
-> - **W**：官方 Widget 代码（`widgets/<uuid>/`）
+> - **G**：macOS App（`clients/macos/Glance/`，Swift/AppKit）
+> - **S**：服务端（`server/GlanceService/`，Cloudflare Worker + D1 + R2，TypeScript）
+> - **C**：开发者 CLI 与 Worker（`server/glance-cli/`，Python ≥3.11，仅用标准库）
+> - **W**：官方 Widget 代码（`server/widgets/<uuid>/`）
 > - **H**：人工任务（AI 只准备脚本和文档）
 >
 > 创建：2026-10-12。执行者每完成一个任务，就更新本文件中该任务的状态。行号是 2026-10-12 的快照，**执行前必须先 grep 符号重新定位**。
@@ -24,7 +24,7 @@
 - D4 Peek 改为用户主动开启的高级功能；首次启动不要求任何权限。
 - D5 开发者平台冻结：不给审核、灰度、OAuth、CLI 命令加新功能（修 bug、加固安全、适配新契约不算新功能）。
 - D6 后端唯一对外域名：`api.glance.mcreator.ai`（需要 H 任务确认它已绑定到 `glance-service` Worker）。
-- D9（2026-10-12）签名**先用个人 Apple Developer 账号**，mcreator 组织账号和 D-U-N-S 暂不办。验证期先发自签名 DMG（`GLANCE_DMG=1 ./Glance/build.sh`），随 `INSTALL.md` 的放行说明一起发；验证通过后再办个人 Developer ID 做公证。
+- D9（2026-10-12）签名**先用个人 Apple Developer 账号**，mcreator 组织账号和 D-U-N-S 暂不办。验证期先发自签名 DMG（`GLANCE_DMG=1 ./clients/macos/Glance/build.sh`），随 `docs/installation.md` 的放行说明一起发；验证通过后再办个人 Developer ID 做公证。
 - D7 测试版鉴权：邀请码换设备 token；配额每人每天 20 个任务、全局每天 300 个，可在管理后台调整。
 - D8（2026-10-12）图片信息面板**不再有 QUICK ACTIONS**（Remove Background / Upscale 2× 整块删除）；等待状态保持现状（只有呼吸边框，不加文字标签）；**视频没有滑杆对比，只有图片有**（视频保持并排对比）。
 
@@ -43,7 +43,7 @@
 9. 有 Figma 参考的界面必须 1:1 匹配；新增或改变布局的 UI 必须先有 Figma frame（Figma MCP 只读）。
 10. Image Inspect filmstrip 缩略图的尺寸和间距在任何状态下都不变。
 11. 日志中的用户内容一律用 `Logger.redact(...)` 包裹。
-12. 新文案同时加到 `Glance/Resources/en.lproj` 和 `zh-Hans.lproj` 的 `Localizable.strings`。
+12. 新文案同时加到 `clients/macos/Glance/Resources/en.lproj` 和 `zh-Hans.lproj` 的 `Localizable.strings`。
 
 **S**
 13. 每个改变行为的 S 任务都必须带测试（S0.1 建好测试框架之后）；`npm run typecheck` 和 `npm test` 都要通过。
@@ -52,7 +52,7 @@
 
 **C**
 16. 保持「仅用标准库」（`dependencies = []`）。
-17. 每个行为改动都要在 `glance-cli/tests/test_cli.py` 加 unittest；用 0.6 的命令运行。
+17. 每个行为改动都要在 `server/glance-cli/tests/test_cli.py` 加 unittest；用 0.6 的命令运行。
 
 ### 0.4 状态图例
 `[ ]` 未开始 · `[~]` 进行中 · `[x]` 完成（等用户确认）· `[✓]` 用户已确认 · `[!]` 阻塞（写明原因）· `[—]` 已决定不做
@@ -66,12 +66,12 @@
 ### 0.6 验证命令速查（在仓库根目录执行）
 | 范围 | 命令 |
 |---|---|
-| G 语法 | `xcrun swiftc -parse Glance/Sources/<路径>.swift` |
-| S 类型 | `cd GlanceService && npm run typecheck` |
-| S 测试 | `cd GlanceService && npm test`（S0.1 之后可用） |
-| C 测试 | `PYTHONPATH=glance-cli/src python3 -m unittest discover -s glance-cli/tests -v` |
-| W 测试 | `cd widgets/<uuid> && python3 -m unittest test_main -v`（需要的依赖见各 Widget 的 README） |
-| Figma 插件 | `cd layout/GlanceFigmaPlugin && node --check code.js && node test-generation.cjs` |
+| G 语法 | `xcrun swiftc -parse clients/macos/Glance/Sources/<路径>.swift` |
+| S 类型 | `cd server/GlanceService && npm run typecheck` |
+| S 测试 | `cd server/GlanceService && npm test`（S0.1 之后可用） |
+| C 测试 | `PYTHONPATH=server/glance-cli/src python3 -m unittest discover -s server/glance-cli/tests -v` |
+| W 测试 | `cd server/widgets/<uuid> && python3 -m unittest test_main -v`（需要的依赖见各 Widget 的 README） |
+| Figma 插件 | `cd design/app/layout/GlanceFigmaPlugin && node --check code.js && node test-generation.cjs` |
 | 本地化 | 比对 en 与 zh-Hans 的 key 集合，以及代码中所有 `"…".localized` 的 key |
 
 ---
@@ -137,13 +137,13 @@
 - **用户测试点**：Release 构建触发一次预览，`app.log` 里没有选中的原文；在 VSCode 里选中文字并预览后，剪贴板保持原样。
 
 ### [x] P0-G2 回滚 Widget Menu Flow Figma 生成器（D2）
-- 文件：`layout/GlanceFigmaPlugin/code.js`、`ui.html`、`test-generation.cjs`。
-- 删除 `WIDGET_MENU`、`widgetMenuPanel`、`widgetMenuSceneBoard`、`widgetMenuVideoPlayback`、`WIDGET_MENU_MARKET`、`createWidgetMenuFlowScreen`、`generateWidgetMenuFlow`，以及 `generate-widget-menu-flow` 的消息处理、按钮和测试段（先用 `git diff --stat layout/GlanceFigmaPlugin` 确认该目录只有这次改动，如果是，可以直接 `git checkout --`）。
-- 验收：插件检查命令通过；`grep -rn widget-menu-flow layout/GlanceFigmaPlugin` 无结果。
+- 文件：`design/app/layout/GlanceFigmaPlugin/code.js`、`ui.html`、`test-generation.cjs`。
+- 删除 `WIDGET_MENU`、`widgetMenuPanel`、`widgetMenuSceneBoard`、`widgetMenuVideoPlayback`、`WIDGET_MENU_MARKET`、`createWidgetMenuFlowScreen`、`generateWidgetMenuFlow`，以及 `generate-widget-menu-flow` 的消息处理、按钮和测试段（先用 `git diff --stat design/app/layout/GlanceFigmaPlugin` 确认该目录只有这次改动，如果是，可以直接 `git checkout --`）。
+- 验收：插件检查命令通过；`grep -rn widget-menu-flow design/app/layout/GlanceFigmaPlugin` 无结果。
 
 ### [x] P0-C1 清理 CLI 仓库杂物（0.1 人天）
-- 删除过期的构建产物 `glance-cli/build/` 和 `glance-cli/src/glance_cli.egg-info/`；在根目录 `.gitignore` 增加 `glance-cli/build/` 和 `*.egg-info/`（已有 `*.egg-info/` 的话就跳过）、`.glance-test-output/`（已有）。
-- 删除空目录 `widgets/6442556d-aa53-4506-9539-0d80c445f363/` 和空目录 `GlanceService/GlanceService/`（先确认里面确实为空或只有空子目录）。
+- 删除过期的构建产物 `server/glance-cli/build/` 和 `server/glance-cli/src/glance_cli.egg-info/`；在根目录 `.gitignore` 增加 `server/glance-cli/build/` 和 `*.egg-info/`（已有 `*.egg-info/` 的话就跳过）、`.glance-test-output/`（已有）。
+- 删除空目录 `server/widgets/6442556d-aa53-4506-9539-0d80c445f363/` 和空目录 `server/GlanceService/GlanceService/`（先确认里面确实为空或只有空子目录）。
 - 验收：`git status` 只显示删除和 `.gitignore` 的改动；C 测试通过。
 
 ---
@@ -158,9 +158,9 @@
 - **目标**：后续所有 S 任务都能写测试。
 - **步骤**：
   1. devDependencies 增加 `vitest` 和 `@cloudflare/vitest-pool-workers`。版本：先查 pool 包的 `peerDependencies`，选与已安装 wrangler（4.131.x）兼容的组合，写死精确版本。
-  2. 新增 `GlanceService/vitest.config.ts`：用 pool 的 workers 配置指向 `wrangler.toml`；用 `readD1Migrations("migrations")` 读迁移，通过 binding `TEST_MIGRATIONS` 传给 setup 文件；在 miniflare `bindings` 中提供测试密钥：`SESSION_SECRET`、`MEDIA_SIGNING_SECRET`、`WORKER_TOKEN_PEPPER`、`FLOW_TEST_TOKEN`、`DEVELOPER_TEST_TOKEN`、`ADMIN_TOKEN`、`ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_PATH`。如果 pool 需要 `nodejs_compat`，**只在测试配置里加**，不改 `wrangler.toml`。
-  3. 新增 `GlanceService/test/setup.ts`：调用 `applyD1Migrations(env.DB, env.TEST_MIGRATIONS)`。
-  4. 新增 `GlanceService/test/tsconfig.json`（引用 pool 的类型），`package.json` 增加 `"test": "vitest run"`。
+  2. 新增 `server/GlanceService/vitest.config.ts`：用 pool 的 workers 配置指向 `wrangler.toml`；用 `readD1Migrations("migrations")` 读迁移，通过 binding `TEST_MIGRATIONS` 传给 setup 文件；在 miniflare `bindings` 中提供测试密钥：`SESSION_SECRET`、`MEDIA_SIGNING_SECRET`、`WORKER_TOKEN_PEPPER`、`FLOW_TEST_TOKEN`、`DEVELOPER_TEST_TOKEN`、`ADMIN_TOKEN`、`ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_PATH`。如果 pool 需要 `nodejs_compat`，**只在测试配置里加**，不改 `wrangler.toml`。
+  3. 新增 `server/GlanceService/test/setup.ts`：调用 `applyD1Migrations(env.DB, env.TEST_MIGRATIONS)`。
+  4. 新增 `server/GlanceService/test/tsconfig.json`（引用 pool 的类型），`package.json` 增加 `"test": "vitest run"`。
   5. 写冒烟测试 `test/smoke.test.ts`：`GET /health` 返回 200；`GET /api/v2/widgets` 返回 200 且是数组。
   6. 同步修正过期的 `worker-configuration.d.ts`，或改为从 `index.ts` 的 `Env` 导出类型，二选一并说明。
 - **验收**：`npm test` 和 `npm run typecheck` 都通过。
@@ -221,13 +221,13 @@
 ### 客户端 G（G1.1–G1.8 不依赖服务端）
 
 #### [x] P1-G1.1 机械拆分 ImageInspectWindow.swift（1 人天）
-- **目标**：把 6.9k 行文件中的辅助类型挪到 `Glance/Sources/Inspect/`，**不改任何逻辑**。`project.yml` 的 sources 是 `path: Sources`，会递归包含子目录。
+- **目标**：把 6.9k 行文件中的辅助类型挪到 `clients/macos/Glance/Sources/Inspect/`，**不改任何逻辑**。`project.yml` 的 sources 是 `path: Sources`，会递归包含子目录。
 - **要挪的类型**（先 grep 定位起止行）：Compression 对话框相关（文件开头）、`WidgetTextResultWindow` 及其视图、`OCRResultWindow`、`InspectToastWindow`、`ActionMenuEntry` / `ActionMenuPanel` / `ActionMenuRow`、`MediaDropCanvasView`、`InspectImageViewport`、`ImageRevealView`、`ImageFilmstripView` 及其 item、`ImageInfoPanel` / `ImageInfoBlock`、`ImageDifferencePanel`、`ImageExporter` 及格式枚举。
 - **步骤**：一个类型一个文件；跨文件访问时，把**类型级**的 `private` / `fileprivate` 改为 `internal`（只改必须改的）；不重命名，不改格式，保留注释。
-- **验收**：每个文件 parse 通过；`git diff --stat` 新增行数 ≈ 删除行数。提醒用户：如果工程由 XcodeGen 生成，构建前需要重新生成（查看 `Glance/build.sh` 的做法后，告诉用户具体命令）。
+- **验收**：每个文件 parse 通过；`git diff --stat` 新增行数 ≈ 删除行数。提醒用户：如果工程由 XcodeGen 生成，构建前需要重新生成（查看 `clients/macos/Glance/build.sh` 的做法后，告诉用户具体命令）。
 
 #### [x] P1-G1.2 机械拆分 VideoCompareWindow.swift（0.5 人天）
-- 挪到 `Glance/Sources/Video/`：`VideoInspectViewport`、`WebMVideoView`、`WebMStreamingFallback`、filmstrip、播放条和信息视图。`WebMVideoView` 也被 `ImageLoader.swift` 使用，必须是 `internal`。
+- 挪到 `clients/macos/Glance/Sources/Video/`：`VideoInspectViewport`、`WebMVideoView`、`WebMStreamingFallback`、filmstrip、播放条和信息视图。`WebMVideoView` 也被 `ImageLoader.swift` 使用，必须是 `internal`。
 - 验收同 G1.1。
 
 #### [x] P1-G1.3 删除死代码（0.25 人天）
@@ -312,7 +312,7 @@
 - `MAX_CONCURRENT` 改为读环境变量 `GLANCE_WORKER_MAX_CONCURRENT`（默认 4，上限 200）。
 - 每个 Widget 的并发上限改为 `GLANCE_WORKER_PER_WIDGET_CONCURRENT`（默认 1 保持现状；0 表示不限）。`eligible()` 按「该 Widget 当前运行数 < 上限」过滤，而不是「是否在 busy 集合里」。
 - 测试：设为 3 时，同一 Widget 可同时领取 3 个任务，第 4 个要等；设为 0 时不限。
-- `glance-cli/deploy/worker.env.example`（P3 才建）里写上这两个变量；本任务先写进 `glance-cli/README.md`。
+- `server/glance-cli/deploy/worker.env.example`（P3 才建）里写上这两个变量；本任务先写进 `server/glance-cli/README.md`。
 
 #### [x] P1.5-S1 排队位置、队列上限、预估等待（0.75 人天）
 - `createTask`：插入前 `SELECT COUNT(*) FROM widget_tasks WHERE status='queued'`，≥ 上限则 429 `queue_full`；插入后返回 `queuePosition` = 同一 widget 中 `created_at` 更早的 queued 任务数 + 1。
@@ -388,7 +388,7 @@
   4. Admin：`POST /api/admin/v2/beta-invites` body `{count:1-100, maxUses, expiresInDays, note}`，返回明文码列表（只返回一次）；`GET /api/admin/v2/beta-invites`（只返回哈希前 8 位、用量和备注）；`POST /api/admin/v2/device-tokens/:hashPrefix/revoke`。
   5. 管理后台页面 `site/admin/index.html`：增加「邀请码」区块（生成、列表、吊销）。沿用页面现有的样式和写法。
 - **测试**：随意 token → 401；兑换后的 token 能创建上传；用尽的码 → 400；吊销后 → 401；`FLOW_TEST_TOKEN` 仍可查询任意任务。
-- **验收**：测试和 typecheck 通过；`GlanceService/README.md` 写明接口和 curl 示例。
+- **验收**：测试和 typecheck 通过；`server/GlanceService/README.md` 写明接口和 curl 示例。
 
 #### [ ] P3-S3.2 配额（1 人天）
 - **依赖**：S3.1。**契约**：1.5。
@@ -442,7 +442,7 @@
 - **依赖**：H3.0（确认域名绑定）。
 - `wrangler.toml`：增加 `[[routes]] pattern = "api.glance.mcreator.ai", custom_domain = true`（以 H3.0 确认的方式为准），`PUBLIC_ORIGIN` 改为 `https://api.glance.mcreator.ai`。
 - **注意**：`PUBLIC_ORIGIN` 改变会影响 Google OAuth 回调地址，需要在 Google Console 登记新地址（写进 H3.1）。workers.dev 地址保留一段时间，供旧版 CLI 使用。
-- `GlanceService/README.md`：删除 admin 路径和生产 admin URL；更新部署步骤（迁移 0008–0011、新的 secrets、cron）。
+- `server/GlanceService/README.md`：删除 admin 路径和生产 admin URL；更新部署步骤（迁移 0008–0011、新的 secrets、cron）。
 
 ### CLI C
 
@@ -480,9 +480,9 @@
 - **测试**：两个 `--input` 时，子进程收到的 `imagePaths` 长度为 2。
 
 #### [ ] P3-C3.5 VPS 部署文件（0.5 人天）
-- 新增 `glance-cli/deploy/glance-worker.service`（systemd unit）：专用用户 `glance`；`EnvironmentFile=/etc/glance/worker.env`（权限 0600）；`ExecStart=/opt/glance/.venv/bin/glance worker`；`Restart=always`；`RestartSec=10`；`KillSignal=SIGTERM`；`TimeoutStopSec=90`；`KillMode=control-group`；`NoNewPrivileges=true`；`ProtectSystem=strict`；`ReadWritePaths=/home/glance/.config/glance /tmp`。
-- 新增 `glance-cli/deploy/worker.env.example`：`GLANCE_API_URL`、`GLANCE_MOCK_TOKEN` 或说明如何放置 `session.json`、`RUNNINGHUB_API_KEY`、`RUNNINGHUB_API_KEY_AI`、`FREEIMAGEKEY`、`GLANCE_WORKER_DRAIN_SECONDS`。
-- 新增 `glance-cli/deploy/README.md`：Debian 12 / Ubuntu 24.04 的步骤（安装 python3.11+ 和 ffmpeg、克隆仓库、`./glance-cli-run.sh`、为每个 Widget 建 venv 并安装依赖、`glance widget add <dir> --python … --env …`、启用服务、查看 `journalctl` 和 `glance worker logs`）；无浏览器时的登录方式（SSH 端口转发完成 `glance login`，或拷贝 `session.json`；说明 session 30 天过期、需要续期）。
+- 新增 `server/glance-cli/deploy/glance-worker.service`（systemd unit）：专用用户 `glance`；`EnvironmentFile=/etc/glance/worker.env`（权限 0600）；`ExecStart=/opt/glance/.venv/bin/glance worker`；`Restart=always`；`RestartSec=10`；`KillSignal=SIGTERM`；`TimeoutStopSec=90`；`KillMode=control-group`；`NoNewPrivileges=true`；`ProtectSystem=strict`；`ReadWritePaths=/home/glance/.config/glance /tmp`。
+- 新增 `server/glance-cli/deploy/worker.env.example`：`GLANCE_API_URL`、`GLANCE_MOCK_TOKEN` 或说明如何放置 `session.json`、`RUNNINGHUB_API_KEY`、`RUNNINGHUB_API_KEY_AI`、`FREEIMAGEKEY`、`GLANCE_WORKER_DRAIN_SECONDS`。
+- 新增 `server/glance-cli/deploy/README.md`：Debian 12 / Ubuntu 24.04 的步骤（安装 python3.11+ 和 ffmpeg、克隆仓库、`./glance-cli-run.sh`、为每个 Widget 建 venv 并安装依赖、`glance widget add <dir> --python … --env …`、启用服务、查看 `journalctl` 和 `glance worker logs`）；无浏览器时的登录方式（SSH 端口转发完成 `glance login`，或拷贝 `session.json`；说明 session 30 天过期、需要续期）。
 - 验收：`systemd-analyze verify` 无法在 macOS 上运行，所以只检查文件格式，并在汇报里请用户在 VPS 上验证。
 
 ### Widget W
@@ -517,19 +517,19 @@
 
 #### [ ] P3-G3.5 发布工程（1.5 人天，签名部分 👤）
 - `get-task-allow` 只在 Debug 保留（`project.yml` 按配置区分 entitlements，或 Release 用单独的 entitlements 文件）。
-- `Glance/build.sh`：签名身份参数化（`GLANCE_SIGN_IDENTITY`，默认是现在的自签名证书）；`--notarize` 选项：`xcrun notarytool submit … --keychain-profile "$GLANCE_NOTARY_PROFILE" --wait` → `xcrun stapler staple` → `hdiutil` 生成 DMG。
+- `clients/macos/Glance/build.sh`：签名身份参数化（`GLANCE_SIGN_IDENTITY`，默认是现在的自签名证书）；`--notarize` 选项：`xcrun notarytool submit … --keychain-profile "$GLANCE_NOTARY_PROFILE" --wait` → `xcrun stapler staple` → `hdiutil` 生成 DMG。
 - Sparkle 2.x：`project.yml` 加 SPM 依赖；`Info.plist` 加 `SUFeedURL` 和 `SUPublicEDKey` 占位；主菜单增加「Check for Updates…」。
 - 版本号改为 `1.0.0-beta.2` / build `5`；确认 `Resources/Info.plist` 未被使用后删除。
-- 验收：`bash -n Glance/build.sh` 通过；`project.yml` 是合法的 YAML。
+- 验收：`bash -n clients/macos/Glance/build.sh` 通过；`project.yml` 是合法的 YAML。
 
 #### [ ] P3-G3.6 本地化、文档、隐私说明（0.5 人天）
-- 补齐 en 缺失的约 69 个 key 和 zh 缺失的 key；重写 `README.md` 和 `PROJECT_STRUCTURE.md`（新定位、Widget、视频对比、普通 App + 菜单栏、Peek 为可选）；新增 `docs/privacy.md`（上传去向 R2 / freeimage.host、ipapi.co、日志脱敏、数据保留：上传 24 小时、结果 7 天）。
+- 补齐 en 缺失的约 69 个 key 和 zh 缺失的 key；重写 `README.md` 和 `docs/project-structure.md`（新定位、Widget、视频对比、普通 App + 菜单栏、Peek 为可选）；新增 `docs/privacy.md`（上传去向 R2 / freeimage.host、ipapi.co、日志脱敏、数据保留：上传 24 小时、结果 7 天）。
 
 ### 人工 H
 
 - [ ] **H3.0** 确认 `api.glance.mcreator.ai` 已在 Cloudflare 绑定为 `glance-service` 的 Custom Domain（或说明实际的绑定方式），把结论告诉 AI 再执行 S3.7。
 - [ ] **H3.1** 部署服务端：`wrangler secret put` 新增或确认的密钥；`wrangler d1 migrations apply glance-service-db --remote`（0008–0011）；`wrangler deploy`；执行 `POST /api/admin/v2/manifests/resign`；轮换 `ADMIN_PATH`；Google Console 登记新的 OAuth 回调地址；生产环境删除 `DEVELOPER_TEST_TOKEN`（Worker 改用真实登录后）。
-- [ ] **H3.2** VPS：按 `glance-cli/deploy/README.md` 部署官方 Worker，为每个 Widget 执行 `bind --env`。
+- [ ] **H3.2** VPS：按 `server/glance-cli/deploy/README.md` 部署官方 Worker，为每个 Widget 执行 `bind --env`。
 - [ ] **H3.3** Apple Developer（**个人账号**，Apple ID + $99，一般 1–2 天；D9）、Developer ID 证书、`notarytool store-credentials`、Sparkle EdDSA 密钥、appcast 托管地址。
 - [ ] **H3.4** 构建并公证 `1.0.0-beta.2`，在一台干净的 Mac 上验证 Gatekeeper 直接放行。
 - [ ] **H3.5** 在后台生成邀请码，建反馈群，发给熟人。

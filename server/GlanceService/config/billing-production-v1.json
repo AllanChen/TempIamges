@@ -1,0 +1,168 @@
+{
+  "enabled": false,
+  "trialDays": 14,
+  "signupCredits": 100,
+  "proBonusCredits": 100,
+  "deviceLimit": 1,
+  "offlineDays": 30,
+  "releaseLimit": 3,
+  "confirmationThreshold": 20,
+  "queueMinutes": 30,
+  "maxAttempts": 3,
+  "launchUntil": null,
+  "proTiers": [
+    {
+      "id": "personal",
+      "name": "Personal",
+      "enabled": true,
+      "recommended": false,
+      "deviceLimit": 1,
+      "launchCNY": {
+        "amount": null
+      },
+      "launchUSD": {
+        "amount": null
+      },
+      "productID": "PROD_4dlMKKJJ4nUFpMfhs5cbdB",
+      "taxCategory": "saas",
+      "CNY": {
+        "amount": 1699
+      },
+      "USD": {
+        "amount": 999
+      },
+      "JPY": {
+        "amount": 1480
+      },
+      "EUR": {
+        "amount": 999
+      },
+      "HKD": {
+        "amount": 7800
+      }
+    },
+    {
+      "id": "team",
+      "name": "Team (5 people)",
+      "enabled": true,
+      "recommended": true,
+      "deviceLimit": 1,
+      "launchCNY": {
+        "amount": null
+      },
+      "launchUSD": {
+        "amount": null
+      },
+      "productID": "PROD_06N3QvrA6MNyWSK4Hy5kSy",
+      "taxCategory": "digital_goods",
+      "CNY": {
+        "amount": 4999
+      },
+      "USD": {
+        "amount": 1999
+      },
+      "JPY": {
+        "amount": 2980
+      },
+      "EUR": {
+        "amount": 1999
+      },
+      "HKD": {
+        "amount": 15800
+      }
+    }
+  ],
+  "packs": [
+    {
+      "id": "small",
+      "name": "600 credits",
+      "enabled": true,
+      "recommended": false,
+      "productID": "PROD_2iwYUqFoNF5J7doj1q9hKS",
+      "taxCategory": "saas",
+      "CNY": {
+        "amount": 1200,
+        "points": 600
+      },
+      "USD": {
+        "amount": 299,
+        "points": 600
+      },
+      "JPY": {
+        "amount": 480,
+        "points": 600
+      },
+      "EUR": {
+        "amount": 299,
+        "points": 600
+      },
+      "HKD": {
+        "amount": 2400,
+        "points": 600
+      }
+    },
+    {
+      "id": "standard",
+      "name": "1500 credits",
+      "enabled": true,
+      "recommended": true,
+      "productID": "PROD_3G4DkOM0dWKPwGSEN01pdu",
+      "taxCategory": "saas",
+      "CNY": {
+        "amount": 3000,
+        "points": 1500
+      },
+      "USD": {
+        "amount": 699,
+        "points": 1500
+      },
+      "JPY": {
+        "amount": 1080,
+        "points": 1500
+      },
+      "EUR": {
+        "amount": 699,
+        "points": 1500
+      },
+      "HKD": {
+        "amount": 5400,
+        "points": 1500
+      }
+    },
+    {
+      "id": "large",
+      "name": "5000 credits",
+      "enabled": true,
+      "recommended": false,
+      "productID": "PROD_2zgv2isfwCbh0XH2yOf8oD",
+      "taxCategory": "saas",
+      "CNY": {
+        "amount": 9800,
+        "points": 5000
+      },
+      "USD": {
+        "amount": 1999,
+        "points": 5000
+      },
+      "JPY": {
+        "amount": 2980,
+        "points": 5000
+      },
+      "EUR": {
+        "amount": 1999,
+        "points": 5000
+      },
+      "HKD": {
+        "amount": 15800,
+        "points": 5000
+      }
+    }
+  ],
+  "taxCategory": "software",
+  "taxIncluded": true,
+  "supportEmail": "support@glancepreview.com",
+  "termsURL": "https://glancepreview.com/terms",
+  "privacyURL": "https://glancepreview.com/privacy",
+  "refundURL": "https://glancepreview.com/refunds",
+  "lastCompatibleVersionURL": ""
+}

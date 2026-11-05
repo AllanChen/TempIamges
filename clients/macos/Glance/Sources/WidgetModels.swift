@@ -1,0 +1,651 @@
+import AppKit
+import CryptoKit
+import Foundation
+
+struct WidgetCommand: Codable, Hashable {
+    let id: String
+    let name: String
+    let description: String
+    let inputTypes: [String]
+    let inputMimeTypes: [String]
+    let outputs: [String]
+    let showResultURL: Bool?
+    let taskType: String
+    let requiresUpload: Bool
+    let parameterSchema: [String: JSONValue]
+
+    var inputCapabilities: WidgetInputCapabilities {
+        let properties: [String: JSONValue]
+        if case .object(let value)? = parameterSchema["properties"] {
+            properties = value
+        } else {
+            properties = parameterSchema
+        }
+        let acceptsPrompt = properties["prompt"] != nil ||
+            inputTypes.contains("text") || inputTypes.contains("txt") ||
+            inputTypes.contains("prompt")
+        let acceptsMask = properties["mask"] != nil || inputTypes.contains("mask")
+        let imageList = properties["images"] ?? properties["imageUrls"] ??
+            properties["multipleImages"]
+        let acceptsMultipleImages = imageList != nil ||
+            inputTypes.contains("multiple_images") || inputTypes.contains("multi_image") ||
+            inputTypes.contains("multiple-images") || inputTypes.contains("multi-image")
+        let imageBounds: [String: JSONValue]
+        if case .object(let value)? = imageList { imageBounds = value }
+        else { imageBounds = [:] }
+        let maxImages: Int
+        if case .number(let value)? = imageBounds["maxItems"], value.isFinite {
+            maxImages = Int(min(4, max(1, value)))
+        } else {
+            maxImages = acceptsMultipleImages ? 4 : 1
+        }
+        let minImages: Int
+        if case .number(let value)? = imageBounds["minItems"], value.isFinite {
+            minImages = Int(min(Double(maxImages), max(1, value)))
+        } else {
+            minImages = 1
+        }
+        let videoList = properties["videos"] ?? properties["videoUrls"] ??
+            properties["multipleVideos"]
+        let acceptsMultipleVideos = videoList != nil ||
+            inputTypes.contains("multiple_videos") || inputTypes.contains("multi_video") ||
+            inputTypes.contains("multiple-videos") || inputTypes.contains("multi-video")
+        return WidgetInputCapabilities(acceptsPrompt: acceptsPrompt,
+                                       acceptsMask: acceptsMask,
+                                       minImages: minImages,
+                                       maxImages: maxImages,
+                                       maxVideos: acceptsMultipleVideos ? 4 : 1)
+    }
+}
+
+struct WidgetInputCapabilities {
+    let acceptsPrompt: Bool
+    let acceptsMask: Bool
+    let minImages: Int
+    let maxImages: Int
+    let maxVideos: Int
+
+    var needsImageDialog: Bool { acceptsPrompt || acceptsMask || maxImages > 1 }
+    var needsVideoDialog: Bool { acceptsPrompt || maxVideos > 1 }
+}
+
+enum JSONValue: Codable, Hashable {
+    case string(String), number(Double), bool(Bool), object([String: JSONValue]), array([JSONValue]), null
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { self = .null }
+        else if let value = try? container.decode(Bool.self) { self = .bool(value) }
+        else if let value = try? container.decode(Double.self) { self = .number(value) }
+        else if let value = try? container.decode(String.self) { self = .string(value) }
+        else if let value = try? container.decode([String: JSONValue].self) { self = .object(value) }
+        else { self = .array(try container.decode([JSONValue].self)) }
+    }
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self { case .string(let v): try container.encode(v); case .number(let v): try container.encode(v); case .bool(let v): try container.encode(v); case .object(let v): try container.encode(v); case .array(let v): try container.encode(v); case .null: try container.encodeNil() }
+    }
+}
+
+/// Per-language overrides for a command's user-facing text.
+struct WidgetCommandLocalization: Codable, Hashable {
+    let name: String?
+    let description: String?
+}
+
+/// Per-language overrides for a manifest's user-facing text. `commands` is
+/// keyed by command id. Every field is optional; missing ones fall back to the
+/// manifest's base text.
+struct WidgetLocalization: Codable, Hashable {
+    let name: String?
+    let summary: String?
+    let commands: [String: WidgetCommandLocalization]?
+}
+
+struct WidgetDurationBilling: Codable, Hashable {
+    let mode: String
+    let unitSeconds: Int
+}
+
+struct WidgetManifest: Codable, Hashable {
+    let schemaVersion: Int
+    let id: String
+    let version: String
+    let name: String
+    let summary: String
+    let author: String
+    let iconURL: URL?
+    let official: Bool
+    let execution: WidgetExecution
+    let commands: [WidgetCommand]
+    let privacy: WidgetPrivacy
+    let minimumGlanceVersion: String
+    let updatedAt: String
+    let signature: WidgetSignature
+    /// Translations keyed by language tag ("en", "zh-Hans"). Optional so
+    /// manifests and caches written before this field still decode, and
+    /// omitted from the signed JSON when absent.
+    let localizations: [String: WidgetLocalization]?
+    let creditCost: Int?
+    var billing: WidgetDurationBilling? = nil
+
+    var usesDurationBilling: Bool { billing?.mode == "duration" || id == "783745bf-501d-4cfd-b2b8-69d32a8d90a8" }
+
+    var taskCreditCost: Int { max(0, creditCost ?? 1) }
+    var creditCostLabel: String {
+        if usesDurationBilling { return String(format: "%d credits / 10 seconds".localized, taskCreditCost) }
+        return String(format: (taskCreditCost == 1 ? "%d credit / task" : "%d credits / task").localized, taskCreditCost)
+    }
+
+    func isCompatible(with inputType: String) -> Bool {
+        commands.contains { $0.inputTypes.contains(inputType) }
+    }
+
+    // MARK: Display text in the app's language
+
+    /// Language tags to try, most specific first, for the current app language.
+    static var preferredLanguageTags: [String] {
+        let language = Preferences.shared.appLanguage.rawValue
+        var tags = [language]
+        if let base = language.split(separator: "-").first.map(String.init), base != language { tags.append(base) }
+        return tags
+    }
+
+    private var localization: WidgetLocalization? {
+        guard let localizations else { return nil }
+        for tag in Self.preferredLanguageTags {
+            if let match = localizations[tag] { return match }
+        }
+        return nil
+    }
+
+    private static func text(_ value: String?, fallback: String) -> String {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return fallback }
+        return value
+    }
+
+    /// The widget name in the app's language, or the manifest's base name.
+    var displayName: String { Self.text(localization?.name, fallback: name) }
+    /// The summary in the app's language, or the manifest's base summary.
+    var displaySummary: String { Self.text(localization?.summary, fallback: summary) }
+
+    /// `command` with its name and description in the app's language.
+    func localized(_ command: WidgetCommand) -> WidgetCommand {
+        guard let override = localization?.commands?[command.id] else { return command }
+        return WidgetCommand(id: command.id,
+                             name: Self.text(override.name, fallback: command.name),
+                             description: Self.text(override.description, fallback: command.description),
+                             inputTypes: command.inputTypes, inputMimeTypes: command.inputMimeTypes,
+                             outputs: command.outputs, showResultURL: command.showResultURL,
+                             taskType: command.taskType, requiresUpload: command.requiresUpload,
+                             parameterSchema: command.parameterSchema)
+    }
+
+    /// All commands with their text in the app's language; ids are unchanged.
+    var localizedCommands: [WidgetCommand] { commands.map(localized) }
+
+    func localizedCommand(id: String) -> WidgetCommand? {
+        commands.first(where: { $0.id == id }).map(localized)
+    }
+
+    /// Every piece of text the manifest carries, for search.
+    var searchableText: String {
+        var parts = [name, summary, author] + commands.flatMap { [$0.name, $0.description] }
+        for localization in (localizations ?? [:]).values {
+            parts += [localization.name, localization.summary].compactMap { $0 }
+            parts += (localization.commands ?? [:]).values.flatMap { [$0.name, $0.description].compactMap { $0 } }
+        }
+        return parts.joined(separator: " ")
+    }
+
+    /// Synchronous client-side checks run before a manifest is submitted to
+    /// the review queue. The backend repeats these checks and performs the
+    /// authoritative signature/security validation.
+    func submissionValidationIssues() -> [String] {
+        var issues: [String] = []
+        if schemaVersion < 1 { issues.append("schemaVersion must be at least 1") }
+        if let creditCost, !(0...1_000_000).contains(creditCost) {
+            issues.append("creditCost must be an integer between 0 and 1000000")
+        }
+        if id.range(of: "^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$", options: .regularExpression) == nil {
+            issues.append("id must be 3–128 characters using letters, numbers, '.', '_' or '-'")
+        }
+        if version.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("version is required") }
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("name is required") }
+        if summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("summary is required") }
+        if author.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("author is required") }
+        if execution.mode.lowercased() != "cloud" { issues.append("execution.mode must be cloud") }
+        if commands.isEmpty { issues.append("at least one command is required") }
+        var commandIDs = Set<String>()
+        for command in commands {
+            if command.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("command id is required") }
+            if !commandIDs.insert(command.id).inserted { issues.append("duplicate command id: \(command.id)") }
+            if command.inputTypes.isEmpty { issues.append("command \(command.id) must declare an input type") }
+            if command.outputs.isEmpty { issues.append("command \(command.id) must declare an output type") }
+            if command.showResultURL == true && !command.outputs.contains(where: { $0 == "image" || $0 == "video" }) {
+                issues.append("command \(command.id) can show a result URL only for image or video output")
+            }
+            if command.taskType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("command \(command.id) must declare taskType") }
+        }
+        if privacy.notice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append("privacy notice is required") }
+        for (tag, localization) in localizations ?? [:] {
+            if tag.range(of: "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$", options: .regularExpression) == nil {
+                issues.append("localizations key must be a language tag such as en or zh-Hans: \(tag)")
+            }
+            for value in [localization.name, localization.summary].compactMap({ $0 }) where value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                issues.append("localizations.\(tag) text must not be empty")
+            }
+            for (commandID, command) in localization.commands ?? [:] {
+                if !commandIDs.contains(commandID) { issues.append("localizations.\(tag) names an unknown command: \(commandID)") }
+                for value in [command.name, command.description].compactMap({ $0 }) where value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    issues.append("localizations.\(tag).commands.\(commandID) text must not be empty")
+                }
+            }
+        }
+        if signature.algorithm != "Ed25519" || signature.value.isEmpty || signature.keyID.isEmpty {
+            issues.append("an Ed25519 signature is required")
+        }
+        return issues
+    }
+
+    func unsignedJSON() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        let data = try encoder.encode(self)
+        guard var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw WidgetError.invalidManifest }
+        object.removeValue(forKey: "signature")
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys, .withoutEscapingSlashes])
+    }
+}
+
+struct WidgetExecution: Codable, Hashable { let mode: String }
+struct WidgetPrivacy: Codable, Hashable { let uploadsMedia: Bool; let notice: String }
+struct WidgetSignature: Codable, Hashable { let algorithm: String; let keyID: String; let value: String }
+
+enum WidgetError: LocalizedError {
+    case invalidManifest, invalidSignature, unavailable
+    var errorDescription: String? {
+        switch self { case .invalidManifest: return "The Widget manifest is invalid.".localized; case .invalidSignature: return "The Widget signature could not be verified.".localized; case .unavailable: return "The Widget Market is unavailable.".localized }
+    }
+}
+
+final class WidgetRegistry {
+    static let shared = WidgetRegistry()
+    static let didChange = Notification.Name("GlanceWidgetRegistryDidChange")
+    private let storageKey = "glance.widgets.installed.v2"
+    private let legacyStorageKey = "glance.widgets.installed.v1"
+    private let delistedKey = "glance.widgets.delisted.v1"
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+    /// Every Widget the user installed, including ones the service no longer
+    /// publishes. Old task records still read names and outputs from here.
+    private(set) var installed: [WidgetManifest]
+    /// Installed Widgets the service has taken down. They stay stored so a
+    /// re-published Widget comes back without reinstalling, but they are never
+    /// offered for new runs.
+    private(set) var delistedIDs: Set<String>
+    /// Installed Widgets that can be offered and run right now.
+    var available: [WidgetManifest] { installed.filter { !delistedIDs.contains($0.id) } }
+
+    private init() {
+        let cachedData = UserDefaults.standard.data(forKey: storageKey)
+            ?? UserDefaults.standard.data(forKey: legacyStorageKey)
+        let cached = (try? decoder.decode([WidgetManifest].self, from: cachedData ?? Data())) ?? []
+        // Normalize installed manifests in place so an existing client keeps
+        // working even when the Widget Market is temporarily unavailable.
+        // IDs are the only routing key; names and command metadata are repaired
+        // from this canonical table on every cache-version migration.
+        let legacyToProduction: [String: String] = [
+            "com.glance.remove-background": "a0d3311a-b952-4831-8ee4-69f72c381a88",
+            "com.glance.remove-bg-pro": "7cc3967a-60ac-4677-9817-72f57f5ef5fa",
+            "com.glance.upscale": "ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f"
+        ]
+        var migratedIDs = Set<String>()
+        installed = cached.compactMap { manifest in
+            let productionID = legacyToProduction[manifest.id] ?? manifest.id
+            guard migratedIDs.insert(productionID).inserted else { return nil }
+            let migrated = manifest.id == productionID
+                ? manifest : Self.canonicalManifest(manifest, id: productionID)
+            return Self.migrateResultURLPreference(migrated)
+        }
+        if installed.count != cached.count || installed != cached, let data = try? encoder.encode(installed) {
+            UserDefaults.standard.set(data, forKey: storageKey)
+        }
+        delistedIDs = Set(UserDefaults.standard.stringArray(forKey: delistedKey) ?? [])
+    }
+
+    private static func canonicalManifest(_ manifest: WidgetManifest, id: String) -> WidgetManifest {
+        let definition: (name: String, summary: String, commandID: String, description: String, taskType: String)?
+        switch id {
+        case "a0d3311a-b952-4831-8ee4-69f72c381a88":
+            definition = ("Remove Background", "Remove an image background while preserving fine subject edges.", "remove-background", "Create a transparent-background copy of the selected image.", "image.remove-background.v1")
+        case "7cc3967a-60ac-4677-9817-72f57f5ef5fa":
+            definition = ("RemoveBG 高级", "图生图高级背景移除，保留精细主体边缘。", "remove-bg-pro", "上传一张图片，高级移除背景并生成透明背景副本。", "image.remove-bg-pro.v1")
+        case "ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f":
+            definition = ("超分", "图生图超分辨率，提升图片清晰度与细节。", "upscale", "上传一张图片，生成更高分辨率的清晰版本。", "image.upscale.v1")
+        default:
+            definition = nil
+        }
+        guard let definition else { return manifest }
+        let commands = manifest.commands.map { command in
+            WidgetCommand(id: definition.commandID, name: definition.name,
+                          description: definition.description, inputTypes: command.inputTypes,
+                          inputMimeTypes: command.inputMimeTypes, outputs: command.outputs,
+                          showResultURL: command.showResultURL,
+                          taskType: definition.taskType, requiresUpload: command.requiresUpload,
+                          parameterSchema: command.parameterSchema)
+        }
+        return WidgetManifest(schemaVersion: manifest.schemaVersion, id: id,
+                              version: manifest.version, name: definition.name,
+                              summary: definition.summary, author: manifest.author,
+                              iconURL: manifest.iconURL, official: manifest.official,
+                              execution: manifest.execution, commands: commands,
+                              privacy: manifest.privacy, minimumGlanceVersion: manifest.minimumGlanceVersion,
+                              updatedAt: manifest.updatedAt, signature: manifest.signature,
+                              localizations: manifest.localizations, creditCost: manifest.creditCost, billing: manifest.billing)
+    }
+
+    private static func migrateResultURLPreference(_ manifest: WidgetManifest) -> WidgetManifest {
+        // Existing image-hosting installs predate the explicit output preference.
+        guard manifest.id == "55e64c7e-f079-448a-b5bd-7315b2589019",
+              manifest.commands.contains(where: { $0.showResultURL == nil && $0.outputs.contains("image") }) else {
+            return manifest
+        }
+        let commands = manifest.commands.map { command in
+            WidgetCommand(id: command.id, name: command.name,
+                          description: command.description, inputTypes: command.inputTypes,
+                          inputMimeTypes: command.inputMimeTypes, outputs: command.outputs,
+                          showResultURL: command.showResultURL ?? command.outputs.contains("image"),
+                          taskType: command.taskType, requiresUpload: command.requiresUpload,
+                          parameterSchema: command.parameterSchema)
+        }
+        return WidgetManifest(schemaVersion: manifest.schemaVersion, id: manifest.id,
+                              version: manifest.version, name: manifest.name,
+                              summary: manifest.summary, author: manifest.author,
+                              iconURL: manifest.iconURL, official: manifest.official,
+                              execution: manifest.execution, commands: commands,
+                              privacy: manifest.privacy, minimumGlanceVersion: manifest.minimumGlanceVersion,
+                              updatedAt: manifest.updatedAt, signature: manifest.signature,
+                              localizations: manifest.localizations, creditCost: manifest.creditCost, billing: manifest.billing)
+    }
+
+    func install(_ manifest: WidgetManifest) {
+        installed.removeAll { $0.id == manifest.id }
+        installed.append(manifest)
+        // Installing comes from the live catalog, so the Widget is published.
+        delistedIDs.remove(manifest.id)
+        saveDelisted()
+        if let data = try? encoder.encode(installed) { UserDefaults.standard.set(data, forKey: storageKey) }
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
+    }
+
+    func uninstall(id: String) {
+        installed.removeAll { $0.id == id }
+        delistedIDs.remove(id)
+        saveDelisted()
+        if let data = try? encoder.encode(installed) { UserDefaults.standard.set(data, forKey: storageKey) }
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
+    }
+
+    func isAvailable(id: String) -> Bool { !delistedIDs.contains(id) && installed.contains { $0.id == id } }
+
+    /// Apply a complete snapshot of the published catalog: installed Widgets
+    /// missing from it are hidden, and ones that reappear are offered again.
+    /// Call only with a complete catalog; a partial page would hide live Widgets.
+    func reconcile(publishedIDs: Set<String>) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let delisted = Set(installed.map(\.id)).subtracting(publishedIDs)
+        guard delisted != delistedIDs else { return }
+        let removed = delisted.subtracting(delistedIDs), restored = delistedIDs.subtracting(delisted)
+        delistedIDs = delisted
+        saveDelisted()
+        Logger.info("WidgetRegistry: delisted \(removed.sorted()), restored \(restored.sorted())")
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
+    }
+
+    /// The service rejected a run because the Widget is no longer published.
+    func markDelisted(id: String) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard installed.contains(where: { $0.id == id }), delistedIDs.insert(id).inserted else { return }
+        saveDelisted()
+        Logger.info("WidgetRegistry: delisted \(id) after the service rejected a run")
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
+    }
+
+    private func saveDelisted() {
+        UserDefaults.standard.set(delistedIDs.sorted(), forKey: delistedKey)
+    }
+
+    func compatible(with inputType: String) -> [WidgetManifest] { available.filter { $0.isCompatible(with: inputType) } }
+}
+
+/// Keeps the installed Widget list in step with the published catalog without
+/// polling: once at launch, then when Glance becomes active (throttled), and
+/// whenever the Widget Market loads the catalog.
+final class WidgetAvailabilitySync {
+    static let shared = WidgetAvailabilitySync()
+    private let minimumInterval: TimeInterval = 300
+    private var lastSync: Date?
+    private var inFlight = false
+    private var observer: NSObjectProtocol?
+
+    func start() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard observer == nil else { return }
+        observer = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
+                                                          object: nil, queue: .main) { [weak self] _ in
+            self?.syncIfNeeded()
+        }
+        syncIfNeeded(force: true)
+    }
+
+    func syncIfNeeded(force: Bool = false) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard !inFlight, !WidgetRegistry.shared.installed.isEmpty else { return }
+        if !force, let lastSync, Date().timeIntervalSince(lastSync) < minimumInterval { return }
+        inFlight = true
+        WidgetCatalogClient.shared.fetchAll { [weak self] result in
+            guard let self else { return }
+            self.inFlight = false
+            // Offline or a failed request changes nothing: never hide Widgets on a guess.
+            guard case .success(let catalog) = result else { return }
+            self.apply(catalog)
+        }
+    }
+
+    /// Shared by the Market so both paths apply the same completeness rule.
+    func apply(_ catalog: WidgetCatalogSnapshot) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard catalog.isComplete else {
+            Logger.info("WidgetAvailabilitySync: catalog snapshot incomplete; keeping installed Widgets")
+            return
+        }
+        lastSync = Date()
+        WidgetRegistry.shared.reconcile(publishedIDs: Set(catalog.widgets.map(\.id)))
+    }
+}
+
+/// One fetch of the published catalog. `isComplete` is true only when the
+/// response covers every page, so it is safe to treat missing IDs as removed.
+struct WidgetCatalogSnapshot {
+    let widgets: [WidgetManifest]
+    let isComplete: Bool
+}
+
+/// Hosts that serve Glance result assets. The former host stays accepted so
+/// results saved before the domain move still refresh instead of re-uploading.
+let GlanceAPIHosts: Set<String> = ["api.glancepreview.com", "api.glance.mcreator.ai"]
+
+final class WidgetCatalogClient {
+    static let shared = WidgetCatalogClient()
+    private let baseURL = URL(string: "https://api.glancepreview.com/api/v2/widgets")!
+    private let publicKeyData = Data(base64Encoded: "zFrAHRuvuZVpWbAFaetTG+d27XeLkxicodlTFt1+cv8=")!
+    private let developerPublicKeyData = Data(base64Encoded: "F4eg6N56Z8z3CC7E4CUV0YecA6NpeHpAtx0/NFsUGFs=")!
+
+    func fetch(widgetID: String, completion: @escaping (Result<WidgetManifest, Error>) -> Void) {
+        let url = baseURL.appendingPathComponent(widgetID)
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 8
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else { return }
+            if let error { DispatchQueue.main.async { completion(.failure(error)) }; return }
+            guard let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { DispatchQueue.main.async { completion(.failure(WidgetError.unavailable)) }; return }
+            do {
+                let envelope = try JSONDecoder().decode(SingleWidgetEnvelope.self, from: data)
+                guard envelope.success else { throw WidgetError.unavailable }
+                guard let manifest = envelope.result else { throw WidgetError.invalidManifest }
+                try self.validateSignature(manifest)
+                DispatchQueue.main.async { completion(.success(manifest)) }
+            } catch { DispatchQueue.main.async { completion(.failure(error)) } }
+        }.resume()
+    }
+
+    /// Fetch the full catalog of published widgets. The catalog is served by
+    /// GlanceService, so the list itself is trusted; signature validation is
+    /// deferred to the per-widget install path.
+    func fetchAll(completion: @escaping (Result<WidgetCatalogSnapshot, Error>) -> Void) {
+        var request = URLRequest(url: baseURL)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 8
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error { DispatchQueue.main.async { completion(.failure(error)) }; return }
+            guard let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { DispatchQueue.main.async { completion(.failure(WidgetError.unavailable)) }; return }
+            do {
+                let envelope = try JSONDecoder().decode(WidgetListEnvelope.self, from: data)
+                guard envelope.success, let result = envelope.result else { throw WidgetError.unavailable }
+                let page = result.pagination
+                let complete = page.page >= page.totalPages && result.widgets.count >= page.total
+                let snapshot = WidgetCatalogSnapshot(widgets: result.widgets, isComplete: complete)
+                DispatchQueue.main.async { completion(.success(snapshot)) }
+            } catch { DispatchQueue.main.async { completion(.failure(error)) } }
+        }.resume()
+    }
+
+    private func validateSignature(_ manifest: WidgetManifest) throws {
+        var signatureValid = false
+        if manifest.signature.algorithm == "Ed25519",
+           let signature = Data(base64URLEncoded: manifest.signature.value) {
+            let data = manifest.signature.keyID == "glance-market-2026-02" ? developerPublicKeyData : publicKeyData
+            let key = try Curve25519.Signing.PublicKey(rawRepresentation: data)
+            signatureValid = try key.isValidSignature(signature, for: manifest.unsignedJSON())
+        }
+        // Official manifests are delivered by the authenticated
+        // GlanceService catalog. During the UUID migration their
+        // stored signatures may still reference the retired ID;
+        // accept only that trusted official path while rejecting
+        // unsigned/unverified third-party manifests.
+        if !signatureValid && !manifest.official { throw WidgetError.invalidSignature }
+    }
+
+    private struct SingleWidgetEnvelope: Codable { let success: Bool; let result: WidgetManifest? }
+    private struct WidgetListEnvelope: Codable { let success: Bool; let result: WidgetListResult? }
+    private struct WidgetListResult: Codable { let widgets: [WidgetManifest]; let pagination: WidgetPagination }
+    private struct WidgetPagination: Codable { let page, limit, total, totalPages: Int }
+}
+
+// MARK: - Submission and release workflow
+
+enum WidgetSubmissionStatus: String, Codable {
+    case draft, submitted, automatedChecking = "automated_checking", manualReview = "manual_review"
+    case testing, grayRelease = "gray_release", published, rejected, suspended, deprecated
+}
+
+struct WidgetSubmission: Codable, Hashable, Identifiable {
+    let id: String
+    let widgetID: String
+    let widgetVersion: String
+    let authorID: String
+    let status: WidgetSubmissionStatus
+    let manifest: WidgetManifest
+    let testAssetIDs: [String]
+    let automatedIssues: [String]
+    let reviewNote: String?
+    let createdAt: String
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, widgetID = "widget_id", widgetVersion = "widget_version", authorID = "author_id"
+        case status, manifest, testAssetIDs = "test_asset_ids", automatedIssues = "automated_issues"
+        case reviewNote = "review_note", createdAt = "created_at", updatedAt = "updated_at"
+    }
+}
+
+/// Authenticated API surface for the developer and reviewer portals. The
+/// server remains authoritative: this client only submits declarations and
+/// displays workflow state; it never executes third-party code locally.
+final class WidgetPlatformClient {
+    static let shared = WidgetPlatformClient()
+    private let baseURL = URL(string: "https://api.glancepreview.com/api/v2")!
+    private let session = URLSession(configuration: .ephemeral)
+    private let decoder = JSONDecoder()
+    private let encoder = JSONEncoder()
+
+    func submit(manifest: WidgetManifest, testAssetIDs: [String] = [],
+                completion: @escaping (Result<WidgetSubmission, Error>) -> Void) {
+        let issues = manifest.submissionValidationIssues()
+        guard issues.isEmpty else {
+            completion(.failure(WidgetPlatformError.validation(issues)))
+            return
+        }
+        request(path: "widget-submissions", method: "POST",
+                body: SubmissionRequest(manifest: manifest, testAssetIDs: testAssetIDs),
+                completion: completion)
+    }
+
+    func fetchSubmission(id: String, completion: @escaping (Result<WidgetSubmission, Error>) -> Void) {
+        request(path: "widget-submissions/\(id.pathComponentEscaped)", method: "GET", completion: completion)
+    }
+
+    private func request<Response: Decodable, Body: Encodable>(path: String, method: String,
+                                                                body: Body? = nil,
+                                                                completion: @escaping (Result<Response, Error>) -> Void) {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = AuthManager.shared.session?.token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if let body { request.setValue("application/json", forHTTPHeaderField: "Content-Type"); request.httpBody = try? encoder.encode(body) }
+        session.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else { return }
+            do {
+                if let error { throw error }
+                guard let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw WidgetPlatformError.unavailable }
+                let envelope = try self.decoder.decode(PlatformEnvelope<Response>.self, from: data)
+                guard envelope.success, let result = envelope.result else { throw WidgetPlatformError.server(envelope.error?.message ?? "Request failed") }
+                DispatchQueue.main.async { completion(.success(result)) }
+            } catch { DispatchQueue.main.async { completion(.failure(error)) } }
+        }.resume()
+    }
+
+    private func request<Response: Decodable>(path: String, method: String,
+                                              completion: @escaping (Result<Response, Error>) -> Void) {
+        request(path: path, method: method, body: Optional<EmptyBody>.none, completion: completion)
+    }
+
+    private struct SubmissionRequest: Codable { let manifest: WidgetManifest; let testAssetIDs: [String]; enum CodingKeys: String, CodingKey { case manifest; case testAssetIDs = "test_asset_ids" } }
+    private struct EmptyBody: Codable {}
+    private struct PlatformEnvelope<Result: Decodable>: Decodable { let success: Bool; let result: Result?; let error: PlatformError? }
+    private struct PlatformError: Decodable { let message: String? }
+}
+
+enum WidgetPlatformError: LocalizedError {
+    case validation([String]), server(String), unavailable
+    var errorDescription: String? {
+        switch self {
+        case .validation(let issues): return issues.joined(separator: "; ")
+        case .server(let message): return message
+        case .unavailable: return WidgetError.unavailable.localizedDescription
+        }
+    }
+}
+
+private extension String {
+    var pathComponentEscaped: String { addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? self }
+}
+
+private extension Data {
+    init?(base64URLEncoded value: String) {
+        var string = value.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        string += String(repeating: "=", count: (4 - string.count % 4) % 4)
+        self.init(base64Encoded: string)
+    }
+}

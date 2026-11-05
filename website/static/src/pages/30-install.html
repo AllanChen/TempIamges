@@ -1,0 +1,95 @@
+<!-- path: /install/ | zh: 下载与安装 | en: Download & install | nav: install | desc: 下载并安装 Glance。Download and install Glance for macOS. -->
+<article class="doc">
+  <div class="narrow">
+    <h1 lang="zh">下载与安装</h1><h1 lang="en">Download &amp; install</h1>
+    <p class="updated"><span lang="zh">Glance {{VERSION}} · macOS 12.3 及以上 · Apple 芯片（M 系列）</span><span lang="en">Glance {{VERSION}} · macOS 12.3 or later · Apple silicon (M-series)</span></p>
+    <p><a class="btn btn-primary" href="{{DMG}}" download data-download-cta="install" data-app-version="{{VERSION}}"><span lang="zh">下载 Glance {{VERSION}}（{{DMG_SIZE}}）</span><span lang="en">Download Glance {{VERSION}} ({{DMG_SIZE}})</span></a></p>
+    <p class="hash">SHA-256: {{DMG_SHA256}}</p>
+
+    <div lang="zh">
+      <h2>安装</h2>
+      <ol>
+        <li>下载 <code>Glance-{{VERSION}}.dmg</code>，双击打开。</li>
+        <li>把 Glance 拖到「应用程序」文件夹。</li>
+        <li>在「应用程序」里双击 Glance。</li>
+      </ol>
+      <!--if:!notarized-->
+      <h2>首次打开被拦截怎么办</h2>
+      <p>这个安装包还没有经过 Apple 公证，macOS 第一次打开时会拦截，这是正常的，只需放行一次。</p>
+      <h3>macOS 15（Sequoia）及更新版本</h3>
+      <ol>
+        <li>双击 Glance，看到「无法打开」提示后点「完成」。</li>
+        <li>打开「系统设置 → 隐私与安全性」，往下滚到「安全性」。</li>
+        <li>在「已阻止 Glance 打开」旁边点「仍要打开」，输入密码确认。</li>
+      </ol>
+      <h3>macOS 14 及更早版本</h3>
+      <p>在「应用程序」里右键 Glance，选择「打开」，在弹窗里再点一次「打开」。</p>
+      <p>放行一次之后，以后双击就能正常打开。</p>
+      <!--endif--><!--if:notarized-->
+      <h2>首次打开</h2>
+      <p>Glance 已通过 Apple 公证。第一次打开时，macOS 会提示它是从互联网下载的 App，点「打开」即可。</p>
+      <p>如果提示无法打开，请先确认已把 Glance 拖进「应用程序」并从那里打开，不要直接在 DMG 窗口里运行；也可以用上方的 SHA-256 核对下载文件是否完整。</p>
+      <!--endif-->
+      <h2>开始使用</h2>
+      <ul>
+        <li>直接打开图片或视频：在 Finder 里右键文件，选择「打开方式 → Glance」。</li>
+        <li>设为默认看图器：菜单栏选择「Glance → 设为默认看图器…」。</li>
+        <li>选中两张图片一起打开，直接进入对比。</li>
+        <li>右键图片或视频，选择「Widgets」用 AI 处理。完成后结果出现在原图旁边，点 Compare 或 Slider 对比效果。</li>
+      </ul>
+      <p>Glance 作为普通 App 运行，有 Dock 图标，也有菜单栏图标。首次打开不需要任何系统权限，也不需要账户。首次启动即开始 14 天完整试用。</p>
+      <h2>可选：Peek（选中文本秒开预览）</h2>
+      <p>在任意 App 里选中一段包含图片链接或文件路径的文字，按下热键（默认 Option + Space）就能预览；没有选中文字时，Peek 会预览剪贴板内容。这是可选功能，默认关闭，在「偏好设置 → 启用 Peek」里打开。</p>
+      <p>打开 Peek 后，Glance 会引导你授予「辅助功能」权限，它只用于识别热键和读取你选中的文字。已授予「辅助功能」时，「输入监控」无需单独授权。「完全磁盘访问」是可选项，只在打开受系统保护的文件时需要。你可以跳过权限设置，查看图片和视频不受影响。</p>
+      <p>选中的文字不会发送到 Glance 服务器；如果是网络链接，Glance 会直接从该网站加载预览。</p>
+      <h2>反馈与问题</h2>
+      <p>在 X 上私信 {{SUPPORT_X}}。请写明你做了什么、预期结果和实际结果，并附上截图。需要日志时我们会在私信里说明；日志文件位于 <code>~/Library/Application Support/Glance/app.log</code>。</p>
+      <p>请只通过私信发送日志、邮箱、订单号和兑换码，不要贴在公开帖子或回复里。</p>
+      <h2>卸载</h2>
+      <p>退出 Glance，把它从「应用程序」拖到废纸篓。如需同时删除本地设置与日志，删除 <code>~/Library/Application Support/Glance</code>。账户与点数保存在云端，如需删除账户，请使用 Glance 菜单 → 删除账户。</p>
+    </div>
+
+    <div lang="en">
+      <h2>Install</h2>
+      <ol>
+        <li>Download <code>Glance-{{VERSION}}.dmg</code> and double-click it.</li>
+        <li>Drag Glance into the Applications folder.</li>
+        <li>Double-click Glance in Applications.</li>
+      </ol>
+      <!--if:!notarized-->
+      <h2>If macOS blocks the first launch</h2>
+      <p>This build is not yet notarized by Apple, so macOS blocks it the first time. This is expected; allow it once.</p>
+      <h3>macOS 15 (Sequoia) and later</h3>
+      <ol>
+        <li>Double-click Glance. When you see “cannot be opened”, click Done.</li>
+        <li>Open System Settings → Privacy &amp; Security and scroll down to Security.</li>
+        <li>Next to “Glance was blocked”, click Open Anyway and confirm with your password.</li>
+      </ol>
+      <h3>macOS 14 and earlier</h3>
+      <p>Right-click Glance in Applications, choose Open, then click Open again in the dialog.</p>
+      <p>After that, Glance opens normally with a double-click.</p>
+      <!--endif--><!--if:notarized-->
+      <h2>First launch</h2>
+      <p>Glance is notarized by Apple. The first time you open it, macOS notes that it was downloaded from the internet; click Open.</p>
+      <p>If macOS says it cannot be opened, make sure you dragged Glance into Applications and opened it from there, not from the DMG window. You can also compare the download with the SHA-256 above.</p>
+      <!--endif-->
+      <h2>Getting started</h2>
+      <ul>
+        <li>Open an image or video: right-click it in Finder and choose Open With → Glance.</li>
+        <li>Make Glance your default viewer from the menu bar: Glance → Set as Default Viewer….</li>
+        <li>Select two images and open them together to compare.</li>
+        <li>Right-click an image or video and choose Widgets to process it with AI. The result appears next to the original; click Compare or Slider to compare.</li>
+      </ul>
+      <p>Glance runs as a regular app with a Dock icon and a menu bar icon. It needs no system permissions and no account on first launch. The 14-day full trial starts on first launch.</p>
+      <h2>Optional: Peek</h2>
+      <p>Select text containing an image link or file path in any app and press the hotkey (Option + Space by default) to preview it. With no text selected, Peek previews the clipboard. Peek is optional and off by default; turn it on in Preferences → Enable Peek.</p>
+      <p>When you turn Peek on, Glance guides you to grant Accessibility, which is used only to detect the hotkey and read the text you selected. With Accessibility granted, Input Monitoring needs no separate grant. Full Disk Access is optional and only needed to open files macOS protects. You can skip permission setup; viewing images and videos is unaffected.</p>
+      <p>The text is never sent to Glance's servers; for a web link, Glance loads the preview directly from that website.</p>
+      <h2>Feedback and help</h2>
+      <p>Send a direct message to {{SUPPORT_X}} on X. Describe what you did, what you expected and what happened, and attach a screenshot. If we need the log, we will tell you in the conversation; it is at <code>~/Library/Application Support/Glance/app.log</code>.</p>
+      <p>Share logs, email addresses, order numbers and redemption codes only in a direct message, never in a public post or reply.</p>
+      <h2>Uninstall</h2>
+      <p>Quit Glance and drag it from Applications to the Trash. To remove local settings and logs too, delete <code>~/Library/Application Support/Glance</code>. Your account and credits live in the cloud; to delete your account, use Glance → Delete account.</p>
+    </div>
+  </div>
+</article>

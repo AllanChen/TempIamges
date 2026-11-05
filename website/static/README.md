@@ -1,0 +1,46 @@
+# Glance 官网
+
+正式站点：<https://glancepreview.com/>。Cloudflare Pages 项目：`glance`，生产分支：`main`。
+
+## 构建与检查
+
+```sh
+python3 website/static/refresh_public_snapshot.py
+python3 website/static/build.py
+python3 -m unittest discover -s website/static -p 'test_*.py'
+node --check website/static/src/assets/site.js
+node --check website/static/functions/_middleware.js
+git diff --check
+```
+
+这是官网的静态生成流程，不构建或启动 macOS App。使用 Python 3.12 或更新版本。
+
+`build.py` 要求现有发行包位于 `src/download/Glance-1.0.0-beta.1.dmg`。DMG 由 Git 忽略；在新工作区中准备发行包时，应核对正式安装页公布的 SHA-256，不能用空文件代替。
+
+`refresh_public_snapshot.py` 从公开 API 更新 `src/public-snapshot.json`。每次发布前运行，确认 Widget 名称、计费单位和销售状态与服务端一致。构建器用它生成无需 JavaScript 即可阅读的 Widget 列表和当前定价状态；浏览器加载后仍向 API 获取实时数据。刷新失败时不要沿用旧快照发布价格变化。
+
+## 页面与语言
+
+- 编辑 `src/pages/*.html`，文件首行声明路径、中文名、英文名和可选 `noindex`。
+- 同一源文件中的 `lang="zh"` / `lang="en"` 内容在构建时拆分，原路径提供中文，`/en/` 下提供英文。
+- 首页另有日文 `/ja/` 和德文 `/de/`：`00-home.html` 中每个中英文元素都需要对应的 `lang="ja"` / `lang="de"` 元素。日、德页面链接到其他页面时指向英文版，图片和视频没有日、德版本时使用英文版。页头、页脚通过 `bi(..., ja=, de=)` 提供日、德文案，未提供时回退英文。其他页面只有中英文。
+- 支持渠道为 X 私信（`build.py` 中的 `SUPPORT_X_URL`），页面中使用 `{{SUPPORT_X}}`；网站不再提供支持邮箱。
+- `localize.py` 会转换内部页面链接，选择对应语言媒体，并保留脚本内容。
+- `build.py` 的 `DESCRIPTIONS` 保存各页的中英文描述；首页 title 也在生成器内。
+- 可索引页面生成 self-canonical 和双向 hreflang。语言切换使用真实链接，不依赖本地存储或浏览器语言。
+- 支付返回页与 404 不生成语言副本，不进入 sitemap；支付返回页允许抓取但使用 `noindex`。
+- Pages 的 `.pages.dev` 预览域名通过中间件响应头设置 `noindex`，正式域名保持可索引。
+- 同一路径出现多个源文件时构建失败，防止页面和索引规则被覆盖。
+- 不统一刷新 sitemap 的 `lastmod`；目前省略该可选字段。
+
+## 发布
+
+确认 Cloudflare 凭据与账户已经通过环境变量配置，且目标项目域名包含 `glancepreview.com` 后，在本目录执行：
+
+```sh
+wrangler pages deploy public --project-name glance --branch main --commit-dirty=true
+```
+
+发布必须在 `website/static/` 中执行，以便包含 `functions/_middleware.js` 的域名跳转规则。不要把账户密钥写进源码或提交到 Git。发布后核对 `/`、`/en/`、语言子页面、sitemap、robots、支付页 `noindex`、下载校验值和域名跳转。
+
+SEO 调研与发布记录位于 [`../seo/`](../seo/)。
