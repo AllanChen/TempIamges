@@ -4,18 +4,16 @@
   var root = document.documentElement;
 
   // The URL and generated HTML determine language; language links navigate.
-  // Japanese and German pages reuse English media where no localized file exists.
   function switchMedia(lang) {
     document.querySelectorAll('img[data-src-en]').forEach(function (img) {
-      var src = img.getAttribute('data-src-' + lang) || img.getAttribute('data-src-en');
+      var src = img.getAttribute('data-src-' + lang);
       if (src && img.getAttribute('src') !== src) img.setAttribute('src', src);
     });
     document.querySelectorAll('video[data-video-en]').forEach(function (video) {
-      var media = video.getAttribute('data-video-' + lang) ? lang : 'en';
-      var src = video.getAttribute('data-video-' + media);
+      var src = video.getAttribute('data-video-' + lang);
       if (!src || video.getAttribute('src') === src) return;
       var time = video.currentTime || 0;
-      video.poster = video.getAttribute('data-poster-' + media);
+      video.poster = video.getAttribute('data-poster-' + lang);
       video.src = src;
       video.load();
       if (time) video.addEventListener('loadedmetadata', function resume() {
@@ -28,88 +26,17 @@
   var language = root.getAttribute('data-lang') || 'zh';
   switchMedia(language);
 
-  // First-party, tab-scoped analytics. Never send full URLs, query strings,
-  // link text, referrers, account IDs or media. Respect browser privacy signals.
-  var analyticsSession = null;
-  if (location.hostname === 'glancepreview.com' && navigator.doNotTrack !== '1' &&
-      navigator.globalPrivacyControl !== true && typeof crypto.randomUUID === 'function') {
-    try {
-      analyticsSession = sessionStorage.getItem('glance.analytics.session');
-      if (!/^[A-Za-z0-9_-]{16,128}$/.test(analyticsSession || '')) {
-        analyticsSession = crypto.randomUUID();
-        sessionStorage.setItem('glance.analytics.session', analyticsSession);
-      }
-    } catch (_) { analyticsSession = crypto.randomUUID(); }
-  }
-  // Only utm_source / medium / campaign / content, as normalized slugs. A tagged
-  // visit replaces the tab's stored channel; other query parameters are ignored.
-  var campaignKeys = ['source', 'medium', 'campaign', 'content'], campaign = null;
-  (function () {
-    var url; try { url = new URL(location.href); } catch (_) { return; }
-    var found = {}, tagged = [];
-    url.searchParams.forEach(function (_, name) { if (/^utm_/i.test(name)) tagged.push(name); });
-    campaignKeys.forEach(function (key) {
-      var value = (url.searchParams.get('utm_' + key) || '').trim().toLowerCase();
-      if (/^[a-z0-9._-]{1,64}$/.test(value)) found[key] = value;
-    });
-    if (analyticsSession) {
-      try {
-        if (found.source) sessionStorage.setItem('glance.analytics.campaign', JSON.stringify(found));
-        campaign = JSON.parse(sessionStorage.getItem('glance.analytics.campaign') || 'null');
-      } catch (_) { campaign = found.source ? found : null; }
-      if (!campaign || !/^[a-z0-9._-]{1,64}$/.test(campaign.source || '')) campaign = null;
-    }
-    // Keep shared or bookmarked links clean so they do not re-attribute later visits.
-    if (tagged.length && window.history && history.replaceState) {
-      tagged.forEach(function (name) { url.searchParams.delete(name); });
-      try { history.replaceState(history.state, '', url.pathname + url.search + url.hash); } catch (_) {}
-    }
-  })();
-  function pageKey(path) {
-    var key = path.replace(/^\/(en|ja|de)(?=\/|$)/, '').replace(/^\/+|\/+$/g, '') || 'home';
-    return ['home','pricing','widgets','ai-models','install','terms','privacy','refunds','acceptable-use'].includes(key) ? key : 'other';
-  }
-  function trackWebsite(kind, target, placement) {
-    if (!analyticsSession) return;
-    var payload = {id:crypto.randomUUID(), sessionID:analyticsSession, kind:kind,
-      page:pageKey(location.pathname), language:language};
-    if (target) { payload.target = target; payload.placement = placement; }
-    if (campaign) campaignKeys.forEach(function (key) {
-      var value = campaign[key];
-      if (typeof value === 'string' && /^[a-z0-9._-]{1,64}$/.test(value))
-        payload['utm' + key.charAt(0).toUpperCase() + key.slice(1)] = value;
-    });
-    // keepalive allows a CTA navigation to proceed while its small event is sent.
-    fetch(API + '/analytics/website', {method:'POST', credentials:'omit', keepalive:true,
-      headers:{'Content-Type':'text/plain;charset=UTF-8'}, body:JSON.stringify(payload)}).catch(function () {});
-  }
-  trackWebsite('page_view');
-  // Language menu: close on an outside click or Escape.
-  function closeLanguageMenus(except) {
-    document.querySelectorAll('details.lang-menu[open]').forEach(function (menu) {
-      if (menu !== except) menu.removeAttribute('open');
-    });
-  }
-  document.addEventListener('keydown', function (event) { if (event.key === 'Escape') closeLanguageMenus(null); });
   document.addEventListener('click', function (event) {
-    closeLanguageMenus(event.target.closest && event.target.closest('details.lang-menu'));
-    var link = event.target.closest && event.target.closest('a,button[data-currency]');
+    var link = event.target.closest && event.target.closest('a[data-download-cta]');
     if (!link) return;
-    var target, placement = link.closest('header') ? 'header' : link.closest('footer') ? 'footer' : 'content';
-    if (link.hasAttribute('data-download-cta')) {
-      target = 'download';
-      var namedPlacement = link.getAttribute('data-download-cta');
-      if (['home','install'].includes(namedPlacement)) placement = namedPlacement;
-    } else if (link.hasAttribute('data-currency')) target = 'currency';
-    else {
-      var url; try { url = new URL(link.href, location.href); } catch (_) { return; }
-      if (url.origin !== location.origin) return;
-      if (link.classList && link.classList.contains('lang-option')) target = 'language';
-      else if (url.hash === '#download') target = 'download_section';
-      else if (url.hash === '#loop') target = 'features';
-      else if (['pricing','install','widgets','ai-models','home'].includes(pageKey(url.pathname))) target = pageKey(url.pathname);
-    }
-    if (target) trackWebsite('cta_click', target, placement);
+    var details = {
+      page_path: location.pathname,
+      page_language: language,
+      cta_location: link.getAttribute('data-download-cta'),
+      app_version: link.getAttribute('data-app-version')
+    };
+    if (typeof window.gtag === 'function') window.gtag('event', 'download_click', details);
+    else if (Array.isArray(window.dataLayer)) window.dataLayer.push(Object.assign({ event: 'download_click' }, details));
   });
 
   // Bilingual anchors: #report resolves to #report-zh or #report-en.
@@ -128,17 +55,17 @@
     if (text != null) node.textContent = text;
     return node;
   }
-  // Japanese and German fall back to English (including Widget names and summaries).
-  function both(tag, cls, zh, en, ja, de) {
-    var text = language === 'zh' ? zh : language === 'ja' && ja != null ? ja : language === 'de' && de != null ? de : en;
-    var node = el(tag, cls, text);
-    node.setAttribute('lang', language === 'zh' || text !== en ? language : 'en');
+  function both(tag, cls, zh, en) {
+    var node = el(tag, cls, language === 'zh' ? zh : en);
+    node.setAttribute('lang', language);
     return node;
   }
 
   // Live Widget catalog: names, summaries and per-run credit prices come from
   // the same service the app uses, so the site never drifts from Admin.
   function renderWidgets(target, widgets) {
+    // Extra languages keep the server-rendered, translated cards.
+    if (language !== 'zh' && language !== 'en' && target.children.length) return;
     target.textContent = '';
     var limit = Number(target.getAttribute('data-limit') || 0);
     widgets.filter(function (w) { return w.name && w.name !== 'My Widget'; })
@@ -158,25 +85,21 @@
         var cost = Number(w.creditCost == null ? 1 : w.creditCost);
         var duration = w.billing && w.billing.mode === 'duration' && Number(w.billing.unitSeconds);
         var price = el('span', 'price' + (cost === 0 ? ' free' : ''));
-        price.appendChild(cost === 0 ? both('span', '', '免费', 'Free', '無料', 'Kostenlos') : duration ?
-          both('span', '', cost + ' 点 / ' + duration + ' 秒', cost + ' credits / ' + duration + ' sec',
-            cost + ' クレジット / ' + duration + ' 秒', cost + ' Credits / ' + duration + ' s') :
-          both('span', '', cost + ' 点 / 次', cost + ' credits / run', cost + ' クレジット / 回', cost + ' Credits / Ausführung'));
+        price.appendChild(cost === 0 ? both('span', '', '免费', 'Free') : duration ?
+          both('span', '', cost + ' 点 / ' + duration + ' 秒', cost + ' credits / ' + duration + ' sec') :
+          both('span', '', cost + ' 点 / 次', cost + ' credits / run'));
         top.appendChild(price);
         body.appendChild(top);
         body.appendChild(both('p', '', w.summary || '', en.summary || w.summary || ''));
         var meta = el('div', 'meta');
         var uploads = w.privacy && w.privacy.uploadsMedia;
         meta.appendChild(both('span', '', uploads ? '运行时上传所选媒体到云端处理' : '在 Glance 服务端处理',
-          uploads ? 'Uploads the selected media for cloud processing' : 'Processed by Glance servers',
-          uploads ? '実行時に選択したメディアをクラウドにアップロードして処理' : 'Glance のサーバーで処理',
-          uploads ? 'Lädt die ausgewählten Medien zur Verarbeitung in die Cloud hoch' : 'Wird auf Glance-Servern verarbeitet'));
+          uploads ? 'Uploads the selected media for cloud processing' : 'Processed by Glance servers'));
         body.appendChild(meta);
         card.appendChild(body);
         target.appendChild(card);
       });
-    if (!target.children.length) target.appendChild(both('p', 'notice', '暂无可用的 Widget。', 'No Widgets are available right now.',
-      '現在利用できる Widget はありません。', 'Derzeit sind keine Widgets verfügbar.'));
+    if (!target.children.length) target.appendChild(both('p', 'notice', '暂无可用的 Widget。', 'No Widgets are available right now.'));
   }
   var widgetTargets = document.querySelectorAll('[data-widgets]');
   if (widgetTargets.length) {
@@ -189,8 +112,7 @@
       .catch(function () {
         widgetTargets.forEach(function (t) {
           if (!t.children.length) {
-            t.appendChild(both('p', 'notice', 'Widget 列表暂时无法加载，请稍后刷新。', 'The Widget list could not be loaded. Please refresh in a moment.',
-              'Widget の一覧を読み込めませんでした。しばらくしてから再読み込みしてください。', 'Die Widget-Liste konnte nicht geladen werden. Bitte lade die Seite gleich neu.'));
+            t.appendChild(both('p', 'notice', 'Widget 列表暂时无法加载，请稍后刷新。', 'The Widget list could not be loaded. Please refresh in a moment.'));
           }
         });
       });
@@ -201,7 +123,7 @@
   var fallbackNode = document.getElementById('pricing-fallback');
   if (fallbackNode) {
     var pricing = JSON.parse(fallbackNode.textContent);
-    var currency = language === 'en' ? 'USD' : 'CNY';
+    var currency = language === 'zh' ? 'CNY' : 'USD';
     var money = function (cents, cur) {
       if (cents == null) return null;
       var value = cents / (cur === 'JPY' ? 1 : 100);

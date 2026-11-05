@@ -1,0 +1,102 @@
+<!-- slug: gpt-image-2-6-flare-sunburst-preview-mac | kind: blog | status: published | date: 2026-11-05
+| title: GPT Image 2.6 Flare vs. Sunburst: Vorschau und Vergleich am Mac — Glance Preview
+| h1: GPT Image 2.6 Flare vs. Sunburst: ChatGPT-Images-2.6-Ergebnisse am Mac prüfen und nachbessern
+| description: OpenAI Images 2.6 bringt Flare (ca. 6 s) und Sunburst (Detail-Edits) sowie GIF und transparentes PNG. Fair testen, am Mac vergleichen, per Klick korrigieren.
+| related: GPT Image 2.5 Flare vs. Sunburst=/de/blog/gpt-image-2-5-preview-compare-mac/, Zwei Bilder auf dem Mac vergleichen=/de/compare-images-mac/, Bild auf dem Mac hochskalieren=/de/blog/upscale-image-mac/, Bildhintergrund auf dem Mac entfernen=/de/use-cases/remove-image-background-mac/, Bildbetrachter mit KI auf dem Mac=/de/blog/ai-image-preview-mac/, Download und Installation=/de/install/ -->
+<p class="lead">OpenAI hat Images 2.6 am 4. November 2026 in ChatGPT, Codex und der API freigegeben. In der API gibt es zwei Modelle: GPT Image 2.6 Flare und GPT Image 2.6 Sunburst. Flare ist für schnelle Iterationen gedacht, Sunburst für Detail und konsistente Bearbeitung. Dieser Beitrag fasst die Angaben von OpenAI zusammen, zeigt einen fairen Test und erklärt, wie Sie die Downloads am Mac mit Glance Preview prüfen und fast gelungene Ergebnisse per Klick korrigieren.</p>
+<p>Hinweis: Die App-Oberfläche von Glance Preview gibt es nur auf Englisch und vereinfachtem Chinesisch.</p>
+
+<h2>Was Images 2.6 hinzufügt</h2>
+<p>Laut OpenAIs Beitrag <a href="https://openai.com/index/introducing-images-2-6/" rel="noopener">Introducing Images 2.6</a> und dem <a href="https://developers.openai.com/api/docs/guides/image-prompting" rel="noopener">Leitfaden zum Bild-Prompting</a> (Englisch, Stand 05.11.2026):</p>
+<ul>
+<li><strong>Schnellere Erzeugung.</strong> OpenAI spricht von etwa 50&nbsp;% mehr Tempo. Mit quality=low kann Flare laut OpenAI Bilder in etwa sechs Sekunden liefern.</li>
+<li><strong>GIF-Animation.</strong> ChatGPT Images 2.6 und die Image API können Loop-GIFs aus einem Prompt erzeugen (API: <code>output_format=gif</code> bei Generations).</li>
+<li><strong>Transparente Hintergründe und SVG.</strong> Beide 2.6-Modelle unterstützen Transparenz. API-Generations können zusätzlich SVG für Logos und flache Grafiken ausgeben.</li>
+<li><strong>Mehr Kontrolle beim Bearbeiten.</strong> Markup-geführte Edits (bereits in ChatGPT) kommen in die API; ein neuer Parameter <code>complexity</code> (low / medium / high) steuert, wie stark das Modell vor dem Rendern plant.</li>
+<li><strong>Verfügbarkeit.</strong> Images 2.6 ist in ChatGPT und Codex auf allen Abo-Stufen (Desktop, Mobil, Web) verfügbar. Flare und Sunburst sind die API-Modell-IDs.</li>
+</ul>
+<p>Glance Preview führt GPT Image 2.6 nicht aus und erzeugt keine Bilder aus Text. Der Ablauf lautet: außerhalb erzeugen oder bearbeiten, Dateien herunterladen, dann am Mac prüfen und optional nachbessern.</p>
+
+<h2>Flare und Sunburst im Überblick</h2>
+<p>Die Angaben stammen von den Modellseiten zu <a href="https://developers.openai.com/api/docs/models/gpt-image-2.6-flare" rel="noopener">GPT-Image-2.6 Flare</a> und <a href="https://developers.openai.com/api/docs/models/gpt-image-2.6-sunburst" rel="noopener">GPT-Image-2.6 Sunburst</a> sowie dem Prompting-Leitfaden (Englisch, Stand 05.11.2026).</p>
+<table>
+<thead><tr><th></th><th>GPT Image 2.6 Flare</th><th>GPT Image 2.6 Sunburst</th></tr></thead>
+<tbody>
+<tr><td>Modell-ID</td><td><code>gpt-image-2.6-flare</code></td><td><code>gpt-image-2.6-sunburst</code></td></tr>
+<tr><td>Rolle</td><td>Kleineres Modell für schnelle Iteration; OpenAI nennt ca. 6&nbsp;s bei niedriger Qualität</td><td>Basismodell für Detail, Layout und präzise Edits; OpenAI betont Konsistenz über Edits bei medium/high</td></tr>
+<tr><td>Erzeugen und Bearbeiten</td><td>Ja, aus Text- und Bildeingaben</td><td>Ja, bevorzugt wenn Edit-Genauigkeit zählt</td></tr>
+<tr><td>Transparenter Hintergrund</td><td>Unterstützt</td><td>Unterstützt</td></tr>
+<tr><td>GIF / SVG (API-Generations)</td><td colspan="2">Bei Generations unterstützt (<code>gif</code>, <code>svg</code>); der Edit-Endpunkt gibt kein GIF/SVG aus</td></tr>
+<tr><td>Qualitätsstufen</td><td colspan="2">auto, low, medium, high, xhigh, max</td></tr>
+<tr><td>Complexity</td><td colspan="2">low, medium, high (Standard high, wenn weggelassen)</td></tr>
+<tr><td>Token-Preise (API)</td><td colspan="2">Auf den OpenAI-Seiten für beide Modelle gleich gelistet</td></tr>
+</tbody>
+</table>
+<p>OpenAI rät wie bei 2.5: Mit Flare starten, wenn Tempo zählt; mit Sunburst, wenn Detail oder Edit-Präzision anspruchsvoll sind; erfüllt Sunburst die Latte, Flare mit demselben Prompt prüfen und wechseln, wenn Flare reicht. In ChatGPT arbeiten Sie mit Images 2.6 als Produkt; Flare und Sunburst sind die API-Namen für einen kontrollierten A/B-Test.</p>
+<p>Falls Sie noch die Vorgängergeneration nutzen, siehe <a href="/de/blog/gpt-image-2-5-preview-compare-mac/">GPT Image 2.5 Flare vs. Sunburst</a>. Für neue Tests ist 2.6 die bessere Ausgangslage.</p>
+
+<h2>So testen Sie Flare und Sunburst fair</h2>
+<ol class="guide-steps">
+<li><strong>Alles gleich lassen außer dem Modell.</strong> Gleicher Prompt, gleiche Referenzbilder, gleiche Größe, gleiche Qualität und Complexity. Dieselbe Qualitätsstufe garantiert laut OpenAI nicht denselben Look oder dieselbe Geschwindigkeit.</li>
+<li><strong>Mehrere Ausgaben pro Modell</strong> (oder mehrere Images-2.6-Läufe in ChatGPT ohne API). Ein einzelnes Bild kann täuschen.</li>
+<li><strong>Dateien eindeutig benennen</strong>, etwa <code>poster-flare-1.png</code> und <code>poster-sunburst-1.png</code>, und in einem Ordner speichern. Bei transparentem PNG/WebP den Alpha-Kanal behalten; GIFs als gelieferte <code>.gif</code> speichern.</li>
+<li><strong>Passende Paare nebeneinander prüfen</strong> und notieren, welches Modell bei den wichtigen Details vorne liegt.</li>
+</ol>
+
+<h2>Downloads am Mac prüfen und vergleichen</h2>
+<p>Sie können beide Dateien in der Vorschau öffnen und zwei Fenster nebeneinander legen. Das funktioniert, aber Zoom und Position synchron zu halten ist umständlich. Glance Preview ist ein Beta-Bildbetrachter für Apple-Silicon-Macs und zeigt beide Bilder in einem Fenster:</p>
+<ol class="guide-steps">
+<li><strong>Beide Bilder öffnen.</strong> Im Finder Flare- und Sunburst-Dateien markieren und gemeinsam mit Glance öffnen („Öffnen mit“ → Glance). Ist eine Datei schon offen, die zweite per Drag &amp; Drop ins Fenster ziehen. Optional: Pfad oder Bildlink in einer anderen App markieren und mit Peek (standardmäßig aus) vorprüfen, dann das Vollfenster öffnen, wenn Compare oder Widgets nötig sind.</li>
+<li><strong>Compare</strong> in der Symbolleiste für die Ansicht nebeneinander – gut für Bildausschnitt, Farbe und Gesamteindruck.</li>
+<li><strong>Slider</strong> wählen und den Trenner über dieselbe Stelle ziehen – gut für Kleinschrift, Hände, Kanten und Texturen.</li>
+<li><strong>Transparentes PNG.</strong> Den Ausschnitt vor einem belebten Hintergrund prüfen. Bleibt unerwünschter Hintergrund, neu mit <code>background=transparent</code> erzeugen oder Background Remover Pro in Glance nutzen (unten).</li>
+<li><strong>GIF.</strong> Das heruntergeladene GIF in Glance Preview öffnen und den Loop als Datei am Mac ansehen. Für einen strengen Standbild-A/B passende Frames exportieren (oder PNG/WebP nutzen) und Compare/Slider darauf anwenden.</li>
+<li><strong>In Details zoomen</strong>, bevor Sie entscheiden. Vergleichen ist kostenloses Betrachten: kein Konto, keine Credits, Dateien bleiben unverändert.</li>
+</ol>
+<p>Mehr dazu im <a href="/de/compare-images-mac/">Leitfaden zum Bildvergleich</a>. Wenn macOS die Beta beim ersten Start blockiert, hilft Apples Artikel <a href="https://support.apple.com/de-de/102445" rel="noopener">Sicher Apps auf dem Mac öffnen</a>.</p>
+
+<h2>Worauf Sie genau achten sollten</h2>
+<ul>
+<li><strong>Text im Bild:</strong> Schilder, Etiketten, Poster — ein falscher Buchstabe kann das Motiv unbrauchbar machen.</li>
+<li><strong>Gesichter, Hände und Markenzeichen</strong>, und ob das Motiv nach dem Edit gleich geblieben ist.</li>
+<li><strong>Feine Materialien und Kanten:</strong> Stoff, Glas, Haare, dünne Linien.</li>
+<li><strong>Edits an einem Referenzbild:</strong> Prüfen, ob Beibehaltenes wirklich unverändert blieb (Markup hilft, Änderungen gezielt zu setzen).</li>
+<li><strong>GIF-Loops:</strong> ob die Bewegung sauber zum ersten Frame zurückkehrt und Markendetails über Frames stabil bleiben.</li>
+</ul>
+
+<h2>Noch nicht ganz richtig? Direkt aus der Vorschau nachbessern</h2>
+<p>Manchmal ist das bessere Bild nah dran, aber nicht fertig. Sie können Images 2.6 neu prompten — oder ein Ein-Klick-KI-Werkzeug auf die Datei anwenden, die Sie gerade ansehen. In Glance Preview das Bild mit Ctrl-Klick bzw. Rechtsklick öffnen und Widgets wählen (falls nötig zuerst im Widget Market installieren). Die Credits stehen vor dem Start in der Menüleiste; das Ergebnis erscheint neben dem Original und lässt sich erneut mit Compare oder Slider prüfen.</p>
+<table>
+<thead><tr><th>Problem am Ergebnis</th><th>Widget in Glance Preview</th><th>Credits pro Lauf</th></tr></thead>
+<tbody>
+<tr><td>Freisteller nötig, aber Hintergrund vorhanden</td><td>Background Remover Pro</td><td>20</td></tr>
+<tr><td>Datei zu klein für den Einsatzort</td><td>Upscale (bis 4K)</td><td>30</td></tr>
+<tr><td>Ausschnitt zu eng</td><td>Expand Image</td><td>30</td></tr>
+<tr><td>Anderes Seitenverhältnis nötig</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
+</tbody>
+</table>
+<p>Zwei ehrliche Hinweise. GPT Image 2.6 kann bereits Transparenz, große Formate, SVG und GIF ausgeben — mit dem richtigen Setting neu zu erzeugen ist oft einfacher, solange der Prompt noch da ist. Die Widgets sind eigene Cloud-Modelle, gelistet auf der <a href="/de/ai-models/">Seite zur KI-Modelloffenlegung</a> (Upscale etwa Google Gemini 3.1 Flash Image / Nano Banana 2; Expand Image FLUX.2). Glance Preview ruft GPT Image 2.6 nicht auf. Cloud-Widgets laden das Bild hoch und brauchen eine Anmeldung. Neue Konten starten mit 100 Credits; In-App-Käufe sind in der Beta nicht freigeschaltet; Fehler auf Glance-Seite erstatten Credits, siehe <a href="/de/pricing/">Preisseite</a>. Schritt-für-Schritt: <a href="/de/use-cases/remove-image-background-mac/">Hintergrund entfernen</a>, <a href="/de/blog/upscale-image-mac/">hochskalieren</a>, <a href="/de/use-cases/expand-image-mac/">Bild erweitern</a>.</p>
+
+<h2>Welches Modell also?</h2>
+<ul>
+<li><strong>Viele Entwürfe, schnelle Iterationen:</strong> mit Flare starten (oder schnellen Images-2.6-Läufen in ChatGPT), wie OpenAI bei Tempo rät.</li>
+<li><strong>Hohe Qualitätsansprüche, präzise Edits, markenkonsistente Überarbeitungen:</strong> mit Sunburst starten, dann prüfen, ob Flare nah genug kommt.</li>
+<li><strong>Bewegung oder Logo-Assets:</strong> GIF oder SVG dort nutzen, wo OpenAI sie dokumentiert, und den Download am Mac prüfen, bevor er live geht.</li>
+<li><strong>In jedem Fall:</strong> anhand passender Ausgaben entscheiden, nicht allein am Modellnamen.</li>
+</ul>
+
+<section class="post-faq">
+<h2>FAQ</h2>
+<h3>Was ist der Unterschied zwischen GPT Image 2.6 Flare und Sunburst?</h3>
+<p>Laut OpenAI ist Flare das kleinere, tempoorientierte Modell (etwa sechs Sekunden bei niedriger Qualität möglich). Sunburst ist das Basismodell für mehr Detail und konsistentere Edits bei medium/high. Beide erzeugen und bearbeiten Bilder und unterstützen Transparenz; API-Generations unterstützen auch GIF und SVG.</p>
+<h3>Ist Images 2.6 in ChatGPT verfügbar?</h3>
+<p>Ja. OpenAI stellt Images 2.6 global in ChatGPT und Codex auf allen Abo-Stufen für Desktop, Mobil und Web bereit. Flare und Sunburst sind die API-Modellnamen.</p>
+<h3>Kann GPT Image 2.6 GIFs und transparente PNGs erzeugen?</h3>
+<p>Ja, laut OpenAI-Dokumentation: ChatGPT Images 2.6 kann GIFs erzeugen; die API unterstützt <code>output_format=gif</code> bei Generations sowie <code>background=transparent</code> für PNG/WebP (und SVG). Der Edit-Endpunkt gibt kein GIF/SVG aus.</p>
+<h3>Wie vergleiche ich zwei KI-Bilder nebeneinander am Mac?</h3>
+<p>Beide Dateien in Glance Preview öffnen und Compare (nebeneinander) oder Slider (Wischer an derselben Stelle) wählen. Alternativ zwei Fenster der macOS-Vorschau nebeneinander legen.</p>
+<h3>Kann Glance Preview Bilder mit GPT Image 2.6 erzeugen?</h3>
+<p>Nein. Glance Preview ist ein Betrachter mit Ein-Klick-Cloud-KI für vorhandene Bilder (Hintergrund entfernen, hochskalieren, erweitern usw.). Es erzeugt keine Bilder aus Text und ruft GPT Image 2.6 nicht auf.</p>
+<h3>Ist der Bildvergleich in Glance Preview kostenlos?</h3>
+<p>Ja. Ansehen und Vergleichen sind kostenlos, ohne Konto und ohne Credits. Credits nutzen nur Cloud-AI-Widgets.</p>
+</section>

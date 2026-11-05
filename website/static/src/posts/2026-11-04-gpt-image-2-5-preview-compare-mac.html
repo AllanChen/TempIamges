@@ -1,0 +1,85 @@
+<!-- slug: gpt-image-2-5-preview-compare-mac | kind: blog | status: published | date: 2026-11-04 | updated: 2026-11-05
+| title: GPT Image 2.5 Flare vs Sunburst: Compare Results on Mac — Glance Preview
+| h1: GPT Image 2.5 Flare vs Sunburst: how to compare the results side by side on your Mac, then fix what's off
+| description: GPT Image 2.5 comes as Flare (fast) and Sunburst (quality). Here is a fair way to test both on a Mac: same prompt, side-by-side and slider checks, then one-click fixes.
+| related: Compare two images on Mac=/en/compare-images-mac/, How to upscale an image on Mac=/en/blog/upscale-image-mac/, Remove an image background on Mac=/en/use-cases/remove-image-background-mac/, AI image preview on Mac=/en/blog/ai-image-preview-mac/, GPT Image 2.6 Flare vs Sunburst=/en/blog/gpt-image-2-6-flare-sunburst-preview-mac/, Download and install=/en/install/ -->
+<p class="lead">OpenAI's GPT Image 2.5 ships as two models, Flare and Sunburst, and the obvious question is which one to use for your own images. OpenAI's own advice is to test both on your workload with the same prompt and settings, then look closely at the results. This post covers what the two models are, how to run a fair test, and how to review the outputs side by side on a Mac with Glance Preview, including one-click fixes when a result is almost right.</p>
+<p><strong>Update (2026-11-05):</strong> OpenAI has released <a href="/en/blog/gpt-image-2-6-flare-sunburst-preview-mac/">Images 2.6 (GPT Image 2.6 Flare and Sunburst)</a>. For new Flare vs Sunburst tests, prefer the 2.6 post; this 2.5 guide remains as a reference for the previous generation.</p>
+
+
+<h2>Flare vs Sunburst in one table</h2>
+<p>Everything in this table comes from OpenAI's <a href="https://developers.openai.com/api/docs/guides/image-prompting" rel="noopener">GPT Image 2.5 prompting guide</a> and the model pages for <a href="https://developers.openai.com/api/docs/models/gpt-image-2.5-flare" rel="noopener">Flare</a> and <a href="https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst" rel="noopener">Sunburst</a>, read on 2026-11-04.</p>
+<table>
+<thead><tr><th></th><th>GPT Image 2.5 Flare</th><th>GPT Image 2.5 Sunburst</th></tr></thead>
+<tbody>
+<tr><td>Model ID</td><td><code>gpt-image-2.5-flare</code></td><td><code>gpt-image-2.5-sunburst</code></td></tr>
+<tr><td>Optimized for</td><td>Speed; OpenAI says image quality is comparable to GPT Image 2</td><td>Quality; OpenAI says image quality is higher than GPT Image 2</td></tr>
+<tr><td>Generation and editing</td><td>Yes, from text and image inputs</td><td>Yes, described as the choice where editing precision matters most</td></tr>
+<tr><td>Transparent backgrounds</td><td>Supported</td><td>Supported</td></tr>
+<tr><td>Quality settings</td><td colspan="2">auto, low, medium, high, xhigh, max</td></tr>
+<tr><td>Token rates</td><td colspan="2">The same for both models, and the same as GPT Image 2</td></tr>
+</tbody>
+</table>
+<p>OpenAI suggests starting with Flare when speed matters and Sunburst when quality requirements are demanding. If Sunburst meets your bar, it recommends testing Flare with the same prompts and inputs and switching if Flare is good enough. In other words, the answer depends on your images, so you need a quick way to look at both outputs together.</p>
+
+<h2>How to run a fair Flare vs Sunburst test</h2>
+<ol class="guide-steps">
+<li><strong>Keep everything the same except the model.</strong> Use the same prompt, the same reference images, the same size and the same quality setting. OpenAI notes that the same quality label does not guarantee the same image quality or speed across models, which is exactly why you compare the pictures, not the settings.</li>
+<li><strong>Make a few outputs per model.</strong> One image each can mislead you; a handful per model gives a fairer picture of how each one behaves on your prompt.</li>
+<li><strong>Name the files clearly</strong>, for example <code>poster-flare-1.png</code> and <code>poster-sunburst-1.png</code>, and save them to one folder on your Mac.</li>
+<li><strong>Review matched pairs side by side</strong>, as described below, and note which model wins on the details you care about.</li>
+</ol>
+
+<h2>Compare the two outputs on your Mac</h2>
+<p>You can open both files in Preview and arrange two windows next to each other. That works, but it is fiddly to keep both images at the same zoom and position. Glance Preview is a beta image viewer for Apple silicon Macs that puts both images in one window:</p>
+<ol class="guide-steps">
+<li><strong>Open both images.</strong> Select the Flare and Sunburst files in Finder and open them together with Glance. If one is already open, drag the other into the window.</li>
+<li><strong>Choose Compare</strong> in the toolbar to see the two images side by side. This suits framing, colour and overall look.</li>
+<li><strong>Choose Slider</strong> and drag the divider across the same spot in both images. This suits small text, hands, edges and textures.</li>
+<li><strong>Zoom into details</strong> before you decide. Comparing is a free viewing feature: no account, no credits, and your files are not changed.</li>
+</ol>
+<p>The <a href="/en/compare-images-mac/">compare two images guide</a> walks through both views in more detail.</p>
+
+<h2>What to look at closely</h2>
+<ul>
+<li><strong>Text in the image:</strong> signs, labels and posters, where a single wrong letter ruins the image.</li>
+<li><strong>Faces and hands</strong>, and whether a subject stayed the same after an edit.</li>
+<li><strong>Fine materials and edges:</strong> fabric, glass, hair and thin lines.</li>
+<li><strong>Edits to a reference image:</strong> check that what you asked to keep really stayed the same.</li>
+</ul>
+
+<h2>Not quite right? Fix it from the preview</h2>
+<p>Sometimes the winning image is close but not finished. You can re-prompt the model, or you can run a one-click AI tool on the file you are already looking at. In Glance Preview, right-click the image and choose Widgets. The menu shows the credit cost before you run anything, and the result appears next to the original so you can check it with Compare or Slider again.</p>
+<table>
+<thead><tr><th>Problem with the output</th><th>Widget in Glance Preview</th><th>Credits per run</th></tr></thead>
+<tbody>
+<tr><td>You need a cut-out but the render has a background</td><td>Background Remover Pro</td><td>20</td></tr>
+<tr><td>The file is too small for where it is going</td><td>Upscale (up to 4K)</td><td>30</td></tr>
+<tr><td>The framing is too tight</td><td>Expand Image</td><td>30</td></tr>
+<tr><td>You need a different aspect ratio</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
+</tbody>
+</table>
+<p>Two honest notes. GPT Image 2.5 can already output transparent backgrounds and large sizes, so re-generating with the right settings may be simpler when you still have the prompt. And the Widgets are separate cloud models, listed on the <a href="/en/ai-models/">AI model disclosure page</a>; Glance Preview does not run GPT Image 2.5 and does not generate images from text. Cloud Widgets upload the image for processing and need a sign-in. New accounts start with 100 credits, in-app purchases are not open during the beta, and tasks that fail on Glance's side return their credits, as described on the <a href="/en/pricing/">Pricing page</a>. For step-by-step guides, see <a href="/en/use-cases/remove-image-background-mac/">removing a background</a>, <a href="/en/blog/upscale-image-mac/">upscaling an image</a> and <a href="/en/use-cases/expand-image-mac/">expanding an image</a>.</p>
+
+<h2>So which should you use?</h2>
+<ul>
+<li><strong>Lots of drafts and quick iterations:</strong> start with Flare, as OpenAI suggests when speed matters.</li>
+<li><strong>Demanding quality or precise edits:</strong> start with Sunburst, then check whether Flare gets close enough on the same prompt.</li>
+<li><strong>Either way:</strong> decide by looking at matched outputs side by side, not by the model name.</li>
+</ul>
+
+<section class="post-faq">
+<h2>FAQ</h2>
+<h3>What is the difference between GPT Image 2.5 Flare and Sunburst?</h3>
+<p>Per OpenAI, Flare is the smaller model optimized for speed, with image quality comparable to GPT Image 2. Sunburst is the base model optimized for quality, with higher image quality than GPT Image 2. Both generate and edit images and support transparent backgrounds.</p>
+<h3>Do Flare and Sunburst cost the same?</h3>
+<p>OpenAI lists the same token rates for both models, matching GPT Image 2. Actual cost per image depends on how many tokens a request uses, so check OpenAI's pricing page for your settings.</p>
+<h3>How do I compare two AI images side by side on a Mac?</h3>
+<p>Open both files in Glance Preview and choose Compare for side by side or Slider to wipe between them at the same spot. You can also place two Preview windows next to each other.</p>
+<h3>Can Glance Preview generate images with GPT Image 2.5?</h3>
+<p>No. Glance Preview is a viewer with one-click cloud AI tools for an existing image, such as background removal, upscaling and expanding. It does not generate images from text.</p>
+<h3>Is comparing images in Glance Preview free?</h3>
+<p>Yes. Viewing and comparing images is free, needs no account and uses no credits. Credits are used by cloud AI Widgets.</p>
+<h3>Should I use GPT Image 2.5 or 2.6?</h3>
+<p>For new work, start with <a href="/en/blog/gpt-image-2-6-flare-sunburst-preview-mac/">GPT Image 2.6 Flare vs Sunburst</a>. OpenAI released Images 2.6 on 4 November 2026 with faster generation, GIF support and the same Flare/Sunburst split in the API. This page covers the 2.5 models if you still need them.</p>
+</section>

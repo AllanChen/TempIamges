@@ -1,0 +1,82 @@
+<!-- slug: gpt-image-2-5-preview-compare-mac | kind: blog | status: published | date: 2026-11-04
+| title: GPT Image 2.5 Flare と Sunburst の違いは？Mac で画像を並べて比較 — Glance Preview
+| h1: GPT Image 2.5 の Flare と Sunburst の違いと、生成画像を Mac で並べて比較・修正する方法
+| description: GPT Image 2.5 には速さ重視の Flare と画質重視の Sunburst があります。同じプロンプトで公平に比べ、Mac で並べて・スライダーで確認し、ワンクリックで直す手順。
+| related: Mac で 2 枚の画像を比較する=/ja/compare-images-mac/, Mac で画像を高画質化する=/ja/blog/upscale-image-mac/, Mac で画像の背景を削除する=/ja/use-cases/remove-image-background-mac/, AI 付きの Mac 画像ビューア=/ja/blog/ai-image-preview-mac/, ダウンロードとインストール=/ja/install/ -->
+<p class="lead">OpenAI の GPT Image 2.5 には Flare と Sunburst の 2 つのモデルがあり、「自分の画像にはどちらを使えばいいのか」が気になるところです。OpenAI 自身は、同じプロンプトと設定で両方を自分の用途で試し、結果をよく見比べることを勧めています。この記事では 2 つのモデルの違い、公平なテストのやり方、そして Glance Preview を使って Mac 上で生成画像を並べて確認し、惜しい画像をワンクリックで直す方法を紹介します。</p>
+<p>※ Glance Preview のアプリ表示は英語と簡体字中国語のみです。</p>
+
+<h2>Flare と Sunburst の違い（早見表）</h2>
+<p>表の内容はすべて OpenAI の <a href="https://developers.openai.com/api/docs/guides/image-prompting" rel="noopener">GPT Image 2.5 プロンプトガイド</a>と、<a href="https://developers.openai.com/api/docs/models/gpt-image-2.5-flare" rel="noopener">Flare</a>・<a href="https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst" rel="noopener">Sunburst</a> のモデルページ（英語、2026-11-04 時点）にもとづきます。</p>
+<table>
+<thead><tr><th></th><th>GPT Image 2.5 Flare</th><th>GPT Image 2.5 Sunburst</th></tr></thead>
+<tbody>
+<tr><td>モデル ID</td><td><code>gpt-image-2.5-flare</code></td><td><code>gpt-image-2.5-sunburst</code></td></tr>
+<tr><td>重視する点</td><td>速度。画質は GPT Image 2 と同程度（OpenAI による）</td><td>画質。画質は GPT Image 2 より高い（OpenAI による）</td></tr>
+<tr><td>生成と編集</td><td>対応（テキストと画像を入力）</td><td>対応。編集の精度が重要な用途向けとされています</td></tr>
+<tr><td>背景の透過</td><td>対応</td><td>対応</td></tr>
+<tr><td>品質設定</td><td colspan="2">auto、low、medium、high、xhigh、max</td></tr>
+<tr><td>トークン料金</td><td colspan="2">両モデルで同じ。GPT Image 2 とも同じ</td></tr>
+</tbody>
+</table>
+<p>OpenAI は、速さを優先するなら Flare から、品質要件が厳しいなら Sunburst から試すよう勧めています。Sunburst で満足できたら、同じプロンプトと入力で Flare も試し、十分なら Flare に切り替える、という流れです。つまり答えは画像しだいなので、2 つの出力をすばやく見比べる方法が必要になります。</p>
+
+<h2>Flare と Sunburst を公平に比べる手順</h2>
+<ol class="guide-steps">
+<li><strong>モデル以外はすべて同じにする。</strong>プロンプト、参照画像、サイズ、品質設定をそろえます。OpenAI によれば、同じ品質ラベルでもモデルが違えば画質や速度が同じとは限りません。だからこそ設定ではなく画像そのものを比べます。</li>
+<li><strong>各モデルで数枚ずつ生成する。</strong>1 枚ずつでは偶然に左右されます。数枚あれば、そのプロンプトでの傾向が見えやすくなります。</li>
+<li><strong>ファイル名を分かりやすくする。</strong>たとえば <code>poster-flare-1.png</code> と <code>poster-sunburst-1.png</code> のようにして、Mac の同じフォルダに保存します。</li>
+<li><strong>対応するペアを並べて確認し</strong>、気になる部分でどちらが良いかをメモします。</li>
+</ol>
+
+<h2>Mac で 2 枚の生成画像を並べて比較する</h2>
+<p>macOS の「プレビュー」で 2 つのウインドウを横に並べることもできますが、拡大率や位置をそろえるのは手間です。Glance Preview は Apple シリコン搭載 Mac 向けのベータ版画像ビューアで、2 枚を 1 つのウインドウで比べられます。</p>
+<ol class="guide-steps">
+<li><strong>2 枚を開く。</strong>Finder で Flare と Sunburst の画像を選び、まとめて Glance で開きます（「このアプリケーションで開く」から Glance）。すでに 1 枚開いているなら、もう 1 枚をウインドウにドラッグします。</li>
+<li><strong>ツールバーの Compare を選ぶ</strong>と左右に並びます。構図、色、全体の印象を見るのに向いています。</li>
+<li><strong>Slider を選び</strong>、境界線を同じ位置でドラッグします。小さな文字、手、輪郭、質感の確認に向いています。</li>
+<li><strong>拡大して細部を見る。</strong>比較は無料の表示機能で、アカウントもクレジットも不要、元のファイルも変更されません。</li>
+</ol>
+<p>2 つの表示の詳しい使い方は <a href="/ja/compare-images-mac/">2 枚の画像を比較するガイド</a>をご覧ください。</p>
+
+<h2>特によく見るべきポイント</h2>
+<ul>
+<li><strong>画像内の文字：</strong>看板、ラベル、ポスターなど。1 文字の誤りでも使えなくなります。日本語の文字は特に念入りに確認してください。</li>
+<li><strong>顔と手</strong>、そして編集後も同じ人物・被写体のままか。</li>
+<li><strong>細かい素材と輪郭：</strong>布、ガラス、髪の毛、細い線。</li>
+<li><strong>参照画像の編集：</strong>残したい部分が本当に変わっていないか。</li>
+</ul>
+
+<h2>惜しい画像はプレビューからそのまま直す</h2>
+<p>選んだ画像があと一歩ということもあります。プロンプトを変えて生成し直す方法のほか、表示中のファイルにワンクリックの AI ツールをかける方法もあります。Glance Preview では画像を右クリックして Widgets を選びます。実行前にメニューに必要なクレジットが表示され、結果は元画像の隣に表示されるので、もう一度 Compare や Slider で確認できます。</p>
+<table>
+<thead><tr><th>生成画像の問題</th><th>Glance Preview の Widget</th><th>1 回あたりのクレジット</th></tr></thead>
+<tbody>
+<tr><td>切り抜きが必要なのに背景がある</td><td>Background Remover Pro</td><td>20</td></tr>
+<tr><td>使う場所に対して画像が小さい</td><td>Upscale（最大 4K）</td><td>30</td></tr>
+<tr><td>構図が窮屈</td><td>Expand Image</td><td>30</td></tr>
+<tr><td>別の縦横比が必要</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
+</tbody>
+</table>
+<p>注意点も 2 つあります。GPT Image 2.5 はもともと背景の透過や大きなサイズでの出力に対応しているので、プロンプトが手元にあるなら設定を変えて生成し直すほうが簡単な場合もあります。また Widgets は別のクラウド AI モデルで動いており、<a href="/ja/ai-models/">AI モデルの開示ページ</a>に一覧があります。Glance Preview は GPT Image 2.5 を実行せず、テキストから画像を生成することもありません。クラウドの Widget は画像をアップロードして処理し、サインインが必要です。新規アカウントには 100 クレジットが付き、ベータ期間中はアプリ内購入は利用できません。Glance 側の原因で失敗したタスクのクレジットは返却されます（<a href="/ja/pricing/">料金ページ</a>参照）。手順は<a href="/ja/use-cases/remove-image-background-mac/">背景の削除</a>、<a href="/ja/blog/upscale-image-mac/">高画質化</a>、<a href="/ja/use-cases/expand-image-mac/">画像の拡張</a>の各記事にあります。</p>
+
+<h2>結局どちらを使えばいい？</h2>
+<ul>
+<li><strong>下書きを大量に作る・すばやく試行錯誤する：</strong>OpenAI が速度重視の場合に勧めるとおり Flare から。</li>
+<li><strong>品質要件が厳しい・精密な編集をしたい：</strong>Sunburst から始め、同じプロンプトで Flare が十分近いかも確認。</li>
+<li><strong>どちらの場合も：</strong>モデル名ではなく、対応する出力を並べて見て決めましょう。</li>
+</ul>
+
+<section class="post-faq">
+<h2>よくある質問</h2>
+<h3>GPT Image 2.5 の Flare と Sunburst の違いは何ですか？</h3>
+<p>OpenAI によると、Flare は速度を重視した小さいモデルで、画質は GPT Image 2 と同程度です。Sunburst は画質を重視したベースモデルで、GPT Image 2 より高画質です。どちらも画像の生成と編集、背景の透過に対応しています。</p>
+<h3>Flare と Sunburst の料金は同じですか？</h3>
+<p>OpenAI は両モデルに同じトークン料金を掲載しており、GPT Image 2 とも同じです。1 枚あたりの実際の費用は使用トークン数で変わるため、設定ごとに OpenAI の料金ページを確認してください。</p>
+<h3>Mac で 2 枚の AI 画像を並べて比較するには？</h3>
+<p>Glance Preview で 2 枚を開き、左右に並べるなら Compare、同じ位置で切り替えて見るなら Slider を選びます。macOS の「プレビュー」のウインドウを 2 つ並べる方法もあります。</p>
+<h3>Glance Preview で GPT Image 2.5 の画像を生成できますか？</h3>
+<p>いいえ。Glance Preview は画像ビューアで、手元の画像に背景削除、高画質化、拡張などのワンクリックのクラウド AI ツールをかけられます。テキストから画像を生成する機能はありません。</p>
+<h3>Glance Preview での画像比較は無料ですか？</h3>
+<p>はい。画像の表示と比較は無料で、アカウントもクレジットも不要です。クレジットを使うのはクラウドの AI Widget だけです。</p>
+</section>

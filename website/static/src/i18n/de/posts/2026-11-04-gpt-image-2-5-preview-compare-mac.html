@@ -1,0 +1,82 @@
+<!-- slug: gpt-image-2-5-preview-compare-mac | kind: blog | status: published | date: 2026-11-04
+| title: GPT Image 2.5 Flare vs. Sunburst: Unterschied und Bildvergleich am Mac — Glance Preview
+| h1: GPT Image 2.5 Flare vs. Sunburst: Unterschiede und wie Sie die Ergebnisse am Mac nebeneinander vergleichen
+| description: GPT Image 2.5 gibt es als Flare (schnell) und Sunburst (Qualität). So testen Sie beide fair am Mac: gleicher Prompt, Vergleich nebeneinander und per Slider, dann Korrektur per Klick.
+| related: Zwei Bilder auf dem Mac vergleichen=/de/compare-images-mac/, Bild auf dem Mac hochskalieren=/de/blog/upscale-image-mac/, Bildhintergrund auf dem Mac entfernen=/de/use-cases/remove-image-background-mac/, Bildbetrachter mit KI auf dem Mac=/de/blog/ai-image-preview-mac/, Download und Installation=/de/install/ -->
+<p class="lead">GPT Image 2.5 von OpenAI gibt es in zwei Modellen, Flare und Sunburst, und die naheliegende Frage lautet: Welches passt zu den eigenen Bildern? OpenAI rät selbst, beide mit demselben Prompt und denselben Einstellungen am eigenen Anwendungsfall zu testen und die Ergebnisse genau anzusehen. Dieser Beitrag erklärt die Unterschiede, zeigt einen fairen Test und wie Sie die Bilder am Mac mit Glance Preview nebeneinander prüfen und fast gelungene Ergebnisse per Klick korrigieren.</p>
+<p>Hinweis: Die App-Oberfläche von Glance Preview gibt es nur auf Englisch und vereinfachtem Chinesisch.</p>
+
+<h2>Flare und Sunburst im Überblick</h2>
+<p>Alle Angaben stammen aus dem <a href="https://developers.openai.com/api/docs/guides/image-prompting" rel="noopener">GPT-Image-2.5-Prompting-Leitfaden</a> von OpenAI und den Modellseiten zu <a href="https://developers.openai.com/api/docs/models/gpt-image-2.5-flare" rel="noopener">Flare</a> und <a href="https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst" rel="noopener">Sunburst</a> (Englisch, Stand 04.11.2026).</p>
+<table>
+<thead><tr><th></th><th>GPT Image 2.5 Flare</th><th>GPT Image 2.5 Sunburst</th></tr></thead>
+<tbody>
+<tr><td>Modell-ID</td><td><code>gpt-image-2.5-flare</code></td><td><code>gpt-image-2.5-sunburst</code></td></tr>
+<tr><td>Optimiert für</td><td>Geschwindigkeit; Bildqualität laut OpenAI vergleichbar mit GPT Image 2</td><td>Qualität; Bildqualität laut OpenAI höher als bei GPT Image 2</td></tr>
+<tr><td>Erzeugen und Bearbeiten</td><td>Ja, aus Text- und Bildeingaben</td><td>Ja, empfohlen, wenn präzises Bearbeiten am wichtigsten ist</td></tr>
+<tr><td>Transparenter Hintergrund</td><td>Unterstützt</td><td>Unterstützt</td></tr>
+<tr><td>Qualitätsstufen</td><td colspan="2">auto, low, medium, high, xhigh, max</td></tr>
+<tr><td>Token-Preise</td><td colspan="2">Für beide Modelle gleich und gleich wie bei GPT Image 2</td></tr>
+</tbody>
+</table>
+<p>OpenAI empfiehlt, mit Flare zu beginnen, wenn Tempo zählt, und mit Sunburst, wenn die Qualitätsansprüche hoch sind. Erfüllt Sunburst Ihre Anforderungen, sollten Sie Flare mit denselben Prompts und Eingaben testen und wechseln, wenn Flare ebenfalls genügt. Die Antwort hängt also von Ihren Bildern ab – Sie brauchen einen schnellen Weg, beide Ergebnisse gemeinsam anzusehen.</p>
+
+<h2>So testen Sie Flare und Sunburst fair</h2>
+<ol class="guide-steps">
+<li><strong>Alles gleich lassen außer dem Modell.</strong> Gleicher Prompt, gleiche Referenzbilder, gleiche Größe, gleiche Qualitätsstufe. Laut OpenAI bedeutet dieselbe Qualitätsstufe nicht automatisch dieselbe Bildqualität oder Geschwindigkeit bei beiden Modellen – deshalb vergleichen Sie die Bilder, nicht die Einstellungen.</li>
+<li><strong>Mehrere Bilder pro Modell erzeugen.</strong> Ein einzelnes Bild kann täuschen; einige pro Modell zeigen besser, wie sich jedes bei Ihrem Prompt verhält.</li>
+<li><strong>Dateien eindeutig benennen</strong>, etwa <code>poster-flare-1.png</code> und <code>poster-sunburst-1.png</code>, und in einem Ordner auf dem Mac speichern.</li>
+<li><strong>Passende Paare nebeneinander prüfen</strong> (siehe unten) und notieren, welches Modell bei den wichtigen Details vorne liegt.</li>
+</ol>
+
+<h2>Zwei KI-Bilder am Mac vergleichen</h2>
+<p>Sie können beide Dateien in der Vorschau öffnen und zwei Fenster nebeneinanderlegen. Das funktioniert, aber gleiche Zoomstufe und Position zu halten ist mühsam. Glance Preview ist ein Bildbetrachter (Beta) für Macs mit Apple Silicon, der beide Bilder in einem Fenster zeigt:</p>
+<ol class="guide-steps">
+<li><strong>Beide Bilder öffnen.</strong> Wählen Sie die Flare- und die Sunburst-Datei im Finder aus und öffnen Sie sie gemeinsam mit Glance („Öffnen mit“ → Glance). Ist eines schon offen, ziehen Sie das andere ins Fenster.</li>
+<li><strong>Compare</strong> in der Symbolleiste wählen: Die Bilder stehen nebeneinander. Gut für Bildausschnitt, Farben und Gesamteindruck.</li>
+<li><strong>Slider</strong> wählen und den Trenner über dieselbe Stelle beider Bilder ziehen. Gut für kleine Schrift, Hände, Kanten und Texturen.</li>
+<li><strong>Hineinzoomen</strong>, bevor Sie sich entscheiden. Vergleichen ist eine kostenlose Ansichtsfunktion: kein Konto, keine Credits, Ihre Dateien bleiben unverändert.</li>
+</ol>
+<p>Beide Ansichten erklärt die <a href="/de/compare-images-mac/">Anleitung zum Vergleichen zweier Bilder</a> ausführlicher.</p>
+
+<h2>Worauf Sie genau achten sollten</h2>
+<ul>
+<li><strong>Text im Bild:</strong> Schilder, Etiketten, Poster – ein falscher Buchstabe, und das Bild ist unbrauchbar. Umlaute und ß besonders prüfen.</li>
+<li><strong>Gesichter und Hände</strong>, und ob ein Motiv nach einer Bearbeitung gleich geblieben ist.</li>
+<li><strong>Feine Materialien und Kanten:</strong> Stoff, Glas, Haare, dünne Linien.</li>
+<li><strong>Bearbeitungen eines Referenzbilds:</strong> Ist wirklich gleich geblieben, was bleiben sollte?</li>
+</ul>
+
+<h2>Fast gut? Direkt aus der Vorschau korrigieren</h2>
+<p>Manchmal ist das bessere Bild nah dran, aber nicht fertig. Sie können neu prompten oder ein KI-Werkzeug per Klick auf die Datei anwenden, die Sie gerade ansehen. In Glance Preview klicken Sie mit der rechten Maustaste auf das Bild und wählen Widgets. Das Menü zeigt die Credits vor dem Start, und das Ergebnis erscheint neben dem Original, sodass Sie es wieder mit Compare oder Slider prüfen können.</p>
+<table>
+<thead><tr><th>Problem mit dem Ergebnis</th><th>Widget in Glance Preview</th><th>Credits pro Durchlauf</th></tr></thead>
+<tbody>
+<tr><td>Sie brauchen ein Freisteller-Bild, aber es hat einen Hintergrund</td><td>Background Remover Pro</td><td>20</td></tr>
+<tr><td>Die Datei ist zu klein für ihren Einsatz</td><td>Upscale (bis 4K)</td><td>30</td></tr>
+<tr><td>Der Bildausschnitt ist zu eng</td><td>Expand Image</td><td>30</td></tr>
+<tr><td>Sie brauchen ein anderes Seitenverhältnis</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
+</tbody>
+</table>
+<p>Zwei ehrliche Hinweise: GPT Image 2.5 kann bereits transparente Hintergründe und große Formate ausgeben; haben Sie den Prompt noch, ist ein neuer Durchlauf mit passenden Einstellungen oft einfacher. Außerdem laufen die Widgets auf anderen Cloud-KI-Modellen, aufgeführt auf der <a href="/de/ai-models/">Seite zur Offenlegung der KI-Modelle</a>; Glance Preview führt GPT Image 2.5 nicht aus und erzeugt keine Bilder aus Text. Cloud-Widgets laden das Bild zur Verarbeitung hoch und erfordern eine Anmeldung. Neue Konten starten mit 100 Credits, In-App-Käufe sind während der Beta nicht möglich, und bei Fehlern auf Seiten von Glance werden die Credits erstattet (siehe <a href="/de/pricing/">Preise</a>). Schritt-für-Schritt: <a href="/de/use-cases/remove-image-background-mac/">Hintergrund entfernen</a>, <a href="/de/blog/upscale-image-mac/">Bild hochskalieren</a>, <a href="/de/use-cases/expand-image-mac/">Bild erweitern</a>.</p>
+
+<h2>Welches Modell also?</h2>
+<ul>
+<li><strong>Viele Entwürfe, schnelles Ausprobieren:</strong> mit Flare beginnen, wie OpenAI es empfiehlt, wenn Tempo zählt.</li>
+<li><strong>Hohe Qualitätsansprüche oder präzise Bearbeitung:</strong> mit Sunburst beginnen und prüfen, ob Flare beim gleichen Prompt nah genug herankommt.</li>
+<li><strong>In beiden Fällen:</strong> nach dem Vergleich passender Bildpaare entscheiden, nicht nach dem Modellnamen.</li>
+</ul>
+
+<section class="post-faq">
+<h2>Häufige Fragen</h2>
+<h3>Was ist der Unterschied zwischen GPT Image 2.5 Flare und Sunburst?</h3>
+<p>Laut OpenAI ist Flare das kleinere, auf Geschwindigkeit optimierte Modell mit einer Bildqualität vergleichbar mit GPT Image 2. Sunburst ist das Basismodell, auf Qualität optimiert, mit höherer Bildqualität als GPT Image 2. Beide erzeugen und bearbeiten Bilder und unterstützen transparente Hintergründe.</p>
+<h3>Kosten Flare und Sunburst gleich viel?</h3>
+<p>OpenAI nennt für beide Modelle dieselben Token-Preise, gleich wie bei GPT Image 2. Die tatsächlichen Kosten pro Bild hängen vom Token-Verbrauch ab; prüfen Sie die Preisseite von OpenAI für Ihre Einstellungen.</p>
+<h3>Wie vergleiche ich zwei KI-Bilder am Mac nebeneinander?</h3>
+<p>Öffnen Sie beide Dateien in Glance Preview und wählen Sie Compare für die Ansicht nebeneinander oder Slider, um an derselben Stelle zwischen beiden zu wischen. Alternativ legen Sie zwei Vorschau-Fenster nebeneinander.</p>
+<h3>Kann Glance Preview Bilder mit GPT Image 2.5 erzeugen?</h3>
+<p>Nein. Glance Preview ist ein Bildbetrachter mit KI-Werkzeugen per Klick für vorhandene Bilder, etwa Hintergrund entfernen, Hochskalieren und Erweitern. Bilder aus Text erzeugt es nicht.</p>
+<h3>Ist der Bildvergleich in Glance Preview kostenlos?</h3>
+<p>Ja. Bilder ansehen und vergleichen ist kostenlos, ohne Konto und ohne Credits. Credits verbrauchen nur die Cloud-KI-Widgets.</p>
+</section>

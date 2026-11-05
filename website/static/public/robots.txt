@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /pay/return/
-Disallow: /pay/
-Allow: /
-Sitemap: https://glancepreview.com/sitemap.xml

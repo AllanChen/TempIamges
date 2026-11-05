@@ -1,0 +1,102 @@
+<!-- slug: gpt-image-2-6-flare-sunburst-preview-mac | kind: blog | status: published | date: 2026-11-05
+| title: GPT Image 2.6 Flare と Sunburst の違い｜Mac で生成画像を比較 — Glance Preview
+| h1: GPT Image 2.6 の Flare と Sunburst：ChatGPT Images 2.6 の出力を Mac でプレビューし、惜しい画像を直す方法
+| description: OpenAI Images 2.6 は速さ重視の Flare（最短約6秒）と編集向きの Sunburst、GIF・透過PNGに対応。公平に試し、Mac で並べて確認しワンクリックで直す手順。
+| related: GPT Image 2.5 Flare と Sunburst=/ja/blog/gpt-image-2-5-preview-compare-mac/, Mac で 2 枚の画像を比較する=/ja/compare-images-mac/, Mac で画像を高画質化する=/ja/blog/upscale-image-mac/, Mac で画像の背景を削除する=/ja/use-cases/remove-image-background-mac/, AI 付きの Mac 画像ビューア=/ja/blog/ai-image-preview-mac/, ダウンロードとインストール=/ja/install/ -->
+<p class="lead">OpenAI は 2026 年 11 月 4 日に Images 2.6 を ChatGPT・Codex・API 向けに公開しました。API では GPT Image 2.6 Flare と GPT Image 2.6 Sunburst の 2 モデルです。Flare はすばやい試行向け、Sunburst は細部と編集の一貫性向けです。この記事では OpenAI の公式説明を整理し、公平な比較の手順と、Glance Preview で Mac 上のダウンロードを並べて確認し、惜しい画像をワンクリックで直す流れを紹介します。</p>
+<p>※ Glance Preview のアプリ表示は英語と簡体字中国語のみです。</p>
+
+<h2>Images 2.6 で増えたこと</h2>
+<p>OpenAI の <a href="https://openai.com/index/introducing-images-2-6/" rel="noopener">Introducing Images 2.6</a>（英語）と <a href="https://developers.openai.com/api/docs/guides/image-prompting" rel="noopener">画像プロンプトガイド</a>（英語、2026-11-05 時点）によると:</p>
+<ul>
+<li><strong>生成が速い。</strong>OpenAI は従来より約 50% 速いとしています。quality を low にすると、Flare は最短で約 6 秒程度で画像を返す場合があります。</li>
+<li><strong>GIF アニメ。</strong>ChatGPT Images 2.6 と Image API は、プロンプトからループ GIF を作れます（API の generations では <code>output_format=gif</code>）。</li>
+<li><strong>透過背景と SVG。</strong>両モデルとも透過背景に対応。API の生成ではロゴなどの SVG 出力も可能です。</li>
+<li><strong>編集の制御。</strong>ChatGPT にあったマークアップ指定編集が API にも入り、<code>complexity</code>（low / medium / high）で描画前の計画量を調整できます。</li>
+<li><strong>提供範囲。</strong>Images 2.6 は ChatGPT と Codex の全サブスクリプション階層（デスクトップ・モバイル・Web）で利用可能。Flare / Sunburst は API のモデル ID です。</li>
+</ul>
+<p>Glance Preview は GPT Image 2.6 を実行せず、テキストから画像を生成することもありません。流れは「外で生成・編集 → ダウンロード → Mac でプレビュー／必要なら修正」です。</p>
+
+<h2>Flare と Sunburst の違い（早見表）</h2>
+<p>表は <a href="https://developers.openai.com/api/docs/models/gpt-image-2.6-flare" rel="noopener">GPT-Image-2.6 Flare</a>・<a href="https://developers.openai.com/api/docs/models/gpt-image-2.6-sunburst" rel="noopener">GPT-Image-2.6 Sunburst</a> のモデルページとプロンプトガイド（英語、2026-11-05）にもとづきます。</p>
+<table>
+<thead><tr><th></th><th>GPT Image 2.6 Flare</th><th>GPT Image 2.6 Sunburst</th></tr></thead>
+<tbody>
+<tr><td>モデル ID</td><td><code>gpt-image-2.6-flare</code></td><td><code>gpt-image-2.6-sunburst</code></td></tr>
+<tr><td>役割</td><td>すばやい試行向けの小さいモデル。quality=low で約 6 秒程度（OpenAI）</td><td>細部・レイアウト・精密編集向け。medium/high 品質で編集の一貫性を強調</td></tr>
+<tr><td>生成と編集</td><td>対応（テキストと画像を入力）</td><td>対応。編集精度が重要な用途向け</td></tr>
+<tr><td>背景の透過</td><td>対応</td><td>対応</td></tr>
+<tr><td>GIF / SVG（API 生成）</td><td colspan="2">generations で対応（<code>gif</code>・<code>svg</code>）。edit エンドポイントは GIF/SVG を出力しない</td></tr>
+<tr><td>品質設定</td><td colspan="2">auto、low、medium、high、xhigh、max</td></tr>
+<tr><td>complexity</td><td colspan="2">low、medium、high（省略時は high）</td></tr>
+<tr><td>トークン料金（API）</td><td colspan="2">両モデルで同じ料金表が掲載されている</td></tr>
+</tbody>
+</table>
+<p>OpenAI の勧めは 2.5 世代と同様です。速さを優先するなら Flare から、品質や編集精度が厳しいなら Sunburst から。Sunburst で足りたら同じプロンプトで Flare も試し、十分なら Flare に切り替えます。ChatGPT では製品名が Images 2.6、Flare / Sunburst は API での A/B 用のモデル名です。</p>
+<p>前世代を使う場合は <a href="/ja/blog/gpt-image-2-5-preview-compare-mac/">GPT Image 2.5 Flare と Sunburst</a> の記事も参照してください。新しい比較では 2.6 を優先するのがよいです。</p>
+
+<h2>Flare と Sunburst を公平に比べる手順</h2>
+<ol class="guide-steps">
+<li><strong>モデル以外はすべて同じにする。</strong>プロンプト、参照画像、サイズ、品質、complexity をそろえます。同じ品質ラベルでもモデルが違えば見た目や速度は同じとは限りません。</li>
+<li><strong>各モデルで数枚ずつ生成する</strong>（API を使わない場合は ChatGPT の Images 2.6 で複数回）。1 枚ずつでは偶然に左右されます。</li>
+<li><strong>ファイル名を分かりやすくする。</strong>例: <code>poster-flare-1.png</code> と <code>poster-sunburst-1.png</code>。透過 PNG/WebP はアルファを保ったまま保存。GIF は返ってきた <code>.gif</code> をそのまま保存。</li>
+<li><strong>対応するペアを並べて確認し</strong>、気になる部分でどちらが良いかをメモします。</li>
+</ol>
+
+<h2>Mac でダウンロードをプレビュー・比較する</h2>
+<p>macOS の「プレビュー」でウインドウを 2 つ並べることもできますが、拡大率や位置をそろえるのは手間です。Glance Preview は Apple シリコン搭載 Mac 向けのベータ版画像ビューアで、2 枚を 1 つのウインドウで比べられます。</p>
+<ol class="guide-steps">
+<li><strong>2 枚を開く。</strong>Finder で Flare と Sunburst の画像を選び、「このアプリケーションで開く」から Glance でまとめて開きます。すでに 1 枚開いているなら、もう 1 枚をウインドウにドラッグします。別アプリでパスや画像リンクを選んで Peek（任意・初期オフ）でプレビューし、Compare や Widgets が必要ならフルウインドウを開く方法もあります。</li>
+<li><strong>ツールバーの Compare</strong> で左右に並べます。構図・色・全体印象向けです。</li>
+<li><strong>Slider</strong> で境界線を同じ位置にドラッグします。小さな文字、手、輪郭、質感向けです。</li>
+<li><strong>透過 PNG。</strong>切り抜きを忙しい背景の上で確認します。まだ背景が残る場合は <code>background=transparent</code> で再生成するか、後述の Background Remover Pro を使います。</li>
+<li><strong>GIF。</strong>ダウンロードした GIF を Glance Preview で開き、Mac 上のファイルとしてのループ感を見ます。静止画同士の厳密な A/B なら、対応フレームを書き出すか PNG/WebP を使い、Compare / Slider で比べます。</li>
+<li><strong>拡大して細部を見る。</strong>比較は無料の表示機能で、アカウントもクレジットも不要、元ファイルも変更しません。</li>
+</ol>
+<p>詳しい操作は <a href="/ja/compare-images-mac/">2 枚の画像を比較するガイド</a>をご覧ください。ベータ版の初回起動でブロックされた場合の手順は、Apple の<a href="https://support.apple.com/ja-jp/102445" rel="noopener">Mac でアプリを安全に開く</a>も参考になります。</p>
+
+<h2>特によく見るべきポイント</h2>
+<ul>
+<li><strong>画像内の文字：</strong>看板、ラベル、ポスター。日本語の文字は特に念入りに。</li>
+<li><strong>顔・手・ブランドマーク</strong>、編集後も同じ被写体か。</li>
+<li><strong>細かい素材と輪郭：</strong>布、ガラス、髪、細い線。</li>
+<li><strong>参照画像の編集：</strong>残したい部分が本当に変わっていないか（マークアップで変更箇所を指定できる）。</li>
+<li><strong>GIF のループ：</strong>最初のフレームに自然に戻るか、ブランド要素がフレーム間でぶれないか。</li>
+</ul>
+
+<h2>惜しい画像はプレビューからそのまま直す</h2>
+<p>選んだ画像があと一歩のこともあります。Images 2.6 でプロンプトを変えて再生成する方法のほか、表示中のファイルにワンクリックの AI ツールをかける方法もあります。Glance Preview では画像を右クリックして Widgets を選びます（一覧にない場合は先に Widget Market から追加）。実行前にメニューにクレジットが表示され、結果は元画像の隣に出るので、もう一度 Compare や Slider で確認できます。</p>
+<table>
+<thead><tr><th>生成画像の問題</th><th>Glance Preview の Widget</th><th>1 回あたりのクレジット</th></tr></thead>
+<tbody>
+<tr><td>切り抜きが必要だが背景がある</td><td>Background Remover Pro</td><td>20</td></tr>
+<tr><td>使う場所に対して画像が小さい</td><td>Upscale（最大 4K）</td><td>30</td></tr>
+<tr><td>構図が窮屈</td><td>Expand Image</td><td>30</td></tr>
+<tr><td>別の縦横比が必要</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
+</tbody>
+</table>
+<p>注意点も 2 つあります。GPT Image 2.6 はもともと透過・大きいサイズ・SVG・GIF に対応しているので、プロンプトが手元なら設定を変えて再生成した方が簡単な場合もあります。Widgets は別のクラウド AI で動き、<a href="/ja/ai-models/">AI モデルの開示ページ</a>に一覧があります（例: Upscale は Google Gemini 3.1 Flash Image / Nano Banana 2、Expand Image は FLUX.2）。Glance Preview は GPT Image 2.6 を呼びません。クラウド Widget は画像をアップロードし、サインインが必要です。新規アカウントには 100 クレジット、ベータ中はアプリ内購入は利用できません。Glance 側の失敗はクレジットが返却されます（<a href="/ja/pricing/">料金ページ</a>）。手順は<a href="/ja/use-cases/remove-image-background-mac/">背景の削除</a>、<a href="/ja/blog/upscale-image-mac/">高画質化</a>、<a href="/ja/use-cases/expand-image-mac/">画像の拡張</a>を参照してください。</p>
+
+<h2>結局どちらを使えばいい？</h2>
+<ul>
+<li><strong>下書きを大量に・すばやく試す：</strong>OpenAI が速度重視で勧めるとおり Flare（または ChatGPT の速い Images 2.6 実行）から。</li>
+<li><strong>品質要件が厳しい・精密な編集・ブランド一貫性：</strong>Sunburst から始め、同じプロンプトで Flare が十分近いかも確認。</li>
+<li><strong>モーションやロゴ系：</strong>OpenAI が文書化している範囲で GIF や SVG を試し、出荷前に Mac 上のファイルを確認。</li>
+<li><strong>どちらの場合も：</strong>モデル名ではなく、対応する出力を並べて見て決めましょう。</li>
+</ul>
+
+<section class="post-faq">
+<h2>よくある質問</h2>
+<h3>GPT Image 2.6 の Flare と Sunburst の違いは？</h3>
+<p>OpenAI によると、Flare は速度重視の小さいモデル（low 品質で約 6 秒程度の例あり）です。Sunburst は細部と編集の一貫性向けのベースモデルです。どちらも生成・編集・透過に対応し、API の generations では GIF と SVG も使えます。</p>
+<h3>Images 2.6 は ChatGPT で使えますか？</h3>
+<p>はい。OpenAI は ChatGPT と Codex の全サブスクリプション階層（デスクトップ・モバイル・Web）で Images 2.6 が利用可能だとしています。Flare / Sunburst は API のモデル名です。</p>
+<h3>GPT Image 2.6 で GIF や透過 PNG は作れますか？</h3>
+<p>OpenAI の文書によれば可能です。ChatGPT Images 2.6 は GIF を作成でき、API では generations の <code>output_format=gif</code> と PNG/WebP（および SVG）の <code>background=transparent</code> に対応します。edit エンドポイントは GIF/SVG を出力しません。</p>
+<h3>Mac で 2 枚の AI 画像を並べて比較するには？</h3>
+<p>Glance Preview で 2 枚を開き、左右なら Compare、同じ位置で切り替えるなら Slider を選びます。macOS の「プレビュー」を 2 ウインドウ並べる方法もあります。</p>
+<h3>Glance Preview で GPT Image 2.6 の画像を生成できますか？</h3>
+<p>いいえ。Glance Preview はビューアで、手元の画像に背景削除・高画質化・拡張などのワンクリックのクラウド AI をかけられます。テキストから画像を生成せず、GPT Image 2.6 も呼び出しません。</p>
+<h3>Glance Preview での画像比較は無料ですか？</h3>
+<p>はい。表示と比較は無料で、アカウントもクレジットも不要です。クレジットはクラウド AI Widget で使います。</p>
+</section>

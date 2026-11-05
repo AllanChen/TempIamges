@@ -1,0 +1,64 @@
+<!-- slug: ai-image-preview-mac | kind: blog | status: published | date: 2026-10-30
+| title: AI Image Preview on Mac: Look, Fix, Check — Glance Preview
+| h1: AI image preview on Mac: look at it, fix it with AI, check the result
+| description: What an AI image preview on Mac looks like: open an image fast, run a one-click AI fix like background removal or upscale, then compare it with the original.
+| related: Remove an image background on Mac=/en/use-cases/remove-image-background-mac/, AI Widgets and credits=/en/widgets/, AI model disclosure=/en/ai-models/, Download and install=/en/install/ -->
+<p class="lead">Most image previews stop at looking. You open a photo, notice the background is messy or the image is too small, and then you leave the preview to fix it somewhere else. An AI image preview keeps the look instant and lets you fix what you see in the same window, then shows you whether the fix was worth keeping. This post explains how that works in Glance Preview, a beta image viewer for Apple silicon Macs, and where it falls short.</p>
+<p>This post is about AI tools for images you preview, not Adobe Illustrator (.ai) files.</p>
+
+
+<h2>The loop in three steps</h2>
+<ol class="guide-steps">
+<li><strong>Look.</strong> Open the image from Finder, or from a path or link you select in any app.</li>
+<li><strong>Fix.</strong> Right-click the image and run a one-click AI tool, such as removing the background or upscaling.</li>
+<li><strong>Check.</strong> The result appears next to the original. Click Compare for side by side, or Slider to wipe between the two.</li>
+</ol>
+
+<h2>Look: open the image fast</h2>
+<p><strong>From Finder.</strong> Right-click an image and choose Open With &gt; Glance. To open every image this way, set Glance as your default viewer from its menu bar icon. Viewing needs no account.</p>
+<p><strong>From selected text.</strong> Peek previews an image path or link without leaving the app you are in: select the text and press Option + Space. Peek is off by default. Turning it on in Preferences asks for Accessibility and Input Monitoring permissions. The AI tools live in the full image window, so open the image there to use them.</p>
+
+<h2>Fix: one-click AI tools from the right-click menu</h2>
+<p>Right-click the image and choose Widgets. Each tool shows its credit cost before you run it. The initial cloud run asks you to sign in with Google or an email code, and new accounts start with 100 credits. Tools run in the cloud in the background, so you can keep looking at other images while a task runs. If the tool isn't in your Widgets menu yet, add it from the Widget Market (the Widget button in the toolbar).</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th><th>Credits per run</th></tr></thead>
+<tbody>
+<tr><td>Background Remover Pro</td><td>Returns a copy with a transparent background, aiming to keep fine edges such as hair</td><td>20</td></tr>
+<tr><td>Upscale</td><td>Raises resolution by re-rendering detail</td><td>30</td></tr>
+<tr><td>Watermark Remover</td><td>Erases marks and text and fills the area</td><td>30</td></tr>
+</tbody>
+</table>
+<p>The models behind each tool are listed on the <a href="/en/ai-models/">AI model disclosure</a> page, and the live list with costs is on the <a href="/en/widgets/">AI Widgets page</a>.</p>
+<p>Each tool does one job with one click. None of them takes a free-form text prompt, so if you need to describe an edit in your own words, a prompt-based image editor is the right tool for that.</p>
+
+<h2>Check: compare the AI result with the original</h2>
+<p>When a tool finishes, the result is saved as a new file and placed next to the original in the same window; your original is not changed. Click Compare to see both side by side, or Slider to drag a divider across the pair.</p>
+<p>Checking matters most for the generative tools. Generative tools such as Upscale create new image content, so they can invent detail that was not in your picture. Look at faces, text and edges at full size before you keep a result.</p>
+
+<h2>Glance Preview compared with Preview and Quick Look</h2>
+<p>macOS already has Preview and Quick Look. They are built in, free, and a good fit for plain viewing, and Preview can remove a background on recent macOS versions (see Apple's <a href="https://support.apple.com/guide/preview/remove-a-background-or-extract-an-image-prvw15636/mac" rel="noopener">Preview guide</a>). What Glance Preview adds is a menu of cloud AI tools on the image you are looking at, and a side-by-side or slider check of the result against the original in the same window. If all you need is to look at images, the built-in tools may be all you need.</p>
+
+<h2>Honest limits</h2>
+<ul>
+<li><strong>Cloud, not on-device.</strong> Every AI tool uploads the image to Glance for processing and needs an internet connection. Viewing and comparing stay on your Mac.</li>
+<li><strong>Credits and sign-in.</strong> AI tools cost credits and need an account. In-app purchases are not open during the beta. If a task fails on Glance's side, the credits are returned, as described on the <a href="/en/pricing/">Pricing page</a>.</li>
+<li><strong>Beta.</strong> Apple silicon Macs, macOS 12.3 or later. The beta is not notarized by Apple yet, so macOS asks you to allow it once; the <a href="/en/install/">install page</a> has the steps.</li>
+<li><strong>Your images.</strong> Use watermark removal just on images you own or have permission to edit. See the <a href="/en/acceptable-use/">acceptable use policy</a>.</li>
+</ul>
+
+<h2>Try it on one image</h2>
+<p>A good test is a product photo with a busy background: open it in Glance Preview, run Background Remover Pro, and drag the Slider across the edges. The step-by-step version is in <a href="/en/use-cases/remove-image-background-mac/">Remove an image background on Mac</a>.</p>
+
+<section class="post-faq">
+<h2>FAQ</h2>
+<h3>What is an AI image preview on Mac?</h3>
+<p>It is an image viewer that lets you run AI fixes, such as background removal or upscaling, on the image you are looking at, and then compare the result with the original without leaving the window. Glance Preview works this way.</p>
+<h3>Can I edit an image with a text prompt in Glance Preview?</h3>
+<p>Not today. Its AI tools are one-click: each does one job, and none takes a free-form prompt.</p>
+<h3>Do the AI tools run on my Mac?</h3>
+<p>No. They run in the cloud, so the image is uploaded to Glance for processing. Viewing and comparing images stay on your Mac.</p>
+<h3>How much do the AI tools cost?</h3>
+<p>They use credits: 20 or 30 per run at the time of writing, and new accounts start with 100. In-app purchases are not open during the beta.</p>
+<h3>Do I need an account to view images?</h3>
+<p>No. An account is needed just for the cloud AI tools.</p>
+</section>

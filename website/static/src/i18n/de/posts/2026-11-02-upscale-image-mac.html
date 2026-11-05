@@ -1,0 +1,66 @@
+<!-- slug: upscale-image-mac | kind: blog | status: published | date: 2026-11-02
+| title: Bild hochskalieren auf dem Mac: 3 Wege im Vergleich — Glance Preview
+| h1: Bild auf dem Mac vergrößern und hochskalieren: Vorschau, kostenlose lokale KI oder Cloud-KI mit Slider-Kontrolle
+| description: Drei Wege, ein Bild auf dem Mac zu vergrößern: Größe in der Vorschau ändern, kostenloser lokaler KI-Upscaler (Upscayl) oder Cloud-KI in Glance Preview mit Vergleich zum Original.
+| related: Bildbetrachter mit KI auf dem Mac=/de/blog/ai-image-preview-mac/, Bildhintergrund auf dem Mac entfernen=/de/use-cases/remove-image-background-mac/, Offenlegung der KI-Modelle=/de/ai-models/, Download und Installation=/de/install/ -->
+<p class="lead">Sie öffnen ein Bild auf dem Mac, und es ist zu klein: ein gespeichertes Vorschaubild, ein altes Foto, ein Screenshot für eine Folie. Es gibt drei praktische Wege, es zu vergrößern, und sie unterscheiden sich bei Kosten, Datenschutz und darin, wie viel Detail sie hinzufügen. Dieser Beitrag stellt alle drei vor, einschließlich der KI-Hochskalierung in Glance Preview, und erklärt, warum Sie ein hochskaliertes Bild immer mit dem Original vergleichen sollten.</p>
+<p>Hinweis: Die App-Oberfläche von Glance Preview gibt es nur auf Englisch und vereinfachtem Chinesisch.</p>
+
+<h2>Die drei Wege im Überblick</h2>
+<table>
+<thead><tr><th>Weg</th><th>Funktionsweise</th><th>Kosten</th><th>Wo es läuft</th></tr></thead>
+<tbody>
+<tr><td>Vorschau (in macOS enthalten)</td><td>Rechnet die Pixel auf eine größere Größe um; kein neues Detail</td><td>Kostenlos</td><td>Auf Ihrem Mac</td></tr>
+<tr><td>Kostenloser lokaler KI-Upscaler, etwa Upscayl</td><td>Ein KI-Modell auf Ihrem Mac sagt zusätzliche Details voraus</td><td>Kostenlos, Open Source</td><td>Auf Ihrem Mac</td></tr>
+<tr><td>Upscale in Glance Preview</td><td>Ein Cloud-KI-Modell rendert das Bild in höherer Auflösung neu, bis 4K</td><td>30 Credits pro Lauf; neue Konten starten mit 100</td><td>In der Cloud</td></tr>
+</tbody>
+</table>
+
+<h2>Weg 1: Größe in der Vorschau ändern</h2>
+<p>Öffnen Sie das Bild in der Vorschau, wählen Sie „Werkzeuge“ &gt; „Größenkorrektur“, achten Sie darauf, dass „Bild neu berechnen“ aktiviert ist, und geben Sie eine größere Breite oder Höhe ein. Apple beschreibt die Schritte im <a href="https://support.apple.com/de-de/guide/preview/prvw2015/mac" rel="noopener">Vorschau-Handbuch</a>.</p>
+<p>Das ist der schnellste Weg und kostet nichts, verteilt aber nur die vorhandenen Pixel auf eine größere Fläche. Ein kleines Bild wird größer – und weicher. Gut, wenn ein etwas größeres Format reicht, etwa für ein Layout.</p>
+
+<h2>Weg 2: Ein kostenloser lokaler KI-Upscaler</h2>
+<p>KI-Upscaler sagen mit einem trainierten Modell Details voraus, statt Pixel zu strecken; das Ergebnis wirkt meist schärfer als eine einfache Größenänderung. <a href="https://upscayl.org/" rel="noopener">Upscayl</a> ist ein kostenloses Open-Source-Beispiel mit macOS-Version; laut seiner <a href="https://github.com/upscayl/upscayl" rel="noopener">GitHub-Seite</a> braucht es eine Vulkan-kompatible GPU. Da es auf Ihrem Mac läuft, verlässt Ihr Bild den Computer nicht.</p>
+<p>Wenn Datenschutz an erster Stelle steht oder Sie viele Bilder hochskalieren, ist ein lokaler Upscaler eine starke Wahl – vielleicht brauchen Sie nichts anderes.</p>
+
+<h2>Weg 3: Direkt aus der Bildansicht in Glance Preview hochskalieren</h2>
+<p>Glance Preview ist ein Beta-Bildbetrachter für Macs mit Apple Silicon, gebaut um einen einfachen Ablauf: Bild ansehen und, wenn es nicht passt, per Klick mit KI korrigieren. Upscale ist eines dieser Werkzeuge.</p>
+<ol class="guide-steps">
+<li><strong>Bild öffnen</strong>, zum Beispiel im Finder mit „Öffnen mit“ &gt; Glance.</li>
+<li><strong>Rechtsklick auf das Bild, dann Widgets &gt; Upscale.</strong> Das Menü zeigt die Kosten, 30 Credits, vor dem Start. Beim ersten Cloud-Lauf melden Sie sich an; neue Konten starten mit 100 Credits. Fehlt Upscale im Widgets-Menü, fügen Sie es über den Widget Market hinzu.</li>
+<li><strong>Weiterarbeiten, während es läuft.</strong> Das Bild wird hochgeladen und im Hintergrund in der Cloud verarbeitet.</li>
+<li><strong>Ergebnis mit dem Original vergleichen</strong> – mit Compare (nebeneinander) oder Slider (Trennlinie über beide ziehen). Ihre Originaldatei bleibt unverändert.</li>
+</ol>
+<p>Upscale akzeptiert JPEG, PNG, WebP und HEIC. Laut der <a href="/de/ai-models/">Offenlegung der KI-Modelle</a> nutzt es Google Gemini 3.1 Flash Image (Nano Banana 2) und skaliert durch Neuzeichnen von Details bis 4K hoch.</p>
+<p>Die Nachteile sind real: Es braucht eine Internetverbindung und ein Konto, das Bild wird zur Verarbeitung hochgeladen, und es kostet Credits. In-App-Käufe sind während der Beta nicht möglich, Sie haben vorerst also die 100 Credits eines neuen Kontos. Scheitert eine Aufgabe auf Seiten von Glance, gibt es die Credits zurück, wie auf der Seite <a href="/de/pricing/">Preise</a> beschrieben.</p>
+
+<h2>Warum Sie vor dem Behalten vergleichen sollten</h2>
+<p>Jeder KI-Upscaler fügt Details hinzu, die nicht in der Originaldatei waren – so wirkt ein kleines Bild scharf. Ein Modell, das das ganze Bild neu rendert, wie das hinter Upscale in Glance, kann noch weiter gehen und Details erfinden: anderer Text auf einem Schild, ein verändertes Gesicht, zusätzliche Struktur im Stoff. Prüfen Sie vor der Verwendung genau:</p>
+<ul>
+<li><strong>Gesichter und Hände</strong>, wo kleine Änderungen später leicht auffallen.</li>
+<li><strong>Text und Logos</strong>, die ein Modell falsch neu zeichnen kann.</li>
+<li><strong>Kanten und feine Muster</strong> wie Haare, Zäune oder Stoff.</li>
+</ul>
+<p>Mit einem Schieberegler geht das schnell, weil Sie über dieselbe Stelle in beiden Bildern wischen. Dieser Prüfschritt ist der Hauptgrund, direkt im Bildbetrachter hochzuskalieren statt in einem separaten Werkzeug.</p>
+
+<h2>Welcher Weg passt?</h2>
+<ul>
+<li><strong>Etwas größer reicht, weicher ist okay:</strong> Größe in der Vorschau ändern.</li>
+<li><strong>Schärfer, privat und kostenlos:</strong> einen lokalen KI-Upscaler ausprobieren.</li>
+<li><strong>Sie sehen das Bild gerade an und möchten eine scharfe Version samt Vergleich im selben Fenster:</strong> Upscale in Glance Preview.</li>
+</ul>
+
+<section class="post-faq">
+<h2>Häufige Fragen</h2>
+<h3>Wie vergrößere ich ein Bild auf dem Mac kostenlos?</h3>
+<p>In der Vorschau öffnen, „Werkzeuge“ &gt; „Größenkorrektur“ wählen, „Bild neu berechnen“ aktiviert lassen und eine größere Größe eingeben. Für schärfere Ergebnisse ist ein kostenloser lokaler KI-Upscaler wie Upscayl eine Alternative.</p>
+<h3>Fügt Hochskalieren echte Details hinzu?</h3>
+<p>Nein. Eine einfache Größenänderung fügt keine Details hinzu, ein KI-Upscaler sagt plausibel wirkende Details voraus. Diese können falsch sein; vergleichen Sie das Ergebnis daher vor der Verwendung mit dem Original.</p>
+<h3>Was kostet Upscale in Glance Preview?</h3>
+<p>Derzeit 30 Credits pro Lauf. Neue Konten starten mit 100 Credits, und In-App-Käufe sind während der Beta nicht möglich.</p>
+<h3>Skaliert Glance Preview Bilder auf meinem Mac hoch?</h3>
+<p>Nein. Upscale läuft in der Cloud, das Bild wird also zur Verarbeitung zu Glance hochgeladen. Ansehen und Vergleichen bleiben auf Ihrem Mac.</p>
+<h3>Bis zu welcher Größe skaliert Glance Preview hoch?</h3>
+<p>Bis 4K, laut der Seite zur Offenlegung der KI-Modelle.</p>
+</section>

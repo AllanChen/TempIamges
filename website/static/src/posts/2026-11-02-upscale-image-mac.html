@@ -1,0 +1,67 @@
+<!-- slug: upscale-image-mac | kind: blog | status: published | date: 2026-11-02 | updated: 2026-11-04
+| title: How to Upscale an Image on Mac: 3 Ways Compared — Glance Preview
+| h1: How to upscale an image on Mac: built-in resize, free local AI, or a cloud AI upscale you check on a slider
+| description: Three ways to upscale an image on Mac: resize in Preview, a free local AI upscaler, or a cloud AI upscale in Glance Preview that you compare with the original.
+| related: AI image preview on Mac=/en/blog/ai-image-preview-mac/, Remove an image background on Mac=/en/use-cases/remove-image-background-mac/, AI model disclosure=/en/ai-models/, Download and install=/en/install/ -->
+<p class="lead">You open an image on your Mac and it is too small: a thumbnail you saved, an old photo, a screenshot you need for a slide. There are three practical ways to make it bigger, and they trade off cost, privacy and how much detail they add. This post walks through each one, including the AI upscale in Glance Preview, and explains why you should always compare an upscaled image with the original before you use it.</p>
+
+<h2>The three options at a glance</h2>
+<table>
+<thead><tr><th>Option</th><th>How it works</th><th>Cost</th><th>Where it runs</th></tr></thead>
+<tbody>
+<tr><td>Preview (built into macOS)</td><td>Resamples the pixels to a larger size; adds no new detail</td><td>Free</td><td>On your Mac</td></tr>
+<tr><td>A free local AI upscaler, such as Upscayl</td><td>An AI model on your Mac predicts extra detail</td><td>Free and open source</td><td>On your Mac</td></tr>
+<tr><td>Upscale in Glance Preview</td><td>A cloud AI model re-renders the image at higher resolution, up to 4K</td><td>30 credits per run; new accounts start with 100</td><td>In the cloud</td></tr>
+</tbody>
+</table>
+
+<h2>Option 1: Resize in Preview</h2>
+<p>Open the image in Preview, choose Tools &gt; Adjust Size, make sure "Resample image" is selected, and enter a larger width or height. Apple documents the steps in the <a href="https://support.apple.com/guide/preview/resize-rotate-or-flip-an-image-prvw2015/mac" rel="noopener">Preview User Guide</a>.</p>
+<p>This is the quickest route and costs nothing, but resampling just spreads the existing pixels over a larger canvas. A small image gets bigger, and it also gets softer. It suits cases where a slightly larger size is enough, such as fitting a layout.</p>
+
+<h2>Option 2: A free local AI upscaler</h2>
+<p>AI upscalers use a trained model to predict detail instead of stretching pixels, so the result usually looks sharper than a plain resize. <a href="https://upscayl.org/" rel="noopener">Upscayl</a> is a free, open source example with a macOS version; per its <a href="https://github.com/upscayl/upscayl" rel="noopener">GitHub page</a>, it needs a Vulkan-compatible GPU. Because it runs on your Mac, your image never leaves your computer.</p>
+<p>If privacy matters most, or you upscale many images, a local upscaler is a strong choice and you may not need anything else.</p>
+
+<h2>Option 3: Upscale from the preview in Glance Preview</h2>
+<p>Glance Preview is a beta image viewer for Apple silicon Macs built around a simple loop: look at an image, and if you're not happy with it, fix it with a one-click AI tool. Upscale is one of those tools.</p>
+<ol class="guide-steps">
+<li><strong>Open the image</strong> in Glance Preview, for example from Finder with Open With &gt; Glance.</li>
+<li><strong>Right-click the image and choose Widgets &gt; Upscale.</strong> The menu shows the cost, 30 credits, before you run it. The initial cloud run asks you to sign in, and new accounts start with 100 credits. If Upscale isn't in your Widgets menu yet, add it from the Widget Market.</li>
+<li><strong>Keep working while it runs.</strong> The image is uploaded and processed in the cloud in the background.</li>
+<li><strong>Check the result against the original</strong> with Compare (side by side) or Slider (drag a divider across both). Your original file is not changed.</li>
+</ol>
+<p>Upscale accepts JPEG, PNG, WebP and HEIC images. According to the <a href="/en/ai-models/">AI model disclosure</a>, it uses Google Gemini 3.1 Flash Image (Nano Banana 2) and upscales up to 4K by re-rendering detail.</p>
+<p>The trade-offs are real: it needs an internet connection and an account, the image is uploaded for processing, and it costs credits. In-app purchases are not open during the beta, so for now the credits you have are the 100 a new account starts with. If a task fails on Glance's side, the credits are returned, as described on the <a href="/en/pricing/">Pricing page</a>.</p>
+
+<h2>Why you should compare before you keep an upscale</h2>
+<p>Any AI upscaler adds detail that was not in the original file; that is how it makes a small image look sharp. A model that re-renders the whole image, like the one behind Glance's Upscale, can go further and invent detail: different text on a sign, a changed face, extra texture on fabric. Before you use the result, look closely at:</p>
+<ul>
+<li><strong>Faces and hands</strong>, where small changes are easy to notice later.</li>
+<li><strong>Text and logos</strong>, which a model may redraw incorrectly.</li>
+<li><strong>Edges and fine patterns</strong>, such as hair, fences or fabric.</li>
+</ul>
+<p>A slider makes this quick, because you can wipe across the same spot in both images. That check step is the main reason to upscale from inside a viewer instead of a separate tool.</p>
+
+<h2>Which one should you use?</h2>
+<ul>
+<li><strong>You need it a bit bigger and soft is fine:</strong> resize in Preview.</li>
+<li><strong>You want sharper results, privately and for free:</strong> try a local AI upscaler.</li>
+<li><strong>You are already looking at the image and want a sharp version and a side-by-side check in the same window:</strong> try Upscale in Glance Preview.</li>
+</ul>
+
+<section class="post-faq">
+<h2>FAQ</h2>
+<h3>How do I make an image bigger on a Mac for free?</h3>
+<p>Open it in Preview, choose Tools &gt; Adjust Size, keep "Resample image" selected and enter a larger size. For sharper results, a free local AI upscaler such as Upscayl is another option.</p>
+<h3>Does upscaling an image add real detail?</h3>
+<p>No. A plain resize adds no detail, and an AI upscaler predicts detail that looks plausible. That predicted detail can be wrong, so compare the result with the original before you use it.</p>
+<h3>How much does Upscale cost in Glance Preview?</h3>
+<p>30 credits per run at the time of writing. New accounts start with 100 credits, and in-app purchases are not open during the beta.</p>
+<h3>Does Glance Preview upscale images on my Mac?</h3>
+<p>No. Upscale runs in the cloud, so the image is uploaded to Glance for processing. Viewing and comparing images stay on your Mac.</p>
+<h3>What is the maximum size Glance Preview can upscale to?</h3>
+<p>Up to 4K, per the AI model disclosure page.</p>
+<h3>Does Glance Preview's Upscale use Nano Banana 2?</h3>
+<p>Yes. Per the AI model disclosure page, Upscale uses Google Gemini 3.1 Flash Image, also known as Nano Banana 2. In Glance Preview it is applied to an image you already have, to make a larger, sharper version; it does not generate new images from a text prompt.</p>
+</section>

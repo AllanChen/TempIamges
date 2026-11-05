@@ -1,0 +1,83 @@
+<!-- slug: getting-started-glance-mac | kind: use-case | status: published | date: 2026-11-02
+| title: Getting Started with Glance on Mac: Install, Peek, AI Fix — Glance Preview
+| h1: Getting started with Glance on Mac: install the beta, preview with Peek, run your initial AI fix
+| description: Install the Glance Preview beta on your Mac, allow it past Gatekeeper, open images, turn on Peek for Option + Space previews, and run a one-click AI Widget.
+| related: Download and install=/en/install/, AI image preview on Mac=/en/blog/ai-image-preview-mac/, Remove an image background on Mac=/en/use-cases/remove-image-background-mac/, AI Widgets and credits=/en/widgets/ -->
+<p class="lead">Glance Preview is an image viewer for Apple silicon Macs built around one loop: look at an image quickly, and if it is not right, fix it with a one-click AI tool and compare the result with the original. This guide takes you from download to that loop in about ten minutes: install the beta, open images, turn on Peek, and run an AI Widget on one image.</p>
+
+<h2>What you need</h2>
+<ul>
+<li>A Mac with Apple silicon (M-series).</li>
+<li>macOS 12.3 or later.</li>
+<li>No account and no system permissions to start viewing. An account is needed just for the cloud AI Widgets.</li>
+</ul>
+
+<h2>Step 1: Download and install the beta</h2>
+<ol class="guide-steps">
+<li>Go to the <a href="/en/install/">install page</a>, download the Glance DMG and double-click it.</li>
+<li>Drag Glance into the Applications folder.</li>
+<li>Double-click Glance in Applications.</li>
+</ol>
+
+<h3>If macOS blocks the launch</h3>
+<p>The beta is not notarized by Apple yet, so macOS blocks it the initial time you open it. This is expected; you allow it once.</p>
+<p><strong>macOS 15 (Sequoia) and later:</strong></p>
+<ol class="guide-steps">
+<li>Double-click Glance. When you see "cannot be opened", click Done.</li>
+<li>Open System Settings → Privacy &amp; Security and scroll down to Security.</li>
+<li>Next to "Glance was blocked", click Open Anyway and confirm with your password.</li>
+</ol>
+<p><strong>macOS 14 and earlier:</strong> right-click Glance in Applications, choose Open, then click Open again in the dialog.</p>
+<p>After that, Glance opens normally with a double-click. It runs as a regular app with a Dock icon and a menu bar icon, and the 14-day full trial starts at launch.</p>
+
+<h2>Step 2: Open an image in Glance</h2>
+<ul>
+<li><strong>From Finder:</strong> right-click an image or video and choose Open With → Glance.</li>
+<li><strong>As your default viewer:</strong> set Glance as your default viewer from its menu bar icon, and double-clicking images opens them in Glance.</li>
+<li><strong>Two images at once:</strong> select two images and open them together to go straight to a comparison.</li>
+</ul>
+<p>The image opens in the full Glance window. This is where the AI tools and the Compare and Slider views live.</p>
+
+<h2>Step 3: Turn on Peek for previews from selected text</h2>
+<p>Peek previews an image link or file path you have selected in any app, without switching apps. It is optional and off by default.</p>
+<ol class="guide-steps">
+<li>Open Glance's Preferences and turn on Peek.</li>
+<li>Grant the Accessibility and Input Monitoring permissions Glance asks for. They are used to detect the hotkey and read the text you selected.</li>
+<li>In any app, select text that contains an image link or file path and press Option + Space.</li>
+</ol>
+<p>The selected text is not sent to Glance's servers. For a web link, Glance loads the preview directly from that website.</p>
+<p>The AI tools are in the full window, so open the image there when you want to fix it.</p>
+
+<h2>Step 4: Fix an image with an AI Widget</h2>
+<ol class="guide-steps">
+<li>In the full window, right-click the image and choose Widgets. Each Widget shows its credit cost before you run it. If the tool isn't in your Widgets menu yet, add it from the Widget Market (the Widget button in the toolbar).</li>
+<li>Pick a one-click Widget such as Background Remover Pro.</li>
+<li>The initial cloud run asks you to sign in with Google or an email code. New accounts start with 100 credits.</li>
+<li>The task runs in the cloud in the background, so you can keep browsing other images.</li>
+<li>When it finishes, the result is saved as a new file and placed next to the original; your original is not changed.</li>
+</ol>
+
+<h2>Step 5: Compare the result with the original</h2>
+<p>Click Compare to see the original and the result side by side, or Slider to drag a divider across the pair. Check edges, faces and text at full size before you keep a result, especially with generative tools such as Upscale, which can add detail that was not in your picture.</p>
+
+<h2>Good to know</h2>
+<ul>
+<li><strong>Cloud AI.</strong> Widgets upload the image to Glance for processing and need an internet connection. Viewing and comparing stay on your Mac.</li>
+<li><strong>Credits.</strong> In-app purchases are not open during the beta. If a task fails on Glance's side, the credits are returned, as described on the <a href="/en/pricing/">Pricing page</a>.</li>
+<li><strong>Help.</strong> Email support from the <a href="/en/install/">install page</a>; a screenshot or the log file ~/Library/Application Support/Glance/app.log helps.</li>
+<li><strong>Uninstall.</strong> Quit Glance and drag it from Applications to the Trash. To remove local settings and logs, delete ~/Library/Application Support/Glance.</li>
+</ul>
+
+<section class="post-faq">
+<h2>FAQ</h2>
+<h3>Which Macs does Glance Preview run on?</h3>
+<p>Apple silicon (M-series) Macs with macOS 12.3 or later.</p>
+<h3>Why does macOS say Glance cannot be opened?</h3>
+<p>The beta is not notarized by Apple yet. Allow it once in System Settings → Privacy &amp; Security (macOS 15 and later), or right-click the app and choose Open (macOS 14 and earlier).</p>
+<h3>Do I need an account to view images?</h3>
+<p>No. An account is needed just for the cloud AI Widgets.</p>
+<h3>What is the Peek hotkey?</h3>
+<p>Option + Space by default. Turn Peek on in Preferences; it is off by default.</p>
+<h3>Does Peek send my selected text to Glance?</h3>
+<p>No. For a web link, Glance loads the preview directly from that website.</p>
+</section>

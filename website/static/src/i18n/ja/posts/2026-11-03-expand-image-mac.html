@@ -1,0 +1,68 @@
+<!-- slug: expand-image-mac | kind: use-case | status: published | date: 2026-11-03
+| title: Mac で画像を AI で拡張（アウトペインティング）する — Glance Preview
+| h1: Mac で画像の外側を AI で広げる（アウトペインティング）
+| description: Mac で画像の余白を AI で生成して広げる方法。Glance Preview の Expand Image（30 クレジット）で画像を拡張し、生成された端を元画像とスライダーで比べて確認します。
+| related: Mac で画像を高画質化する=/ja/blog/upscale-image-mac/, Mac で画像の背景を削除する=/ja/use-cases/remove-image-background-mac/, AI 付きの Mac 画像ビューア=/ja/blog/ai-image-preview-mac/, Mac で 2 枚の画像を比較する=/ja/compare-images-mac/, AI ウィジェット=/ja/widgets/, AI モデルの開示=/ja/ai-models/, ダウンロードとインストール=/ja/install/ -->
+<p class="lead">写真を開いたら構図が窮屈だった。被写体が端に寄りすぎている、レイアウト用に空や床、背景がもっと欲しい。Mac のプレビューでも切り取りや余白の追加はできますが、端の外側に新しいピクセルは作れません。Glance Preview の Expand Image は、周囲に合う内容でキャンバスを広げるワンクリックのクラウドツールで、新しくできた端を元画像とスライダーで比べて確認できます。</p>
+<p>※ Glance Preview のアプリ表示は英語と簡体字中国語のみです。</p>
+
+<h2>プレビューと Glance の Expand の違い</h2>
+<table>
+<thead><tr><th></th><th>プレビュー（macOS 標準）</th><th>Glance Preview の Expand Image</th></tr></thead>
+<tbody>
+<tr><td>できること</td><td>切り取り、サイズ変更、周囲を空白にする</td><td>端の外側に内容を生成して情景を広げる</td></tr>
+<tr><td>費用</td><td>無料</td><td>1 回 30 クレジット。新規アカウントは 100 から</td></tr>
+<tr><td>処理場所</td><td>Mac 上</td><td>クラウド（画像を Glance にアップロード）</td></tr>
+<tr><td>確認方法</td><td>両方のファイルを自分で開く</td><td>結果が元画像の隣に開き、Compare または Slider で確認</td></tr>
+<tr><td>制限</td><td>端の外側を AI で埋めることはできない</td><td>ベータ版、Apple シリコン、サインインが必要、購入は未開始。生成で内容が作り出されることがある</td></tr>
+</tbody>
+</table>
+
+<h2>Expand が役立つ場面</h2>
+<p>被写体は気に入っているけれど、周りにもっと余裕が欲しいときに使います。スライド用に余白がまったくない写真、背景を広げたい商品写真、被写体を切らずに構図を変えたい写真などです。縦横比を変えて画面全体を描き直したい場合は、<a href="/ja/widgets/">AI ウィジェットのページ</a>にある Redraw &amp; Reframe を検討してください。単に画像が小さいだけなら、「<a href="/ja/blog/upscale-image-mac/">Mac で画像を高画質化する方法</a>」をご覧ください。</p>
+
+<h2>Glance Preview で表示中の画像から広げる</h2>
+<ol class="guide-steps">
+<li><strong>画像を開く。</strong>Finder で画像を右クリックし、「このアプリケーションで開く」&gt; Glance を選びます。Widgets メニューは画像のフルウィンドウにあるので、Peek から始めた場合はまずフルウィンドウで開いてください。</li>
+<li><strong>Expand Image を実行する。</strong>画像を右クリックして Widgets &gt; Expand Image を選びます。実行前に費用（30 クレジット）が表示されます。初めてクラウドで実行するときは、Google またはメールのコードでサインインします。処理はバックグラウンドで進むので、ほかの画像を見ながら待てます。Widgets メニューにない場合は、ツールバーの Widget ボタンから Widget Market で追加します。</li>
+<li><strong>元画像と比べる。</strong>結果は元画像の隣に開きます。Slider をクリックして新しい端に沿って境界線をドラッグするか、Compare で左右に並べます。保存する前に、つなぎ目、顔、文字、繰り返し模様を拡大して確認しましょう。あとから<a href="/ja/compare-images-mac/">画像比較</a>の手順で両方のファイルを開くこともできます。</li>
+</ol>
+<p>元のファイルは変更されません。Expand Image は JPEG、PNG、WebP、HEIC に対応しています。<a href="/ja/ai-models/">AI モデルの開示</a>によると、Black Forest Labs FLUX.2 を使い、入力画像の境界の外側に内容を生成します。カタログでの説明は「周囲に合う内容でキャンバスを端の外側まで広げる」です。</p>
+
+<h2>生成された端は、使う前に確認する</h2>
+<p>アウトペインティングは、ファイルになかったピクセルを作り出します。余白や背景には便利ですが、だからこそスライダーでさっと確かめることが大切です。次の点をよく見てください。</p>
+<ul>
+<li><strong>元画像と生成部分のつなぎ目。</strong>特に直線の輪郭や水平線沿い。</li>
+<li><strong>端に近い顔、手、ロゴ。</strong>情景を広げる際にモデルが変えてしまうことがあります。</li>
+<li><strong>文字と繰り返し模様。</strong>タイル、フェンス、布地などは、ずれたり不自然に重複したりすることがあります。</li>
+</ul>
+<p>生成部分がおかしければ元画像を残し、別の構図の工夫やほかのウィジェットを試してください。Expand Image を再実行すると、再びクレジットがかかります。「見る → ワンクリックで直す → 確かめる」というこの流れは、「<a href="/ja/blog/ai-image-preview-mac/">AI 付きの Mac 画像ビューア</a>」で紹介したものと同じです。</p>
+
+<h2>正直な制限事項</h2>
+<ul>
+<li><strong>クラウドとアップロード。</strong>Expand Image は画像を Glance にアップロードして処理するため、オフラインでは使えません。モデルと処理サービスは <a href="/ja/ai-models/">AI モデルの開示</a>に記載しています。</li>
+<li><strong>クレジット。</strong>1 回 30 クレジットを使い、アカウントが必要です。画像の表示と比較には不要です。Glance 側でタスクが失敗した場合は、<a href="/ja/pricing/">料金ページ</a>のとおりクレジットが戻ります。</li>
+<li><strong>購入。</strong>ベータ期間中はアプリ内購入を受け付けていないため、現時点で使えるのは無料の初回クレジット（新規アカウントは 100）だけです。</li>
+<li><strong>方向・サイズの設定は未確認。</strong>公開されているウィジェットカタログには、広げる量や方向の設定はありません。どこまで広げるかを指定する画面は期待せず、ワンクリックで実行するものと考えてください。</li>
+<li><strong>ベータ版。</strong>Apple シリコン Mac、macOS 12.3 以降。未公証のベータ版を初回に開く「このまま開く」の手順は<a href="/ja/install/">インストールページ</a>にあります。</li>
+<li><strong>画像の権利。</strong>処理するのは、ご自身が権利を持つか編集の許可を得た画像だけにしてください。<a href="/en/acceptable-use/">利用ポリシー（英語）</a>もご覧ください。</li>
+</ul>
+
+<h2>同じ画面でできるほかの補正</h2>
+<p>キャンバスを広げたあと、被写体をきれいに切り抜きたい、ファイルをもっと高精細にしたいこともあるでしょう。「<a href="/ja/use-cases/remove-image-background-mac/">Mac で画像の背景を削除する</a>」では、Background Remover Pro（20 クレジット）と macOS 標準の方法を紹介しています。Upscale（30 クレジット）で解像度を上げ、同じくスライダーで確認することもできます。すべてのツールの費用とモデル名は <a href="/ja/widgets/">AI ウィジェット</a>と <a href="/ja/ai-models/">AI モデル</a>のページにあります。試してみるなら、ベータ版を<a href="/ja/install/">ダウンロードしてインストール</a>してください。</p>
+
+<section class="post-faq">
+<h2>よくある質問</h2>
+<h3>Mac で画像を拡張（アウトペインティング）するには？</h3>
+<p>プレビューでは切り取りや余白の追加はできますが、端の外側に新しい内容は生成できません。Glance Preview なら画像を開いて右クリックし、Widgets &gt; Expand Image（30 クレジット）を選び、結果を Compare または Slider で確認します。</p>
+<h3>Expand Image の料金は？</h3>
+<p>執筆時点で 1 回 30 クレジットです。新規アカウントには 100 クレジットが付き、ベータ期間中はアプリ内購入を受け付けていません。</p>
+<h3>写真はアップロードされますか？</h3>
+<p>はい。クラウドで動作するため、画像は処理のために Glance にアップロードされます。表示と比較は Mac 上で完結します。</p>
+<h3>Expand Image はどの AI モデルを使っていますか？</h3>
+<p>AI モデルの開示ページと料金ページに記載のとおり、Black Forest Labs FLUX.2 です。</p>
+<h3>広げる量や方向は指定できますか？</h3>
+<p>公開されている Expand Image のカタログには、方向やサイズの設定はありません。ワンクリックで実行し、保存前にスライダーで端を確認してください。</p>
+<h3>広げた部分は元画像と完全になじみますか？</h3>
+<p>いつもとは限りません。生成で端の外側を作るため、つなぎ目や文字、細かい模様が不自然になることがあります。使う前に元画像と比べてください。</p>
+</section>

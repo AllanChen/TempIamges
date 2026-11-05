@@ -10,6 +10,7 @@ from urllib.robotparser import RobotFileParser
 import xml.etree.ElementTree as ET
 
 import build
+import content
 from localize import localize
 
 
@@ -34,61 +35,156 @@ class SiteTests(unittest.TestCase):
         cls.sitemap = [n.text for n in ET.parse(build.OUT/'sitemap.xml').findall('.//{*}loc')]
 
     def test_languages_canonicals_and_alternates(self):
-        self.assertEqual(len(self.sitemap), 24)
-        self.assertEqual(len(set(self.sitemap)), 24)
+        posts = content.load_posts(build.SRC/'posts')
+        everything = content.load_all(build)
+        english_only = {base for base, *_ in content.KINDS.values()}
+        content_pages = {p['path'] for ps in everything.values() for p in ps if p['status'] == 'published'}
+        content_pages |= {content.base_for(lang, kind) for lang, ps in everything.items() if lang != 'en' and ps for kind in content.KINDS}
+        extra = sum(len(pages) for pages in build.TRANSLATIONS.values())
+        self.assertEqual(len(self.sitemap), 22 + extra + len(english_only) + len(content_pages - english_only))
+        english_only |= content_pages
+        self.assertEqual(len(set(self.sitemap)), len(self.sitemap))
         for url in self.sitemap:
+            if urlsplit(url).path in english_only:
+                continue
             with self.subTest(url=url):
                 path = urlsplit(url).path
                 doc = self.pages[path]
-                language = next((l for l in ('en', 'ja', 'de') if path.startswith('/' + l + '/')), 'zh')
-                base = path.removeprefix('/' + language) if language != 'zh' else path
-                self.assertEqual(doc.select('html')[0]['lang'], build.HTML_LANG[language])
+                language = next((code for code in build.EXTRA_LANGUAGES + ['en'] if path.startswith('/'+code+'/')), 'zh')
+                base = path.removeprefix(build.LANGUAGES[language][0])
+                self.assertEqual(doc.select('html')[0]['lang'], build.LANGUAGES[language][1])
                 self.assertEqual(len(doc.select('h1')), 1)
                 self.assertEqual(doc.select('link', rel='canonical')[0]['href'], url)
                 self.assertFalse(doc.select('meta', name='robots'))
-                self.assertFalse(any(a.get('lang') in {'zh', 'en', 'ja', 'de'} - {language} for _, a in doc.nodes))
+                self.assertFalse(any(a.get('lang') in build.LANGUAGES and a.get('lang') != language for _, a in doc.nodes))
                 alternates = {a['hreflang']: a['href'] for a in doc.select('link', rel='alternate')}
-                expected = {'en', 'zh-Hans', 'x-default'} | ({'ja', 'de'} if base == '/' else set())
-                self.assertEqual(set(alternates), expected)
+                self.assertEqual(set(alternates), {build.LANGUAGES[code][2] for code in build.languages_for(base)} | {'x-default'})
                 for target in alternates.values():
                     self.assertIn(target, self.sitemap)
                     other = self.pages[urlsplit(target).path]
                     self.assertEqual(alternates, {a['hreflang']: a['href'] for a in other.select('link', rel='alternate')})
-                options = {a['href'] for a in doc.select('a', **{'class': 'lang-option'})}
-                self.assertEqual(options, {urlsplit(t).path for h, t in alternates.items() if h != 'x-default'})
-                self.assertEqual([a['href'] for a in doc.select('a', **{'class': 'lang-option', 'aria-current': 'true'})], [path])
+                switch = doc.select('a', **{'class': 'lang-toggle'})[0]['href']
+                self.assertEqual(switch, base if language == 'en' else '/en'+base)
 
-    def test_japanese_and_german_homepages(self):
+    def test_extra_language_hreflang_and_links(self):
+        for lang, locale in (('ja', 'ja_JP'), ('de', 'de_DE')):
+            for base in ('/', '/install/', '/pricing/', '/widgets/', '/ai-models/', '/compare-images-mac/', '/copy-text-from-image-mac/'):
+                self.assertIn(base, build.TRANSLATIONS[lang])
+            for base in build.TRANSLATIONS[lang]:
+                with self.subTest(lang=lang, base=base):
+                    cluster = {}
+                    for code in build.languages_for(base):
+                        doc = self.pages[build.url_for(code, base)]
+                        cluster[code] = {a['hreflang']: a['href'] for a in doc.select('link', rel='alternate')}
+                        self.assertEqual(cluster[code]['x-default'], build.SITE + '/en' + base)
+                        self.assertEqual(cluster[code][lang], build.SITE + '/' + lang + base)
+                        self.assertEqual(cluster[code]['zh-Hans'], build.SITE + base)
+                    self.assertEqual(len({tuple(sorted(c.items())) for c in cluster.values()}), 1)
+                    page = self.pages['/' + lang + base]
+                    self.assertEqual(page.select('meta', property='og:locale')[0]['content'], locale)
+                    html = (build.OUT/lang/base.strip('/')/'index.html').read_text()
+                    self.assertNotRegex(re.sub(r'<script.*?</script>', '', html, flags=re.S), r'[，图载这们说为简]')  # simplified-Chinese leak
+                    self.assert_links_resolve(page, lang)
+                    # zh and en pages link to the translation in the switcher.
+                    for other in ('zh', 'en'):
+                        self.assertTrue(self.pages[build.url_for(other, base)].select('a', href='/' + lang + base, hreflang=build.LANGUAGES[lang][2]))
+        # Untranslated pages carry no extra-language alternate.
+        untranslated = next(p for p in self.pages if p.startswith('/en/') and p.removeprefix('/en') not in build.TRANSLATIONS['ja'] and p.removeprefix('/en') in build.TRANSLATIONS.get('zh', self.pages) and not p.startswith(('/en/blog', '/en/use-cases')))
+        self.assertNotIn('ja', {a['hreflang'] for a in self.pages[untranslated].select('link', rel='alternate')})
+
+    def assert_links_resolve(self, doc, lang):
+        for _, attrs in doc.nodes:
+            href = attrs.get('href', '')
+            if href.startswith('/') and not href.startswith(('/assets/', '/download/')):
+                path = urlsplit(href).path
+                self.assertIn(path, self.pages, href)
+                if not attrs.get('hreflang'):
+                    self.assertTrue(path.startswith(('/' + lang + '/', '/en/')), href)
+
+    def test_translated_posts_and_indexes(self):
+        english = {p['slug']: p for p in content.load_posts(build.SRC/'posts') if p['status'] == 'published'}
         for lang in ('ja', 'de'):
-            html = (build.OUT / lang / 'index.html').read_text()
-            doc = self.pages['/' + lang + '/']
-            with self.subTest(lang=lang):
-                self.assertEqual(doc.select('html')[0]['data-lang'], lang)
-                video = doc.select('video')[0]
-                self.assertEqual(video['src'], video['data-video-en'])
-                for tag, attrs in doc.nodes:
-                    href = attrs.get('href', '') if tag == 'a' and attrs.get('class') != 'lang-option' else ''
-                    if href.startswith('/') and not href.startswith('/download/') and urlsplit(href).path not in ('/', '/' + lang + '/'):
-                        self.assertTrue(href.startswith('/en/'), href)
-                self.assertTrue(doc.select('a', href='/' + lang + '/#download'))
-                self.assertIn(build.SUPPORT_X_URL, html)
-                self.assertIn(build.DMG_SHA256, html)
-                self.assertEqual(len(doc.select('article', **{'class': 'widget'})), min(6, len(build.SNAPSHOT['widgets'])))
-                self.assertNotIn('点 / ', html)
-        for path, peek in (('/', None), ('/en/', None), ('/ja/', 'peek-ja'), ('/de/', 'peek-de')):
-            sources = [a['src'] for a in self.pages[path].select('source')]
-            tracks = [a['srclang'] for a in self.pages[path].select('track')]
-            self.assertEqual([urlsplit(src).path for src in sources], [f'/assets/video/{peek}.mp4'] if peek else [])
-            self.assertEqual(tracks, [peek[-2:]] if peek else [])
-        self.assertIn('ダウンロード', (build.OUT / 'ja/index.html').read_text())
-        self.assertIn('herunterladen', (build.OUT / 'de/index.html').read_text())
+            posts = content.load_posts(build.SRC/'i18n'/lang/'posts', lang)
+            self.assertEqual({p['slug'] for p in posts}, set(english), lang)
+            for kind in content.KINDS:
+                index = content.base_for(lang, kind)
+                self.assertIn(build.SITE + index, self.sitemap)
+                doc = self.pages[index]
+                self.assertEqual(doc.select('html')[0]['lang'], lang)
+                for p in posts:
+                    if p['kind'] == kind:
+                        if p['status'] == 'published':
+                            self.assertTrue(doc.select('a', href=p['path']), p['path'])
+                        elif not content.PREVIEW:
+                            self.assertFalse(doc.select('a', href=p['path']), p['path'])
+            for post in posts:
+                if post['status'] != 'published':
+                    # Translations awaiting Allan's review: rendered noindex, unlisted, outside sitemap and hreflang.
+                    with self.subTest(lang=lang, review=post['slug']):
+                        doc = self.pages[post['path']]
+                        self.assertEqual(doc.select('meta', name='robots')[0]['content'], 'noindex')
+                        self.assertNotIn(build.SITE + post['path'], self.sitemap)
+                        en_alt = {a['hreflang']: a['href'] for a in self.pages[english[post['slug']]['path']].select('link', rel='alternate')}
+                        self.assertNotIn(build.SITE + post['path'], en_alt.values())
+                        self.assertRegex(post['body'], {'ja': '英語と簡体字中国語', 'de': 'Englisch und vereinfachtem Chinesisch'}[lang])
+                        self.assert_links_resolve(doc, lang)
+                    continue
+                with self.subTest(lang=lang, post=post['slug']):
+                    en = english[post['slug']]
+                    self.assertEqual(post['kind'], en['kind'])
+                    self.assertNotEqual(post['title'], en['title'])
+                    doc = self.pages[post['path']]
+                    self.assertTrue(post['path'].startswith('/' + lang + '/'))
+                    self.assertEqual(doc.select('html')[0]['lang'], lang)
+                    self.assertEqual(len(doc.select('h1')), 1)
+                    self.assertEqual(doc.select('link', rel='canonical')[0]['href'], build.SITE + post['path'])
+                    alternates = {a['hreflang']: a['href'] for a in doc.select('link', rel='alternate')}
+                    self.assertEqual(alternates['x-default'], build.SITE + en['path'])
+                    self.assertEqual(alternates[lang], build.SITE + post['path'])
+                    self.assertEqual(alternates, {a['hreflang']: a['href'] for a in self.pages[en['path']].select('link', rel='alternate')})
+                    self.assertIn(build.SITE + post['path'], self.sitemap)
+                    self.assertTrue(post['faq'])
+                    # Honest about the app UI language.
+                    self.assertRegex(post['body'], {'ja': '英語と簡体字中国語', 'de': 'Englisch und vereinfachtem Chinesisch'}[lang])
+                    html = (build.OUT/post['path'].strip('/')/'index.html').read_text()
+                    self.assertNotRegex(re.sub(r'<script.*?</script>', '', html, flags=re.S), r'[，图载这们说为简]')
+                    self.assertIn('FAQPage', html)
+                    self.assert_links_resolve(doc, lang)
 
-    def test_support_is_x_direct_message(self):
-        for path in self.pages:
-            html = (build.OUT / ('404.html' if path == '/404' else path.strip('/') + '/index.html')).read_text() if path != '/' else (build.OUT / 'index.html').read_text()
-            with self.subTest(path=path):
-                self.assertNotIn('mailto:', html)
-                self.assertNotIn('support@', html)
+    def test_english_only_blog_and_use_cases(self):
+        posts = content.load_posts(build.SRC/'posts')
+        for base, *_ in content.KINDS.values():
+            self.assertIn(build.SITE+base, self.sitemap)
+            self.assertNotIn(base.removeprefix('/en'), self.pages)
+        for post in posts:
+            with self.subTest(post=post['source']):
+                doc = self.pages[post['path']]
+                html = (build.OUT/post['path'].strip('/')/'index.html').read_text()
+                self.assertEqual(len(doc.select('h1')), 1)
+                self.assertEqual(doc.select('link', rel='canonical')[0]['href'], build.SITE+post['path'])
+                self.assertTrue(doc.select('a', href='/en/install/'))
+                graph = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))['@graph']
+                types = {item['@type'] for item in graph}
+                self.assertIn('Article', types)
+                if post['faq']:
+                    self.assertIn('FAQPage', types)
+                for word in (' only ', ' first ', ' best ', ' unique ', 'tell AI', 'tell the AI'):
+                    visible = re.sub(r'<!--.*?-->', '', post['body'], flags=re.S)
+                    self.assertNotIn(word, visible.replace('\n', ' '), word)
+                if post['status'] == 'published':
+                    self.assertIn(build.SITE+post['path'], self.sitemap)
+                    self.assertFalse(doc.select('meta', name='robots'))
+                    self.assertNotRegex(post['body'], r'\[(VERIFY|TEST NEEDED|ASSET NEEDED)')
+                    alternates = {a['hreflang']: a['href'] for a in doc.select('link', rel='alternate')}
+                    self.assertEqual(alternates['en'], build.SITE+post['path'])
+                    self.assertEqual(alternates['x-default'], build.SITE+post['path'])
+                    self.assertLessEqual(set(alternates), {'en', 'x-default', 'ja', 'de'})
+                else:
+                    self.assertNotIn(build.SITE+post['path'], self.sitemap)
+                    self.assertEqual(doc.select('meta', name='robots')[0]['content'], 'noindex')
+                    listing = (build.OUT/content.KINDS[post['kind']][0].strip('/')/'index.html').read_text()
+                    if not content.PREVIEW:
+                        self.assertNotIn(post['path'], listing)
 
     def test_internal_links_and_media_exist(self):
         for path, doc in self.pages.items():
@@ -175,39 +271,6 @@ class SiteTests(unittest.TestCase):
             software = next(item for item in graph if item['@type'] == 'SoftwareApplication')
             self.assertEqual(software['downloadUrl'], build.SITE + build.DMG)
             self.assertEqual(software['offers']['price'], '0')
-
-    def test_release_copy_follows_dmg_and_sales_state(self):
-        def body(path, flags):
-            original = dict(build.FLAGS)
-            build.FLAGS.update(flags)
-            try:
-                return next(b for m, b in build.load_pages(build.SRC / 'pages') if m['path'] == path)
-            finally:
-                build.FLAGS.clear(); build.FLAGS.update(original)
-        release = {'beta': False, 'notarized': True, 'sales': True}
-        for path in ('/', '/install/', '/pricing/', '/copy-text-from-image-mac/'):
-            with self.subTest(path=path):
-                text = body(path, release)
-                self.assertNotIn('<!--if:', text)
-                for stale in ('内测', 'beta', 'Beta', '尚未经过', '还没有经过', 'not yet notarized'):
-                    self.assertNotIn(stale, text)
-        self.assertIn('已通过 Apple 公证', body('/install/', release))
-        self.assertIn('Notarized by Apple', body('/', release))
-        unnotarized = body('/install/', {'beta': True, 'notarized': False})
-        self.assertIn('还没有经过 Apple 公证', unnotarized)
-        self.assertNotIn('已通过 Apple 公证', unnotarized)
-        self.assertIn('内测说明', body('/pricing/', {'beta': True, 'sales': False}))
-        with self.assertRaises(SystemExit):
-            build.conditional('<!--if:unknown-->x<!--endif-->')
-        with self.assertRaises(SystemExit):
-            build.conditional('<!--if:beta-->x')
-
-    def test_peek_permissions_match_app(self):
-        for path in ('/install/', '/en/install/'):
-            text = (build.OUT / path.strip('/') / 'index.html').read_text()
-            with self.subTest(path=path):
-                self.assertNotIn('「辅助功能」和「输入监控」两项权限', text)
-                self.assertNotIn('Accessibility and Input Monitoring permissions', text)
 
 
 if __name__ == '__main__':

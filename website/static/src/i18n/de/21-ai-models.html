@@ -1,0 +1,63 @@
+<!-- path: /ai-models/ | title: KI-Modelle und Funktionen von Glance offengelegt · Glance | desc: Welche Modelle die Cloud-KI-Widgets von Glance nutzen (Gemini, FLUX, Krea, Qwen-Image, RMBG u. a.), wo sie laufen und was Glance bei Text-zu-Bild und Bild-zu-Video kann und nicht kann. | nav: widgets -->
+<section class="hero" style="padding-bottom:40px">
+  <div class="wrap">
+    <p class="eyebrow">Offenlegung der KI-Modelle</p>
+    <h1>KI-Modelle und Funktionen</h1>
+    <p class="lead">Diese öffentliche Seite beschreibt die Funktionen der Cloud-Widgets von Glance, die zugrunde liegenden Modelle und die Verarbeitungsdienste. Zum Lesen brauchen Sie weder Konto noch Download oder Kauf.</p>
+    <p class="small">Aktualisiert: 22. Oktober 2026</p>
+  </div>
+</section>
+<section style="padding-top:0" id="capabilities">
+  <div class="wrap">
+    <h2>Welche KI-Funktionen bietet Glance?</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Funktion</th><th>Aktueller Umfang</th></tr></thead>
+      <tbody>
+        <tr><td>Text zu Bild</td><td>Derzeit erzeugt kein Widget ein Bild allein aus Text.</td></tr>
+        <tr><td>Bild zu Bild und Bildbearbeitung</td><td>Erfordert ein Eingabebild. Umfasst Neuerzeugung, Hochskalieren, Outfit-Wechsel, Erweitern, Wasserzeichen- und Hintergrundentfernung. Neuerzeugung, Outfit-Wechsel und Erweitern erzeugen neue Bildinhalte.</td></tr>
+        <tr><td>Bild zu Video</td><td>Derzeit erzeugt kein Widget ein Video aus einem Standbild.</td></tr>
+        <tr><td>Video-Inpainting</td><td>Video Watermark Removal bearbeitet ein vorhandenes Video und liefert ein bearbeitetes Video zurück. Es erzeugt kein Video aus einem Standbild.</td></tr>
+        <tr><td>Bildverständnis</td><td>Image to Prompt beschreibt ein Eingabebild in Textform; es erzeugt keine Bilder.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+<section style="padding-top:24px" id="models">
+  <div class="wrap">
+    <h2>Modelle nach Widget</h2>
+    <p>Die Tabelle nennt die Modelle des aktuellen öffentlichen Widget-Katalogs. Versionsangaben, die noch bestätigt werden müssen, sind gesondert vermerkt. RunningHub ist eine Verarbeitungsplattform, kein Modellname. Links zu offiziellen Seiten identifizieren die Modelle und bedeuten keine Empfehlung von Glance.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Widget</th><th>Was es tut</th><th>Modell</th><th>Läuft auf</th></tr></thead>
+      <tbody>
+        <tr><td>Upscale</td><td>Bild zu Bild: skaliert hoch und rendert Details neu, bis 4K</td>
+          <td><a class="accent" href="https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-image">Google Gemini 3.1 Flash Image (Nano Banana 2)</a></td><td>RunningHub</td></tr>
+        <tr><td>Image Watermark Removal</td><td>Bild-Inpainting: entfernt Zeichen und Text und füllt die Fläche</td>
+          <td><a class="accent" href="https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev">Black Forest Labs FLUX.1 Kontext [dev]</a> (Nunchaku-INT4-Build)</td><td>RunningHub</td></tr>
+        <tr><td>Portrait Background Removal</td><td>Segmentierung: liefert ein Bild mit transparentem Hintergrund</td>
+          <td><a class="accent" href="https://huggingface.co/briaai/RMBG-1.4">BRIA RMBG-1.4</a> + <a class="accent" href="https://github.com/hustvl/ViTMatte">ViTMatte</a> (ComfyUI LayerStyle RmBgUltra V2)</td><td>RunningHub</td></tr>
+        <tr><td>Image to Prompt</td><td>Bildverständnis: schreibt eine Textbeschreibung</td>
+          <td><a class="accent" href="https://ai.google.dev/gemini-api/docs/models">Google Gemini</a><br>Für Bildverständnis und Textbeschreibung; genaues Modell und Version werden noch geprüft.</td><td>RunningHub</td></tr>
+        <tr><td>Video Watermark Removal</td><td>Video-Inpainting: bereinigt 8-Sekunden-Abschnitte und fügt sie wieder zusammen</td>
+          <td><a class="accent" href="https://github.com/zibojia/MiniMax-Remover">MiniMax-Remover</a> (basiert auf Wan2.1-1.3B) + Wasserzeichen-Erkennung mit Ultralytics YOLO</td><td>RunningHub</td></tr>
+        <tr><td>Redraw &amp; Reframe</td><td>Erzeugt ein Eingabebild im gewählten Seitenverhältnis neu</td>
+          <td><a class="accent" href="https://www.krea.ai/krea-2">Krea 2</a></td><td>RunningHub</td></tr>
+        <tr><td>Outfit Swap</td><td>Erzeugt aus Personenfoto und Kleidungsvorlage ein Bild mit neuem Outfit</td>
+          <td><a class="accent" href="https://huggingface.co/Qwen/Qwen-Image-2.1">Qwen-Image-2.1</a></td><td>RunningHub</td></tr>
+        <tr><td>Expand Image</td><td>Erzeugt Inhalte über die Ränder des Eingabebilds hinaus</td>
+          <td><a class="accent" href="https://help.bfl.ai/articles/4292391522-what-is-flux-2">Black Forest Labs FLUX.2</a></td><td>RunningHub</td></tr>
+        <tr><td>Image Hosting</td><td>Lädt hoch und liefert einen Link zum Teilen; ohne KI</td>
+          <td>—</td><td>Freeimage.host (Bilder aus Festlandchina) / Cloudflare R2</td></tr>
+      </tbody>
+    </table></div>
+    <div class="notice" id="version-note" style="margin-top:22px">
+      <p><strong>Hinweis zur Version von Image to Prompt:</strong> Diese Funktion analysiert ein Eingabebild mit Google Gemini und liefert Text zurück; sie erzeugt keine Bilder. Die Modellfamilie ist bestätigt, genaues Modell und Version werden noch geprüft.</p>
+    </div>
+  </div>
+</section>
+<section style="padding-top:24px">
+  <div class="wrap">
+    <h2>Verarbeitung und Nutzung Ihrer Medien</h2>
+    <p>Wenn Sie ein Cloud-KI-Widget ausführen, werden die gewählten Medien zu Glance hochgeladen und über RunningHub verarbeitet. Image Hosting speichert und teilt Dateien ohne KI-Modell. Glance verwendet Ihre Medien nicht zum Training von Modellen.</p>
+    <p>Laden Sie nur Inhalte hoch, die Ihnen gehören oder für deren Verarbeitung Sie eine Erlaubnis haben. Holen Sie die Zustimmung der abgebildeten Person ein, bevor Sie ihr Foto für einen Outfit-Wechsel verwenden. Siehe <a class="accent" href="/privacy/">Datenschutzerklärung</a>, <a class="accent" href="/terms/">Nutzungsbedingungen</a> und <a class="accent" href="/acceptable-use/">Nutzungsrichtlinie</a> (jeweils auf Englisch). Preise finden Sie unter <a class="accent" href="/pricing/">Preise</a>.</p>
+  </div>
+</section>

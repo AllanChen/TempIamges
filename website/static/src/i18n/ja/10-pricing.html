@@ -1,0 +1,132 @@
+<!-- path: /pricing/ | title: Glance の料金：無料版・Pro 買い切り・AI はクレジット制 · Glance | desc: Mac 画像ビューア Glance の料金。表示・比較は無料、Glance Pro は買い切りでサブスクなし、クラウド AI ウィジェットは使った分だけクレジットで支払い。ベータ期間中は購入受付前です。 | nav: pricing -->
+<script type="application/json" id="pricing-fallback">{{PRICING_JSON}}</script>
+<section class="hero" style="padding-bottom:40px">
+  <div class="wrap">
+    <p class="eyebrow">料金</p>
+    <h1>見るのは無料。Pro は買い切り。<span class="accent">AI は使った分だけ。</span></h1>
+    <p class="lead">サブスクリプションも自動更新もありません。初回起動から 14 日間すべての機能を試せます。アカウントも支払い方法の登録も不要です。</p>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="currency-switch" role="group" aria-label="通貨">
+      <button type="button" data-currency="CNY" aria-pressed="false">CNY</button>
+      <button type="button" data-currency="USD" aria-pressed="true">USD</button>
+      <button type="button" data-currency="JPY" aria-pressed="false">JPY</button>
+      <button type="button" data-currency="EUR" aria-pressed="false">EUR</button>
+      <button type="button" data-currency="HKD" aria-pressed="false">HKD</button>
+    </div>
+    <div class="plans">
+      <article class="plan">
+        <div class="plan-name">無料</div>
+        <div class="plan-price" data-zero>¥0</div>
+        <div class="plan-cycle">ずっと無料</div>
+        <ul>
+          <li>画像と動画の表示</li>
+          <li>画像・動画の比較</li>
+          <li>キャプチャ、保存とコピー</li>
+          <li>画像内の文字の認識・選択・コピー</li>
+          <li>クレジットでクラウド AI ウィジェットを利用</li>
+          <li>新規アカウントに <b data-config="signupCredits">100</b> クレジット</li>
+          <li class="no">その他のローカルツール（試用期間中のみ）</li>
+        </ul>
+        <a class="btn btn-ghost" href="/#download">無料でダウンロード</a>
+      </article>
+
+      <article class="plan featured">
+        <div class="plan-name">Glance Pro</div>
+        <div class="plan-cycle" style="min-height:0;margin-top:10px">買い切り・アップデート永久無料。価格は使う Mac の台数で決まります</div>
+        <div class="tiers" data-tiers>{{PRICING_TIERS}}</div>
+        <div class="small" data-pro-launch hidden><span></span></div>
+        <ul>
+          <li>無料版のすべての機能</li>
+          <li>形式変換と圧縮</li>
+          <li>書き出し、別名で保存、画像のコピー</li>
+          <li>回転・反転・切り抜き・注釈の編集</li>
+          <li>Base64 ツール</li>
+          <li>アップデートは永久無料</li>
+          <li><b data-config="proBonusCredits">100</b> クレジットの特典</li>
+        </ul>
+        <p class="small" style="margin:-8px 0 20px">クラウド AI ウィジェットは Pro に含まれず、クレジットを使います。</p>
+        <a class="btn btn-primary" href="/#download">アプリ内で購入</a>
+      </article>
+
+      <article class="plan">
+        <div class="plan-name">クレジット</div>
+        <div class="plan-price" style="font-size:32px">使った分だけ</div>
+        <div class="plan-cycle">都度購入・有効期限なし・自動更新なし</div>
+        <div class="packs" data-packs>{{PRICING_PACKS}}</div>
+        <ul>
+          <li>クラウド AI ウィジェット専用。ローカル機能では使いません</li>
+          <li>複数の Mac で共有</li>
+          <li>失敗やタイムアウトは自動で返還</li>
+          <li>無料版でも利用可能</li>
+        </ul>
+        <a class="btn btn-ghost" href="/widgets/">ウィジェットごとの料金を見る</a>
+      </article>
+    </div>
+
+    <div class="notice" style="margin-top:22px">
+      <strong>ベータ版について：</strong>アプリ内決済は、決済事業者の審査完了後に開始します。正式な価格は購入受付の開始前にこのページでお知らせします。それまで料金が発生することはありません。
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:24px">
+  <div class="wrap">
+    <div class="section-head"><h2>プランの比較</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>機能</th><th>無料</th><th>試用 / Pro</th></tr></thead>
+      <tbody>
+        <tr><td>ファイルを開く・ドラッグ・フォルダ内を閲覧</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>拡大、再生、画像情報、最前面に固定</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>表示のみの回転・反転</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>履歴、Peek による選択プレビュー</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>画像・動画の比較</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>キャプチャ（保存・コピーを含む）</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>画像内の文字の認識・選択・コピー</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>クラウド AI ウィジェット（クレジット）</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>ウィジェットの結果を Downloads/Glance に保存</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>形式変換、圧縮</td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td>書き出し、別名で保存、画像のコピー</td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td>回転・反転・切り抜き・注釈をファイルに保存</td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td>Base64 ツール</td><td class="no">—</td><td class="yes">✓</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section style="padding-top:24px">
+  <div class="wrap grid grid-2">
+    <article class="card">
+      <h3>アップデートとアップグレード</h3>
+      <p>Pro は買い切りで、今後の機能アップデートはすべて無料。更新手続きもありません。プランの違いは、1 つのアカウントで同時に有効化できる Mac の台数だけです。Personal から台数を増やしたくなったら、アプリ内で上位プランの通常価格でアップグレードできます。ライセンスとクレジットはそのまま引き継がれます。</p>
+    </article>
+    <article class="card">
+      <h3>デバイスとオフライン利用</h3>
+      <p>Personal は 1 アカウント・Mac 1 台。Team は購入者と招待した 4 アカウントで、それぞれ Mac 1 台とクレジットを個別に持ちます。Mac を買い替えたときは古い Mac を自分で解除できます（30 日ごとに 3 回まで）。Personal は最長 30 日、Team は最長 24 時間オフラインで使え、再接続時に自動で確認します。</p>
+    </article>
+    <article class="card">
+      <h3>支払い方法</h3>
+      <p>決済は Pancake by Waffo が販売事業者（Merchant of Record）として処理し、該当する税金も扱います。CNY の注文は WeChat Pay、USD の注文は Visa、Mastercard、Apple Pay、Google Pay、WeChat Pay に対応します。価格は税込みです。</p>
+    </article>
+    <article class="card">
+      <h3>返金</h3>
+      <p>Pro は支払いから 14 日以内なら全額返金できます。クレジットパックは、1 クレジットも使っていなければ 14 日以内に全額返金できます。当社側で失敗したウィジェットのタスクは、クレジットが自動で戻ります。詳しくは<a class="accent" href="/refunds/">返金ポリシー（英語）</a>をご覧ください。</p>
+    </article>
+  </div>
+</section>
+
+<section style="padding-top:24px">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>AI ウィジェットごとの料金</h2>
+      <p class="lead">実行 1 回ごとの課金です。料金は Glance のサービスから取得しており、アプリ内メニューの表示と同じです。</p>
+    </div>
+    <div class="notice" style="margin-bottom:22px">
+      <strong>使用している AI モデル：</strong>Redraw &amp; Reframe は Krea 2、Outfit Swap は Qwen-Image-2.1、Expand Image は Black Forest Labs FLUX.2、Image to Prompt は Google Gemini（正確なバージョンは確認中）、Upscale は Google Gemini 3.1 Flash Image（Nano Banana 2）、Image Watermark Removal は Black Forest Labs FLUX.1 Kontext [dev]、Portrait Background Removal は BRIA RMBG-1.4 + ViTMatte。Glance が現在提供しているのは入力画像からの生成・編集と、既存動画のウォーターマーク除去で、テキストから画像、画像から動画を作るウィジェットはありません。すべての機能とモデルのバージョンは <a class="accent" href="/ai-models/">AI モデルの開示ページ</a>（ログイン不要）で確認できます。
+    </div>
+    <div class="widget-list" data-widgets>{{WIDGET_CARDS_ALL}}</div>
+  </div>
+</section>

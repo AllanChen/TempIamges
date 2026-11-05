@@ -1,16 +1,6 @@
 {
-  "fetchedAt": "2026-11-04T23:43:30+00:00",
+  "fetchedAt": "2026-10-29T03:45:34+00:00",
   "widgets": [
-    {
-      "id": "0b164640-9998-49c7-aa93-5ed5cb957c40",
-      "name": "移除物体",
-      "summary": "用英文描述要移除的物体，智能补全背景。每次 30 积分。",
-      "enName": "Remove Objects",
-      "enSummary": "Describe unwanted objects in English and fill the background. 30 credits per run.",
-      "creditCost": 30,
-      "billing": {},
-      "uploadsMedia": true
-    },
     {
       "id": "783745bf-501d-4cfd-b2b8-69d32a8d90a8",
       "name": "视频去水印",
@@ -112,77 +102,55 @@
     "signupCredits": 100,
     "proBonusCredits": 100,
     "launchUntil": null,
-    "defaultCurrency": "CNY",
+    "defaultCurrency": "USD",
     "proTiers": [
       {
         "id": "personal",
-        "name": "个人版（测试）",
-        "enabled": true,
+        "name": "Personal",
+        "enabled": false,
         "recommended": false,
         "deviceLimit": 1,
-        "launchCNY": {
-          "amount": null
-        },
-        "launchUSD": {
-          "amount": null
-        },
-        "productID": "PROD_6HhJPAncCJXoQw8f787YZ2",
-        "taxCategory": "software",
         "CNY": {
-          "amount": 1699
+          "amount": 9800
         },
         "USD": {
-          "amount": 999
+          "amount": 1490
         },
-        "JPY": {
-          "amount": 1480
+        "launchCNY": {
+          "amount": 6800
         },
-        "EUR": {
-          "amount": 999
+        "launchUSD": {
+          "amount": 990
         },
-        "HKD": {
-          "amount": 7800
-        }
+        "productID": ""
       },
       {
-        "id": "team",
-        "name": "多人版（5 人，测试）",
-        "enabled": true,
+        "id": "duo",
+        "name": "Duo",
+        "enabled": false,
         "recommended": true,
-        "deviceLimit": 1,
-        "launchCNY": {
-          "amount": null
-        },
-        "launchUSD": {
-          "amount": null
-        },
-        "productID": "PROD_3EEhN2Aa9T6Samr4scP12Y",
-        "taxCategory": "software",
+        "deviceLimit": 2,
         "CNY": {
-          "amount": 4999
+          "amount": 13800
         },
         "USD": {
-          "amount": 1999
+          "amount": 1990
         },
-        "JPY": {
-          "amount": 2980
+        "launchCNY": {
+          "amount": 9800
         },
-        "EUR": {
-          "amount": 1999
+        "launchUSD": {
+          "amount": 1490
         },
-        "HKD": {
-          "amount": 15800
-        }
+        "productID": ""
       }
     ],
     "packs": [
       {
         "id": "small",
-        "name": "600 credits",
+        "name": "600 点（测试）",
         "enabled": true,
-        "recommended": false,
-        "productID": "PROD_7VyOkeOxSCq9PsuizMmSBV",
-        "taxCategory": "software",
+        "recommended": true,
         "CNY": {
           "amount": 1200,
           "points": 600
@@ -191,74 +159,37 @@
           "amount": 299,
           "points": 600
         },
-        "JPY": {
-          "amount": 480,
-          "points": 600
-        },
-        "EUR": {
-          "amount": 299,
-          "points": 600
-        },
-        "HKD": {
-          "amount": 2400,
-          "points": 600
-        }
+        "productID": "PROD_7VyOkeOxSCq9PsuizMmSBV"
       },
       {
         "id": "standard",
-        "name": "1500 credits",
-        "enabled": true,
-        "recommended": true,
-        "productID": "PROD_3BBl200ladK588VckFGSF5",
-        "taxCategory": "software",
+        "name": "Standard",
+        "enabled": false,
+        "recommended": false,
         "CNY": {
           "amount": 3000,
-          "points": 1500
+          "points": 330
         },
         "USD": {
-          "amount": 699,
-          "points": 1500
+          "amount": 499,
+          "points": 330
         },
-        "JPY": {
-          "amount": 1080,
-          "points": 1500
-        },
-        "EUR": {
-          "amount": 699,
-          "points": 1500
-        },
-        "HKD": {
-          "amount": 5400,
-          "points": 1500
-        }
+        "productID": ""
       },
       {
         "id": "large",
-        "name": "5000 credits",
-        "enabled": true,
+        "name": "Large",
+        "enabled": false,
         "recommended": false,
-        "productID": "PROD_5nFQoArD19XfIIyCsOp0ED",
-        "taxCategory": "software",
         "CNY": {
           "amount": 9800,
-          "points": 5000
+          "points": 1200
         },
         "USD": {
-          "amount": 1999,
-          "points": 5000
+          "amount": 1499,
+          "points": 1200
         },
-        "JPY": {
-          "amount": 2980,
-          "points": 5000
-        },
-        "EUR": {
-          "amount": 1999,
-          "points": 5000
-        },
-        "HKD": {
-          "amount": 15800,
-          "points": 5000
-        }
+        "productID": ""
       }
     ]
   }

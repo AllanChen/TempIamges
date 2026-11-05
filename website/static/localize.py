@@ -3,17 +3,18 @@ from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlsplit, urlunsplit
 
-VOID = frozenset('area base br col embed hr img input link meta param source track wbr'.split())
+# Every language that may appear as an inline lang attribute in sources.
 LANGUAGES = ('zh', 'en', 'ja', 'de')
-# Only the homepage exists in these languages; their other links go to English pages and media.
-HOME_ONLY = ('ja', 'de')
+VOID = frozenset('area base br col embed hr img input link meta param source track wbr'.split())
 
 
 class Localizer(HTMLParser):
-    def __init__(self, language: str, page_paths: set[str]):
+    def __init__(self, language: str, page_paths: set[str], translated: set[str] | None = None):
         super().__init__(convert_charrefs=False)
         self.language = language
         self.page_paths = page_paths
+        # Paths that exist in this language; others fall back to English.
+        self.translated = page_paths if translated is None else translated
         self.stack = []
         self.parts = []
 
@@ -31,24 +32,20 @@ class Localizer(HTMLParser):
             self.stack.append((tag, hidden))
         if hidden:
             return
-        if tag == 'a' and 'href' in values and not {'lang-toggle', 'lang-option'} & set(values.get('class', '').split()):
+        if tag == 'a' and 'href' in values and 'lang-toggle' not in values.get('class', '').split():
             url = urlsplit(values['href'])
             if not url.scheme and not url.netloc:
-                target = self.language
-                if self.language in HOME_ONLY and url.path != '/':
-                    target = 'en'
-                path = url.path
-                if url.path in self.page_paths and target != 'zh':
+                path, target = url.path, self.language
+                if self.language != 'zh' and url.path in self.page_paths:
+                    target = self.language if url.path in self.translated else 'en'
                     path = '/' + target + url.path
                 fragment = 'report-' + target if url.fragment == 'report' else url.fragment
                 values['href'] = urlunsplit(('', '', path, url.query, fragment))
-        media = self.language if self.language not in HOME_ONLY or values.get('data-src-' + self.language) \
-            or values.get('data-video-' + self.language) else 'en'
-        if tag == 'img' and values.get('data-src-' + media):
-            values['src'] = values['data-src-' + media]
-        if tag == 'video' and values.get('data-video-' + media):
-            values['src'] = values['data-video-' + media]
-            values['poster'] = values['data-poster-' + media]
+        if tag == 'img' and values.get('data-src-' + self.language):
+            values['src'] = values['data-src-' + self.language]
+        if tag == 'video' and values.get('data-video-' + self.language):
+            values['src'] = values['data-video-' + self.language]
+            values['poster'] = values['data-poster-' + self.language]
         attributes = ''.join(' ' + key + ('' if value is None else '="' + escape(value, quote=True) + '"') for key, value in values.items())
         self.parts.append('<' + tag + attributes + (' />' if closed else '>'))
 
@@ -78,8 +75,8 @@ class Localizer(HTMLParser):
         self.append('<!--' + data + '-->')
 
 
-def localize(content: str, language: str, page_paths: set[str]) -> str:
-    parser = Localizer(language, page_paths)
+def localize(content: str, language: str, page_paths: set[str], translated: set[str] | None = None) -> str:
+    parser = Localizer(language, page_paths, translated)
     parser.feed(content)
     parser.close()
     if parser.stack:

@@ -1,0 +1,63 @@
+<!-- path: /ai-models/ | title: Glance の AI モデルと機能の開示 · Glance | desc: Glance のクラウド AI ウィジェットが使うモデル（Gemini、FLUX、Krea、Qwen-Image、RMBG など）、処理サービス、テキストから画像・画像から動画の対応範囲を公開しています。 | nav: widgets -->
+<section class="hero" style="padding-bottom:40px">
+  <div class="wrap">
+    <p class="eyebrow">AI モデルの開示</p>
+    <h1>AI モデルと機能</h1>
+    <p class="lead">このページでは、Glance のクラウドウィジェットの機能、使用モデル、処理サービスを公開しています。閲覧にアカウント、ダウンロード、購入は必要ありません。</p>
+    <p class="small">更新日：2026 年 10 月 22 日</p>
+  </div>
+</section>
+<section style="padding-top:0" id="capabilities">
+  <div class="wrap">
+    <h2>Glance にはどんな AI 機能がありますか？</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>機能</th><th>現在の範囲</th></tr></thead>
+      <tbody>
+        <tr><td>テキストから画像</td><td>テキストだけから画像を生成するウィジェットは現在ありません。</td></tr>
+        <tr><td>画像から画像・画像編集</td><td>入力画像が必要です。再生成、高画質化、衣装の変更、画像の拡張、ウォーターマーク除去、背景削除が含まれます。再生成、衣装の変更、拡張は新しい画像内容を生成します。</td></tr>
+        <tr><td>画像から動画</td><td>静止画から動画を生成するウィジェットは現在ありません。</td></tr>
+        <tr><td>動画の修復</td><td>Video Watermark Removal は既存の動画を処理し、編集した動画を返します。静止画から動画を生成するものではありません。</td></tr>
+        <tr><td>画像の理解</td><td>Image to Prompt は入力画像を文章で説明します。画像は生成しません。</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+<section style="padding-top:24px" id="models">
+  <div class="wrap">
+    <h2>ウィジェットごとのモデル</h2>
+    <p>現在公開しているウィジェットが使うモデルの一覧です。追加の確認が必要なバージョン情報は別途記載しています。RunningHub は処理プラットフォームで、モデル名ではありません。公式ページへのリンクはモデルを特定するためのもので、Glance を推奨するものではありません。</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Widget</th><th>内容</th><th>使用モデル</th><th>実行環境</th></tr></thead>
+      <tbody>
+        <tr><td>Upscale</td><td>画像から画像：最大 4K まで高画質化し、細部を描き直します</td>
+          <td><a class="accent" href="https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-image">Google Gemini 3.1 Flash Image (Nano Banana 2)</a></td><td>RunningHub</td></tr>
+        <tr><td>Image Watermark Removal</td><td>画像の修復：ロゴや文字を消して周囲で埋めます</td>
+          <td><a class="accent" href="https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev">Black Forest Labs FLUX.1 Kontext [dev]</a>（Nunchaku INT4 版）</td><td>RunningHub</td></tr>
+        <tr><td>Portrait Background Removal</td><td>セグメンテーション：背景を透明にした画像を返します</td>
+          <td><a class="accent" href="https://huggingface.co/briaai/RMBG-1.4">BRIA RMBG-1.4</a> + <a class="accent" href="https://github.com/hustvl/ViTMatte">ViTMatte</a>（ComfyUI LayerStyle RmBgUltra V2）</td><td>RunningHub</td></tr>
+        <tr><td>Image to Prompt</td><td>画像の理解：内容を文章で説明します</td>
+          <td><a class="accent" href="https://ai.google.dev/gemini-api/docs/models">Google Gemini</a><br>画像の理解と文章の生成に使用。正確なモデルとバージョンは確認中です。</td><td>RunningHub</td></tr>
+        <tr><td>Video Watermark Removal</td><td>動画の修復：8 秒ごとに処理してつなぎ直します</td>
+          <td><a class="accent" href="https://github.com/zibojia/MiniMax-Remover">MiniMax-Remover</a>（Wan2.1-1.3B ベース）+ Ultralytics YOLO によるウォーターマーク検出</td><td>RunningHub</td></tr>
+        <tr><td>Redraw &amp; Reframe</td><td>選んだアスペクト比で入力画像を再生成します</td>
+          <td><a class="accent" href="https://www.krea.ai/krea-2">Krea 2</a></td><td>RunningHub</td></tr>
+        <tr><td>Outfit Swap</td><td>人物写真と服の参考画像から衣装を変えた画像を生成します</td>
+          <td><a class="accent" href="https://huggingface.co/Qwen/Qwen-Image-2.1">Qwen-Image-2.1</a></td><td>RunningHub</td></tr>
+        <tr><td>Expand Image</td><td>入力画像の外側に続きの内容を生成します</td>
+          <td><a class="accent" href="https://help.bfl.ai/articles/4292391522-what-is-flux-2">Black Forest Labs FLUX.2</a></td><td>RunningHub</td></tr>
+        <tr><td>Image Hosting</td><td>アップロードして共有リンクを返します。AI は使いません</td>
+          <td>—</td><td>Freeimage.host（中国本土からの画像）/ Cloudflare R2</td></tr>
+      </tbody>
+    </table></div>
+    <div class="notice" id="version-note" style="margin-top:22px">
+      <p><strong>Image to Prompt のバージョンについて：</strong>この機能は Google Gemini で入力画像を分析して文章を返すもので、画像は生成しません。モデルファミリーは確認済みですが、正確なモデルとバージョンは確認中です。</p>
+    </div>
+  </div>
+</section>
+<section style="padding-top:24px">
+  <div class="wrap">
+    <h2>メディアの処理と利用</h2>
+    <p>クラウド AI ウィジェットを実行すると、選択したメディアが Glance にアップロードされ、RunningHub で処理されます。Image Hosting は AI モデルを使わずにファイルを保存・共有します。Glance がお客様のメディアをモデルの学習に使うことはありません。</p>
+    <p>アップロードするのは、ご自身が権利を持つか、処理の許可を得たコンテンツだけにしてください。衣装の変更に人物の写真を使う場合は、本人の同意を得てください。<a class="accent" href="/privacy/">プライバシーポリシー</a>、<a class="accent" href="/terms/">利用規約</a>、<a class="accent" href="/acceptable-use/">利用ポリシー</a>（いずれも英語）もご覧ください。料金は<a class="accent" href="/pricing/">料金ページ</a>をご覧ください。</p>
+  </div>
+</section>

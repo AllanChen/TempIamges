@@ -1,0 +1,84 @@
+<!-- slug: getting-started-glance-mac | kind: use-case | status: published | date: 2026-11-02
+| title: Glance Preview einrichten: Installation, Peek, erste KI-Korrektur — Glance Preview
+| h1: Erste Schritte mit Glance auf dem Mac: Beta installieren, mit Peek ansehen, erste KI-Korrektur
+| description: Glance Preview Beta auf dem Mac installieren, an Gatekeeper vorbei freigeben, Bilder öffnen, Peek für Vorschauen mit Option + Leertaste einschalten und ein KI-Widget per Klick ausführen.
+| related: Download und Installation=/de/install/, Bildbetrachter mit KI auf dem Mac=/de/blog/ai-image-preview-mac/, Bildhintergrund auf dem Mac entfernen=/de/use-cases/remove-image-background-mac/, KI-Widgets und Credits=/de/widgets/ -->
+<p class="lead">Glance Preview ist ein Bildbetrachter für Macs mit Apple Silicon, gebaut um einen Ablauf: Bild schnell ansehen und, wenn etwas nicht stimmt, per Klick mit KI korrigieren und das Ergebnis mit dem Original vergleichen. Diese Anleitung bringt Sie in etwa zehn Minuten vom Download zu diesem Ablauf: Beta installieren, Bilder öffnen, Peek einschalten und ein KI-Widget an einem Bild ausführen.</p>
+<p>Hinweis: Die App-Oberfläche gibt es nur auf Englisch und vereinfachtem Chinesisch; Schaltflächen stehen hier wie in der englischen App.</p>
+
+<h2>Was Sie brauchen</h2>
+<ul>
+<li>Einen Mac mit Apple Silicon (M-Serie).</li>
+<li>macOS 12.3 oder neuer.</li>
+<li>Zum Ansehen weder Konto noch Systemberechtigungen. Ein Konto brauchen Sie nur für die Cloud-KI-Widgets.</li>
+</ul>
+
+<h2>Schritt 1: Beta laden und installieren</h2>
+<ol class="guide-steps">
+<li>Laden Sie auf der <a href="/de/install/">Installationsseite</a> das Glance-DMG und doppelklicken Sie darauf.</li>
+<li>Ziehen Sie Glance in den Ordner „Programme“.</li>
+<li>Doppelklicken Sie in „Programme“ auf Glance.</li>
+</ol>
+
+<h3>Wenn macOS den Start blockiert</h3>
+<p>Die Beta ist noch nicht von Apple notarisiert, daher blockiert macOS sie beim ersten Öffnen. Das ist erwartet; Sie geben sie einmal frei.</p>
+<p><strong>macOS 15 (Sequoia) und neuer:</strong></p>
+<ol class="guide-steps">
+<li>Doppelklicken Sie auf Glance. Erscheint „kann nicht geöffnet werden“, klicken Sie auf „Fertig“.</li>
+<li>Öffnen Sie „Systemeinstellungen“ → „Datenschutz &amp; Sicherheit“ und scrollen Sie zu „Sicherheit“.</li>
+<li>Klicken Sie neben „Glance wurde blockiert“ auf „Dennoch öffnen“ und bestätigen Sie mit Ihrem Passwort.</li>
+</ol>
+<p><strong>macOS 14 und älter:</strong> Rechtsklick auf Glance in „Programme“, „Öffnen“ wählen und im Dialog erneut auf „Öffnen“ klicken.</p>
+<p>Danach öffnet sich Glance normal per Doppelklick. Es läuft als gewöhnliche App mit Dock- und Menüleistensymbol, und die 14-tägige Vollversion zum Testen beginnt beim Start.</p>
+
+<h2>Schritt 2: Ein Bild in Glance öffnen</h2>
+<ul>
+<li><strong>Aus dem Finder:</strong> Rechtsklick auf ein Bild oder Video, dann „Öffnen mit“ → Glance.</li>
+<li><strong>Als Standardbetrachter:</strong> Legen Sie Glance über das Menüleistensymbol als Standardbetrachter fest; dann öffnet ein Doppelklick Bilder in Glance.</li>
+<li><strong>Zwei Bilder auf einmal:</strong> Zwei Bilder auswählen und gemeinsam öffnen – so landen Sie direkt im Vergleich.</li>
+</ul>
+<p>Das Bild öffnet sich im vollen Glance-Fenster. Dort finden Sie die KI-Werkzeuge sowie die Ansichten Compare und Slider.</p>
+
+<h2>Schritt 3: Peek für Vorschauen aus markiertem Text einschalten</h2>
+<p>Peek zeigt einen Bildlink oder Dateipfad, den Sie in einer beliebigen App markiert haben, als Vorschau – ohne App-Wechsel. Die Funktion ist optional und standardmäßig aus.</p>
+<ol class="guide-steps">
+<li>Öffnen Sie die Preferences von Glance und schalten Sie Peek ein.</li>
+<li>Erteilen Sie die Berechtigungen „Bedienungshilfen“ und „Eingabeüberwachung“, nach denen Glance fragt. Sie dienen dazu, das Tastenkürzel zu erkennen und den markierten Text zu lesen.</li>
+<li>Markieren Sie in einer beliebigen App Text mit einem Bildlink oder Dateipfad und drücken Sie Option + Leertaste.</li>
+</ol>
+<p>Der markierte Text wird nicht an die Server von Glance gesendet. Bei einem Weblink lädt Glance die Vorschau direkt von der jeweiligen Website.</p>
+<p>Die KI-Werkzeuge sind im vollen Fenster; öffnen Sie das Bild dort, wenn Sie es korrigieren möchten.</p>
+
+<h2>Schritt 4: Ein Bild mit einem KI-Widget korrigieren</h2>
+<ol class="guide-steps">
+<li>Rechtsklick auf das Bild im vollen Fenster, dann Widgets. Jedes Widget zeigt seine Credit-Kosten vor dem Start. Fehlt ein Werkzeug im Widgets-Menü, fügen Sie es über den Widget Market hinzu (Widget-Schaltfläche in der Symbolleiste).</li>
+<li>Wählen Sie ein Widget wie Background Remover Pro.</li>
+<li>Beim ersten Cloud-Lauf melden Sie sich mit Google oder einem E-Mail-Code an. Neue Konten starten mit 100 Credits.</li>
+<li>Die Aufgabe läuft im Hintergrund in der Cloud; Sie können weiter Bilder durchsehen.</li>
+<li>Danach wird das Ergebnis als neue Datei gesichert und neben das Original gelegt; Ihr Original bleibt unverändert.</li>
+</ol>
+
+<h2>Schritt 5: Ergebnis und Original vergleichen</h2>
+<p>Compare zeigt Original und Ergebnis nebeneinander, mit Slider ziehen Sie eine Trennlinie über das Paar. Prüfen Sie Kanten, Gesichter und Text in voller Größe, bevor Sie ein Ergebnis behalten – besonders bei generativen Werkzeugen wie Upscale, die Details hinzufügen können, die nicht in Ihrem Bild waren.</p>
+
+<h2>Gut zu wissen</h2>
+<ul>
+<li><strong>Cloud-KI.</strong> Widgets laden das Bild zur Verarbeitung zu Glance hoch und brauchen eine Internetverbindung. Ansehen und Vergleichen bleiben auf Ihrem Mac.</li>
+<li><strong>Credits.</strong> In-App-Käufe sind während der Beta nicht möglich. Scheitert eine Aufgabe auf Seiten von Glance, gibt es die Credits zurück, wie auf der Seite <a href="/de/pricing/">Preise</a> beschrieben.</li>
+<li><strong>Hilfe.</strong> Support per E-Mail über die <a href="/de/install/">Installationsseite</a> (auf Englisch oder Chinesisch); ein Screenshot oder die Logdatei ~/Library/Application Support/Glance/app.log hilft.</li>
+<li><strong>Deinstallieren.</strong> Glance beenden und aus „Programme“ in den Papierkorb ziehen. Lokale Einstellungen und Logs entfernen Sie, indem Sie ~/Library/Application Support/Glance löschen.</li>
+</ul>
+
+<section class="post-faq">
+<h2>Häufige Fragen</h2>
+<h3>Auf welchen Macs läuft Glance Preview?</h3>
+<p>Auf Macs mit Apple Silicon (M-Serie) und macOS 12.3 oder neuer.</p>
+<h3>Warum meldet macOS, dass Glance nicht geöffnet werden kann?</h3>
+<p>Die Beta ist noch nicht von Apple notarisiert. Geben Sie sie einmal unter „Systemeinstellungen“ → „Datenschutz &amp; Sicherheit“ frei (macOS 15 und neuer) oder wählen Sie per Rechtsklick „Öffnen“ (macOS 14 und älter).</p>
+<h3>Brauche ich ein Konto, um Bilder anzusehen?</h3>
+<p>Nein. Ein Konto brauchen Sie nur für die Cloud-KI-Widgets.</p>
+<h3>Welches Tastenkürzel hat Peek?</h3>
+<p>Standardmäßig Option + Leertaste. Schalten Sie Peek in den Preferences ein; es ist standardmäßig aus.</p>
+<h3>Sendet Peek meinen markierten Text an Glance?</h3>
+<p>Nein. Bei einem Weblink lädt Glance die Vorschau direkt von der jeweiligen Website.</p>
+</section>

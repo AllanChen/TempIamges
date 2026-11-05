@@ -1,0 +1,63 @@
+<!-- slug: ai-image-preview-mac | kind: blog | status: published | date: 2026-10-30
+| title: Bildbetrachter für den Mac mit KI: ansehen, korrigieren, prüfen — Glance Preview
+| h1: Bildbetrachter mit KI auf dem Mac: ansehen, mit KI korrigieren, Ergebnis prüfen
+| description: Was ein Mac-Bildbetrachter mit KI anders macht: Bild schnell öffnen, per Klick den Hintergrund entfernen oder hochskalieren und das Ergebnis mit dem Original vergleichen – plus die Grenzen.
+| related: Bildhintergrund auf dem Mac entfernen=/de/use-cases/remove-image-background-mac/, KI-Widgets und Credits=/de/widgets/, Offenlegung der KI-Modelle=/de/ai-models/, Download und Installation=/de/install/ -->
+<p class="lead">Die meisten Bildbetrachter hören beim Ansehen auf. Sie öffnen ein Foto, merken, dass der Hintergrund unruhig oder das Bild zu klein ist, und wechseln zum Korrigieren in ein anderes Programm. Ein Bildbetrachter mit KI bleibt beim Ansehen genauso schnell, lässt Sie das Gesehene im selben Fenster korrigieren und zeigt Ihnen dann, ob sich die Korrektur gelohnt hat. Dieser Beitrag erklärt, wie das in Glance Preview funktioniert, einem Beta-Bildbetrachter für Macs mit Apple Silicon, und wo es an Grenzen stößt.</p>
+<p>Es geht um KI-Werkzeuge für Bilder, die Sie ansehen, nicht um Adobe-Illustrator-Dateien (.ai). Die App-Oberfläche gibt es nur auf Englisch und vereinfachtem Chinesisch.</p>
+
+<h2>Der Ablauf in drei Schritten</h2>
+<ol class="guide-steps">
+<li><strong>Ansehen.</strong> Bild aus dem Finder öffnen oder aus einem Pfad oder Link, den Sie in einer beliebigen App markieren.</li>
+<li><strong>Korrigieren.</strong> Rechtsklick auf das Bild und ein KI-Werkzeug per Klick ausführen, etwa Hintergrund entfernen oder hochskalieren.</li>
+<li><strong>Prüfen.</strong> Das Ergebnis erscheint neben dem Original. Compare zeigt beide nebeneinander, Slider blendet zwischen ihnen über.</li>
+</ol>
+
+<h2>Ansehen: das Bild schnell öffnen</h2>
+<p><strong>Aus dem Finder.</strong> Rechtsklick auf ein Bild, dann „Öffnen mit“ &gt; Glance. Damit alle Bilder so aufgehen, legen Sie Glance über das Menüleistensymbol als Standardbetrachter fest. Zum Ansehen brauchen Sie kein Konto.</p>
+<p><strong>Aus markiertem Text.</strong> Peek zeigt einen Bildpfad oder -link als Vorschau, ohne dass Sie die aktuelle App verlassen: Text markieren und Option + Leertaste drücken. Peek ist standardmäßig aus. Beim Einschalten in den Einstellungen fragt macOS nach den Berechtigungen „Bedienungshilfen“ und „Eingabeüberwachung“. Die KI-Werkzeuge gibt es im vollen Bildfenster; öffnen Sie das Bild dort, um sie zu nutzen.</p>
+
+<h2>Korrigieren: KI-Werkzeuge per Klick im Kontextmenü</h2>
+<p>Rechtsklick auf das Bild und Widgets wählen. Jedes Werkzeug zeigt seine Credit-Kosten vor dem Start. Beim ersten Cloud-Lauf melden Sie sich mit Google oder einem E-Mail-Code an; neue Konten starten mit 100 Credits. Die Werkzeuge laufen im Hintergrund in der Cloud, Sie können also weiter Bilder ansehen. Fehlt ein Werkzeug im Widgets-Menü, fügen Sie es über den Widget Market hinzu (Widget-Schaltfläche in der Symbolleiste).</p>
+<table>
+<thead><tr><th>Werkzeug</th><th>Was es tut</th><th>Credits pro Lauf</th></tr></thead>
+<tbody>
+<tr><td>Background Remover Pro</td><td>Liefert eine Kopie mit transparentem Hintergrund und erhält möglichst feine Kanten wie Haare</td><td>20</td></tr>
+<tr><td>Upscale</td><td>Erhöht die Auflösung, indem es Details neu rendert</td><td>30</td></tr>
+<tr><td>Watermark Remover</td><td>Entfernt Zeichen und Text und füllt die Fläche</td><td>30</td></tr>
+</tbody>
+</table>
+<p>Die Modelle hinter jedem Werkzeug stehen in der <a href="/de/ai-models/">Offenlegung der KI-Modelle</a>, die aktuelle Liste mit Kosten auf der Seite <a href="/de/widgets/">KI-Widgets</a>.</p>
+<p>Jedes Werkzeug erledigt eine Aufgabe mit einem Klick. Keines nimmt einen freien Text-Prompt an. Wenn Sie eine Änderung in eigenen Worten beschreiben möchten, ist ein Bildeditor mit Prompt-Eingabe das richtige Werkzeug.</p>
+
+<h2>Prüfen: KI-Ergebnis und Original vergleichen</h2>
+<p>Ist ein Werkzeug fertig, wird das Ergebnis als neue Datei gesichert und im selben Fenster neben das Original gelegt; Ihr Original bleibt unverändert. Compare zeigt beide nebeneinander, mit Slider ziehen Sie eine Trennlinie über das Paar.</p>
+<p>Am wichtigsten ist die Kontrolle bei generativen Werkzeugen. Werkzeuge wie Upscale erzeugen neue Bildinhalte und können Details erfinden, die nicht in Ihrem Bild waren. Prüfen Sie Gesichter, Text und Kanten in voller Größe, bevor Sie ein Ergebnis behalten.</p>
+
+<h2>Glance Preview im Vergleich mit Vorschau und Übersicht</h2>
+<p>macOS bringt bereits Vorschau und Übersicht (Quick Look) mit. Sie sind eingebaut, kostenlos und passen gut zum reinen Ansehen, und auf aktuellen macOS-Versionen entfernt die Vorschau auch Hintergründe (siehe Apples <a href="https://support.apple.com/de-de/guide/preview/prvw15636/mac" rel="noopener">Vorschau-Handbuch</a>). Glance Preview ergänzt ein Menü mit Cloud-KI-Werkzeugen für das Bild, das Sie gerade ansehen, und den Vergleich des Ergebnisses mit dem Original nebeneinander oder per Schieberegler im selben Fenster. Wenn Sie nur Bilder ansehen möchten, reichen die Bordmittel womöglich völlig aus.</p>
+
+<h2>Ehrliche Grenzen</h2>
+<ul>
+<li><strong>Cloud statt lokal.</strong> Jedes KI-Werkzeug lädt das Bild zur Verarbeitung zu Glance hoch und braucht eine Internetverbindung. Ansehen und Vergleichen bleiben auf Ihrem Mac.</li>
+<li><strong>Credits und Anmeldung.</strong> KI-Werkzeuge kosten Credits und erfordern ein Konto. In-App-Käufe sind während der Beta nicht möglich. Scheitert eine Aufgabe auf Seiten von Glance, gibt es die Credits zurück, wie auf der Seite <a href="/de/pricing/">Preise</a> beschrieben.</li>
+<li><strong>Beta.</strong> Macs mit Apple Silicon, macOS 12.3 oder neuer. Die Beta ist noch nicht von Apple notarisiert, deshalb fragt macOS einmal nach; die Schritte stehen auf der <a href="/de/install/">Installationsseite</a>.</li>
+<li><strong>Ihre Bilder.</strong> Nutzen Sie die Wasserzeichenentfernung nur für Bilder, die Ihnen gehören oder für die Sie eine Erlaubnis haben. Siehe <a href="/en/acceptable-use/">Nutzungsrichtlinie (Englisch)</a>.</li>
+</ul>
+
+<h2>An einem Bild ausprobieren</h2>
+<p>Ein guter Test ist ein Produktfoto mit unruhigem Hintergrund: in Glance Preview öffnen, Background Remover Pro ausführen und den Slider über die Kanten ziehen. Die Schritt-für-Schritt-Version steht in <a href="/de/use-cases/remove-image-background-mac/">Bildhintergrund auf dem Mac entfernen</a>.</p>
+
+<section class="post-faq">
+<h2>Häufige Fragen</h2>
+<h3>Was ist ein Bildbetrachter mit KI für den Mac?</h3>
+<p>Ein Bildbetrachter, mit dem Sie KI-Korrekturen wie Hintergrundentfernung oder Hochskalieren auf das gerade angezeigte Bild anwenden und das Ergebnis mit dem Original vergleichen, ohne das Fenster zu verlassen. So funktioniert Glance Preview.</p>
+<h3>Kann ich in Glance Preview ein Bild per Text-Prompt bearbeiten?</h3>
+<p>Derzeit nicht. Die KI-Werkzeuge arbeiten per Klick: Jedes erledigt eine Aufgabe, keines nimmt einen freien Prompt an.</p>
+<h3>Laufen die KI-Werkzeuge auf meinem Mac?</h3>
+<p>Nein. Sie laufen in der Cloud, das Bild wird also zur Verarbeitung zu Glance hochgeladen. Ansehen und Vergleichen bleiben auf Ihrem Mac.</p>
+<h3>Was kosten die KI-Werkzeuge?</h3>
+<p>Sie verbrauchen Credits: derzeit 20 oder 30 pro Lauf, neue Konten starten mit 100. In-App-Käufe sind während der Beta nicht möglich.</p>
+<h3>Brauche ich ein Konto, um Bilder anzusehen?</h3>
+<p>Nein. Ein Konto brauchen Sie nur für die Cloud-KI-Werkzeuge.</p>
+</section>
