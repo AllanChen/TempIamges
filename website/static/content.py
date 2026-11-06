@@ -159,7 +159,9 @@ def wrap(b, html, page_paths, lang="en", cluster=None) -> str:
     others = [(c, p) for c, p in cluster.items() if c not in (lang, "en")]
     translated = set(b.TRANSLATIONS[lang]) if lang in b.TRANSLATIONS else None
     html = html.replace("{HEADER}", b.localize(b.header("", toggle, others), lang, page_paths, translated), 1)
-    return html.replace("{FOOTER}", b.localize(b.footer(), lang, page_paths, translated), 1)
+    html = html.replace("{FOOTER}", b.localize(b.footer(), lang, page_paths, translated), 1)
+    # Same {{SUPPORT_X}} / {{VERSION}} / … placeholders as build.render() for pages.
+    return b.render(html, lang)
 
 
 def card(p) -> str:
