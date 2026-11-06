@@ -1,0 +1,100 @@
+<!-- slug: nano-banana-2-vs-pro-preview-mac | kind: use-case | status: published | date: 2026-11-06
+| title: Nano Banana 2 と Pro の違い｜Mac で生成画像を比較 — Glance Preview
+| h1: Nano Banana 2 と Pro：Google Gemini の生成結果を Mac で並べて確認し、惜しい画像をワンクリックで直す
+| description: Nano Banana 2（Gemini 3.1 Flash Image）と Pro の出力を Mac の Glance Preview で Compare/Slider 比較し、必要なら AI ウィジェットで直す手順。
+| related: Mac で画像を高画質化する=/ja/blog/upscale-image-mac/, Mac で画像を拡張（アウトペイント）する=/ja/use-cases/expand-image-mac/, Mac で画像の背景を削除する=/ja/use-cases/remove-image-background-mac/, Mac で 2 枚の画像を比較する=/ja/compare-images-mac/, GPT Image 2.6 Flare と Sunburst=/ja/blog/gpt-image-2-6-flare-sunburst-preview-mac/, AI ウィジェット=/ja/widgets/, AI モデル開示=/ja/ai-models/, ダウンロードとインストール=/ja/install/ -->
+<p class="lead">Google の Gemini 画像モデルには Nano Banana という愛称があります。Nano Banana 2 は Gemini 3.1 Flash Image で、Flash の速さで生成・編集するモデルです。Nano Banana Pro は Gemini 3 Pro Image で、より複雑で精度の高い作業向けに位置づけられています。この記事では Google の公式説明を整理し、Glance Preview で Mac 上のダウンロードを公平に比べ、惜しい画像をワンクリックで直す流れを紹介します。</p>
+<p>※ Glance Preview のアプリ表示は英語と簡体字中国語のみです。</p>
+
+<h2>Nano Banana 2 と Pro とは</h2>
+<p>Google の <a href="https://blog.google/innovation-and-ai/technology/ai/nano-banana-2/" rel="noopener">Nano Banana 2 発表</a>（2026 年 2 月 26 日、英語）と <a href="https://ai.google.dev/gemini-api/docs/image-generation" rel="noopener">Gemini API の画像生成ドキュメント</a>（英語、2026-11-06 時点）によると:</p>
+<ul>
+<li><strong>Nano Banana 2</strong> = Gemini 3.1 Flash Image（<code>gemini-3.1-flash-image</code>）。Web 検索に基づく世界知識、テキスト描画・翻訳、被写体の一貫性、512px〜4K の制作向け解像度など、Pro 系の機能を Flash の速さで使うモデルです。</li>
+<li><strong>Nano Banana Pro</strong> = Gemini 3 Pro Image（<code>gemini-3-pro-image</code>）。複雑なビジュアル作業、高度なローカライズ、ブランド一貫性、精密なコントロール向けのプレミアムモデルです。</li>
+<li><strong>利用場所。</strong>Gemini アプリ、Search（AI モード / Lens）、AI Studio + Gemini API、Vertex AI、Flow、Google Ads などに掲載されています。製品・アカウント・地域で差があるため、Google の各ページで確認してください。</li>
+<li><strong>出所表示。</strong>生成画像には SynthID 透かしと C2PA Content Credentials が付くと Google は説明しています。</li>
+</ul>
+<p>Google Cloud の <a href="https://cloud.google.com/blog/products/ai-machine-learning/ultimate-prompting-guide-for-nano-banana" rel="noopener">Nano Banana プロンプトガイド</a>（英語、2026-11-06 時点）では、Nano Banana 2 の入力コンテキストが Pro より大きく、512px（0.5K）を追加し、共有のアスペクト比（1:1〜21:9）に加えて 1:4・4:1・1:8・8:1 などの極端な比率に対応するとあります。どちらも複数の参照画像を 1 つのプロンプトに混ぜられます。</p>
+<p>Gemini API のドキュメントには Nano Banana 2.1 や Nano Banana 2 Lite などの関連モデルも載っています。本ページは検索が多い <strong>2 と Pro</strong> の比較に絞ります。モデル名と ID は変わることがあるので、Google の公式ドキュメントを正としてください。</p>
+<p>Glance Preview はテキストプロンプトから Nano Banana 2 / Pro で画像を生成しません。流れは「Gemini・AI Studio・API など外で生成・編集 → ダウンロード → Mac でプレビュー／必要なら修正」です。例外として、Glance の Upscale ウィジェットの基盤モデルは AI モデル開示どおり Google Gemini 3.1 Flash Image（Nano Banana 2）です。これは手元の画像を高画質化する image-to-image であり、テキストからの新規生成ではありません。</p>
+
+<h2>Nano Banana 2 と Pro の早見表</h2>
+<table>
+<thead><tr><th></th><th>Nano Banana 2</th><th>Nano Banana Pro</th></tr></thead>
+<tbody>
+<tr><td>正式名</td><td>Gemini 3.1 Flash Image</td><td>Gemini 3 Pro Image</td></tr>
+<tr><td>API モデル ID（ドキュメント）</td><td><code>gemini-3.1-flash-image</code></td><td><code>gemini-3-pro-image</code></td></tr>
+<tr><td>役割（Google）</td><td>Flash 速度の高効率モデル。Pro 系機能も搭載</td><td>複雑・精密なビジュアル向けプレミアム</td></tr>
+<tr><td>解像度（Cloud ガイド）</td><td>0.5K（512px）、1K、2K、4K</td><td>1K、2K、4K</td></tr>
+<tr><td>アスペクト比（Cloud ガイド）</td><td>共有セットに加え 1:4・4:1・1:8・8:1 など</td><td>共有セット（最大 21:9）</td></tr>
+<tr><td>参照画像</td><td colspan="2">1 プロンプトに複数の参照オブジェクト（キャラクター一貫性など）</td></tr>
+<tr><td>グラウンディング</td><td colspan="2">どちらもリアルタイムの Web 検索情報を使える場合がある（製品により異なる）</td></tr>
+<tr><td>Glance Preview 内</td><td>Upscale ウィジェットの基盤モデル</td><td>現時点で Glance ウィジェットのモデルとしては未使用</td></tr>
+</tbody>
+</table>
+<p>Google の製品説明では、Nano Banana 2 は Flash の速さと Pro 級の知能、Pro はより難しい制作・ローカライズを強調しています。ニックネームだけで決めず、同じ条件の出力を見て判断してください。第三者の速度や料金比較はベンダーごとに違うため、このページでは API のドル単価を独自に書きません。</p>
+
+<h2>公平に比べる手順</h2>
+<ol class="guide-steps">
+<li><strong>モデル以外はすべて同じにする。</strong>プロンプト、参照画像、アスペクト比、解像度（両対応の範囲）をそろえます。Pro にない極端な比率や 512px 下書きが必要な場合は、品質差ではなく対応差として記録します。</li>
+<li><strong>モデルごとに数枚出す。</strong>1 枚だけだと偏ります。文字・顔・ブランド要素の傾向を見るには複数枚が安心です。</li>
+<li><strong>ファイル名をはっきり付ける。</strong>例: <code>poster-nb2-1.png</code> と <code>poster-pro-1.png</code>。同じフォルダに保存します。</li>
+<li><strong>対応するペアを並べて確認</strong>し、気になる細部でどちらが勝つかメモします。</li>
+</ol>
+
+<h2>Mac でダウンロードをプレビューして比較する</h2>
+<p>プレビューで 2 つのウィンドウを並べてもできますが、ズームやパンをそろえるのは手間です。Glance Preview なら 1 つのウィンドウで両方を扱えます。</p>
+<ol class="guide-steps">
+<li><strong>両方の画像を開く。</strong>Finder で Nano Banana 2 と Pro のファイルを選び、「このアプリケーションで開く」→ Glance。すでに一方が開いているなら、もう一方をウィンドウへドラッグ。別アプリでパスや画像リンクを選んで Peek（任意・既定オフ）で覗き、Compare や Widgets が必要ならフルウィンドウを開きます。</li>
+<li><strong>ツールバーの Compare</strong> で左右並び。構図・色・全体の印象向きです。</li>
+<li><strong>Slider</strong> で仕切りを同じ位置にドラッグ。小さな文字・手・輪郭・質感向きです。</li>
+<li><strong>細部を拡大してから決める。</strong>表示と比較は無料で、アカウントもクレジットも不要、元ファイルは変わりません。</li>
+</ol>
+<p>詳しい操作は <a href="/ja/compare-images-mac/">Mac で 2 枚の画像を比較する</a> を参照してください。</p>
+
+<h2>とくに見るポイント</h2>
+<ul>
+<li><strong>画像内の文字:</strong>看板、ラベル、ポスター、ローカライズした文言。Google はこれらのモデルでテキスト描画・翻訳を強調しています。</li>
+<li><strong>顔・キャラクター・ブランドマーク</strong>と、参照画像を使ったときの一貫性。</li>
+<li><strong>素材と輪郭:</strong>布、ガラス、髪、細い線。</li>
+<li><strong>レイアウトと個数:</strong>指定した数・位置どおりか。</li>
+<li><strong>極端な比率:</strong>Nano Banana 2 で超ワイド／超縦長にしたときは、端の文字や輪郭も確認します。</li>
+</ul>
+
+<h2>惜しいときは、表示中の画像から直す</h2>
+<p>勝ち画像でも仕上げが残ることがあります。Gemini や API で再生成するか、いま見ているファイルにワンクリックの AI ツールをかけられます。Glance Preview で画像を右クリックし Widgets を選びます（一覧にない場合は先に Widget Market から追加）。メニューにクレジット数が表示され、結果は元画像の隣に出るので、もう一度 Compare や Slider で確認できます。</p>
+<table>
+<thead><tr><th>出力の問題</th><th>Glance Preview のウィジェット</th><th>1 回あたり</th></tr></thead>
+<tbody>
+<tr><td>切り抜きが欲しいが背景が残っている</td><td>Background Remover Pro</td><td>20 クレジット</td></tr>
+<tr><td>用途に対して解像度が足りない</td><td>Upscale（最大 4K、基盤は Nano Banana 2）</td><td>30 クレジット</td></tr>
+<tr><td>余白がなく構図が窮屈</td><td>Expand Image</td><td>30 クレジット</td></tr>
+<tr><td>別のアスペクト比が必要</td><td>Redraw &amp; Reframe</td><td>30 クレジット</td></tr>
+</tbody>
+</table>
+<p>正直な注記です。Nano Banana 系は大きな解像度や多様な比率に対応できるため、プロンプトが残っているなら設定を変えて再生成した方が簡単なこともあります。ウィジェットは別のクラウドツールで、<a href="/ja/ai-models/">AI モデル開示</a>と <a href="/ja/widgets/">AI ウィジェット</a>に載っています（Upscale は Gemini 3.1 Flash Image / Nano Banana 2、Expand Image は FLUX.2、Redraw &amp; Reframe は Krea 2）。Glance Preview は Nano Banana Pro を呼び出しません。クラウドウィジェットは画像をアップロードし、サインインが必要です。新規アカウントは 100 クレジットから。Glance 側の失敗ではクレジットが戻ります（<a href="/ja/pricing/">料金ページ</a>）。手順ガイド: <a href="/ja/use-cases/remove-image-background-mac/">背景削除</a>、<a href="/ja/blog/upscale-image-mac/">高画質化</a>、<a href="/ja/use-cases/expand-image-mac/">画像の拡張</a>。</p>
+
+<h2>どちらを使うか</h2>
+<ul>
+<li><strong>下書きをたくさん・すばやく回したい:</strong>Google が Flash 速度と日常品質を強調する Nano Banana 2 から。</li>
+<li><strong>精度・ブランド一貫性・複雑なローカライズが厳しい:</strong>同じプロンプトで Pro を試し、2 で足りるかも確認。</li>
+<li><strong>極端なアスペクト比や 512px の下書き:</strong>Cloud ガイド上、2 に Pro にない選択肢があります。</li>
+<li><strong>どちらでも:</strong>モデル名ではなく、Mac 上で並べた結果で決める。</li>
+</ul>
+<p>Glance Preview 自体は Apple silicon の Mac、macOS 12.3 以降向けです。最新のダウンロードと初回起動は <a href="/ja/install/">インストールページ</a>を参照してください。</p>
+
+<section class="post-faq">
+<h2>よくある質問</h2>
+<h3>Nano Banana 2 と Nano Banana Pro の違いは？</h3>
+<p>Google によると、Nano Banana 2 は Gemini 3.1 Flash Image で、Flash 速度に加え世界知識・テキスト描画・512px〜4K などの機能を持つモデルです。Nano Banana Pro は Gemini 3 Pro Image で、複雑で精密な作業向けのプレミアムモデルです。どちらも生成と編集に対応し、解像度やアスペクト比の上限はドキュメント上異なります。</p>
+<h3>Nano Banana 2 は Gemini 3.1 Flash Image と同じですか？</h3>
+<p>はい。Google は Nano Banana 2 を Gemini 3.1 Flash Image の愛称として使っています。Nano Banana Pro は Gemini 3 Pro Image の愛称です。</p>
+<h3>Glance Preview で Nano Banana 2 / Pro の画像生成はできますか？</h3>
+<p>テキストから画像を作るウィジェットはありません。Glance Preview は既存画像向けのワンクリッククラウド AI ツール付きビューアです。Upscale は手元のファイルを高解像度化する際に Gemini 3.1 Flash Image（Nano Banana 2）を使います。Nano Banana Pro は呼び出さず、プロンプトだけで新規生成もしません。</p>
+<h3>Mac で AI 画像を 2 枚並べて比べるには？</h3>
+<p>Glance Preview で両方を開き、Compare で左右並び、Slider で同じ位置をすり合わせます。プレビューのウィンドウを 2 つ並べる方法もあります。</p>
+<h3>Glance Preview での比較は無料ですか？</h3>
+<p>はい。表示と比較は無料で、アカウントもクレジットも不要です。クレジットはクラウドの AI ウィジェットで使います。</p>
+<h3>Nano Banana 2.1 や 2 Lite は？</h3>
+<p>Gemini API のドキュメントには関連モデルとして載っています。本ページの 2 vs Pro 比較の対象外なので、最新の ID は API の画像生成ページで確認してください。</p>
+</section>

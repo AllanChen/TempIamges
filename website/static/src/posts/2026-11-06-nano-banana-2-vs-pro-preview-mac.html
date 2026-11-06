@@ -1,0 +1,99 @@
+<!-- slug: nano-banana-2-vs-pro-preview-mac | kind: use-case | status: published | date: 2026-11-06
+| title: Nano Banana 2 vs Pro: Preview Results on Mac — Glance Preview
+| h1: Nano Banana 2 vs Pro: preview Google Gemini image results side by side on Mac, then one-click fix
+| description: Compare Nano Banana 2 (Gemini 3.1 Flash Image) and Nano Banana Pro downloads on Mac with Glance Preview Compare/Slider, then fix with one-click AI Widgets.
+| related: How to upscale an image on Mac=/en/blog/upscale-image-mac/, Expand an image on Mac=/en/use-cases/expand-image-mac/, Remove an image background on Mac=/en/use-cases/remove-image-background-mac/, Compare two images on Mac=/en/compare-images-mac/, GPT Image 2.6 Flare vs Sunburst=/en/blog/gpt-image-2-6-flare-sunburst-preview-mac/, AI Widgets=/en/widgets/, AI model disclosure=/en/ai-models/, Download and install=/en/install/ -->
+<p class="lead">Google's Gemini image models are nicknamed Nano Banana. Nano Banana 2 is Gemini 3.1 Flash Image — built for Flash-speed generation and editing. Nano Banana Pro is Gemini 3 Pro Image — positioned for more complex, precision-heavy work. This use case summarises what Google documents about both, shows a fair way to compare downloads on a Mac with Glance Preview, and walks through one-click AI fixes when a result is almost right.</p>
+
+<h2>What Nano Banana 2 and Pro are</h2>
+<p>Per Google's <a href="https://blog.google/innovation-and-ai/technology/ai/nano-banana-2/" rel="noopener">Nano Banana 2 announcement</a> (26 February 2026) and the <a href="https://ai.google.dev/gemini-api/docs/image-generation" rel="noopener">Gemini API image generation docs</a> (read 2026-11-06):</p>
+<ul>
+<li><strong>Nano Banana 2</strong> = Gemini 3.1 Flash Image (<code>gemini-3.1-flash-image</code>). Flash-speed model that brings Pro-style features such as world knowledge grounded in web search, text rendering and translation, subject consistency, and production resolutions from 512px to 4K.</li>
+<li><strong>Nano Banana Pro</strong> = Gemini 3 Pro Image (<code>gemini-3-pro-image</code>). Google's premium image model for complex visual tasks, advanced localization, brand consistency and precision creative control.</li>
+<li><strong>Where they run.</strong> Google lists both across Gemini app, Search (AI Mode / Lens), AI Studio + Gemini API, Vertex AI, Flow and Google Ads. Exact availability can differ by product and account; check Google's product pages for your region.</li>
+<li><strong>Provenance.</strong> Google says generated images include SynthID watermarks and C2PA Content Credentials.</li>
+</ul>
+<p>Google Cloud's <a href="https://cloud.google.com/blog/products/ai-machine-learning/ultimate-prompting-guide-for-nano-banana" rel="noopener">Nano Banana prompting guide</a> (read 2026-11-06) also notes: Nano Banana 2 supports a larger input context window than Pro, adds the smaller 512px (0.5K) resolution, and adds extreme aspect ratios such as 1:4, 4:1, 1:8 and 8:1 on top of the shared set (1:1 through 21:9). Both support mixing multiple reference images in one prompt.</p>
+<p>The Gemini API docs also list newer siblings such as Nano Banana 2.1 and Nano Banana 2 Lite. This page focuses on the widely searched <strong>2 vs Pro</strong> pair. Model names and IDs can change; treat Google's docs as the source of truth.</p>
+<p>Glance Preview does not generate images with Nano Banana 2 or Nano Banana Pro from a text prompt. The workflow below is: create or edit in Gemini, AI Studio, the API or another Google surface, download the files, then preview and optionally fix them on your Mac. One exception inside Glance: the Upscale Widget uses Google Gemini 3.1 Flash Image (Nano Banana 2) as its underlying model, per the <a href="/en/ai-models/">AI model disclosure</a> — that is image-to-image upscaling of a file you already have, not text-to-image.</p>
+
+<h2>Nano Banana 2 vs Pro in one table</h2>
+<table>
+<thead><tr><th></th><th>Nano Banana 2</th><th>Nano Banana Pro</th></tr></thead>
+<tbody>
+<tr><td>Official name</td><td>Gemini 3.1 Flash Image</td><td>Gemini 3 Pro Image</td></tr>
+<tr><td>API model ID (docs)</td><td><code>gemini-3.1-flash-image</code></td><td><code>gemini-3-pro-image</code></td></tr>
+<tr><td>Role (Google)</td><td>High-efficiency Flash workhorse: speed plus Pro-style features</td><td>Premium choice for complex visual tasks and precision control</td></tr>
+<tr><td>Resolutions (Cloud guide)</td><td>0.5K (512px), 1K, 2K, 4K</td><td>1K, 2K, 4K</td></tr>
+<tr><td>Aspect ratios (Cloud guide)</td><td>Shared set plus extreme ratios such as 1:4, 4:1, 1:8, 8:1</td><td>Shared set up to 21:9</td></tr>
+<tr><td>Reference images</td><td colspan="2">Multiple reference objects in one prompt (Google cites up to 14 objects / subject consistency for characters)</td></tr>
+<tr><td>Grounding</td><td colspan="2">Both can use real-time web search information (availability can vary by product)</td></tr>
+<tr><td>In Glance Preview</td><td>Underlying model for the Upscale Widget</td><td>Not used as a Glance Widget model today</td></tr>
+</tbody>
+</table>
+<p>Google's product messaging for Nano Banana 2 emphasises Flash speed with Pro-level intelligence. For Pro, Google emphasises the hardest creative and localization work. Decide by looking at matched outputs for your task — not by the nickname alone. Third-party speed or price comparisons vary by vendor; this page does not invent API dollar prices.</p>
+
+<h2>How to run a fair Nano Banana 2 vs Pro test</h2>
+<ol class="guide-steps">
+<li><strong>Keep everything the same except the model.</strong> Same prompt, same reference images, same aspect ratio and resolution when both models support them. If you need an extreme ratio or 512px draft that Pro does not list, note that as a capability difference rather than a quality win.</li>
+<li><strong>Make a few outputs per model.</strong> One image each can mislead; a handful shows the pattern for text, faces and brand details.</li>
+<li><strong>Name the files clearly</strong>, for example <code>poster-nb2-1.png</code> and <code>poster-pro-1.png</code>, and save them to one folder on your Mac.</li>
+<li><strong>Review matched pairs side by side</strong> as below, and note which run wins on the details you care about.</li>
+</ol>
+
+<h2>Preview and compare the downloads on your Mac</h2>
+<p>You can open both files in Preview and arrange two windows. That works, but matching zoom and pan is fiddly. Glance Preview puts both images in one window:</p>
+<ol class="guide-steps">
+<li><strong>Open both images.</strong> In Finder, select the Nano Banana 2 and Pro files and open them together with Glance (Open With → Glance). If one is already open, drag the other into the window. You can also select a path or image link in another app and use Peek (optional; off by default) to preview, then open the full window when you want Compare or Widgets.</li>
+<li><strong>Choose Compare</strong> in the toolbar for a side-by-side view. Useful for framing, colour and overall look.</li>
+<li><strong>Choose Slider</strong> and drag the divider across the same spot. Useful for small text, hands, edges and textures.</li>
+<li><strong>Zoom into details</strong> before you decide. Comparing is free viewing: no account, no credits, and your files are not changed.</li>
+</ol>
+<p>The <a href="/en/compare-images-mac/">compare two images guide</a> covers both views in more detail.</p>
+
+<h2>What to look at closely</h2>
+<ul>
+<li><strong>Text in the image:</strong> signs, labels, posters and localized strings — Google highlights text rendering and translation on these models.</li>
+<li><strong>Faces, characters and brand marks</strong>, and whether subjects stayed consistent when you used reference images.</li>
+<li><strong>Fine materials and edges:</strong> fabric, glass, hair and thin lines.</li>
+<li><strong>Layout and counts:</strong> whether objects or people appear in the numbers and places you asked for.</li>
+<li><strong>Extreme crops:</strong> if you used a very wide or tall ratio on Nano Banana 2, check edges and text at the far ends of the frame.</li>
+</ul>
+
+<h2>Not quite right? Fix it from the preview</h2>
+<p>Sometimes the winning image is close but not finished. You can re-generate in Gemini or the API, or you can run a one-click AI tool on the file you are already looking at. In Glance Preview, right-click the image and choose Widgets (install a Widget from Widget Market ahead of time if it is not listed yet). The menu shows the credit cost before you run anything, and the result appears next to the original so you can check it with Compare or Slider again.</p>
+<table>
+<thead><tr><th>Problem with the output</th><th>Widget in Glance Preview</th><th>Credits per run</th></tr></thead>
+<tbody>
+<tr><td>You need a cut-out but the render has a background</td><td>Background Remover Pro</td><td>20</td></tr>
+<tr><td>The file is too small for where it is going</td><td>Upscale (up to 4K; uses Nano Banana 2 under the hood)</td><td>30</td></tr>
+<tr><td>The framing is too tight</td><td>Expand Image</td><td>30</td></tr>
+<tr><td>You need a different aspect ratio</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
+</tbody>
+</table>
+<p>Honest notes. Nano Banana models can already target large sizes and many aspect ratios, so re-generating with the right settings may be simpler when you still have the prompt. The Widgets are separate cloud tools listed on the <a href="/en/ai-models/">AI model disclosure</a> and <a href="/en/widgets/">AI Widgets</a> pages (Upscale uses Gemini 3.1 Flash Image / Nano Banana 2; Expand Image uses FLUX.2; Redraw &amp; Reframe uses Krea 2). Glance Preview does not call Nano Banana Pro. Cloud Widgets upload the image for processing and need a sign-in. New accounts start with 100 credits; tasks that fail on Glance's side return their credits, as described on the <a href="/en/pricing/">Pricing page</a>. Step-by-step guides: <a href="/en/use-cases/remove-image-background-mac/">removing a background</a>, <a href="/en/blog/upscale-image-mac/">upscaling</a> and <a href="/en/use-cases/expand-image-mac/">expanding an image</a>.</p>
+
+<h2>So which should you use?</h2>
+<ul>
+<li><strong>Lots of drafts and fast iteration:</strong> start with Nano Banana 2, as Google positions it for Flash-speed work with strong everyday quality.</li>
+<li><strong>Demanding precision, brand consistency or complex localization:</strong> try Nano Banana Pro on the same prompt, then check whether Nano Banana 2 gets close enough.</li>
+<li><strong>Extreme aspect ratios or 512px drafts:</strong> Nano Banana 2 lists options Pro does not, per Google Cloud's guide.</li>
+<li><strong>Either way:</strong> decide by looking at matched outputs side by side on your Mac, not by the model name alone.</li>
+</ul>
+<p>Glance Preview itself is for Apple silicon Macs on macOS 12.3 or later. The <a href="/en/install/">install page</a> has the current download and steps for the initial launch.</p>
+
+<section class="post-faq">
+<h2>FAQ</h2>
+<h3>What is the difference between Nano Banana 2 and Nano Banana Pro?</h3>
+<p>Per Google, Nano Banana 2 is Gemini 3.1 Flash Image — a Flash-speed image model with Pro-style features such as grounded world knowledge, text rendering and 512px–4K output. Nano Banana Pro is Gemini 3 Pro Image — the premium model for complex visual tasks and precision control. Both generate and edit images; Google documents different resolution and aspect-ratio ceilings.</p>
+<h3>Is Nano Banana 2 the same as Gemini 3.1 Flash Image?</h3>
+<p>Yes. Google uses Nano Banana 2 as the nickname for Gemini 3.1 Flash Image. Nano Banana Pro is the nickname for Gemini 3 Pro Image.</p>
+<h3>Can Glance Preview generate images with Nano Banana 2 or Pro?</h3>
+<p>No text-to-image Widget. Glance Preview is a viewer with one-click cloud AI tools for an existing image. Its Upscale Widget uses Gemini 3.1 Flash Image (Nano Banana 2) to raise resolution of a file you already have. It does not call Nano Banana Pro and does not generate images from a prompt alone.</p>
+<h3>How do I compare two AI images side by side on a Mac?</h3>
+<p>Open both files in Glance Preview and choose Compare for side by side or Slider to wipe between them at the same spot. You can also place two Preview windows next to each other.</p>
+<h3>Is comparing images in Glance Preview free?</h3>
+<p>Yes. Viewing and comparing images is free, needs no account and uses no credits. Credits are used by cloud AI Widgets.</p>
+<h3>What about Nano Banana 2.1 or Nano Banana 2 Lite?</h3>
+<p>Google's API docs also list Nano Banana 2.1 and Nano Banana 2 Lite as related models. They are outside the scope of this 2 vs Pro comparison; check the Gemini API image generation page for current IDs.</p>
+</section>
