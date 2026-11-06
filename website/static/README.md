@@ -1,6 +1,7 @@
 # Glance 官网
 
-正式站点：<https://glancepreview.com/>。Cloudflare Pages 项目：`glance`，生产分支：`main`。
+正式站点：<https://glancepreview.com/>。本机网站同步分支为
+`website/ops`（仓库 `AllanChen/TempIamges`）；线上部署由 Grok Bot 运维机独占。
 
 ## 构建与检查
 
@@ -31,14 +32,23 @@ git diff --check
 - 同一路径出现多个源文件时构建失败，防止页面和索引规则被覆盖。
 - 不统一刷新 sitemap 的 `lastmod`；目前省略该可选字段。
 
-## 发布
+## 线上部署与本地预览
 
-确认 Cloudflare 凭据与账户已经通过环境变量配置，且目标项目域名包含 `glancepreview.com` 后，在本目录执行：
+Cloudflare Pages 线上唯一部署源是 Grok Bot 运维机上的
+`/workspace/glance-site/static`，并由该机器的 `deploy.sh` 发布。本地
+`website/static` 是同步源码快照；严禁从本机运行 `wrangler pages deploy`
+或直接推送生产站。完成源码修改后，把变更交给 SEO/运营 bot 拉取并部署；
+如需自行安排同步，先取得确认再让 bot 同步。
 
-```sh
-wrangler pages deploy public --project-name glance --branch main --commit-dirty=true
-```
+本地可在 `website/static/` 运行 `python3 build.py` 生成 `public/` 供预览。
+编辑 `src/`，`public/` 是构建产物，通常不要提交。发布前的源码快照、
+部署状态和回同步由运营 bot 管理。
 
-发布必须在 `website/static/` 中执行，以便包含 `functions/_middleware.js` 的域名跳转规则。不要把账户密钥写进源码或提交到 Git。发布后核对 `/`、`/en/`、语言子页面、sitemap、robots、支付页 `noindex`、下载校验值和域名跳转。
+当前品牌文案使用 `glancepreview.com`，客服为 X 私信 `@Sir03834855`；
+不要在当前页面新增 `mcreator.ai` 或 `support@mcreator.ai`。
+
+每日英文、日文、德文 SEO 内容由 Glance SEO 汇总 bot 生成并直接发布；
+本机不再单独发布同题内容，避免分叉。bot 发布后，将网站改动同步回
+`website/ops`。
 
 SEO 调研与发布记录位于 [`../seo/`](../seo/)。

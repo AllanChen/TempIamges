@@ -13,4 +13,4 @@ python3 -m unittest discover -s website/static -p 'test_*.py'
 node --check website/static/src/assets/site.js
 ```
 
-部署目录为 `website/static/`，输出为 `public/`，并包含 `functions/`。本次整理未部署；若外部 CI 保存了旧目录 `website-static`，下次发布前应改为 `website/static`。实际发布步骤见 static/README.md。
+本机网站同步分支为 `website/ops`，源码位于 `website/static/src/`，可运行 `python3 website/static/build.py` 生成 `public/` 本地预览。线上只从 Grok Bot 运维机 `/workspace/glance-site/static` 通过 `deploy.sh` 部署；本机禁止直接部署。发布与 SEO 同步流程见 [static/README.md](static/README.md)。

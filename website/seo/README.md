@@ -2,6 +2,11 @@
 
 这里集中保存 Glance 的 SEO 调研、网站审计、关键词规划、内容草稿和效果记录。已核对正式官网为 [glancepreview.com](https://glancepreview.com/)，对应代码位于 [`../static/`](../static/)。
 
+每日英文、日文、德文 SEO 内容由 Glance SEO 汇总 bot 编写并直接上线。本
+地 agent 不要另发同题文章；bot 发布后把网站变更同步回 `website/ops`。
+Cloudflare Pages 的唯一线上部署入口是 Grok Bot 运维机上的
+`/workspace/glance-site/static/deploy.sh`，禁止从本地 checkout 发布。
+
 ## 工作目标
 
 围绕 Glance 的真实功能，让有相关需求的用户通过搜索了解 App，并完成下载和使用。已上线独立英文入口与中文页面；具体目标地区和转化基线待确定。
