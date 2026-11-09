@@ -1,0 +1,108 @@
+<!-- slug: flux-3-image-klein-preview-compare-mac | kind: blog | status: published | date: 2026-11-09
+| title: FLUX 3 Image Klein・Qwen Image 2.1・Nano Banana 2 の違い｜Mac で比較 — Glance Preview
+| h1: FLUX 3 Image Klein と Qwen Image 2.1、Nano Banana 2 の違い：生成結果を Mac で並べて比べ、惜しい画像はその場で直す
+| description: FLUX 3 Image Klein、Qwen-Image-2.1、Nano Banana 2 の公式情報を整理し、公平な比べ方と Glance Preview の Compare/Slider で Mac 上で見比べる手順を紹介します。
+| related: Mac で 2 枚の画像を比較する=/ja/compare-images-mac/, Nano Banana 2 と Pro の違い=/ja/use-cases/nano-banana-2-vs-pro-preview-mac/, GPT Image 2.6 Flare と Sunburst=/ja/blog/gpt-image-2-6-flare-sunburst-preview-mac/, Mac で画像を高画質化する=/ja/blog/upscale-image-mac/, Mac で画像を拡張（アウトペイント）する=/ja/use-cases/expand-image-mac/, Mac で画像の背景を削除する=/ja/use-cases/remove-image-background-mac/, AI ウィジェット=/ja/widgets/, AI モデル開示=/ja/ai-models/, ダウンロードとインストール=/ja/install/ -->
+<p class="lead">この秋よく比較されている画像モデルが 3 つあります。Black Forest Labs のオープンウェイト「FLUX 3 Image Klein」、Alibaba のオープンウェイト「Qwen-Image-2.1」、Google の「Nano Banana 2」（Gemini 3.1 Flash Image）です。どれも画像の生成と編集ができます。この記事では各社の公式情報をまとめ、公平な比べ方と、Mac の Glance Preview で結果を並べて確認し、惜しい画像をワンクリックの AI ウィジェットで直す流れを紹介します。</p>
+<p>※ Glance Preview のアプリ表示は英語と簡体字中国語のみです。</p>
+
+<h2>3 つのモデルの概要</h2>
+<p>以下は各社の公式ページ（英語、2026-11-09 時点）に基づきます。Nano Banana 2 は <a href="/ja/use-cases/nano-banana-2-vs-pro-preview-mac/">Nano Banana 2 と Pro の比較記事</a>で引用した Google の資料によります。モデル名や仕様は変わることがあるため、公式ページを正としてください。</p>
+<ul>
+<li><strong>FLUX 3 Image Klein</strong>（Black Forest Labs）。2026 年 10 月 15 日に <a href="https://bfl.ai/blog/flux-3-image-klein" rel="noopener">BFL のブログ</a>で発表。<a href="https://huggingface.co/black-forest-labs/flux-3-image-klein" rel="noopener">モデルカード</a>によると、画像編集向けに設計された 5.6B パラメータのオープンウェイトモデルで、テキストからの生成や最大 10 枚の参照画像を使った合成も 1 つのモデルで行えます。プロンプト内のバウンディングボックスで配置を指定できます。テキストエンコーダー（Qwen3-VL-4B-Instruct）は 5.6B に含まれません。ファインチューニング用の Base 版と、生成用の蒸留版が公開され、蒸留版は BFL API でも <code>flux-3-image-klein</code> として提供されています。</li>
+<li><strong>Qwen-Image-2.1</strong>（Alibaba の Qwen チーム）。<a href="https://github.com/QwenLM/Qwen-Image-2.1" rel="noopener">GitHub</a> によると 2026 年 9 月 20 日公開、高速版の Turbo は 10 月 9 日公開。<a href="https://huggingface.co/Qwen/Qwen-Image-2.1" rel="noopener">モデルカード</a>では、画像生成部分が 7B の生成・編集統合モデルで、透過（RGBA）画像をそのまま出力でき、参照画像は最大 10 枚、丸囲み・書き込み・マスクで部分編集を指定できると説明されています。</li>
+<li><strong>Nano Banana 2</strong>（Google）。Gemini 3.1 Flash Image（<code>gemini-3.1-flash-image</code>）の愛称です。重みは非公開で、Google の各サービスと Gemini API から使います。文字描画、参照画像をまたいだ被写体の一貫性、512px〜4K の出力が特長です。</li>
+</ul>
+
+<h2>FLUX 3 Image Klein・Qwen Image 2.1・Nano Banana 2 の比較表</h2>
+<table>
+<thead><tr><th></th><th>FLUX 3 Image Klein</th><th>Qwen-Image-2.1</th><th>Nano Banana 2</th></tr></thead>
+<tbody>
+<tr><td>開発元</td><td>Black Forest Labs</td><td>Qwen チーム（Alibaba）</td><td>Google</td></tr>
+<tr><td>公開日</td><td>2026 年 10 月 15 日</td><td>2026 年 9 月 20 日（Turbo は 10 月 9 日）</td><td>2026 年 2 月 26 日</td></tr>
+<tr><td>画像生成部のサイズ（各社発表）</td><td>5.6B（テキストエンコーダー除く）</td><td>7B</td><td>非公開</td></tr>
+<tr><td>生成と編集</td><td>1 つのモデルで両方</td><td>1 つのモデルで両方</td><td>両方</td></tr>
+<tr><td>参照画像</td><td>最大 10 枚</td><td>最大 10 枚</td><td>1 プロンプトに複数</td></tr>
+<tr><td>位置・範囲の指定</td><td>0〜1000 グリッドのバウンディングボックス</td><td>丸囲み・書き込み・マスク</td><td>テキストで指示</td></tr>
+<tr><td>その他の特長</td><td>短いプロンプトを詳細なキャプションに展開するプロンプトアップサンプラー</td><td>透過（RGBA）画像の出力</td><td>Web 検索に基づく知識、512px〜4K</td></tr>
+<tr><td>重み・ライセンス</td><td>公開、FLUX Kommunity License</td><td>公開、Qwen Research License</td><td>非公開（Google のサービスと API）</td></tr>
+<tr><td>API</td><td>BFL API</td><td>Alibaba Cloud Model Studio（Pro / Turbo）</td><td>Gemini API、AI Studio、Vertex AI</td></tr>
+<tr><td>Glance Preview での扱い</td><td>どのウィジェットにも未使用</td><td>Outfit Swap ウィジェットの基盤モデル</td><td>Upscale ウィジェットの基盤モデル</td></tr>
+</tbody>
+</table>
+<p>開発元が出している速度や品質のランキングは自社評価なので、ここでは事実として載せません。自分の用途に合うかは、同じ条件の出力を見て判断するのが確実です。</p>
+
+<h2>Mac で動かす場合</h2>
+<ul>
+<li><strong>FLUX 3 Image Klein：</strong>BFL によると生成部の重みは BF16 で 11.2 GB、FP8 で 5.6 GB。さらに参照コードは既定で 9B のプロンプトアップサンプラー（ダウンロード 18.8 GB）を使います。公開されている速度・メモリの数値は NVIDIA GPU のもので、Apple シリコンの数値は出ていません。ローカル環境がなければ、BFL API や公開デモで試せます。</li>
+<li><strong>Qwen-Image-2.1：</strong>GitHub では、Apple シリコンで Qwen-Image-2.1-Turbo をローカル実行できる macOS アプリ「LightX2V-Mac-App」が紹介されています。モデルカードのサンプルコードは CUDA GPU 向けです。</li>
+<li><strong>Nano Banana 2：</strong>Google のサーバーで動き、結果をダウンロードします。</li>
+</ul>
+<p>どの方法でも、最後は Mac に PNG や JPEG のフォルダができます。Glance Preview が役立つのはここからです。Glance Preview 自体は、これらのモデルでプロンプトから画像を生成しません。</p>
+
+<h2>公平に比べる手順</h2>
+<ol class="guide-steps">
+<li><strong>3 つとも同じ依頼にする。</strong>プロンプト、参照画像、アスペクト比をそろえます。1:1、3:2、16:9 など 3 つとも対応する比率を選びます。</li>
+<li><strong>プロンプト展開の有無をメモする。</strong>BFL は、FLUX 3 Image Klein は詳細なシーン説明を前提にしており、短いプロンプトをそのまま送ると平凡な出力になると説明しています。そのため公式ツールは既定でアップサンプラーを使います。オンかオフかを記録しておくと、何を比べたのかが明確になります。</li>
+<li><strong>モデルごとに数枚出す。</strong>1 枚ずつでは偏ります。3〜4 枚あれば、文字・顔・手の傾向がわかります。</li>
+<li><strong>ファイル名で区別する。</strong>例：<code>poster-klein-1.png</code>、<code>poster-qwen-1.png</code>、<code>poster-nb2-1.png</code>。1 つのフォルダにまとめます。</li>
+<li><strong>編集なら元画像も横に置く。</strong>FLUX 3 Image Klein のモデルカードには、指定範囲の外まで変わることがあると書かれています。他モデルとの比較だけでなく、元写真とも必ず見比べてください。</li>
+</ol>
+
+<h2>Mac で生成結果を並べて比べる</h2>
+<p>プレビュー.app で 2 つのウインドウを並べることもできますが、拡大率や位置を手で合わせるのは手間です。Glance Preview なら 2 枚を 1 つのウインドウで比べられます。</p>
+<ol class="guide-steps">
+<li><strong>2 枚を開く。</strong>Finder で FLUX 3 Image Klein 版と Qwen-Image-2.1 版など 2 つのファイルを選び、「このアプリケーションで開く」→ Glance で一緒に開きます。1 枚目がすでに開いていれば、もう 1 枚をウインドウにドラッグします。</li>
+<li><strong>Compare を選ぶ。</strong>ツールバーの Compare で左右に並べます。構図・色・全体の印象を見るのに向いています。</li>
+<li><strong>Slider を選ぶ。</strong>境界線を同じ場所でドラッグします。小さな文字、手、輪郭、編集で変わってはいけない部分の確認に向いています。</li>
+<li><strong>3 枚目と入れ替える。</strong>暫定の勝者と 3 つ目のモデルを比べます。比較は無料で、アカウントもクレジットも不要、ファイルも変更されません。</li>
+</ol>
+<p>2 つの表示方法の詳細は <a href="/ja/compare-images-mac/">Mac で 2 枚の画像を比較する</a>をご覧ください。</p>
+
+<h2>見るべきポイント</h2>
+<ul>
+<li><strong>画像内の文字：</strong>看板・ラベル・ポスター。3 社とも文字描画を強調していますが、BFL のモデルカードは文字が崩れることがあるとも書いています。日本語の文字は特に念入りに確認してください。</li>
+<li><strong>レイアウト：</strong>FLUX 3 Image Klein でボックスを使った場合、要素が指定位置に来ているか。BFL によるとボックスは配置の目安で、厳密なマスクではありません。</li>
+<li><strong>参照画像との一致：</strong>人物や商品が参照画像のままに見えるか。</li>
+<li><strong>輪郭と質感：</strong>髪、ガラス、布、細い線。</li>
+<li><strong>編集で触れていない部分：</strong>背景や四隅を Slider でなぞります。</li>
+</ul>
+
+<h2>惜しい画像はプレビューからそのまま直す</h2>
+<p>プロンプトを変えて作り直す方法もありますが、いま見ているファイルにワンクリックの AI ツールを使う方法もあります。Glance Preview で画像を右クリックして Widgets を選びます（一覧にない場合は先に Widget Market から追加）。実行前にクレジット数が表示され、結果は元画像の隣に開くので、そのまま Compare や Slider で確認できます。</p>
+<table>
+<thead><tr><th>出力の問題</th><th>Glance Preview のウィジェット</th><th>1 回のクレジット</th></tr></thead>
+<tbody>
+<tr><td>切り抜きが欲しいのに背景がある</td><td>Background Remover Pro</td><td>20</td></tr>
+<tr><td>使う場所に対して解像度が足りない</td><td>Upscale（最大 4K）</td><td>30</td></tr>
+<tr><td>構図がきつく余白が足りない</td><td>Expand Image</td><td>30</td></tr>
+<tr><td>別のアスペクト比にしたい</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
+</tbody>
+</table>
+<p>補足：プロンプトが手元にあるなら、正しいサイズや比率で作り直すほうが簡単な場合もあります。ウィジェットは別のクラウドツールで、基盤モデルは <a href="/ja/ai-models/">AI モデル開示</a>に載っています（Upscale は Gemini 3.1 Flash Image / Nano Banana 2、Expand Image は FLUX.2 で FLUX 3 Image Klein ではありません、Redraw &amp; Reframe は Krea 2、Outfit Swap は Qwen-Image-2.1）。クラウドウィジェットは画像をアップロードして処理し、サインインが必要です。新規アカウントには 100 クレジットが付きます。プランは<a href="/ja/pricing/">料金ページ</a>をご覧ください。手順の詳細：<a href="/ja/use-cases/remove-image-background-mac/">背景の削除</a>、<a href="/ja/blog/upscale-image-mac/">高画質化</a>、<a href="/ja/use-cases/expand-image-mac/">画像の拡張</a>。</p>
+
+<h2>どれを試すべき？</h2>
+<ul>
+<li><strong>ファインチューニングや自前運用をしたい：</strong>FLUX 3 Image Klein と Qwen-Image-2.1 はどちらもオープンウェイトです。ライセンスの条件が違うので先に確認してください。</li>
+<li><strong>透過 PNG をモデルから直接ほしい：</strong>Qwen-Image-2.1 が RGBA 出力に対応しています。</li>
+<li><strong>要素の位置を細かく決めたい：</strong>FLUX 3 Image Klein のバウンディングボックス指定が使えます。</li>
+<li><strong>何もインストールしたくない：</strong>Nano Banana 2 は Google のアプリと API で使えます。</li>
+<li><strong>どの場合も：</strong>モデル名ではなく、同じ条件の出力を並べて決めましょう。</li>
+</ul>
+<p>Glance Preview は macOS 12.3 以降の Apple シリコン Mac で動きます。最新版のダウンロードと初回起動の手順は<a href="/ja/install/">インストールページ</a>にあります。</p>
+
+<section class="post-faq">
+<h2>よくある質問</h2>
+<h3>FLUX 3 Image Klein とは？</h3>
+<p>Black Forest Labs が 2026 年 10 月 15 日に公開した、5.6B パラメータのオープンウェイト画像モデルです。画像編集、テキストからの生成、最大 10 枚の参照画像を使った合成を 1 つのモデルで行い、バウンディングボックスで配置も指定できます。重みは Hugging Face で公開され、BFL API からも使えます。</p>
+<h3>FLUX 3 Image Klein と Qwen-Image-2.1 の違いは？</h3>
+<p>どちらもオープンウェイトで、最大 10 枚の参照画像を使って生成・編集できます。各社の発表では画像生成部が FLUX 3 Image Klein は 5.6B、Qwen-Image-2.1 は 7B です。FLUX 3 Image Klein はボックスによるレイアウト指定とプロンプトアップサンプラー、Qwen-Image-2.1 は透過（RGBA）出力と丸囲み・書き込み・マスクによる部分編集が特長です。ライセンスも異なります。</p>
+<h3>FLUX 3 Image Klein は商用利用できますか？</h3>
+<p>FLUX Kommunity License で公開されています。BFL のモデルカードによると、非商用利用が認められ、年間総収入 500 万米ドル未満などの条件を満たす利用者には出力の商用利用の例外があります。利用前にライセンス全文を確認するか、BFL に商用ライセンスを問い合わせてください。</p>
+<h3>Glance Preview で FLUX 3 Image Klein は使えますか？</h3>
+<p>使えません。Glance Preview はワンクリックのクラウド AI ウィジェットを備えた画像ビューアーで、テキストから画像を生成するウィジェットはなく、FLUX 3 Image Klein を使うウィジェットもありません。AI モデル開示によると、Upscale は Nano Banana 2、Outfit Swap は Qwen-Image-2.1、Expand Image は FLUX.2 を使っています。</p>
+<h3>Mac で AI 画像を並べて比較するには？</h3>
+<p>Glance Preview で 2 枚を開き、左右に並べるなら Compare、同じ位置で切り替えて見るなら Slider を選びます。追加アプリなしなら、プレビュー.app のウインドウを 2 つ並べる方法もあります。</p>
+<h3>Glance Preview での比較は無料ですか？</h3>
+<p>無料です。画像の表示と比較にアカウントもクレジットも要りません。クレジットを使うのはクラウド AI ウィジェットだけです。</p>
+</section>

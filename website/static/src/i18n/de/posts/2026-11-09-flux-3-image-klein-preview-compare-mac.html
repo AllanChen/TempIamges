@@ -1,0 +1,108 @@
+<!-- slug: flux-3-image-klein-preview-compare-mac | kind: blog | status: published | date: 2026-11-09
+| title: FLUX 3 Image Klein vs. Qwen Image 2.1 vs. Nano Banana 2 — Glance Preview
+| h1: FLUX 3 Image Klein vs. Qwen Image 2.1 vs. Nano Banana 2: Ergebnisse am Mac nebeneinander vergleichen und per Klick nachbessern
+| description: Was FLUX 3 Image Klein, Qwen-Image-2.1 und Nano Banana 2 laut Herstellern können, wie ein fairer Test aussieht und wie Sie die Bilder am Mac mit Glance Preview vergleichen.
+| related: Zwei Bilder auf dem Mac vergleichen=/de/compare-images-mac/, Nano Banana 2 vs. Pro=/de/use-cases/nano-banana-2-vs-pro-preview-mac/, GPT Image 2.6 Flare vs. Sunburst=/de/blog/gpt-image-2-6-flare-sunburst-preview-mac/, Bild auf dem Mac hochskalieren=/de/blog/upscale-image-mac/, Bild auf dem Mac erweitern=/de/use-cases/expand-image-mac/, Bildhintergrund auf dem Mac entfernen=/de/use-cases/remove-image-background-mac/, KI-Widgets=/de/widgets/, KI-Modellangaben=/de/ai-models/, Download und Installation=/de/install/ -->
+<p class="lead">Drei Bildmodelle werden derzeit besonders oft verglichen: FLUX 3 Image Klein von Black Forest Labs aus Freiburg (offene Gewichte), Qwen-Image-2.1 von Alibaba (offene Gewichte) und Googles Nano Banana 2 (Gemini 3.1 Flash Image). Alle drei erzeugen und bearbeiten Bilder. Dieser Beitrag fasst die Herstellerangaben zusammen, zeigt einen fairen Testaufbau und erklärt, wie Sie die Ergebnisse am Mac mit Glance Preview nebeneinander prüfen und ein fast passendes Bild per KI-Widget nachbessern.</p>
+<p>Hinweis: Die App-Oberfläche von Glance Preview gibt es nur auf Englisch und vereinfachtem Chinesisch.</p>
+
+<h2>Die drei Modelle im Überblick</h2>
+<p>Die Angaben stammen von den Seiten der Hersteller (Englisch, Stand 09.11.2026); die Angaben zu Nano Banana 2 aus den Google-Quellen in unserem <a href="/de/use-cases/nano-banana-2-vs-pro-preview-mac/">Vergleich Nano Banana 2 vs. Pro</a>. Namen und Details können sich ändern; maßgeblich sind die offiziellen Seiten.</p>
+<ul>
+<li><strong>FLUX 3 Image Klein</strong> (Black Forest Labs). Vorgestellt am 15. Oktober 2026 im <a href="https://bfl.ai/blog/flux-3-image-klein" rel="noopener">BFL-Blog</a>. Laut <a href="https://huggingface.co/black-forest-labs/flux-3-image-klein" rel="noopener">Modellkarte</a> ein Modell mit 5,6 Mrd. Parametern und offenen Gewichten, ausgelegt auf Bildbearbeitung, das auch Text-zu-Bild und Kompositionen aus bis zu 10 Referenzbildern beherrscht. Elemente lassen sich per Bounding Box im Prompt platzieren. Der Text-Encoder (Qwen3-VL-4B-Instruct) ist in den 5,6 Mrd. nicht enthalten. Veröffentlicht sind ein Base-Checkpoint zum Feintuning und ein destillierter Checkpoint zum Erzeugen; Letzterer läuft auch in der BFL-API als <code>flux-3-image-klein</code>.</li>
+<li><strong>Qwen-Image-2.1</strong> (Qwen-Team, Alibaba). Laut <a href="https://github.com/QwenLM/Qwen-Image-2.1" rel="noopener">GitHub-Repo</a> am 20. September 2026 erschienen, die schnellere Turbo-Variante am 9. Oktober 2026. Die <a href="https://huggingface.co/Qwen/Qwen-Image-2.1" rel="noopener">Modellkarte</a> beschreibt ein gemeinsames Modell für Erzeugung und Bearbeitung mit 7 Mrd. Parametern im Bildgenerator, nativ transparenten Bildern (RGBA), bis zu 10 Referenzbildern und lokalen Änderungen per Kreis, Markierung oder Maske.</li>
+<li><strong>Nano Banana 2</strong> (Google). Spitzname für Gemini 3.1 Flash Image (<code>gemini-3.1-flash-image</code>). Geschlossenes Modell, nutzbar über Google-Dienste und die Gemini-API, mit Textdarstellung, Motivkonsistenz über Referenzen und Ausgabe von 512&nbsp;px bis 4K.</li>
+</ul>
+
+<h2>FLUX 3 Image Klein vs. Qwen Image 2.1 vs. Nano Banana 2 in einer Tabelle</h2>
+<table>
+<thead><tr><th></th><th>FLUX 3 Image Klein</th><th>Qwen-Image-2.1</th><th>Nano Banana 2</th></tr></thead>
+<tbody>
+<tr><td>Hersteller</td><td>Black Forest Labs</td><td>Qwen-Team (Alibaba)</td><td>Google</td></tr>
+<tr><td>Veröffentlicht</td><td>15.10.2026</td><td>20.09.2026 (Turbo 09.10.)</td><td>26.02.2026</td></tr>
+<tr><td>Größe des Bildgenerators (Herstellerangabe)</td><td>5,6 Mrd., ohne Text-Encoder</td><td>7 Mrd.</td><td>Nicht veröffentlicht</td></tr>
+<tr><td>Erzeugen und Bearbeiten</td><td>Ja, ein Modell</td><td>Ja, ein Modell</td><td>Ja</td></tr>
+<tr><td>Referenzbilder</td><td>Bis zu 10</td><td>Bis zu 10</td><td>Mehrere pro Prompt</td></tr>
+<tr><td>Position oder Bereich festlegen</td><td>Bounding Boxes auf einem 0–1000-Raster</td><td>Kreise, Markierungen oder Masken</td><td>Per Textanweisung</td></tr>
+<tr><td>Weitere Besonderheit</td><td>Prompt-Upsampler macht aus kurzen Prompts ausführliche Bildbeschreibungen</td><td>Transparente Bilder (RGBA)</td><td>Weltwissen aus Websuche, 512&nbsp;px–4K</td></tr>
+<tr><td>Gewichte und Lizenz</td><td>Offen, FLUX Kommunity License</td><td>Offen, Qwen Research License</td><td>Geschlossen (Google-Dienste und API)</td></tr>
+<tr><td>Gehostete API</td><td>BFL-API</td><td>Alibaba Cloud Model Studio (Pro und Turbo)</td><td>Gemini-API, AI Studio, Vertex AI</td></tr>
+<tr><td>In Glance Preview</td><td>Von keinem Widget genutzt</td><td>Basismodell des Widgets Outfit Swap</td><td>Basismodell des Widgets Upscale</td></tr>
+</tbody>
+</table>
+<p>Rankings zu Tempo und Qualität, die ein Hersteller selbst veröffentlicht, beruhen auf internen Tests; wir geben sie hier nicht als Tatsachen wieder. Ob ein Modell zu Ihrer Aufgabe passt, zeigen vergleichbare Ergebnisse am zuverlässigsten.</p>
+
+<h2>Lokal auf dem Mac ausführen?</h2>
+<ul>
+<li><strong>FLUX 3 Image Klein:</strong> Laut BFL brauchen die Gewichte des Bildgenerators 11,2&nbsp;GB in BF16 und 5,6&nbsp;GB in FP8; dazu kommt ein separater Prompt-Upsampler mit 9 Mrd. Parametern (18,8&nbsp;GB Download), den der Referenzcode standardmäßig nutzt. Die veröffentlichten Tempo- und Speicherwerte gelten für NVIDIA-GPUs; Zahlen für Apple Silicon nennt BFL nicht. Ohne passende lokale Umgebung können Sie es über die BFL-API oder eine gehostete Demo ausprobieren.</li>
+<li><strong>Qwen-Image-2.1:</strong> Das GitHub-Repo verweist auf die native macOS-App LightX2V-Mac-App, mit der Qwen-Image-2.1-Turbo lokal auf Apple Silicon läuft. Die Beispiele der Modellkarte zielen auf CUDA-GPUs.</li>
+<li><strong>Nano Banana 2:</strong> Läuft auf Googles Servern; Sie laden die Ergebnisse herunter.</li>
+</ul>
+<p>Am Ende liegt in jedem Fall ein Ordner mit PNG- oder JPEG-Dateien auf Ihrem Mac. Genau hier setzt Glance Preview an. Glance Preview selbst erzeugt mit keinem dieser Modelle Bilder aus einem Prompt.</p>
+
+<h2>So testen Sie fair</h2>
+<ol class="guide-steps">
+<li><strong>Gleiche Anfrage für alle drei.</strong> Gleicher Prompt, gleiche Referenzbilder, gleiches Seitenverhältnis. Wählen Sie ein Format, das alle drei unterstützen, etwa 1:1, 3:2 oder 16:9.</li>
+<li><strong>Prompt-Erweiterung notieren.</strong> Laut BFL erwartet FLUX 3 Image Klein ausführliche Szenenbeschreibungen; kurze Prompts liefern unverändert eher generische Bilder. Deshalb nutzen die offiziellen Werkzeuge standardmäßig den Upsampler. Notieren Sie, ob er an war.</li>
+<li><strong>Mehrere Bilder pro Modell.</strong> Ein einzelnes Bild kann täuschen; drei oder vier zeigen das Muster bei Text, Gesichtern und Händen.</li>
+<li><strong>Eindeutige Dateinamen</strong>, etwa <code>poster-klein-1.png</code>, <code>poster-qwen-1.png</code> und <code>poster-nb2-1.png</code>, alles in einem Ordner.</li>
+<li><strong>Bei Bearbeitungen das Original danebenlegen.</strong> Laut Modellkarte von FLUX 3 Image Klein können Änderungen auch Bereiche außerhalb der gewünschten Stelle betreffen. Vergleichen Sie jede Bearbeitung deshalb mit dem Ausgangsfoto, nicht nur mit den anderen Modellen.</li>
+</ol>
+
+<h2>Ergebnisse am Mac nebeneinander vergleichen</h2>
+<p>In der Vorschau können Sie zwei Fenster nebeneinanderlegen, aber Zoom und Ausschnitt von Hand abzugleichen ist mühsam. Glance Preview zeigt beide Bilder in einem Fenster:</p>
+<ol class="guide-steps">
+<li><strong>Zwei Ergebnisse öffnen.</strong> Markieren Sie im Finder zwei Dateien, etwa die Version von FLUX 3 Image Klein und die von Qwen-Image-2.1, und öffnen Sie sie gemeinsam mit Glance („Öffnen mit“ → Glance). Ist ein Bild schon offen, ziehen Sie das zweite ins Fenster.</li>
+<li><strong>Compare wählen</strong> in der Symbolleiste für die Ansicht nebeneinander. Gut für Bildausschnitt, Farben und Gesamteindruck.</li>
+<li><strong>Slider wählen</strong> und die Trennlinie über dieselbe Stelle ziehen. Gut für kleine Schrift, Hände, Kanten und die Frage, ob eine Bearbeitung Bereiche verändert hat, die gleich bleiben sollten.</li>
+<li><strong>Das dritte Bild einwechseln</strong> und gegen den bisherigen Favoriten prüfen. Vergleichen ist kostenlos: kein Konto, keine Credits, und Ihre Dateien bleiben unverändert.</li>
+</ol>
+<p>Beide Ansichten erklärt die Anleitung <a href="/de/compare-images-mac/">Zwei Bilder auf dem Mac vergleichen</a> genauer.</p>
+
+<h2>Worauf Sie genau achten sollten</h2>
+<ul>
+<li><strong>Text im Bild:</strong> Schilder, Etiketten, Plakate, Umlaute. Alle drei Hersteller betonen die Textdarstellung; die Modellkarte von BFL warnt aber auch vor ungenauem oder verzerrtem Text.</li>
+<li><strong>Layout:</strong> Wenn Sie bei FLUX 3 Image Klein Bounding Boxes genutzt haben, prüfen Sie, ob die Elemente dort gelandet sind. Laut BFL steuern Boxes die Platzierung, sind aber keine harte Maske.</li>
+<li><strong>Personen und Produkte aus Referenzen:</strong> Sehen sie noch aus wie auf den Vorlagen?</li>
+<li><strong>Kanten und feine Materialien:</strong> Haare, Glas, Stoff, dünne Linien.</li>
+<li><strong>Unberührte Bereiche bei Bearbeitungen:</strong> Fahren Sie mit dem Slider über Hintergrund und Ecken.</li>
+</ul>
+
+<h2>Fast richtig? Direkt aus der Bildansicht nachbessern</h2>
+<p>Sie können mit neuem Prompt neu erzeugen oder ein KI-Werkzeug per Klick auf die Datei anwenden, die Sie gerade ansehen. Klicken Sie in Glance Preview mit der rechten Maustaste auf das Bild und wählen Sie Widgets (fehlt ein Widget, installieren Sie es vorher im Widget Market). Das Menü zeigt die Credits vor dem Start, und das Ergebnis öffnet sich neben dem Original, sodass Sie es gleich mit Compare oder Slider prüfen können.</p>
+<table>
+<thead><tr><th>Problem im Ergebnis</th><th>Widget in Glance Preview</th><th>Credits pro Durchlauf</th></tr></thead>
+<tbody>
+<tr><td>Sie brauchen einen Freisteller, das Bild hat aber Hintergrund</td><td>Background Remover Pro</td><td>20</td></tr>
+<tr><td>Die Datei ist zu klein für den Einsatzzweck</td><td>Upscale (bis 4K)</td><td>30</td></tr>
+<tr><td>Der Ausschnitt ist zu eng</td><td>Expand Image</td><td>30</td></tr>
+<tr><td>Sie brauchen ein anderes Seitenverhältnis</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
+</tbody>
+</table>
+<p>Ehrlich gesagt: Haben Sie den Prompt noch, ist ein neuer Durchlauf in der richtigen Größe oder im richtigen Format manchmal einfacher. Die Widgets sind eigenständige Cloud-Werkzeuge; ihre Basismodelle stehen in den <a href="/de/ai-models/">KI-Modellangaben</a>: Upscale nutzt Gemini 3.1 Flash Image (Nano Banana 2), Expand Image nutzt FLUX.2 (nicht FLUX 3 Image Klein), Redraw &amp; Reframe nutzt Krea 2 und Outfit Swap nutzt Qwen-Image-2.1. Cloud-Widgets laden das Bild zur Verarbeitung hoch und erfordern eine Anmeldung. Neue Konten starten mit 100 Credits; aktuelle Tarife finden Sie auf der <a href="/de/pricing/">Preisseite</a>. Schritt-für-Schritt-Anleitungen: <a href="/de/use-cases/remove-image-background-mac/">Hintergrund entfernen</a>, <a href="/de/blog/upscale-image-mac/">hochskalieren</a> und <a href="/de/use-cases/expand-image-mac/">Bild erweitern</a>.</p>
+
+<h2>Welches Modell sollten Sie ausprobieren?</h2>
+<ul>
+<li><strong>Offene Gewichte zum Feintunen oder Selbsthosten:</strong> FLUX 3 Image Klein und Qwen-Image-2.1 kommen infrage. Lesen Sie vorher die Lizenzen; sie unterscheiden sich.</li>
+<li><strong>Transparente PNGs direkt aus dem Modell:</strong> Qwen-Image-2.1 dokumentiert native RGBA-Ausgabe.</li>
+<li><strong>Elemente genau platzieren:</strong> FLUX 3 Image Klein dokumentiert Layouts per Bounding Box.</li>
+<li><strong>Nichts installieren:</strong> Nano Banana 2 läuft in Googles Apps und der API.</li>
+<li><strong>In jedem Fall:</strong> Entscheiden Sie anhand vergleichbarer Ergebnisse nebeneinander, nicht anhand des Modellnamens.</li>
+</ul>
+<p>Glance Preview läuft auf Macs mit Apple Silicon ab macOS 12.3. Den aktuellen Download und die Schritte für den ersten Start finden Sie auf der <a href="/de/install/">Installationsseite</a>.</p>
+
+<section class="post-faq">
+<h2>Häufige Fragen</h2>
+<h3>Was ist FLUX 3 Image Klein?</h3>
+<p>FLUX 3 Image Klein ist ein Bildmodell von Black Forest Labs mit 5,6 Mrd. Parametern und offenen Gewichten, veröffentlicht am 15. Oktober 2026. Ein Modell übernimmt Bildbearbeitung, Text-zu-Bild und Kompositionen aus bis zu 10 Referenzbildern und kann Elemente per Bounding Box platzieren. Es gibt die Gewichte auf Hugging Face und das Modell in der BFL-API.</p>
+<h3>Was ist der Unterschied zwischen FLUX 3 Image Klein und Qwen-Image-2.1?</h3>
+<p>Beide haben offene Gewichte und erzeugen und bearbeiten Bilder mit bis zu 10 Referenzen. Laut Herstellern hat der Bildgenerator von FLUX 3 Image Klein 5,6 Mrd. Parameter, der von Qwen-Image-2.1 7 Mrd. FLUX 3 Image Klein bietet zusätzlich Layouts per Bounding Box und einen Prompt-Upsampler, Qwen-Image-2.1 transparente Bilder (RGBA) und lokale Änderungen per Kreis, Markierung oder Maske. Die Lizenzen unterscheiden sich.</p>
+<h3>Darf ich FLUX 3 Image Klein kommerziell nutzen?</h3>
+<p>Das Modell steht unter der FLUX Kommunity License. Laut Modellkarte erlaubt sie nichtkommerzielle Nutzung und enthält eine Ausnahme für die kommerzielle Nutzung der Ergebnisse durch berechtigte Nutzer mit weniger als 5 Mio. US-Dollar Jahresbruttoumsatz, gemäß ihren Bedingungen. Prüfen Sie den vollständigen Lizenztext oder fragen Sie BFL nach einer kommerziellen Lizenz.</p>
+<h3>Nutzt Glance Preview FLUX 3 Image Klein?</h3>
+<p>Nein. Glance Preview ist ein Bildbetrachter mit KI-Widgets per Klick in der Cloud. Es gibt kein Text-zu-Bild-Widget, und kein Widget nutzt FLUX 3 Image Klein. Laut den KI-Modellangaben nutzt Upscale Nano Banana 2, Outfit Swap Qwen-Image-2.1 und Expand Image FLUX.2.</p>
+<h3>Wie vergleiche ich KI-Bilder auf dem Mac nebeneinander?</h3>
+<p>Öffnen Sie zwei Dateien in Glance Preview und wählen Sie Compare für die Ansicht nebeneinander oder Slider, um an derselben Stelle zwischen beiden zu wechseln. Ohne zusätzliche App können Sie zwei Vorschau-Fenster nebeneinanderlegen.</p>
+<h3>Ist der Bildvergleich in Glance Preview kostenlos?</h3>
+<p>Ja. Bilder ansehen und vergleichen ist kostenlos, ohne Konto und ohne Credits. Credits brauchen nur die Cloud-KI-Widgets.</p>
+</section>
