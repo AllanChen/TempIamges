@@ -1,4 +1,4 @@
-<!-- slug: upscale-image-mac | kind: blog | status: published | date: 2026-11-02 | updated: 2026-11-04
+<!-- slug: upscale-image-mac | kind: blog | status: published | date: 2026-11-02 | updated: 2026-11-09
 | title: How to Upscale an Image on Mac: 3 Ways Compared — Glance Preview
 | h1: How to upscale an image on Mac: built-in resize, free local AI, or a cloud AI upscale you check on a slider
 | description: Three ways to upscale an image on Mac: resize in Preview, a free local AI upscaler, or a cloud AI upscale in Glance Preview that you compare with the original.
@@ -10,7 +10,7 @@
 <thead><tr><th>Option</th><th>How it works</th><th>Cost</th><th>Where it runs</th></tr></thead>
 <tbody>
 <tr><td>Preview (built into macOS)</td><td>Resamples the pixels to a larger size; adds no new detail</td><td>Free</td><td>On your Mac</td></tr>
-<tr><td>A free local AI upscaler, such as Upscayl</td><td>An AI model on your Mac predicts extra detail</td><td>Free and open source</td><td>On your Mac</td></tr>
+<tr><td>A local AI upscaler, such as Upscayl or FreeScaler</td><td>An AI model on your Mac predicts extra detail</td><td>Free and open source</td><td>On your Mac</td></tr>
 <tr><td>Upscale in Glance Preview</td><td>A cloud AI model re-renders the image at higher resolution, up to 4K</td><td>30 credits per run; new accounts start with 100</td><td>In the cloud</td></tr>
 </tbody>
 </table>
@@ -19,9 +19,10 @@
 <p>Open the image in Preview, choose Tools &gt; Adjust Size, make sure "Resample image" is selected, and enter a larger width or height. Apple documents the steps in the <a href="https://support.apple.com/guide/preview/resize-rotate-or-flip-an-image-prvw2015/mac" rel="noopener">Preview User Guide</a>.</p>
 <p>This is the quickest route and costs nothing, but resampling just spreads the existing pixels over a larger canvas. A small image gets bigger, and it also gets softer. It suits cases where a slightly larger size is enough, such as fitting a layout.</p>
 
-<h2>Option 2: A free local AI upscaler</h2>
+<h2>Option 2: A local AI upscaler (Upscayl, FreeScaler, Pixelmator Pro)</h2>
 <p>AI upscalers use a trained model to predict detail instead of stretching pixels, so the result usually looks sharper than a plain resize. <a href="https://upscayl.org/" rel="noopener">Upscayl</a> is a free, open source example with a macOS version; per its <a href="https://github.com/upscayl/upscayl" rel="noopener">GitHub page</a>, it needs a Vulkan-compatible GPU. Because it runs on your Mac, your image never leaves your computer.</p>
-<p>If privacy matters most, or you upscale many images, a local upscaler is a strong choice and you may not need anything else.</p>
+<p><a href="https://apps.apple.com/us/app/freescaler/id6443796196" rel="noopener">FreeScaler</a> is another free option, available on the Mac App Store. Its listing says images stay on your device, and it offers 2x, 3x and 4x scales with separate models for photos, drawings and anime. If you already use Pixelmator Pro, it has a built-in Super Resolution command (Image &gt; Super Resolution), described in <a href="https://support.apple.com/guide/pixelmator-pro/automatically-increase-image-resolution-pix1d6f0eac3/mac" rel="noopener">Apple's Pixelmator Pro guide</a>.</p>
+<p>If privacy matters most, or you upscale many images, a local upscaler is a strong choice and you may not need anything else. The main difference from Glance Preview: these tools process the image on your Mac, while Glance Preview's Upscale runs in the cloud, costs credits, and shows the result next to the original in the same window so you can check it with a slider.</p>
 
 <h2>Option 3: Upscale from the preview in Glance Preview</h2>
 <p>Glance Preview is a beta image viewer for Apple silicon Macs built around a simple loop: look at an image, and if you're not happy with it, fix it with a one-click AI tool. Upscale is one of those tools.</p>
@@ -56,6 +57,8 @@
 <p>Open it in Preview, choose Tools &gt; Adjust Size, keep "Resample image" selected and enter a larger size. For sharper results, a free local AI upscaler such as Upscayl is another option.</p>
 <h3>Does upscaling an image add real detail?</h3>
 <p>No. A plain resize adds no detail, and an AI upscaler predicts detail that looks plausible. That predicted detail can be wrong, so compare the result with the original before you use it.</p>
+<h3>Which free AI upscalers work on a Mac?</h3>
+<p>Upscayl and FreeScaler are free and both process images on your Mac. Pixelmator Pro, a paid editor, includes Super Resolution under Image &gt; Super Resolution.</p>
 <h3>How much does Upscale cost in Glance Preview?</h3>
 <p>30 credits per run at the time of writing. New accounts start with 100 credits, and in-app purchases are not open during the beta.</p>
 <h3>Does Glance Preview upscale images on my Mac?</h3>

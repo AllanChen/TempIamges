@@ -80,14 +80,14 @@ DESCRIPTIONS = {
     '/acceptable-use/': ('阅读 Glance AI Widget 的可接受使用政策、素材授权要求和违规内容举报方式。',
                         'Read the acceptable use policy for Glance AI Widgets, media permissions, and how to report prohibited content.'),
     '/compare-images-mac/': ('在 Mac 上用 Glance 并排或滑杆对比两张图片，检查原图和处理结果的细节。',
-                            'Compare two images on Mac with Glance side by side or with a reveal slider. Inspect the original and result before using it.'),
+                            'Compare two images on Mac side by side or with a reveal slider in Glance Preview, a free viewer feature. Also covers built-in macOS options like Split View.'),
     '/copy-text-from-image-mac/': ('在 Mac 上从图片选取并复制文字。了解系统自带方法和 Glance 的本地文字识别步骤及限制。',
                                   'Copy text from an image on Mac with built-in Live Text or Glance. Follow the local OCR steps and learn what affects recognition.'),
 }
 
 PAGE_TITLES = {
     '/compare-images-mac/': ('Mac 上对比两张图片：并排与滑杆检查 · Glance',
-                            'Compare Two Images on Mac, Side by Side — Glance'),
+                            'Compare Two Images on Mac: Side by Side or Slider — Glance Preview'),
     '/copy-text-from-image-mac/': ('Mac 图片文字识别与复制教程 · Glance',
                                   'Copy Text from an Image on Mac — Glance Guide'),
 }
