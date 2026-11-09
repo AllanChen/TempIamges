@@ -151,21 +151,29 @@ def pricing_cards(lang: str, kind: str) -> str:
     if not available:
         message = {"en": "In-app purchases are not open during this beta.", "ja": "ベータ期間中はアプリ内購入をまだ受け付けていません。", "de": "In-App-Käufe sind während der Beta noch nicht möglich."}.get(lang, "内测期间应用内购买尚未开放。")
         return f'<p class="notice">{message}</p>'
-    currency = "USD" if lang == "en" else "CNY"
+    currency = {"en": "USD", "ja": "JPY", "de": "EUR"}.get(lang, "CNY")
     rows = []
     items = pricing.get("proTiers" if kind == "tiers" else "packs") or []
     for item in items:
         amount = (item.get(currency) or {}).get("amount")
         if not item.get("enabled") or amount is None:
             continue
-        money = ("$" if currency == "USD" else "¥") + f"{amount / 100:g}"
+        value = amount if currency == "JPY" else amount / 100
+        money = {"USD": f"${value:g}", "EUR": f"{value:.2f} €".replace(".", ","), "JPY": f"¥{value:,.0f}"}.get(currency, f"¥{value:g}")
         if kind == "tiers":
-            name = item["name"] if lang == "en" else {"Personal": "个人版", "Duo": "双机版", "Team (5 people)": "多人版"}.get(item["name"], item["name"])
-            macs = ('5 people · 1 Mac each' if lang=='en' else '5 人 · 每人 1 台 Mac') if item['id']=='team' else (f'{item["deviceLimit"]} Mac{"" if item["deviceLimit"] == 1 else "s"}' if lang == "en" else f'{item["deviceLimit"]} 台 Mac')
+            names = {"zh": {"Personal": "个人版", "Duo": "双机版", "Team (5 people)": "多人版"},
+                     "ja": {"Personal": "個人版", "Team (5 people)": "チーム（5 人）"},
+                     "de": {"Personal": "Einzelplatz", "Team (5 people)": "Team (5 Personen)"}}
+            name = names.get(lang, {}).get(item["name"], item["name"])
+            n = item.get("deviceLimit", 1)
+            if item['id'] == 'team':
+                macs = {"en": "5 people · 1 Mac each", "ja": "5 人 · 各 1 台の Mac", "de": "5 Personen · je 1 Mac"}.get(lang, "5 人 · 每人 1 台 Mac")
+            else:
+                macs = {"en": f'{n} Mac{"" if n == 1 else "s"}', "ja": f"{n} 台の Mac", "de": f"{n} Mac{'' if n == 1 else 's'}"}.get(lang, f"{n} 台 Mac")
             rows.append(f'<div class="tier"><div class="tier-head"><b>{escape(name)}</b><span class="tier-macs">{macs}</span></div><div class="tier-price">{money}</div></div>')
         else:
             points = (item.get(currency) or {}).get("points", 0)
-            unit = "credits" if lang == "en" else "点"
+            unit = {"en": "credits", "ja": "クレジット", "de": "Credits"}.get(lang, "点")
             rows.append(f'<div class="pack"><b>{points}</b><span>{unit} · {money}</span></div>')
     return "".join(rows) or ('<p class="notice">Prices are not published yet.</p>' if lang == 'en' else '<p class="notice">价格尚未公布。</p>')
 

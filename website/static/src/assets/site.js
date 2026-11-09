@@ -186,7 +186,7 @@
   var fallbackNode = document.getElementById('pricing-fallback');
   if (fallbackNode) {
     var pricing = JSON.parse(fallbackNode.textContent);
-    var currency = language === 'zh' ? 'CNY' : 'USD';
+    var currency = {zh: 'CNY', ja: 'JPY', de: 'EUR'}[language] || 'USD';
     var money = function (cents, cur) {
       if (cents == null) return null;
       var value = cents / (cur === 'JPY' ? 1 : 100);
