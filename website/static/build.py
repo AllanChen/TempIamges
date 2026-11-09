@@ -161,7 +161,7 @@ def pricing_cards(lang: str, kind: str) -> str:
         money = ("$" if currency == "USD" else "¥") + f"{amount / 100:g}"
         if kind == "tiers":
             name = item["name"] if lang == "en" else {"Personal": "个人版", "Duo": "双机版", "Team (5 people)": "多人版"}.get(item["name"], item["name"])
-            macs = ('5 people · 1 Mac each' if lang=='en' else '5 人 · 每人 1 台 Mac') if item['id']=='team' else (f'{item["deviceLimit"]} Macs' if lang == "en" else f'{item["deviceLimit"]} 台 Mac')
+            macs = ('5 people · 1 Mac each' if lang=='en' else '5 人 · 每人 1 台 Mac') if item['id']=='team' else (f'{item["deviceLimit"]} Mac{"" if item["deviceLimit"] == 1 else "s"}' if lang == "en" else f'{item["deviceLimit"]} 台 Mac')
             rows.append(f'<div class="tier"><div class="tier-head"><b>{escape(name)}</b><span class="tier-macs">{macs}</span></div><div class="tier-price">{money}</div></div>')
         else:
             points = (item.get(currency) or {}).get("points", 0)
@@ -361,7 +361,14 @@ def hreflang_links(base_path: str) -> str:
 
 
 
+# 1.0.0-beta.1 is self-signed (spctl: rejected). Set True only when the shipped DMG is notarized.
+NOTARIZED = False
+
+
 def render(text: str, lang: str) -> str:
+    # <!--if:notarized--> / <!--if:!notarized--> ... <!--endif--> keep the branch that matches the DMG.
+    text = re.sub(r"<!--if:(!?)notarized-->(.*?)<!--endif-->",
+                  lambda m: m.group(2) if (m.group(1) != "!") == NOTARIZED else "", text, flags=re.S)
     replacements = {
         "{{SUPPORT_X}}": SUPPORT_X, "{{SUPPORT_X_URL}}": SUPPORT_X_URL, "{{SUPPORT_X_HANDLE}}": SUPPORT_X_HANDLE,
         "{{VERSION}}": VERSION, "{{DMG}}": DMG,

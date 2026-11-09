@@ -26,17 +26,80 @@
   var language = root.getAttribute('data-lang') || 'zh';
   switchMedia(language);
 
+  // First-party, tab-scoped analytics. Never send full URLs, query strings,
+  // link text, referrers, account IDs or media. Respect browser privacy signals.
+  var analyticsSession = null;
+  if (location.hostname === 'glancepreview.com' && navigator.doNotTrack !== '1' &&
+      navigator.globalPrivacyControl !== true && typeof crypto.randomUUID === 'function') {
+    try {
+      analyticsSession = sessionStorage.getItem('glance.analytics.session');
+      if (!/^[A-Za-z0-9_-]{16,128}$/.test(analyticsSession || '')) {
+        analyticsSession = crypto.randomUUID();
+        sessionStorage.setItem('glance.analytics.session', analyticsSession);
+      }
+    } catch (_) { analyticsSession = crypto.randomUUID(); }
+  }
+  // Only utm_source / medium / campaign / content, as normalized slugs. A tagged
+  // visit replaces the tab's stored channel; other query parameters are ignored.
+  var campaignKeys = ['source', 'medium', 'campaign', 'content'], campaign = null;
+  (function () {
+    var url; try { url = new URL(location.href); } catch (_) { return; }
+    var found = {}, tagged = [];
+    url.searchParams.forEach(function (_, name) { if (/^utm_/i.test(name)) tagged.push(name); });
+    campaignKeys.forEach(function (key) {
+      var value = (url.searchParams.get('utm_' + key) || '').trim().toLowerCase();
+      if (/^[a-z0-9._-]{1,64}$/.test(value)) found[key] = value;
+    });
+    if (analyticsSession) {
+      try {
+        if (found.source) sessionStorage.setItem('glance.analytics.campaign', JSON.stringify(found));
+        campaign = JSON.parse(sessionStorage.getItem('glance.analytics.campaign') || 'null');
+      } catch (_) { campaign = found.source ? found : null; }
+      if (!campaign || !/^[a-z0-9._-]{1,64}$/.test(campaign.source || '')) campaign = null;
+    }
+    // Keep shared or bookmarked links clean so they do not re-attribute later visits.
+    if (tagged.length && window.history && history.replaceState) {
+      tagged.forEach(function (name) { url.searchParams.delete(name); });
+      try { history.replaceState(history.state, '', url.pathname + url.search + url.hash); } catch (_) {}
+    }
+  })();
+  function pageKey(path) {
+    var key = path.replace(/^\/(en|ja|de)(?=\/|$)/, '').replace(/^\/+|\/+$/g, '') || 'home';
+    return ['home','pricing','widgets','ai-models','install','terms','privacy','refunds','acceptable-use'].includes(key) ? key : 'other';
+  }
+  function trackWebsite(kind, target, placement) {
+    if (!analyticsSession) return;
+    var payload = {id:crypto.randomUUID(), sessionID:analyticsSession, kind:kind,
+      page:pageKey(location.pathname), language:language};
+    if (target) { payload.target = target; payload.placement = placement; }
+    if (campaign) campaignKeys.forEach(function (key) {
+      var value = campaign[key];
+      if (typeof value === 'string' && /^[a-z0-9._-]{1,64}$/.test(value))
+        payload['utm' + key.charAt(0).toUpperCase() + key.slice(1)] = value;
+    });
+    // keepalive allows a CTA navigation to proceed while its small event is sent.
+    fetch(API + '/analytics/website', {method:'POST', credentials:'omit', keepalive:true,
+      headers:{'Content-Type':'text/plain;charset=UTF-8'}, body:JSON.stringify(payload)}).catch(function () {});
+  }
+  trackWebsite('page_view');
   document.addEventListener('click', function (event) {
-    var link = event.target.closest && event.target.closest('a[data-download-cta]');
+    var link = event.target.closest && event.target.closest('a,button[data-currency]');
     if (!link) return;
-    var details = {
-      page_path: location.pathname,
-      page_language: language,
-      cta_location: link.getAttribute('data-download-cta'),
-      app_version: link.getAttribute('data-app-version')
-    };
-    if (typeof window.gtag === 'function') window.gtag('event', 'download_click', details);
-    else if (Array.isArray(window.dataLayer)) window.dataLayer.push(Object.assign({ event: 'download_click' }, details));
+    var target, placement = link.closest('header') ? 'header' : link.closest('footer') ? 'footer' : 'content';
+    if (link.hasAttribute('data-download-cta')) {
+      target = 'download';
+      var namedPlacement = link.getAttribute('data-download-cta');
+      if (['home','install'].includes(namedPlacement)) placement = namedPlacement;
+    } else if (link.hasAttribute('data-currency')) target = 'currency';
+    else {
+      var url; try { url = new URL(link.href, location.href); } catch (_) { return; }
+      if (url.origin !== location.origin) return;
+      if (link.classList && link.classList.contains('lang-toggle')) target = 'language';
+      else if (url.hash === '#download') target = 'download_section';
+      else if (url.hash === '#loop') target = 'features';
+      else if (['pricing','install','widgets','ai-models','home'].includes(pageKey(url.pathname))) target = pageKey(url.pathname);
+    }
+    if (target) trackWebsite('cta_click', target, placement);
   });
 
   // Bilingual anchors: #report resolves to #report-zh or #report-en.
