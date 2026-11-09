@@ -1,7 +1,7 @@
 # Glance 官网
 
-正式站点：<https://glancepreview.com/>。本机网站同步分支为
-`website/ops`（仓库 `AllanChen/TempIamges`）；线上部署由 Grok Bot 运维机独占。
+正式站点：<https://glancepreview.com/>。网站同步分支为
+`website/ops`（仓库 `AllanChen/TempIamges`）；线上部署由 OpenBot 独占。
 
 ## 构建与检查
 
@@ -34,15 +34,18 @@ git diff --check
 
 ## 线上部署与本地预览
 
-Cloudflare Pages 线上唯一部署源是 Grok Bot 运维机上的
-`/workspace/glance-site/static`，并由该机器的 `deploy.sh` 发布。本地
-`website/static` 是同步源码快照；严禁从本机运行 `wrangler pages deploy`
-或直接推送生产站。完成源码修改后，把变更交给 SEO/运营 bot 拉取并部署；
-如需自行安排同步，先取得确认再让 bot 同步。
+Cloudflare Pages 线上唯一部署源是 OpenBot（Allan 的 Mac）上的
+`/Users/allan/OpenBot/Shared/glance-site`（`website/ops` 分支的独立克隆），
+由 `/Users/allan/OpenBot/Shared/glance-ops/bin/deploy.sh` 发布：拉取 →
+构建 → 测试 → 提交 → 部署 → 线上核验 → 推回 `website/ops` → 通知 IndexNow。
+2026-11-09 起不再使用 Grok Bot 运维机。不要从 `TempImages` 工作区运行
+`wrangler pages deploy` 或直接推送生产站。
+
+本机改网站时，在 `website/ops`（或从它拉出的短分支）改 `website/static/src/`，
+推到 `origin/website/ops` 后，下一次 deploy.sh 会自动拉取并部署。
 
 本地可在 `website/static/` 运行 `python3 build.py` 生成 `public/` 供预览。
-编辑 `src/`，`public/` 是构建产物，通常不要提交。发布前的源码快照、
-部署状态和回同步由运营 bot 管理。
+编辑 `src/`，`public/` 是构建产物，通常不要提交。
 
 当前品牌文案使用 `glancepreview.com`，客服为 X 私信 `@Sir03834855`；
 不要在当前页面新增 `mcreator.ai` 或 `support@mcreator.ai`。

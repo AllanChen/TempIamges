@@ -28,6 +28,9 @@ SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_
 VERSION = "1.0.0-beta.1"
 DMG = f"/download/Glance-{VERSION}.dmg"
 UPDATED = "2026-11-05"
+# IndexNow ownership key. It is public by design: the deploy script pings
+# api.indexnow.org with changed URLs, and engines verify it at /<key>.txt.
+INDEXNOW_KEY = "909a04701230a0b72c22faa5c10d16e1"
 
 SNAPSHOT = json.loads((SRC / "public-snapshot.json").read_text(encoding="utf-8"))
 PRICING_FALLBACK = SNAPSHOT["pricing"]
@@ -480,6 +483,7 @@ def main() -> None:
 /aup /acceptable-use/ 301
 """, encoding="utf-8")
     (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /pay/return/\nDisallow: /pay/\nAllow: /\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
+    (OUT / f"{INDEXNOW_KEY}.txt").write_text(INDEXNOW_KEY, encoding="utf-8")
     # Omit optional lastmod until per-page content dates are maintained.
     urls = "".join(f"<url><loc>{SITE}{p}</loc></url>" for p in paths)
     (OUT / "sitemap.xml").write_text(
