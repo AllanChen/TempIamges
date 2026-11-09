@@ -212,7 +212,7 @@ def header(active: str, alternate: str, others: list[tuple[str, str]] = ()) -> s
   <a class="brand" href="/"><img src="/assets/img/logo-256.png" alt="" width="30" height="30">Glance</a>
   <nav class="nav" aria-label="Main">{links}
     <a class="lang-toggle" href="{alternate}" aria-label="Switch language"><span lang="zh">EN</span><span lang="en">中文</span>{''.join(f'<span lang="{c}">English</span>' for c in EXTRA_LANGUAGES)}</a>{''.join(f'<a class="lang-toggle hide-sm" href="{href}" hreflang="{code}">{LANGUAGE_NAMES[code]}</a>' for code, href in others)}
-    <a class="btn btn-primary" href="/#download">{bi("下载", "Download")}</a>
+    <a class="btn btn-primary" href="/install/">{bi("下载", "Download")}</a>
   </nav>
 </div></header>"""
 
@@ -273,7 +273,7 @@ def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
     path = url_for(lang, base_path)
     title = f'{meta.get(lang, meta['en'])} · Glance'
     if base_path == '/':
-        title = 'Glance — Mac Image Viewer with AI Tools & Comparison' if lang == 'en' else 'Glance — Mac 图片与视频查看器、AI 工具和图片对比'
+        title = 'Glance Preview: Mac Image Viewer with One-Click AI Fixes' if lang == 'en' else 'Glance Preview — Mac 图片与视频查看器、AI 工具和图片对比'
     elif base_path in PAGE_TITLES:
         title = PAGE_TITLES[base_path][lang == 'en']
     desc = DESCRIPTIONS.get(base_path, (meta['zh'] + ' · Glance', meta['en'] + ' · Glance'))[lang == 'en']
