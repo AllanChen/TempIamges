@@ -1,0 +1,112 @@
+<!-- slug: glance-widget-market-credits | kind: use-case | status: review | date: 2026-11-09
+| title: Glance Widget Market and Credits: Install AI Widgets, See Costs — Glance Preview
+| h1: Glance Widget Market and credits: install AI Widgets and see what each one costs
+| description: Install AI Widgets from the Glance Widget Market on your Mac, run them from the right-click menu, and see the credit cost of every Widget, from 20 to 30 credits per image.
+| related: Getting started with Glance on Mac=/en/use-cases/getting-started-glance-mac/, AI Widgets=/en/widgets/, Pricing and credits=/en/pricing/, Remove an image background on Mac=/en/use-cases/remove-image-background-mac/, Expand an image on Mac=/en/use-cases/expand-image-mac/, Download and install=/en/install/ -->
+<p class="lead">Widgets are the AI tools in Glance Preview: background removal, upscaling, expanding the canvas and more. You pick the ones you want from the Widget Market, and they appear in the right-click menu of the image window. Each Widget runs in the cloud and uses credits, and its cost is shown before you run it. This is part 2 of the Glance tutorial series; if you have not installed Glance yet, start with <a href="/en/use-cases/getting-started-glance-mac/">Getting started with Glance on Mac</a>.</p>
+
+<h2>What you need</h2>
+<ul>
+<li>Glance Preview installed on an Apple silicon Mac (see the <a href="/en/install/">install page</a>).</li>
+<li>An internet connection: the Market loads its catalog from Glance's server.</li>
+<li>A Glance account, but just when you run a Widget. Browsing and installing do not ask you to sign in.<!-- VERIFY: install works signed out in the DMG (source: WidgetCatalogClient fetch has no auth) --></li>
+</ul>
+
+<h2>Step 1: Open the Widget Market</h2>
+<p>Open any image in the full Glance window, then use one of these:</p>
+<ul>
+<li>Click the Widget Market button in the window's toolbar (the grid icon).<!-- VERIFY: toolbar icon and position in the DMG --></li>
+<li>Right-click the image and choose Widgets → Widget Market…. If no Widget is installed yet, Widget Market… sits at the top of the right-click menu instead.</li>
+</ul>
+<p>The Market opens as a panel next to the window. The video window has the same Widget Market button.</p>
+
+<h2>Step 2: Find a Widget</h2>
+<ul>
+<li><strong>Marketplace</strong> lists every Widget you can install, <strong>Installed</strong> lists the ones you have, and <strong>Updates</strong> lists installed Widgets with a newer version.</li>
+<li>Use the search box to filter by name, or the sort button to sort by name.</li>
+<li>If the list is empty or says it could not load widgets, click Refresh.</li>
+</ul>
+
+<h2>Step 3: Check the details, then install</h2>
+<p>Click a Widget to open its details page before you install it. It shows:</p>
+<ul>
+<li><strong>Cost per task</strong>, for example "20 credits / task", or "100 credits / 10 seconds" for video.</li>
+<li><strong>Commands</strong>: what the Widget does, with a short description of each command.</li>
+<li><strong>Input and Output</strong>: for example Image in, Image out, or Image in, Text out.</li>
+<li><strong>Privacy</strong>: how the Widget handles the file you send it.</li>
+</ul>
+<p>Click <strong>Install</strong>. The Widget now appears under Widgets in the right-click menu of every image (or video) it accepts. To take it out of the menu again, open its details page and click <strong>Remove</strong>; when an update is available, the button reads <strong>Update</strong>.</p>
+<!-- VERIFY: Remove/Update buttons as labelled in the DMG; whether any Widgets come preinstalled on a new install -->
+
+<h2>Step 4: Run a Widget from the right-click menu</h2>
+<ol class="guide-steps">
+<li>In the full window, right-click the image and choose Widgets. Each entry shows its credit cost next to its name.</li>
+<li>Choose a Widget. On your initial cloud run, Glance asks you to sign in with Google or an email code. New accounts start with 100 credits.</li>
+<li>Some Widgets ask for an input before they run: Remove Objects takes a short English description of what to remove, Redraw &amp; Reframe takes an aspect ratio, and Outfit Swap takes a second image with the outfit.</li>
+<li>The task runs in the background. Follow it in the Tasks window (the tray icon in the toolbar), and keep browsing other images meanwhile.</li>
+<li>When it finishes, the result is saved as a new file next to the original. Your original is not changed.</li>
+</ol>
+<p>While a task is running on an image, the same right-click menu offers Cancel for it. Then check the result against the original with Compare or Slider, as shown in part 1.</p>
+
+<h2>How many credits each Widget costs</h2>
+<p>These are the Widgets in the Market and their prices as published by Glance on November 9, 2026. The Market and the right-click menu always show the current price, so check there before you run a task.</p>
+<table>
+<thead><tr><th>Widget</th><th>What it does</th><th>Credits</th></tr></thead>
+<tbody>
+<tr><td>Background Remover Pro</td><td>Removes the background and keeps fine edges such as hair</td><td>20 per image</td></tr>
+<tr><td>Image to Prompt</td><td>Describes an image in words you can reuse as a prompt (text output)</td><td>20 per image</td></tr>
+<tr><td>Free Image Host</td><td>Uploads an image or video and gives you a shareable link</td><td>29 per file</td></tr>
+<tr><td>Upscale</td><td>Upscales an image to a higher resolution with sharper detail</td><td>30 per image</td></tr>
+<tr><td>Expand Image</td><td>Extends the canvas beyond the edges with matching content</td><td>30 per image</td></tr>
+<tr><td>Redraw &amp; Reframe</td><td>Regenerates the image at the aspect ratio you choose</td><td>30 per image</td></tr>
+<tr><td>Remove Objects</td><td>Removes the objects you describe in English and fills the background</td><td>30 per image</td></tr>
+<tr><td>Watermark Remover</td><td>Removes watermarks, text and marks from an image</td><td>30 per image</td></tr>
+<tr><td>Outfit Swap</td><td>Dresses the person in your image in the outfit from a second image</td><td>30 per image</td></tr>
+<tr><td>Video Watermark Remover</td><td>Cleans a video in 10-second segments and merges them into one video</td><td>100 per 10 seconds, rounded up</td></tr>
+</tbody>
+</table>
+<p>Video is billed by length: a clip of up to 10 seconds costs 100 credits, and a 25-second clip counts as three 10-second units, so 300 credits.</p>
+<p>Use the watermark and outfit tools just on media you have the rights to edit; see the <a href="/en/acceptable-use/">acceptable use policy</a>.</p>
+
+<h2>What 100 starting credits cover</h2>
+<p>The 100 credits a new account starts with are enough for, for example:</p>
+<ul>
+<li>5 background removals (5 × 20), or</li>
+<li>3 upscales or expands (3 × 30 = 90), or</li>
+<li>2 background removals and 2 upscales (40 + 60).</li>
+</ul>
+<p>A single 10-second video run uses all 100.</p>
+
+<h2>How credits work</h2>
+<ul>
+<li><strong>Credits are just for cloud AI Widgets.</strong> Viewing, comparing and the local tools never use credits.</li>
+<li><strong>Charged per task.</strong> A Widget's cost is shown in the Market and in the right-click menu before you run it.</li>
+<li><strong>Not enough credits?</strong> Glance tells you how many more the task needs and does not charge anything.</li>
+<li><strong>Failed tasks are refunded.</strong> If a task fails on Glance's side or times out in the queue, its credits are returned automatically.</li>
+<li><strong>Your balance is per account</strong> and shared across the Macs you sign in on. Credits do not expire.</li>
+<li><strong>Glance Pro does not include Widgets.</strong> Pro is a separate one-time purchase for local editing tools; Widgets keep using credits. Credit packs and Pro are described on the <a href="/en/pricing/">Pricing page</a>.</li>
+</ul>
+<!-- VERIFY: purchase status during the beta (README: payments not open; live /api/v2/pricing: enabled + paymentsAvailable true). Do not add "buy now" wording until this is settled. -->
+
+<h2>Good to know</h2>
+<ul>
+<li><strong>Your file goes to the cloud.</strong> Running a Widget uploads the image or video to Glance for processing. Read each Widget's Privacy section in the Market.</li>
+<li><strong>Widgets can change.</strong> New Widgets show up in Marketplace, and prices can change; the Market shows the current list. If a Widget is withdrawn, it disappears from your menu.</li>
+<li><strong>Help.</strong> DM {{SUPPORT_X}} on X. A screenshot or the log file ~/Library/Application Support/Glance/app.log helps.</li>
+</ul>
+
+<section class="post-faq">
+<h2>FAQ</h2>
+<h3>Where is the Widget Market in Glance?</h3>
+<p>In the full image or video window: click the Widget Market button in the toolbar, or right-click the image and choose Widgets → Widget Market….</p>
+<h3>Do I need an account to install a Widget?</h3>
+<p>No. You can browse and install Widgets without signing in. Glance asks you to sign in with Google or an email code when you run a Widget for the initial time.</p>
+<h3>How many credits does a Glance Widget cost?</h3>
+<p>Image Widgets cost 20 to 30 credits per image: Background Remover Pro and Image to Prompt cost 20, Free Image Host 29, and Upscale, Expand Image, Redraw &amp; Reframe, Remove Objects, Watermark Remover and Outfit Swap 30. Video Watermark Remover costs 100 credits per 10 seconds of video.</p>
+<h3>How many free credits do I get?</h3>
+<p>New accounts start with 100 credits, enough for five background removals or three upscales.</p>
+<h3>What happens if a Widget task fails?</h3>
+<p>If a task fails on Glance's side or times out in the queue, the credits are returned automatically.</p>
+<h3>Do credits expire?</h3>
+<p>No. Credits stay on your account and are shared across the Macs you sign in on.</p>
+</section>
