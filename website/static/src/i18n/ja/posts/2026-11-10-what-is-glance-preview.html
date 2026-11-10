@@ -1,0 +1,36 @@
+<!-- slug: what-is-glance-preview | kind: blog | status: published | date: 2026-11-10
+| title: Glance Preview とは？Mac 画像ビューアと同名アプリの違い
+| h1: Glance Preview とは？Mac で画像を見て、AI で直して、比較する
+| description: Glance Preview は Apple シリコン Mac 向けの画像・動画ビューアです。無料の画像比較、クラウド AI ウィジェットの料金、対応環境、同名の Quick Look アプリとの違いを解説します。
+| related: 画像を比較=/ja/compare-images-mac/ -->
+
+<p class="lead">Glance Preview（glancepreview.com）は、Apple シリコン Mac 向けの画像・動画ビューアです。画像を開き、気になるところをクラウド AI ウィジェットで修正し、元画像と見比べる流れで使います。開発者は Allan。閲覧と画像比較は無料で、AI 処理にはアカウントとクレジットが必要です。</p>
+<h2>画像を確認してから、必要な部分を直す</h2>
+<p>Finder の「このアプリケーションで開く」から Glance で画像を開き、拡大して細部を確認します。修正したい場合は、Widget Market で目的のウィジェットをインストールし、画像を右クリックして Widgets から実行します。処理後は Compare で元画像と並べるか、Slider の境界線を動かして見比べます。</p>
+<p>たとえば、切り抜きには <a href="/ja/use-cases/remove-image-background-mac/">Background Remover Pro</a>、画像を大きくしたいときは <a href="/ja/blog/upscale-image-mac/">Upscale</a>、被写体の周囲に余白を足したいときは <a href="/ja/use-cases/expand-image-mac/">Expand Image</a> を使えます。AI の出力は毎回同じではありません。髪の毛や文字、輪郭、変えたくなかった背景も確認してから採用してください。</p>
+<p>AI を実行せず、手元にある <a href="/ja/compare-images-mac/">2 枚の画像を比較する</a>こともできます。ローカル画像の比較のために AI 処理へアップロードする必要はありません。</p>
+<h2>「Glance」で検索すると出てくる別のアプリ</h2>
+<p>名前が似ていても別の製品です。ダウンロード前にドメインやリポジトリ名を確認してください。</p>
+<ul>
+<li><strong>Glance Preview（glancepreview.com）：</strong>この記事の画像・動画ビューアです。配布先は <a href="/ja/install/">公式インストールページ</a>。<a href="https://www.macosmenubar.com/glance-preview/">MenuBarApps の紹介ページ</a>もこの製品を掲載しています。</li>
+<li><strong><a href="https://apps.apple.com/us/app/glance-quick-look-code-files/id1564688210">Glance - Quick Look Code Files</a>：</strong>コードや Markdown などをプレビューする、別の App Store アプリです。</li>
+<li><strong><a href="https://github.com/chamburr/glance">chamburr/glance</a>：</strong>samuelmeuli/glance から派生した Quick Look プラグインです。このプロジェクトの Homebrew コマンドは Glance Preview のインストール手順ではありません。</li>
+<li><strong><a href="https://github.com/jonnyoo/glance">Glance: Face Unlock for Mac</a>：</strong>顔認証によるロック解除を扱う別のプロジェクトです。</li>
+<li><strong><a href="https://apps.apple.com/us/app/glance-prevent-eye-strain/id6746469770">Glance - Prevent Eye Strain</a>：</strong>目を休めるためのリマインダーアプリです。</li>
+</ul>
+<p>これらは Glance Preview の別バージョンや追加機能ではありません。他の Glance の対応 OS や導入手順を、そのまま当てはめないでください。</p>
+<h2>無料でできることと、クレジットの料金</h2>
+<p>閲覧と画像比較は無料です。変換・圧縮・書き出しなどの有料ローカルツールは Glance Pro に含まれ、Personal は Mac 1 台向けの買い切りで ¥1,480。クラウド AI は別のクレジット残高を使い、新規アカウントには 100 クレジットが付きます。600 クレジットのパックは ¥480 です。詳しくは <a href="/ja/pricing/">料金ページ</a>をご覧ください。</p>
+<ul><li>Background Remover Pro：1 回 20 クレジット。</li><li>Upscale、Expand Image、Redraw &amp; Reframe、Remove Objects：各 1 回 30 クレジット。</li></ul>
+<p>名称と料金は 2026 年 11 月 10 日の公開カタログで確認しました。AI ウィジェットは選んだ画像をクラウドへ送信するため、インターネット接続が必要です。実行前に表示される消費量と <a href="/ja/ai-models/">AI モデルの説明</a>を確認してください。AI 修正を完全にオフラインで行うアプリではありません。</p>
+<h2>対応 Mac とインストール前の確認</h2>
+<p>現在の配布版は 1.0.0-beta.1 で、Apple シリコン搭載 Mac と macOS 12.3 以降が必要です。Apple による公証は未取得のため、初回起動時はシステム設定の「プライバシーとセキュリティ」で許可する必要があります。<a href="/ja/use-cases/getting-started-glance-mac/">導入ガイド</a>も参照してください。英語と簡体字中国語に加えて利用できる表示言語は、お使いの配布版で確認してください。この記事では英語のボタン名を使っています。</p>
+<section class="post-faq"><h2>よくある質問</h2>
+<h3>Glance Preview は何をするアプリですか？</h3><p>glancepreview.com で配布される、Allan 開発の Mac 用画像・動画ビューアです。無料の閲覧・画像比較と、クレジットを使う任意のクラウド AI ウィジェットを組み合わせて使えます。</p>
+<h3>Quick Look の Glance と同じですか？</h3><p>別の製品です。Glance - Quick Look Code Files や chamburr/glance のプラグインと混同せず、Glance Preview の公式インストールページからダウンロードしてください。</p>
+<h3>Glance Preview は無料ですか？</h3><p>閲覧と画像比較は無料です。Pro のローカルツールとクラウド AI クレジットは別の有料項目です。新規アカウントには 100 クレジットが付きます。</p>
+<h3>AI 修正は Mac の中で完結しますか？</h3><p>いいえ。AI ウィジェットは画像をクラウドで処理し、ログイン・インターネット接続・クレジットを必要とします。ローカル画像の閲覧や比較には AI の実行は不要です。</p>
+<h3>修正前後を重ねて比較できますか？</h3><p>Slider で境界線を動かして 2 枚の画像を見比べられます。Compare では左右に並べて確認できます。AI の結果を採用する前に、元画像で残したかった部分も確認してください。</p>
+</section>
+
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "@id": "https://glancepreview.com/#app", "name": "Glance Preview", "url": "https://glancepreview.com/ja/", "description": "Glance Preview は Apple シリコン Mac 向けの画像・動画ビューアです。無料の画像比較、クラウド AI ウィジェットの料金、対応環境、同名の Quick Look アプリとの違いを解説します。", "applicationCategory": "MultimediaApplication", "operatingSystem": "macOS 12.3 or later, Apple silicon", "softwareVersion": "1.0.0-beta.1", "offers": {"@type": "Offer", "name": "無料の閲覧と画像比較", "price": "0", "priceCurrency": "JPY"}, "sameAs": ["https://www.macosmenubar.com/glance-preview/", "https://x.com/Sir03834855"]}</script>
