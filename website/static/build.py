@@ -25,7 +25,7 @@ SITE = "https://glancepreview.com"
 SUPPORT_X_URL = "https://x.com/Sir03834855"
 SUPPORT_X_HANDLE = "@Sir03834855"
 SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_X_HANDLE}</a>'
-VERSION = "1.0.0-beta.1"
+VERSION = "1.0.1"
 DMG = f"/download/Glance-{VERSION}.dmg"
 UPDATED = "2026-11-05"
 # IndexNow ownership key. It is public by design: the deploy script pings
@@ -369,8 +369,8 @@ def hreflang_links(base_path: str) -> str:
 
 
 
-# 1.0.0-beta.1 is self-signed (spctl: rejected). Set True only when the shipped DMG is notarized.
-NOTARIZED = False
+# 1.0.1 is notarized (stapler + spctl verified). Set False only if the shipped DMG becomes unnotarized.
+NOTARIZED = True
 
 
 def render(text: str, lang: str) -> str:

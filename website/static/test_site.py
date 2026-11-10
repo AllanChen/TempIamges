@@ -126,7 +126,7 @@ class SiteTests(unittest.TestCase):
                         self.assertNotIn(build.SITE + post['path'], self.sitemap)
                         en_alt = {a['hreflang']: a['href'] for a in self.pages[english[post['slug']]['path']].select('link', rel='alternate')}
                         self.assertNotIn(build.SITE + post['path'], en_alt.values())
-                        self.assertRegex(post['body'], {'ja': '英語と簡体字中国語', 'de': 'Englisch und vereinfachtem Chinesisch'}[lang])
+                        self.assertRegex(post['body'], {'ja': '英語・簡体字中国語・日本語', 'de': 'Englisch, vereinfachtem Chinesisch und Deutsch'}[lang])
                         self.assert_links_resolve(doc, lang)
                     continue
                 with self.subTest(lang=lang, post=post['slug']):
@@ -145,7 +145,7 @@ class SiteTests(unittest.TestCase):
                     self.assertIn(build.SITE + post['path'], self.sitemap)
                     self.assertTrue(post['faq'])
                     # Honest about the app UI language.
-                    self.assertRegex(post['body'], {'ja': '英語と簡体字中国語', 'de': 'Englisch und vereinfachtem Chinesisch'}[lang])
+                    self.assertRegex(post['body'], {'ja': '英語・簡体字中国語・日本語', 'de': 'Englisch, vereinfachtem Chinesisch und Deutsch'}[lang])
                     html = (build.OUT/post['path'].strip('/')/'index.html').read_text()
                     self.assertNotRegex(re.sub(r'<script.*?</script>', '', html, flags=re.S), r'[，图载这们说为简]')
                     self.assertIn('FAQPage', html)

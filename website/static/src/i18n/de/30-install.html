@@ -5,7 +5,7 @@
     <p class="updated">Glance {{VERSION}} · macOS 12.3 oder neuer · Apple Silicon (M-Serie)</p>
     <p><a class="btn btn-primary" href="{{DMG}}" download data-download-cta="install-de" data-app-version="{{VERSION}}">Glance {{VERSION}} herunterladen ({{DMG_SIZE}})</a></p>
     <p class="hash">SHA-256: {{DMG_SHA256}}</p>
-    <p>Die App-Oberfläche gibt es derzeit auf Englisch und vereinfachtem Chinesisch. Menünamen stehen unten so, wie sie in der englischen App erscheinen.</p>
+    <p>Die App-Oberfläche gibt es auf Englisch, vereinfachtem Chinesisch und Deutsch. Menünamen stehen unten so, wie sie in der englischen App erscheinen.</p>
 
     <h2>Installation</h2>
     <ol>
@@ -13,17 +13,9 @@
       <li>Glance in den Ordner „Programme“ ziehen.</li>
       <li>Glance im Ordner „Programme“ doppelklicken.</li>
     </ol>
-    <h2>Wenn macOS den ersten Start blockiert</h2>
-    <p>Die Beta ist noch nicht von Apple notarisiert, deshalb blockiert macOS den ersten Start. Das ist erwartet; Sie müssen ihn nur einmal erlauben.</p>
-    <h3>macOS 15 (Sequoia) und neuer</h3>
-    <ol>
-      <li>Glance doppelklicken; erscheint „kann nicht geöffnet werden“, auf „Fertig“ klicken.</li>
-      <li>Systemeinstellungen → Datenschutz &amp; Sicherheit öffnen und zum Bereich „Sicherheit“ scrollen.</li>
-      <li>Neben „Glance wurde blockiert“ auf „Dennoch öffnen“ klicken und mit dem Passwort bestätigen.</li>
-    </ol>
-    <h3>macOS 14 und älter</h3>
-    <p>Im Ordner „Programme“ mit der rechten Maustaste auf Glance klicken, „Öffnen“ wählen und im Dialog erneut „Öffnen“ klicken.</p>
-    <p>Danach öffnet sich Glance ganz normal per Doppelklick.</p>
+    <h2>Erster Start</h2>
+    <p>Glance ist von Apple notarisiert. Beim ersten Öffnen weist macOS darauf hin, dass die App aus dem Internet geladen wurde; klicken Sie „Öffnen“.</p>
+    <p>Lässt sich die App nicht öffnen, starten Sie sie aus dem Ordner „Programme“ (nicht aus dem DMG-Fenster) und prüfen Sie die SHA-256 oben.</p>
     <h2>Erste Schritte</h2>
     <ul>
       <li>Bild oder Video öffnen: Im Finder mit der rechten Maustaste auf die Datei klicken und „Öffnen mit → Glance“ wählen.</li>
@@ -31,12 +23,12 @@
       <li>Zwei Bilder markieren und gemeinsam öffnen, um sie direkt zu vergleichen.</li>
       <li>Erste KI-Korrektur: Widget Market… öffnen und ein Widget installieren, etwa Background Remover Pro (20 Credits pro Ausführung). Beim Ausführen werden Sie gebeten, sich anzumelden – mit Google oder per E-Mail-Code. Neue Konten erhalten 100 Credits. Das Ergebnis erscheint neben dem Original und lässt sich mit Compare oder Slider vergleichen.</li>
     </ul>
-    <p>Glance läuft als normale App mit Dock- und Menüleistensymbol. Beim ersten Start braucht es weder Systemberechtigungen noch ein Konto.</p>
+    <p>Glance läuft als normale App mit Dock- und Menüleistensymbol. Beim ersten Start braucht es weder Systemberechtigungen noch ein Konto. Der 14-tägige Test aller Funktionen beginnt beim ersten Start.</p>
     <h2>Optional: Peek</h2>
     <p>In jeder App Text mit einem Bildlink oder Dateipfad markieren und den Kurzbefehl drücken (standardmäßig Option + Leertaste), um eine Vorschau zu sehen. Peek ist optional und wird unter Preferences → Enable Peek aktiviert. Dabei fragt macOS nach den Berechtigungen „Bedienungshilfen“ und „Eingabeüberwachung“; sie dienen nur dazu, den Kurzbefehl zu erkennen und den markierten Text zu lesen. Der Text wird nie an Glance-Server gesendet; bei Weblinks lädt die Vorschau direkt von der jeweiligen Website.</p>
     <h2>Feedback und Support</h2>
     <p>Senden Sie eine Direktnachricht an {{SUPPORT_X}} auf X (auf Englisch oder Chinesisch). Bei Fehlern helfen ein Screenshot und die Logdatei <code>~/Library/Application Support/Glance/app.log</code>.</p>
     <h2>Deinstallieren</h2>
-    <p>Glance beenden und aus „Programme“ in den Papierkorb ziehen. Um auch lokale Einstellungen und Logs zu löschen, entfernen Sie <code>~/Library/Application Support/Glance</code>. Konto und Credits liegen in der Cloud; zum Löschen des Kontos senden Sie eine Direktnachricht an {{SUPPORT_X}} auf X.</p>
+    <p>Glance beenden und aus „Programme“ in den Papierkorb ziehen. Um auch lokale Einstellungen und Logs zu löschen, entfernen Sie <code>~/Library/Application Support/Glance</code>. Konto und Credits liegen in der Cloud; zum Löschen des Kontos verwenden Sie Glance → Delete account.</p>
   </div>
 </article>

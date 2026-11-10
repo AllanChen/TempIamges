@@ -4,7 +4,7 @@
 | description: GPT Image 2.5 には速さ重視の Flare と画質重視の Sunburst があります。同じプロンプトで公平に比べ、Mac で並べて・スライダーで確認し、ワンクリックで直す手順。
 | related: Mac で 2 枚の画像を比較する=/ja/compare-images-mac/, Mac で画像を高画質化する=/ja/blog/upscale-image-mac/, Mac で画像の背景を削除する=/ja/use-cases/remove-image-background-mac/, AI 付きの Mac 画像ビューア=/ja/blog/ai-image-preview-mac/, ダウンロードとインストール=/ja/install/ -->
 <p class="lead">OpenAI の GPT Image 2.5 には Flare と Sunburst の 2 つのモデルがあり、「自分の画像にはどちらを使えばいいのか」が気になるところです。OpenAI 自身は、同じプロンプトと設定で両方を自分の用途で試し、結果をよく見比べることを勧めています。この記事では 2 つのモデルの違い、公平なテストのやり方、そして Glance Preview を使って Mac 上で生成画像を並べて確認し、惜しい画像をワンクリックで直す方法を紹介します。</p>
-<p>※ Glance Preview のアプリ表示は英語と簡体字中国語のみです。</p>
+<p>※ Glance Preview のアプリ表示は英語・簡体字中国語・日本語に対応しています。</p>
 
 <h2>Flare と Sunburst の違い（早見表）</h2>
 <p>表の内容はすべて OpenAI の <a href="https://developers.openai.com/api/docs/guides/image-prompting" rel="noopener">GPT Image 2.5 プロンプトガイド</a>と、<a href="https://developers.openai.com/api/docs/models/gpt-image-2.5-flare" rel="noopener">Flare</a>・<a href="https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst" rel="noopener">Sunburst</a> のモデルページ（英語、2026-11-04 時点）にもとづきます。</p>
@@ -58,7 +58,7 @@
 <tr><td>別の縦横比が必要</td><td>Redraw &amp; Reframe</td><td>30</td></tr>
 </tbody>
 </table>
-<p>注意点も 2 つあります。GPT Image 2.5 はもともと背景の透過や大きなサイズでの出力に対応しているので、プロンプトが手元にあるなら設定を変えて生成し直すほうが簡単な場合もあります。また Widgets は別のクラウド AI モデルで動いており、<a href="/ja/ai-models/">AI モデルの開示ページ</a>に一覧があります。Glance Preview は GPT Image 2.5 を実行せず、テキストから画像を生成することもありません。クラウドの Widget は画像をアップロードして処理し、サインインが必要です。新規アカウントには 100 クレジットが付き、ベータ期間中はアプリ内購入は利用できません。Glance 側の原因で失敗したタスクのクレジットは返却されます（<a href="/ja/pricing/">料金ページ</a>参照）。手順は<a href="/ja/use-cases/remove-image-background-mac/">背景の削除</a>、<a href="/ja/blog/upscale-image-mac/">高画質化</a>、<a href="/ja/use-cases/expand-image-mac/">画像の拡張</a>の各記事にあります。</p>
+<p>注意点も 2 つあります。GPT Image 2.5 はもともと背景の透過や大きなサイズでの出力に対応しているので、プロンプトが手元にあるなら設定を変えて生成し直すほうが簡単な場合もあります。また Widgets は別のクラウド AI モデルで動いており、<a href="/ja/ai-models/">AI モデルの開示ページ</a>に一覧があります。Glance Preview は GPT Image 2.5 を実行せず、テキストから画像を生成することもありません。クラウドの Widget は画像をアップロードして処理し、サインインが必要です。新規アカウントには 100 クレジットが付き、アプリ内で追加購入できます。Glance 側の原因で失敗したタスクのクレジットは返却されます（<a href="/ja/pricing/">料金ページ</a>参照）。手順は<a href="/ja/use-cases/remove-image-background-mac/">背景の削除</a>、<a href="/ja/blog/upscale-image-mac/">高画質化</a>、<a href="/ja/use-cases/expand-image-mac/">画像の拡張</a>の各記事にあります。</p>
 
 <h2>結局どちらを使えばいい？</h2>
 <ul>
