@@ -493,6 +493,8 @@ def main() -> None:
     (OUT / "_redirects").write_text(f"""/refund /refunds/ 301
 /refund/ /refunds/ 301
 /Glance-1.0.0.dmg {DMG} 302
+/Glance-1.0.0-beta.1.dmg {DMG} 302
+/download/Glance-1.0.0-beta.1.dmg {DMG} 302
 /download {DMG} 302
 /download/ {DMG} 302
 /aup /acceptable-use/ 301
