@@ -227,8 +227,8 @@
           n.appendChild(row);
         });
         if (!tiers.length) n.appendChild(both('p', 'notice',
-          purchasesOpen ? '价格尚未公布。' : '内测期间应用内购买尚未开放。',
-          purchasesOpen ? 'Prices are not published yet.' : 'In-app purchases are not open during this beta.'));
+          purchasesOpen ? '价格尚未公布。' : '支付功能暂时不可用。',
+          purchasesOpen ? 'Prices are not published yet.' : 'Payments are temporarily unavailable.'));
       });
       document.querySelectorAll('[data-pro-launch]').forEach(function (n) {
         n.hidden = !anyDiscount;
@@ -250,8 +250,8 @@
           n.appendChild(pack);
         });
         if (!packs.length) n.appendChild(both('p', 'notice',
-          purchasesOpen ? '点数包价格尚未公布。' : '内测期间应用内购买尚未开放。',
-          purchasesOpen ? 'Credit pack prices are not published yet.' : 'In-app purchases are not open during this beta.'));
+          purchasesOpen ? '点数包价格尚未公布。' : '支付功能暂时不可用。',
+          purchasesOpen ? 'Credit pack prices are not published yet.' : 'Payments are temporarily unavailable.'));
       });
       document.querySelectorAll('[data-config]').forEach(function (n) {
         var v = pricing[n.getAttribute('data-config')];

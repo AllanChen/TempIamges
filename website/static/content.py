@@ -37,7 +37,7 @@ STRINGS = {
            "empty": "The first posts are on the way.",
            "also": 'Also see <a href="{other}">{other_label}</a>, the <a href="/en/compare-images-mac/">image comparison guide</a> and the <a href="/en/widgets/">AI Widgets</a> list.',
            "try": "Try it on your own images",
-           "try_p": "Glance Preview is a free beta for Apple silicon Macs (macOS 12.3 or later). AI tools run in the cloud and use credits; new accounts start with 100.",
+           "try_p": "Glance Preview is free to download for Apple silicon Macs (macOS 12.3 or later). AI tools run in the cloud and use credits; new accounts start with 100.",
            "cta": "Download Glance Preview", "related": "Related"},
     "ja": {"kinds": {
                "blog": ("ブログ", "Glance Preview ブログ",
@@ -47,7 +47,7 @@ STRINGS = {
            "home": "ホーム", "min": "約 {n} 分で読めます", "empty": "最初の記事を準備中です。",
            "also": '<a href="{other}">{other_label}</a>、<a href="/ja/compare-images-mac/">画像比較ガイド</a>、<a href="/ja/widgets/">AI ウィジェット一覧</a>もご覧ください。',
            "try": "手元の画像で試してみる",
-           "try_p": "Glance Preview は Apple シリコン搭載 Mac（macOS 12.3 以降）向けの無料ベータ版です。アプリの表示言語は英語と簡体字中国語のみです。AI ツールはクラウドで動作しクレジットを使います。新規アカウントには 100 クレジットが付きます。",
+           "try_p": "Glance Preview は Apple シリコン搭載 Mac（macOS 12.3 以降）向けに無料でダウンロードできます。アプリの表示言語は英語・簡体字中国語・日本語・ドイツ語です。AI ツールはクラウドで動作しクレジットを使います。新規アカウントには 100 クレジットが付きます。",
            "cta": "Glance Preview をダウンロード", "related": "関連記事"},
     "de": {"kinds": {
                "blog": ("Blog", "Glance Preview Blog",
@@ -57,7 +57,7 @@ STRINGS = {
            "home": "Start", "min": "{n} Min. Lesezeit", "empty": "Die ersten Beiträge sind in Arbeit.",
            "also": 'Siehe auch <a href="{other}">{other_label}</a>, die <a href="/de/compare-images-mac/">Anleitung zum Bildvergleich</a> und die Liste der <a href="/de/widgets/">KI-Widgets</a>.',
            "try": "Mit eigenen Bildern ausprobieren",
-           "try_p": "Glance Preview ist eine kostenlose Beta für Macs mit Apple Silicon (macOS 12.3 oder neuer). Die App-Oberfläche gibt es nur auf Englisch und vereinfachtem Chinesisch. KI-Werkzeuge laufen in der Cloud und verbrauchen Credits; neue Konten starten mit 100.",
+           "try_p": "Glance Preview ist kostenlos herunterladbar für Macs mit Apple Silicon (macOS 12.3 oder neuer). Die App-Oberfläche gibt es auf Englisch, vereinfachtem Chinesisch, Japanisch und Deutsch. KI-Werkzeuge laufen in der Cloud und verbrauchen Credits; neue Konten starten mit 100.",
            "cta": "Glance Preview herunterladen", "related": "Weiterlesen"},
 }
 REQUIRED = ("slug", "kind", "status", "date", "title", "h1", "description")
