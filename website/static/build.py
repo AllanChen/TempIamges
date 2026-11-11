@@ -61,16 +61,16 @@ NAV = [
 ]
 
 DESCRIPTIONS = {
-    '/': ('Glance 是 Mac 图片和视频查看器，支持并排对比、图片文字识别和就地 AI 工具。免费下载 Apple 芯片 Mac 内测版。',
-          'View images and videos on your Mac, compare changes side by side, and run AI tools where you work. Download the Glance beta for Apple silicon.'),
+    '/': ('Glance 是 Mac 图片和视频查看器，支持并排对比、图片文字识别和就地 AI 工具。免费下载 Apple 芯片 Mac 版。',
+          'View images and videos on your Mac, compare changes side by side, and run AI tools where you work. Download Glance for Apple silicon.'),
     '/pricing/': ('了解 Glance 免费查看、Pro 一次买断和云端 AI Widget 按次消耗点数的价格与功能。',
                  'Compare Glance Free and Pro, one-time Mac licenses, and credits for cloud AI Widgets. See what is included before you download.'),
     '/widgets/': ('查看 Glance AI Widget 的功能、每次点数价格、处理模型与媒体上传说明。',
                  'Explore Glance AI Widgets for your images and videos, including upscaling and background removal. See per-run credits and processing details.'),
     '/ai-models/': ('公开了解 Glance 各 AI Widget 的底层模型、版本信息、第三方处理服务和功能范围，无需登录。',
                     'Public disclosure of the AI models, version information, processing services and capabilities behind Glance Widgets. No login required.'),
-    '/install/': ('下载 Glance macOS 内测版，查看系统要求、安装步骤、首次启动说明和文件校验值。',
-                 'Download Glance for Apple silicon Macs. Find system requirements, beta installation instructions, first-launch help, and the download checksum.'),
+    '/install/': ('下载 Glance 1.0.2，查看系统要求、安装步骤、首次启动说明和文件校验值。',
+                 'Download Glance for Apple silicon Macs. Find system requirements, installation instructions, first-launch help, and the download checksum.'),
     '/terms/': ('阅读 Glance 的服务条款、账户与许可、云端任务和付款规则。',
                'Read the Glance terms of service for the Mac app, accounts, licenses, cloud tasks, and payments.'),
     '/privacy/': ('了解 Glance 的本地处理、云端 Widget 媒体上传和账户数据隐私政策。',
@@ -149,7 +149,7 @@ def pricing_cards(lang: str, kind: str) -> str:
     pricing = PRICING_FALLBACK
     available = pricing.get("enabled") and pricing.get("paymentsAvailable")
     if not available:
-        message = {"en": "In-app purchases are not open during this beta.", "ja": "ベータ期間中はアプリ内購入をまだ受け付けていません。", "de": "In-App-Käufe sind während der Beta noch nicht möglich."}.get(lang, "内测期间应用内购买尚未开放。")
+        message = {"en": "Payments are temporarily unavailable.", "ja": "現在、決済は一時的に利用できません。", "de": "Zahlungen sind derzeit vorübergehend nicht verfügbar."}.get(lang, "支付功能暂时不可用。")
         return f'<p class="notice">{message}</p>'
     currency = {"en": "USD", "ja": "JPY", "de": "EUR"}.get(lang, "CNY")
     rows = []
@@ -187,6 +187,7 @@ CHROME = {
            "Legal": "規約（英語）", "Terms of Service": "利用規約", "Privacy Policy": "プライバシーポリシー",
            "Refund Policy": "返金ポリシー", "Acceptable Use Policy": "利用ポリシー", "Support": "サポート",
            "Report content": "違反コンテンツの報告", "Use cases": "使い方", "Blog": "ブログ",
+           "Telegram group": "Telegram グループ",
            "The Preview for the AI era. View images and video, fix them in place with AI, then compare to confirm.":
                "AI 時代のプレビュー。画像や動画をすばやく見て、気になれば AI でその場で直し、比較して確認。",
            "Payments are processed by Pancake by Waffo as Merchant of Record.":
@@ -198,6 +199,7 @@ CHROME = {
            "Legal": "Rechtliches (Englisch)", "Terms of Service": "Nutzungsbedingungen", "Privacy Policy": "Datenschutz",
            "Refund Policy": "Rückerstattung", "Acceptable Use Policy": "Nutzungsrichtlinie", "Support": "Support",
            "Report content": "Inhalte melden", "Use cases": "Anwendungsfälle", "Blog": "Blog",
+           "Telegram group": "Telegram-Gruppe",
            "The Preview for the AI era. View images and video, fix them in place with AI, then compare to confirm.":
                "Die Vorschau fürs KI-Zeitalter. Bilder und Videos ansehen, direkt mit KI korrigieren und dann vergleichen.",
            "Payments are processed by Pancake by Waffo as Merchant of Record.":
@@ -246,6 +248,7 @@ def footer() -> str:
       <a href="/refunds/">{bi("退款政策", "Refund Policy")}</a><a href="/acceptable-use/">{bi("可接受使用政策", "Acceptable Use Policy")}</a></div>
     <div><h4>{bi("支持", "Support")}</h4>
       <a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{bi("X 私信 @Sir03834855", "DM @Sir03834855 on X")}</a>
+      <a href="https://t.me/+zKBUO5oNceJiYWI1" target="_blank" rel="noopener">{bi("Telegram 群组", "Telegram group")}</a>
       <a href="/acceptable-use/#report">{bi("举报违规内容", "Report content")}</a></div>
   </div>
   <div class="footer-bottom">
