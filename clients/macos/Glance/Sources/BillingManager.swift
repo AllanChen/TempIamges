@@ -64,6 +64,15 @@ final class BillingManager {
   }
   var offlineAuthorizationExpired: Bool { signedClaims != nil && verifiedClaims == nil }
   var hasPro: Bool { verifiedClaims != nil }
+  var shouldManagePro: Bool { hasPro || entitlements?.licenseStatus == "active" || offlineAuthorizationExpired }
+  var proEntryTitle: String {
+    if shouldManagePro { return "Manage Pro".localized }
+    guard let pricing, pricing.paymentsAvailable,
+          let amount = pricing.proTiers.filter({ $0.enabled && !$0.productID.isEmpty })
+            .compactMap({ $0.price(pricing.defaultCurrency, launchUntil: pricing.launchUntil).amount }).min()
+    else { return "Upgrade to Pro".localized }
+    return String(format: "Upgrade to Pro · from %@".localized, money(amount, currency: pricing.defaultCurrency))
+  }
   var licenseDurationLabel: String {
     if let expiry = entitlements?.accessExpiresAt {
       return String(format: "Pro until %@".localized, BillingDates.display(expiry))
@@ -85,6 +94,7 @@ final class BillingManager {
   func start() {
     trial.observe(Date())
     track("trial_started", id: "trial-started", feature: nil)
+    sendPendingPreviewSuccess()
     NotificationCenter.default.addObserver(
       forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main
     ) { [weak self] note in
@@ -100,10 +110,40 @@ final class BillingManager {
       "id": id.count < 16 ? "glance-event-" + id : id, "kind": kind,
       "startedAt": BillingDates.string(trial.startedAt),
     ]
+    body.merge(ClientEnvironment.eventProperties) { _, value in value }
     if let journeyID { body["journeyID"] = journeyID }
     if let feature { body["feature"] = feature }
     request("/api/v2/billing/events", body: body, authenticated: AuthManager.shared.isSignedIn) {
       (_: Result<EmptyBillingResponse, Error>) in
+    }
+  }
+  private var sendingPreviewSuccess = false
+  private lazy var previewSuccessAcknowledged = BillingSecureStore.read("first-preview-ack-" + ClientEnvironment.buildChannel) != nil
+  /// Called only by visible media surfaces after a decoded image / video frame is ready.
+  func recordSuccessfulPreview(_ mediaKind: String) {
+    guard ["image", "video"].contains(mediaKind), !previewSuccessAcknowledged else { return }
+    if BillingSecureStore.read("first-preview-pending-" + ClientEnvironment.buildChannel) == nil {
+      BillingSecureStore.write("first-preview-pending-" + ClientEnvironment.buildChannel, Data(mediaKind.utf8))
+    }
+    sendPendingPreviewSuccess()
+  }
+  private func sendPendingPreviewSuccess() {
+    let channel = ClientEnvironment.buildChannel
+    guard !sendingPreviewSuccess,
+          !previewSuccessAcknowledged,
+          let data = BillingSecureStore.read("first-preview-pending-" + channel),
+          let kind = String(data: data, encoding: .utf8) else { return }
+    sendingPreviewSuccess = true
+    var body: [String: Any] = ["id": "first-preview-success", "kind": "first_preview_success",
+                              "mediaKind": kind, "startedAt": BillingDates.string(trial.startedAt)]
+    body.merge(ClientEnvironment.eventProperties) { _, value in value }
+    request("/api/v2/billing/events", body: body, authenticated: AuthManager.shared.isSignedIn) {
+      (result: Result<EmptyBillingResponse, Error>) in
+      self.sendingPreviewSuccess = false
+      if case .success = result {
+        self.previewSuccessAcknowledged = true
+        BillingSecureStore.write("first-preview-ack-" + channel, Data("1".utf8))
+      }
     }
   }
   func trackTrialActivity(_ feature: String) {
@@ -305,7 +345,7 @@ final class BillingManager {
     if let points = price.points { expected["points"] = points }
     var body: [String: Any] = [
       "product": product, "currency": currency, "expectedPrice": expected,
-      "language": Locale.preferredLanguages.first?.hasPrefix("zh") == true ? "zh-Hans" : "en",
+      "language": Preferences.shared.appLanguage == .chinese ? "zh-Hans" : "en",
     ]
     if let pack { body["packID"] = pack.id }
     if let tier { body["tierID"] = tier.id }

@@ -148,6 +148,7 @@
 		790B6D57380E5760E9CEA752 /* LoadFailed.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = LoadFailed.gif; sourceTree = "<group>"; };
 		7D6F1BD77245D7D4DEC80034 /* WidgetResultURLButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetResultURLButton.swift; sourceTree = "<group>"; };
 		7F782B64022CF60CCC6E4FC2 /* InspectToastWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectToastWindow.swift; sourceTree = "<group>"; };
+		817464EF871EF474B4D8EBBD /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
 		82487A06B07A2503B6D2FAC1 /* FilenameCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilenameCache.swift; sourceTree = "<group>"; };
 		8883A25E4A148B14EAAA2A18 /* ErrorTooltip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorTooltip.swift; sourceTree = "<group>"; };
 		8A5E859FF1BD25FBF7B257D3 /* ActionMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionMenu.swift; sourceTree = "<group>"; };
@@ -157,6 +158,7 @@
 		9506424730AC6E5EE7E50BED /* TaskRunningViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRunningViews.swift; sourceTree = "<group>"; };
 		9547D8963B922FFDFC345E56 /* CaptureOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureOutput.swift; sourceTree = "<group>"; };
 		9C4D6E34CEC06010CDCA45E6 /* BillingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingWindow.swift; sourceTree = "<group>"; };
+		9D074E1E640534AA30338B70 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		9E0AC229A392A01D463A484B /* CaptureGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGeometry.swift; sourceTree = "<group>"; };
 		9E3752BB582E3A80CC0F50EB /* SelectedTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedTextExtractor.swift; sourceTree = "<group>"; };
 		A0B82D153A70DA5590B431D5 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
@@ -394,7 +396,9 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
+				de,
 				en,
+				ja,
 				"zh-Hans",
 			);
 			mainGroup = 1A7345DEDC89903C9907667A;
@@ -522,7 +526,9 @@
 		AA4B6E6699F8CFDA864D2F8A /* Localizable.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
+				817464EF871EF474B4D8EBBD /* de */,
 				FEF6EE7C0B59774DEC290C5D /* en */,
+				9D074E1E640534AA30338B70 /* ja */,
 				5F2A3DC0021C901714A5F8A0 /* zh-Hans */,
 			);
 			name = Localizable.strings;

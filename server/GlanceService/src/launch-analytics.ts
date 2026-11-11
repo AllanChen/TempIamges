@@ -37,8 +37,15 @@ export async function pruneWebsiteEvents(env:Env) {
   ]);
 }
 
-export async function launchMetrics(env:Env, from:string, until:string) {
-  const all=async(sql:string,args:unknown[]=[])=>(await env.DB.prepare(sql).bind(from,until,...args).all()).results;
+export async function launchMetrics(env:Env, from:string, until:string, environment='prod') {
+  const mode=environment==='test'?'test':'prod';
+  const all=async(sql:string,args:unknown[]=[])=>{
+    const scoped=sql.replace(/billing_mode='prod'/g,`billing_mode='${mode}'`)
+      .replace(/\bbilling_events\b/g,`(SELECT * FROM billing_events WHERE billing_mode='${mode}')`)
+      .replace(/\bpro_redemption_codes\b/g,`(SELECT * FROM pro_redemption_codes WHERE billing_mode='${mode}')`)
+      .replace(/\badmin_pro_grants\b/g,`(SELECT * FROM admin_pro_grants WHERE billing_mode='${mode}')`);
+    return (await env.DB.prepare(scoped).bind(from,until,...args).all()).results;
+  };
   const [website,clicks,events,proFunnel,grants,redemptions,channels]=await Promise.all([
     all(`WITH visits AS (SELECT session_id,MIN(created_at) started FROM website_events
       WHERE kind='page_view' AND created_at BETWEEN ? AND ? GROUP BY session_id)
@@ -91,5 +98,13 @@ export async function launchMetrics(env:Env, from:string, until:string) {
       FROM tagged v LEFT JOIN website_events t ON t.session_id=v.session_id AND t.id=v.touch
       GROUP BY source,medium,campaign,content ORDER BY sessions DESC`)
   ]);
-  return {website:website[0],clicks,events,proFunnel:proFunnel[0],grants:grants[0],redemptions,channels};
+  const activation=await all(`SELECT COUNT(DISTINCT CASE WHEN kind='trial_started' THEN device_hash END) started,
+    COUNT(DISTINCT CASE WHEN kind='first_preview_success' THEN device_hash END) previewed,
+    COUNT(DISTINCT CASE WHEN kind='first_preview_success' AND media_kind='image' THEN device_hash END) image,
+    COUNT(DISTINCT CASE WHEN kind='first_preview_success' AND media_kind='video' THEN device_hash END) video
+    FROM billing_events WHERE created_at BETWEEN ? AND ?`);
+  const clientVersions=await all(`SELECT app_version,app_build,macos_version,architecture,language,COUNT(*) events,
+    COUNT(DISTINCT device_hash) devices FROM billing_events WHERE created_at BETWEEN ? AND ?
+    GROUP BY app_version,app_build,macos_version,architecture,language ORDER BY devices DESC LIMIT 100`);
+  return {website:website[0],clicks,events,activation:activation[0],clientVersions,proFunnel:proFunnel[0],grants:grants[0],redemptions,channels};
 }

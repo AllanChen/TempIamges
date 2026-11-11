@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 
 from . import __version__
 from .api import APIError, request, upload_task_file
+from .failures import classify_failure
 from .registry import connect, eligible, rows, update, utc_now
 from .result_spool import discard as discard_results, load as load_results, save as save_results
 from .result_spool import load_failure, save_failure
@@ -145,6 +146,20 @@ def _read_progress(path: Path) -> dict:
         return {}
 
 
+def _diagnose_unbound_tasks(db) -> None:
+    available = {row["widget_id"]: row for row in eligible(db, {}, 0)}
+    result = request("GET", "/api/v2/widget-tasks/diagnostics")
+    for queued in result.get("widgets", []):
+        widget_id = queued["widgetId"]
+        row = available.get(widget_id)
+        if row is None:
+            logger.warning("[%s] 后台有 %s 个排队任务，但本机未注册或未启用。请运行 glance widget add <该 Widget 代码目录>；若已注册，请检查启用状态。",
+                           widget_id, queued["queuedCount"])
+        elif not (Path(row["code_path"]) / "main.py").is_file() or not os.access(row["python_path"], os.X_OK):
+            logger.warning("[%s] 后台有 %s 个排队任务，但本机 main.py 或 Python 解释器不可用，请修复注册路径。",
+                           widget_id, queued["queuedCount"])
+
+
 def _run_task(row: dict, task: dict) -> None:
     task_id = task["taskId"]
     claim = task["claimToken"]
@@ -243,8 +258,10 @@ def _run_task(row: dict, task: dict) -> None:
                        task_id, error)
         raise
     except Exception as error:
-        failure = {"status": "failed", "errorCode": "worker_timeout" if isinstance(error, TaskTimeoutError) else "worker_error",
-                   "message": str(error)[:1000], "artifacts": []}
+        error_code, reason = classify_failure(error)
+        failure = {"status": "failed", "errorCode": error_code, "message": str(error)[:1000], "artifacts": []}
+        if reason:
+            failure["reason"] = reason
         try:
             save_failure(task_id, failure)
         except Exception as storage_error:
@@ -291,6 +308,10 @@ def run_worker() -> None:
                             except APIError as error:
                                 logger.warning("[%s] 状态同步失败：%s", widget_id, error)
                         last_sync = time.monotonic()
+                        try:
+                            _diagnose_unbound_tasks(db)
+                        except Exception as error:
+                            logger.debug("队列诊断暂不可用：%s", error)
                     for future, key in list(active.items()):
                         if future.done():
                             active.pop(future)

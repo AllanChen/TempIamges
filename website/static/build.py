@@ -20,15 +20,16 @@ SRC = ROOT / "src"
 OUT = ROOT / "public"
 SITE = "https://glancepreview.com"
 # The former address and www redirect to SITE in functions/_middleware.js.
-# Support is by direct message on X; there is no support mailbox.
+SUPPORT_EMAIL = "support@glancepreview.com"
+SUPPORT = f'<a href="mailto:{SUPPORT_EMAIL}">{SUPPORT_EMAIL}</a>'
 SUPPORT_X_URL = "https://x.com/Sir03834855"
 SUPPORT_X_HANDLE = "@Sir03834855"
 SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_X_HANDLE}</a>'
-VERSION = "1.0.0-beta.1"
+VERSION = "1.0.2"
 DMG = f"/download/Glance-{VERSION}.dmg"
 # A pre-release version keeps beta positioning; a final version must ship a notarized DMG.
 PRERELEASE = "-" in VERSION
-UPDATED = "2026-11-05"
+UPDATED = "2026-11-09"
 
 SNAPSHOT = json.loads((SRC / "public-snapshot.json").read_text(encoding="utf-8"))
 PRICING_FALLBACK = SNAPSHOT["pricing"]
@@ -203,8 +204,7 @@ def footer() -> str:
       <a href="/terms/">{legal("服务条款", "Terms of Service", "利用規約", "Nutzungsbedingungen")}</a><a href="/privacy/">{legal("隐私政策", "Privacy Policy", "プライバシーポリシー", "Datenschutzerklärung")}</a>
       <a href="/refunds/">{legal("退款政策", "Refund Policy", "返金ポリシー", "Rückerstattungsrichtlinie")}</a><a href="/acceptable-use/">{legal("可接受使用政策", "Acceptable Use Policy", "利用ポリシー", "Nutzungsrichtlinie")}</a></div>
     <div><h4>{bi("支持", "Support", ja="サポート", de="Support")}</h4>
-      <a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{bi("X 私信 " + SUPPORT_X_HANDLE, "DM " + SUPPORT_X_HANDLE + " on X",
-        ja="X で DM：" + SUPPORT_X_HANDLE, de="DM auf X: " + SUPPORT_X_HANDLE)}</a>
+      <a href="mailto:{SUPPORT_EMAIL}">{SUPPORT_EMAIL}</a>
       <a href="/acceptable-use/#report">{legal("举报违规内容", "Report content", "違反コンテンツを報告", "Inhalte melden")}</a></div>
   </div>
   <div class="footer-bottom">
@@ -302,7 +302,7 @@ def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
 
 def render(text: str, lang: str) -> str:
     replacements = {
-        "{{SUPPORT_X}}": SUPPORT_X, "{{VERSION}}": VERSION, "{{DMG}}": DMG,
+        "{{SUPPORT_X}}": SUPPORT_X, "{{SUPPORT}}": SUPPORT, "{{VERSION}}": VERSION, "{{DMG}}": DMG,
         "{{UPDATED}}": UPDATED, "{{SITE}}": SITE,
         "{{PRICING_JSON}}": json.dumps(PRICING_FALLBACK, ensure_ascii=False).replace('<', '\\u003c'),
         "{{PRICING_TIERS}}": pricing_cards(lang, "tiers"),
@@ -402,6 +402,23 @@ def load_pages(folder: Path) -> list[tuple[dict, str]]:
 
 
 def main() -> None:
+    import xml.etree.ElementTree as ET
+    feed = ET.parse(SRC / 'updates/appcast.xml')
+    ns = {'sparkle': 'http://www.andymatuschak.org/xml-namespaces/sparkle'}
+    if not PRERELEASE:
+        items = feed.findall('channel/item')
+        current = [item for item in items if item.findtext('sparkle:shortVersionString', namespaces=ns) == VERSION]
+        if not current:
+            raise SystemExit(f'Update feed must contain release {VERSION}; refusing an empty or stale feed')
+        from urllib.parse import urlparse
+        for item in items:
+            for enclosure in item.iter('enclosure'):
+                url = urlparse(enclosure.attrib['url'])
+                if url.hostname != 'glancepreview.com':
+                    raise SystemExit(f'Unexpected update host: {url.hostname}')
+                archive = SRC / url.path.lstrip('/')
+                if not archive.is_file() or archive.stat().st_size != int(enclosure.attrib['length']):
+                    raise SystemExit(f'Missing or mismatched update archive: {archive}')
     pages = load_pages(SRC / 'pages')
     page_paths = {meta['path'] for meta, _ in pages if not meta.get('noindex')}
     # Validate and render everything before replacing the generated output.

@@ -4057,6 +4057,135 @@ async function generateWidgetMarketRedesign() {
 }
 
 // Review-only billing storyboards. No checkout URL, wallet or app is modified.
+const PRO_PURCHASE_ENTRY_FRAME = 'Glance Pro / Discover & Purchase / Review';
+
+async function generateProPurchaseEntry() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(node => node.name === PRO_PURCHASE_ENTRY_FRAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'Selected existing Pro purchase review. Your edits are preserved.' });
+    return;
+  }
+  const maxX = figma.currentPage.children.reduce((value, node) => Math.max(value, node.x + node.width), 0);
+  const board = frame(PRO_PURCHASE_ENTRY_FRAME, maxX + 196, 0, 2016, 2540, null);
+  figma.currentPage.appendChild(board);
+  text('Review Title', board, 'Glance Pro · 主动发现与购买', 0, 0, 30, COLORS.text, 'semibold', 1200);
+  text('Review Scope', board, '审核稿 / 常驻入口，不等待功能拦截。沿用现有深色窗口与杏色强调。人民币为当前正式价格。', 0, 48, 14, COLORS.secondary, 'regular', 1900);
+  const links = [];
+  const refs = {};
+  const home = createHomeScreen(0);
+  board.appendChild(home);
+  home.x = 0; home.y = 100;
+  home.name = 'Pro Entry / Home';
+  refs.home = home;
+  const root = home.findOne(node => node.name === '03 / Open Surface');
+  const entry = billingAction(root, '升级 Pro · ¥29.90 起', 56, 770, 240, true, 'Discover Pro');
+  text('Entry Detail', root, '一次买断 · 终身更新', 316, 782, 13, COLORS.secondary, 'regular', 340);
+  links.push([entry, 'personal']);
+  const notes = panel(board, 'Entry Specification', 1600, 100, 416, 470, COLORS.surface, 14);
+  text('Entry Heading', notes, '入口放在哪里？', 24, 24, 20, COLORS.text, 'semibold', 368);
+  const noteRows = [
+    ['主入口', 'Home 打开区底部常驻「升级 Pro」，\n不遮挡打开文件和最近项目。'],
+    ['辅助入口', 'Glance 应用菜单：购买 Glance Pro…\n账户页面：查看 Pro 方案。'],
+    ['已经购买', '入口改为「管理 Pro」，不继续促销。\n五人版可在管理页邀请成员。'],
+    ['不会打扰', '不自动弹出，不做倒计时。\n免费功能仍然可以继续使用。']
+  ];
+  noteRows.forEach(([heading, detail], index) => {
+    text('Entry Rule ' + index, notes, heading, 24, 78 + index * 92, 13, COLORS.accent, 'semibold', 368);
+    const label = text('Entry Explanation ' + index, notes, detail, 24, 102 + index * 92, 13, COLORS.secondary, 'regular', 368);
+    label.lineHeight = { unit: 'PIXELS', value: 20 };
+  });
+  function window(id, title, subtitle, index) {
+    const x = (index % 3) * 688, y = 1200 + Math.floor(index / 3) * 680;
+    text('Screen Annotation / ' + id, board, title, x, y - 30, 13, COLORS.secondary, 'medium', 640);
+    const screen = frame('Pro Purchase / ' + id, x, y, 640, 600, BILLING.surface, 14);
+    board.appendChild(screen); historyStroke(screen, '#FFFFFF', .12);
+    createBareSystemControls(screen);
+    text('Window Title', screen, 'Glance Pro', 166, 14, 12, COLORS.secondary, 'medium', 308, 'CENTER');
+    rect('Titlebar Divider', screen, 0, 47, 640, 1, COLORS.line);
+    text('Heading', screen, title, 40, 76, 26, COLORS.text, 'semibold', 560, 'CENTER');
+    text('Subtitle', screen, subtitle, 40, 116, 13, COLORS.secondary, 'regular', 560, 'CENTER');
+    refs[id] = screen;
+    return screen;
+  }
+  function action(screen, label, target, x, y, width, primary = true) {
+    const node = billingAction(screen, label, x, y, width, primary);
+    if (target) links.push([node, target]);
+    return node;
+  }
+  function offer(id, team, index) {
+    const screen = window(id, '让本地图片处理更顺手', '一次买断 · 终身功能更新 · 无订阅', index);
+    text('Currency', screen, '人民币 CNY', 40, 158, 12, COLORS.secondary, 'medium', 560, 'RIGHT');
+    const choices = [
+      ['personal', '个人版', '¥29.90', '1 个账号 · 1 台 Mac'],
+      ['team', '五人版', '¥79.90', '5 个独立账号 · 每人 1 台 Mac']
+    ];
+    choices.forEach(([target, name, price, detail], index) => {
+      const selected = team ? index === 1 : index === 0;
+      const card = panel(screen, 'Plan / ' + target, 40 + index * 288, 184, 272, 132, selected ? COLORS.accentSoft : COLORS.surface, 12);
+      historyStroke(card, selected ? COLORS.accent : COLORS.line, 1);
+      text('Plan Name', card, name, 18, 14, 14, COLORS.text, 'semibold', 210);
+      if (selected) historyIcon(card, 'check', 234, 14, 18, COLORS.accent);
+      text('Plan Price', card, price, 18, 42, 32, COLORS.text, 'semibold', 230);
+      text('Plan Detail', card, detail, 18, 94, 12, COLORS.secondary, 'regular', 240);
+      links.push([card, target]);
+    });
+    ['图片缩小与压缩', 'PNG / JPG / WebP / 图标导出', '图片复制与 Base64 工具', '终身功能更新'].forEach((label, index) => {
+      const x = 40 + (index % 2) * 288, y = 340 + Math.floor(index / 2) * 34;
+      historyIcon(screen, 'check', x, y, 16, COLORS.accent);
+      text('Benefit / ' + index, screen, label, x + 24, y, 13, COLORS.text, 'regular', 248);
+    });
+    text('Credit Separation', screen, 'AI Widget 另按积分计费，不包含在 Pro 内。五人版点数各自独立。', 40, 420, 12, COLORS.secondary, 'regular', 560, 'CENTER');
+    text('Gift', screen, '购买 Pro 附赠 100 点，赠点按账户购买规则发放。', 40, 444, 12, COLORS.secondary, 'regular', 560, 'CENTER');
+    action(screen, team ? '购买五人版 · ¥79.90' : '购买个人版 · ¥29.90', team ? 'checkoutTeam' : 'login', 120, 486, 400);
+    action(screen, '继续免费使用', 'home', 200, 538, 240, false);
+    return screen;
+  }
+  offer('personal', false, 0);
+  offer('team', true, 1);
+  const login = window('login', '登录后继续购买', '已保留：个人版 · ¥29.90', 2);
+  action(login, '使用 Google 登录', 'checkoutPersonal', 140, 196, 360, false);
+  text('Email Label', login, '或使用邮箱验证码登录', 140, 258, 13, COLORS.secondary, 'regular', 360, 'CENTER');
+  const email = panel(login, 'Email Input', 140, 298, 360, 44, COLORS.surface, 8);
+  text('Email Placeholder', email, 'you@example.com', 14, 12, 13, COLORS.secondary, 'regular', 330);
+  action(login, '发送验证码', 'checkoutPersonal', 140, 364, 360);
+  text('Login Note', login, '登录不会扣款，付款前仍可核对方案与金额。', 80, 430, 13, COLORS.secondary, 'regular', 480, 'CENTER');
+  action(login, '返回方案', 'personal', 200, 518, 240, false);
+  text('Login Prototype Note', board, '登录为原型跳转；验证码与 Google 授权复用现有流程，不发送真实请求。', 1376, 1812, 12, COLORS.secondary, 'regular', 640);
+  for (const [id, team, index] of [['checkoutPersonal', false, 3], ['checkoutTeam', true, 4]]) {
+    const screen = window(id, '确认购买', '已登录 · 示例账户', index);
+    const rows = [ ['方案', team ? '五人版' : '个人版'], ['授权范围', team ? '5 人，每人 1 台 Mac' : '1 人，1 台 Mac'], ['更新', '终身功能更新'], ['付款方式', '微信支付 · CNY'], ['本次支付（含税）', team ? '¥79.90' : '¥29.90'] ];
+    rows.forEach(([key, value], row) => {
+      const y = 186 + row * 46;
+      text('Order Key / ' + row, screen, key, 64, y, 13, COLORS.secondary, 'regular', 220);
+      text('Order Value / ' + row, screen, value, 290, y, row === 4 ? 22 : 13, COLORS.text, row === 4 ? 'semibold' : 'medium', 286, 'RIGHT');
+      if (row < 4) rect('Order Divider / ' + row, screen, 64, y + 31, 512, 1, COLORS.line);
+    });
+    text('Checkout Note', screen, '将在浏览器打开 Waffo 安全收银台。\n付款成功后自动刷新授权；14 天退款规则见退款政策。', 64, 430, 12, COLORS.secondary, 'regular', 512, 'CENTER');
+    action(screen, '前往支付', 'owned', 140, 494, 360);
+    action(screen, '返回方案', team ? 'team' : 'personal', 200, 546, 240, false);
+  }
+  const owned = window('owned', 'Glance Pro 已开通', '示例状态：个人版 · 当前 Mac 已激活', 5);
+  historyIcon(owned, 'check', 296, 180, 48, COLORS.success);
+  text('Owned Summary', owned, '本地 Pro 工具已解锁', 80, 258, 20, COLORS.text, 'semibold', 480, 'CENTER');
+  text('Owned Detail', owned, '永久使用 · 终身功能更新\nAI Widget 仍按积分计费', 80, 302, 14, COLORS.secondary, 'regular', 480, 'CENTER');
+  action(owned, '开始使用', 'home', 140, 414, 360);
+  action(owned, '管理设备与订单', null, 140, 470, 360, false);
+  text('Owned Entry Note', owned, 'Home 中「升级 Pro」改为「管理 Pro」。', 80, 540, 12, COLORS.secondary, 'regular', 480, 'CENTER');
+  text('Payment Prototype Note', board, '支付与已购为状态示例：正式实现须由服务端确认到账与设备激活后显示成功，不能只根据浏览器回跳。', 0, 2490, 13, COLORS.secondary, 'regular', 2016);
+  for (const [source, targetID] of links) {
+    const reactions = [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'NODE', destinationId: refs[targetID].id, navigation: 'NAVIGATE', resetScrollPosition: true, transition: null }] }];
+    if (typeof source.setReactionsAsync === 'function') await source.setReactionsAsync(reactions);
+    else source.reactions = reactions;
+  }
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created Pro Purchase Entry: Home entry + six editable purchase states. Review only; no payment or app changes.' });
+}
+
 const PRICING_FLOW_FRAME = 'Pricing & Credits / Purchase + Usage Flow / Refined';
 const BILLING = { w: 640, h: 600, gap: 48, columns: 4, surface: '#0B0C0F' };
 // Redesign - preserve: Glance palette/type stay intact. Alignment follows the
@@ -7586,6 +7715,14 @@ figma.ui.onmessage = async message => {
     } catch (error) {
       console.error(error);
       figma.ui.postMessage({ message: 'Pricing PRD v0.4 Flow failed: ' + (error && error.message ? error.message : String(error)) });
+    }
+  }
+  if (message.type === 'generate-pro-purchase-entry') {
+    try {
+      await generateProPurchaseEntry();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Pro Purchase Entry failed: ' + (error && error.message ? error.message : String(error)) });
     }
   }
   if (message.type === 'generate-pricing-flows') {

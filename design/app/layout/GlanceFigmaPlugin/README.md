@@ -17,6 +17,21 @@ If the plugin reports `Switch to Design Mode`, use the toolbar mode toggle or
 
 ## Generate
 
+### Review the permanent Pro purchase entry
+
+In Figma **Design Mode** (`Shift+D`), open **Glance UI Builder** and click
+**Generate Pro Purchase Entry**. This adds the separate editable board
+`Glance Pro / Discover & Purchase / Review`:
+
+- Home with a permanent Upgrade Pro entry; application-menu and account-entry specifications.
+- Personal ¥29.90 and Team ¥79.90 purchase screens, explicitly separating AI credits.
+- Signed-out login continuation, personal/team checkout summaries, and an owned state.
+- Clickable navigation for review; authentication and payment are illustrative, not real requests.
+
+Rerunning selects the existing board and preserves manual edits. This generator
+does not change the macOS app or live pricing. Older billing boards contain historical prices;
+use this new board for the current purchase-entry review.
+
 ### Review software pricing and credit flows
 
 In Figma **Design Mode** (`Shift+D`), run **Glance UI Builder v2.1** and click

@@ -34,7 +34,7 @@
   </nav>
 </div></header>
 <main id="main">
-<script type="application/json" id="pricing-fallback">{"enabled": false, "paymentsAvailable": false, "trialDays": 14, "signupCredits": 100, "proBonusCredits": 100, "launchUntil": null, "defaultCurrency": "CNY", "proTiers": [{"id": "personal", "name": "个人版（测试）", "enabled": true, "recommended": false, "deviceLimit": 1, "launchCNY": {"amount": null}, "launchUSD": {"amount": null}, "productID": "PROD_6HhJPAncCJXoQw8f787YZ2", "taxCategory": "software", "CNY": {"amount": 1699}, "USD": {"amount": 999}, "JPY": {"amount": 1480}, "EUR": {"amount": 999}, "HKD": {"amount": 7800}}, {"id": "team", "name": "多人版（5 人，测试）", "enabled": true, "recommended": true, "deviceLimit": 1, "launchCNY": {"amount": null}, "launchUSD": {"amount": null}, "productID": "PROD_3EEhN2Aa9T6Samr4scP12Y", "taxCategory": "software", "CNY": {"amount": 4999}, "USD": {"amount": 1999}, "JPY": {"amount": 2980}, "EUR": {"amount": 1999}, "HKD": {"amount": 15800}}], "packs": [{"id": "small", "name": "600 credits", "enabled": true, "recommended": false, "productID": "PROD_7VyOkeOxSCq9PsuizMmSBV", "taxCategory": "software", "CNY": {"amount": 1200, "points": 600}, "USD": {"amount": 299, "points": 600}, "JPY": {"amount": 480, "points": 600}, "EUR": {"amount": 299, "points": 600}, "HKD": {"amount": 2400, "points": 600}}, {"id": "standard", "name": "1500 credits", "enabled": true, "recommended": true, "productID": "PROD_3BBl200ladK588VckFGSF5", "taxCategory": "software", "CNY": {"amount": 3000, "points": 1500}, "USD": {"amount": 699, "points": 1500}, "JPY": {"amount": 1080, "points": 1500}, "EUR": {"amount": 699, "points": 1500}, "HKD": {"amount": 5400, "points": 1500}}, {"id": "large", "name": "5000 credits", "enabled": true, "recommended": false, "productID": "PROD_5nFQoArD19XfIIyCsOp0ED", "taxCategory": "software", "CNY": {"amount": 9800, "points": 5000}, "USD": {"amount": 1999, "points": 5000}, "JPY": {"amount": 2980, "points": 5000}, "EUR": {"amount": 1999, "points": 5000}, "HKD": {"amount": 15800, "points": 5000}}]}</script>
+<script type="application/json" id="pricing-fallback">{"enabled": true, "paymentsAvailable": true, "trialDays": 14, "signupCredits": 100, "proBonusCredits": 100, "launchUntil": null, "defaultCurrency": "CNY", "proTiers": [{"id": "personal", "name": "Personal", "enabled": true, "recommended": false, "deviceLimit": 1, "launchCNY": {"amount": null}, "launchUSD": {"amount": null}, "productID": "PROD_4dlMKKJJ4nUFpMfhs5cbdB", "taxCategory": "saas", "CNY": {"amount": 2990}, "USD": {"amount": 999}, "JPY": {"amount": 1480}, "EUR": {"amount": 999}, "HKD": {"amount": 7800}}, {"id": "team", "name": "Team (5 people)", "enabled": true, "recommended": true, "deviceLimit": 1, "launchCNY": {"amount": null}, "launchUSD": {"amount": null}, "productID": "PROD_06N3QvrA6MNyWSK4Hy5kSy", "taxCategory": "digital_goods", "CNY": {"amount": 7990}, "USD": {"amount": 1999}, "JPY": {"amount": 2980}, "EUR": {"amount": 1999}, "HKD": {"amount": 15800}}], "packs": [{"id": "small", "name": "600 credits", "enabled": true, "recommended": false, "productID": "PROD_2iwYUqFoNF5J7doj1q9hKS", "taxCategory": "saas", "CNY": {"amount": 1200, "points": 600}, "USD": {"amount": 299, "points": 600}, "JPY": {"amount": 480, "points": 600}, "EUR": {"amount": 299, "points": 600}, "HKD": {"amount": 2400, "points": 600}}, {"id": "standard", "name": "1500 credits", "enabled": true, "recommended": true, "productID": "PROD_3G4DkOM0dWKPwGSEN01pdu", "taxCategory": "saas", "CNY": {"amount": 2800, "points": 1500}, "USD": {"amount": 699, "points": 1500}, "JPY": {"amount": 1080, "points": 1500}, "EUR": {"amount": 699, "points": 1500}, "HKD": {"amount": 5400, "points": 1500}}, {"id": "large", "name": "5000 credits", "enabled": true, "recommended": false, "productID": "PROD_2zgv2isfwCbh0XH2yOf8oD", "taxCategory": "saas", "CNY": {"amount": 8800, "points": 5000}, "USD": {"amount": 1999, "points": 5000}, "JPY": {"amount": 2980, "points": 5000}, "EUR": {"amount": 1999, "points": 5000}, "HKD": {"amount": 15800, "points": 5000}}]}</script>
 <section class="hero" style="padding-bottom:40px">
   <div class="wrap">
     <p class="eyebrow"><span lang="zh">价格</span></p>
@@ -76,7 +76,7 @@
         <div class="plan-cycle" style="min-height:0;margin-top:10px">
           <span lang="zh">一次买断，终身免费更新，按 Mac 数量选档</span>
         </div>
-        <div class="tiers" data-tiers><p class="notice">内测期间应用内购买尚未开放。</p></div>
+        <div class="tiers" data-tiers><div class="tier"><div class="tier-head"><b>个人版</b><span class="tier-macs">1 台 Mac</span></div><div class="tier-price">¥29.9</div></div><div class="tier"><div class="tier-head"><b>多人版</b><span class="tier-macs">5 人 · 每人 1 台 Mac</span></div><div class="tier-price">¥79.9</div></div></div>
         <div class="small" data-pro-launch hidden><span lang="zh"></span></div>
         <ul>
           <li><span lang="zh">包含免费版全部功能</span></li>
@@ -95,23 +95,17 @@
         <div class="plan-name"><span lang="zh">点数</span></div>
         <div class="plan-price" style="font-size:32px"><span lang="zh">按需充值</span></div>
         <div class="plan-cycle"><span lang="zh">一次性付款 · 长期有效 · 不自动续费</span></div>
-        <div class="packs" data-packs><p class="notice">内测期间应用内购买尚未开放。</p></div>
+        <div class="packs" data-packs><div class="pack"><b>600</b><span>点 · ¥12</span></div><div class="pack"><b>1500</b><span>点 · ¥28</span></div><div class="pack"><b>5000</b><span>点 · ¥88</span></div></div>
         <ul>
           <li><span lang="zh">只用于云端 AI Widget，本地功能从不扣点</span></li>
           <li><span lang="zh">同一账户的 Mac 共享余额</span></li>
-          <li><span lang="zh">系统失败与排队超时自动退点</span></li>
+          <li><span lang="zh">所有失败任务自动全额退点</span></li>
           <li><span lang="zh">免费版也可以充值使用</span></li>
         </ul>
         <a class="btn btn-ghost" href="/widgets/"><span lang="zh">查看每个 Widget 的价格</span></a>
       </article>
     </div>
 
-
-    <div class="notice" style="margin-top:22px">
-      <strong lang="zh">内测说明：</strong>
-      <span lang="zh">应用内付款将在支付渠道审核通过后开放。正式价格会在开放前公布在本页；在此之前不会收取任何费用。</span>
-
-    </div>
 
   </div>
 </section>
@@ -154,12 +148,12 @@
     </article>
     <article class="card">
       <h3><span lang="zh">付款方式</span></h3>
-      <p lang="zh">付款由 Pancake by Waffo 作为记录商户（Merchant of Record）处理，并负责相关税费。人民币订单使用微信支付；美元订单可以用 Visa、Mastercard、Apple Pay、Google Pay 或微信支付。所有价格均为含税价。</p>
+      <p lang="zh">付款由 Pancake by Waffo 作为记录商户（Merchant of Record）处理，并负责相关税费。人民币订单使用微信支付；其他币种使用银行卡、Apple Pay 或 Google Pay，具体可用方式以收银台为准。所有价格均为含税价。</p>
 
     </article>
     <article class="card">
       <h3><span lang="zh">退款</span></h3>
-      <p lang="zh">Pro 在付款后 14 天内可以全额退款。点数充值包在 14 天内且完全未使用时可以全额退款。系统原因失败的 Widget 任务会自动退回点数。详见<a class="accent" href="/refunds/">退款政策</a>。</p>
+      <p lang="zh">Pro 在付款后 14 天内可以全额退款。点数充值包在 14 天内且完全未使用时可以全额退款。所有失败的 Widget 任务都会自动全额退点，包括外部服务、网络或无效输入导致的失败。详见<a class="accent" href="/refunds/">退款政策</a>。</p>
 
     </article>
   </div>
@@ -177,7 +171,7 @@
       <span lang="zh">图生图：Krea 2；AI 换装：Qwen-Image-2.1；智能扩图：Black Forest Labs FLUX.2；图片转提示词：Google Gemini（具体版本待核实）；高清放大：Google Gemini 3.1 Flash Image（Nano Banana 2）；图片去水印：Black Forest Labs FLUX.1 Kontext [dev]；人物背景分离：BRIA RMBG-1.4 + ViTMatte。Glance 当前提供基于输入图片的生成与编辑，以及已有视频的去水印修复，未提供文生图或图生视频 Widget。全部功能的模型与版本状态见<a class="accent" href="/ai-models/">公开 AI 模型说明</a>，无需登录即可查看。</span>
 
     </div>
-    <div class="widget-list" data-widgets><article class="widget"><div class="widget-icon" aria-hidden="true">移</div><div class="widget-body"><div class="widget-top"><h3>移除物体</h3><span class="price">30 点 / 次</span></div><p>用英文描述要移除的物体，智能补全背景。每次 30 积分。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">视</div><div class="widget-body"><div class="widget-top"><h3>视频去水印</h3><span class="price">100 点 / 10 秒</span></div><p>每 10 秒 100 点，不足 10 秒按一份计费；分段去水印后合成为一个视频。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">高</div><div class="widget-body"><div class="widget-top"><h3>高清放大</h3><span class="price">30 点 / 次</span></div><p>图生图超分辨率，提升图片清晰度与细节。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">人</div><div class="widget-body"><div class="widget-top"><h3>人物背景分离</h3><span class="price">20 点 / 次</span></div><p>图生图高级背景移除，保留精细主体边缘。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">免</div><div class="widget-body"><div class="widget-top"><h3>免费图床</h3><span class="price">29 点 / 次</span></div><p>上传图片或视频，获得可分享的链接。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">图</div><div class="widget-body"><div class="widget-top"><h3>图片转提示词</h3><span class="price">20 点 / 次</span></div><p>分析图片内容，生成可直接复用的文字描述。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">图</div><div class="widget-body"><div class="widget-top"><h3>图片去水印</h3><span class="price">30 点 / 次</span></div><p>去除图片上的水印、文字和标记。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">智</div><div class="widget-body"><div class="widget-top"><h3>智能扩图</h3><span class="price">30 点 / 次</span></div><p>向四周延展画面，自动补全图片之外的内容。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">A</div><div class="widget-body"><div class="widget-top"><h3>AI 换装</h3><span class="price">30 点 / 次</span></div><p>把第二张图里的服装穿到第一张图的人物身上。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">图</div><div class="widget-body"><div class="widget-top"><h3>图生图</h3><span class="price">30 点 / 次</span></div><p>重新生成图片，并按指定画幅比例输出。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article></div>
+    <div class="widget-list" data-widgets><article class="widget"><div class="widget-icon" aria-hidden="true">高</div><div class="widget-body"><div class="widget-top"><h3>高清放大</h3><span class="price">30 点 / 次</span></div><p>图生图超分辨率，提升图片清晰度与细节。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">人</div><div class="widget-body"><div class="widget-top"><h3>人物背景分离</h3><span class="price">20 点 / 次</span></div><p>图生图高级背景移除，保留精细主体边缘。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">移</div><div class="widget-body"><div class="widget-top"><h3>移除物体</h3><span class="price">30 点 / 次</span></div><p>用英文描述要移除的物体，智能补全背景。每次 30 积分。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">视</div><div class="widget-body"><div class="widget-top"><h3>视频去水印</h3><span class="price">100 点 / 10 秒</span></div><p>每 10 秒 100 点，不足 10 秒按一份计费；分段去水印后合成为一个视频。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">免</div><div class="widget-body"><div class="widget-top"><h3>免费图床</h3><span class="price">29 点 / 次</span></div><p>上传图片或视频，获得可分享的链接。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">图</div><div class="widget-body"><div class="widget-top"><h3>图片转提示词</h3><span class="price">20 点 / 次</span></div><p>分析图片内容，生成可直接复用的文字描述。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">图</div><div class="widget-body"><div class="widget-top"><h3>图片去水印</h3><span class="price">30 点 / 次</span></div><p>去除图片上的水印、文字和标记。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">智</div><div class="widget-body"><div class="widget-top"><h3>智能扩图</h3><span class="price">30 点 / 次</span></div><p>向四周延展画面，自动补全图片之外的内容。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">A</div><div class="widget-body"><div class="widget-top"><h3>AI 换装</h3><span class="price">30 点 / 次</span></div><p>把第二张图里的服装穿到第一张图的人物身上。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article><article class="widget"><div class="widget-icon" aria-hidden="true">图</div><div class="widget-body"><div class="widget-top"><h3>图生图</h3><span class="price">30 点 / 次</span></div><p>重新生成图片，并按指定画幅比例输出。</p><div class="meta">运行时上传所选媒体到云端处理</div></div></article></div>
   </div>
 </section>
 
@@ -199,7 +193,7 @@
       <a href="/terms/"><span lang="zh">服务条款</span></a><a href="/privacy/"><span lang="zh">隐私政策</span></a>
       <a href="/refunds/"><span lang="zh">退款政策</span></a><a href="/acceptable-use/"><span lang="zh">可接受使用政策</span></a></div>
     <div><h4><span lang="zh">支持</span></h4>
-      <a href="https://x.com/Sir03834855" target="_blank" rel="noopener"><span lang="zh">X 私信 @Sir03834855</span></a>
+      <a href="mailto:support@glancepreview.com">support@glancepreview.com</a>
       <a href="/acceptable-use/#report-zh"><span lang="zh">举报违规内容</span></a></div>
   </div>
   <div class="footer-bottom">

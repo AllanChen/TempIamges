@@ -16,10 +16,18 @@ from urllib.error import HTTPError
 from glance_cli.api import APIError, request, upload_task_file
 from glance_cli.result_spool import load, load_failure, save, save_failure
 from glance_cli.runtime import TaskCancelledError, TaskTimeoutError, execute, prepare_input, validate_outputs
-from glance_cli.worker import DeliveryDeferredError, _deliver, _run_task
+from glance_cli.worker import DeliveryDeferredError, _deliver, _run_task, _diagnose_unbound_tasks
 
 
 class TaskFailureTests(unittest.TestCase):
+    def test_queue_diagnostics_warns_about_unregistered_widget(self):
+        with patch("glance_cli.worker.eligible", return_value=[]), \
+             patch("glance_cli.worker.request", return_value={"widgets": [{"widgetId": "missing", "queuedCount": 2}]}), \
+             self.assertLogs("glance_cli.worker", level="WARNING") as logs:
+            _diagnose_unbound_tasks(None)
+        self.assertIn("missing", str(logs.output))
+        self.assertIn("glance widget add", str(logs.output))
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -40,6 +48,26 @@ class TaskFailureTests(unittest.TestCase):
                 _run_task(self.row, self.task)
         self.assertEqual(api.call_count, 2)
         self.assertTrue(all(call.args[2]["status"] == "failed" for call in api.call_args_list))
+        self.assertIsNone(load_failure(self.task["taskId"]))
+
+    def test_audit_failure_reason_survives_network_loss_and_new_claim(self):
+        error = RuntimeError("AuditRejectedError: RunningHub content rejected: Porn")
+        with patch("glance_cli.worker.execute", side_effect=error), \
+             patch("glance_cli.worker.request", side_effect=APIError("offline")), \
+             patch("glance_cli.worker.time.sleep"):
+            with self.assertRaisesRegex(RuntimeError, "content rejected"):
+                _run_task(self.row, self.task)
+        saved = load_failure(self.task["taskId"])
+        self.assertEqual(saved["errorCode"], "content_rejected")
+        self.assertEqual(saved["reason"], "sexual")
+
+        with patch("glance_cli.worker.execute") as run, \
+             patch("glance_cli.worker.request", return_value={"status": "failed"}) as api:
+            _run_task(self.row, {**self.task, "claimToken": "claim-two"})
+        run.assert_not_called()
+        reported = api.call_args.args[2]
+        self.assertEqual(reported["errorCode"], "content_rejected")
+        self.assertEqual(reported["reason"], "sexual")
         self.assertIsNone(load_failure(self.task["taskId"]))
 
     def test_failure_survives_network_loss_and_new_claim_without_reexecution(self):

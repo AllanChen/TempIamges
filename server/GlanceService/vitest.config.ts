@@ -14,6 +14,7 @@ export default defineConfig(async () => {
           compatibilityDate: "2026-08-01",
           bindings: {
             TEST_MIGRATIONS: migrations,
+            WAFFO_ENVIRONMENT: "test",
             // Test-only values. Never reuse these for a deployed environment.
             SESSION_SECRET: "test-session-secret",
             MEDIA_SIGNING_SECRET: "test-media-signing-secret",

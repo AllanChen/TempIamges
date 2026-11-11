@@ -48,6 +48,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     /// surface the Home window when nothing else is on screen. Suppressed
     /// briefly while a hotkey request is loading so we don't race the preview.
     private var didFinishInitialLaunch = false
+    /// Fresh install: offer the permission guide over Home once launch settles.
+    private var firstRunGuidePending = false
+    /// The first-run guide is (or was just) on screen; granting Accessibility
+    /// from it is the user's opt-in to Peek.
+    private var firstRunGuideActive = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         writeDebugMarker("App launched"); Logger.info("AppDelegate: Application did finish launching")
@@ -63,7 +68,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         // Hide installed Widgets that were taken down while Glance was closed.
         WidgetAvailabilitySync.shared.start()
         AuthManager.shared.refreshAccount()
+        // Read before checkPermissions(), whose Peek migration marks the install as set up.
+        let isFirstRun = Preferences.shared.consumeFirstRun()
         checkPermissions()
+        firstRunGuidePending = isFirstRun && !PermissionManager.shared.canUsePeek
+            && !Preferences.shared.permissionSetupDismissed
         // As a regular (Dock/Cmd-Tab) app, a fresh launch with no window would
         // otherwise start in the background. Bring it to the front so `run.sh`
         // visibly focuses the app.
@@ -78,9 +87,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
         // Allow activation-triggered Home only after launch has settled, so the
         // initial NSApp.activate above doesn't immediately pop Home on top of a
-        // fresh launch that may be opening a file.
+        // fresh launch that may be opening a file. The activation during launch
+        // is ignored, so show Home here for a plain launch (Dock, Finder, Spotlight).
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-            self?.didFinishInitialLaunch = true
+            guard let self = self else { return }
+            self.didFinishInitialLaunch = true
+            if self.pendingOpenURLs.isEmpty, self.pendingOpenWorkItem == nil {
+                self.surfaceHomeIfIdle()
+            }
+            if self.firstRunGuidePending {
+                self.firstRunGuidePending = false
+                self.firstRunGuideActive = true
+                // Queued after Home's deferred presentation so the guide lands on top.
+                DispatchQueue.main.async { self.showOnboardingWindow() }
+            }
         }
 
     }
@@ -89,6 +109,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     /// on screen, surface the Home launcher — Glance has no document to show
     /// otherwise, so the user would face an empty app.
     func applicationDidBecomeActive(_ notification: Notification) {
+        adoptPeekIfGrantedFromFirstRunGuide()
         if Preferences.shared.peekEnabled { startKeyboardMonitoring() }
         if AuthManager.shared.isSignedIn { BillingManager.shared.refreshEntitlements(); BillingManager.shared.refreshWallet(); BillingCoordinator.shared.restorePendingPayments() }
         surfaceHomeIfIdle()
@@ -359,7 +380,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                     self.invalidateActiveRequest()
                     self.previewPanel?.closePanel()
                 } else {
-                    self.activatePreview(injectedText: text)
+                    self.activatePreview(injectedText: text, contextDirectories: result?.contextDirectories ?? [])
                 }
             }
             return
@@ -374,7 +395,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
     /// Core preview pipeline. When `injectedText` is non-nil, skips AX
     /// selection extraction and reuses text already read during a hotkey refresh.
-    private func activatePreview(injectedText: String?) {
+    private func activatePreview(injectedText: String?, contextDirectories: [URL] = []) {
         Logger.info("AppDelegate: Preview mode activated\(injectedText != nil ? " (selection refresh)" : "")")
         guard Preferences.shared.peekEnabled else {
             Logger.info("AppDelegate: Preview disabled in preferences")
@@ -398,7 +419,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             } else {
                 anchor = mousePos
             }
-            proceedWithPreview(text: text, anchor: anchor, requestID: requestID)
+            proceedWithPreview(text: text, anchor: anchor, requestID: requestID,
+                               contextDirectories: contextDirectories)
             return
         }
 
@@ -414,9 +436,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
             let selected: String
             let anchor = mousePos
+            var contextDirectories: [URL] = []
 
             if let result = result, !result.text.isEmpty {
                 selected = result.text
+                contextDirectories = result.contextDirectories
             } else if Preferences.shared.readClipboard,
                       let clipboardResult = self.selectedTextExtractor?.readClipboardDirectly() {
                 Logger.info("AppDelegate: AX empty — falling back to clipboard content")
@@ -429,16 +453,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                 return
             }
 
-            self.proceedWithPreview(text: selected, anchor: anchor, requestID: requestID)
+            self.proceedWithPreview(text: selected, anchor: anchor, requestID: requestID,
+                                    contextDirectories: contextDirectories)
         }
     }
 
-    private func proceedWithPreview(text selected: String, anchor: CGPoint, requestID: UInt64) {
+    private func proceedWithPreview(text selected: String, anchor: CGPoint, requestID: UInt64,
+                                    contextDirectories: [URL] = []) {
         guard requestID == activeRequestID else { return }
         activeSelectionText = normalizedSelection(selected)
         let allHits = pathDetector?.detectAll(selected) ?? []
-        let resolved = allHits.filter { $0.url != nil }
-        let unresolvedTokens = allHits.compactMap { $0.unresolvedToken }
+        // A bare name selected in a terminal names a file in its working
+        // directory (`ls` output): resolve it in the closest folder that has it
+        // before searching the disk.
+        var resolved: [DetectedPath] = []
+        var unresolvedTokens: [String] = []
+        for hit in allHits {
+            if hit.url != nil {
+                resolved.append(hit)
+            } else if let token = hit.unresolvedToken {
+                if let local = contextDirectories.lazy.compactMap({ self.mediaPath(named: token, in: $0) }).first {
+                    resolved.append(local)
+                } else {
+                    unresolvedTokens.append(token)
+                }
+            }
+        }
         Logger.info("AppDelegate: detected \(resolved.count) resolved + \(unresolvedTokens.count) unresolved")
 
         if resolved.isEmpty && unresolvedTokens.isEmpty {
@@ -464,12 +504,34 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
         currentPath = (resolved.compactMap { $0.url?.absoluteString } + unresolvedTokens).joined(separator: "|")
         resolveAndShow(selectedText: selected, resolved: resolved, tokens: unresolvedTokens,
-                       at: anchor, requestID: requestID)
+                       contextDirectories: contextDirectories, at: anchor, requestID: requestID)
+    }
+
+    /// `token` (a bare name or relative path) as an existing media file inside `directory`.
+    private func mediaPath(named token: String, in directory: URL) -> DetectedPath? {
+        let url = directory.appendingPathComponent(token).standardizedFileURL
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
+              !isDirectory.boolValue,
+              let path = pathDetector?.localKind(for: url.path),
+              let info = MediaInfo.from(path), info.kind == .image || info.kind == .video
+        else { return nil }
+        return path
+    }
+
+    /// Steps between a match's folder and the selection's folder in the file
+    /// tree: the file next to the user is 0, siblings and parents rank close.
+    private static func treeDistance(from directory: URL, to file: URL) -> Int {
+        let a = directory.pathComponents
+        let b = file.deletingLastPathComponent().standardizedFileURL.pathComponents
+        let shared = zip(a, b).prefix { $0 == $1 }.count
+        return (a.count - shared) + (b.count - shared)
     }
 
     private func resolveAndShow(selectedText: String,
                                  resolved: [DetectedPath],
                                  tokens: [String],
+                                 contextDirectories: [URL] = [],
                                  at anchor: CGPoint,
                                  requestID: UInt64) {
         guard requestID == activeRequestID else { return }
@@ -493,22 +555,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             for token in uniqueTokens {
                 group.enter()
                 self.fileNameResolver?.resolve(token: token) { matches in
-                    resultsByToken[token] = matches
+                    // Closest to any of the selection's folders first; ties keep the resolver's order.
+                    func distance(_ url: URL) -> Int {
+                        contextDirectories.map { Self.treeDistance(from: $0, to: url) }.min() ?? 0
+                    }
+                    resultsByToken[token] = matches.enumerated().sorted {
+                        let a = distance($0.element.url), b = distance($1.element.url)
+                        return a != b ? a < b : $0.offset < $1.offset
+                    }.map(\.element)
                     group.leave()
                 }
             }
             group.notify(queue: .main) { [weak self] in
                 guard let self = self else { return }
                 guard requestID == self.activeRequestID else { return }
-                // Round-robin pick from each token's match list.
+                // Each selected name means one file: take its best-ranked match
+                // (closest to the selection's folder when known).
                 let maxFromSpotlight = max(0, 24 - resolved.count)
+                let perTokenLimit = 1
                 var spotlight: [FileNameResolver.Match] = []
                 var cursors = Array(repeating: 0, count: uniqueTokens.count)
                 outer: while spotlight.count < maxFromSpotlight {
                     var advanced = false
                     for (i, token) in uniqueTokens.enumerated() {
                         let list = resultsByToken[token] ?? []
-                        if cursors[i] < list.count {
+                        if cursors[i] < min(list.count, perTokenLimit) {
                             spotlight.append(list[cursors[i]])
                             cursors[i] += 1
                             advanced = true
@@ -938,12 +1009,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     /// The permission guide was dismissed; if Peek is on and the permission
     /// arrived, the hotkey starts working without a relaunch.
     @objc private func onboardingDidClose() {
+        adoptPeekIfGrantedFromFirstRunGuide()
+        firstRunGuideActive = false
         surfaceHomeIfIdle()
         guard Preferences.shared.peekEnabled, PermissionManager.shared.canUsePeek else { return }
         startKeyboardMonitoring()
     }
 
+    /// First-run guide: Peek stays off unless the user grants Accessibility from
+    /// the guide (returning from System Settings or leaving the guide). Skipping
+    /// keeps Peek off, and the guide is not offered again.
+    private func adoptPeekIfGrantedFromFirstRunGuide() {
+        guard firstRunGuideActive, !Preferences.shared.peekEnabled,
+              PermissionManager.shared.canUsePeek else { return }
+        Logger.info("AppDelegate: Accessibility granted from the first-run guide - enabling Peek")
+        Preferences.shared.peekEnabled = true
+        NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+    }
+
     @objc private func languageChanged() {
+        setupMainMenu()
         Logger.info("AppDelegate: Language changed to \(Preferences.shared.appLanguage.rawValue)")
         if let oldWindow = preferencesWindow {
             oldWindow.close()

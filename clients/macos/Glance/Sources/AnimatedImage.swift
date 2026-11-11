@@ -103,6 +103,7 @@ final class ImageAnimationPlayer {
     private var decoding = false
     private var index = 0
     private var plays = 0
+    private var hasImage = false
     private var observers: [NSObjectProtocol] = []
     private let queue = DispatchQueue(label: "com.glance.animation", qos: .userInitiated)
 
@@ -126,6 +127,7 @@ final class ImageAnimationPlayer {
         animation = image?.glanceAnimation
         index = 0
         plays = 0
+        hasImage = image != nil && image!.size.width > 0 && image!.size.height > 0
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layer?.contents = image
@@ -134,6 +136,7 @@ final class ImageAnimationPlayer {
     }
 
     func stop() {
+        hasImage = false
         generation &+= 1
         timer?.invalidate()
         timer = nil
@@ -143,7 +146,7 @@ final class ImageAnimationPlayer {
 
     private var isVisible: Bool {
         guard let view, let window = view.window else { return false }
-        return !view.isHiddenOrHasHiddenAncestor && window.isVisible &&
+        return !view.isHiddenOrHasHiddenAncestor && view.bounds.width > 0 && view.bounds.height > 0 && window.isVisible &&
             window.occlusionState.contains(.visible)
     }
 
@@ -152,6 +155,12 @@ final class ImageAnimationPlayer {
             timer?.invalidate()
             timer = nil
             return
+        }
+        if hasImage {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.isVisible, self.hasImage, self.layer?.contents != nil else { return }
+                BillingManager.shared.recordSuccessfulPreview("image")
+            }
         }
         guard timer == nil, !decoding, let animation,
               animation.totalPlays.map({ plays < $0 }) ?? true else { return }

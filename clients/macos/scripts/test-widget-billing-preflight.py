@@ -15,7 +15,9 @@ def block(text, marker):
     return text[start:end]
 
 method = block((root / 'BillingCoordinator.swift').read_text(), '  func confirmWidgetTask(')
-quote = block((root / 'WidgetTaskClient.swift').read_text(), 'struct WidgetTaskQuote: Codable {')
+client_source = (root / 'WidgetTaskClient.swift').read_text()
+quote = block(client_source, 'struct WidgetTaskQuote: Codable {')
+execution_error = block(client_source, 'struct WidgetTaskExecutionError: LocalizedError {')
 stubs = r'''
 import Foundation
 extension String { var localized: String { self } }
@@ -36,8 +38,10 @@ struct WidgetVideoEvidence: Codable {
 enum BillingDates {
     static func parse(_ value: String) -> Date? { ISO8601DateFormatter().date(from: value) }
 }
+struct PricingStub { var confirmationThreshold = 20 }
 final class BillingManager {
     static let shared = BillingManager()
+    var pricing: PricingStub? = PricingStub()
     var pending: [(Result<WidgetTaskQuote, Error>) -> Void] = []
     var events: [(String,String,String?)] = []
     func track(_ kind: String, id: String, journeyID: String?, feature: String) { events.append((kind,id,journeyID)) }
@@ -62,7 +66,8 @@ final class BillingWindow {
     var secondary: (() -> Void)?
     var state = ""
     var title = ""
-    func present(over: NSWindow?) {}
+    var presentations = 0
+    func present(over: NSWindow?) { presentations += 1 }
     func dismiss() { state = "dismissed"; onDismiss?() }
     func showStatus(title: String, subtitle: String, rows: [(String,String)] = [], primary: String,
                     secondary: String? = nil, onPrimary: @escaping () -> Void, onSecondary: (() -> Void)? = nil) {
@@ -106,15 +111,11 @@ check("insufficient credits opens top-up first", coordinator.lastPanel.state == 
 check("insufficient event carries the task journey", billing.events.last?.0 == "insufficient" && billing.events.last?.2 == coordinator.lastPanel.taskJourneyID)
 let topupJourney = coordinator.lastPanel.taskJourneyID
 coordinator.lastPanel.taskTopupOrderID = "order_topup_test"
-check("automatic submission is disabled", coordinator.lastPanel.requiresTaskConfirmation && !coordinator.lastPanel.autoSubmit)
+check("task resume after recharge is automatic", coordinator.lastPanel.autoSubmit)
 coordinator.lastPanel.onResumeTask?()
 billing.reply(q(1500))
-check("payment completion only shows confirmation", accepted.isEmpty && coordinator.lastPanel.title == "Confirm Video Watermark")
-let confirm = coordinator.lastPanel.primary!
-confirm()
-confirm()
-check("explicit confirmation accepts exactly once", accepted.count == 1 && accepted[0].totalCredits == 600)
-check("confirmed task retains the recharge journey and order", accepted[0].billingIntentID == topupJourney && accepted[0].topupOrderID == "order_topup_test")
+check("payment completion submits without another confirmation", accepted.count == 1 && accepted[0].totalCredits == 600 && coordinator.lastPanel.state == "dismissed")
+check("submitted task retains the recharge journey and order", accepted[0].billingIntentID == topupJourney && accepted[0].topupOrderID == "order_topup_test")
 let restored = try JSONDecoder().decode(WidgetTaskQuote.self, from: JSONEncoder().encode(accepted[0]))
 check("task correlation survives persistence", restored.billingIntentID == topupJourney && restored.topupOrderID == "order_topup_test")
 begin()
@@ -123,18 +124,15 @@ billing.reply(q(1500))
 check("late quote after cancel cannot start work", accepted.count == 1 && cancelled == 1)
 begin()
 billing.reply(q(1500, expired: true))
-coordinator.lastPanel.primary?()
 check("expired quote is refreshed before acceptance", accepted.count == 1 && billing.pending.count == 1)
 billing.reply(q(100))
 check("recheck can return to recharge", coordinator.lastPanel.state == "topup" && accepted.count == 1)
 coordinator.lastPanel.dismiss()
 begin()
-billing.reply(q(1500))
 AuthManager.shared.session = nil
-coordinator.lastPanel.primary?()
+billing.reply(q(1500))
 check("account change cannot submit another account's quote", accepted.count == 1)
 
-// Fixed-price Widgets use the same gate, without video-specific preparation.
 AuthManager.shared.session = Session()
 let fixed = WidgetManifest(id: "image-tool", displayName: "Image Tool", usesDurationBilling: false)
 func fixedQuote(_ balance: Int, cost: Int = 30) -> WidgetTaskQuote {
@@ -150,25 +148,55 @@ check("fixed-price Widget opens recharge before accepting work", coordinator.las
 check("ordinary Widgets do not use video duration inspection", WidgetVideoEvidence.inspections == inspections)
 coordinator.lastPanel.onResumeTask?()
 billing.reply(fixedQuote(50))
-check("ordinary Widget still requires confirmation after recharge", coordinator.lastPanel.title == "Confirm Image Tool" && accepted.count == 1)
-coordinator.lastPanel.primary?()
-check("ordinary Widget confirms the exact quoted cost", accepted.count == 2 && accepted.last?.totalCredits == 30 && accepted.last?.mode == "fixed")
+check("ordinary Widget submits after recharge without confirmation", accepted.count == 2 && accepted.last?.totalCredits == 30 && accepted.last?.mode == "fixed")
 begin(fixed)
 billing.reply(fixedQuote(30))
-check("exactly enough credits goes directly to confirmation", coordinator.lastPanel.title == "Confirm Image Tool" && accepted.count == 2)
-coordinator.lastPanel.secondary?()
-check("cancelling ordinary Widget confirmation starts no work", accepted.count == 2)
+check("exactly enough credits submits without a panel", accepted.count == 3 && coordinator.lastPanel.presentations == 0)
 begin(fixed)
 billing.reply(fixedQuote(0))
 coordinator.lastPanel.dismiss()
-check("closing ordinary Widget recharge starts no work", accepted.count == 2)
+check("closing ordinary Widget recharge starts no work", accepted.count == 3)
 begin(fixed)
 billing.reply(fixedQuote(0, cost: 0))
-check("free Widget needs no recharge", coordinator.lastPanel.title == "Confirm Image Tool" && coordinator.lastPanel.taskCost == 0)
+check("free Widget submits directly without any panel", accepted.count == 4 && accepted.last?.totalCredits == 0
+      && coordinator.lastPanel.presentations == 0 && coordinator.lastPanel.state == "dismissed")
+begin(fixed)
+check("ordinary Widget shows nothing while checking the price", coordinator.lastPanel.presentations == 0)
+billing.reply(fixedQuote(100, cost: 20))
+check("cost at the old threshold submits directly", accepted.count == 5 && accepted.last?.totalCredits == 20
+      && coordinator.lastPanel.presentations == 0)
+begin(fixed)
+billing.reply(fixedQuote(100, cost: 21))
+check("cost above the old threshold also submits directly", accepted.count == 6 && coordinator.lastPanel.presentations == 0)
+begin(fixed)
+billing.reply(fixedQuote(5, cost: 10))
+check("cheap task without enough credits still opens recharge", coordinator.lastPanel.state == "topup"
+      && coordinator.lastPanel.presentations == 1 && accepted.count == 6)
+coordinator.lastPanel.onResumeTask?()
+billing.reply(fixedQuote(50, cost: 10))
+check("cheap task resumed after recharge submits automatically", accepted.count == 7 && coordinator.lastPanel.state == "dismissed")
+billing.pricing = nil
+begin(fixed)
+billing.reply(fixedQuote(100, cost: 1))
+check("unknown pricing configuration does not block submission", accepted.count == 8 && coordinator.lastPanel.presentations == 0)
+billing.pricing = PricingStub()
+begin(fixed)
+billing.pending.removeFirst()(.failure(NSError(domain: "test", code: 1)))
+check("quote errors remain visible and recoverable", coordinator.lastPanel.state == "error" && coordinator.lastPanel.presentations == 1)
 coordinator.lastPanel.dismiss()
+begin()
+check("video task does not show a daily progress panel", coordinator.lastPanel.presentations == 0)
+coordinator.lastPanel.dismiss()
+
+let auditFailure = WidgetTaskExecutionError(message: "content_rejected", reason: "sexual")
+check("Task Center explains the provider safety rejection", auditFailure.localizedDescription.contains("safety review"))
+check("Task Center includes the allow-listed content category", auditFailure.localizedDescription.contains("possible sexual content"))
+check("Task Center explains how to recover from a rejection", auditFailure.localizedDescription.contains("Change the image or input"))
+let unknownFailure = WidgetTaskExecutionError(message: "Traceback: provider secret", reason: "raw provider text")
+check("Task Center never exposes raw provider errors", unknownFailure.localizedDescription == "The Widget could not finish this task. Try again; if it keeps failing, contact support.")
 
 '''
 with tempfile.TemporaryDirectory(prefix='glance-billing-preflight-') as directory:
     script = Path(directory) / 'check.swift'
-    script.write_text(stubs + method + '\n}\n' + quote + tests)
+    script.write_text(stubs + method + '\n}\n' + quote + '\n' + execution_error + '\n' + tests)
     subprocess.run(['swift', '-module-cache-path', directory + '/modules', str(script)], check=True)

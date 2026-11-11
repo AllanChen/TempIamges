@@ -254,8 +254,8 @@ export async function adminGrantPro(env: Env, request: Request, userID: number) 
   if (!user) throw new BillingError('user_not_found','User not found.',404);
   const config=await readPricing(env);
   try {
-    await env.DB.prepare(`INSERT OR IGNORE INTO admin_pro_grants(id,user_id,note,actor_id,created_at,updates_months,device_limit)
-      VALUES(?,?,?,'admin',?,12,?)`).bind(id,userID,note,stamp(),config.deviceLimit).run();
+    await env.DB.prepare(`INSERT OR IGNORE INTO admin_pro_grants(id,user_id,note,actor_id,created_at,updates_months,device_limit,billing_mode)
+      VALUES(?,?,?,'admin',?,12,?,?)`).bind(id,userID,note,stamp(),config.deviceLimit,env.WAFFO_ENVIRONMENT==='prod'?'prod':'test').run();
   } catch (error) {
     const message=String(error);
     if (message.includes('already_pro')) throw new BillingError('already_pro','This user already has Pro.',409);
@@ -267,4 +267,27 @@ export async function adminGrantPro(env: Env, request: Request, userID: number) 
   if (!grant || grant.user_id!==userID || grant.note!==note) throw new BillingError('idempotency_conflict','This request key was already used.',409);
   const license=await env.DB.prepare('SELECT status,purchased_at,updates_until,device_limit FROM licenses WHERE user_id=?').bind(userID).first();
   return billingReply({userID,grantID:id,license,grant});
+}
+
+// Main router authenticates the administrator before entering this handler. Only
+// unpaid licences (admin grants, redeemed codes) are revoked here; a paid licence
+// must go through the refund flow so the money and the entitlement stay in sync.
+export async function adminRevokePro(env: Env, request: Request, userID: number) {
+  if (request.method!=='POST' || !Number.isSafeInteger(userID) || userID<1) throw new BillingError('not_found','Not found.',404);
+  const license=await env.DB.prepare('SELECT status,source_order,source_admin_grant,source_redemption_code FROM licenses WHERE user_id=?')
+    .bind(userID).first<{status:string;source_order:string|null;source_admin_grant:string|null;source_redemption_code:string|null}>();
+  if (!license || license.status!=='active') throw new BillingError('no_active_pro','This user has no active Pro licence.',409);
+  if (license.source_order && !license.source_admin_grant && !license.source_redemption_code)
+    throw new BillingError('paid_license','This licence came from a payment. Refund its order instead, so the payment is returned.',409);
+  const now=stamp();
+  const revoked=await env.DB.prepare(`UPDATE licenses SET status='revoked' WHERE user_id=? AND status='active'
+    AND (source_admin_grant IS NOT NULL OR source_redemption_code IS NOT NULL)`).bind(userID).run();
+  if (!revoked.meta.changes) throw new BillingError('no_active_pro','This user has no active Pro licence.',409);
+  await env.DB.batch([
+    env.DB.prepare('UPDATE license_devices SET released_at=? WHERE user_id=? AND released_at IS NULL').bind(now,userID),
+    env.DB.prepare(`UPDATE license_devices SET released_at=? WHERE released_at IS NULL
+      AND user_id IN (SELECT user_id FROM team_members WHERE owner_id=?)
+      AND NOT EXISTS(SELECT 1 FROM licenses WHERE licenses.user_id=license_devices.user_id AND status='active')`).bind(now,userID),
+  ]);
+  return billingReply({userID,revoked:true});
 }

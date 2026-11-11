@@ -1099,7 +1099,16 @@ class PreviewPanel: NSPanel {
         bar.addSubview(closeBtn)
         singleCloseBtn = closeBtn
 
-        let title = currentInfos.count == 1 ? currentInfos[0].filename : String(format: "%d files".localized, currentInfos.count)
+        let title: String
+        if currentInfos.count == 1,
+           let searchToken = currentInfos[0].searchToken,
+           !searchToken.isEmpty {
+            title = "Loading…".localized
+        } else {
+            title = currentInfos.count == 1
+                ? currentInfos[0].filename
+                : String(format: "%d files".localized, currentInfos.count)
+        }
         let titleLbl = NSTextField(labelWithString: title)
         titleLbl.textColor = Self.textDark
         titleLbl.font = NSFont.systemFont(ofSize: 15, weight: .bold)
@@ -2514,6 +2523,21 @@ final class MediaTileView: NSView {
 }
 
 final class PassthroughPlayerView: AVPlayerView {
+    private var frameObservation: NSKeyValueObservation?
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        frameObservation = observe(\.isReadyForDisplay, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async { [weak self] in self?.recordVisibleFrame() }
+        }
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); recordVisibleFrame() }
+    override func layout() { super.layout(); recordVisibleFrame() }
+    private func recordVisibleFrame() {
+        guard isReadyForDisplay, window?.isVisible == true, !isHiddenOrHasHiddenAncestor,
+              bounds.width > 0, bounds.height > 0 else { return }
+        BillingManager.shared.recordSuccessfulPreview("video")
+    }
     override func hitTest(_ point: NSPoint) -> NSView? {
         return nil
     }

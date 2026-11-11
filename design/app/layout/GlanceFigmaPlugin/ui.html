@@ -26,6 +26,8 @@
   <h1>Glance UI Builder <span style="color:#e8a87c">v2.1</span></h1>
   <p>Create editable Glance screens. The revised Widget study has four input pages and three output pages. Includes the Result Badge Study.</p>
   <div id="mode">Checking Figma mode…</div>
+  <button id="generate-pro-purchase-entry" class="generate-screens featured">Generate Pro Purchase Entry</button>
+  <div class="hint">主动购买入口 + 当前正式价格 + 登录 / 支付 / 已购状态。独立审核稿，不覆盖原设计。</div>
   <label for="brand-before">Landscape A · natural morning</label>
   <input id="brand-before" type="file" accept="image/png,image/jpeg">
   <label for="brand-after" style="margin-top:10px">Landscape B · warm sunrise</label>
@@ -84,6 +86,10 @@
   <button id="export" class="export">Export selected frame (JSON + PNG)</button>
   <script>
     const status = document.getElementById('status');
+    document.getElementById('generate-pro-purchase-entry').onclick = () => {
+      status.textContent = 'Building Pro purchase entry and review screens...';
+      parent.postMessage({ pluginMessage: { type: 'generate-pro-purchase-entry' } }, '*');
+    };
     document.getElementById('replace-viewer-brand-images').onclick = async () => {
       const before = document.getElementById('brand-before').files[0];
       const after = document.getElementById('brand-after').files[0];

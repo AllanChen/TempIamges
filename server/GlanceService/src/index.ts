@@ -3,7 +3,7 @@ import { deleteAccount, purgeDeletedAccounts } from './account-deletion';
 import { VIDEO_WATERMARK_ID, VIDEO_LIMITS, validDurationBilling, validVideoEvidence, videoFits, videoUnits, matchesVideoEvidence, type DurationBilling, type VideoEvidence } from "./task-pricing";
 import { recordBillingEvent, billingMetrics } from './billing-metrics';
 import { OFFICIAL_MANIFESTS } from "./official";
-import { authenticatedUser, userRoutes, adminUsers, adminGrantPro } from "./users";
+import { authenticatedUser, userRoutes, adminUsers, adminGrantPro, adminRevokePro } from "./users";
 import { BillingError, expireTasks, publicPricing, readPricing, savePricing } from './pricing';
 import { adminOrders, billingWebhook, createOrder, orders, requestRefund, wallet,resumeOrder,denyRefund,abandonOrder } from './billing';
 import { activateDevice, entitlements, releaseDevice, synchronizeTrial } from './entitlements';
@@ -656,8 +656,8 @@ async function taskStatus(env: Env, request: Request, taskID: string) {
   await expireTasks(env);
   const actor = isFlowTestToken(env, bearer(request)) ? null : await requireUser(request, env);
   const row = isFlowTestToken(env, bearer(request))
-    ? await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at,credit_cost,delivery_required,delivered_at,quote_id FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
-    : await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,attempts,progress,phase,created_at,credit_cost,delivery_required,delivered_at,quote_id FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
+    ? await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,error_reason,attempts,progress,phase,created_at,credit_cost,delivery_required,delivered_at,quote_id FROM widget_tasks WHERE id=?").bind(taskID).first<Record<string, unknown>>()
+    : await env.DB.prepare("SELECT id,owner_id,widget_id,status,result_json,error_code,error_reason,attempts,progress,phase,created_at,credit_cost,delivery_required,delivered_at,quote_id FROM widget_tasks WHERE id=? AND owner_id=?").bind(taskID, actor).first<Record<string, unknown>>();
   if (!row) return fail("task_not_found", "Task not found.", 404);
   const result: Record<string, unknown> = { taskID: row.id, status: row.status === "succeeded" ? "completed" : row.status, processCount: row.status === "succeeded" ? 100 : 0, attempts: row.attempts };
   const refund=await env.DB.prepare('SELECT amount FROM user_credit_ledger WHERE id=?').bind(`refund:${taskID}`).first<{amount:number}>();
@@ -681,6 +681,7 @@ async function taskStatus(env: Env, request: Request, taskID: string) {
     if (Array.isArray(artifacts) && typeof artifacts[0]?.url === "string") result.resultURL = artifacts[0].url;
   }
   if (row.error_code) result.error = row.error_code;
+  if (row.error_reason) result.errorReason = row.error_reason;
   return ok(result, 200, { "Cache-Control": "no-store" });
 }
 
@@ -930,8 +931,8 @@ async function createTask(env: Env, request: Request, admin = false) {
     .bind(body.topupOrderID,actor,intentID).first<{id:string}>():null;
   const createdAt = now();
   try {
-    await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at,credit_cost,request_key,request_hash,billing_intent_id,topup_order_id,delivery_required,quote_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-      .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt, creditCost, requestKey, requestHash,intentID,topup?.id??null,body.deliveryRequired===true?1:0,quote?.quoteID??null).run();
+    await env.DB.prepare("INSERT INTO widget_tasks (id,widget_id,version_id,command_id,owner_id,type,input_json,parameters_json,status,created_at,credit_cost,request_key,request_hash,billing_intent_id,topup_order_id,delivery_required,quote_id,billing_mode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(taskID, widgetID, version.id, commandID, admin ? widget.owner_id : actor, type, JSON.stringify(input), JSON.stringify(taskParams), "queued", createdAt, creditCost, requestKey, requestHash,intentID,topup?.id??null,body.deliveryRequired===true?1:0,quote?.quoteID??null,env.WAFFO_ENVIRONMENT==='prod'?'prod':'test').run();
   } catch (error) {
     if (String(error).includes('request_abandoned')) return fail('request_abandoned','This task was cancelled.',409);
     const existing = await previousTask();
@@ -940,7 +941,7 @@ async function createTask(env: Env, request: Request, admin = false) {
     if (String(error).includes("insufficient_credits")) return fail("insufficient_credits", "Not enough credits to run this Widget.", 402);
     throw error;
   }
-  if(!admin) await env.DB.prepare("INSERT OR IGNORE INTO billing_events(id,kind,user_id,feature,created_at) SELECT ?,'trial_activity',id,'widget',? FROM users WHERE 'user_'||id=? AND trial_voided=0").bind('task-activity:'+taskID,createdAt,actor).run();
+  if(!admin) await env.DB.prepare("INSERT OR IGNORE INTO billing_events(id,kind,user_id,feature,created_at,billing_mode) SELECT ?,'trial_activity',id,'widget',?,? FROM users WHERE 'user_'||id=? AND trial_voided=0").bind('task-activity:'+taskID,createdAt,env.WAFFO_ENVIRONMENT==='prod'?'prod':'test',actor).run();
   return accepted({ id: taskID, widget_id: widgetID, created_at: createdAt, credit_cost: creditCost, request_hash: requestHash });
 }
 
@@ -956,12 +957,13 @@ async function readTaskQueueLimit(env: Env) {
 // Contract 1.8: queuePosition = earlier queued tasks for the same Widget + 1;
 // estimatedWaitSeconds = position × mean duration of the last 20 successes
 // ÷ max(1, peak concurrently running tasks in the last 10 minutes). Omitted without history.
-async function queueEstimate(env: Env, widgetID: string, createdAt: string): Promise<{ queuePosition: number; estimatedWaitSeconds?: number }> {
+async function queueEstimate(env: Env, widgetID: string, createdAt: string): Promise<{ queuePosition: number; estimatedWaitSeconds?: number; queueWaitSeconds: number }> {
+  const queueWaitSeconds = Math.max(0, Math.floor((Date.now() - Date.parse(createdAt)) / 1000)) || 0;
   const ahead = await env.DB.prepare("SELECT COUNT(*) AS n FROM widget_tasks WHERE widget_id=? AND status='queued' AND created_at<?").bind(widgetID, createdAt).first<{ n: number }>();
   const queuePosition = (ahead?.n ?? 0) + 1;
   const history = await env.DB.prepare("SELECT AVG((julianday(completed_at)-julianday(claimed_at))*86400) AS seconds FROM (SELECT claimed_at,completed_at FROM widget_tasks WHERE widget_id=? AND status='succeeded' AND claimed_at IS NOT NULL AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 20)")
     .bind(widgetID).first<{ seconds: number | null }>();
-  if (typeof history?.seconds !== "number" || !(history.seconds > 0)) return { queuePosition };
+  if (queueWaitSeconds >= 120 || typeof history?.seconds !== "number" || !(history.seconds > 0)) return { queuePosition, queueWaitSeconds };
   const windowStart = new Date(Date.now() - 600_000).toISOString();
   const recent = await env.DB.prepare("SELECT claimed_at,completed_at FROM widget_tasks WHERE widget_id=? AND claimed_at IS NOT NULL AND (status IN ('claimed','running') OR completed_at>=?) LIMIT 500")
     .bind(widgetID, windowStart).all<{ claimed_at: string; completed_at: string | null }>();
@@ -976,7 +978,7 @@ async function queueEstimate(env: Env, widgetID: string, createdAt: string): Pro
   let active = 0, concurrency = 0;
   for (const [, delta] of events) { active += delta; concurrency = Math.max(concurrency, active); }
   const estimatedWaitSeconds = Math.max(1, Math.round(queuePosition * history.seconds / Math.max(1, concurrency)));
-  return { queuePosition, estimatedWaitSeconds };
+  return { queuePosition, estimatedWaitSeconds, queueWaitSeconds };
 }
 
 async function cancelTask(env: Env, request: Request, taskID: string) {
@@ -1070,6 +1072,17 @@ async function pullTask(env: Env, request: Request, url: URL) {
     if (!task && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 500));
   }
   return ok({ task }, 200, { "Cache-Control": "no-store" });
+}
+
+async function workerQueueDiagnostics(env: Env, request: Request) {
+  const actor = await developerSession(env, request);
+  const queued = await env.DB.prepare(`SELECT t.widget_id AS widgetId,COUNT(*) AS queuedCount,MIN(t.created_at) AS oldestCreatedAt
+    FROM widget_tasks t JOIN widgets w ON w.id=t.widget_id
+    WHERE t.status='queued' AND (w.owner_id=? OR EXISTS
+      (SELECT 1 FROM widget_worker_grants g WHERE g.widget_id=w.id AND g.developer_id=?))
+    GROUP BY t.widget_id ORDER BY oldestCreatedAt LIMIT 200`)
+    .bind(actor.owner_id, actor.owner_id).all();
+  return ok({ widgets: queued.results }, 200, { "Cache-Control": "no-store" });
 }
 
 async function pullBatch(env: Env, request: Request) {
@@ -1231,11 +1244,11 @@ async function taskResult(env: Env, request: Request, taskID: string) {
     const inactive = await inactiveTaskStatusForDeveloper(env, request, taskID);
     return inactive ? taskNotActive(inactive) : fail("task_not_found", "Task not found or Worker is not authorized.", 404);
   }
-  const finishTask = (nextStatus:string, outputs:unknown[], errorCode:string|null) => env.DB.prepare(`UPDATE widget_tasks
-    SET status=?,result_json=?,error_code=?,completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL
+  const finishTask = (nextStatus:string, outputs:unknown[], errorCode:string|null, errorReason:string|null=null) => env.DB.prepare(`UPDATE widget_tasks
+    SET status=?,result_json=?,error_code=?,error_reason=?,completed_at=?,lease_expires_at=NULL,claim_token_hash=NULL
     WHERE id=? AND status IN ('claimed','running') AND lease_expires_at>?
       AND claim_token_hash IS ? AND worker_id IS ?`)
-    .bind(nextStatus,JSON.stringify(outputs),errorCode,now(),taskID,now(),task.claim_token_hash??null,task.worker_id??null).run();
+    .bind(nextStatus,JSON.stringify(outputs),errorCode,errorReason,now(),taskID,now(),task.claim_token_hash??null,task.worker_id??null).run();
   const rejectOutput = async (code:string,message:string,httpStatus=422) => {
     const result=await finishTask('failed',[],code);
     return result.meta.changes ? fail(code,message,httpStatus) : taskNotActive('settled');
@@ -1270,7 +1283,14 @@ async function taskResult(env: Env, request: Request, taskID: string) {
       if (!asset || !asset.mime_type.startsWith(`${artifact.type}/`)) return rejectOutput("invalid_asset", "Output asset does not match this task and type.", 403);
     } else return rejectOutput("invalid_result", "Unsupported output type.", 422);
   }
-  const updated = await finishTask(status,artifacts,typeof body.errorCode === "string" ? body.errorCode : null);
+  // Codes reach the client verbatim: accept identifiers only. A reason is shown to
+  // users, so only allow-listed categories are stored (never provider text).
+  const errorCode = status === "failed" && body.errorCode != null
+    ? (typeof body.errorCode === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(body.errorCode) ? body.errorCode : "worker_error")
+    : null;
+  const errorReason = errorCode === "content_rejected" && ["sexual", "political", "other"].includes(String(body.reason))
+    ? String(body.reason) : null;
+  const updated = await finishTask(status,artifacts,errorCode,errorReason);
   if (!updated.meta.changes) {
     const current = await env.DB.prepare("SELECT status FROM widget_tasks WHERE id=?").bind(taskID).first<{ status: string }>();
     return taskNotActive(current?.status);
@@ -1498,6 +1518,10 @@ export default {
       if (proGrant && ['GET','POST'].includes(request.method)) {
         await requireAdmin(env, request); return await adminGrantPro(env, request, Number(proGrant[1]));
       }
+      const proRevoke = /^\/api\/admin\/v2\/users\/(\d+)\/pro\/revoke$/.exec(url.pathname);
+      if (proRevoke && request.method === "POST") {
+        await requireAdmin(env, request); return await adminRevokePro(env, request, Number(proRevoke[1]));
+      }
       if (url.pathname === '/api/admin/v2/redemption-codes') {
         await requireAdmin(env,request);
         if (request.method === 'GET') return await listRedemptionBatches(env);
@@ -1551,6 +1575,7 @@ export default {
       if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "developer" && parts[3] === "widgets" && parts[4] && !parts[5]) return await developerWidget(env, request, parts[4]);
       if (request.method === "POST" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "developer" && parts[3] === "widgets" && parts[4] && parts[5]) return await developerWidgetAction(env, request, parts[4], parts[5]);
       if (request.method === "POST" && url.pathname === "/api/v2/widget-tasks/pull-batch") return await pullBatch(env, request);
+      if (request.method === "GET" && url.pathname === "/api/v2/widget-tasks/diagnostics") return await workerQueueDiagnostics(env, request);
       if (request.method === "GET" && parts[0] === "api" && parts[1] === "v2" && parts[2] === "widget-submissions" && parts[3]) return await submissionDetail(env, request, parts[3]);
       if (request.method === "POST" && url.pathname === "/api/v2/widget-jobs") return await createTask(env, request);
       if (request.method === "POST" && url.pathname === "/api/v2/task-quotes") return await quoteTask(env, request);

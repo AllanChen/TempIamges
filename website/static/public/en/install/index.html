@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Download &amp; install · Glance</title>
-<meta name="description" content="Download Glance for Apple silicon Macs. Find system requirements, beta installation instructions, first-launch help, and the download checksum.">
+<meta name="description" content="Download Glance for Apple silicon Macs. Find system requirements, installation instructions, first-launch help, and the download checksum.">
 <link rel="canonical" href="https://glancepreview.com/en/install/">
 <link rel="alternate" hreflang="zh-Hans" href="https://glancepreview.com/install/">
 <link rel="alternate" hreflang="en" href="https://glancepreview.com/en/install/">
 <link rel="alternate" hreflang="x-default" href="https://glancepreview.com/en/install/">
 <meta property="og:title" content="Download &amp; install · Glance">
-<meta property="og:description" content="Download Glance for Apple silicon Macs. Find system requirements, beta installation instructions, first-launch help, and the download checksum.">
+<meta property="og:description" content="Download Glance for Apple silicon Macs. Find system requirements, installation instructions, first-launch help, and the download checksum.">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://glancepreview.com/assets/video/glance-demo-poster-en.jpg">
@@ -37,31 +37,23 @@
 <article class="doc">
   <div class="narrow">
     <h1 lang="en">Download &amp; install</h1>
-    <p class="updated"><span lang="en">Glance 1.0.0-beta.1 · macOS 12.3 or later · Apple silicon (M-series)</span></p>
-    <p><a class="btn btn-primary" href="/download/Glance-1.0.0-beta.1.dmg" download data-download-cta="install" data-app-version="1.0.0-beta.1"><span lang="en">Download Glance 1.0.0-beta.1 (5.0 MB)</span></a></p>
-    <p class="hash">SHA-256: aad58a57f4e157fecc311746d3b69e36a88fec75587a4ad844e036e940622c95</p>
+    <p class="updated"><span lang="en">Glance 1.0.2 · macOS 12.3 or later · Apple silicon (M-series)</span></p>
+    <p><a class="btn btn-primary" href="/download/Glance-1.0.2.dmg" download data-download-cta="install" data-app-version="1.0.2"><span lang="en">Download Glance 1.0.2 (7.8 MB)</span></a></p>
+    <p class="hash">SHA-256: 123164c3321a9580c9dd354fe8c03ab237c4b28d52f41f2660e7c47d0900f289</p>
 
 
 
     <div lang="en">
       <h2>Install</h2>
       <ol>
-        <li>Download <code>Glance-1.0.0-beta.1.dmg</code> and double-click it.</li>
+        <li>Download <code>Glance-1.0.2.dmg</code> and double-click it.</li>
         <li>Drag Glance into the Applications folder.</li>
         <li>Double-click Glance in Applications.</li>
       </ol>
 
-      <h2>If macOS blocks the first launch</h2>
-      <p>This build is not yet notarized by Apple, so macOS blocks it the first time. This is expected; allow it once.</p>
-      <h3>macOS 15 (Sequoia) and later</h3>
-      <ol>
-        <li>Double-click Glance. When you see “cannot be opened”, click Done.</li>
-        <li>Open System Settings → Privacy &amp; Security and scroll down to Security.</li>
-        <li>Next to “Glance was blocked”, click Open Anyway and confirm with your password.</li>
-      </ol>
-      <h3>macOS 14 and earlier</h3>
-      <p>Right-click Glance in Applications, choose Open, then click Open again in the dialog.</p>
-      <p>After that, Glance opens normally with a double-click.</p>
+      <h2>First launch</h2>
+      <p>Glance is notarized by Apple. The first time you open it, macOS notes that it was downloaded from the internet; click Open.</p>
+      <p>If macOS says it cannot be opened, make sure you dragged Glance into Applications and opened it from there, not from the DMG window. You can also compare the download with the SHA-256 above.</p>
 
       <h2>Getting started</h2>
       <ul>
@@ -76,8 +68,11 @@
       <p>When you turn Peek on, Glance guides you to grant Accessibility, which is used only to detect the hotkey and read the text you selected. With Accessibility granted, Input Monitoring needs no separate grant. Full Disk Access is optional and only needed to open files macOS protects. You can skip permission setup; viewing images and videos is unaffected.</p>
       <p>The text is never sent to Glance's servers; for a web link, Glance loads the preview directly from that website.</p>
       <h2>Feedback and help</h2>
-      <p>Send a direct message to <a href="https://x.com/Sir03834855" target="_blank" rel="noopener">@Sir03834855</a> on X. Describe what you did, what you expected and what happened, and attach a screenshot. If we need the log, we will tell you in the conversation; it is at <code>~/Library/Application Support/Glance/app.log</code>.</p>
-      <p>Share logs, email addresses, order numbers and redemption codes only in a direct message, never in a public post or reply.</p>
+      <p>Email <a href="mailto:support@glancepreview.com">support@glancepreview.com</a>. We aim to reply within 1–2 business days. Include steps to reproduce, expected and actual results, app version and build, macOS and chip architecture, and screenshots, an order number or a Widget task ID when relevant.</p>
+      <p>Newer app versions offer Help → Report a Bug, Reveal Log and Export Diagnostics. On older versions, find <code>~/Library/Application Support/Glance/app.log</code> manually. Exports stay on your Mac and are never uploaded automatically; review attachments before sending.</p>
+      <p>Share logs, email addresses, full order details and redemption codes only in a private email, never in a public post or reply.</p>
+      <h2>Redeem Pro</h2>
+      <p>Sign in, open your account and choose Redeem Pro. Each code can be redeemed by one account, grants no AI credits and creates no payment order. An active Pro license is not overwritten and a new code is not consumed. Lifetime codes grant lifetime Pro; one-year codes grant one year from redemption, then return to Free. Offline credentials cannot extend that expiry. The deadline to redeem a code is separate from the expiry of redeemed Pro access.</p>
       <h2>Uninstall</h2>
       <p>Quit Glance and drag it from Applications to the Trash. To remove local settings and logs too, delete <code>~/Library/Application Support/Glance</code>. Your account and credits live in the cloud; to delete your account, use Glance → Delete account.</p>
     </div>
@@ -102,7 +97,7 @@
       <a href="/en/terms/"><span lang="en">Terms of Service</span></a><a href="/en/privacy/"><span lang="en">Privacy Policy</span></a>
       <a href="/en/refunds/"><span lang="en">Refund Policy</span></a><a href="/en/acceptable-use/"><span lang="en">Acceptable Use Policy</span></a></div>
     <div><h4><span lang="en">Support</span></h4>
-      <a href="https://x.com/Sir03834855" target="_blank" rel="noopener"><span lang="en">DM @Sir03834855 on X</span></a>
+      <a href="mailto:support@glancepreview.com">support@glancepreview.com</a>
       <a href="/en/acceptable-use/#report-en"><span lang="en">Report content</span></a></div>
   </div>
   <div class="footer-bottom">

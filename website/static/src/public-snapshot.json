@@ -1,6 +1,26 @@
 {
-  "fetchedAt": "2026-11-04T23:43:30+00:00",
+  "fetchedAt": "2026-11-11T02:19:11+00:00",
   "widgets": [
+    {
+      "id": "ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f",
+      "name": "高清放大",
+      "summary": "图生图超分辨率，提升图片清晰度与细节。",
+      "enName": "Upscale",
+      "enSummary": "Upscale images to higher resolution with sharper detail.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "7cc3967a-60ac-4677-9817-72f57f5ef5fa",
+      "name": "人物背景分离",
+      "summary": "图生图高级背景移除，保留精细主体边缘。",
+      "enName": "Background Remover Pro",
+      "enSummary": "Precise background removal that keeps fine edges such as hair.",
+      "creditCost": 20,
+      "billing": {},
+      "uploadsMedia": true
+    },
     {
       "id": "0b164640-9998-49c7-aa93-5ed5cb957c40",
       "name": "移除物体",
@@ -22,26 +42,6 @@
         "mode": "duration",
         "unitSeconds": 10
       },
-      "uploadsMedia": true
-    },
-    {
-      "id": "ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f",
-      "name": "高清放大",
-      "summary": "图生图超分辨率，提升图片清晰度与细节。",
-      "enName": "Upscale",
-      "enSummary": "Upscale images to higher resolution with sharper detail.",
-      "creditCost": 30,
-      "billing": {},
-      "uploadsMedia": true
-    },
-    {
-      "id": "7cc3967a-60ac-4677-9817-72f57f5ef5fa",
-      "name": "人物背景分离",
-      "summary": "图生图高级背景移除，保留精细主体边缘。",
-      "enName": "Background Remover Pro",
-      "enSummary": "Precise background removal that keeps fine edges such as hair.",
-      "creditCost": 20,
-      "billing": {},
       "uploadsMedia": true
     },
     {
@@ -106,8 +106,8 @@
     }
   ],
   "pricing": {
-    "enabled": false,
-    "paymentsAvailable": false,
+    "enabled": true,
+    "paymentsAvailable": true,
     "trialDays": 14,
     "signupCredits": 100,
     "proBonusCredits": 100,
@@ -116,7 +116,7 @@
     "proTiers": [
       {
         "id": "personal",
-        "name": "个人版（测试）",
+        "name": "Personal",
         "enabled": true,
         "recommended": false,
         "deviceLimit": 1,
@@ -126,10 +126,10 @@
         "launchUSD": {
           "amount": null
         },
-        "productID": "PROD_6HhJPAncCJXoQw8f787YZ2",
-        "taxCategory": "software",
+        "productID": "PROD_4dlMKKJJ4nUFpMfhs5cbdB",
+        "taxCategory": "saas",
         "CNY": {
-          "amount": 1699
+          "amount": 2990
         },
         "USD": {
           "amount": 999
@@ -146,7 +146,7 @@
       },
       {
         "id": "team",
-        "name": "多人版（5 人，测试）",
+        "name": "Team (5 people)",
         "enabled": true,
         "recommended": true,
         "deviceLimit": 1,
@@ -156,10 +156,10 @@
         "launchUSD": {
           "amount": null
         },
-        "productID": "PROD_3EEhN2Aa9T6Samr4scP12Y",
-        "taxCategory": "software",
+        "productID": "PROD_06N3QvrA6MNyWSK4Hy5kSy",
+        "taxCategory": "digital_goods",
         "CNY": {
-          "amount": 4999
+          "amount": 7990
         },
         "USD": {
           "amount": 1999
@@ -181,8 +181,8 @@
         "name": "600 credits",
         "enabled": true,
         "recommended": false,
-        "productID": "PROD_7VyOkeOxSCq9PsuizMmSBV",
-        "taxCategory": "software",
+        "productID": "PROD_2iwYUqFoNF5J7doj1q9hKS",
+        "taxCategory": "saas",
         "CNY": {
           "amount": 1200,
           "points": 600
@@ -209,10 +209,10 @@
         "name": "1500 credits",
         "enabled": true,
         "recommended": true,
-        "productID": "PROD_3BBl200ladK588VckFGSF5",
-        "taxCategory": "software",
+        "productID": "PROD_3G4DkOM0dWKPwGSEN01pdu",
+        "taxCategory": "saas",
         "CNY": {
-          "amount": 3000,
+          "amount": 2800,
           "points": 1500
         },
         "USD": {
@@ -237,10 +237,10 @@
         "name": "5000 credits",
         "enabled": true,
         "recommended": false,
-        "productID": "PROD_5nFQoArD19XfIIyCsOp0ED",
-        "taxCategory": "software",
+        "productID": "PROD_2zgv2isfwCbh0XH2yOf8oD",
+        "taxCategory": "saas",
         "CNY": {
-          "amount": 9800,
+          "amount": 8800,
           "points": 5000
         },
         "USD": {

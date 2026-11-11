@@ -557,7 +557,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
             return value
         }
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: Preferences.shared.appLanguage == .chinese ? "zh_CN" : "en_US")
+        formatter.locale = Locale(identifier: Preferences.shared.appLanguage.rawValue)
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)

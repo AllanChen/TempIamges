@@ -371,6 +371,22 @@ enum PanelStyle {
         return blur
     }
 
+    /// Resizable rounded-rect mask for a `.behindWindow` NSVisualEffectView. The
+    /// window server composites that blur itself and ignores layer corner
+    /// masking, so without this mask a rounded borderless panel shows a square
+    /// plate and a square shadow. Cap insets keep the corners fixed at any size.
+    static func roundedMask(radius: CGFloat) -> NSImage {
+        let edge = radius * 2 + 1
+        let image = NSImage(size: NSSize(width: edge, height: edge), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
+        image.resizingMode = .stretch
+        return image
+    }
+
     /// A dark, semi-transparent frosted base for a borderless panel.
     /// `.hudWindow` + vibrant-dark gives the translucent black "磨砂" material;
     /// a canvas tint sublayer biases the frost toward the palette so it reads

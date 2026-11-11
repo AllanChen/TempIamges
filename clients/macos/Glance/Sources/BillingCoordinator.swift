@@ -179,6 +179,12 @@ final class BillingCoordinator {
     panel.taskJourneyID = UUID().uuidString
     var evidence: WidgetVideoEvidence?
     var preparedVideoURL: URL?
+    var presented = false
+    func present() {
+      guard !presented else { return }
+      presented = true
+      panel.present(over: parent)
+    }
     let release = panel.onDismiss
     panel.onDismiss = {
       release?()
@@ -208,7 +214,7 @@ final class BillingCoordinator {
         checking = false
         guard active() else { panel.dismiss(); return }
         switch result {
-        case .failure(let error): panel.showError(error.localizedDescription, retry: refreshQuote)
+        case .failure(let error): present(); panel.showError(error.localizedDescription, retry: refreshQuote)
         case .success(var quote):
           quote.preparedVideoURL = preparedVideoURL
           quote.billingIntentID = panel.taskJourneyID
@@ -217,10 +223,11 @@ final class BillingCoordinator {
           panel.taskCost = quote.totalCredits
           panel.taskBalance = quote.balance
           panel.requiresTaskConfirmation = true
-          panel.autoSubmit = false
+          panel.autoSubmit = true
           // Resuming after payment only refreshes the price. It never starts work.
           panel.onResumeTask = refreshQuote
           if quote.balance < quote.totalCredits {
+            present()
             if let journey = panel.taskJourneyID {
               BillingManager.shared.track("insufficient", id: "insufficient-" + journey, journeyID: journey, feature: "widget")
             }
@@ -233,29 +240,18 @@ final class BillingCoordinator {
             }
             return
           }
-          let title = String(format: "Confirm %@".localized, widget.displayName)
-          panel.showStatus(title: title, subtitle: quote.detail + (quote.mode == "duration" ? "\n" + "Partial 10-second units are rounded up.".localized : ""),
-            rows: [("This task".localized, String(format: "%d credits".localized, quote.totalCredits)),
-                   ("Current balance".localized, String(quote.balance)),
-                   ("Balance after task".localized, String(quote.balance - quote.totalCredits)),
-                   ("On failure".localized, "Full refund; retries cost no extra".localized)],
-            primary: String(format: "Confirm and start · %d credits".localized, quote.totalCredits),
-            secondary: "Cancel".localized,
-            onPrimary: {
-              guard active() else { panel.dismiss(); return }
-              guard let expires = BillingDates.parse(quote.expiresAt), expires > Date() else { refreshQuote(); return }
-              finished = true
-              panel.onResumeTask = nil
-              panel.dismiss()
-              completion(quote)
-            }, onSecondary: { panel.dismiss() })
+          guard let expires = BillingDates.parse(quote.expiresAt), expires > Date() else { refreshQuote(); return }
+          finished = true
+          panel.onResumeTask = nil
+          panel.dismiss()
+          completion(quote)
         }
       }
     }
     loading()
-    panel.present(over: parent)
     if widget.usesDurationBilling {
       guard mediaURLs.count == 1, let source = mediaURLs.first else {
+        present()
         panel.showError("Select one video per task.".localized)
         return
       }
@@ -263,13 +259,13 @@ final class BillingCoordinator {
         DispatchQueue.main.async {
           guard active() else { panel.dismiss(); return }
           switch local {
-          case .failure(let error): panel.showError(error.localizedDescription)
+          case .failure(let error): present(); panel.showError(error.localizedDescription)
           case .success(let url):
             preparedVideoURL = url
             WidgetVideoEvidence.inspect(url) { result in
               guard active() else { panel.dismiss(); return }
               switch result {
-              case .failure(let error): panel.showError(error.localizedDescription)
+              case .failure(let error): present(); panel.showError(error.localizedDescription)
               case .success(let value): evidence = value; refreshQuote()
               }
             }
@@ -309,6 +305,14 @@ final class BillingCoordinator {
       case .failure(let error): panel.showError(error.localizedDescription)
       }
       panel.present(over: parent)
+    }
+  }
+
+  func showProEntry(over parent: NSWindow? = nil) {
+    if BillingManager.shared.shouldManagePro {
+      showAccount(over: parent)
+    } else {
+      showPro(over: parent)
     }
   }
   private func checkout(
@@ -533,7 +537,7 @@ final class BillingCoordinator {
     }
     if !payment.abandoned, payment.panel.requiresTaskConfirmation,
        let resume = payment.panel.onResumeTask {
-      resume() // Refresh balance/quote and ask again; never auto-submit after a top-up.
+      resume()
       return
     }
     BillingManager.shared.refreshEntitlements(activate: true) { [weak self, weak payment] _ in

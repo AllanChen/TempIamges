@@ -26,7 +26,7 @@
       "productID": "PROD_4dlMKKJJ4nUFpMfhs5cbdB",
       "taxCategory": "saas",
       "CNY": {
-        "amount": 1699
+        "amount": 2990
       },
       "USD": {
         "amount": 999
@@ -56,7 +56,7 @@
       "productID": "PROD_06N3QvrA6MNyWSK4Hy5kSy",
       "taxCategory": "digital_goods",
       "CNY": {
-        "amount": 4999
+        "amount": 7990
       },
       "USD": {
         "amount": 1999
@@ -109,7 +109,7 @@
       "productID": "PROD_3G4DkOM0dWKPwGSEN01pdu",
       "taxCategory": "saas",
       "CNY": {
-        "amount": 3000,
+        "amount": 2800,
         "points": 1500
       },
       "USD": {
@@ -137,7 +137,7 @@
       "productID": "PROD_2zgv2isfwCbh0XH2yOf8oD",
       "taxCategory": "saas",
       "CNY": {
-        "amount": 9800,
+        "amount": 8800,
         "points": 5000
       },
       "USD": {

@@ -5,6 +5,76 @@ import CoreGraphics
 struct SelectionResult {
     let text: String
     let bounds: CGRect?  // AX screen coords (top-left origin, y-down). nil when unavailable.
+    /// Folders the selection most likely refers to, closest first: the source
+    /// window's folder (Terminal.app and Ghostty publish a tab's working
+    /// directory as its proxy document; editors publish the open file), then
+    /// the working directories of the user's shells. Bare file names resolve here.
+    var contextDirectories: [URL] = []
+}
+
+/// Working directories of the user's interactive shells, read from the process
+/// table (the user's own processes need no permission). This covers terminals
+/// that publish no window folder (VS Code, Cursor, iTerm2, Warp): shells started
+/// by the source app come first, then the most recently started.
+enum ShellDirectories {
+    private static let shellNames: Set<String> = [
+        "zsh", "bash", "fish", "sh", "dash", "ksh", "tcsh", "nu", "pwsh", "xonsh", "elvish"
+    ]
+
+    static func candidates(sourcePID: pid_t?, limit: Int = 8) -> [URL] {
+        let capacity = proc_listallpids(nil, 0)
+        guard capacity > 0 else { return [] }
+        var pids = [pid_t](repeating: 0, count: Int(capacity) + 64)
+        let filled = pids.withUnsafeMutableBufferPointer {
+            proc_listallpids($0.baseAddress, Int32($0.count * MemoryLayout<pid_t>.size))
+        }
+        guard filled > 0 else { return [] }
+
+        struct Process { let ppid: pid_t; let name: String; let started: UInt64; let hasTerminal: Bool }
+        let uid = getuid()
+        var processes: [pid_t: Process] = [:]
+        for pid in pids.prefix(Int(filled)) where pid > 0 {
+            var info = proc_bsdinfo()
+            let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+            guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size, info.pbi_uid == uid else { continue }
+            let name = withUnsafeBytes(of: info.pbi_comm) { String(cString: $0.bindMemory(to: CChar.self).baseAddress!) }
+            processes[pid] = Process(ppid: pid_t(info.pbi_ppid), name: name, started: info.pbi_start_tvsec,
+                                     hasTerminal: info.e_tdev != 0 && info.e_tdev != UInt32.max)
+        }
+        func isDescendant(_ pid: pid_t, of ancestor: pid_t) -> Bool {
+            var current = pid
+            for _ in 0..<64 {
+                guard let process = processes[current], process.ppid > 1 else { return false }
+                if process.ppid == ancestor { return true }
+                current = process.ppid
+            }
+            return false
+        }
+        // Interactive shells only: a controlling terminal rules out scripts' shells.
+        let shells = processes.filter { shellNames.contains($0.value.name) && $0.value.hasTerminal }
+            .map { entry in (pid: entry.key, process: entry.value,
+                             own: sourcePID.map { isDescendant(entry.key, of: $0) } ?? false) }
+            .sorted { $0.own != $1.own ? $0.own : $0.process.started > $1.process.started }
+
+        var seen = Set<String>()
+        var directories: [URL] = []
+        for shell in shells {
+            guard let path = workingDirectory(of: shell.pid), seen.insert(path).inserted else { continue }
+            directories.append(URL(fileURLWithPath: path, isDirectory: true))
+            if directories.count >= limit { break }
+        }
+        return directories
+    }
+
+    private static func workingDirectory(of pid: pid_t) -> String? {
+        var info = proc_vnodepathinfo()
+        let size = Int32(MemoryLayout<proc_vnodepathinfo>.size)
+        guard proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &info, size) == size else { return nil }
+        let path = withUnsafeBytes(of: info.pvi_cdir.vip_path) {
+            String(cString: $0.bindMemory(to: CChar.self).baseAddress!)
+        }
+        return path.isEmpty || path == "/" ? nil : path
+    }
 }
 
 class SelectedTextExtractor {
@@ -121,8 +191,34 @@ class SelectedTextExtractor {
         }
 
         let bounds = readSelectionBounds(element: element)
-        Logger.info("SelectedTextExtractor: AX selected='\(Logger.redact(trimmed))' bounds=\(bounds.map { "\($0)" } ?? "nil")")
-        return SelectionResult(text: trimmed, bounds: bounds)
+        var sourcePID: pid_t = 0
+        let window = readContextDirectory(element: element)
+        let shells = ShellDirectories.candidates(
+            sourcePID: AXUIElementGetPid(element, &sourcePID) == .success ? sourcePID : fromPID)
+        var contexts = window.map { [$0] } ?? []
+        contexts += shells.filter { $0 != window }
+        Logger.info("SelectedTextExtractor: AX selected='\(Logger.redact(trimmed))' bounds=\(bounds.map { "\($0)" } ?? "nil") context=\(window == nil ? "none" : "window") + \(shells.count) shell dir(s)")
+        return SelectionResult(text: trimmed, bounds: bounds, contextDirectories: contexts)
+    }
+
+    /// The selection's window `AXDocument` as a folder. Runs on the AX read queue.
+    private func readContextDirectory(element: AXUIElement) -> URL? {
+        var window: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, kAXWindowAttribute as CFString, &window) != .success {
+            var pid: pid_t = 0
+            guard AXUIElementGetPid(element, &pid) == .success,
+                  AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid),
+                                                kAXFocusedWindowAttribute as CFString, &window) == .success
+            else { return nil }
+        }
+        guard let window, CFGetTypeID(window) == AXUIElementGetTypeID() else { return nil }
+        var document: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window as! AXUIElement, kAXDocumentAttribute as CFString,
+                                            &document) == .success,
+              let raw = document as? String, let url = URL(string: raw), url.isFileURL else { return nil }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return nil }
+        return (isDirectory.boolValue ? url : url.deletingLastPathComponent()).standardizedFileURL
     }
 
     private func readSelectionBounds(element: AXUIElement) -> CGRect? {

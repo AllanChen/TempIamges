@@ -7,6 +7,29 @@
 
 // MARK: - App Name
 "Glance" = "Glance";
+"Help" = "Help";
+"Report a Bug…" = "Report a Bug…";
+"Reveal Log" = "Reveal Log";
+"Export Diagnostics…" = "Export Diagnostics…";
+"Bug report copied" = "Bug report copied";
+"Send the copied report to support@glancepreview.com. Logs are not attached or sent automatically." = "Send the copied report to support@glancepreview.com. Logs are not attached or sent automatically.";
+"Export diagnostics for review?" = "Export diagnostics for review?";
+"The file contains app and system versions, permission status and a redacted recent log. Review it before emailing support@glancepreview.com. Nothing is uploaded automatically. Do not post logs, email addresses, full order details or redemption codes publicly." = "The file contains app and system versions, permission status and a redacted recent log. Review it before emailing support@glancepreview.com. Nothing is uploaded automatically. Do not post logs, email addresses, full order details or redemption codes publicly.";
+"Steps to reproduce:" = "Steps to reproduce:";
+"Expected result:" = "Expected result:";
+"Actual result:" = "Actual result:";
+"Screenshots (attach after review):" = "Screenshots (attach after review):";
+"Order number or Widget task ID (optional, private email only):" = "Order number or Widget task ID (optional, private email only):";
+"Please review attachments before sending. Logs are never attached automatically. Do not post logs, email addresses, full order details or redemption codes publicly. We aim to reply within 1–2 business days." = "Please review attachments before sending. Logs are never attached automatically. Do not post logs, email addresses, full order details or redemption codes publicly. We aim to reply within 1–2 business days.";
+"Waiting for a worker · Not started" = "Waiting for a worker · Not started";
+"No worker has claimed this task yet. You can cancel; any deducted credits will be refunded." = "No worker has claimed this task yet. You can cancel; any deducted credits will be refunded.";
+"Upgrade to Pro" = "Upgrade to Pro";
+"Upgrade to Pro · from %@" = "Upgrade to Pro · from %@";
+"Manage Pro" = "Manage Pro";
+"Manage Pro…" = "Manage Pro…";
+"Buy Glance Pro…" = "Buy Glance Pro…";
+"One-time purchase · Lifetime updates" = "One-time purchase · Lifetime updates";
+"Devices and orders" = "Devices and orders";
 
 // MARK: - Onboarding Window
 "Welcome to Glance" = "Welcome to Glance";
@@ -149,6 +172,12 @@
 "Lower quality means a smaller file." = "Lower quality means a smaller file.";
 "Compressed ✓" = "Compressed ✓";
 "Compression failed" = "Compression failed";
+"Resize Image" = "Resize Image";
+"Scale down proportionally." = "Scale down proportionally.";
+"Scale" = "Scale";
+"Resize" = "Resize";
+"Resized ✓" = "Resized ✓";
+"Resize failed" = "Resize failed";
 "Base64 to Image" = "Base64 to Image";
 "Paste a Base64 image string below" = "Paste a Base64 image string below";
 "Convert" = "Convert";
@@ -479,6 +508,7 @@
 "INPUT IMAGE" = "INPUT IMAGE";
 "Plain text" = "Plain text";
 "0 characters" = "0 characters";
+"%d characters" = "%d characters";
 "Widget Result" = "Widget Result";
 "Waiting for Widget result…" = "Waiting for Widget result…";
 "Copy result" = "Copy result";
@@ -494,6 +524,12 @@
 "The Widget signature could not be verified." = "The Widget signature could not be verified.";
 "The Widget Market is unavailable." = "The Widget Market is unavailable.";
 "The Widget task failed without reporting a reason." = "The Widget task failed without reporting a reason.";
+" (possible sexual content)" = " (possible sexual content)";
+" (possible political content)" = " (possible political content)";
+"The AI provider's safety review rejected this input%@. Change the image or input and try again; running the same input again will be rejected again." = "The AI provider's safety review rejected this input%@. Change the image or input and try again; running the same input again will be rejected again.";
+"The Widget took too long to process this task. Try again, or use a smaller input." = "The Widget took too long to process this task. Try again, or use a smaller input.";
+"The Widget could not finish this task. Try again; if it keeps failing, contact support." = "The Widget could not finish this task. Try again; if it keeps failing, contact support.";
+"This Widget is temporarily unavailable. Try again later." = "This Widget is temporarily unavailable. Try again later.";
 "Widget request failed (HTTP %d)." = "Widget request failed (HTTP %d).";
 "This Widget is no longer available." = "This Widget is no longer available.";
 "Freeimage upload failed." = "Freeimage upload failed.";
@@ -513,6 +549,7 @@
 "Save as WebP…" = "Save as WebP…";
 "Save as Icon…" = "Save as Icon…";
 "Compress…" = "Compress…";
+"Resize…" = "Resize…";
 "Copy as Base64" = "Copy as Base64";
 "Base64 → Image…" = "Base64 → Image…";
 "Tools" = "Tools";

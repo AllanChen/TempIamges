@@ -18,6 +18,34 @@ enum LogLevel: String, CaseIterable {
     }
 }
 
+/// Coarse product metadata only: no hostname, serial number, account, paths or media.
+enum ClientEnvironment {
+    static var buildChannel: String {
+        #if DEBUG
+        return "debug"
+        #else
+        return "release"
+        #endif
+    }
+    static var eventProperties: [String: String] {
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        #if arch(arm64)
+        let architecture = "arm64"
+        #else
+        let architecture = "x86_64"
+        #endif
+        return ["appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0",
+                "appBuild": Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0",
+                "macOS": "\(os.majorVersion).\(os.minorVersion).\(os.patchVersion)",
+                "architecture": architecture, "language": Preferences.shared.appLanguage.rawValue,
+                "buildChannel": buildChannel]
+    }
+    static var summary: String {
+        let p = eventProperties
+        return "Glance \(p["appVersion"]!) (build \(p["appBuild"]!))\nmacOS \(p["macOS"]!)\nArchitecture: \(p["architecture"]!)\nLanguage: \(p["language"]!)\nChannel: \(buildChannel)"
+    }
+}
+
 final class Logger {
     static let shared = Logger()
 
@@ -146,5 +174,58 @@ final class Logger {
 
     static func clearLogs() {
         try? "".write(to: shared.logFileURL, atomically: true, encoding: .utf8)
+    }
+
+    static func exportDiagnostics(to url: URL, header: String, completion: @escaping (Error?) -> Void) {
+        shared.queue.async {
+            do {
+                let data = (try? Data(contentsOf: shared.logFileURL)) ?? Data()
+                let tail = String(decoding: data.suffix(256 * 1024), as: UTF8.self)
+                let report = header + "\n--- Recent log (redacted; review before sharing) ---\n" + SupportDiagnostics.redact(tail)
+                try report.write(to: url, atomically: true, encoding: .utf8)
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+                DispatchQueue.main.async { completion(nil) }
+            } catch {
+                DispatchQueue.main.async { completion(error) }
+            }
+        }
+    }
+}
+
+enum SupportDiagnostics {
+    static var reportTemplate: String {
+        """
+        \(ClientEnvironment.summary)
+
+        \("Steps to reproduce:".localized)
+        1.
+        2.
+
+        \("Expected result:".localized)
+
+        \("Actual result:".localized)
+
+        \("Screenshots (attach after review):".localized)
+
+        \("Order number or Widget task ID (optional, private email only):".localized)
+
+        \("Please review attachments before sending. Logs are never attached automatically. Do not post logs, email addresses, full order details or redemption codes publicly. We aim to reply within 1–2 business days.".localized)
+        """
+    }
+    static func redact(_ input: String) -> String {
+        var text = input.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "<home>")
+        let rules = [
+            (#"(?i)\b(?:https?|file)://[^\s<>\"']+"#, "<url>"),
+            (#"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#, "<email>"),
+            (#"(?i)\bGLG(?:[- ]?[A-HJ-NP-Z2-9]{4}){4}\b"#, "<redemption-code>"),
+            (#"(?i)\bbearer\s+[^\s,;\"']+"#, "<credential>"),
+            (#"(?i)\b(?:[a-z0-9_]*(?:token|secret|password)|authorization|api[_-]?key)[\"']?\s*[:=]\s*(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"#, "<credential>"),
+            (#"(?:/Users|/Volumes|/private|/tmp|<home>)/[^\n]+"#, "<path>"),
+            (#"(?i)\b(?:order|task)[_-][a-z0-9_-]{8,}\b"#, "<private-id>")
+        ]
+        for (pattern, replacement) in rules {
+            text = text.replacingOccurrences(of: pattern, with: replacement, options: .regularExpression)
+        }
+        return text
     }
 }

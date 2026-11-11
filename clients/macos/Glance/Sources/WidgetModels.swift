@@ -147,6 +147,7 @@ struct WidgetManifest: Codable, Hashable {
         let language = Preferences.shared.appLanguage.rawValue
         var tags = [language]
         if let base = language.split(separator: "-").first.map(String.init), base != language { tags.append(base) }
+        if !tags.contains("en") { tags.append("en") }
         return tags
     }
 

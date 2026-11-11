@@ -15,7 +15,7 @@ git diff --check
 
 这是官网的静态生成流程，不构建或启动 macOS App。使用 Python 3.12 或更新版本。
 
-`build.py` 要求现有发行包位于 `src/download/Glance-1.0.0-beta.1.dmg`。DMG 由 Git 忽略；在新工作区中准备发行包时，应核对正式安装页公布的 SHA-256，不能用空文件代替。
+`build.py` 要求现有发行包位于 `src/download/Glance-1.0.1.dmg`。DMG 由 Git 忽略；在新工作区中准备发行包时，应核对正式安装页公布的 SHA-256，不能用空文件代替。正式版本还必须出现在签名 appcast 中，且引用的安装包及差分包必须存在、大小匹配；不要直接上传其他工作区的旧 public 目录。
 
 `refresh_public_snapshot.py` 从公开 API 更新 `src/public-snapshot.json`。每次发布前运行，确认 Widget 名称、计费单位和销售状态与服务端一致。构建器用它生成无需 JavaScript 即可阅读的 Widget 列表和当前定价状态；浏览器加载后仍向 API 获取实时数据。刷新失败时不要沿用旧快照发布价格变化。
 

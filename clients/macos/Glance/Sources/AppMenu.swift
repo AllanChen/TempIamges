@@ -15,6 +15,7 @@ extension AppDelegate {
         let appMenu = NSMenu(title: "Glance")
         appMenu.addItem(menuItem("About Glance", #selector(showAboutFromMenu(_:)), target: self))
         appMenu.addItem(menuItem("Check for Updates…", #selector(AppUpdater.checkForUpdates(_:)), target: AppUpdater.shared))
+        appMenu.addItem(menuItem("Buy Glance Pro…", #selector(openProFromMenu(_:)), target: self))
         appMenu.addItem(.separator())
         appMenu.addItem(menuItem("Preferences...", #selector(openPreferencesFromMenu(_:)), key: ",", target: self))
         appMenu.addItem(menuItem("Team account", #selector(AccountActions.manageTeam(_:)), target: AccountActions.shared))
@@ -63,6 +64,15 @@ extension AppDelegate {
         windowItem.submenu = windowMenu
         mainMenu.addItem(windowItem)
 
+        let helpItem = NSMenuItem()
+        let helpMenu = NSMenu(title: "Help".localized)
+        helpMenu.addItem(menuItem("Report a Bug…", #selector(reportBugFromMenu(_:)), target: self))
+        helpMenu.addItem(menuItem("Reveal Log", #selector(revealLogFromMenu(_:)), target: self))
+        helpMenu.addItem(menuItem("Export Diagnostics…", #selector(exportDiagnosticsFromMenu(_:)), target: self))
+        helpItem.submenu = helpMenu
+        mainMenu.addItem(helpItem)
+        NSApp.helpMenu = helpMenu
+
         NSApp.mainMenu = mainMenu
         NSApp.windowsMenu = windowMenu
     }
@@ -76,7 +86,49 @@ extension AppDelegate {
     }
 
     @objc private func showAboutFromMenu(_ sender: Any?) { statusBarController?.showAbout() }
+    @objc private func reportBugFromMenu(_ sender: Any?) {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "support@glancepreview.com"
+        components.queryItems = [URLQueryItem(name: "subject", value: "Glance bug report"),
+                                URLQueryItem(name: "body", value: SupportDiagnostics.reportTemplate)]
+        if let url = components.url, NSWorkspace.shared.open(url) { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(SupportDiagnostics.reportTemplate, forType: .string)
+        let alert = NSAlert()
+        alert.messageText = "Bug report copied".localized
+        alert.informativeText = "Send the copied report to support@glancepreview.com. Logs are not attached or sent automatically.".localized
+        alert.runModal()
+    }
+    @objc private func revealLogFromMenu(_ sender: Any?) { Logger.revealLogFile() }
+    @objc private func exportDiagnosticsFromMenu(_ sender: Any?) {
+        let confirm = NSAlert()
+        confirm.messageText = "Export diagnostics for review?".localized
+        confirm.informativeText = "The file contains app and system versions, permission status and a redacted recent log. Review it before emailing support@glancepreview.com. Nothing is uploaded automatically. Do not post logs, email addresses, full order details or redemption codes publicly.".localized
+        confirm.addButton(withTitle: "Export".localized)
+        confirm.addButton(withTitle: "Cancel".localized)
+        guard confirm.runModal() == .alertFirstButtonReturn else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "Glance-Diagnostics.txt"
+        panel.allowedContentTypes = [.plainText]
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            let header = SupportDiagnostics.reportTemplate + "\nAccessibility: \(PermissionManager.shared.isAccessibilityGranted)\nInput Monitoring: \(PermissionManager.shared.isInputMonitoringGranted)\n"
+            Logger.exportDiagnostics(to: url, header: header) { error in
+                if let error {
+                    let alert = NSAlert(error: error)
+                    alert.runModal()
+                } else {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+            }
+        }
+    }
     @objc private func openPreferencesFromMenu(_ sender: Any?) { openPreferences() }
+    @objc private func openProFromMenu(_ sender: Any?) {
+        NSApp.activate(ignoringOtherApps: true)
+        BillingCoordinator.shared.showProEntry(over: NSApp.keyWindow ?? NSApp.mainWindow)
+    }
 
     @objc private func openFilesFromMenu(_ sender: Any?) {
         let panel = NSOpenPanel()
@@ -156,5 +208,14 @@ extension AppDelegate {
             result.addButton(withTitle: "OK".localized)
             result.runModal()
         }
+    }
+}
+
+extension AppDelegate: NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(openProFromMenu(_:)) {
+            menuItem.title = (BillingManager.shared.shouldManagePro ? "Manage Pro…" : "Buy Glance Pro…").localized
+        }
+        return true
     }
 }

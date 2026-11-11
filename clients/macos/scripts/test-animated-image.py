@@ -12,6 +12,11 @@ decode = loader[loader.index('    static func decodeWithImageIO(from url:'):]
 decode = decode[:decode.index('    private func decodeLocalImage(')]
 resize = loader[loader.index('    private func resizeImage('):loader.index('    private func cacheOriginal(')].replace('private func', 'func', 1)
 tests = r'''
+// Only the decoder/import is exercised; no preview surface is displayed.
+final class BillingManager {
+    static let shared = BillingManager()
+    func recordSuccessfulPreview(_ kind: String) {}
+}
 func check(_ label: String, _ value: Bool) {
     precondition(value, label)
     print("PASS: \(label)")

@@ -314,6 +314,9 @@ final class WebMVideoView: WKWebView {
                 self.streamingFirstFrameSent = true
                 self.logLoadStage("native first frame ready; play requested=\(self.wantsPlay); status=\(self.streamingPlayer?.timeControlStatus.rawValue ?? -1)")
                 self.onFrameReady?()
+                if self.window?.isVisible == true, !self.isHiddenOrHasHiddenAncestor {
+                    BillingManager.shared.recordSuccessfulPreview("video")
+                }
                 self.displayObservation = nil
             }
         }
@@ -568,6 +571,9 @@ final class WebMVideoView: WKWebView {
             releaseEmbeddedDragDestinations()
             if !wantsPlay { pauseVideo() }
             onFrameReady?()
+            if window?.isVisible == true, !isHiddenOrHasHiddenAncestor {
+                BillingManager.shared.recordSuccessfulPreview("video")
+            }
         case "error":
             Logger.warning("WebMVideoView: media element failed (code \(body["code"] ?? 0)); \(body["message"] ?? "")")
             if !startStreamingFallback() { onFailure?() }

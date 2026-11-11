@@ -1,5 +1,36 @@
 # macOS 官网发行与更新
 
+## 2026-11-11 Glance 1.0.2 / build 8 已发布
+
+包含本轮反馈／诊断导出、客户端元数据与首次成功预览埋点、首帧检查等 Swift 改动及德／日语言资源。Developer ID Release 构建后运行 `package-release.sh`：App 公证 `a0b0e400-0c47-45ea-83dd-2525cf756647` Accepted，DMG 公证 `51c3d8a1-ce2f-4c62-b8fb-8ed2e9f14048` Accepted，`stapler validate` 与 `spctl` 均通过。DMG `clients/macos/dist/updates/Glance-1.0.2.dmg`，SHA-256 `123164c3321a9580c9dd354fe8c03ab237c4b28d52f41f2660e7c47d0900f289`。初次发布的 appcast 含历史条目与 delta；随后按用户明确批准将公开产物收缩为仅最新完整包，并用 Sparkle 私钥重新生成、验证签名 feed。最终 appcast 只含 1.0.2/build 8 的一个完整 DMG enclosure，不含 delta 或失效引用，旧客户端可通过该条目获取最新完整包。官网从当前源码刷新公开快照并重建，25 页构建与 14 项检查通过，最终 Pages 部署为 `e6be2d77.glance-6t3.pages.dev`。正式域名中／英／日／德首页和中英安装页均显示 1.0.2；两个 1.0.2 DMG URL 均为 HTTP 200、7,783,267 bytes 且 SHA-256 与本地一致；旧 1.0.1、1.0.0、beta.1、beta.2 的公开 DMG 及全部旧 delta URL 共 18 个均返回 404。仅删除官网 `src/download`、`src/updates` 及生成目录中的旧公开产物，本地 `clients/macos/dist` 历史归档保留。干净环境安装与旧版实际更新验收仍由用户完成。
+
+## 2026-11-10 官网再次被旧 beta.1 覆盖后恢复 1.0.1
+
+正式域名一度再次返回 1.0.0-beta.1 内容和空的签名 appcast。已刷新公开快照、重建官网（25 页、14 项静态检查、7 项采集测试、脚本语法检查通过），DMG 重新通过 `stapler validate` 与 `spctl` 后重新发布 Pages：`125bbf76.glance-6t3.pages.dev`。发布后正式域名核对：首页只显示 1.0.1；appcast 首项为 1.0.1/build 7 并保留 1.0.0、beta.2 归档；`/download/` 与 `/updates/` 的 DMG HTTP 200、长度 7586421、SHA-256 `6642a52208f7635d07a0475000bdb6e00a5f8cbee428946bd9430740dae2cf81` 与本地公证包一致；三个 7 系 delta HTTP 200。这是 11 月 9 日同类问题的第二次发生，发布来源仍未锁定。
+
+## 2026-11-10 P0 源码与发行交接
+
+本轮反馈／诊断、客户端元数据和首次成功预览埋点尚未进入新的发行包；公开版本仍是下面记录的 1.0.1 / build 7。本轮未部署迁移 0028、Worker 或官网，也未创建发行提交／tag。最终服务端回归及编译检查有超时阻塞，验收状态见 [上线清单](launch-readiness.md) 和 [统计说明](launch-analytics.md)。后续发行必须递增版本与 build，保留 1.0.1 归档和现有更新签名。
+
+已做范围有限的文件检查：扫描 831 个仓库／公开产物文本文件的私钥头和 token 字面量模式；唯一命中为 `src/billing.ts` 中去除 PEM 包装的正则，不是密钥内容。当前 `website/static/public` 和本地 `Glance.app` 未发现 `.p12`、`.p8`、`.key`、`.env`、`.dev.vars`、Sparkle 私钥或 `account_info.txt` 这类文件名。这不代替 Git 全历史和新发行包的最终敏感信息审计。
+
+## 2026-11-09 官网恢复与 1.0.1 发布
+
+- 正式域名被后续生产部署覆盖为旧 beta.1 内容，正式包链接返回 404，更新源为空；先重新发布当前站点恢复 1.0.0，再发布 1.0.1（build 7）。未回滚官网其他页面。
+- 完整 Release 构建、Developer ID 签名通过；App 公证 `42e4df89-d927-44e9-b3d9-b429890dc52e`、DMG 公证 `2718fdca-ce8c-4183-bcd2-601433c49f20` 均 Accepted，凭证附加、验证和 Gatekeeper 检查通过。
+- 新版包含主动 Pro 入口、中英日德语言资源、已购主页隐藏 Pro 管理入口，以及任务等待执行器提示。未启动 App 或进行 UI 验收。
+- 官网部署 `69c12c89.glance-6t3.pages.dev`；四语言首页、安装页和 appcast 均已核对指向 1.0.1/build 7。公开下载与更新源中的 DMG 均与本地文件一致：`6642a52208f7635d07a0475000bdb6e00a5f8cbee428946bd9430740dae2cf81`。
+- 官网构建新增校验：正式版本必须在 appcast 中存在，所有引用安装包和差分包必须存在且大小匹配。该检查无法阻止其他工作区绕过构建直接发布旧产物；发布者仍需使用当前源码和发行资源。
+- 服务端队列诊断已部署，版本 `d6fa9848-5db4-45c8-a808-d1eaca2fca79`。164 项服务测试、类型检查、13 项官网测试和翻译检查通过。真实付款退款与客户端安装/更新仍待用户验收。
+
+## 2026-11-05 正式版发布
+
+- 用户授权发布官网并开放正式购买。版本 1.0.0（build 6），功能日期 2026-11-05，arm64 / macOS 12.3+。
+- 完整 Release 构建及 Developer ID 签名通过，包含 Resize、权限页 Logo、任务余额充足直接提交和 Information 圆角兼容性修复。
+- App 公证 `8a11d701-a0dc-4086-acec-8a920827335d`、DMG 公证 `409797fa-eb8d-464c-b606-18295d877a1b` 均 Accepted，凭证附加与验证通过；Gatekeeper 均 accepted / Notarized Developer ID。
+- 正式包：`clients/macos/dist/updates/Glance-1.0.0.dmg`；官网 `/download/Glance-1.0.0.dmg`、`/updates/Glance-1.0.0.dmg` 已发布且字节一致。SHA-256：`1cb9bf4a277a87fc68da0ec8f4b3b5204a81eb91a667dcd3a922580f8c99bd3a`。
+- Sparkle 签名更新源及 build 4/5 到 6 的 delta 已发布，旧 beta 归档保留。实际旧版更新安装与最新 UI 验收仍由用户完成。
+
 客户端默认由用户自行构建、运行和验收；本次 Release 构建与公证由用户明确授权执行，UI 验收仍由用户完成。
 
 ## 2026-11-04 验收版公证记录

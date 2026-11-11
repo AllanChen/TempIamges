@@ -156,7 +156,7 @@ final class ImageInfoPanel: NSPanel {
                    styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
         appearance = NSAppearance(named: .darkAqua)
@@ -190,6 +190,9 @@ final class ImageInfoPanel: NSPanel {
         blur.wantsLayer = true
         blur.layer?.cornerRadius = 16
         blur.layer?.masksToBounds = true
+        // Behind-window blur ignores layer masking; without this the panel shows
+        // square corners and a square window shadow.
+        blur.maskImage = PanelStyle.roundedMask(radius: 16)
         blur.frame = root.bounds
         blur.autoresizingMask = [.width, .height]
         root.addSubview(blur)
@@ -202,6 +205,19 @@ final class ImageInfoPanel: NSPanel {
         blur.layer?.addSublayer(tint)
 
         contentView = wrapper
+        updateRoundedShadow()
+    }
+
+    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        super.setFrame(frameRect, display: flag)
+        updateRoundedShadow()
+    }
+
+    private func updateRoundedShadow() {
+        guard let contentView else { return }
+        contentView.layer?.cornerRadius = 16
+        contentView.layer?.shadowPath = CGPath(roundedRect: contentView.bounds,
+                                               cornerWidth: 16, cornerHeight: 16, transform: nil)
     }
 
     func setContent(_ view: NSView) {
@@ -243,6 +259,7 @@ final class ImageInfoPanel: NSPanel {
         let y = max(visible.minY, min(parent.frame.maxY - height, visible.maxY - height))
         setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
         contentView?.layoutSubtreeIfNeeded()
+        invalidateShadow()
     }
 }
 

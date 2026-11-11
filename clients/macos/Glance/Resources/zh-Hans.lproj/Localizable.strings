@@ -7,6 +7,29 @@
 
 // MARK: - App Name
 "Glance" = "Glance";
+"Help" = "帮助";
+"Report a Bug…" = "报告问题…";
+"Reveal Log" = "显示日志";
+"Export Diagnostics…" = "导出诊断…";
+"Bug report copied" = "问题反馈模板已复制";
+"Send the copied report to support@glancepreview.com. Logs are not attached or sent automatically." = "请将复制的反馈模板发送至 support@glancepreview.com。日志不会自动附加或发送。";
+"Export diagnostics for review?" = "导出诊断供你查看？";
+"The file contains app and system versions, permission status and a redacted recent log. Review it before emailing support@glancepreview.com. Nothing is uploaded automatically. Do not post logs, email addresses, full order details or redemption codes publicly." = "文件包含 App 与系统版本、权限状态及经过脱敏的近期日志。请查看内容后再发邮件至 support@glancepreview.com，不会自动上传。请勿公开发布日志、邮箱、完整订单信息或兑换码。";
+"Steps to reproduce:" = "复现步骤：";
+"Expected result:" = "预期结果：";
+"Actual result:" = "实际结果：";
+"Screenshots (attach after review):" = "截图（查看后自行附加）：";
+"Order number or Widget task ID (optional, private email only):" = "订单号或 Widget 任务 ID（选填，仅通过私密邮件提供）：";
+"Please review attachments before sending. Logs are never attached automatically. Do not post logs, email addresses, full order details or redemption codes publicly. We aim to reply within 1–2 business days." = "发送前请查看附件，日志不会自动附加。请勿公开发布日志、邮箱、完整订单信息或兑换码。目标在 1–2 个工作日内回复。";
+"Waiting for a worker · Not started" = "等待执行器领取 · 尚未开始";
+"No worker has claimed this task yet. You can cancel; any deducted credits will be refunded." = "任务尚未被执行器领取。可以取消任务，已扣点数将退还。";
+"Upgrade to Pro" = "升级 Pro";
+"Upgrade to Pro · from %@" = "升级 Pro · %@ 起";
+"Manage Pro" = "管理 Pro";
+"Manage Pro…" = "管理 Pro…";
+"Buy Glance Pro…" = "购买 Glance Pro…";
+"One-time purchase · Lifetime updates" = "一次买断 · 终身更新";
+"Devices and orders" = "设备与订单";
 
 // MARK: - Onboarding Window
 "Welcome to Glance" = "欢迎使用 Glance";
@@ -153,6 +176,12 @@
 "Lower quality means a smaller file." = "质量越低，文件越小。";
 "Compressed ✓" = "压缩成功 ✓";
 "Compression failed" = "压缩失败";
+"Resize Image" = "调整图片尺寸";
+"Scale down proportionally." = "按原始宽高比缩小图片。";
+"Scale" = "缩放比例";
+"Resize" = "调整尺寸";
+"Resized ✓" = "尺寸调整成功 ✓";
+"Resize failed" = "尺寸调整失败";
 "Base64 to Image" = "Base64 转图片";
 "Paste a Base64 image string below" = "请在下方粘贴 Base64 图片字符串";
 "Convert" = "转换";
@@ -479,6 +508,7 @@
 "INPUT IMAGE" = "输入图片";
 "Plain text" = "纯文本";
 "0 characters" = "0 个字符";
+"%d characters" = "%d 个字符";
 "Widget Result" = "Widget 结果";
 "Waiting for Widget result…" = "等待 Widget 结果…";
 "Copy result" = "拷贝结果";
@@ -495,6 +525,12 @@
 "The Widget signature could not be verified." = "无法验证 Widget 签名。";
 "The Widget Market is unavailable." = "Widget 市场暂时不可用。";
 "The Widget task failed without reporting a reason." = "Widget 任务失败，未报告原因。";
+" (possible sexual content)" = "（可能包含色情内容）";
+" (possible political content)" = "（可能包含政治敏感内容）";
+"The AI provider's safety review rejected this input%@. Change the image or input and try again; running the same input again will be rejected again." = "AI 服务商的安全审核拒绝了此输入%@。请更换图片或修改输入后重试；使用相同输入重试仍会审核失败。";
+"The Widget took too long to process this task. Try again, or use a smaller input." = "Widget 处理任务超时。请重试，或改用较小的输入文件。";
+"The Widget could not finish this task. Try again; if it keeps failing, contact support." = "Widget 无法完成此任务。请重试；如果仍然失败，请联系支持。";
+"This Widget is temporarily unavailable. Try again later." = "此 Widget 暂时不可用，请稍后重试。";
 "Widget request failed (HTTP %d)." = "Widget 请求失败（HTTP %d）。";
 "This Widget is no longer available." = "这个 Widget 已下架，无法继续使用。";
 "Freeimage upload failed." = "Freeimage 上传失败。";
@@ -514,6 +550,7 @@
 "Save as WebP…" = "存储为 WebP…";
 "Save as Icon…" = "存储为图标…";
 "Compress…" = "压缩…";
+"Resize…" = "调整尺寸…";
 "Copy as Base64" = "拷贝为 Base64";
 "Base64 → Image…" = "Base64 转图片…";
 "Tools" = "工具";

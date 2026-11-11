@@ -120,9 +120,11 @@ describe('redeemed Pro licenses', () => {
     expect((await testEnv.DB.prepare('SELECT COUNT(*) n FROM orders').first<any>()).n).toBe(0);
     expect((await testEnv.DB.prepare('SELECT credits FROM users WHERE id=1').first<any>()).credits).toBe(500);
     expect((await testEnv.DB.prepare('SELECT COUNT(*) n FROM pro_redemption_codes WHERE redeemed_by=1').first<any>()).n).toBe(1);
-    const metrics = await call('/api/admin/v2/billing/metrics?days=30', { token: env.ADMIN_TOKEN });
+    const metrics = await call('/api/admin/v2/billing/metrics?days=30&environment=test', { token: env.ADMIN_TOKEN });
     const report = (await metrics.json() as any).result.launch.redemptions;
     expect(report).toEqual([expect.objectContaining({ kind: 'lifetime', issued: 1, redeemed: 1, active: 1, activated: 1, expired: 0 })]);
+    const production = await call('/api/admin/v2/billing/metrics?days=30', { token: env.ADMIN_TOKEN });
+    expect((await production.json() as any).result.launch.redemptions).toEqual([]);
   });
 
   it('expires one-year Pro online and in signed credentials, then allows a new grant', async () => {

@@ -83,6 +83,9 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         title: "Open Files…".localized, target: self, action: #selector(openFilesTapped))
     private lazy var openFolderButton = PanelStyle.makeQuietButton(
         title: "Open Folder…".localized, target: self, action: #selector(openFolderTapped))
+    private lazy var proButton = PanelStyle.makePrimaryButton(
+        title: "Upgrade to Pro".localized, target: self, action: #selector(proTapped))
+    private let proHintLabel = NSTextField(labelWithString: "")
 
     // Folder-loaded state
     private let folderGroupLabel = NSTextField(labelWithString: "")
@@ -142,6 +145,11 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         NotificationCenter.default.addObserver(
             self, selector: #selector(historyChanged),
             name: HistoryManager.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(proStateChanged),
+                                               name: BillingManager.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(proStateChanged),
+                                               name: .authDidChange, object: nil)
+        updateProEntry()
 
         setFrame(ScreenManager.shared.contentFrame(for: Self.openingSize), display: false)
         layoutContent()
@@ -257,6 +265,11 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
 
         openSurface.addSubview(openFilesButton)
         openSurface.addSubview(openFolderButton)
+        openSurface.addSubview(proButton)
+        proHintLabel.font = PanelStyle.inspectFont(ofSize: 12)
+        proHintLabel.textColor = PanelStyle.textSecondary
+        proHintLabel.lineBreakMode = .byTruncatingTail
+        openSurface.addSubview(proHintLabel)
 
         configureLabel(folderGroupLabel, size: 11, weight: .semibold, color: PanelStyle.textTertiary)
         openSurface.addSubview(folderGroupLabel)
@@ -361,15 +374,20 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         let w = openSurface.bounds.width
         let p = Metric.pad
         let contentW = w - p * 2
+        let compact = !folderImageURLs.isEmpty && openSurface.bounds.height < 600
+        let dropY: CGFloat = compact ? 104 : 128
 
-        welcomeLabel.frame = NSRect(x: p, y: 40, width: contentW, height: 34)
-        welcomeSubLabel.frame = NSRect(x: p, y: 82, width: min(contentW, 620), height: 40)
+        welcomeLabel.frame = NSRect(x: p, y: compact ? 20 : 40, width: contentW, height: 34)
+        welcomeSubLabel.frame = NSRect(x: p, y: compact ? 58 : 82, width: min(contentW, 620), height: compact ? 32 : 40)
 
         let dropW = contentW
         // Keep the folder action visible at the current window height.
-        let dropH: CGFloat = folderImageURLs.isEmpty ? 260
-            : min(260, max(80, openSurface.bounds.height - 416))
-        dropZone.frame = NSRect(x: p, y: 128, width: dropW, height: dropH)
+        let dropH: CGFloat = folderImageURLs.isEmpty
+            ? min(260, max(80, openSurface.bounds.height - dropY - 128))
+            : min(260, max(48, openSurface.bounds.height - dropY - 344))
+        dropZone.frame = NSRect(x: p, y: dropY, width: dropW, height: dropH)
+        dropIconView.isHidden = dropH < 100
+        dropHintLabel.isHidden = dropH < 100
         if dropH >= 210 {
             dropIconView.frame = NSRect(x: (dropW - 40) / 2, y: 62, width: 40, height: 40)
             dropTitleLabel.frame = NSRect(x: 0, y: 140, width: dropW, height: 22)
@@ -382,8 +400,11 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
             dropTitleLabel.frame = NSRect(x: 0, y: iconY + iconSize + 6, width: dropW, height: 22)
             dropHintLabel.frame = NSRect(x: 0, y: iconY + iconSize + 30, width: dropW, height: 15)
         }
+        if dropH < 100 {
+            dropTitleLabel.frame = NSRect(x: 0, y: (dropH - 22) / 2, width: dropW, height: 22)
+        }
 
-        let btnY = 128 + dropH + 20
+        let btnY = dropY + dropH + 20
         openFilesButton.frame = NSRect(x: p, y: btnY, width: 150, height: 36)
         openFolderButton.frame = NSRect(x: p + 162, y: btnY, width: 150, height: 36)
 
@@ -393,6 +414,10 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         let stripY = folderY + 26
         folderStrip.frame = NSRect(x: p, y: stripY, width: contentW, height: 108)
         inspectAllButton.frame = NSRect(x: p, y: stripY + 108 + 16, width: 220, height: 36)
+        let proY = openSurface.bounds.height - 56
+        proButton.frame = NSRect(x: p, y: proY, width: min(260, contentW), height: 36)
+        proHintLabel.frame = NSRect(x: p + 280, y: proY + 10, width: max(0, contentW - 280), height: 16)
+        proHintLabel.isHidden = proButton.isHidden || contentW < 460
         layoutFolderStrip()
     }
 
@@ -682,7 +707,27 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         centerHintLabel.stringValue = "Drop files anywhere  •  ⌘O to open  •  ⌘⇧O for a folder".localized
         openFilesButton.title = "Open Files…".localized
         openFolderButton.title = "Open Folder…".localized
+        updateProEntry()
         layoutContent()
+    }
+
+    private func updateProEntry() {
+        let manager = BillingManager.shared
+        let hidden = manager.shouldManagePro
+        proButton.isHidden = hidden
+        proHintLabel.isHidden = hidden || openSurface.bounds.width - Metric.pad * 2 < 460
+        proButton.title = hidden ? "" : manager.proEntryTitle
+        proHintLabel.stringValue = hidden ? "" : "One-time purchase · Lifetime updates".localized
+        proButton.toolTip = proHintLabel.stringValue
+        proButton.setAccessibilityLabel(proButton.title)
+    }
+
+    @objc private func proStateChanged() {
+        DispatchQueue.main.async { [weak self] in self?.updateProEntry() }
+    }
+
+    @objc private func proTapped() {
+        BillingCoordinator.shared.showProEntry(over: self)
     }
 
     @objc private func historyChanged() {
@@ -697,6 +742,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
+        updateProEntry()
         if recentNeedsRefresh { refresh() }
     }
 

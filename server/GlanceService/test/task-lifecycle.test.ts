@@ -126,3 +126,33 @@ describe("error responses", () => {
     expect(body.error).toEqual({ code: "internal_error", message: "Internal server error." });
   });
 });
+
+describe("failure reasons", () => {
+  const fail = async (json: Record<string, unknown>) => {
+    const { taskID } = await createTask();
+    const task = await claimTask();
+    const done = await api(`/api/v2/widget-tasks/${taskID}/result`, { method: "POST", token: DEV(), claim: task.claimToken, json: { status: "failed", ...json } });
+    expect(done.status).toBe(200);
+    return (await taskStatus(taskID!)).body;
+  };
+  beforeEach(async () => { await env.DB.prepare("DELETE FROM widget_tasks").run(); });
+
+  it("returns an allow-listed reason for a provider safety rejection", async () => {
+    expect(await fail({ errorCode: "content_rejected", reason: "sexual", message: "AuditRejectedError: RunningHub content rejected: Porn" }))
+      .toMatchObject({ status: "failed", error: "content_rejected", errorReason: "sexual" });
+  });
+
+  it("drops reasons that are not allow-listed or belong to other codes", async () => {
+    const freeText = await fail({ errorCode: "content_rejected", reason: "Porn <b>raw provider text</b>" });
+    expect(freeText).toMatchObject({ error: "content_rejected" });
+    expect(freeText).not.toHaveProperty("errorReason");
+    const otherCode = await fail({ errorCode: "worker_error", reason: "political" });
+    expect(otherCode).not.toHaveProperty("errorReason");
+  });
+
+  it("replaces malformed error codes so raw text never reaches the client", async () => {
+    expect(await fail({ errorCode: "Traceback (most recent call last): secret" })).toMatchObject({ error: "worker_error" });
+    expect(await fail({ errorCode: 42 })).toMatchObject({ error: "worker_error" });
+    expect(await fail({})).not.toHaveProperty("error");
+  });
+});

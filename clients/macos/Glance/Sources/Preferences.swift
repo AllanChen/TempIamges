@@ -28,11 +28,15 @@ class Preferences {
     enum AppLanguage: String, CaseIterable {
         case english = "en"
         case chinese = "zh-Hans"
+        case japanese = "ja"
+        case german = "de"
 
         var displayName: String {
             switch self {
             case .english: return "English"
             case .chinese: return "简体中文"
+            case .japanese: return "日本語"
+            case .german: return "Deutsch"
             }
         }
     }
@@ -83,6 +87,16 @@ class Preferences {
     var peekEnabled: Bool {
         get { defaults.bool(forKey: "\(suiteName).enabled") }
         set { defaults.set(newValue, forKey: "\(suiteName).enabled") }
+    }
+
+    /// True exactly once, on a fresh install: the permission guide is offered
+    /// over Home. Installs that already ran an opt-in build (they carry the
+    /// Peek migration marker) are upgrades and are not shown the guide.
+    func consumeFirstRun() -> Bool {
+        let key = "\(suiteName).firstRunGuideOffered"
+        guard !defaults.bool(forKey: key) else { return false }
+        defaults.set(true, forKey: key)
+        return !defaults.bool(forKey: "\(suiteName).peekOptInMigrated")
     }
 
     /// Peek used to be on by default and asked for permissions at first launch.

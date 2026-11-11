@@ -491,7 +491,9 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
             ?? "The task stopped without reporting a reason.".localized
         resultPreview.showsResultPill = false
         if record.phase.isActive {
-            resultPreview.showRunning(detail: record.widgetName)
+            resultPreview.showRunning(detail: (record.queueWaitSeconds ?? 0) >= 120 && record.queuePosition != nil
+                ? "No worker has claimed this task yet. You can cancel; any deducted credits will be refunded.".localized
+                : record.queueText ?? record.widgetName)
         } else if stopped {
             resultPreview.showFailure(title: (record.phase == .cancelled ? "Task cancelled" : "Task failed").localized,
                                       reason: record.phase == .cancelled ? "You cancelled this task.".localized : reasonText)

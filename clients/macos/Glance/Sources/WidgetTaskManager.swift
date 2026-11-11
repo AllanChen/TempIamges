@@ -42,6 +42,7 @@ struct WidgetTaskRecord: Codable, Identifiable {
     /// Set while the task waits in the service queue; cleared once a worker takes it.
     var queuePosition: Int?
     var estimatedWaitSeconds: Int?
+    var queueWaitSeconds: Int? = nil
     var quote: WidgetTaskQuote? = nil
     var creditCost: Int?
     var refundedCredits: Int?
@@ -65,6 +66,7 @@ struct WidgetTaskRecord: Codable, Identifiable {
     /// a worker yet; nil otherwise. Shared by the Task Center list and detail pane.
     var queueText: String? {
         guard phase == .processing, progress == 0, let position = queuePosition else { return nil }
+        if (queueWaitSeconds ?? 0) >= 120 { return "Waiting for a worker · Not started".localized }
         let ahead = max(0, position - 1)
         if let seconds = estimatedWaitSeconds, seconds > 0 {
             let wait = seconds < 60 ? "\(seconds)s" : "\(max(1, Int((Double(seconds) / 60).rounded()))) min"
@@ -407,9 +409,11 @@ final class WidgetTaskManager {
         DispatchQueue.main.async {
             guard let index = self.records.firstIndex(where: { $0.id == id }) else { return }
             let record = self.records[index]
-            if record.queuePosition == info?.position && record.estimatedWaitSeconds == info?.estimatedWaitSeconds { return }
+            if record.queuePosition == info?.position && record.estimatedWaitSeconds == info?.estimatedWaitSeconds
+                && record.queueWaitSeconds == info?.queueWaitSeconds { return }
             self.records[index].queuePosition = info?.position
             self.records[index].estimatedWaitSeconds = info?.estimatedWaitSeconds
+            self.records[index].queueWaitSeconds = info?.queueWaitSeconds
             self.changed()
         }
     }

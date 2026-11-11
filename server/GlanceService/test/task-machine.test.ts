@@ -79,3 +79,28 @@ it("machine information does not authorize an unauthenticated worker", async () 
   expect((await pull(machine, "invalid-token")).status).toBe(401);
   expect((await taskStatus(taskID!)).body.status).toBe("queued");
 });
+
+it("reports authorized queued Widgets without claiming or leaking input", async () => {
+  const { taskID } = await createTask();
+  const response = await api('/api/v2/widget-tasks/diagnostics', { token: env.DEVELOPER_TEST_TOKEN });
+  expect(response.status).toBe(200);
+  const body = await response.json() as {result:{widgets:Record<string,unknown>[]}};
+  expect(body.result.widgets).toHaveLength(1);
+  expect(body.result.widgets[0]).toMatchObject({widgetId:WIDGET_ID,queuedCount:1});
+  expect(Object.keys(body.result.widgets[0]).sort()).toEqual(['oldestCreatedAt','queuedCount','widgetId']);
+  expect((await taskStatus(taskID!)).body.status).toBe('queued');
+  expect((await api('/api/v2/widget-tasks/diagnostics')).status).toBe(401);
+  await pull(machine);
+  expect(await (await api('/api/v2/widget-tasks/diagnostics', {token:env.DEVELOPER_TEST_TOKEN})).json())
+    .toMatchObject({result:{widgets:[]}});
+});
+
+it("reports long unclaimed waits without a misleading ETA", async () => {
+  const { taskID } = await createTask();
+  await env.DB.prepare('UPDATE widget_tasks SET created_at=? WHERE id=?')
+    .bind(new Date(Date.now()-180_000).toISOString(),taskID).run();
+  const state = (await taskStatus(taskID!)).body;
+  expect(state.status).toBe('queued');
+  expect(Number(state.queueWaitSeconds)).toBeGreaterThanOrEqual(180);
+  expect(state).not.toHaveProperty('estimatedWaitSeconds');
+});

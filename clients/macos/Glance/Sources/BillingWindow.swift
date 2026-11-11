@@ -533,7 +533,7 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       reset("Ready to submit".localized, subtitle: taskName ?? "Widget")
       row("Current balance".localized, String(balance), y: 191)
       row("This task".localized, String(format: "%d credits".localized, cost), y: 231)
-      primary(requiresTaskConfirmation ? "Review task price".localized : String(format: "Submit for %d credits".localized, cost)) { [weak self] in
+      primary(String(format: "Submit for %d credits".localized, cost)) { [weak self] in
         self?.onResumeTask?()
       }
       quiet("Not now".localized) { [weak self] in self?.dismiss() }

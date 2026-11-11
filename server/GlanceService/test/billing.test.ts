@@ -217,7 +217,7 @@ describe('administrator Pro grants',()=>{
     expect(history.status).toBe(200);
     expect((await history.json() as any).result.grants).toEqual([expect.objectContaining({id:'admin-pro:'+key,note:'Beta tester',device_limit:1,active:1})]);
     expect((await api('/api/admin/v2/users/1/pro',{token:USER_TOKEN})).status).toBe(401);
-    const report=await (await api('/api/admin/v2/billing/metrics',{token:env.ADMIN_TOKEN})).json() as any;
+    const report=await (await api('/api/admin/v2/billing/metrics?environment=test',{token:env.ADMIN_TOKEN})).json() as any;
     expect(report.result.launch.grants).toEqual({issued:1,users:1,active:1,activated:1});
     expect(report.result.launch.proFunnel.paid).toBe(0);
 
@@ -242,6 +242,26 @@ describe('administrator Pro grants',()=>{
     await webhook(id,'refund.succeeded',{refundedAmount:'100.00'});
     expect(await (await call('/api/v2/account/entitlements')).json()).toMatchObject({result:{pro:true,trialVoided:true,licenseStatus:'active'}});
     expect(await balance()).toBe(10000);
+  });
+  it('revokes unpaid Pro and releases devices, but never a paid licence',async()=>{
+    const revoke=(userID=1,token:string=env.ADMIN_TOKEN)=>call('/api/admin/v2/users/'+userID+'/pro/revoke',{},token);
+    expect((await revoke(1,USER_TOKEN)).status).toBe(401);
+    expect((await revoke(1)).status).toBe(409);
+    await configure();
+    const {id}=await buy('pro');await webhook(id,'order.completed',{listPrice:{total:'100.00'},chargedAmount:'100.00'});
+    expect((await revoke(1)).status).toBe(409);
+    expect(await env.DB.prepare('SELECT status FROM licenses WHERE user_id=1').first()).toEqual({status:'active'});
+    expect((await grant(2)).status).toBe(200);
+    await call('/api/v2/account/devices/activate',{deviceID:device,name:'Tester Mac'},'other-user');
+    expect(await (await call('/api/v2/account/entitlements',undefined,'other-user')).json()).toMatchObject({result:{pro:true}});
+    expect((await revoke(2)).status).toBe(200);
+    expect(await env.DB.prepare('SELECT status FROM licenses WHERE user_id=2').first()).toEqual({status:'revoked'});
+    expect((await env.DB.prepare('SELECT COUNT(*) n FROM license_devices WHERE user_id=2 AND released_at IS NULL').first<any>()).n).toBe(0);
+    expect(await (await call('/api/v2/account/entitlements',undefined,'other-user')).json()).toMatchObject({result:{pro:false,licenseStatus:'revoked'}});
+    expect((await revoke(2)).status).toBe(409);
+    expect((await grant(2,'Second grant')).status).toBe(200);
+    await call('/api/v2/account/devices/activate',{deviceID:device,name:'Tester Mac'},'other-user');
+    expect(await (await call('/api/v2/account/entitlements',undefined,'other-user')).json()).toMatchObject({result:{pro:true}});
   });
 });
 

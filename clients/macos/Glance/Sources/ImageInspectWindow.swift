@@ -146,10 +146,12 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private var ocrVisible = false
     private var ocrGeneration = UUID()
     private var ocrResults: [URL: InspectOCRResult] = [:]
-    private var ocrPending = Set<URL>()
+    private var ocrJobs: [URL: OCRJob] = [:]
     private var ocrFailed = Set<URL>()
     private var ocrDisplayedURL: URL?
     private let ocrQueue = DispatchQueue(label: "Glance.ImageInspect.OCR", qos: .utility)
+    private let ocrUrgentQueue = DispatchQueue(label: "Glance.ImageInspect.OCR.urgent",
+                                               qos: .userInitiated, attributes: .concurrent)
     private struct WidgetTextResultKey: Hashable {
         let taskID: UUID
         let outputPath: String
@@ -311,7 +313,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         loadGeneration = UUID()
         ocrGeneration = UUID()
         ocrResults.removeAll()
-        ocrPending.removeAll()
+        cancelOCRJobs()
         ocrFailed.removeAll()
         ocrDisplayedURL = nil
         pendingThumbnailIndices.removeAll()
@@ -335,7 +337,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         ocrVisible = false
         ocrGeneration = UUID()
         ocrResults.removeAll()
-        ocrPending.removeAll()
+        cancelOCRJobs()
         ocrFailed.removeAll()
         ocrDisplayedURL = nil
         dismissWidgetTextResults()
@@ -1646,6 +1648,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                 .separator(),
                 ActionMenuEntry(title: "Recognize Text".localized, enabled: hasImage, action: { [weak self] in self?.recognizeTextTapped() }),
                 ActionMenuEntry(title: "Compress…".localized, enabled: hasImage, requiresPro: localLocked, action: { [weak self] in self?.compressImageTapped() }),
+                ActionMenuEntry(title: "Resize…".localized, enabled: hasImage, requiresPro: localLocked, action: { [weak self] in self?.resizeImageTapped() }),
                 .separator(),
                 ActionMenuEntry(title: "Copy as Base64".localized, enabled: hasImage, requiresPro: localLocked, action: { [weak self] in self?.copyActiveImageAsBase64() }),
                 ActionMenuEntry(title: "Base64 → Image…".localized, requiresPro: localLocked, action: { [weak self] in self?.presentBase64ImageInput() })
@@ -2021,7 +2024,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             session.generatedResultPaths.insert(info.url.standardizedFileURL.path)
             // Ignore OCR still running for the old contents at this URL.
             ocrGeneration = UUID()
-            ocrPending.removeAll()
+            cancelOCRJobs()
             ocrResults.removeValue(forKey: info.url)
             ocrFailed.remove(info.url)
             ocrDisplayedURL = nil
@@ -2333,72 +2336,112 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         } else {
             ocrWindow.showLoading()
             ocrFailed.remove(url) // An explicit request can retry a failed scan.
-            scheduleOCR(for: url, image: image)
+            scheduleOCR(for: url, image: image, urgent: true)
         }
     }
 
     /// Scan the full-resolution image once per session. OCR stays off the main
     /// thread and never delays the first visible image or filmstrip rendering.
-    private func scheduleOCR(for url: URL, image: NSImage) {
-        guard ocrResults[url] == nil, !ocrPending.contains(url), !ocrFailed.contains(url) else { return }
+    /// Background prescans run one at a time at utility priority; an explicit
+    /// request (`urgent`) claims the job on a user-initiated queue so it never
+    /// waits behind prescans of other images.
+    private func scheduleOCR(for url: URL, image: NSImage, urgent: Bool = false) {
+        guard ocrResults[url] == nil, !ocrFailed.contains(url) else { return }
+        if let job = ocrJobs[url] {
+            // Already queued behind other prescans: run it now. If its scan has
+            // already started, the urgent copy finds it claimed and returns.
+            if urgent { run(job, on: ocrUrgentQueue) }
+            return
+        }
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             if ocrVisible && ocrDisplayedURL == url { ocrWindow.showResult("") }
             return
         }
-        ocrPending.insert(url)
-        let token = ocrGeneration
-        ocrQueue.async { [weak self] in
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            if let supported = try? request.supportedRecognitionLanguages() {
-                let preferred = ["zh-Hans", "en-US"].filter { supported.contains($0) }
-                if !preferred.isEmpty { request.recognitionLanguages = preferred }
-            }
-            request.usesLanguageCorrection = true
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            var result: InspectOCRResult?
-            do {
-                try handler.perform([request])
-                var lines: [String] = []
-                var lineBounds: [CGRect] = []
-                var glyphs: [InspectOCRGlyph] = []
-                for observation in request.results ?? [] {
-                    guard let candidate = observation.topCandidates(1).first else { continue }
-                    let line = lines.count
-                    lines.append(candidate.string)
-                    lineBounds.append(observation.boundingBox)
-                    let count = max(candidate.string.count, 1)
-                    for (offset, start) in candidate.string.indices.enumerated() {
-                        let end = candidate.string.index(after: start)
-                        let fallback = CGRect(x: observation.boundingBox.minX
-                                                + observation.boundingBox.width * CGFloat(offset) / CGFloat(count),
-                                              y: observation.boundingBox.minY,
-                                              width: observation.boundingBox.width / CGFloat(count),
-                                              height: observation.boundingBox.height)
-                        let box = (try? candidate.boundingBox(for: start..<end))?.boundingBox ?? fallback
-                        glyphs.append(InspectOCRGlyph(character: String(candidate.string[start..<end]),
-                                                      boundingBox: box, line: line))
-                    }
-                }
-                result = InspectOCRResult(text: lines.joined(separator: "\n"),
-                                          lineBounds: lineBounds, glyphs: glyphs)
-            } catch {
-                Logger.error("OCR failed: \(error.localizedDescription)")
-            }
+        let job = OCRJob(url: url, cgImage: cgImage, generation: ocrGeneration)
+        ocrJobs[url] = job
+        run(job, on: urgent ? ocrUrgentQueue : ocrQueue)
+    }
+
+    private func run(_ job: OCRJob, on queue: DispatchQueue) {
+        queue.async { [weak self] in
+            // Whoever claims first scans; the other copy and cancelled jobs
+            // return immediately instead of occupying the serial queue.
+            guard job.claim() else { return }
+            let started = CFAbsoluteTimeGetCurrent()
+            let result = Self.recognizeText(in: job.cgImage)
+            Logger.debug(String(format: "OCR %@ took %.2fs",
+                                job.url.lastPathComponent, CFAbsoluteTimeGetCurrent() - started))
             DispatchQueue.main.async {
-                guard let self, self.ocrGeneration == token else { return }
-                self.ocrPending.remove(url)
+                guard let self, self.ocrGeneration == job.generation,
+                      self.ocrJobs[job.url] === job else { return }
+                self.ocrJobs.removeValue(forKey: job.url)
                 if let result {
-                    self.ocrResults[url] = result
+                    self.ocrResults[job.url] = result
                 } else {
-                    self.ocrFailed.insert(url)
+                    self.ocrFailed.insert(job.url)
                 }
                 self.renderSession()
-                if self.ocrVisible && self.ocrDisplayedURL == url {
+                if self.ocrVisible && self.ocrDisplayedURL == job.url {
                     self.ocrWindow.showResult(result?.text ?? "")
                 }
             }
         }
+    }
+
+    /// Stops queued scans from a previous session or replaced file contents.
+    private func cancelOCRJobs() {
+        ocrJobs.values.forEach { _ = $0.claim() }
+        ocrJobs.removeAll()
+    }
+
+    private nonisolated static func recognizeText(in cgImage: CGImage) -> InspectOCRResult? {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        if let supported = try? request.supportedRecognitionLanguages() {
+            let preferred = ["zh-Hans", "en-US"].filter { supported.contains($0) }
+            if !preferred.isEmpty { request.recognitionLanguages = preferred }
+        }
+        request.usesLanguageCorrection = true
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        var result: InspectOCRResult?
+        do {
+            try handler.perform([request])
+            let recognized = (request.results ?? []).compactMap { observation in
+                observation.topCandidates(1).first.map { (observation, $0) }
+            }
+            let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
+            let layout = InspectOCRLayout.layout(recognized.map { observation, candidate in
+                InspectOCRLayout.Fragment(
+                    text: candidate.string,
+                    rect: InspectOCRLayout.fragmentRect(for: observation.boundingBox,
+                                                        imageSize: imageSize))
+            })
+            var lineBounds: [CGRect] = []
+            var glyphs: [InspectOCRGlyph] = []
+            // Glyphs follow reading order so drag-selection spans what the
+            // user sees rather than Vision's arbitrary observation order.
+            for (observation, candidate) in layout.order.map({ recognized[$0] }) {
+                let line = lineBounds.count
+                lineBounds.append(observation.boundingBox)
+                let count = max(candidate.string.count, 1)
+                for (offset, start) in candidate.string.indices.enumerated() {
+                    let end = candidate.string.index(after: start)
+                    let fallback = CGRect(x: observation.boundingBox.minX
+                                            + observation.boundingBox.width * CGFloat(offset) / CGFloat(count),
+                                          y: observation.boundingBox.minY,
+                                          width: observation.boundingBox.width / CGFloat(count),
+                                          height: observation.boundingBox.height)
+                    let box = (try? candidate.boundingBox(for: start..<end))?.boundingBox ?? fallback
+                    glyphs.append(InspectOCRGlyph(character: String(candidate.string[start..<end]),
+                                                  boundingBox: box, line: line))
+                }
+            }
+            result = InspectOCRResult(text: layout.text,
+                                      lineBounds: lineBounds, glyphs: glyphs)
+        } catch {
+            Logger.error("OCR failed: \(error.localizedDescription)")
+        }
+        return result
     }
 
     private func refreshOCRPanelIfNeeded() {
@@ -2421,7 +2464,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
     private func presentOCRWindow() {
         let gap: CGFloat = 2
         var origin = NSPoint(x: frame.maxX + gap, y: frame.minY)
-        let size = NSSize(width: 320, height: frame.height)
+        let size = NSSize(width: OCRResultWindow.panelWidth, height: frame.height)
         if let visible = (screen ?? NSScreen.main)?.visibleFrame {
             if origin.x + size.width > visible.maxX {
                 origin.x = max(visible.minX, frame.minX - size.width - gap)
@@ -2434,6 +2477,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             return
         }
         removeChildWindow(ocrWindow)
+        ocrWindow.onDismiss = { [weak self] in self?.ocrVisible = false }
         ocrWindow.setFrame(target.offsetBy(dx: 48, dy: 0), display: false)
         ocrWindow.alphaValue = 0
         addChildWindow(ocrWindow, ordered: .above)
@@ -2556,7 +2600,81 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                     self?.showCompressionError()
                     return
                 }
-                self.insertCompressedImage(at: index, url: targetURL)
+                self.insertProcessedImage(at: index, url: targetURL,
+                                          successMessage: "Compressed ✓".localized)
+            }
+        }
+    }
+
+    @objc private func resizeImageTapped() {
+        guard BillingCoordinator.shared.requireLocalTool("Resize…".localized, over: self) else { return }
+        guard let session, let index = currentActionIndex,
+              session.infos.indices.contains(index),
+              session.infos[index].kind == .image,
+              let image = session.images[safe: index] ?? nil,
+              let sourceImage = ImageExporter.cgImage(from: image, rotatedQuarters: 0),
+              let content = contentView else { return }
+
+        let dimmer = CompressionDimmerView(frame: content.bounds)
+        dimmer.autoresizingMask = [.width, .height]
+        dimmer.wantsLayer = true
+        dimmer.layer?.backgroundColor = NSColor(srgbRed: 6 / 255, green: 7 / 255, blue: 10 / 255, alpha: 0.48).cgColor
+        content.addSubview(dimmer)
+
+        let sourceBytes = session.infos[index].fileSize ?? {
+            let pixels = image.representations.reduce(0) { current, representation in
+                max(current, representation.pixelsWide * representation.pixelsHigh)
+            }
+            return max(1_048_576, Int64(Double(max(1, pixels)) * 0.5))
+        }()
+        let dialog = ResizeDialogPanel(sourceImage: sourceImage, sourceByteCount: sourceBytes)
+        dialog.onConfirm = { [weak self, weak dialog, weak dimmer] scale in
+            dialog?.close()
+            dimmer?.removeFromSuperview()
+            self?.resizeImage(at: index, scale: scale)
+        }
+        dialog.onCancel = { [weak dialog, weak dimmer] in
+            dialog?.close()
+            dimmer?.removeFromSuperview()
+        }
+        dialog.present(over: self)
+    }
+
+    private func resizeImage(at index: Int, scale: CGFloat) {
+        guard let session, let image = session.images[safe: index] ?? nil else { return }
+        let sourceURL = session.infos[index].url
+        guard let format = ImageCompressionFormat.exportFormat(for: sourceURL) else {
+            showResizeError()
+            return
+        }
+        let percent = max(1, min(99, Int((scale * 100).rounded())))
+        let normalizedScale = CGFloat(percent) / 100
+        let baseName = (sourceURL.lastPathComponent as NSString).deletingPathExtension
+        let outputDir: URL
+        if sourceURL.isFileURL {
+            outputDir = sourceURL.deletingLastPathComponent()
+        } else {
+            outputDir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+                ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads")
+        }
+        let sourceExtension = sourceURL.pathExtension.lowercased()
+        let targetURL = uniqueURL(in: outputDir, baseName: "\(baseName).resized-\(percent)",
+                                  fileExtension: sourceExtension.isEmpty ? format.fileExtension : sourceExtension)
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let cgImage = ImageExporter.cgImage(from: image, rotatedQuarters: 0) else {
+                DispatchQueue.main.async { self?.showResizeError() }
+                return
+            }
+            let success = ImageExporter.writeResized(cgImage: cgImage, scale: normalizedScale,
+                                                     to: targetURL, format: format)
+            DispatchQueue.main.async {
+                guard let self, success else {
+                    self?.showResizeError()
+                    return
+                }
+                self.insertProcessedImage(at: index, url: targetURL,
+                                          successMessage: "Resized ✓".localized)
             }
         }
     }
@@ -2571,10 +2689,10 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         return url
     }
 
-    private func insertCompressedImage(at index: Int, url: URL) {
+    private func insertProcessedImage(at index: Int, url: URL, successMessage: String) {
         guard let session, session.infos.indices.contains(index) else { return }
-        let compressedInfo = MediaInfo(url: url, isLocal: url.isFileURL, kind: .image)
-        let insertIndex = insertDerivedItem(compressedInfo, afterSourceIndex: index, in: session)
+        let processedInfo = MediaInfo(url: url, isLocal: url.isFileURL, kind: .image)
+        let insertIndex = insertDerivedItem(processedInfo, afterSourceIndex: index, in: session)
 
         BillingManager.shared.trackTrialActivity("compare")
         session.mode = .compare
@@ -2586,11 +2704,15 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         renderSession()
         loadDroppedItem(at: insertIndex, generation: loadGeneration)
 
-        toastWindow.show(message: "Compressed ✓".localized + "\n" + url.path, over: self)
+        toastWindow.show(message: successMessage + "\n" + url.path, over: self)
     }
 
     private func showCompressionError() {
         toastWindow.show(message: "Compression failed".localized, kind: .error, over: self)
+    }
+
+    private func showResizeError() {
+        toastWindow.show(message: "Resize failed".localized, kind: .error, over: self)
     }
 
     private var currentRevealInfo: MediaInfo? {
@@ -3170,5 +3292,30 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         // The window title stays generic; the filename shows in the bottom bar.
         title = "Image Inspect".localized
         representedURL = nil
+    }
+}
+
+/// One queued OCR scan. A background prescan and an explicit request may both
+/// enqueue the same job; `claim()` lets exactly one of them run it, and
+/// cancelling a job is just claiming it so its queued copies return at once.
+private final class OCRJob {
+    let url: URL
+    let cgImage: CGImage
+    let generation: UUID
+    private let lock = NSLock()
+    private var claimed = false
+
+    init(url: URL, cgImage: CGImage, generation: UUID) {
+        self.url = url
+        self.cgImage = cgImage
+        self.generation = generation
+    }
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !claimed else { return false }
+        claimed = true
+        return true
     }
 }

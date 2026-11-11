@@ -71,7 +71,7 @@ class SiteTests(unittest.TestCase):
                     if href.startswith('/') and not href.startswith('/download/') and urlsplit(href).path not in ('/', '/' + lang + '/'):
                         self.assertTrue(href.startswith('/en/'), href)
                 self.assertTrue(doc.select('a', href='/' + lang + '/#download'))
-                self.assertIn(build.SUPPORT_X_URL, html)
+                self.assertIn('mailto:' + build.SUPPORT_EMAIL, html)
                 self.assertIn(build.DMG_SHA256, html)
                 self.assertEqual(len(doc.select('article', **{'class': 'widget'})), min(6, len(build.SNAPSHOT['widgets'])))
                 self.assertNotIn('点 / ', html)
@@ -83,12 +83,21 @@ class SiteTests(unittest.TestCase):
         self.assertIn('ダウンロード', (build.OUT / 'ja/index.html').read_text())
         self.assertIn('herunterladen', (build.OUT / 'de/index.html').read_text())
 
-    def test_support_is_x_direct_message(self):
+    def test_support_uses_product_mailbox(self):
         for path in self.pages:
             html = (build.OUT / ('404.html' if path == '/404' else path.strip('/') + '/index.html')).read_text() if path != '/' else (build.OUT / 'index.html').read_text()
             with self.subTest(path=path):
-                self.assertNotIn('mailto:', html)
-                self.assertNotIn('support@', html)
+                self.assertIn('mailto:support@glancepreview.com', html)
+                self.assertNotIn('support@mcreator.ai', html)
+
+    def test_refund_and_payment_copy_matches_current_rules(self):
+        english = '\n'.join((build.OUT / 'en' / p / 'index.html').read_text() for p in ('pricing', 'widgets', 'terms', 'refunds'))
+        self.assertNotIn('fail on our side', english)
+        self.assertNotIn('failed on our side', english)
+        self.assertNotIn('fails on our side', english)
+        self.assertNotIn('confirmation threshold', english)
+        self.assertIn('including provider, network and invalid-input failures', english)
+        self.assertIn('other currencies use cards, Apple Pay or Google Pay', english)
 
     def test_internal_links_and_media_exist(self):
         for path, doc in self.pages.items():

@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>下载与安装 · Glance</title>
-<meta name="description" content="下载 Glance macOS 内测版，查看系统要求、安装步骤、首次启动说明和文件校验值。">
+<meta name="description" content="下载 Glance macOS 版，查看系统要求、安装步骤、首次启动说明和文件校验值。">
 <link rel="canonical" href="https://glancepreview.com/install/">
 <link rel="alternate" hreflang="zh-Hans" href="https://glancepreview.com/install/">
 <link rel="alternate" hreflang="en" href="https://glancepreview.com/en/install/">
 <link rel="alternate" hreflang="x-default" href="https://glancepreview.com/en/install/">
 <meta property="og:title" content="下载与安装 · Glance">
-<meta property="og:description" content="下载 Glance macOS 内测版，查看系统要求、安装步骤、首次启动说明和文件校验值。">
+<meta property="og:description" content="下载 Glance macOS 版，查看系统要求、安装步骤、首次启动说明和文件校验值。">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://glancepreview.com/assets/video/glance-demo-poster.jpg">
@@ -37,29 +37,21 @@
 <article class="doc">
   <div class="narrow">
     <h1 lang="zh">下载与安装</h1>
-    <p class="updated"><span lang="zh">Glance 1.0.0-beta.1 · macOS 12.3 及以上 · Apple 芯片（M 系列）</span></p>
-    <p><a class="btn btn-primary" href="/download/Glance-1.0.0-beta.1.dmg" download data-download-cta="install" data-app-version="1.0.0-beta.1"><span lang="zh">下载 Glance 1.0.0-beta.1（5.0 MB）</span></a></p>
-    <p class="hash">SHA-256: aad58a57f4e157fecc311746d3b69e36a88fec75587a4ad844e036e940622c95</p>
+    <p class="updated"><span lang="zh">Glance 1.0.2 · macOS 12.3 及以上 · Apple 芯片（M 系列）</span></p>
+    <p><a class="btn btn-primary" href="/download/Glance-1.0.2.dmg" download data-download-cta="install" data-app-version="1.0.2"><span lang="zh">下载 Glance 1.0.2（7.8 MB）</span></a></p>
+    <p class="hash">SHA-256: 123164c3321a9580c9dd354fe8c03ab237c4b28d52f41f2660e7c47d0900f289</p>
 
     <div lang="zh">
       <h2>安装</h2>
       <ol>
-        <li>下载 <code>Glance-1.0.0-beta.1.dmg</code>，双击打开。</li>
+        <li>下载 <code>Glance-1.0.2.dmg</code>，双击打开。</li>
         <li>把 Glance 拖到「应用程序」文件夹。</li>
         <li>在「应用程序」里双击 Glance。</li>
       </ol>
 
-      <h2>首次打开被拦截怎么办</h2>
-      <p>这个安装包还没有经过 Apple 公证，macOS 第一次打开时会拦截，这是正常的，只需放行一次。</p>
-      <h3>macOS 15（Sequoia）及更新版本</h3>
-      <ol>
-        <li>双击 Glance，看到「无法打开」提示后点「完成」。</li>
-        <li>打开「系统设置 → 隐私与安全性」，往下滚到「安全性」。</li>
-        <li>在「已阻止 Glance 打开」旁边点「仍要打开」，输入密码确认。</li>
-      </ol>
-      <h3>macOS 14 及更早版本</h3>
-      <p>在「应用程序」里右键 Glance，选择「打开」，在弹窗里再点一次「打开」。</p>
-      <p>放行一次之后，以后双击就能正常打开。</p>
+      <h2>首次打开</h2>
+      <p>Glance 已通过 Apple 公证。第一次打开时，macOS 会提示它是从互联网下载的 App，点「打开」即可。</p>
+      <p>如果提示无法打开，请先确认已把 Glance 拖进「应用程序」并从那里打开，不要直接在 DMG 窗口里运行；也可以用上方的 SHA-256 核对下载文件是否完整。</p>
 
       <h2>开始使用</h2>
       <ul>
@@ -74,8 +66,11 @@
       <p>打开 Peek 后，Glance 会引导你授予「辅助功能」权限，它只用于识别热键和读取你选中的文字。已授予「辅助功能」时，「输入监控」无需单独授权。「完全磁盘访问」是可选项，只在打开受系统保护的文件时需要。你可以跳过权限设置，查看图片和视频不受影响。</p>
       <p>选中的文字不会发送到 Glance 服务器；如果是网络链接，Glance 会直接从该网站加载预览。</p>
       <h2>反馈与问题</h2>
-      <p>在 X 上私信 <a href="https://x.com/Sir03834855" target="_blank" rel="noopener">@Sir03834855</a>。请写明你做了什么、预期结果和实际结果，并附上截图。需要日志时我们会在私信里说明；日志文件位于 <code>~/Library/Application Support/Glance/app.log</code>。</p>
-      <p>请只通过私信发送日志、邮箱、订单号和兑换码，不要贴在公开帖子或回复里。</p>
+      <p>请发邮件至 <a href="mailto:support@glancepreview.com">support@glancepreview.com</a>，目标在 1–2 个工作日内回复。请提供复现步骤、预期与实际结果、App 版本和 build、macOS 与芯片架构，并按需附上截图、订单号或 Widget 任务 ID。</p>
+      <p>新版 App 可通过「帮助 → 报告问题」生成邮件模板，通过「显示日志」或「导出诊断」准备附件；旧版可手动找到 <code>~/Library/Application Support/Glance/app.log</code>。诊断只在本机导出，不会自动上传，查看并确认内容后再发送。</p>
+      <p>日志、邮箱、完整订单信息和兑换码请只通过私密邮件提供，不要贴在公开帖子或回复里。</p>
+      <h2>兑换 Pro</h2>
+      <p>登录后打开账户页，选择「兑换 Pro」并输入兑换码。每个码只能兑换到一个账户，不赠送 AI 点数，也不产生付款订单。已有有效 Pro 时不会覆盖授权或消耗新码。终身码提供终身 Pro；一年码从兑换日起计算一年，到期自动回到免费版，离线授权也不能超过到期日。兑换截止日与兑换后的 Pro 到期日是两回事。</p>
       <h2>卸载</h2>
       <p>退出 Glance，把它从「应用程序」拖到废纸篓。如需同时删除本地设置与日志，删除 <code>~/Library/Application Support/Glance</code>。账户与点数保存在云端，如需删除账户，请使用 Glance 菜单 → 删除账户。</p>
     </div>
@@ -102,7 +97,7 @@
       <a href="/terms/"><span lang="zh">服务条款</span></a><a href="/privacy/"><span lang="zh">隐私政策</span></a>
       <a href="/refunds/"><span lang="zh">退款政策</span></a><a href="/acceptable-use/"><span lang="zh">可接受使用政策</span></a></div>
     <div><h4><span lang="zh">支持</span></h4>
-      <a href="https://x.com/Sir03834855" target="_blank" rel="noopener"><span lang="zh">X 私信 @Sir03834855</span></a>
+      <a href="mailto:support@glancepreview.com">support@glancepreview.com</a>
       <a href="/acceptable-use/#report-zh"><span lang="zh">举报违规内容</span></a></div>
   </div>
   <div class="footer-bottom">

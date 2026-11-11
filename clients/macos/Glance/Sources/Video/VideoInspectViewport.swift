@@ -12,6 +12,7 @@ final class VideoInspectViewport: NSView {
     private let webMPoster = PassthroughVideoPosterView()
     private var posterRequestToken = UUID()
     private var awaitingWebMFrame = false
+    private var hasWebMFrame = false
     private let muteButton = InspectToolbarButton(symbol: "speaker.wave.2.fill", tooltip: "Mute".localized)
     private let compareDimmer = CALayer()
     private let loadingView = FocusSweepLoadingView(frame: .zero)
@@ -21,6 +22,7 @@ final class VideoInspectViewport: NSView {
     private let widgetProcessingPeeker = PeekerView()
     private var widgetIndicatorCenterY: CGFloat?
     private var statusObservation: NSKeyValueObservation?
+    private var frameObservation: NSKeyValueObservation?
     var onActivate: (() -> Void)?
     var onReady: (() -> Void)?
     var onWebMMetadata: ((Double, CGSize) -> Void)?
@@ -81,6 +83,9 @@ final class VideoInspectViewport: NSView {
             playerView.layer?.cornerRadius = 5
             playerView.layer?.masksToBounds = true
             addSubview(playerView)
+            frameObservation = playerView.observe(\.isReadyForDisplay, options: [.initial, .new]) { [weak self] _, _ in
+                DispatchQueue.main.async { [weak self] in self?.recordVisibleVideoFrame() }
+            }
         }
         if let webMView {
             webMView.layer?.cornerRadius = 5
@@ -96,11 +101,13 @@ final class VideoInspectViewport: NSView {
             webMView.onFrameReady = { [weak self] in
                 guard let self else { return }
                 self.awaitingWebMFrame = false
+                self.hasWebMFrame = true
                 self.posterRequestToken = UUID()
                 self.webMPoster.isHidden = true
                 self.webMPoster.image = nil
                 self.loadingView.setLoading(false)
                 self.onWebMFrameReady?()
+                self.recordVisibleVideoFrame()
             }
             webMView.onFailure = { [weak self] in
                 guard let self else { return }
@@ -154,6 +161,7 @@ final class VideoInspectViewport: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func layout() {
         super.layout()
+        recordVisibleVideoFrame()
         playerView?.frame = bounds
         webMView?.frame = bounds
         webMPoster.frame = bounds
@@ -173,6 +181,12 @@ final class VideoInspectViewport: NSView {
                                                   y: max(0, (widgetIndicatorCenterY ?? bounds.maxY - 51) - 17),
                                                   width: 34, height: 34)
         widgetProcessingPeeker.frame = NSRect(x: 5, y: 5, width: 24, height: 24)
+    }
+    private func recordVisibleVideoFrame() {
+        guard window?.isVisible == true, !isHiddenOrHasHiddenAncestor,
+              bounds.width > 0, bounds.height > 0,
+              playerView?.isReadyForDisplay == true || hasWebMFrame else { return }
+        BillingManager.shared.recordSuccessfulPreview("video")
     }
     func setWidgetIndicatorCenterY(_ centerY: CGFloat?) {
         guard widgetIndicatorCenterY != centerY else { return }
@@ -223,6 +237,7 @@ final class VideoInspectViewport: NSView {
         }
     }
     private func prepareWebMPoster(from url: URL) {
+        hasWebMFrame = false
         posterRequestToken = UUID()
         let token = posterRequestToken
         let startedAt = ProcessInfo.processInfo.systemUptime

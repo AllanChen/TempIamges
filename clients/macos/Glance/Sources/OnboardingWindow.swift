@@ -3,14 +3,15 @@ import AppKit
 final class OnboardingWindow: NSWindow {
     /// Posted when the permission guide is dismissed, whichever way.
     static let didClose = Notification.Name("GlanceOnboardingDidClose")
-    private static let designSize = NSSize(width: 580, height: 650)
+    /// Figma frame (580 × 650) minus the Input Monitoring row and its 10pt gap:
+    /// Peek needs only Accessibility, which also covers event listening.
+    private static let designSize = NSSize(width: 580, height: 570)
 
     private let root = NSView()
     private let titlebar = OnboardingTitlebar()
     private let windowTitle = NSTextField(labelWithString: "Welcome to Glance".localized)
     private let body = NSView()
     private let appMark = NSView()
-    private let markTile = NSView()
     private let markIcon = NSImageView()
     private let heading = NSTextField(labelWithString: "Set up permissions".localized)
     private let explanation = NSTextField(wrappingLabelWithString:
@@ -19,9 +20,6 @@ final class OnboardingWindow: NSWindow {
     private let accessibilityRow = PermissionStatusView(
         symbol: "A", title: "Accessibility".localized,
         description: "Read selection and recognize shortcuts".localized)
-    private let inputMonitoringRow = PermissionStatusView(
-        symbol: "I", title: "Input Monitoring".localized,
-        description: "Optional when Accessibility is enabled".localized)
     private let fullDiskAccessRow = PermissionStatusView(
         symbol: "F", title: "Full Disk Access".localized,
         description: "Optional: access protected files".localized)
@@ -42,7 +40,7 @@ final class OnboardingWindow: NSWindow {
         appearance = NSAppearance(named: .darkAqua)
         backgroundColor = PanelStyle.inspectBackground
         contentAspectRatio = Self.designSize
-        minSize = NSSize(width: min(480, initial.width), height: min(538, initial.height))
+        minSize = NSSize(width: min(480, initial.width), height: min(472, initial.height))
         isReleasedWhenClosed = false
         level = .normal
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -88,21 +86,13 @@ final class OnboardingWindow: NSWindow {
             NSColor(srgbRed: 11 / 255, green: 12 / 255, blue: 15 / 255, alpha: 1))
         root.addSubview(body)
 
+        // The Glance app icon fills the 68 × 68 mark slot; it carries its own rounded shape.
         appMark.wantsLayer = true
-        appMark.layer?.backgroundColor = PanelStyle.resolvedCG(
-            NSColor(srgbRed: 58 / 255, green: 44 / 255, blue: 38 / 255, alpha: 1))
-        appMark.layer?.cornerRadius = 16
         body.addSubview(appMark)
-        markTile.wantsLayer = true
-        markTile.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        markTile.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.58))
-        markTile.layer?.borderWidth = 1
-        markTile.layer?.cornerRadius = 8
-        appMark.addSubview(markTile)
-        markIcon.image = NSImage(systemSymbolName: "photo", accessibilityDescription: "Glance")
-        markIcon.contentTintColor = PanelStyle.accent
+        markIcon.image = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
         markIcon.imageScaling = .scaleProportionallyUpOrDown
-        markTile.addSubview(markIcon)
+        markIcon.setAccessibilityLabel("Glance")
+        appMark.addSubview(markIcon)
 
         configureLabel(heading, size: 20, color: PanelStyle.textPrimary,
                        weight: .semibold, alignment: .center)
@@ -116,9 +106,8 @@ final class OnboardingWindow: NSWindow {
         permissionList.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
         body.addSubview(permissionList)
         accessibilityRow.onOpenSettings = { PermissionManager.shared.openAccessibilitySettings() }
-        inputMonitoringRow.onOpenSettings = { PermissionManager.shared.openInputMonitoringSettings() }
         fullDiskAccessRow.onOpenSettings = { PermissionManager.shared.openFullDiskAccessSettings() }
-        [accessibilityRow, inputMonitoringRow, fullDiskAccessRow].forEach(permissionList.addSubview)
+        [accessibilityRow, fullDiskAccessRow].forEach(permissionList.addSubview)
 
         continueButton.target = self
         continueButton.action = #selector(continuePressed)
@@ -156,35 +145,32 @@ final class OnboardingWindow: NSWindow {
                                   width: 11 * sx, height: 11 * sy)
             button.layer?.cornerRadius = 5.5 * scale
         }
-        body.frame = NSRect(x: 0, y: 0, width: size.width, height: 606 * sy)
+        body.frame = NSRect(x: 0, y: 0, width: size.width, height: 526 * sy)
         func fromTop(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
             NSRect(x: x * sx, y: body.bounds.height - (y + h) * sy,
                    width: w * sx, height: h * sy)
         }
         appMark.frame = fromTop(256, 32, 68, 68)
-        appMark.layer?.cornerRadius = 16 * scale
-        markTile.frame = NSRect(x: 15 * sx, y: 15 * sy, width: 38 * sx, height: 38 * sy)
-        markTile.layer?.cornerRadius = 8 * scale
-        markIcon.frame = NSRect(x: 10 * sx, y: 10 * sy, width: 18 * sx, height: 18 * sy)
+        markIcon.frame = appMark.bounds
         heading.font = PanelStyle.inspectFont(ofSize: 20 * scale, weight: .semibold)
         heading.frame = fromTop(0, 125, 580, 24)
         explanation.font = PanelStyle.inspectFont(ofSize: 12 * scale)
         explanation.frame = fromTop(75, 164, 430, 30)
-        // Figma "Permission List": a 502 × 243 panel at (39, 227) whose rows are
-        // 468 × 70, inset 17 from the sides and 10 apart (top-origin y 0 / 80 / 160).
-        permissionList.frame = fromTop(39, 227, 502, 243)
+        // Figma "Permission List": rows are 468 × 70, inset 17 from the sides and
+        // 10 apart. With two rows (y 0 / 80) the 243pt panel becomes 163pt and
+        // everything below it moves up by the removed 80pt.
+        permissionList.frame = fromTop(39, 227, 502, 163)
         func listRow(_ top: CGFloat) -> NSRect {
-            NSRect(x: 17 * sx, y: (243 - top - 70) * sy, width: 468 * sx, height: 70 * sy)
+            NSRect(x: 17 * sx, y: (163 - top - 70) * sy, width: 468 * sx, height: 70 * sy)
         }
         accessibilityRow.frame = listRow(0)
-        inputMonitoringRow.frame = listRow(80)
-        fullDiskAccessRow.frame = listRow(160)
-        permissionHelpButton.frame = fromTop(76, 480, 428, 24)
+        fullDiskAccessRow.frame = listRow(80)
+        permissionHelpButton.frame = fromTop(76, 400, 428, 24)
         permissionHelpButton.titleFont = PanelStyle.inspectFont(ofSize: 11 * scale)
-        continueButton.frame = fromTop(76, 512, 428, 38)
+        continueButton.frame = fromTop(76, 432, 428, 38)
         continueButton.layer?.cornerRadius = 8 * scale
         footnote.font = PanelStyle.inspectFont(ofSize: 10 * scale)
-        footnote.frame = fromTop(0, 565, 580, 12)
+        footnote.frame = fromTop(0, 485, 580, 12)
     }
 
     private func configureLabel(_ label: NSTextField, size: CGFloat, color: NSColor,
@@ -199,9 +185,7 @@ final class OnboardingWindow: NSWindow {
     private func updatePermissionStatus() {
         let manager = PermissionManager.shared
         let accessibility = manager.isAccessibilityGranted
-        let inputMonitoring = manager.isInputMonitoringGranted
         accessibilityRow.updateStatus(granted: accessibility)
-        inputMonitoringRow.updateStatus(granted: inputMonitoring, coveredByAccessibility: accessibility)
         // Permissions enable individual features; they never gate leaving setup.
 
         let generation = UUID()
@@ -326,10 +310,9 @@ final class PermissionStatusView: NSView {
         separator.frame = NSRect(x: 0, y: 0, width: bounds.width, height: max(1, sy))
     }
 
-    func updateStatus(granted: Bool, coveredByAccessibility: Bool = false) {
+    func updateStatus(granted: Bool) {
         self.granted = granted
-        let value = granted ? "Allowed".localized
-            : (coveredByAccessibility ? "Not needed".localized : "Open Settings".localized)
+        let value = granted ? "Allowed".localized : "Open Settings".localized
         statusButton.title = value
         statusButton.titleColor = granted ? PanelStyle.success : PanelStyle.accent
         statusButton.normalBackground = granted
@@ -339,9 +322,7 @@ final class PermissionStatusView: NSView {
             ? statusButton.normalBackground
             : PanelStyle.surfaceElevated
         statusButton.layer?.borderWidth = 0
-        statusButton.toolTip = coveredByAccessibility
-            ? "Accessibility already allows Glance to recognize shortcuts. Input Monitoring does not need a separate grant.".localized
-            : (granted ? "" : "Open Settings".localized)
+        statusButton.toolTip = granted ? "" : "Open Settings".localized
         statusButton.setAccessibilityLabel("\(titleLabel.stringValue), \(value)")
     }
 

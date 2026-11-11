@@ -17,6 +17,7 @@ function node(type) {
     appendChild(child) {
       assert.ok(['PAGE', 'FRAME', 'GROUP', 'COMPONENT', 'BOOLEAN_OPERATION'].includes(this.type),
         `${this.type} cannot contain child layers`);
+      if (child.parent) child.parent.children.splice(child.parent.children.indexOf(child), 1);
       this.children.push(child);
       child.parent = this;
     },
@@ -914,6 +915,26 @@ const names = [
   assert.equal(prdHeading.characters, 'User-edited PRD title', 'rerun preserves design edits');
   assert.ok(uiSource.indexOf('id="generate-pricing-prd-flows"') < uiSource.indexOf('<label for="reference">'));
   prd.remove();
+
+  const beforeProEntry = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-pro-purchase-entry' });
+  const proEntry = page.children.find(node => node.name === 'Glance Pro / Discover & Purchase / Review');
+  assert.ok(proEntry, 'pro purchase review board is generated');
+  assert.equal(page.children.length, beforeProEntry + 1);
+  assert.equal(proEntry.findAll(node => node.name.startsWith('Pro Purchase / ')).length, 6);
+  const discoverPro = proEntry.findOne(node => node.name === 'Action / Discover Pro');
+  assert.ok(discoverPro.reactions.length, 'Home entry navigates to the offer');
+  for (const price of ['¥29.90', '¥79.90']) {
+    assert.ok(proEntry.findOne(node => node.type === 'TEXT' && node.characters === price), 'current price ' + price);
+  }
+  assert.ok(proEntry.findOne(node => node.name === 'Credit Separation' && node.characters.includes('另按积分计费')));
+  const reviewHeading = proEntry.findOne(node => node.name === 'Review Title');
+  reviewHeading.characters = 'Owner review edits';
+  await figma.ui.onmessage({ type: 'generate-pro-purchase-entry' });
+  assert.equal(page.children.length, beforeProEntry + 1);
+  assert.equal(reviewHeading.characters, 'Owner review edits');
+  assert.ok(uiSource.includes('id="generate-pro-purchase-entry"'));
+  proEntry.remove();
 
   await figma.ui.onmessage({ type: 'generate-task-running-motion' });
   const motion = page.children.find(child => child.name === 'Task Running Motion');

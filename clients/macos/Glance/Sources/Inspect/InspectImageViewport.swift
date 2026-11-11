@@ -14,6 +14,170 @@ struct InspectOCRResult {
     let glyphs: [InspectOCRGlyph]
 }
 
+/// Rebuilds reading order and line structure from Vision's line observations,
+/// which arrive in no guaranteed order and know nothing about rows, columns,
+/// or paragraphs. Uses a recursive XY-cut: split into horizontal bands at
+/// empty rows, split bands into columns at wide empty gutters, and keep
+/// fragments that share a visual row on one output line.
+enum InspectOCRLayout {
+    struct Fragment {
+        let text: String
+        /// Pixel space, top-left origin, so x and y distances are comparable.
+        let rect: CGRect
+    }
+
+    private struct Item {
+        let index: Int
+        let text: String
+        let rect: CGRect
+    }
+
+    private struct Line {
+        var items: [Item]
+        var paragraphBefore = false
+    }
+
+    /// Converts a Vision normalized (bottom-left origin) box to `Fragment` space.
+    static func fragmentRect(for box: CGRect, imageSize: CGSize) -> CGRect {
+        CGRect(x: box.minX * imageSize.width, y: (1 - box.maxY) * imageSize.height,
+               width: box.width * imageSize.width, height: box.height * imageSize.height)
+    }
+
+    /// Returns fragment indices in reading order and the laid-out text.
+    static func layout(_ fragments: [Fragment]) -> (order: [Int], text: String) {
+        let items = fragments.enumerated().compactMap { index, fragment -> Item? in
+            let text = fragment.text.trimmingCharacters(in: .whitespaces)
+            guard !text.isEmpty, fragment.rect.height > 0 else { return nil }
+            return Item(index: index, text: text, rect: fragment.rect)
+        }
+        let lines = cut(items)
+        var text = ""
+        for (offset, line) in lines.enumerated() {
+            if offset > 0 { text += line.paragraphBefore ? "\n\n" : "\n" }
+            text += join(line.items)
+        }
+        return (lines.flatMap { $0.items.map(\.index) }, text)
+    }
+
+    private static func cut(_ items: [Item]) -> [Line] {
+        guard !items.isEmpty else { return [] }
+        guard items.count > 1 else { return [Line(items: items)] }
+
+        let bands = split(items, vertical: true, minGap: 0)
+        if bands.count > 1 {
+            var lines: [Line] = []
+            var previous: [Item]?
+            for band in bands {
+                var sub = cut(band)
+                if let previous, !sub.isEmpty {
+                    let gap = band.map(\.rect.minY).min()! - previous.map(\.rect.maxY).max()!
+                    let lineHeight = min(medianHeight(previous), medianHeight(band))
+                    if gap > lineHeight * 0.8 { sub[0].paragraphBefore = true }
+                }
+                lines += sub
+                previous = band
+            }
+            return lines
+        }
+
+        // Fragments that all share some common row stay on one line, even when
+        // a wide gap separates them (label / value pairs, table cells).
+        let commonTop = items.map(\.rect.minY).max()!
+        let commonBottom = items.map(\.rect.maxY).min()!
+        if commonTop < commonBottom {
+            return [Line(items: items.sorted { $0.rect.minX < $1.rect.minX })]
+        }
+
+        let columns = split(items, vertical: false, minGap: medianHeight(items))
+        if columns.count > 1 {
+            var lines: [Line] = []
+            for (offset, column) in columns.enumerated() {
+                var sub = cut(column)
+                if offset > 0, !sub.isEmpty { sub[0].paragraphBefore = true }
+                lines += sub
+            }
+            return lines
+        }
+        return rows(items)
+    }
+
+    /// Splits items wherever their projection onto one axis leaves an empty
+    /// gap wider than `minGap`. Returns a single group when nothing splits.
+    private static func split(_ items: [Item], vertical: Bool, minGap: CGFloat) -> [[Item]] {
+        let lower: (Item) -> CGFloat = { vertical ? $0.rect.minY : $0.rect.minX }
+        let upper: (Item) -> CGFloat = { vertical ? $0.rect.maxY : $0.rect.maxX }
+        let sorted = items.sorted { lower($0) < lower($1) }
+        var groups: [[Item]] = []
+        var current: [Item] = []
+        var reach = -CGFloat.greatestFiniteMagnitude
+        for item in sorted {
+            if !current.isEmpty, lower(item) - reach > minGap {
+                groups.append(current)
+                current = []
+            }
+            current.append(item)
+            reach = max(reach, upper(item))
+        }
+        if !current.isEmpty { groups.append(current) }
+        return groups
+    }
+
+    /// Fallback for tightly packed text whose boxes overlap between lines:
+    /// greedily groups fragments that overlap by at least half a line height.
+    private static func rows(_ items: [Item]) -> [Line] {
+        var rows: [(rect: CGRect, items: [Item])] = []
+        for item in items.sorted(by: { $0.rect.midY < $1.rect.midY }) {
+            let match = rows.indices.last { index in
+                let row = rows[index].rect
+                let overlap = min(row.maxY, item.rect.maxY) - max(row.minY, item.rect.minY)
+                return overlap >= min(row.height, item.rect.height) * 0.5
+            }
+            if let match {
+                rows[match].rect = rows[match].rect.union(item.rect)
+                rows[match].items.append(item)
+            } else {
+                rows.append((item.rect, [item]))
+            }
+        }
+        return rows.map { Line(items: $0.items.sorted { $0.rect.minX < $1.rect.minX }) }
+    }
+
+    private static func join(_ items: [Item]) -> String {
+        var text = ""
+        var previous: Item?
+        for item in items {
+            if let previous {
+                let gap = item.rect.minX - previous.rect.maxX
+                let height = min(previous.rect.height, item.rect.height)
+                if gap > height * 2 {
+                    text += "\t"
+                } else if !(isCJK(previous.text.last) && isCJK(item.text.first)) {
+                    text += " "
+                }
+            }
+            text += item.text
+            previous = item
+        }
+        return text
+    }
+
+    private static func medianHeight(_ items: [Item]) -> CGFloat {
+        let heights = items.map(\.rect.height).sorted()
+        return heights.isEmpty ? 0 : heights[heights.count / 2]
+    }
+
+    private static func isCJK(_ character: Character?) -> Bool {
+        guard let scalar = character?.unicodeScalars.first else { return false }
+        switch scalar.value {
+        case 0x3000...0x303F, 0x3040...0x30FF, 0x3400...0x4DBF, 0x4E00...0x9FFF,
+             0xAC00...0xD7AF, 0xF900...0xFAFF, 0xFF00...0xFFEF:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 private final class InspectTextSelectionView: NSView {
     var rects: [CGRect] = [] { didSet { needsDisplay = true } }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }

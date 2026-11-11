@@ -34,7 +34,4 @@ GOOGLE_REDIRECT_URI = "https://glancepreview.com/auth/google/callback"
 WORKER_AUTH_DISABLED = "false"
 # Merchant/store IDs and all keys are configured with wrangler secret, never
 # committed. Keep sales disabled in Admin until the Waffo account is approved.
-WAFFO_ENVIRONMENT = "test"
-# Real Waffo sandbox checkout, Pro and credits, for the existing test account.
-# Public sales remain disabled. Remove this before enabling production sales.
-TEST_CHECKOUT_USER_ID = "2"
+WAFFO_ENVIRONMENT = "prod"

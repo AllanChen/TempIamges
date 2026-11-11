@@ -266,7 +266,7 @@ final class WidgetTextResultWindow: NSPanel {
                 .paragraphStyle: paragraph
             ]))
         if let characterCount {
-            characterCountLabel.stringValue = "\(characterCount) characters"
+            characterCountLabel.stringValue = String(format: "%d characters".localized, characterCount)
         }
         layoutResultText()
     }

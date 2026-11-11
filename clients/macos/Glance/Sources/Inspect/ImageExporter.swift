@@ -80,6 +80,16 @@ enum ImageExporter {
         return write(data: data, to: url)
     }
 
+    static func writeResized(cgImage: CGImage, scale: CGFloat, to url: URL,
+                             format: ImageExportFormat) -> Bool {
+        guard let dimensions = ImageResizePlan.dimensions(sourceWidth: cgImage.width,
+                                                          sourceHeight: cgImage.height,
+                                                          scale: scale),
+              let output = resized(cgImage, width: dimensions.width, height: dimensions.height)
+        else { return false }
+        return write(cgImage: output, to: url, format: format)
+    }
+
     static func writeCompressed(cgImage: CGImage, to url: URL, format: ImageExportFormat,
                                 quality: CGFloat, targetByteCount: Int64,
                                 allowResizing: Bool) -> Bool {

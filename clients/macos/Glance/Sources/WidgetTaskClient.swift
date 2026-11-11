@@ -35,6 +35,7 @@ struct WidgetTaskBilling {
 struct WidgetQueueInfo: Equatable {
     let position: Int
     let estimatedWaitSeconds: Int?
+    var queueWaitSeconds: Int? = nil
 }
 
 /// The service refused the task because its queue is full (HTTP 429 queue_full).
@@ -736,7 +737,7 @@ final class WidgetTaskClient {
                     completion(.failure(WidgetError.unavailable)); return
                 }
                 if result.status == "failed" {
-                    completion(.failure(WidgetTaskExecutionError(message: result.error)))
+                    completion(.failure(WidgetTaskExecutionError(message: result.error, reason: result.errorReason)))
                     return
                 }
                 if result.status == "cancelled" { completion(.failure(WidgetTaskCancelledError())); return }
@@ -825,13 +826,16 @@ final class WidgetTaskClient {
         let pollAfterMs: Int?
         let queuePosition: Int?
         let estimatedWaitSeconds: Int?
+        let queueWaitSeconds: Int?
         var queueInfo: WidgetQueueInfo? {
             guard let queuePosition, queuePosition > 0 else { return nil }
-            return WidgetQueueInfo(position: queuePosition, estimatedWaitSeconds: estimatedWaitSeconds)
+            return WidgetQueueInfo(position: queuePosition, estimatedWaitSeconds: estimatedWaitSeconds, queueWaitSeconds: queueWaitSeconds)
         }
         let resultURL: String?
         let result: [TaskArtifact]?
         let error: String?
+        /// Allow-listed category for `error`, e.g. `sexual` for `content_rejected`.
+        let errorReason: String?
         let creditCost: Int?
         let refundedCredits: Int?
         let balance: Int?
@@ -855,15 +859,36 @@ private enum WidgetTaskInputError: LocalizedError {
     }
 }
 
-private struct WidgetTaskExecutionError: LocalizedError {
+/// What the Task Center shows for a failed task. Codes are never shown raw; the
+/// credit line beside it reports the confirmed refund, so these do not claim one.
+struct WidgetTaskExecutionError: LocalizedError {
     let message: String?
+    var reason: String? = nil
 
     var errorDescription: String? {
-        let detail = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if ["billing_input_mismatch", "billing_not_verified"].contains(detail) {
+        let code = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        switch code {
+        case "billing_input_mismatch", "billing_not_verified":
             return "The video could not be verified against its quote. Review the refund status, then select the video and confirm its price again.".localized
+        case "content_rejected":
+            let category: String
+            switch reason {
+            case "sexual": category = " (possible sexual content)".localized
+            case "political": category = " (possible political content)".localized
+            default: category = ""
+            }
+            return String(format: "The AI provider's safety review rejected this input%@. Change the image or input and try again; running the same input again will be rejected again.".localized, category)
+        case "worker_timeout", "task_timeout":
+            return "The Widget took too long to process this task. Try again, or use a smaller input.".localized
+        case "worker_error", "max_attempts", "empty_result", "invalid_result", "invalid_asset", "invalid_text", "invalid_url":
+            return "The Widget could not finish this task. Try again; if it keeps failing, contact support.".localized
+        case "widget_not_registered":
+            return "This Widget is temporarily unavailable. Try again later.".localized
+        case "":
+            return "The Widget task failed without reporting a reason.".localized
+        default:
+            return "The Widget could not finish this task. Try again; if it keeps failing, contact support.".localized
         }
-        return detail.isEmpty ? "The Widget task failed without reporting a reason.".localized : detail
     }
 }
 
