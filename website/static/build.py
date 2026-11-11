@@ -25,7 +25,7 @@ SITE = "https://glancepreview.com"
 SUPPORT_X_URL = "https://x.com/Sir03834855"
 SUPPORT_X_HANDLE = "@Sir03834855"
 SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_X_HANDLE}</a>'
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 DMG = f"/download/Glance-{VERSION}.dmg"
 UPDATED = "2026-11-05"
 # IndexNow ownership key. It is public by design: the deploy script pings
@@ -495,6 +495,8 @@ def main() -> None:
 /Glance-1.0.0.dmg {DMG} 302
 /Glance-1.0.0-beta.1.dmg {DMG} 302
 /download/Glance-1.0.0-beta.1.dmg {DMG} 302
+/Glance-1.0.1.dmg {DMG} 302
+/download/Glance-1.0.1.dmg {DMG} 302
 /download {DMG} 302
 /download/ {DMG} 302
 /aup /acceptable-use/ 301
