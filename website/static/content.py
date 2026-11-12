@@ -222,7 +222,7 @@ def render_content(b, page_paths) -> list[tuple[str, bool, str]]:
                 {"@type": "CollectionPage", "name": title, "url": b.SITE + base, "description": desc, "inLanguage": lang},
                 breadcrumb(b, [(S["home"], f"/{lang}/"), (label, base)])]})
             cluster = {c: base_for(c, kind) for c in index_cluster}
-            out.append((base, False, wrap(b, shell(b, base, f"{title} · Glance", desc, body, schema, lang=lang,
+            out.append((base, False, wrap(b, shell(b, base, title, desc, body, schema, lang=lang,
                                                    cluster=cluster), page_paths, lang, cluster)))
         for p in items:
             base = base_for(lang, p["kind"])
@@ -250,7 +250,7 @@ def render_content(b, page_paths) -> list[tuple[str, bool, str]]:
             graph = [{"@type": "Article", "headline": p["h1"], "description": p["description"],
                       "datePublished": p["date"], "dateModified": p.get("updated", p["date"]),
                       "inLanguage": lang, "mainEntityOfPage": b.SITE + p["path"],
-                      "author": {"@type": "Organization", "name": "Glance", "url": b.SITE + "/"},
+                      "author": {"@type": "Organization", "name": "Glance Preview", "url": b.SITE + "/"},
                       "publisher": {"@id": b.SITE + "/#organization"},
                       "image": b.SITE + "/assets/video/glance-demo-poster-en.jpg"},
                      breadcrumb(b, [(S["home"], f"/{lang}/"), (label, base), (p["h1"], p["path"])])]
