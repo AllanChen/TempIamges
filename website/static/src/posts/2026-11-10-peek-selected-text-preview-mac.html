@@ -1,21 +1,21 @@
-<!-- slug: peek-selected-text-preview-mac | kind: use-case | status: review | date: 2026-11-10
+<!-- slug: peek-selected-text-preview-mac | kind: use-case | status: published | date: 2026-11-12
 | title: Preview a File Path or Link from Selected Text on Mac with Peek — Glance Preview
 | h1: Peek on Mac: preview a file path or link from selected text with Option + Space
 | description: Select a file path or image link in any Mac app and press Option + Space to preview it with Glance Preview's Peek, without opening Finder or a browser.
 | related: Getting started with Glance on Mac=/en/use-cases/getting-started-glance-mac/, Glance Widget Market and credits=/en/use-cases/glance-widget-market-credits/, AI image preview on Mac=/en/blog/ai-image-preview-mac/, Download and install=/en/install/ -->
-<!-- Sourced from the live install, pricing, privacy and home pages. Source-only details (setting labels other than Enable Peek, menu bar switch text, tooltip strings, hotkey options, Spotlight ranking, Terminal/Ghostty lookup, document editing) are left out on purpose; add back with evidence from the shipped build. No screenshots yet. -->
+<!-- Sourced from the live install, pricing, privacy and home pages and the product README. Source-only details (setting labels, menu bar switch text, tooltip strings, hotkey options, Spotlight ranking, Terminal/Ghostty lookup, document editing) are left out on purpose; add back with evidence from the shipped build. No screenshots yet. -->
 <p class="lead">You see a path like <code>~/Downloads/hero-v2.png</code> in a chat, a terminal or a document, and you want to know what the file looks like. Normally that means copying the path, opening Finder, pressing Shift-Command-G and pasting it. With Peek in Glance Preview, you select the text and press Option + Space, and the file opens in a preview without leaving the app you are in. This is part 3 of the Glance tutorial series; if Glance is not installed yet, start with <a href="/en/use-cases/getting-started-glance-mac/">Getting started with Glance on Mac</a>.</p>
 
 <h2>What Peek can open</h2>
 <p>Peek reads the text you selected and looks for an image link or a file path in it, such as an <code>https://</code> link, an absolute path or a <code>~/</code> path. A full path is the most reliable way to point Peek at a local file.</p>
-<p>Glance previews images (PNG, JPEG, HEIC, WebP, AVIF, GIF, SVG, TIFF and more) and videos (MP4, MOV, M4V, WebM, MKV and AVI).</p>
+<p>Glance previews images (JPEG, PNG, HEIC/HEIF, WebP, GIF, BMP and TIFF) and videos (MP4, MOV, M4V, WebM, MKV and AVI).</p>
 <p>Peek is included in the free version of Glance; see the plan table on the <a href="/en/pricing/">Pricing page</a>.</p>
 
 <h2>Step 1: Turn on Peek</h2>
 <p>Peek is optional and off by default, because it needs a system permission to read what you select.</p>
 <ol class="guide-steps">
-<li>Open Glance's Preferences and switch on <strong>Enable Peek</strong>.</li>
-<li>Glance guides you to grant <strong>Accessibility</strong> in System Settings → Privacy &amp; Security. It is used just to detect the hotkey and read the text you selected. With Accessibility granted, Input Monitoring needs no separate grant.</li>
+<li>Open Glance's Preferences and turn on <strong>Peek</strong>.</li>
+<li>Glance asks for two permissions: <strong>Input Monitoring</strong> to detect the hotkey, and <strong>Accessibility</strong> to read the text you selected. Grant both in System Settings → Privacy &amp; Security when prompted.</li>
 </ol>
 <p>You can skip permission setup entirely; viewing images and videos in Glance works without it.</p>
 
@@ -43,7 +43,7 @@
 
 <h2>If Peek does not open</h2>
 <ul>
-<li><strong>Nothing happens:</strong> check that Enable Peek is on in Preferences and that Glance is switched on in System Settings → Privacy &amp; Security → Accessibility.</li>
+<li><strong>Nothing happens:</strong> check that Peek is on in Preferences and that Glance is enabled under both Accessibility and Input Monitoring in System Settings → Privacy &amp; Security.</li>
 <li><strong>The selection is not picked up:</strong> some apps do not expose selected text to macOS. Copy the text with Command-C and press the hotkey with nothing selected; Peek uses the clipboard.</li>
 <li><strong>A file in a protected folder does not open:</strong> use the full path, or grant the optional Full Disk Access permission, which is needed just for files macOS protects.</li>
 <li><strong>Still stuck:</strong> send a direct message on X to {{SUPPORT_X}}; the log file <code>~/Library/Application Support/Glance/app.log</code> helps.</li>
@@ -54,9 +54,9 @@
 <h3>How do I preview a file path from selected text on a Mac?</h3>
 <p>Quick Look in macOS works on files selected in Finder, not on paths in text. With Glance Preview, turn on Peek in Preferences, select the path in any app and press Option + Space; the file opens in a preview without opening Finder.</p>
 <h3>Which permission does Peek need?</h3>
-<p>Accessibility, to detect the hotkey and read the selected text. Full Disk Access is optional and helps with files in protected folders. Viewing images without Peek needs no permissions.</p>
+<p>Input Monitoring and Accessibility. Input Monitoring detects the hotkey, Accessibility reads the selected text. Full Disk Access is optional and helps with files in protected folders. Viewing images without Peek needs no permissions.</p>
 <h3>What is the Peek hotkey?</h3>
-<p>Option + Space by default. Peek is off until you switch on Enable Peek in Preferences.</p>
+<p>Option + Space by default. Peek is off until you turn it on in Preferences.</p>
 <h3>What if no text is selected?</h3>
 <p>Peek previews the clipboard instead, so you can copy a path and press the hotkey.</p>
 <h3>Does Peek send my selected text anywhere?</h3>

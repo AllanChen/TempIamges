@@ -1,0 +1,66 @@
+<!-- slug: peek-selected-text-preview-mac | kind: use-case | status: published | date: 2026-11-12
+| title: Glance Preview Peek: Dateipfad oder Link aus markiertem Text ansehen
+| h1: Peek auf dem Mac: Dateipfad oder Link aus markiertem Text mit Option + Leertaste ansehen
+| description: Markieren Sie in einer beliebigen Mac-App einen Dateipfad oder Bildlink und drücken Sie Option + Leertaste – Glance Preview öffnet die Vorschau, ohne Finder oder Browser.
+| related: Erste Schritte mit Glance=/de/use-cases/getting-started-glance-mac/, Widget Market und Credits=/de/use-cases/glance-widget-market-credits/, Bildbetrachter mit KI=/de/blog/ai-image-preview-mac/, Download und Installation=/de/install/ -->
+<p class="lead">In einem Chat, Terminal oder Dokument steht ein Pfad wie <code>~/Downloads/hero-v2.png</code>, und Sie möchten wissen, wie die Datei aussieht. Normalerweise heißt das: Pfad kopieren, Finder öffnen, Umschalt + Command + G drücken und einfügen. Mit Peek in Glance Preview markieren Sie den Text, drücken Option + Leertaste – und die Datei öffnet sich als Vorschau, ohne die aktuelle App zu verlassen. Dies ist Teil 3 der Glance-Anleitung. Ist Glance noch nicht installiert, beginnen Sie mit der <a href="/de/use-cases/getting-started-glance-mac/">Einstiegsanleitung für den Mac</a>.</p>
+<p>Hinweis: Die App-Oberfläche von Glance Preview gibt es auf Englisch, vereinfachtem Chinesisch und Deutsch sowie auf Japanisch. Die Funktionsnamen in dieser Anleitung entsprechen der englischen Oberfläche.</p>
+
+<h2>Was Peek öffnen kann</h2>
+<p>Peek liest den markierten Text und sucht darin nach einem Bildlink oder Dateipfad, etwa einem <code>https://</code>-Link, einem absoluten Pfad oder einem <code>~/</code>-Pfad. Ein vollständiger Pfad ist der zuverlässigste Weg, um Peek auf eine lokale Datei zu lenken.</p>
+<p>Glance zeigt Bilder (JPEG, PNG, HEIC/HEIF, WebP, GIF, BMP und TIFF) und Videos (MP4, MOV, M4V, WebM, MKV und AVI) an.</p>
+<p>Peek ist in der kostenlosen Version von Glance enthalten; siehe die Übersicht auf der <a href="/de/pricing/">Preisseite</a>.</p>
+
+<h2>Schritt 1: Peek einschalten</h2>
+<p>Peek ist optional und standardmäßig aus, weil es eine Systemberechtigung braucht, um Ihre Markierung zu lesen.</p>
+<ol class="guide-steps">
+<li>Öffnen Sie die Preferences von Glance und schalten Sie <strong>Peek</strong> ein.</li>
+<li>Glance fragt nach zwei Berechtigungen: <strong>„Eingabeüberwachung“</strong> zum Erkennen des Tastenkürzels und <strong>„Bedienungshilfen“</strong> zum Lesen des markierten Textes. Erteilen Sie beide unter „Systemeinstellungen“ → „Datenschutz &amp; Sicherheit“, wenn Sie dazu aufgefordert werden.</li>
+</ol>
+<p>Die Berechtigungen können Sie ganz überspringen; zum Ansehen von Bildern und Videos in Glance sind sie nicht nötig.</p>
+
+<h2>Schritt 2: Text markieren und Option + Leertaste drücken</h2>
+<ol class="guide-steps">
+<li>Markieren Sie in einer beliebigen App Text, der einen Bildlink oder Dateipfad enthält.</li>
+<li>Drücken Sie <strong>Option + Leertaste</strong>, das Standard-Tastenkürzel.</li>
+<li>Die Vorschau öffnet sich, ohne die aktuelle App zu verlassen.</li>
+</ol>
+<p>Ist nichts markiert, zeigt Peek stattdessen den Inhalt der Zwischenablage. Das hilft in Apps, die markierten Text nicht freigeben: Kopieren Sie den Text mit Command + C und drücken Sie dann das Tastenkürzel.</p>
+
+<h2>Schritt 3: Bei Bedarf im vollen Fenster öffnen</h2>
+<p>Peek ist für den schnellen Blick gedacht. Zum Zoomen auf 100 %, zum Vergleichen zweier Bilder oder zum Ausführen eines KI-Widgets öffnen Sie das Bild im vollen Glance-Fenster; dort liegen die KI-Werkzeuge.</p>
+
+<h2>Wo Peek am meisten Zeit spart</h2>
+<ul>
+<li><strong>KI-Chats und Coding-Assistenten:</strong> Werkzeuge, die Dateien schreiben, antworten oft mit einem Pfad wie <code>~/project/output/banner_2x.png</code>. Markieren Sie ihn und drücken Sie Option + Leertaste, um das Bild zu prüfen, bevor Sie weitermachen.</li>
+<li><strong>Terminal-Ausgaben:</strong> Nachdem ein Skript ein Bild geschrieben hat, markieren Sie den Pfad und sehen es an, ohne den Finder zu öffnen.</li>
+<li><strong>Logs, Dokumente und Tickets:</strong> Ein Screenshot-Pfad in einem Fehlerbericht oder ein Bildlink in einem Dokument öffnet sich ohne Wechsel zu Finder oder Browser.</li>
+</ul>
+<p>Muss ein Bild korrigiert werden, öffnen Sie es im vollen Fenster und nutzen ein KI-Widget aus dem Kontextmenü. Teil 2, <a href="/de/use-cases/glance-widget-market-credits/">Widget Market und Credits</a>, zeigt, wie Sie Widgets installieren und was sie kosten.</p>
+
+<h2>Datenschutz</h2>
+<p>Der markierte Text wird auf Ihrem Mac gelesen, um einen Link oder Pfad zu finden, und nicht an die Server von Glance gesendet. Bei einem Weblink lädt Glance die Vorschau direkt von der Website. Preferences, lokaler Verlauf und das App-Log liegen auf Ihrem Mac unter <code>~/Library/Application Support/Glance/</code>. Details stehen in der <a href="/en/privacy/">Datenschutzerklärung</a> (englisch).</p>
+
+<h2>Wenn Peek nicht öffnet</h2>
+<ul>
+<li><strong>Es passiert nichts:</strong> Prüfen Sie, ob Peek in den Preferences eingeschaltet ist und ob Glance unter „Systemeinstellungen“ → „Datenschutz &amp; Sicherheit“ sowohl bei „Bedienungshilfen“ als auch bei „Eingabeüberwachung“ aktiviert ist.</li>
+<li><strong>Die Markierung wird nicht erkannt:</strong> Manche Apps geben markierten Text nicht an macOS weiter. Kopieren Sie den Text mit Command + C und drücken Sie das Tastenkürzel ohne Markierung; Peek nutzt die Zwischenablage.</li>
+<li><strong>Eine Datei in einem geschützten Ordner öffnet nicht:</strong> Verwenden Sie den vollständigen Pfad oder erteilen Sie die optionale Berechtigung „Vollzugriff auf die Festplatte“, die nur für von macOS geschützte Dateien nötig ist.</li>
+<li><strong>Weiterhin festgefahren:</strong> Schreiben Sie eine Direktnachricht an {{SUPPORT_X}} auf X; die Logdatei <code>~/Library/Application Support/Glance/app.log</code> hilft.</li>
+</ul>
+
+<section class="post-faq">
+<h2>Häufige Fragen</h2>
+<h3>Wie sehe ich einen Dateipfad aus markiertem Text auf dem Mac an?</h3>
+<p>Quick Look in macOS wirkt auf Dateien, die im Finder ausgewählt sind, nicht auf Pfade im Text. Mit Glance Preview schalten Sie Peek in den Preferences ein, markieren den Pfad in einer beliebigen App und drücken Option + Leertaste; die Datei öffnet sich als Vorschau, ohne den Finder zu öffnen.</p>
+<h3>Welche Berechtigung braucht Peek?</h3>
+<p>„Eingabeüberwachung“ und „Bedienungshilfen“. Die Eingabeüberwachung erkennt das Tastenkürzel, die Bedienungshilfen lesen den markierten Text. „Vollzugriff auf die Festplatte“ ist optional und hilft bei Dateien in geschützten Ordnern. Zum Ansehen von Bildern ohne Peek sind keine Berechtigungen nötig.</p>
+<h3>Welches Tastenkürzel hat Peek?</h3>
+<p>Standardmäßig Option + Leertaste. Peek ist aus, bis Sie es in den Preferences einschalten.</p>
+<h3>Was passiert, wenn nichts markiert ist?</h3>
+<p>Peek zeigt stattdessen die Zwischenablage, sodass Sie einen Pfad kopieren und das Tastenkürzel drücken können.</p>
+<h3>Sendet Peek meinen markierten Text irgendwohin?</h3>
+<p>Nein. Der Text wird auf Ihrem Mac gelesen. Vorschauen zu Weblinks werden direkt von der Website geladen.</p>
+<h3>Ist Peek kostenlos?</h3>
+<p>Ja. Peek und der Verlauf sind in der kostenlosen Version enthalten; KI-Widgets verbrauchen Credits.</p>
+</section>

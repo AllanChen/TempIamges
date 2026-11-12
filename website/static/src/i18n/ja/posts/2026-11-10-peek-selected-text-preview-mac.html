@@ -1,0 +1,66 @@
+<!-- slug: peek-selected-text-preview-mac | kind: use-case | status: published | date: 2026-11-12
+| title: Glance Preview の Peek：選択したテキストからファイルやリンクをプレビュー
+| h1: Peek の使い方：Mac で選択したパスやリンクを Option + Space でプレビュー
+| description: Mac のどのアプリでも、ファイルパスや画像リンクを選択して Option + Space を押すだけで、Finder やブラウザを開かずに Glance Preview の Peek で中身を確認できます。
+| related: Glance Preview の使い方=/ja/use-cases/getting-started-glance-mac/, Widget Market とクレジット=/ja/use-cases/glance-widget-market-credits/, AI 付きの Mac 画像ビューア=/ja/blog/ai-image-preview-mac/, ダウンロードとインストール=/ja/install/ -->
+<p class="lead">チャットやターミナル、ドキュメントに <code>~/Downloads/hero-v2.png</code> のようなパスが書いてあって、中身がどんな画像か知りたい。普通ならパスをコピーして Finder を開き、Shift + Command + G で貼り付ける手間がかかります。Glance Preview の Peek なら、そのテキストを選択して Option + Space を押すだけで、今いるアプリを離れずにプレビューが開きます。これは Glance チュートリアル第 3 回です。まだ未導入なら<a href="/ja/use-cases/getting-started-glance-mac/">はじめての Glance ガイド</a>からどうぞ。</p>
+<p>※ Glance Preview のアプリ表示は英語・簡体字中国語・日本語に対応し、ドイツ語も選べます。本記事の機能名はアプリ内の英語表記で記載しています。</p>
+
+<h2>Peek で開けるもの</h2>
+<p>Peek は選択したテキストを読み、その中から画像リンクやファイルパスを探します。<code>https://</code> のリンク、絶対パス、<code>~/</code> で始まるパスなどが対象です。ローカルファイルを確実に開くには、フルパスで指定するのが最も確実です。</p>
+<p>Glance は画像（JPEG、PNG、HEIC/HEIF、WebP、GIF、BMP、TIFF）と動画（MP4、MOV、M4V、WebM、MKV、AVI）をプレビューできます。</p>
+<p>Peek は Glance の無料プランに含まれます。詳しくは<a href="/ja/pricing/">料金ページ</a>の機能表をご覧ください。</p>
+
+<h2>手順 1：Peek をオンにする</h2>
+<p>Peek は任意の機能で、初期状態ではオフです。選択したテキストを読むためのシステム権限が必要になるためです。</p>
+<ol class="guide-steps">
+<li>Glance の Preferences を開き、<strong>Peek</strong> をオンにします。</li>
+<li>Glance は 2 つの権限を求めます。ホットキーを検出するための<strong>「入力監視」</strong>と、選択したテキストを読むための<strong>「アクセシビリティ」</strong>です。求められたら「システム設定」→「プライバシーとセキュリティ」で両方を許可します。</li>
+</ol>
+<p>権限の設定は省略してもかまいません。Glance で画像や動画を表示するだけなら権限なしで使えます。</p>
+
+<h2>手順 2：テキストを選択して Option + Space を押す</h2>
+<ol class="guide-steps">
+<li>任意のアプリで、画像リンクやファイルパスを含むテキストを選択します。</li>
+<li>初期設定のショートカットである <strong>Option + Space</strong> を押します。</li>
+<li>作業中のアプリを離れずにプレビューが開きます。</li>
+</ol>
+<p>何も選択していない場合は、クリップボードの内容をプレビューします。選択したテキストを公開しないアプリでは、Command + C でコピーしてからショートカットを押すと便利です。</p>
+
+<h2>手順 3：もっと詳しく見たいときはフルウィンドウで開く</h2>
+<p>Peek はあくまで「ちら見」用です。100% に拡大する、2 枚を比較する、AI ウィジェットを実行するには、画像を Glance のフルウィンドウで開きます。AI ツールはそちらにあります。</p>
+
+<h2>Peek が役立つ場面</h2>
+<ul>
+<li><strong>AI チャットやコーディング支援ツール：</strong>ファイルを書き出すツールは <code>~/project/output/banner_2x.png</code> のようなパスを返してくることがあります。それを選択して Option + Space を押せば、続ける前に画像を確認できます。</li>
+<li><strong>ターミナルの出力：</strong>スクリプトが画像を書き出したあと、パスを選択して Finder を開かずに確認できます。</li>
+<li><strong>ログ・ドキュメント・チケット：</strong>バグ報告のスクリーンショットのパスや、ドキュメント内の画像リンクも、Finder やブラウザに切り替えずに開けます。</li>
+</ul>
+<p>画像を直したくなったら、フルウィンドウで開いて右クリックメニューの AI ウィジェットを使います。第 2 回の<a href="/ja/use-cases/glance-widget-market-credits/">Widget Market とクレジット</a>で、ウィジェットの追加方法と料金を説明しています。</p>
+
+<h2>プライバシー</h2>
+<p>選択したテキストはリンクやパスを見つけるために Mac 上で読まれ、Glance のサーバーには送られません。Web リンクの場合、プレビューはそのサイトから直接読み込みます。Preferences、ローカルの履歴、アプリのログは Mac 内の <code>~/Library/Application Support/Glance/</code> に保存されます。詳しくは<a href="/en/privacy/">プライバシーポリシー（英語）</a>をご覧ください。</p>
+
+<h2>Peek が開かないとき</h2>
+<ul>
+<li><strong>何も起きない：</strong>Preferences で Peek がオンになっているか、「システム設定」→「プライバシーとセキュリティ」で「アクセシビリティ」と「入力監視」の両方で Glance が有効になっているか確認してください。</li>
+<li><strong>選択が読み取られない：</strong>選択したテキストを macOS に公開しないアプリもあります。その場合は Command + C でコピーし、何も選択していない状態でショートカットを押すと、クリップボードを使って開けます。</li>
+<li><strong>保護されたフォルダのファイルが開かない：</strong>フルパスを使うか、任意の権限であるフルディスクアクセスを許可してください。macOS が保護するファイルにだけ必要です。</li>
+<li><strong>それでも解決しない：</strong>X で {{SUPPORT_X}} に DM してください。ログファイル <code>~/Library/Application Support/Glance/app.log</code> があると助かります。</li>
+</ul>
+
+<section class="post-faq">
+<h2>よくある質問</h2>
+<h3>Mac で選択したテキストのファイルパスをプレビューするには？</h3>
+<p>macOS の Quick Look は Finder で選んだファイルに働くもので、テキスト内のパスには反応しません。Glance Preview なら、Preferences で Peek をオンにし、任意のアプリでパスを選択して Option + Space を押すだけで、Finder を開かずにプレビューできます。</p>
+<h3>Peek に必要な権限は？</h3>
+<p>「入力監視」と「アクセシビリティ」の 2 つです。入力監視はホットキーの検出、アクセシビリティは選択したテキストの読み取りに使います。フルディスクアクセスは任意で、保護されたフォルダのファイルに役立ちます。Peek を使わず画像を見るだけなら権限は不要です。</p>
+<h3>Peek のショートカットは？</h3>
+<p>初期設定では Option + Space です。Peek は初期状態でオフなので、Preferences でオンにしてください。</p>
+<h3>テキストを選択していない場合は？</h3>
+<p>クリップボードの内容をプレビューします。パスをコピーしてショートカットを押せば開けます。</p>
+<h3>Peek は選択したテキストをどこかに送信しますか？</h3>
+<p>いいえ。テキストは Mac 上で読み取られます。Web リンクのプレビューはそのサイトから直接読み込みます。</p>
+<h3>Peek は無料ですか？</h3>
+<p>はい。Peek と履歴は無料プランに含まれます。AI ウィジェットはクレジットを使います。</p>
+</section>
