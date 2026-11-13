@@ -1,0 +1,89 @@
+<!-- slug: remove-objects-from-photo-mac | kind: use-case | status: published | date: 2026-11-13
+| title: Remove Objects from a Photo on Mac with a Text Prompt — Glance Preview
+| h1: Remove unwanted objects from a photo on Mac by describing them
+| description: Remove unwanted objects from a photo on Mac: brush them out with Clean Up in Photos, or describe them in words with Remove Objects in Glance Preview (30 credits).
+| related: Remove an image background on Mac=/en/use-cases/remove-image-background-mac/, Expand an image on Mac=/en/use-cases/expand-image-mac/, Upscale an image on Mac=/en/blog/upscale-image-mac/, Widget Market and credits=/en/use-cases/glance-widget-market-credits/, Compare two images on Mac=/en/compare-images-mac/, AI Widgets=/en/widgets/, Download and install=/en/install/ -->
+<!-- Sources: Widget catalog (src/public-snapshot.json: Remove Objects, 30 credits, English description), Widget manifest (accepted formats PNG/JPEG/WebP, upload notice Glance + RunningHub), Apple Photos User Guide for macOS 27 (Clean Up). Not asserted: underlying model (no row on /ai-models/ yet), run time in seconds, HEIC input, exact name of the description panel. -->
+<p class="lead">You open a photo and one thing spoils it: a trash can next to the bench, a stranger behind your subject, a cable across the wall. On a Mac there are two practical routes. Photos has a Clean Up tool where you brush over the object. Glance Preview has Remove Objects, a cloud Widget where you describe the object in a sentence and then check the result against the original. This guide covers both, with the cost and limits of each.</p>
+
+<h2>Two ways to remove an object from a photo on Mac</h2>
+<table>
+<thead><tr><th></th><th>Clean Up in Photos (built into macOS)</th><th>Remove Objects in Glance Preview</th></tr></thead>
+<tbody>
+<tr><td>How you point at the object</td><td>Click, brush or circle it</td><td>Describe it in an English sentence</td></tr>
+<tr><td>Which photos</td><td>Photos in your Photos library</td><td>A PNG, JPEG or WebP file you open from any folder</td></tr>
+<tr><td>Cost</td><td>Included with macOS; Apple notes that usage limits may apply</td><td>30 credits per run; new accounts start with 100</td></tr>
+<tr><td>What you need</td><td>Apple Intelligence; availability depends on language and region</td><td>Apple silicon Mac, macOS 12.3 or later, internet connection and sign-in</td></tr>
+<tr><td>Check step</td><td>Review the edit in Photos</td><td>Result appears alongside the original; Compare or Slider</td></tr>
+</tbody>
+</table>
+
+<h2>Route 1: Clean Up in Photos</h2>
+<p>If the picture is already in your Photos library and Clean Up is available on your Mac, start there: it is built in and you control the exact area by hand. Apple's <a href="https://support.apple.com/guide/photos/remove-distractions-and-imperfections-pht5c38b77c5/mac">Photos User Guide for macOS 27</a> describes the steps:</p>
+<ol class="guide-steps">
+<li><strong>Open the photo for editing.</strong> In Photos, double-click the photo, then click Edit in the toolbar.</li>
+<li><strong>Choose Clean Up.</strong> Click Tools in the toolbar, then click Clean Up. Photos may highlight some items automatically so you can click them.</li>
+<li><strong>Mark what to remove.</strong> Click, brush or circle the object, then click Done.</li>
+</ol>
+<p>Apple lists a few things to know: Clean Up works with Apple Intelligence, it is not available in every language or region, usage limits may apply, and brushing over a person's face may blur it with a pixelated effect. The same panel has a Retouch brush for small marks such as dust specks. Menu names can differ on older macOS versions.</p>
+
+<h2>Route 2: describe the object with Remove Objects in Glance Preview</h2>
+<p>Remove Objects fits a different situation: the file sits in a folder, not in Photos (a download, an export, an AI-generated image), you would rather type one sentence than brush around a fiddly outline, or Clean Up is not offered on your Mac. It is a cloud Widget, so it costs credits and uploads the image.</p>
+<ol class="guide-steps">
+<li><strong>Open the image.</strong> In Finder, right-click the image and choose Open With &gt; Glance. The Widgets menu is in the full image window, so if you start from Peek, open the image in the full window.</li>
+<li><strong>Choose Widgets &gt; Remove Objects.</strong> Right-click the image and choose Widgets &gt; Remove Objects. The menu shows the cost, 30 credits, before you run it. If the Widget is not in your menu yet, add it from the Widget Market (see <a href="/en/use-cases/glance-widget-market-credits/">Widget Market and credits</a>). Your initial cloud run asks you to sign in with Google or an email code.</li>
+<li><strong>Describe what to remove, in English.</strong> Glance Preview asks for a short description. Name the object and where it is, for example: <code>Remove the red ball on the right</code>.</li>
+<li><strong>Let the task run.</strong> The task runs in the background and can take a few minutes, so you can keep looking at other images.</li>
+<li><strong>Compare with the original.</strong> The finished image appears alongside the original. Click Slider and drag the divider across the spot where the object was, or click Compare to see both side by side.</li>
+</ol>
+<p>Your original file is not changed. The Widget accepts PNG, JPEG and WebP images. Its catalog summary reads: "Describe unwanted objects in English and fill the background. 30 credits per run."</p>
+
+<h2>Write a description that works</h2>
+<ul>
+<li><strong>Say what and where.</strong> "Remove the red ball on the right" gives the model more to go on than "remove the ball", especially when the photo holds several similar things.</li>
+<li><strong>Use English.</strong> The Widget asks for an English description. Short, plain sentences are enough.</li>
+<li><strong>Separate similar objects by position.</strong> Illustrative wording: "Remove the person in the background on the left" or "Remove the trash can next to the bench".</li>
+<li><strong>Reword before you rerun.</strong> If the result misses, change the description instead of sending the same sentence again. Each run costs 30 credits.</li>
+</ul>
+
+<h2>Check the fill before you keep it</h2>
+<p>Removing an object means the model invents the background that was hidden behind it. A wipe on the Slider shows quickly whether that worked. Look at:</p>
+<ul>
+<li><strong>The spot where the object was.</strong> Smeared texture, repeated patterns or a visible patch.</li>
+<li><strong>Shadows and reflections.</strong> A removed object can leave its shadow or mirror image behind.</li>
+<li><strong>Things you did not mention.</strong> The Widget preserves other content where possible, which is not a pixel-for-pixel promise. Nearby items can shift slightly, so wipe across the whole frame, not just the edited spot.</li>
+<li><strong>Faces, text and logos</strong> near the removed object.</li>
+</ul>
+<p>If the result is wrong, keep the original. This preview, fix, check loop is the same one described in <a href="/en/blog/ai-image-preview-mac/">AI image preview on Mac</a>, and the compare step works for any two files through the <a href="/en/compare-images-mac/">image compare</a> flow.</p>
+
+<h2>Honest limits</h2>
+<ul>
+<li><strong>Cloud and upload.</strong> Your image and your description are uploaded to Glance Preview and processed through RunningHub. The Widget does not work offline. Viewing and comparing images stay on your Mac.</li>
+<li><strong>Credits.</strong> Each run uses 30 credits and needs an account. New accounts start with 100 credits, which covers three runs. If a task fails on Glance Preview's side, the credits are returned, as described on the <a href="/en/pricing/">Pricing page</a>.</li>
+<li><strong>No brush or mask.</strong> You point at the object with words. If you need to paint an exact area by hand, use Clean Up in Photos or an image editor.</li>
+<li><strong>English descriptions.</strong> The Widget asks for English text.</li>
+<li><strong>Model not named here.</strong> The <a href="/en/ai-models/">AI model disclosure</a> lists the model behind each Widget. At the time of writing it has no entry for Remove Objects yet, so this guide does not name one.</li>
+<li><strong>Requirements.</strong> Apple silicon Macs, macOS 12.3 or later. The <a href="/en/install/">install page</a> has the download and launch steps.</li>
+<li><strong>Your images.</strong> Process images you own or have permission to edit. See the <a href="/en/acceptable-use/">acceptable use policy</a>.</li>
+</ul>
+
+<h2>Related fixes from the same preview</h2>
+<p>If the whole background has to go, not one object, see <a href="/en/use-cases/remove-image-background-mac/">remove an image background on Mac</a> (Background Remover Pro, 20 credits, plus the built-in macOS route). To add room around the subject, see <a href="/en/use-cases/expand-image-mac/">expand an image on Mac</a>. If the file is too small, see <a href="/en/blog/upscale-image-mac/">upscale an image on Mac</a>. Current credit costs for every tool are on the <a href="/en/widgets/">AI Widgets</a> page.</p>
+
+<section class="post-faq">
+<h2>FAQ</h2>
+<h3>How do I remove an unwanted object from a photo on a Mac?</h3>
+<p>In Photos, open the photo, click Edit, then Tools &gt; Clean Up, and click, brush or circle the object. Clean Up needs Apple Intelligence. Another route is Glance Preview: open the image, right-click, choose Widgets &gt; Remove Objects (30 credits), describe the object in English, then check the result with Compare or Slider.</p>
+<h3>Can I remove an object from a photo on Mac by describing it in words?</h3>
+<p>Yes. Remove Objects in Glance Preview takes an English description such as "Remove the red ball on the right", removes the object and fills the background. It runs in the cloud and costs 30 credits per run.</p>
+<h3>How much does Remove Objects cost in Glance Preview?</h3>
+<p>30 credits per run at the time of writing. New accounts start with 100 credits, and more credit packs are listed on the Pricing page. The menu shows the current cost before you run the Widget.</p>
+<h3>Does Remove Objects upload my photo?</h3>
+<p>Yes. The image and your description are uploaded to Glance Preview and processed through RunningHub. Viewing and comparing images stay on your Mac.</p>
+<h3>Does the description have to be in English?</h3>
+<p>Yes. The Widget asks you to describe the objects in English. A short sentence that names the object and its position is enough.</p>
+<h3>Will the rest of the photo stay exactly the same?</h3>
+<p>Not guaranteed. Remove Objects preserves other content where possible, but AI fill can change nearby details. Compare the result with the original on the Slider before you use it. Your original file is not changed.</p>
+<h3>Is Clean Up in Photos available on every Mac?</h3>
+<p>No. Apple says Clean Up works with Apple Intelligence, is not available in every language or region, and that usage limits may apply.</p>
+</section>
