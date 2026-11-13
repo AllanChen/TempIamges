@@ -25,7 +25,8 @@ SITE = "https://glancepreview.com"
 SUPPORT_X_URL = "https://x.com/Sir03834855"
 TELEGRAM_URL = "https://t.me/+zKBUO5oNceJiYWI1"
 # Public profiles of the same product, for the Organization schema and llms.txt.
-SAME_AS = [SUPPORT_X_URL, TELEGRAM_URL, "https://www.macosmenubar.com/glance-preview"]
+SAME_AS = [SUPPORT_X_URL, TELEGRAM_URL, "https://www.macosmenubar.com/glance-preview",
+           "https://www.indiehackers.com/product/glance-preview"]
 SUPPORT_X_HANDLE = "@Sir03834855"
 SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_X_HANDLE}</a>'
 VERSION = "1.0.2"
