@@ -23,6 +23,9 @@ SITE = "https://glancepreview.com"
 # The former address and www redirect to SITE in functions/_middleware.js.
 # Support is by direct message on X; there is no support mailbox.
 SUPPORT_X_URL = "https://x.com/Sir03834855"
+TELEGRAM_URL = "https://t.me/+zKBUO5oNceJiYWI1"
+# Public profiles of the same product, for the Organization schema and llms.txt.
+SAME_AS = [SUPPORT_X_URL, TELEGRAM_URL, "https://www.macosmenubar.com/glance-preview"]
 SUPPORT_X_HANDLE = "@Sir03834855"
 SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_X_HANDLE}</a>'
 VERSION = "1.0.2"
@@ -264,7 +267,7 @@ def homepage_schema(lang: str, description: str) -> str:
         "@context": "https://schema.org",
         "@graph": [
             {"@type": "Organization", "@id": SITE + "/#organization", "name": "Glance Preview", "alternateName": "Glance",
-             "url": SITE + "/", "logo": SITE + "/assets/img/logo-256.png", "sameAs": [SUPPORT_X_URL]},
+             "url": SITE + "/", "logo": SITE + "/assets/img/logo-256.png", "sameAs": SAME_AS},
             {"@type": "WebSite", "@id": SITE + "/#website", "name": "Glance Preview", "alternateName": "Glance",
              "url": SITE + "/", "inLanguage": ["zh-CN", "en", "ja", "de"],
              "publisher": {"@id": SITE + "/#organization"}},
@@ -504,6 +507,9 @@ def main() -> None:
 /download/ {DMG} 302
 /aup /acceptable-use/ 301
 """, encoding="utf-8")
+    from content import llms_text
+    (OUT / "llms.txt").write_text(llms_text(sys.modules[__name__], full=False), encoding="utf-8")
+    (OUT / "llms-full.txt").write_text(llms_text(sys.modules[__name__], full=True), encoding="utf-8")
     (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /pay/return/\nDisallow: /pay/\nAllow: /\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
     (OUT / f"{INDEXNOW_KEY}.txt").write_text(INDEXNOW_KEY, encoding="utf-8")
     # Omit optional lastmod until per-page content dates are maintained.

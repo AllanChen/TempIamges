@@ -1,6 +1,16 @@
 {
-  "fetchedAt": "2026-11-13T02:05:44+00:00",
+  "fetchedAt": "2026-11-13T06:43:42+00:00",
   "widgets": [
+    {
+      "id": "910f3243-aeb2-4839-8f26-44d8f3746bde",
+      "name": "局部编辑",
+      "summary": "在图片上涂抹要修改的区域，再用文字描述想要的效果，区域外保持不变。",
+      "enName": "Edit Area",
+      "enSummary": "Paint the area to change, describe the result in text, and everything outside it stays as is.",
+      "creditCost": 1,
+      "billing": {},
+      "uploadsMedia": true
+    },
     {
       "id": "ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f",
       "name": "高清放大",

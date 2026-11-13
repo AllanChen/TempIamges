@@ -261,3 +261,52 @@ def render_content(b, page_paths) -> list[tuple[str, bool, str]]:
                          ld({"@context": "https://schema.org", "@graph": graph}), not live(p), "article", lang, cluster)
             out.append((p["path"], not live(p), wrap(b, html, page_paths, lang, cluster)))
     return out
+
+
+LLMS_PAGES = [  # (path, one-line summary) for the English guide pages listed in llms.txt
+    ("/en/", "Home: what Glance Preview is, the view-fix-compare loop, Widgets, pricing summary, download."),
+    ("/en/install/", "Download and install Glance Preview 1.0.2 for Apple silicon Macs; requirements, first launch, SHA-256."),
+    ("/en/pricing/", "Pricing: free viewer, Glance Pro one-time purchase, cloud AI Widgets billed in credits, 14-day trial."),
+    ("/en/widgets/", "Live catalog of cloud AI Widgets with credits per run and upload notes."),
+    ("/en/ai-models/", "Public disclosure of the AI models and processing services behind each Widget."),
+    ("/en/compare-images-mac/", "How to compare two images on a Mac side by side or with a slider (free feature)."),
+    ("/en/copy-text-from-image-mac/", "How to copy text from an image on a Mac with built-in tools or Glance Preview's local recognition."),
+]
+
+
+def llms_text(b, full: bool = False) -> str:
+    """llms.txt (https://llmstxt.org): a plain-text map of the site for AI crawlers and answer engines."""
+    posts = load_all(b)
+    lines = [
+        "# Glance Preview",
+        "",
+        "> Glance Preview (glancepreview.com) is a macOS image and video viewer for Apple silicon Macs. "
+        "View images fast, fix one with a one-click cloud AI Widget (upscale, background removal, remove objects, expand), "
+        "then compare the result with the original side by side or with a slider. Viewing, comparing, capture and local text "
+        "recognition are free; Glance Pro is a one-time purchase for the local toolbox; cloud Widgets use credits. "
+        f"Current version: {b.VERSION}, notarized by Apple, macOS 12.3 or later.",
+        "",
+        "Not the same product as: Glance - Quick Look Code Files (App Store), the chamburr/glance Quick Look plugin, "
+        "Glance face unlock (GitHub), Glance - Prevent Eye Strain, Glance.md (Markdown editor), or Android Jetpack Glance.",
+        "",
+        "## Product pages",
+        "",
+    ]
+    lines += [f"- [{p}]({b.SITE}{p}): {d}" for p, d in LLMS_PAGES]
+    for lang, label in (("en", "Guides and blog (English)"), ("ja", "日本語"), ("de", "Deutsch")):
+        items = sorted((p for p in posts.get(lang, []) if p["status"] == "published"), key=lambda p: p["date"], reverse=True)
+        if not items:
+            continue
+        lines += ["", f"## {label}", ""]
+        lines += [f"- [{p['h1']}]({b.SITE}{p['path']}): {p['description']}" for p in items]
+    lines += ["", "## Optional", "", f"- [Sitemap]({b.SITE}/sitemap.xml)", f"- [Terms]({b.SITE}/en/terms/)", f"- [Privacy]({b.SITE}/en/privacy/)",
+              "- Contact: " + ", ".join(b.SAME_AS)]
+    if full:
+        lines += ["", "# Frequently asked questions (from the published articles)", ""]
+        for lang in ("en", "ja", "de"):
+            for p in sorted((p for p in posts.get(lang, []) if p["status"] == "published"), key=lambda p: p["date"]):
+                if p["faq"]:
+                    lines += [f"## {p['h1']} ({b.SITE}{p['path']})", ""]
+                    for q, a in p["faq"]:
+                        lines += [f"Q: {q}", f"A: {a}", ""]
+    return "\n".join(lines) + "\n"
