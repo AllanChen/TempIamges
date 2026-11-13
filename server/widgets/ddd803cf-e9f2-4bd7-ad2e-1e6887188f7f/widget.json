@@ -53,6 +53,16 @@
           "description": "Takes one image and returns a higher-resolution, sharper version."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "高清放大",
+      "summary": "提升图片分辨率，让细节更清晰。",
+      "commands": {
+        "upscale": {
+          "name": "高清放大",
+          "description": "上传一张图片，生成更高分辨率的清晰版本。"
+        }
+      }
     }
   }
 }

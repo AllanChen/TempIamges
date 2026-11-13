@@ -59,6 +59,16 @@
           "description": "Provide one image and describe the objects to remove in English, e.g. Remove the red ball. Other content is preserved where possible."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "移除物体",
+      "summary": "用英文描述要移除的物体，智能补全背景。每次 30 积分。",
+      "commands": {
+        "run": {
+          "name": "移除物体",
+          "description": "输入一张图片，用英文描述要移除的物体及位置，例如 Remove the red ball. 尽量保持其余内容不变。"
+        }
+      }
     }
   }
 }

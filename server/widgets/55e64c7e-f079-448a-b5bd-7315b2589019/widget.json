@@ -54,6 +54,16 @@
           "description": "Uploads the image or video and returns a link to the hosted file."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "免费图床",
+      "summary": "上传图片或视频，获得可分享的链接。",
+      "commands": {
+        "c8446b13-f54b-4a1f-aaba-156996118d60": {
+          "name": "上传获取链接",
+          "description": "上传图片或视频，获取结果文件的链接。"
+        }
+      }
     }
   }
 }

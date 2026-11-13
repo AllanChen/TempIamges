@@ -50,6 +50,16 @@
           "description": "Takes one video; segments of up to 8 s are cleaned on RunningHub and merged in order."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "视频去水印",
+      "summary": "每 10 秒 100 点，不足 10 秒按一份计费；分段去水印后合成为一个视频。",
+      "commands": {
+        "run": {
+          "name": "去水印",
+          "description": "输入一个视频；每段最长 8 秒，经 RunningHub 去水印后按顺序合并。"
+        }
+      }
     }
   },
   "billing": {

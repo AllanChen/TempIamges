@@ -72,6 +72,16 @@
           "description": "Takes one image and generates a new one at the selected aspect ratio."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "图生图",
+      "summary": "重新生成图片，并按指定画幅比例输出。",
+      "commands": {
+        "run": {
+          "name": "图生图",
+          "description": "输入一张图片，按所选比例生成一张新图片。"
+        }
+      }
     }
   }
 }

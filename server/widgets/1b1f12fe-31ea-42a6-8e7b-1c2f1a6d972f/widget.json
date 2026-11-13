@@ -45,6 +45,16 @@
           "description": "Takes one image and returns it with the watermark removed."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "图片去水印",
+      "summary": "去除图片上的水印、文字和标记。",
+      "commands": {
+        "run": {
+          "name": "去水印",
+          "description": "输入一张图片，返回去除水印后的图片。"
+        }
+      }
     }
   }
 }

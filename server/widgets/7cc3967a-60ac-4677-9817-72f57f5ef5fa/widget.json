@@ -53,6 +53,16 @@
           "description": "Takes one image and returns a copy with a transparent background."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "人物背景分离",
+      "summary": "把人物从背景中精准分离，保留发丝等细节边缘。",
+      "commands": {
+        "remove-bg-pro": {
+          "name": "移除背景",
+          "description": "上传一张图片，移除背景并生成透明背景副本。"
+        }
+      }
     }
   }
 }

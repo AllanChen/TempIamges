@@ -59,6 +59,16 @@
           "description": "Takes two images, a person and an outfit, and returns the person wearing it."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "AI 换装",
+      "summary": "把第二张图里的服装穿到第一张图的人物身上。",
+      "commands": {
+        "run": {
+          "name": "换装",
+          "description": "输入两张图片：第一张是人物，第二张是服装，生成换装后的图片。"
+        }
+      }
     }
   }
 }

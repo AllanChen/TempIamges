@@ -45,6 +45,16 @@
           "description": "Analyzes the selected image and returns a text description."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "图片转提示词",
+      "summary": "分析图片内容，生成可直接复用的文字描述。",
+      "commands": {
+        "run": {
+          "name": "生成描述",
+          "description": "分析所选图片并返回文字描述。"
+        }
+      }
     }
   }
 }

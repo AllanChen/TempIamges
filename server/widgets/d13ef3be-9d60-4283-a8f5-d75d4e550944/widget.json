@@ -49,6 +49,16 @@
           "description": "Takes one image and returns an expanded version of the scene."
         }
       }
+    },
+    "zh-Hans": {
+      "name": "智能扩图",
+      "summary": "向四周延展画面，自动补全图片之外的内容。",
+      "commands": {
+        "run": {
+          "name": "扩图",
+          "description": "输入一张图片，扩展画面并返回一张新图片。"
+        }
+      }
     }
   }
 }
