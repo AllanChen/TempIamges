@@ -66,8 +66,8 @@ NAV = [
 DESCRIPTIONS = {
     '/': ('Glance Preview 是 Mac 图片和视频查看器，支持并排对比、图片文字识别和就地 AI 工具。免费下载 Apple 芯片 Mac 版。',
           'View images and videos on your Mac, compare changes side by side, and run AI tools where you work. Download Glance Preview for Apple silicon.'),
-    '/pricing/': ('了解 Glance Preview 免费查看、Pro 一次买断和云端 AI Widget 按次消耗点数的价格与功能。',
-                 'Compare Glance Preview Free and Pro, one-time Mac licenses, and credits for cloud AI Widgets. See what is included before you download.'),
+    '/pricing/': ('Glance Preview 看图、对比、截图免费，没有订阅；Pro 是一次性买断，云端 AI Widget 按次消耗点数，新账号送 100 点。首次启动有 14 天完整试用。',
+                 'Yes, Glance Preview is free to view, compare and capture images, with no subscription. Pro is a one-time purchase; cloud AI Widgets use credits (100 free on signup). 14-day full trial.'),
     '/widgets/': ('查看 Glance Preview AI Widget 的功能、每次点数价格、处理模型与媒体上传说明。',
                  'Explore Glance Preview AI Widgets for your images and videos, including upscaling and background removal. See per-run credits and processing details.'),
     '/ai-models/': ('公开了解 Glance Preview 各 AI Widget 的底层模型、版本信息、第三方处理服务和功能范围，无需登录。',
@@ -89,6 +89,8 @@ DESCRIPTIONS = {
 }
 
 PAGE_TITLES = {
+    '/pricing/': ('Glance Preview 免费吗？价格：免费看图、Pro 一次买断、AI 按点数',
+                  'Is Glance Preview Free? Pricing: Free Viewer, Pro One-Time, AI Credits'),
     '/compare-images-mac/': ('Mac 上对比两张图片：并排与滑杆检查 · Glance Preview',
                             'Compare Two Images on Mac: Side by Side or Slider — Glance Preview'),
     '/copy-text-from-image-mac/': ('Mac 图片文字识别与复制教程 · Glance Preview',
