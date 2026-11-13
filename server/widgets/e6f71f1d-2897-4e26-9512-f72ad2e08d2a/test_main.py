@@ -1,68 +1,92 @@
-"""Offline checks for the RunningHub request and Glance output contract."""
+"""Offline checks for the GPT-first image-to-prompt Widget (no network, no API key)."""
 
-import io
 import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+from PIL import Image
 
 import main as widget
 
 
+def reply(status=200, text="A woman on an escalator", finish="stop", body=None):
+    response = MagicMock(status_code=status, text=str(body or text))
+    response.json.return_value = body if body is not None else {
+        "choices": [{"message": {"content": text}, "finish_reason": finish}]}
+    return response
+
+
 class WidgetTests(unittest.TestCase):
     def setUp(self):
-        self.folder = tempfile.TemporaryDirectory()
-        self.addCleanup(self.folder.cleanup)
-        self.image = Path(self.folder.name) / "sample.png"
-        self.image.write_bytes(b"image bytes")
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.image = Path(folder.name) / "sample.png"
+        Image.new("RGB", (3000, 2000), (10, 120, 200)).save(self.image)
+        self.task = {"input": {"path": str(self.image)}}
+        for target, kwargs in (
+            (widget, {"name": "get_api_key", "return_value": "test-key"}),
+            (widget.time, {"name": "sleep"}),
+            (widget.runninghub_fallback, {"name": "run", "side_effect": AssertionError("unexpected RunningHub call")}),
+        ):
+            patcher = patch.object(target, kwargs.pop("name"), **kwargs)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
-    def test_image_upload_and_inline_text_result(self):
-        responses = iter([
-            b'{"code":0,"data":{"fileName":"openapi/input.png"}}',
-            b'{"taskId":"task-1","status":"QUEUED"}',
-            b'{"status":"SUCCESS","results":[{"text":"A mountain at sunrise"}]}',
-        ])
-        requests = []
+    def run_main(self, replies, fallback_result=None):
+        with patch.object(widget.requests, "post", side_effect=replies) as post, \
+                patch.object(widget.runninghub_fallback, "run",
+                             return_value=fallback_result or {"outputs": [{"type": "text", "text": "fallback"}]}) as fallback:
+            return widget.main(self.task), post, fallback
 
-        def fake_open(request, timeout):
-            requests.append(request)
-            return io.BytesIO(next(responses))
+    def test_gpt_text_is_returned_without_touching_runninghub(self):
+        result, post, fallback = self.run_main([reply()])
+        self.assertEqual(result, {"outputs": [{"type": "text", "text": "A woman on an escalator"}]})
+        fallback.assert_not_called()
+        request = post.call_args
+        self.assertEqual(request.args[0], "https://guluapi.com/v1/chat/completions")
+        self.assertEqual(request.kwargs["headers"]["Authorization"], "Bearer test-key")
+        payload = request.kwargs["json"]
+        self.assertEqual(payload["model"], widget.MODEL)
+        url = payload["messages"][1]["content"][0]["image_url"]["url"]
+        self.assertTrue(url.startswith("data:image/jpeg;base64,"))
 
-        with patch.dict(os.environ, {"RUNNINGHUB_API_KEY": "test-key"}), patch.object(widget, "urlopen", side_effect=fake_open):
-            result = widget.main({"input": {"path": str(self.image)}})
+    def test_image_is_downscaled_before_upload(self):
+        import base64, io
+        url = widget.image_data_url(self.image)
+        image = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))
+        self.assertEqual(max(image.size), widget.MAX_IMAGE_EDGE)
 
-        self.assertEqual(result, {"outputs": [{"type": "text", "text": "A mountain at sunrise"}]})
-        self.assertEqual([request.full_url for request in requests], [widget.UPLOAD_URL, widget.RUN_URL, widget.QUERY_URL])
-        self.assertIn(b"image bytes", requests[0].data)
-        self.assertIn(b'"fieldValue": "openapi/input.png"', requests[1].data)
-        self.assertIn(b'"nodeId": "1"', requests[1].data)
-        self.assertEqual(requests[1].get_header("Authorization"), "Bearer test-key")
+    def test_transient_error_is_retried_before_falling_back(self):
+        result, post, fallback = self.run_main([reply(status=500), reply(text="second try")])
+        self.assertEqual(result["outputs"][0]["text"], "second try")
+        self.assertEqual(post.call_count, 2)
+        fallback.assert_not_called()
 
-    def test_text_file_result(self):
-        requests = []
+    def test_persistent_failure_falls_back_to_runninghub(self):
+        result, post, fallback = self.run_main([reply(status=500)] * widget.MAX_RETRIES)
+        self.assertEqual(post.call_count, widget.MAX_RETRIES)
+        fallback.assert_called_once_with(self.task)
+        self.assertEqual(result["outputs"][0]["text"], "fallback")
 
-        def fake_open(request, timeout):
-            requests.append(request)
-            if request.full_url == "https://example.com/output.txt":
-                return io.BytesIO("图中有一只猫".encode("utf-8"))
-            return io.BytesIO({
-                widget.UPLOAD_URL: b'{"code":200,"data":{"filename":"openapi/input.png"}}',
-                widget.RUN_URL: b'{"taskId":"task-2"}',
-                widget.QUERY_URL: b'{"status":"SUCCESS","results":[{"url":"https://example.com/output.txt","outputType":"txt"}]}',
-            }[request.full_url])
+    def test_empty_text_or_refusal_falls_back(self):
+        for empty in (reply(text="", finish="content_filter"), reply(body={"choices": []})):
+            with self.subTest(empty=empty.text):
+                _, _, fallback = self.run_main([empty] * widget.MAX_RETRIES)
+                fallback.assert_called_once()
 
-        with patch.dict(os.environ, {"RUNNINGHUB_API_KEY": "test-key"}), patch.object(widget, "urlopen", side_effect=fake_open):
-            result = widget.main({"input": {"path": str(self.image)}})
+    def test_missing_key_falls_back_without_calling_gpt(self):
+        with patch.object(widget, "get_api_key", return_value=""):
+            _, post, fallback = self.run_main([])
+        post.assert_not_called()
+        fallback.assert_called_once()
 
-        self.assertEqual(result["outputs"][0]["text"], "图中有一只猫")
-        self.assertEqual(requests[-1].full_url, "https://example.com/output.txt")
-
-    def test_missing_api_key_fails_before_upload(self):
-        with patch.dict(os.environ, {"RUNNINGHUB_API_KEY": ""}), patch.object(widget, "urlopen") as urlopen:
-            with self.assertRaisesRegex(ValueError, "RUNNINGHUB_API_KEY"):
-                widget.main({"input": {"path": str(self.image)}})
-        urlopen.assert_not_called()
+    def test_missing_image_fails_before_any_call(self):
+        with patch.object(widget.requests, "post") as post:
+            with self.assertRaisesRegex(ValueError, "existing image"):
+                widget.main({"input": {"path": "/nope.png"}})
+        post.assert_not_called()
 
 
 if __name__ == "__main__":

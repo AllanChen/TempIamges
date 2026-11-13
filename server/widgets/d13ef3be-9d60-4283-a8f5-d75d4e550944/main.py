@@ -1,334 +1,273 @@
-"""Expand one image with RunningHub and return the generated image to Glance."""
+"""Expand one image with GPT Image (gpt-image-2.5-flare via guluapi) and return the result to Glance.
 
+The photo is placed in the middle of a larger transparent canvas, GPT Image fills the surrounding
+area, and the original pixels are pasted back so the original picture is never redrawn. If GPT
+Image fails or rejects the image in content moderation, the task is retried on RunningHub.
+"""
+
+import base64
+import io
 import json
 import logging
 import os
+import subprocess
 import tempfile
 import time
+import uuid
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
-from urllib.request import Request, urlopen
-from uuid import uuid4
 
+import requests
+from PIL import Image, ImageChops, ImageFilter, ImageOps, ImageStat
+
+import runninghub_fallback
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://www.runninghub.cn"
-UPLOAD_URL = f"{BASE_URL}/task/openapi/upload"
-RUN_URL = f"{BASE_URL}/openapi/v2/run/ai-app/2109591136061976577"
-# The ai-app's image input node (RunningHub sample: nodeId 18, fieldName image).
-NODE_ID = "18"
-QUERY_URL = f"{BASE_URL}/openapi/v2/query"
-POLL_INTERVAL = 5
-POLL_TIMEOUT = 600
-REQUEST_RETRIES = 3
-GENERATION_ATTEMPTS = 3
-TOTAL_TIMEOUT = 1200
-MAX_IMAGE_BYTES = 50 * 1024 * 1024
-MAX_INPUT_BYTES = 30 * 1024 * 1024
-IMAGE_MIME = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-              ".webp": "image/webp"}
+BASE_URL = "https://guluapi.com"
+MODEL = "gpt-image-2.5-flare"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+# Same key source as gpu_task: env var first, then gpu_task/config/config.env.
+GPU_TASK_CONFIG = Path(os.environ.get("GULU_CONFIG_ENV", Path.home() / "Desktop/work/gpu_task/config/config.env"))
+REQUEST_TIMEOUT = 300
+MAX_RETRIES = 2  # RunningHub takes over afterwards; keep both within the task deadline
+RETRY_BACKOFF = 5
+MAX_BYTES = 50 * 1024 * 1024
+
+EXPAND_FACTOR = 1.5  # the canvas is 1.5x the photo in each direction (25% added on every side)
+MAX_LONG_EDGE = 2048
+MIN_LONG_EDGE = 1024
+GPT_TARGET_PIXELS = 1024 * 1536
+GPT_MAX_ASPECT = 3.0
+ASPECT_TOLERANCE = 0.03
+# Mean per-pixel difference (0-255) between GPT's middle region and the original photo; a result that
+# kept the photo in place scores low, a reframed or shifted one scores high.
+MAX_ALIGNMENT_DIFF = 35
+FEATHER_RATIO = 0.05  # blend width of the seam, relative to the canvas long edge
+
+PROMPT = (
+    "The image shows a photo in the middle, surrounded by an empty transparent area. Extend the scene "
+    "naturally outward into the transparent area on all four sides, continuing the same scene, perspective, "
+    "lighting, colors, style and level of detail. Keep the existing photo in the middle exactly as it is: "
+    "do not crop, zoom, move or redraw it. Output the complete image with no transparent areas, borders "
+    "or frames."
+)
+
+GPT_UPLOAD_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
+MODERATION_CODES = {"moderation_blocked", "content_policy_violation", "content_filter", "safety_violation"}
+MODERATION_KEYWORDS = ("moderation", "safety system", "content policy", "content_policy", "safety_violation",
+                       "sensitive", "violat", "审核", "违规", "敏感")
 
 
-class AuditRejectedError(RuntimeError):
-    """The provider explicitly rejected the content; do not retry."""
+class ModerationRejectedError(Exception):
+    """GPT Image rejected the image in content moderation; retrying the same input will not help."""
 
 
-class GenerationFailedError(RuntimeError):
-    """The provider explicitly failed a generation; a new task may be submitted."""
+class BadResultError(Exception):
+    """GPT Image returned a result that cannot be used (reframed, shifted or not filled in)."""
 
 
-class SubmissionStateUnknownError(RuntimeError):
-    """The submit request may have created a paid task; do not duplicate it."""
+def get_api_key() -> str:
+    """Read GULU_GPTIMAGE_KEY from the environment, else from gpu_task's config.env."""
+    key = os.environ.get("GULU_GPTIMAGE_KEY", "")
+    if key or not GPU_TASK_CONFIG.is_file():
+        return key
+    for line in GPU_TASK_CONFIG.read_text(encoding="utf-8").splitlines():
+        name, _, value = line.strip().partition("=")
+        if name.strip() == "GULU_GPTIMAGE_KEY":
+            return value.strip().strip('"').strip("'")
+    return ""
 
 
-def safe_error(value: object, api_key: str) -> str:
-    """Avoid exposing the credential in provider error messages."""
-    return str(value).replace(api_key, "[REDACTED]")[:500]
-
-
-def failed_reason(result: dict) -> dict:
-    reason = result.get("failedReason") or {}
-    if isinstance(reason, str):
-        try:
-            reason = json.loads(reason)
-        except (ValueError, TypeError):
-            reason = {"message": reason}
-    return reason if isinstance(reason, dict) else {}
-
-
-def is_audit_rejection(result: dict) -> bool:
-    if not isinstance(result, dict):
+def is_moderation_rejection(status_code: int, body) -> bool:
+    """Detect an OpenAI-compatible moderation rejection (e.g. error.code == "moderation_blocked")."""
+    if status_code not in (400, 403, 422, 451):
         return False
-    reason = failed_reason(result)
-    if "audit" in str(reason.get("exception_type", "")).lower():
-        return True
-    detail = " ".join(str(value) for value in (
-        reason.get("exception_message", ""), reason.get("message", ""),
-        result.get("errorMessage", ""), result.get("message", ""),
-        result.get("msg", ""),
-    )).lower()
-    return any(term in detail for term in (
-        "porn", "色情", "涉黄", "political", "politics", "涉政", "政治",
-    ))
-
-
-def provider_message(result: dict, api_key: str) -> str:
-    reason = failed_reason(result)
-    detail = (result.get("errorMessage") or reason.get("exception_message")
-              or reason.get("message") or result.get("message") or result.get("msg")
-              or result.get("status") or "Unknown provider error")
-    return safe_error(detail, api_key)
-
-
-def request_json(request: Request, operation: str, api_key: str,
-                 *, retry_transient: bool = True, deadline: float | None = None) -> dict:
-    """Retry safe requests; never blindly repeat an uncertain task submission."""
-    attempts = REQUEST_RETRIES if retry_transient else 1
-    for attempt in range(1, attempts + 1):
-        remaining = deadline - time.monotonic() if deadline is not None else 60
-        if remaining <= 0:
-            raise TimeoutError(f"RunningHub {operation} exceeded the Widget deadline")
-        try:
-            with urlopen(request, timeout=min(60, remaining)) as response:
-                try:
-                    result = json.load(response)
-                except ValueError as error:
-                    if not retry_transient:
-                        raise SubmissionStateUnknownError(
-                            "RunningHub submit returned invalid JSON; task status is unknown"
-                        ) from error
-                    raise RuntimeError(
-                        f"RunningHub {operation} returned invalid JSON"
-                    ) from error
-            if not isinstance(result, dict):
-                if not retry_transient:
-                    raise SubmissionStateUnknownError(
-                        "RunningHub submit returned an invalid response; task status is unknown"
-                    )
-                raise RuntimeError(f"RunningHub {operation} returned an invalid response")
-            return result
-        except HTTPError as error:
-            detail = error.read(4096).decode("utf-8", errors="replace")
-            try:
-                detail_json = json.loads(detail)
-            except ValueError:
-                detail_json = {"errorMessage": detail}
-            if isinstance(detail_json, dict) and is_audit_rejection(detail_json):
-                raise AuditRejectedError(
-                    f"RunningHub content rejected: {provider_message(detail_json, api_key)}"
-                ) from None
-            if error.code in (401, 403):
-                raise RuntimeError(
-                    f"RunningHub {operation} authentication failed: HTTP {error.code}"
-                ) from None
-            if error.code not in (408, 429) and error.code < 500:
-                raise RuntimeError(
-                    f"RunningHub {operation} failed: HTTP {error.code}, {safe_error(detail, api_key)}"
-                ) from error
-            failure = f"HTTP {error.code}"
-        except (URLError, TimeoutError) as error:
-            failure = f"{type(error).__name__}: {getattr(error, 'reason', error)}"
-        if not retry_transient:
-            raise SubmissionStateUnknownError(
-                f"RunningHub submit status is unknown ({failure}); refusing duplicate submission"
-            )
-        if attempt == attempts:
-            raise RuntimeError(f"RunningHub {operation} failed after {attempt} attempts: {failure}")
-        logger.warning("RunningHub %s request %d/%d failed (%s); retrying",
-                       operation, attempt, attempts, failure)
-        time.sleep(min(2 ** attempt, max(0, deadline - time.monotonic()))
-                   if deadline is not None else 2 ** attempt)
-    raise AssertionError("unreachable")
-
-
-def post_json(url: str, payload: dict, api_key: str, operation: str,
-              *, retry_transient: bool = True, deadline: float | None = None) -> dict:
-    request = Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-        method="POST",
-    )
-    return request_json(request, operation, api_key, retry_transient=retry_transient,
-                        deadline=deadline)
-
-
-def upload_image(image_path: Path, api_key: str, deadline: float) -> str:
-    if not 0 < image_path.stat().st_size <= MAX_INPUT_BYTES:
-        raise ValueError("RunningHub input image is empty or exceeds 30 MB")
-    content = image_path.read_bytes()
-    if content.startswith(b"\x89PNG\r\n\x1a\n"):
-        suffix = ".png"
-    elif content.startswith(b"\xff\xd8\xff"):
-        suffix = ".jpg"
-    elif content.startswith(b"RIFF") and content[8:12] == b"WEBP":
-        suffix = ".webp"
+    error = body.get("error") if isinstance(body, dict) else None
+    if isinstance(error, dict):
+        code = str(error.get("code") or error.get("type") or "").lower()
+        if code in MODERATION_CODES:
+            return True
+        text = str(error.get("message") or "").lower()
     else:
-        raise ValueError("This Widget requires PNG, JPEG or WebP input images")
-    boundary = f"glance-{uuid4().hex}"
-    body = (
-        f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="apiKey"\r\n\r\n'
-        f"{api_key}\r\n"
-        f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="fileType"\r\n\r\n'
-        "input\r\n"
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="file"; filename="input{suffix}"\r\n'
-        f"Content-Type: {IMAGE_MIME[suffix]}\r\n\r\n"
-    ).encode("utf-8") + content + f"\r\n--{boundary}--\r\n".encode("ascii")
-    request = Request(
-        UPLOAD_URL,
-        data=body,
-        headers={"Authorization": f"Bearer {api_key}",
-                 "Content-Type": f"multipart/form-data; boundary={boundary}"},
-        method="POST",
-    )
-    result = request_json(request, "upload", api_key, deadline=deadline)
-    data = result.get("data") or {}
-    file_name = (data.get("fileName") or data.get("filename")) if isinstance(data, dict) else None
-    if result.get("code") not in (0, 200) or not isinstance(file_name, str) or not file_name:
-        if is_audit_rejection(result):
-            raise AuditRejectedError(
-                f"RunningHub content rejected: {provider_message(result, api_key)}"
-            )
-        raise RuntimeError(f"RunningHub upload failed: {provider_message(result, api_key)}")
-    return file_name
+        text = json.dumps(body, ensure_ascii=False).lower() if body else ""
+    return any(keyword in text for keyword in MODERATION_KEYWORDS)
 
 
-def submit_task(api_key: str, image_name: str, deadline: float) -> str:
-    nodes = [
-        {"nodeId": NODE_ID, "fieldName": "image", "fieldValue": image_name,
-         "description": "image"},
-    ]
-    result = post_json(RUN_URL, {
-        "nodeInfoList": nodes,
-        "instanceType": "default",
-        "usePersonalQueue": "false",
-    }, api_key, "submit", retry_transient=False, deadline=deadline)
-    task_id = result.get("taskId")
-    if task_id:
-        return str(task_id)
-    if is_audit_rejection(result):
-        raise AuditRejectedError(
-            f"RunningHub content rejected: {provider_message(result, api_key)}"
+def output_size(size: tuple[int, int]) -> tuple[int, int]:
+    """Scale (width, height) so the long edge is within [MIN_LONG_EDGE, MAX_LONG_EDGE], keeping the ratio."""
+    width, height = size
+    long_edge = max(width, height)
+    target = min(max(long_edge, MIN_LONG_EDGE), MAX_LONG_EDGE)
+    if target == long_edge:
+        return size
+    scale = target / long_edge
+    return max(1, round(width * scale)), max(1, round(height * scale))
+
+
+def request_size(size: tuple[int, int]) -> str:
+    """Pick a GPT output size with the same aspect ratio (multiples of 16)."""
+    width, height = size
+    scale = (GPT_TARGET_PIXELS / (width * height)) ** 0.5
+    return f"{max(16, round(width * scale / 16) * 16)}x{max(16, round(height * scale / 16) * 16)}"
+
+
+def load_upright(path: Path, work_dir: Path) -> Image.Image:
+    """Open an image as RGB (transparency flattened onto white) with EXIF orientation applied."""
+    source = path
+    if path.suffix.lower() not in GPT_UPLOAD_SUFFIXES:
+        source = work_dir / f"converted-{uuid.uuid4().hex}.png"
+        subprocess.run(["/usr/bin/sips", "-s", "format", "png", str(path), "--out", str(source)],
+                       check=True, capture_output=True, timeout=60)
+    with Image.open(source) as image:
+        upright = ImageOps.exif_transpose(image).convert("RGBA")
+    flattened = Image.new("RGBA", upright.size, (255, 255, 255, 255))
+    flattened.alpha_composite(upright)
+    return flattened.convert("RGB")
+
+
+def layout(photo_size: tuple[int, int]):
+    """Return (canvas size, photo box) for the expanded canvas; the photo is centered."""
+    width, height = photo_size
+    canvas = output_size((round(width * EXPAND_FACTOR), round(height * EXPAND_FACTOR)))
+    photo_w, photo_h = round(canvas[0] / EXPAND_FACTOR), round(canvas[1] / EXPAND_FACTOR)
+    left, top = (canvas[0] - photo_w) // 2, (canvas[1] - photo_h) // 2
+    return canvas, (left, top, left + photo_w, top + photo_h)
+
+
+def prepare_canvas(photo: Image.Image):
+    """Return (transparent canvas with the photo in the middle, canvas size, photo box, resized photo)."""
+    canvas_size, box = layout(photo.size)
+    resized = photo.resize((box[2] - box[0], box[3] - box[1]), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    canvas.paste(resized.convert("RGBA"), (box[0], box[1]))
+    return canvas, canvas_size, box, resized
+
+
+def request_gpt_image(canvas_path: Path, api_key: str, size: str) -> bytes:
+    """Call the GPT Image edits endpoint and return the image bytes."""
+    headers = {"Authorization": f"Bearer {api_key}", "User-Agent": USER_AGENT}
+    data = {"model": MODEL, "prompt": PROMPT, "output_format": "png", "size": size, "n": "1"}
+    logger.info("Submitting outpainting to %s (%s, size=%s) ...", BASE_URL, MODEL, size)
+    with canvas_path.open("rb") as stream:
+        response = requests.post(
+            f"{BASE_URL}/v1/images/edits", headers=headers, data=data,
+            files={"image[]": (canvas_path.name, stream, "image/png")}, timeout=REQUEST_TIMEOUT,
         )
-    if str(result.get("errorCode")) in ("400", "401", "403", "422"):
-        raise RuntimeError(
-            f"RunningHub submit rejected the request: {provider_message(result, api_key)}"
-        )
-    if result.get("errorCode") or result.get("errorMessage") or result.get("message"):
-        raise GenerationFailedError(
-            f"RunningHub did not accept the task: {provider_message(result, api_key)}"
-        )
-    raise SubmissionStateUnknownError("RunningHub submit returned no task ID or failure reason")
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if response.status_code != 200:
+        if is_moderation_rejection(response.status_code, body):
+            raise ModerationRejectedError(f"GPT Image moderation rejected the image: {body}")
+        raise RuntimeError(f"GPT Image error: {response.status_code}, {response.text[:500]}")
+    items = (body or {}).get("data") or []
+    if not items:
+        raise RuntimeError(f"GPT Image returned no image: {str(body)[:500]}")
+    item = items[0]
+    if item.get("b64_json"):
+        return base64.b64decode(item["b64_json"])
+    if item.get("url"):
+        with requests.get(item["url"], timeout=60) as download:
+            download.raise_for_status()
+            return download.content
+    raise RuntimeError(f"GPT Image result has neither b64_json nor url: {str(item)[:500]}")
 
 
-def wait_for_result(api_key: str, task_id: str, overall_deadline: float) -> str:
-    deadline = min(overall_deadline, time.monotonic() + POLL_TIMEOUT)
-    while time.monotonic() < deadline:
-        result = post_json(QUERY_URL, {"taskId": task_id}, api_key, "query",
-                           deadline=deadline)
-        status = result.get("status")
-        logger.info("RunningHub task %s: %s", task_id, status)
-        if status == "SUCCESS":
-            results = result.get("results")
-            if not isinstance(results, list) or not results or not isinstance(results[0], dict):
-                raise GenerationFailedError("RunningHub completed the task without an image result")
-            url = results[0].get("url")
-            if not isinstance(url, str) or urlparse(url).scheme != "https":
-                raise GenerationFailedError("RunningHub returned an invalid image URL")
-            return url
-        if status in ("FAILED", "FAILURE", "ERROR"):
-            if is_audit_rejection(result):
-                raise AuditRejectedError(
-                    f"RunningHub content rejected: {provider_message(result, api_key)}"
-                )
-            raise GenerationFailedError(
-                f"RunningHub task failed: {provider_message(result, api_key)}"
-            )
-        if status not in ("RUNNING", "QUEUED"):
-            raise RuntimeError(f"RunningHub returned unknown task status: {safe_error(status, api_key)}")
-        time.sleep(min(POLL_INTERVAL, max(0, deadline - time.monotonic())))
-    raise TimeoutError(
-        f"RunningHub task {task_id} did not finish within the polling deadline; "
-        "refusing to submit a duplicate"
-    )
+def alignment_diff(original: Image.Image, result: Image.Image) -> float:
+    """Mean difference between the original photo and GPT's middle region, at a small scale."""
+    small = (256, max(1, round(256 * original.height / original.width)))
+    difference = ImageChops.difference(original.convert("RGB").resize(small), result.convert("RGB").resize(small))
+    return ImageStat.Stat(difference.convert("L")).mean[0]
 
 
-def download_image(url: str, output_dir: Path, deadline: float) -> Path:
-    parsed = urlparse(url)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
-        raise ValueError("RunningHub returned an invalid image URL")
-    suffix = Path(parsed.path).suffix.lower()
-    if suffix not in IMAGE_MIME:
-        suffix = ".png"
-    destination = output_dir / f"result-{uuid4().hex}{suffix}"
-    for attempt in range(1, REQUEST_RETRIES + 1):
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise TimeoutError("RunningHub result download exceeded the Widget deadline")
-        size = 0
-        complete = False
+def compose(image_bytes: bytes, canvas_size: tuple[int, int], box: tuple[int, int, int, int],
+            photo: Image.Image, rotated: bool) -> bytes:
+    """Turn GPT's result into the final image: check it, then paste the original photo back with a soft seam."""
+    with Image.open(io.BytesIO(image_bytes)) as image:
+        result = ImageOps.exif_transpose(image).convert("RGBA")
+    if rotated:
+        result = result.rotate(90, expand=True)
+    width, height = canvas_size
+    expected, actual = width / height, result.width / result.height
+    if abs(actual - expected) / expected > ASPECT_TOLERANCE:
+        raise BadResultError(
+            f"GPT Image returned {result.width}x{result.height}, which does not match the canvas {width}x{height}")
+    if result.size != canvas_size:
+        result = result.resize(canvas_size, Image.Resampling.LANCZOS)
+    corners = [result.getpixel(point)[3] for point in (
+        (0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1),
+        (width // 2, 0), (width // 2, height - 1), (0, height // 2), (width - 1, height // 2))]
+    if min(corners) < 250:
+        raise BadResultError("GPT Image left the expanded area transparent")
+    diff = alignment_diff(photo, result.crop(box))
+    if diff > MAX_ALIGNMENT_DIFF:
+        raise BadResultError(f"GPT Image moved or redrew the original photo (difference {diff:.1f})")
+    # Paste the original back; fade the mask in at the seam so generated and original pixels blend.
+    # The fade lies inside the photo's edge band, where GPT's own version of the photo is nearly identical,
+    # so small tone differences between the original and the generated area disappear instead of showing as a line.
+    feather = max(2, round(max(canvas_size) * FEATHER_RATIO))
+    mask = Image.new("L", canvas_size, 0)
+    mask.paste(255, (box[0] + feather, box[1] + feather, box[2] - feather, box[3] - feather))
+    mask = mask.filter(ImageFilter.GaussianBlur(feather / 2.5))
+    final = result.convert("RGB")
+    original_layer = Image.new("RGB", canvas_size)
+    original_layer.paste(photo, (box[0], box[1]))
+    final = Image.composite(original_layer, final, mask)
+    buffer = io.BytesIO()
+    final.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def run_gpt_image(input_path: Path, work_dir: Path) -> bytes:
+    """Run GPT Image with retries and return the expanded PNG; a moderation rejection is raised immediately."""
+    api_key = get_api_key()
+    if not api_key:
+        raise ValueError(f"GULU_GPTIMAGE_KEY is not set (environment or {GPU_TASK_CONFIG})")
+    photo = load_upright(input_path, work_dir)
+    if max(photo.size) / min(photo.size) > GPT_MAX_ASPECT:
+        raise ValueError(
+            f"The image is {photo.width}x{photo.height}, whose aspect ratio is too extreme to expand "
+            f"(the long edge may be at most {GPT_MAX_ASPECT:g} times the short edge)")
+    canvas, canvas_size, box, resized = prepare_canvas(photo)
+    # GPT Image tends to reframe landscape images as portrait crops but keeps portrait ones aligned,
+    # so a landscape canvas is sent rotated 90 degrees and the result is rotated back.
+    rotated = canvas_size[0] > canvas_size[1]
+    sent = canvas.rotate(-90, expand=True) if rotated else canvas
+    canvas_path = work_dir / f"canvas-{uuid.uuid4().hex}.png"
+    sent.save(canvas_path, format="PNG")
+    size = request_size(sent.size)
+    for attempt in range(1, MAX_RETRIES + 1):
         try:
-            with urlopen(Request(url, headers={"User-Agent": "Glance-Widget/1.0"}),
-                         timeout=min(60, remaining)) as response:
-                mime = response.headers.get_content_type()
-                if mime not in (*IMAGE_MIME.values(), "image/webp"):
-                    raise ValueError(f"RunningHub returned non-image content: {mime}")
-                suffix = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}[mime]
-                destination = destination.with_suffix(suffix)
-                with destination.open("wb") as output:
-                    while chunk := response.read(1024 * 1024):
-                        size += len(chunk)
-                        if size > MAX_IMAGE_BYTES:
-                            raise ValueError("RunningHub result exceeds 50 MB")
-                        output.write(chunk)
-            if size == 0:
-                raise ValueError("RunningHub returned an empty image")
-            complete = True
-            return destination
-        except (HTTPError, URLError, TimeoutError) as error:
-            retryable = not isinstance(error, HTTPError) or error.code in (408, 429) or error.code >= 500
-            if not retryable or attempt == REQUEST_RETRIES:
-                raise RuntimeError(f"RunningHub result download failed: {type(error).__name__}") from error
-            logger.warning("RunningHub download attempt %d/%d failed; retrying", attempt, REQUEST_RETRIES)
-            time.sleep(min(2 ** attempt, max(0, deadline - time.monotonic())))
-        finally:
-            if not complete and destination.exists():
-                destination.unlink()
+            output = request_gpt_image(canvas_path, api_key, size)
+            if not output:
+                raise RuntimeError("GPT Image returned an empty image")
+            return compose(output, canvas_size, box, resized, rotated)
+        except ModerationRejectedError:
+            raise
+        except Exception:
+            if attempt == MAX_RETRIES:
+                raise
+            logger.warning("GPT Image attempt %d/%d failed; retrying", attempt, MAX_RETRIES, exc_info=True)
+            time.sleep(RETRY_BACKOFF)
     raise AssertionError("unreachable")
 
 
 def main(task: dict) -> dict:
-    """Use the selected Glance image as the ai-app's image input."""
+    """Use the selected Glance image; try GPT Image first and fall back to RunningHub."""
     input_path = (task.get("input") or {}).get("path")
     if not isinstance(input_path, str) or not input_path or not Path(input_path).is_file():
         raise ValueError("task.input.path must point to one existing image")
-    # runninghub.cn key; the old .ai name still works for workers not yet updated.
-    api_key = (os.environ.get("RUNNINGHUB_API_KEY") or os.environ.get("RUNNINGHUB_API_KEY_AI", "")).strip()
-    if not api_key:
-        raise ValueError("RUNNINGHUB_API_KEY is required")
     output_dir = Path(os.environ.get("GLANCE_TASK_OUTPUT_DIR") or tempfile.mkdtemp(prefix="glance-widget-"))
     output_dir.mkdir(parents=True, exist_ok=True)
-    deadline = time.monotonic() + TOTAL_TIMEOUT
-    uploaded = upload_image(Path(input_path), api_key, deadline)
-    for attempt in range(1, GENERATION_ATTEMPTS + 1):
-        if time.monotonic() >= deadline:
-            raise TimeoutError("RunningHub generation exceeded the Widget deadline")
-        try:
-            logger.info("RunningHub generation attempt %d/%d", attempt, GENERATION_ATTEMPTS)
-            task_id = submit_task(api_key, uploaded, deadline)
-            logger.info("RunningHub task submitted: %s", task_id)
-            result_url = wait_for_result(api_key, task_id, deadline)
-            break
-        except GenerationFailedError:
-            if attempt == GENERATION_ATTEMPTS or deadline - time.monotonic() < 10:
-                raise
-            logger.warning("RunningHub generation attempt %d/%d failed; retrying",
-                           attempt, GENERATION_ATTEMPTS, exc_info=True)
-            time.sleep(min(5 * attempt, max(0, deadline - time.monotonic())))
-    output_path = download_image(result_url, output_dir, deadline)
+    try:
+        output = run_gpt_image(Path(input_path), output_dir)
+        if len(output) > MAX_BYTES:
+            raise ValueError("The result exceeds 50 MB")
+    except Exception as error:
+        reason = "moderated" if isinstance(error, ModerationRejectedError) else "failed"
+        logger.warning("GPT Image %s (%s); falling back to RunningHub", reason, error)
+        return runninghub_fallback.run(task)
+    output_path = output_dir / f"result-{uuid.uuid4().hex}.png"
+    output_path.write_bytes(output)
     return {"outputs": [{"type": "image", "path": str(output_path)}]}

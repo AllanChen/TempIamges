@@ -1,122 +1,103 @@
-"""Turn the selected image into text with a RunningHub AI app."""
+"""Turn the selected image into a text-to-image prompt with GPT (gpt-5.6-luna via guluapi).
 
+If the GPT request fails or returns no usable text, the task is retried on RunningHub.
+"""
+
+import base64
+import io
+import logging
 import os
-import json
 import time
 from pathlib import Path
-from urllib.parse import urlparse
-from urllib.request import Request, urlopen
-from uuid import uuid4
 
+import requests
+from PIL import Image, ImageOps
 
-APP_ID = "2084152800765890561"
-BASE_URL = "https://www.runninghub.cn"
-UPLOAD_URL = f"{BASE_URL}/openapi/v2/media/upload/binary"
-RUN_URL = f"{BASE_URL}/openapi/v2/run/ai-app/{APP_ID}"
-QUERY_URL = f"{BASE_URL}/openapi/v2/query"
-POLL_INTERVAL = 5
-POLL_TIMEOUT = 600
+import runninghub_fallback
+
+logger = logging.getLogger(__name__)
+
+BASE_URL = "https://guluapi.com"
+MODEL = "gpt-5.6-luna"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+# Same key source as gpu_task: env var first, then gpu_task/config/config.env.
+GPU_TASK_CONFIG = Path(os.environ.get("GULU_CONFIG_ENV", Path.home() / "Desktop/work/gpu_task/config/config.env"))
+REQUEST_TIMEOUT = 120
+MAX_RETRIES = 2  # RunningHub takes over afterwards; keep both within the task deadline
+RETRY_BACKOFF = 3
+MAX_IMAGE_EDGE = 1536
 MAX_TEXT_BYTES = 1024 * 1024
 
+SYSTEM_PROMPT = (
+    "You write prompts for text-to-image models. Look at the image and write one detailed prompt in English "
+    "that would recreate it: subject and appearance, clothing, pose and expression, setting and background, "
+    "composition and camera angle, lighting, color palette, style and mood. Output only the prompt as a single "
+    "paragraph, with no preface, labels or markdown."
+)
 
-def post_json(url: str, payload: dict, headers: dict[str, str]) -> dict:
-    request = Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={**headers, "Content-Type": "application/json"},
-        method="POST",
+
+def get_api_key() -> str:
+    """Read GULU_GPTIMAGE_KEY from the environment, else from gpu_task's config.env."""
+    key = os.environ.get("GULU_GPTIMAGE_KEY", "")
+    if key or not GPU_TASK_CONFIG.is_file():
+        return key
+    for line in GPU_TASK_CONFIG.read_text(encoding="utf-8").splitlines():
+        name, _, value = line.strip().partition("=")
+        if name.strip() == "GULU_GPTIMAGE_KEY":
+            return value.strip().strip('"').strip("'")
+    return ""
+
+
+def image_data_url(image_path: Path) -> str:
+    """Encode the image as an upright JPEG data URL no larger than MAX_IMAGE_EDGE."""
+    with Image.open(image_path) as image:
+        upright = ImageOps.exif_transpose(image).convert("RGB")
+    upright.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE), Image.Resampling.LANCZOS)
+    buffer = io.BytesIO()
+    upright.save(buffer, format="JPEG", quality=85)
+    return "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
+def request_prompt(data_url: str, api_key: str) -> str:
+    """Ask the vision model for a prompt and return its text."""
+    logger.info("Requesting an image prompt from %s (%s) ...", BASE_URL, MODEL)
+    response = requests.post(
+        f"{BASE_URL}/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "User-Agent": USER_AGENT},
+        json={"model": MODEL, "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": [{"type": "image_url", "image_url": {"url": data_url}}]},
+        ]},
+        timeout=REQUEST_TIMEOUT,
     )
-    with urlopen(request, timeout=60) as response:
-        data = json.load(response)
-    if not isinstance(data, dict):
-        raise RuntimeError("RunningHub returned an invalid response")
-    return data
+    if response.status_code != 200:
+        raise RuntimeError(f"GPT error: {response.status_code}, {response.text[:500]}")
+    try:
+        choice = response.json()["choices"][0]
+        text = (choice["message"].get("content") or "").strip()
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError) as error:
+        raise RuntimeError(f"GPT returned an unexpected response: {response.text[:500]}") from error
+    if not text:
+        raise RuntimeError(f"GPT returned no text (finish_reason={choice.get('finish_reason')})")
+    if len(text.encode("utf-8")) > MAX_TEXT_BYTES:
+        raise ValueError("GPT text result exceeds 1 MB")
+    return text
 
 
-def upload_image(image_path: Path, headers: dict[str, str]) -> str:
-    boundary = f"glance-{uuid4().hex}"
-    suffix = image_path.suffix.lower()
-    mime = "image/jpeg" if suffix in (".jpg", ".jpeg") else "image/png"
-    body = (
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="file"; filename="input{suffix}"\r\n'
-        f"Content-Type: {mime}\r\n\r\n"
-    ).encode("utf-8") + image_path.read_bytes() + f"\r\n--{boundary}--\r\n".encode("ascii")
-    request = Request(
-        UPLOAD_URL,
-        data=body,
-        headers={**headers, "Content-Type": f"multipart/form-data; boundary={boundary}"},
-        method="POST",
-    )
-    with urlopen(request, timeout=60) as response:
-        data = json.load(response)
-    file_name = (data.get("data") or {}).get("fileName") or (data.get("data") or {}).get("filename")
-    if data.get("code") not in (0, 200) or not isinstance(file_name, str) or not file_name:
-        raise RuntimeError(f"RunningHub upload failed: {data.get('message') or data.get('msg') or 'missing fileName'}")
-    return file_name
-
-
-def submit_task(file_name: str, headers: dict[str, str]) -> str:
-    data = post_json(
-        RUN_URL,
-        {
-            "nodeInfoList": [{
-                "nodeId": "1",
-                "fieldName": "image",
-                "fieldValue": file_name,
-                "description": "image",
-            }],
-            "instanceType": "default",
-            "usePersonalQueue": "false",
-        },
-        headers,
-    )
-    task_id = data.get("taskId")
-    if not task_id:
-        raise RuntimeError(f"RunningHub did not accept the task: {data.get('errorMessage') or 'missing taskId'}")
-    return str(task_id)
-
-
-def wait_for_results(task_id: str, headers: dict[str, str]) -> list[dict]:
-    deadline = time.monotonic() + POLL_TIMEOUT
-    while time.monotonic() < deadline:
-        data = post_json(QUERY_URL, {"taskId": task_id}, headers)
-        status = data.get("status")
-        if status == "SUCCESS":
-            results = data.get("results")
-            if not isinstance(results, list) or not results:
-                raise RuntimeError("RunningHub completed the task without a result")
-            return results
-        if status not in ("RUNNING", "QUEUED"):
-            raise RuntimeError(f"RunningHub task failed: {data.get('errorMessage') or status or 'unknown status'}")
-        time.sleep(min(POLL_INTERVAL, max(0, deadline - time.monotonic())))
-    raise TimeoutError(f"RunningHub task did not finish within {POLL_TIMEOUT} seconds")
-
-
-def result_text(results: list[dict], headers: dict[str, str]) -> str:
-    for result in results:
-        if isinstance(result, dict) and isinstance(result.get("text"), str) and result["text"].strip():
-            return result["text"].strip()
-
-    for result in results:
-        if not isinstance(result, dict):
-            continue
-        url = result.get("url")
-        if not isinstance(url, str) or urlparse(url).scheme != "https":
-            continue
-        output_type = str(result.get("outputType") or "").lower().lstrip(".")
-        suffix = Path(urlparse(url).path).suffix.lower()
-        if output_type not in ("txt", "text", "md", "json") and suffix not in (".txt", ".md", ".json"):
-            continue
-        request = Request(url, headers={"User-Agent": "Glance-Widget/1.0"})
-        with urlopen(request, timeout=60) as response:
-            content = response.read(MAX_TEXT_BYTES + 1)
-        if len(content) > MAX_TEXT_BYTES:
-            raise ValueError("RunningHub text result exceeds 1 MB")
-        text = content.decode("utf-8-sig").strip()
-        if text:
-            return text
-    raise RuntimeError("RunningHub returned no text result")
+def run_gpt(image_path: Path) -> str:
+    api_key = get_api_key()
+    if not api_key:
+        raise ValueError(f"GULU_GPTIMAGE_KEY is not set (environment or {GPU_TASK_CONFIG})")
+    data_url = image_data_url(image_path)
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            return request_prompt(data_url, api_key)
+        except Exception:
+            if attempt == MAX_RETRIES:
+                raise
+            logger.warning("GPT attempt %d/%d failed; retrying", attempt, MAX_RETRIES, exc_info=True)
+            time.sleep(RETRY_BACKOFF)
+    raise AssertionError("unreachable")
 
 
 def main(task: dict) -> dict:
@@ -124,14 +105,9 @@ def main(task: dict) -> dict:
     image_path = Path(image_value) if image_value else None
     if image_path is None or not image_path.is_file():
         raise ValueError("task.input.path must point to an existing image")
-    api_key = os.environ.get("RUNNINGHUB_API_KEY", "").strip()
-    if not api_key:
-        raise ValueError("RUNNINGHUB_API_KEY is required")
-
-    headers = {"Authorization": f"Bearer {api_key}"}
-    file_name = upload_image(image_path, headers)
-    task_id = submit_task(file_name, headers)
-    text = result_text(wait_for_results(task_id, headers), headers)
-    if len(text.encode("utf-8")) > MAX_TEXT_BYTES:
-        raise ValueError("RunningHub text result exceeds 1 MB")
+    try:
+        text = run_gpt(image_path)
+    except Exception as error:
+        logger.warning("GPT failed (%s); falling back to RunningHub", error)
+        return runninghub_fallback.run(task)
     return {"outputs": [{"type": "text", "text": text}]}
