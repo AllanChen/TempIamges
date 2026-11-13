@@ -1,5 +1,9 @@
 # macOS 官网发行与更新
 
+## 2026-11-13 Glance 1.0.3 / build 9 已发布
+
+在 1.0.2 基础上修复 Widget Market 语言：App 为中文时，主名称为中文、只带 `en` 翻译的 Widget 直接显示中文，不再落到英文；日／德语缺翻译时仍用英文。用户明确要求后执行 Developer ID Release 构建与 `package-release.sh`：App 公证 `850ffb3a-95d6-4c4c-89d6-d0ea2f43f368` Accepted，DMG 公证 `0f149e58-1c8d-409a-bde5-4c9f81964f1b` Accepted，`stapler validate` 与 `spctl` 通过。DMG `clients/macos/dist/updates/Glance-1.0.3.dmg`，7,784,572 bytes，SHA-256 `d3edccd2746e8a07df7174f5b4da579e55b7a53ba7c1ee7e12b84d73ffd888aa`。按 1.0.2 的做法，appcast 已用 Sparkle 私钥重新生成为只含 1.0.3 一个完整 DMG enclosure（无 delta），签名校验通过；本地生成的 `Glance9-*.delta` 不发布。官网从当前源码刷新公开快照并重建，25 页构建、14 项检查、脚本语法及 `git diff --check` 通过，Pages 部署为 `acc113ec.glance-6t3.pages.dev`。正式域名中／英／日／德首页和中英安装页均显示 1.0.3；两个 1.0.3 DMG URL 实际下载均为 HTTP 200、7,784,572 bytes，SHA-256 与本地一致；线上 appcast 签名验证通过，仅含 1.0.3/build 9 完整包，enclosure 可访问且长度匹配。旧版 DMG 两个目录共 10 个 URL 与全部 12 个本地 delta 对应公开 URL 均返回 404。仅替换官网公开产物，本地 `clients/macos/dist` 历史归档及无关工作区改动保留；未启动 App 或做 UI 验收。
+
 ## 2026-11-11 Glance 1.0.2 / build 8 已发布
 
 包含本轮反馈／诊断导出、客户端元数据与首次成功预览埋点、首帧检查等 Swift 改动及德／日语言资源。Developer ID Release 构建后运行 `package-release.sh`：App 公证 `a0b0e400-0c47-45ea-83dd-2525cf756647` Accepted，DMG 公证 `51c3d8a1-ce2f-4c62-b8fb-8ed2e9f14048` Accepted，`stapler validate` 与 `spctl` 均通过。DMG `clients/macos/dist/updates/Glance-1.0.2.dmg`，SHA-256 `123164c3321a9580c9dd354fe8c03ab237c4b28d52f41f2660e7c47d0900f289`。初次发布的 appcast 含历史条目与 delta；随后按用户明确批准将公开产物收缩为仅最新完整包，并用 Sparkle 私钥重新生成、验证签名 feed。最终 appcast 只含 1.0.2/build 8 的一个完整 DMG enclosure，不含 delta 或失效引用，旧客户端可通过该条目获取最新完整包。官网从当前源码刷新公开快照并重建，25 页构建与 14 项检查通过，最终 Pages 部署为 `e6be2d77.glance-6t3.pages.dev`。正式域名中／英／日／德首页和中英安装页均显示 1.0.2；两个 1.0.2 DMG URL 均为 HTTP 200、7,783,267 bytes 且 SHA-256 与本地一致；旧 1.0.1、1.0.0、beta.1、beta.2 的公开 DMG 及全部旧 delta URL 共 18 个均返回 404。仅删除官网 `src/download`、`src/updates` 及生成目录中的旧公开产物，本地 `clients/macos/dist` 历史归档保留。干净环境安装与旧版实际更新验收仍由用户完成。

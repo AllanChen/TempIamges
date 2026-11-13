@@ -153,10 +153,25 @@ struct WidgetManifest: Codable, Hashable {
 
     private var localization: WidgetLocalization? {
         guard let localizations else { return nil }
-        for tag in Self.preferredLanguageTags {
+        for tag in Self.preferredLanguageTags where tag != "en" || Preferences.shared.appLanguage == .english {
             if let match = localizations[tag] { return match }
         }
-        return nil
+        // Without a translation for the app language, the base text wins when it is
+        // already in that language (e.g. a Chinese-authored manifest with only an `en`
+        // translation); otherwise English beats an unreadable base text.
+        if Self.baseText(name, matches: Preferences.shared.appLanguage) { return nil }
+        return localizations["en"]
+    }
+
+    private static func baseText(_ text: String, matches language: Preferences.AppLanguage) -> Bool {
+        let scalars = text.unicodeScalars
+        let hasKana = scalars.contains { (0x3040...0x30FF).contains($0.value) }
+        let hasHan = scalars.contains { (0x4E00...0x9FFF).contains($0.value) }
+        switch language {
+        case .chinese: return hasHan && !hasKana
+        case .japanese: return hasKana
+        case .english, .german: return false
+        }
     }
 
     private static func text(_ value: String?, fallback: String) -> String {
