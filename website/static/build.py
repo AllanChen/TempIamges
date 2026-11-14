@@ -29,7 +29,7 @@ SAME_AS = [SUPPORT_X_URL, TELEGRAM_URL, "https://www.macosmenubar.com/glance-pre
            "https://www.indiehackers.com/product/glance-preview"]
 SUPPORT_X_HANDLE = "@Sir03834855"
 SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_X_HANDLE}</a>'
-VERSION = "1.0.2"
+VERSION = "1.0.4"
 DMG = f"/download/Glance-{VERSION}.dmg"
 UPDATED = "2026-11-05"
 # IndexNow ownership key. It is public by design: the deploy script pings
@@ -73,7 +73,7 @@ DESCRIPTIONS = {
                  'Explore Glance Preview AI Widgets for your images and videos, including upscaling and background removal. See per-run credits and processing details.'),
     '/ai-models/': ('公开了解 Glance Preview 各 AI Widget 的底层模型、版本信息、第三方处理服务和功能范围，无需登录。',
                     'Public disclosure of the AI models, version information, processing services and capabilities behind Glance Preview Widgets. No login required.'),
-    '/install/': ('下载 Glance Preview 1.0.2，查看系统要求、安装步骤、首次启动说明和文件校验值。',
+    '/install/': ('下载 Glance Preview 1.0.4，查看系统要求、安装步骤、首次启动说明和文件校验值。',
                  'Download Glance Preview for Apple silicon Macs. Find system requirements, installation instructions, first-launch help, and the download checksum.'),
     '/terms/': ('阅读 Glance Preview 的服务条款、账户与许可、云端任务和付款规则。',
                'Read the Glance Preview terms of service for the Mac app, accounts, licenses, cloud tasks, and payments.'),

@@ -265,7 +265,7 @@ def render_content(b, page_paths) -> list[tuple[str, bool, str]]:
 
 LLMS_PAGES = [  # (path, one-line summary) for the English guide pages listed in llms.txt
     ("/en/", "Home: what Glance Preview is, the view-fix-compare loop, Widgets, pricing summary, download."),
-    ("/en/install/", "Download and install Glance Preview 1.0.2 for Apple silicon Macs; requirements, first launch, SHA-256."),
+    ("/en/install/", "Download and install Glance Preview 1.0.4 for Apple silicon Macs; requirements, first launch, SHA-256."),
     ("/en/pricing/", "Pricing: free viewer, Glance Pro one-time purchase, cloud AI Widgets billed in credits, 14-day trial."),
     ("/en/widgets/", "Live catalog of cloud AI Widgets with credits per run and upload notes."),
     ("/en/ai-models/", "Public disclosure of the AI models and processing services behind each Widget."),
