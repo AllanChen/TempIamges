@@ -133,11 +133,14 @@ def shell(b, path, title, desc, body, schema="", noindex=False, og_type="website
 <meta property="og:url" content="{url}">
 <meta name="twitter:card" content="summary_large_image">
 {schema}
-<meta name="theme-color" content="#08090c">
+<meta name="theme-color" content="#151514">
+<script src="/assets/theme-init.js?v={b.ASSET_VERSION}"></script>
 {robots}
 <link rel="icon" type="image/png" href="/assets/img/favicon-64.png">
 <link rel="apple-touch-icon" href="/assets/img/logo-256.png">
 <link rel="stylesheet" href="/assets/site.css?v={b.ASSET_VERSION}">
+<link rel="stylesheet" href="/assets/fonts.css?v={b.ASSET_VERSION}">
+<link rel="stylesheet" href="/assets/shizuka.css?v={b.ASSET_VERSION}">
 </head>
 <body>
 {{HEADER}}
@@ -146,6 +149,7 @@ def shell(b, path, title, desc, body, schema="", noindex=False, og_type="website
 </main>
 {{FOOTER}}
 <script src="/assets/site.js?v={b.ASSET_VERSION}" defer></script>
+<script src="/assets/presentation.js?v={b.ASSET_VERSION}" defer></script>
 </body>
 </html>
 """
@@ -156,9 +160,9 @@ def wrap(b, html, page_paths, lang="en", cluster=None) -> str:
     # toggle to the English version and list their sibling translations.
     cluster = cluster or {}
     toggle = "/" if lang == "en" else cluster.get("en", "/en/")
-    others = [(c, p) for c, p in cluster.items() if c not in (lang, "en")]
+    options = list(cluster.items()) or [("zh", "/"), ("en", "/en/")]
     translated = set(b.TRANSLATIONS[lang]) if lang in b.TRANSLATIONS else None
-    html = html.replace("{HEADER}", b.localize(b.header("", toggle, others), lang, page_paths, translated), 1)
+    html = html.replace("{HEADER}", b.localize(b.header("", lang, options), lang, page_paths, translated), 1)
     html = html.replace("{FOOTER}", b.localize(b.footer(), lang, page_paths, translated), 1)
     # Same {{SUPPORT_X}} / {{VERSION}} / … placeholders as build.render() for pages.
     return b.render(html, lang)
@@ -265,7 +269,7 @@ def render_content(b, page_paths) -> list[tuple[str, bool, str]]:
 
 LLMS_PAGES = [  # (path, one-line summary) for the English guide pages listed in llms.txt
     ("/en/", "Home: what Glance Preview is, the view-fix-compare loop, Widgets, pricing summary, download."),
-    ("/en/install/", "Download and install Glance Preview 1.0.4 for Apple silicon Macs; requirements, first launch, SHA-256."),
+    ("/en/install/", "Download and install Glance Preview 1.1.0 for Apple silicon Macs; requirements, first launch, SHA-256."),
     ("/en/pricing/", "Pricing: free viewer, Glance Pro one-time purchase, cloud AI Widgets billed in credits, 14-day trial."),
     ("/en/widgets/", "Live catalog of cloud AI Widgets with credits per run and upload notes."),
     ("/en/ai-models/", "Public disclosure of the AI models and processing services behind each Widget."),

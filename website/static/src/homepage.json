@@ -1,0 +1,2266 @@
+{
+  "fileKey": "kWvE51F9IfI3oSN6ZoxeKw",
+  "pageId": "0:1",
+  "languages": {
+    "zh": {
+      "id": "15:1545",
+      "name": "Sumi · Home / 中文 / Desktop 1440",
+      "sections": [
+        {
+          "id": "15:1547",
+          "name": "01 / Navigation",
+          "texts": [
+            [
+              "Glance wordmark",
+              "Glance"
+            ],
+            [
+              "Link / 功能",
+              "功能"
+            ],
+            [
+              "Link / AI Widget",
+              "AI Widget"
+            ],
+            [
+              "Link / 价格",
+              "价格"
+            ],
+            [
+              "Link / 安装",
+              "安装"
+            ],
+            [
+              "Locale label",
+              "中文 ▾"
+            ],
+            [
+              "Download for Mac",
+              "下载"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:1574",
+          "name": "02 / Hero",
+          "texts": [
+            [
+              "Section label",
+              "Glance · Mac 图片 Widget"
+            ],
+            [
+              "Hero headline",
+              "用 AI 改图\n看见每种变化"
+            ],
+            [
+              "Hero description",
+              "去背景、移除物体、扩画幅、换穿搭。\n用图片 Widget 完成修改，再与原图对比。"
+            ],
+            [
+              "Download for Mac",
+              "下载 Mac 版"
+            ],
+            [
+              "Link / Widget demonstrations",
+              "看 Widget 功能演示 →"
+            ],
+            [
+              "kyoto-dawn.heic",
+              "Portrait collection"
+            ],
+            [
+              "4032 × 3024 HEIC 3.1 MB",
+              "8 original photos"
+            ],
+            [
+              "3 / 12",
+              "1 / 8"
+            ],
+            [
+              "Product caption",
+              "从你的一张照片开始"
+            ],
+            [
+              "Free start fact 1",
+              "无需账户，即刻开始"
+            ],
+            [
+              "Free start fact 2",
+              "14 天完整试用，无需绑卡"
+            ],
+            [
+              "Free start fact 3",
+              "看图、对比、截图和文字识别永久免费"
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:7119",
+              "name": "Original photos / Widget inputs",
+              "width": 736.0000610351562,
+              "height": 460.0000305175781
+            }
+          ]
+        },
+        {
+          "id": "15:1725",
+          "name": "03 / Workflow introduction",
+          "texts": [
+            [
+              "Section label",
+              "精选图片 Widget"
+            ],
+            [
+              "Workflow headline",
+              "选一个工具\n看一种改变"
+            ],
+            [
+              "Workflow introduction",
+              "选好工具，看清处理后的变化。\n需要确认细节时，直接对照原图。"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:1736",
+          "name": "04.1 / 人物背景分离",
+          "texts": [
+            [
+              "Widget metadata",
+              "01 / 人物背景分离 · 20 点 / 次"
+            ],
+            [
+              "Widget headline",
+              "把人物留下\n把背景分离"
+            ],
+            [
+              "Widget explanation",
+              "分离人物与背景，得到透明 PNG。继续用于排版、合成，或放进你的下一个设计。"
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:7243",
+              "name": "Promo media / background",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "15:1869",
+          "name": "04.2 / 移除物体",
+          "texts": [
+            [
+              "kyoto-dawn.heic",
+              "滑杆对比"
+            ],
+            [
+              "4032 × 3024 HEIC 3.1 MB",
+              "操作演示 · 8 秒"
+            ],
+            [
+              "Playback label",
+              "播放演示"
+            ],
+            [
+              "Widget metadata",
+              "02 / 移除物体 · 30 点 / 次"
+            ],
+            [
+              "Widget headline",
+              "留下你想要的\n移走多余的物体"
+            ],
+            [
+              "Widget explanation",
+              "用英文描述要移除的物体。生成结果后，拖动滑杆核对原图与处理结果。"
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:7254",
+              "name": "Promo media / remove-objects",
+              "width": 736.0000610351562,
+              "height": 460.0000305175781
+            }
+          ]
+        },
+        {
+          "id": "15:1924",
+          "name": "04.3 / 智能扩图",
+          "texts": [
+            [
+              "Widget metadata",
+              "03 / 智能扩图 · 30 点 / 次"
+            ],
+            [
+              "Widget headline",
+              "向画面之外\n再多走一步"
+            ],
+            [
+              "Widget explanation",
+              "向画面边缘之外延展，为人物照片增加构图空间。原图和扩展结果放在一起，变化看得清楚。"
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:7378",
+              "name": "Promo media / expand",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "15:2210",
+          "name": "06 / AI Widgets",
+          "texts": [
+            [
+              "Widget metadata",
+              "04 / AI 换装 · 30 点 / 次"
+            ],
+            [
+              "Widget headline",
+              "同一个人\n另一种穿搭"
+            ],
+            [
+              "Widget explanation",
+              "提供人物图和服装参考，尝试不同穿搭。保留原图，随时回看换装前后的效果。"
+            ],
+            [
+              "More Widget capabilities",
+              "还支持局部编辑、高清放大、图片与视频去水印、免费图床、图片转提示词，以及图生图。"
+            ],
+            [
+              "Browse all Widgets",
+              "查看全部 Widget →"
+            ],
+            [
+              "Cloud processing disclosure",
+              "运行前显示点数。云端处理会上传你提交的媒体，失败任务自动全额退点。"
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:7389",
+              "name": "Promo media / outfit",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "15:2100",
+          "name": "05 / More local tools",
+          "texts": [
+            [
+              "Section label",
+              "还有这些"
+            ],
+            [
+              "More tools headline",
+              "顺手解决那些小事"
+            ],
+            [
+              "Section label",
+              "永久免费"
+            ],
+            [
+              "OCR step 1",
+              "01"
+            ],
+            [
+              "OCR instruction 1",
+              "打开图片"
+            ],
+            [
+              "OCR headline",
+              "复制文字，保留图片"
+            ],
+            [
+              "OCR description",
+              "在 Mac 上识别图片文字，选中需要的部分，直接复制。无需 Pro、不扣点，也不用\n上传。"
+            ],
+            [
+              "OCR step 2",
+              "02"
+            ],
+            [
+              "OCR step 3",
+              "03"
+            ],
+            [
+              "OCR instruction 2",
+              "选中文字"
+            ],
+            [
+              "Keycap label",
+              "⌘C"
+            ],
+            [
+              "OCR instruction 3",
+              "复制文字"
+            ],
+            [
+              "Tool name / 视频预览与截图",
+              "视频预览与截图"
+            ],
+            [
+              "Tool name / 云端 AI Widget",
+              "云端 AI Widget"
+            ],
+            [
+              "Tool description / 视频预览与截图",
+              "播放视频，截取任意一帧，裁剪后保存或复制。"
+            ],
+            [
+              "Tool description / 云端 AI Widget",
+              "新账户赠送 100 点。只有云端运行使用点数。"
+            ],
+            [
+              "Tool name / 本地工具箱",
+              "本地工具箱"
+            ],
+            [
+              "Tool name / 需要时，再用 Peek",
+              "需要时，再用 Peek"
+            ],
+            [
+              "Tool description / 本地工具箱",
+              "转换、压缩、导出、旋转、裁剪和 Base64 工具，都在 Mac 上运行。"
+            ],
+            [
+              "Tool description / 需要时，再用 Peek",
+              "选中图片链接或文件路径，按 Option + Space 预览。可选功能，默认关闭。"
+            ],
+            [
+              "Tool name / 任务中心",
+              "任务中心"
+            ],
+            [
+              "Tool name / 无需权限，即刻开始",
+              "无需权限，即刻开始"
+            ],
+            [
+              "Tool description / 任务中心",
+              "跟踪排队、运行和已完成任务。取消排队任务会退还点数。"
+            ],
+            [
+              "Tool description / 无需权限，即刻开始",
+              "打开 Glance 就能看图。首次使用无需账户，也无需系统权限。"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:2305",
+          "name": "07 / Pricing",
+          "texts": [
+            [
+              "Section label",
+              "价格"
+            ],
+            [
+              "Pricing headline",
+              "免费看，Pro 买断\nAI 用多少付多少"
+            ],
+            [
+              "Pricing introduction",
+              "没有订阅，没有自动续费。"
+            ],
+            [
+              "Plan name / 免费版",
+              "免费版"
+            ],
+            [
+              "Plan name / Glance Pro",
+              "Glance Pro"
+            ],
+            [
+              "Plan name / 点数",
+              "点数"
+            ],
+            [
+              "Plan price / 0",
+              "¥0"
+            ],
+            [
+              "Plan price / 1",
+              "¥29.90"
+            ],
+            [
+              "Plan price / 2",
+              "¥12"
+            ],
+            [
+              "Plan term / 0",
+              "永久免费"
+            ],
+            [
+              "Plan term / 1",
+              "一次买断 · 个人版 · 1 台 Mac"
+            ],
+            [
+              "Plan term / 2",
+              "600 点 · 按需充值"
+            ],
+            [
+              "Plan description / 0",
+              "看图、看视频、图片对比、视频截图，以及图片文字识别和\n复制。"
+            ],
+            [
+              "Plan description / 1",
+              "完整本地工具箱、终身免费更新，附赠 100 点。多人版\n¥79.90，包含 5 个独立账号。"
+            ],
+            [
+              "Plan description / 2",
+              "只用于云端 Widget，长期有效。免费版和 Pro 都可以使用。"
+            ],
+            [
+              "Link / 免费下载 →",
+              "免费下载 →"
+            ],
+            [
+              "Link / 查看 Pro 方案 →",
+              "查看 Pro 方案 →"
+            ],
+            [
+              "Link / 查看点数包 →",
+              "查看点数包 →"
+            ],
+            [
+              "Pricing disclosure",
+              "人民币含税价格 · 云端 Widget 另按点数计费 · 首次启动开始 14 天完整试用"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:2378",
+          "name": "08 / Download",
+          "texts": [
+            [
+              "Section label",
+              "下载"
+            ],
+            [
+              "Download headline",
+              "下一张图片\n在这里打开"
+            ],
+            [
+              "Download description",
+              "从免费查看器开始。完整本地工具箱试用 14 天，无需\n账户，无需绑定支付方式。"
+            ],
+            [
+              "Download for Mac",
+              "下载 Mac 版"
+            ],
+            [
+              "Link / 安装指南 →",
+              "安装指南 →"
+            ],
+            [
+              "Download system requirements",
+              "Glance 1.0.4 · macOS 12.3+ · Apple 芯片"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:2399",
+          "name": "09 / FAQ",
+          "texts": [
+            [
+              "Section label",
+              "常见问题"
+            ],
+            [
+              "FAQ headline",
+              "开始前，你可能想知道"
+            ],
+            [
+              "Question / 需要注册账户吗？",
+              "需要注册账户吗？"
+            ],
+            [
+              "Question / 文件会被上传吗？",
+              "文件会被上传吗？"
+            ],
+            [
+              "Answer / 0",
+              "看图、对比、截图和文字识别无需账户。使用云端 Widget 或购买时才需要登录。"
+            ],
+            [
+              "Answer / 1",
+              "查看和本地工具都在 Mac 上运行。只有提交给云端 Widget 的媒体会被上传。"
+            ],
+            [
+              "Question / Pro 是订阅吗？",
+              "Pro 是订阅吗？"
+            ],
+            [
+              "Question / 任务失败会扣点吗？",
+              "任务失败会扣点吗？"
+            ],
+            [
+              "Answer / 2",
+              "不是。Pro 一次买断，终身免费更新，没有自动续费。"
+            ],
+            [
+              "Answer / 3",
+              "所有失败的 Widget 任务都会自动全额退点，包括外部服务、网络和无效输入导致的失败。"
+            ],
+            [
+              "Question / 试用结束后还能用什么？",
+              "试用结束后还能用什么？"
+            ],
+            [
+              "Question / 如何付款？",
+              "如何付款？"
+            ],
+            [
+              "Answer / 4",
+              "看图、对比、截图、文字识别，以及按点数使用云端 Widget。其他本地工具需要 Pro。"
+            ],
+            [
+              "Answer / 5",
+              "在应用内选择商品，收银台会展示当前币种可用的付款方式。"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:2469",
+          "name": "10 / Footer",
+          "texts": [
+            [
+              "Footer wordmark",
+              "Glance"
+            ],
+            [
+              "Link / 隐私",
+              "隐私"
+            ],
+            [
+              "Link / 条款",
+              "条款"
+            ],
+            [
+              "Link / 退款",
+              "退款"
+            ],
+            [
+              "Link / 支持",
+              "支持"
+            ],
+            [
+              "Footer description",
+              "Mac 图片与视频查看器"
+            ],
+            [
+              "Copyright",
+              "© 2026 Glance"
+            ]
+          ],
+          "media": []
+        }
+      ]
+    },
+    "en": {
+      "id": "15:2",
+      "name": "Sumi · Home / English / Desktop 1440",
+      "sections": [
+        {
+          "id": "15:4",
+          "name": "01 / Navigation",
+          "texts": [
+            [
+              "Glance wordmark",
+              "Glance"
+            ],
+            [
+              "Link / Features",
+              "Features"
+            ],
+            [
+              "Link / AI Widgets",
+              "AI Widgets"
+            ],
+            [
+              "Link / Pricing",
+              "Pricing"
+            ],
+            [
+              "Link / Install",
+              "Install"
+            ],
+            [
+              "Locale label",
+              "EN ▾"
+            ],
+            [
+              "Download for Mac",
+              "Download"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:31",
+          "name": "02 / Hero",
+          "texts": [
+            [
+              "Section label",
+              "Glance · AI image Widgets for Mac"
+            ],
+            [
+              "Hero headline",
+              "AI edits.\nVisible results."
+            ],
+            [
+              "Hero description",
+              "Remove backgrounds. Erase objects.\nExpand a frame. Try a new outfit."
+            ],
+            [
+              "Download for Mac",
+              "Download for Mac"
+            ],
+            [
+              "Link / Widget demonstrations",
+              "See Widgets in action →"
+            ],
+            [
+              "kyoto-dawn.heic",
+              "Portrait collection"
+            ],
+            [
+              "4032 × 3024 HEIC 3.1 MB",
+              "8 original photos"
+            ],
+            [
+              "3 / 12",
+              "1 / 8"
+            ],
+            [
+              "Product caption",
+              "Start with a photo of your own."
+            ],
+            [
+              "Free start fact 1",
+              "No account to start"
+            ],
+            [
+              "Free start fact 2",
+              "14-day full trial, no card"
+            ],
+            [
+              "Free start fact 3",
+              "Viewing, compare, capture and OCR stay free"
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:6761",
+              "name": "Original photos / Widget inputs",
+              "width": 736.0000610351562,
+              "height": 460.0000305175781
+            }
+          ]
+        },
+        {
+          "id": "15:182",
+          "name": "03 / Workflow introduction",
+          "texts": [
+            [
+              "Section label",
+              "Selected image Widgets"
+            ],
+            [
+              "Workflow headline",
+              "Choose a tool.\nSee what changes."
+            ],
+            [
+              "Workflow introduction",
+              "Choose a Widget, then check the result\nagainst your original."
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:193",
+          "name": "04.1 / Background removal",
+          "texts": [
+            [
+              "Widget metadata",
+              "01 / Background removal · 20 credits / run"
+            ],
+            [
+              "Widget headline",
+              "Keep the person.\nSeparate the background."
+            ],
+            [
+              "Widget explanation",
+              "Separate the person from the background as a transparent PNG, ready for your next layout or composition."
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:6885",
+              "name": "Promo media / background",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "15:326",
+          "name": "04.2 / Remove objects",
+          "texts": [
+            [
+              "kyoto-dawn.heic",
+              "Compare images"
+            ],
+            [
+              "4032 × 3024 HEIC 3.1 MB",
+              "8s · Product demo"
+            ],
+            [
+              "Playback label",
+              "Play demo"
+            ],
+            [
+              "Widget metadata",
+              "02 / Remove objects · 30 credits / run"
+            ],
+            [
+              "Widget headline",
+              "Keep what matters.\nRemove the rest."
+            ],
+            [
+              "Widget explanation",
+              "Describe the unwanted object in English. Then drag the comparison divider to inspect the result against the original."
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:6896",
+              "name": "Promo media / remove-objects",
+              "width": 736.0000610351562,
+              "height": 460.0000305175781
+            }
+          ]
+        },
+        {
+          "id": "15:381",
+          "name": "04.3 / Expand image",
+          "texts": [
+            [
+              "Widget metadata",
+              "03 / Expand image · 30 credits / run"
+            ],
+            [
+              "Widget headline",
+              "Give your photo\nmore room."
+            ],
+            [
+              "Widget explanation",
+              "Extend beyond the edges of a portrait to create more room in the composition. See the original beside the expanded result."
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:7020",
+              "name": "Promo media / expand",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "15:667",
+          "name": "06 / AI Widgets",
+          "texts": [
+            [
+              "Widget metadata",
+              "04 / Outfit swap · 30 credits / run"
+            ],
+            [
+              "Widget headline",
+              "Same person.\nA different outfit."
+            ],
+            [
+              "Widget explanation",
+              "Add a person image and an outfit reference to try a different look. Keep the original close while you review the clothing change."
+            ],
+            [
+              "More Widget capabilities",
+              "Also explore Edit Area, Upscale, image and video watermark removal, image hosting, Image to Prompt, and Redraw & Reframe."
+            ],
+            [
+              "Browse all Widgets",
+              "Explore all Widgets →"
+            ],
+            [
+              "Cloud processing disclosure",
+              "Credits are shown before running. Cloud Widgets upload the media you submit; failed tasks refund credits in full."
+            ]
+          ],
+          "media": [
+            {
+              "id": "62:7031",
+              "name": "Promo media / outfit",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "15:557",
+          "name": "05 / More local tools",
+          "texts": [
+            [
+              "Section label",
+              "And more"
+            ],
+            [
+              "More tools headline",
+              "The small jobs, handled"
+            ],
+            [
+              "Section label",
+              "Free forever"
+            ],
+            [
+              "OCR step 1",
+              "01"
+            ],
+            [
+              "OCR instruction 1",
+              "Open an image"
+            ],
+            [
+              "OCR headline",
+              "Copy the text. Keep your image"
+            ],
+            [
+              "OCR description",
+              "Recognize text on your Mac, select what you need, and copy it. No Pro,\ncredits, or upload needed."
+            ],
+            [
+              "OCR step 2",
+              "02"
+            ],
+            [
+              "OCR step 3",
+              "03"
+            ],
+            [
+              "OCR instruction 2",
+              "Select its text"
+            ],
+            [
+              "Keycap label",
+              "⌘C"
+            ],
+            [
+              "OCR instruction 3",
+              "Copy with"
+            ],
+            [
+              "Tool name / Video preview & capture",
+              "Video preview & capture"
+            ],
+            [
+              "Tool name / Cloud AI Widgets",
+              "Cloud AI Widgets"
+            ],
+            [
+              "Tool description / Video preview & capture",
+              "Play a video, capture any frame, crop it, then save or copy it."
+            ],
+            [
+              "Tool description / Cloud AI Widgets",
+              "New accounts get 100 credits. Only cloud runs use credits."
+            ],
+            [
+              "Tool name / Local toolbox",
+              "Local toolbox"
+            ],
+            [
+              "Tool name / Peek, when you want it",
+              "Peek, when you want it"
+            ],
+            [
+              "Tool description / Local toolbox",
+              "Convert, compress, export, rotate, crop, and use Base64 tools on your Mac."
+            ],
+            [
+              "Tool description / Peek, when you want it",
+              "Select an image link or file path and press Option + Space. Optional, off by default."
+            ],
+            [
+              "Tool name / Task Center",
+              "Task Center"
+            ],
+            [
+              "Tool name / Start without permissions",
+              "Start without permissions"
+            ],
+            [
+              "Tool description / Task Center",
+              "Follow queued, running, and finished tasks. Cancel a queued task and get its credits\nback."
+            ],
+            [
+              "Tool description / Start without permissions",
+              "Open Glance and view a file. No account or system permissions needed to start."
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:762",
+          "name": "07 / Pricing",
+          "texts": [
+            [
+              "Section label",
+              "Pricing"
+            ],
+            [
+              "Pricing headline",
+              "Free to view\nPro once. AI as you go"
+            ],
+            [
+              "Pricing introduction",
+              "No subscription. No automatic renewals."
+            ],
+            [
+              "Plan name / Free",
+              "Free"
+            ],
+            [
+              "Plan name / Glance Pro",
+              "Glance Pro"
+            ],
+            [
+              "Plan name / Credits",
+              "Credits"
+            ],
+            [
+              "Plan price / 0",
+              "$0"
+            ],
+            [
+              "Plan price / 1",
+              "$9.99"
+            ],
+            [
+              "Plan price / 2",
+              "$2.99"
+            ],
+            [
+              "Plan term / 0",
+              "Forever"
+            ],
+            [
+              "Plan term / 1",
+              "One-time · Personal · 1 Mac"
+            ],
+            [
+              "Plan term / 2",
+              "600 credits · pay as you go"
+            ],
+            [
+              "Plan description / 0",
+              "View images and video, compare, capture frames, and\ncopy text from images."
+            ],
+            [
+              "Plan description / 1",
+              "The full local toolbox, lifetime updates, and 100 bonus\ncredits. Team: $19.99 for 5 independent accounts."
+            ],
+            [
+              "Plan description / 2",
+              "Only cloud Widgets use credits. Credits never expire.\nAvailable on Free and Pro."
+            ],
+            [
+              "Link / Download free →",
+              "Download free →"
+            ],
+            [
+              "Link / See Pro plans →",
+              "See Pro plans →"
+            ],
+            [
+              "Link / See credit packs →",
+              "See credit packs →"
+            ],
+            [
+              "Pricing disclosure",
+              "USD prices include tax · Cloud Widgets use separate credits · 14-day full trial starts on first launch"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:835",
+          "name": "08 / Download",
+          "texts": [
+            [
+              "Section label",
+              "Download"
+            ],
+            [
+              "Download headline",
+              "Your next image\nhas a home"
+            ],
+            [
+              "Download description",
+              "Start with the free viewer. Try the full local\ntoolbox for 14 days, with no account or payment\nmethod."
+            ],
+            [
+              "Download for Mac",
+              "Download for Mac"
+            ],
+            [
+              "Link / Install guide →",
+              "Install guide →"
+            ],
+            [
+              "Download system requirements",
+              "Glance 1.0.4 · macOS 12.3+ · Apple silicon"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:856",
+          "name": "09 / FAQ",
+          "texts": [
+            [
+              "Section label",
+              "FAQ"
+            ],
+            [
+              "FAQ headline",
+              "A few things to know"
+            ],
+            [
+              "Question / Do I need an account?",
+              "Do I need an account?"
+            ],
+            [
+              "Question / Are my files uploaded?",
+              "Are my files uploaded?"
+            ],
+            [
+              "Answer / 0",
+              "No account is needed for viewing, compare, capture, or OCR. Sign in for cloud Widgets\nor purchases."
+            ],
+            [
+              "Answer / 1",
+              "Viewing and local tools run on your Mac. Only the media you submit to a cloud Widget is\nuploaded."
+            ],
+            [
+              "Question / Is Pro a subscription?",
+              "Is Pro a subscription?"
+            ],
+            [
+              "Question / What if a task fails?",
+              "What if a task fails?"
+            ],
+            [
+              "Answer / 2",
+              "No. Pro is a one-time purchase with lifetime free updates and no automatic renewals."
+            ],
+            [
+              "Answer / 3",
+              "All failed Widget tasks refund credits in full automatically, including provider,\nnetwork, and invalid-input failures."
+            ],
+            [
+              "Question / What stays free after the trial?",
+              "What stays free after the trial?"
+            ],
+            [
+              "Question / How do I pay?",
+              "How do I pay?"
+            ],
+            [
+              "Answer / 4",
+              "Viewing, compare, capture, OCR, and credit-based cloud Widgets. The remaining local\ntools require Pro."
+            ],
+            [
+              "Answer / 5",
+              "Choose a product in the app. The checkout shows available payment methods for your\ncurrency."
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "15:926",
+          "name": "10 / Footer",
+          "texts": [
+            [
+              "Footer wordmark",
+              "Glance"
+            ],
+            [
+              "Link / Privacy",
+              "Privacy"
+            ],
+            [
+              "Link / Terms",
+              "Terms"
+            ],
+            [
+              "Link / Refunds",
+              "Refunds"
+            ],
+            [
+              "Link / Support",
+              "Support"
+            ],
+            [
+              "Footer description",
+              "An image and video viewer for Mac"
+            ],
+            [
+              "Copyright",
+              "© 2026 Glance"
+            ]
+          ],
+          "media": []
+        }
+      ]
+    },
+    "ja": {
+      "id": "70:6257",
+      "name": "Sumi · Home / 日本語 / Desktop 1440",
+      "sections": [
+        {
+          "id": "70:6259",
+          "name": "01 / Navigation",
+          "texts": [
+            [
+              "Glance wordmark",
+              "Glance"
+            ],
+            [
+              "Link / Features",
+              "機能"
+            ],
+            [
+              "Link / AI Widgets",
+              "AI Widget"
+            ],
+            [
+              "Link / Pricing",
+              "料金"
+            ],
+            [
+              "Link / Install",
+              "導入"
+            ],
+            [
+              "Locale label",
+              "JA ▾"
+            ],
+            [
+              "Download for Mac",
+              "入手"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:6285",
+          "name": "02 / Hero",
+          "texts": [
+            [
+              "Section label",
+              "Glance · Mac向け画像AI Widget"
+            ],
+            [
+              "Hero headline",
+              "AIで編集。\n変化が見える。"
+            ],
+            [
+              "Hero description",
+              "背景を切り抜く。不要な物を消す。\n写真を広げる。着せ替えを試す。"
+            ],
+            [
+              "Download for Mac",
+              "Mac版を入手"
+            ],
+            [
+              "Link / Widget demonstrations",
+              "Widgetの効果を見る →"
+            ],
+            [
+              "kyoto-dawn.heic",
+              "ポートレート集"
+            ],
+            [
+              "4032 × 3024 HEIC 3.1 MB",
+              "8枚の元画像"
+            ],
+            [
+              "3 / 12",
+              "1 / 8"
+            ],
+            [
+              "Product caption",
+              "あなたの1枚から、はじめよう。"
+            ],
+            [
+              "Free start fact 1",
+              "アカウントなしで開始"
+            ],
+            [
+              "Free start fact 2",
+              "14日間の全機能体験・カード不要"
+            ],
+            [
+              "Free start fact 3",
+              "表示・比較・キャプチャ・OCRは無料"
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:6306",
+              "name": "Original photos / Widget inputs",
+              "width": 736.0000610351562,
+              "height": 460.0000305175781
+            }
+          ]
+        },
+        {
+          "id": "70:6324",
+          "name": "03 / Workflow introduction",
+          "texts": [
+            [
+              "Section label",
+              "写真のためのAI Widget"
+            ],
+            [
+              "Workflow headline",
+              "ツールを選ぶ。\n変化を確かめる。"
+            ],
+            [
+              "Workflow introduction",
+              "Widgetを選んで、仕上がりを確認。\n細部が気になったら、元画像と比較。"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:6335",
+          "name": "04.1 / Background removal",
+          "texts": [
+            [
+              "Widget metadata",
+              "01 / 背景切り抜き · 20クレジット / 回"
+            ],
+            [
+              "Widget headline",
+              "人物はそのまま。\n背景だけを切り抜く。"
+            ],
+            [
+              "Widget explanation",
+              "人物と背景を分離して、透過PNGに。次のレイアウトや合成に、そのまま使えます。"
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:6937",
+              "name": "Promo media / background",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "70:6341",
+          "name": "04.2 / Remove objects",
+          "texts": [
+            [
+              "kyoto-dawn.heic",
+              "画像比較"
+            ],
+            [
+              "4032 × 3024 HEIC 3.1 MB",
+              "8秒・機能デモ"
+            ],
+            [
+              "Playback label",
+              "デモを再生"
+            ],
+            [
+              "Widget metadata",
+              "02 / オブジェクト除去 · 30クレジット / 回"
+            ],
+            [
+              "Widget headline",
+              "残したいものだけ。\n余分なものは消す。"
+            ],
+            [
+              "Widget explanation",
+              "消したいものを英語で指定。処理後はスライダーを動かして、元画像との違いを確かめられます。"
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:6942",
+              "name": "Promo media / remove-objects",
+              "width": 736.0000610351562,
+              "height": 460.0000305175781
+            }
+          ]
+        },
+        {
+          "id": "70:6347",
+          "name": "04.3 / Expand image",
+          "texts": [
+            [
+              "Widget metadata",
+              "03 / 画像拡張 · 30クレジット / 回"
+            ],
+            [
+              "Widget headline",
+              "写真の外側に、\nもう少し余白を。"
+            ],
+            [
+              "Widget explanation",
+              "写真の外側へ画面を広げ、構図に余白をプラス。元画像と拡張後の画像を並べて確認できます。"
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:7060",
+              "name": "Promo media / expand",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "70:6353",
+          "name": "06 / AI Widgets",
+          "texts": [
+            [
+              "Widget metadata",
+              "04 / AI着せ替え · 30クレジット / 回"
+            ],
+            [
+              "Widget headline",
+              "同じ人物で、\n違うコーディネート。"
+            ],
+            [
+              "Widget explanation",
+              "人物写真と服装の参考画像を使って、別の着こなしをお試し。元画像を残したまま、変化を確認できます。"
+            ],
+            [
+              "More Widget capabilities",
+              "部分編集、高画質化、画像・動画の透かし除去、画像ホスティング、画像からプロンプト生成、再生成・再構図にも対応。"
+            ],
+            [
+              "Browse all Widgets",
+              "すべてのWidgetを見る（英語） →"
+            ],
+            [
+              "Cloud processing disclosure",
+              "実行前に消費クレジットを表示。クラウド処理では送信した素材をアップロードします。失敗したタスクのクレジットは全額返還されます。"
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:7065",
+              "name": "Promo media / outfit",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "70:6363",
+          "name": "05 / More local tools",
+          "texts": [
+            [
+              "Section label",
+              "こんな作業も"
+            ],
+            [
+              "More tools headline",
+              "小さな作業も、手早く。"
+            ],
+            [
+              "Section label",
+              "ずっと無料"
+            ],
+            [
+              "OCR step 1",
+              "01"
+            ],
+            [
+              "OCR instruction 1",
+              "画像を開く"
+            ],
+            [
+              "OCR headline",
+              "画像は残して、\n文字だけコピー。"
+            ],
+            [
+              "OCR description",
+              "Mac上で画像内の文字を認識し、必要な部分を選んでコピー。Proもクレジットもアップロードも不要です。"
+            ],
+            [
+              "OCR step 2",
+              "02"
+            ],
+            [
+              "OCR step 3",
+              "03"
+            ],
+            [
+              "OCR instruction 2",
+              "文字を選ぶ"
+            ],
+            [
+              "Keycap label",
+              "⌘C"
+            ],
+            [
+              "OCR instruction 3",
+              "コピー"
+            ],
+            [
+              "Tool name / Video preview & capture",
+              "動画の表示とキャプチャ"
+            ],
+            [
+              "Tool name / Cloud AI Widgets",
+              "クラウドAI Widget"
+            ],
+            [
+              "Tool description / Video preview & capture",
+              "動画の好きなフレームをキャプチャし、切り抜いて保存またはコピー。"
+            ],
+            [
+              "Tool description / Cloud AI Widgets",
+              "新規登録で100クレジット。消費するのはクラウド処理だけ。"
+            ],
+            [
+              "Tool name / Local toolbox",
+              "ローカルツール"
+            ],
+            [
+              "Tool name / Peek, when you want it",
+              "必要なときだけ、Peek"
+            ],
+            [
+              "Tool description / Local toolbox",
+              "変換、圧縮、書き出し、回転、切り抜き、Base64処理をMac上で。"
+            ],
+            [
+              "Tool description / Peek, when you want it",
+              "画像リンクやファイルパスを選び、Option + Spaceで表示。任意の機能で、初期状態ではオフです。"
+            ],
+            [
+              "Tool name / Task Center",
+              "タスクセンター"
+            ],
+            [
+              "Tool name / Start without permissions",
+              "特別な権限なしで開始"
+            ],
+            [
+              "Tool description / Task Center",
+              "待機中・実行中・完了したタスクを確認。待機中のタスクを取り消すと、クレジットが返還されます。"
+            ],
+            [
+              "Tool description / Start without permissions",
+              "Glanceを開いてファイルを表示。最初の閲覧にアカウントやシステム権限は不要です。"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:6473",
+          "name": "07 / Pricing",
+          "texts": [
+            [
+              "Section label",
+              "料金"
+            ],
+            [
+              "Pricing headline",
+              "見るのは無料。\nProは買い切り。\nAIは使った分だけ。"
+            ],
+            [
+              "Pricing introduction",
+              "サブスクなし。自動更新もありません。"
+            ],
+            [
+              "Plan name / Free",
+              "無料版"
+            ],
+            [
+              "Plan name / Glance Pro",
+              "Glance Pro"
+            ],
+            [
+              "Plan name / Credits",
+              "クレジット"
+            ],
+            [
+              "Plan price / 0",
+              "¥0"
+            ],
+            [
+              "Plan price / 1",
+              "¥1,480"
+            ],
+            [
+              "Plan price / 2",
+              "¥480"
+            ],
+            [
+              "Plan term / 0",
+              "ずっと無料"
+            ],
+            [
+              "Plan term / 1",
+              "買い切り · 個人版 · Mac 1台"
+            ],
+            [
+              "Plan term / 2",
+              "600クレジット · 必要な分だけ"
+            ],
+            [
+              "Plan description / 0",
+              "画像・動画の表示、比較、フレームのキャプチャ、画像内の文字のコピー。"
+            ],
+            [
+              "Plan description / 1",
+              "全ローカルツール、永久アップデート、100クレジット付き。5人の独立アカウントを使えるチーム版は¥2,980。"
+            ],
+            [
+              "Plan description / 2",
+              "クラウドWidgetにだけ使用。有効期限はありません。無料版でもProでも使えます。"
+            ],
+            [
+              "Link / Download free →",
+              "無料で入手 →"
+            ],
+            [
+              "Link / See Pro plans →",
+              "Proの詳細（英語） →"
+            ],
+            [
+              "Link / See credit packs →",
+              "クレジット詳細（英語） →"
+            ],
+            [
+              "Pricing disclosure",
+              "税込価格（JPY） · クラウドWidgetは別途クレジット制 · 初回起動から14日間の全機能体験"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:6546",
+          "name": "08 / Download",
+          "texts": [
+            [
+              "Section label",
+              "入手"
+            ],
+            [
+              "Download headline",
+              "次の1枚を、\nここで開こう。"
+            ],
+            [
+              "Download description",
+              "まずは無料のビューアから。アカウントや支払い方法の登録なしで、全ローカルツールを14日間お試しください。"
+            ],
+            [
+              "Download for Mac",
+              "Mac版を入手"
+            ],
+            [
+              "Link / Install guide →",
+              "導入ガイド（英語） →"
+            ],
+            [
+              "Download system requirements",
+              "Glance 1.0.4 · macOS 12.3以降 · Appleシリコン"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:6566",
+          "name": "09 / FAQ",
+          "texts": [
+            [
+              "Section label",
+              "よくある質問"
+            ],
+            [
+              "FAQ headline",
+              "はじめる前に。"
+            ],
+            [
+              "Question / Do I need an account?",
+              "アカウントは必要ですか？"
+            ],
+            [
+              "Question / Are my files uploaded?",
+              "ファイルはアップロードされますか？"
+            ],
+            [
+              "Answer / 0",
+              "表示・比較・キャプチャ・OCRには不要です。クラウドWidgetの利用や購入時にログインしてください。"
+            ],
+            [
+              "Answer / 1",
+              "表示とローカルツールはMac上で動作します。クラウドWidgetに送信した素材だけをアップロードします。"
+            ],
+            [
+              "Question / Is Pro a subscription?",
+              "Proはサブスクリプションですか？"
+            ],
+            [
+              "Question / What if a task fails?",
+              "タスクが失敗したら？"
+            ],
+            [
+              "Answer / 2",
+              "いいえ。Proは買い切りで、アップデートは永久無料。自動更新もありません。"
+            ],
+            [
+              "Answer / 3",
+              "外部サービス、通信、入力内容の問題を含め、失敗したWidgetタスクのクレジットは自動で全額返還されます。"
+            ],
+            [
+              "Question / What stays free after the trial?",
+              "体験期間後も無料で使える機能は？"
+            ],
+            [
+              "Question / How do I pay?",
+              "支払い方法は？"
+            ],
+            [
+              "Answer / 4",
+              "表示・比較・キャプチャ・OCRと、クレジット制のクラウドWidgetです。その他のローカルツールにはProが必要です。"
+            ],
+            [
+              "Answer / 5",
+              "アプリ内で商品を選択してください。お支払い画面に、選んだ通貨で使える方法が表示されます。"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:6636",
+          "name": "10 / Footer",
+          "texts": [
+            [
+              "Footer wordmark",
+              "Glance"
+            ],
+            [
+              "Link / Privacy",
+              "プライバシー"
+            ],
+            [
+              "Link / Terms",
+              "利用規約"
+            ],
+            [
+              "Link / Refunds",
+              "返金"
+            ],
+            [
+              "Link / Support",
+              "サポート"
+            ],
+            [
+              "Footer description",
+              "Mac用の画像・動画ビューア"
+            ],
+            [
+              "Copyright",
+              "© 2026 Glance"
+            ]
+          ],
+          "media": []
+        }
+      ]
+    },
+    "de": {
+      "id": "70:8803",
+      "name": "Sumi · Home / Deutsch / Desktop 1440",
+      "sections": [
+        {
+          "id": "70:8805",
+          "name": "01 / Navigation",
+          "texts": [
+            [
+              "Glance wordmark",
+              "Glance"
+            ],
+            [
+              "Link / Features",
+              "Funktionen"
+            ],
+            [
+              "Link / AI Widgets",
+              "KI-Widgets"
+            ],
+            [
+              "Link / Pricing",
+              "Preise"
+            ],
+            [
+              "Link / Install",
+              "Installation"
+            ],
+            [
+              "Locale label",
+              "DE ▾"
+            ],
+            [
+              "Download for Mac",
+              "Download"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:8831",
+          "name": "02 / Hero",
+          "texts": [
+            [
+              "Section label",
+              "Glance · Bild-Widgets für den Mac"
+            ],
+            [
+              "Hero headline",
+              "KI für Fotos.\nEffekte sehen."
+            ],
+            [
+              "Hero description",
+              "Hintergründe lösen. Objekte entfernen.\nBilder erweitern. Outfits wechseln."
+            ],
+            [
+              "Download for Mac",
+              "Für Mac laden"
+            ],
+            [
+              "Link / Widget demonstrations",
+              "Widgets in Aktion →"
+            ],
+            [
+              "kyoto-dawn.heic",
+              "Porträtsammlung"
+            ],
+            [
+              "4032 × 3024 HEIC 3.1 MB",
+              "8 Originalfotos"
+            ],
+            [
+              "3 / 12",
+              "1 / 8"
+            ],
+            [
+              "Product caption",
+              "Alles beginnt mit deinem Foto."
+            ],
+            [
+              "Free start fact 1",
+              "Ohne Konto starten"
+            ],
+            [
+              "Free start fact 2",
+              "14 Tage testen, ohne Kreditkarte"
+            ],
+            [
+              "Free start fact 3",
+              "Ansicht, Vergleich, Screenshots und OCR gratis"
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:8852",
+              "name": "Original photos / Widget inputs",
+              "width": 736.0000610351562,
+              "height": 460.0000305175781
+            }
+          ]
+        },
+        {
+          "id": "70:8870",
+          "name": "03 / Workflow introduction",
+          "texts": [
+            [
+              "Section label",
+              "Ausgewählte Bild-Widgets"
+            ],
+            [
+              "Workflow headline",
+              "Ein Werkzeug wählen.\nDen Unterschied sehen."
+            ],
+            [
+              "Workflow introduction",
+              "Wähle ein Widget und vergleiche\ndas Ergebnis mit dem Original."
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:8881",
+          "name": "04.1 / Background removal",
+          "texts": [
+            [
+              "Widget metadata",
+              "01 / Hintergrund entfernen · 20 Credits"
+            ],
+            [
+              "Widget headline",
+              "Die Person behalten.\nDen Hintergrund lösen."
+            ],
+            [
+              "Widget explanation",
+              "Löse die Person als transparentes PNG vom Hintergrund – für dein nächstes Layout oder eine neue Komposition."
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:9483",
+              "name": "Promo media / background",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "70:8887",
+          "name": "04.2 / Remove objects",
+          "texts": [
+            [
+              "kyoto-dawn.heic",
+              "Bilder vergleichen"
+            ],
+            [
+              "4032 × 3024 HEIC 3.1 MB",
+              "8 s · Funktionsdemo"
+            ],
+            [
+              "Playback label",
+              "Demo abspielen"
+            ],
+            [
+              "Widget metadata",
+              "02 / Objekte entfernen · 30 Credits"
+            ],
+            [
+              "Widget headline",
+              "Behalten, was zählt.\nDen Rest entfernen."
+            ],
+            [
+              "Widget explanation",
+              "Beschreibe das unerwünschte Objekt auf Englisch. Prüfe danach mit dem Vergleichsregler, was sich verändert hat."
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:9488",
+              "name": "Promo media / remove-objects",
+              "width": 736.0000610351562,
+              "height": 460.0000305175781
+            }
+          ]
+        },
+        {
+          "id": "70:8893",
+          "name": "04.3 / Expand image",
+          "texts": [
+            [
+              "Widget metadata",
+              "03 / Bild erweitern · 30 Credits"
+            ],
+            [
+              "Widget headline",
+              "Mehr Raum\nfür dein Foto."
+            ],
+            [
+              "Widget explanation",
+              "Erweitere den Bildrand für mehr Raum in der Komposition. Sieh das Original direkt neben dem erweiterten Ergebnis."
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:9606",
+              "name": "Promo media / expand",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "70:8899",
+          "name": "06 / AI Widgets",
+          "texts": [
+            [
+              "Widget metadata",
+              "04 / Outfit wechseln · 30 Credits"
+            ],
+            [
+              "Widget headline",
+              "Dieselbe Person.\nEin anderes Outfit."
+            ],
+            [
+              "Widget explanation",
+              "Nutze ein Personenfoto und eine Kleidungsvorlage für einen neuen Look. Vergleiche die Änderung jederzeit mit dem Original."
+            ],
+            [
+              "More Widget capabilities",
+              "Entdecke auch Bereichsbearbeitung, Hochskalierung, Wasserzeichenentfernung für Bilder und Videos, Bildhosting, Bild-zu-Prompt und Neugestaltung."
+            ],
+            [
+              "Browse all Widgets",
+              "Alle Widgets ansehen (Englisch) →"
+            ],
+            [
+              "Cloud processing disclosure",
+              "Die Kosten siehst du vor dem Start. Cloud-Widgets laden die eingereichten Medien hoch. Bei fehlgeschlagenen Aufgaben werden alle Credits erstattet."
+            ]
+          ],
+          "media": [
+            {
+              "id": "70:9611",
+              "name": "Promo media / outfit",
+              "width": 736.0000610351562,
+              "height": 490.66668701171875
+            }
+          ]
+        },
+        {
+          "id": "70:8909",
+          "name": "05 / More local tools",
+          "texts": [
+            [
+              "Section label",
+              "Und außerdem"
+            ],
+            [
+              "More tools headline",
+              "Auch die kleinen\nDinge erledigt."
+            ],
+            [
+              "Section label",
+              "Dauerhaft kostenlos"
+            ],
+            [
+              "OCR step 1",
+              "01"
+            ],
+            [
+              "OCR instruction 1",
+              "Bild öffnen"
+            ],
+            [
+              "OCR headline",
+              "Text kopieren.\nDas Bild behalten."
+            ],
+            [
+              "OCR description",
+              "Erkenne Text direkt auf deinem Mac, wähle ihn aus und kopiere ihn. Ohne Pro, Credits oder Upload."
+            ],
+            [
+              "OCR step 2",
+              "02"
+            ],
+            [
+              "OCR step 3",
+              "03"
+            ],
+            [
+              "OCR instruction 2",
+              "Text auswählen"
+            ],
+            [
+              "Keycap label",
+              "⌘C"
+            ],
+            [
+              "OCR instruction 3",
+              "Kopieren mit"
+            ],
+            [
+              "Tool name / Video preview & capture",
+              "Videos ansehen und aufnehmen"
+            ],
+            [
+              "Tool name / Cloud AI Widgets",
+              "Cloud-KI-Widgets"
+            ],
+            [
+              "Tool description / Video preview & capture",
+              "Spiele ein Video ab, nimm ein Einzelbild auf, schneide es zu und speichere oder kopiere es."
+            ],
+            [
+              "Tool description / Cloud AI Widgets",
+              "Neue Konten erhalten 100 Credits. Nur Cloud-Aufgaben verbrauchen Credits."
+            ],
+            [
+              "Tool name / Local toolbox",
+              "Lokale Werkzeuge"
+            ],
+            [
+              "Tool name / Peek, when you want it",
+              "Peek, wenn du es brauchst"
+            ],
+            [
+              "Tool description / Local toolbox",
+              "Konvertieren, komprimieren, exportieren, drehen, zuschneiden und Base64-Werkzeuge nutzen – direkt auf deinem Mac."
+            ],
+            [
+              "Tool description / Peek, when you want it",
+              "Wähle einen Bildlink oder Dateipfad und drücke Option + Leertaste. Optional und standardmäßig aus."
+            ],
+            [
+              "Tool name / Task Center",
+              "Aufgabenübersicht"
+            ],
+            [
+              "Tool name / Start without permissions",
+              "Ohne Freigaben starten"
+            ],
+            [
+              "Tool description / Task Center",
+              "Verfolge wartende, laufende und fertige Aufgaben. Beim Abbrechen einer wartenden Aufgabe erhältst du die Credits zurück."
+            ],
+            [
+              "Tool description / Start without permissions",
+              "Öffne Glance und sieh dir eine Datei an. Zum Start brauchst du weder Konto noch Systemfreigaben."
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:9019",
+          "name": "07 / Pricing",
+          "texts": [
+            [
+              "Section label",
+              "Preise"
+            ],
+            [
+              "Pricing headline",
+              "Ansehen gratis.\nPro einmal kaufen.\nKI nach Bedarf."
+            ],
+            [
+              "Pricing introduction",
+              "Kein Abo. Keine automatische Verlängerung."
+            ],
+            [
+              "Plan name / Free",
+              "Kostenlos"
+            ],
+            [
+              "Plan name / Glance Pro",
+              "Glance Pro"
+            ],
+            [
+              "Plan name / Credits",
+              "Credits"
+            ],
+            [
+              "Plan price / 0",
+              "0 €"
+            ],
+            [
+              "Plan price / 1",
+              "9,99 €"
+            ],
+            [
+              "Plan price / 2",
+              "2,99 €"
+            ],
+            [
+              "Plan term / 0",
+              "Dauerhaft"
+            ],
+            [
+              "Plan term / 1",
+              "Einmalkauf · Persönlich · 1 Mac"
+            ],
+            [
+              "Plan term / 2",
+              "600 Credits · bei Bedarf aufladen"
+            ],
+            [
+              "Plan description / 0",
+              "Bilder und Videos ansehen, vergleichen, Einzelbilder aufnehmen und Bildtext kopieren."
+            ],
+            [
+              "Plan description / 1",
+              "Alle lokalen Werkzeuge, lebenslange Updates und 100 Bonus-Credits. Team: 19,99 € für 5 unabhängige Konten."
+            ],
+            [
+              "Plan description / 2",
+              "Nur Cloud-Widgets nutzen Credits. Sie verfallen nicht und sind mit Free und Pro verfügbar."
+            ],
+            [
+              "Link / Download free →",
+              "Kostenlos laden →"
+            ],
+            [
+              "Link / See Pro plans →",
+              "Pro-Pläne (Englisch) →"
+            ],
+            [
+              "Link / See credit packs →",
+              "Credit-Pakete (Englisch) →"
+            ],
+            [
+              "Pricing disclosure",
+              "Preise inkl. Steuern (EUR) · Cloud-Widgets separat · 14 Tage Vollversion ab dem ersten Start"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:9092",
+          "name": "08 / Download",
+          "texts": [
+            [
+              "Section label",
+              "Download"
+            ],
+            [
+              "Download headline",
+              "Dein nächstes Bild\nist hier zu Hause."
+            ],
+            [
+              "Download description",
+              "Starte mit dem kostenlosen Betrachter. Teste alle lokalen Werkzeuge 14 Tage lang – ohne Konto oder Zahlungsmittel."
+            ],
+            [
+              "Download for Mac",
+              "Für Mac laden"
+            ],
+            [
+              "Link / Install guide →",
+              "Installation (Englisch) →"
+            ],
+            [
+              "Download system requirements",
+              "Glance 1.0.4 · macOS 12.3+ · Apple Silicon"
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:9112",
+          "name": "09 / FAQ",
+          "texts": [
+            [
+              "Section label",
+              "Häufige Fragen"
+            ],
+            [
+              "FAQ headline",
+              "Gut zu wissen"
+            ],
+            [
+              "Question / Do I need an account?",
+              "Brauche ich ein Konto?"
+            ],
+            [
+              "Question / Are my files uploaded?",
+              "Werden meine Dateien hochgeladen?"
+            ],
+            [
+              "Answer / 0",
+              "Für Ansicht, Vergleich, Screenshots und OCR nicht. Für Cloud-Widgets und Käufe meldest du dich an."
+            ],
+            [
+              "Answer / 1",
+              "Ansicht und lokale Werkzeuge laufen auf deinem Mac. Nur an ein Cloud-Widget gesendete Medien werden hochgeladen."
+            ],
+            [
+              "Question / Is Pro a subscription?",
+              "Ist Pro ein Abonnement?"
+            ],
+            [
+              "Question / What if a task fails?",
+              "Was passiert bei einem Fehler?"
+            ],
+            [
+              "Answer / 2",
+              "Nein. Pro ist ein Einmalkauf mit lebenslang kostenlosen Updates und ohne automatische Verlängerung."
+            ],
+            [
+              "Answer / 3",
+              "Bei allen fehlgeschlagenen Widget-Aufgaben werden sämtliche Credits automatisch erstattet, auch bei Anbieter-, Netzwerk- und Eingabefehlern."
+            ],
+            [
+              "Question / What stays free after the trial?",
+              "Was bleibt nach der Testphase gratis?"
+            ],
+            [
+              "Question / How do I pay?",
+              "Wie bezahle ich?"
+            ],
+            [
+              "Answer / 4",
+              "Ansicht, Vergleich, Screenshots, OCR und Cloud-Widgets gegen Credits. Die übrigen lokalen Werkzeuge erfordern Pro."
+            ],
+            [
+              "Answer / 5",
+              "Wähle ein Produkt in der App. An der Kasse siehst du die für deine Währung verfügbaren Zahlungsmethoden."
+            ]
+          ],
+          "media": []
+        },
+        {
+          "id": "70:9182",
+          "name": "10 / Footer",
+          "texts": [
+            [
+              "Footer wordmark",
+              "Glance"
+            ],
+            [
+              "Link / Privacy",
+              "Datenschutz"
+            ],
+            [
+              "Link / Terms",
+              "Bedingungen"
+            ],
+            [
+              "Link / Refunds",
+              "Erstattung"
+            ],
+            [
+              "Link / Support",
+              "Kontakt"
+            ],
+            [
+              "Footer description",
+              "Bild- und Videobetrachter für den Mac"
+            ],
+            [
+              "Copyright",
+              "© 2026 Glance"
+            ]
+          ],
+          "media": []
+        }
+      ]
+    }
+  }
+}

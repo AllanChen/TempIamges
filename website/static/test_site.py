@@ -63,8 +63,9 @@ class SiteTests(unittest.TestCase):
                     self.assertIn(target, self.sitemap)
                     other = self.pages[urlsplit(target).path]
                     self.assertEqual(alternates, {a['hreflang']: a['href'] for a in other.select('link', rel='alternate')})
-                switch = doc.select('a', **{'class': 'lang-toggle'})[0]['href']
-                self.assertEqual(switch, base if language == 'en' else '/en'+base)
+                options = {a['href'] for a in doc.select('a', **{'class': 'lang-option'})}
+                self.assertEqual(options, {urlsplit(target).path for hreflang, target in alternates.items() if hreflang != 'x-default'})
+                self.assertEqual([a['href'] for a in doc.select('a', **{'class': 'lang-option', 'aria-current': 'true'})], [path])
 
     def test_extra_language_hreflang_and_links(self):
         for lang, locale in (('ja', 'ja_JP'), ('de', 'de_DE')):
@@ -237,11 +238,6 @@ class SiteTests(unittest.TestCase):
         self.assertIn(script, result)
 
     def test_localized_media_and_download(self):
-        for path in ('/', '/en/'):
-            video = self.pages[path].select('video')[0]
-            lang = 'en' if path.startswith('/en/') else 'zh'
-            self.assertEqual(video['src'], video['data-video-'+lang])
-            self.assertEqual(video['poster'], video['data-poster-'+lang])
         for path in ('/install/', '/en/install/'):
             self.assertIn(build.DMG_SHA256, (build.OUT/path.strip('/')/'index.html').read_text())
             self.assertTrue(self.pages[path].select('a', href=build.DMG))
@@ -271,6 +267,78 @@ class SiteTests(unittest.TestCase):
             software = next(item for item in graph if item['@type'] == 'SoftwareApplication')
             self.assertEqual(software['downloadUrl'], build.SITE + build.DMG)
             self.assertEqual(software['offers']['price'], '0')
+
+
+    def test_four_localized_widget_demonstrations(self):
+        for lang, path in (('zh','/'),('en','/en/'),('ja','/ja/'),('de','/de/')):
+            doc = self.pages[path]
+            html = (build.OUT/path.strip('/')/'index.html').read_text()
+            videos = doc.select('video')
+            self.assertEqual(len(videos), 4)
+            self.assertEqual(len({v['src'] for v in videos}), 4)
+            for key, video in zip(('background','compare','expand','outfit'), videos):
+                self.assertIn('/widgets/'+key+'-'+lang, video['src'])
+                self.assertIn('muted', video)
+                self.assertIn('playsinline', video)
+                self.assertEqual(video['preload'], 'none')
+                self.assertIn('controls', video)
+                self.assertTrue(video['poster'].endswith('-poster.jpg'))
+            self.assertFalse(doc.select('article', **{'class':'widget'}))
+            self.assertEqual(len(doc.select('button', **{'class':'theme-toggle'})), 1)
+            self.assertIn(build.DMG_SHA256, html)
+            self.assertTrue(doc.select('a', href=build.DMG))
+            self.assertNotIn('www.figma.com/api/mcp/asset', html)
+            self.assertIn('theme-init.js', html)
+            self.assertIn('presentation.js', html)
+
+    def test_support_uses_product_mailbox(self):
+        for path in self.pages:
+            html = (build.OUT / ('404.html' if path == '/404' else path.strip('/') + '/index.html')).read_text() if path != '/' else (build.OUT / 'index.html').read_text()
+            with self.subTest(path=path):
+                self.assertIn('mailto:support@glancepreview.com', html)
+                self.assertNotIn('support@mcreator.ai', html)
+
+    def test_refund_and_payment_copy_matches_current_rules(self):
+        english = '\n'.join((build.OUT / 'en' / p / 'index.html').read_text() for p in ('pricing', 'widgets', 'terms', 'refunds'))
+        self.assertNotIn('fail on our side', english)
+        self.assertNotIn('failed on our side', english)
+        self.assertNotIn('fails on our side', english)
+        self.assertNotIn('confirmation threshold', english)
+        self.assertIn('including provider, network and invalid-input failures', english)
+        self.assertIn('other currencies use cards, Apple Pay or Google Pay', english)
+
+    def test_release_copy_follows_dmg_and_sales_state(self):
+        def body(path, flags):
+            original = dict(build.FLAGS)
+            build.FLAGS.update(flags)
+            try:
+                return next(b for m, b in build.load_pages(build.SRC / 'pages') if m['path'] == path)
+            finally:
+                build.FLAGS.clear(); build.FLAGS.update(original)
+        release = {'beta': False, 'notarized': True, 'sales': True}
+        for path in ('/', '/install/', '/pricing/', '/copy-text-from-image-mac/'):
+            with self.subTest(path=path):
+                text = body(path, release)
+                self.assertNotIn('<!--if:', text)
+                for stale in ('内测', 'beta', 'Beta', '尚未经过', '还没有经过', 'not yet notarized'):
+                    self.assertNotIn(stale, text)
+        self.assertIn('已通过 Apple 公证', body('/install/', release))
+        self.assertIn('Notarized by Apple', body('/', release))
+        unnotarized = body('/install/', {'beta': True, 'notarized': False})
+        self.assertIn('还没有经过 Apple 公证', unnotarized)
+        self.assertNotIn('已通过 Apple 公证', unnotarized)
+        self.assertIn('内测说明', body('/pricing/', {'beta': True, 'sales': False}))
+        with self.assertRaises(SystemExit):
+            build.conditional('<!--if:unknown-->x<!--endif-->')
+        with self.assertRaises(SystemExit):
+            build.conditional('<!--if:beta-->x')
+
+    def test_peek_permissions_match_app(self):
+        for path in ('/install/', '/en/install/'):
+            text = (build.OUT / path.strip('/') / 'index.html').read_text()
+            with self.subTest(path=path):
+                self.assertNotIn('「辅助功能」和「输入监控」两项权限', text)
+                self.assertNotIn('Accessibility and Input Monitoring permissions', text)
 
 
 if __name__ == '__main__':

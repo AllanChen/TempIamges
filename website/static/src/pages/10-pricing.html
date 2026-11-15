@@ -1,4 +1,4 @@
-<!-- path: /pricing/ | zh: 价格 | en: Pricing | nav: pricing | desc: Glance Preview 价格：免费版、Glance Pro 一次买断、云端 AI Widget 按点数计费。Glance Preview pricing: Free, one-time Glance Pro, and pay-per-run credits for cloud AI Widgets. -->
+<!-- path: /pricing/ | zh: 价格 | en: Pricing | nav: pricing | desc: Glance 价格：免费版、Glance Pro 一次买断、云端 AI Widget 按点数计费。Glance pricing: Free, one-time Glance Pro, and pay-per-run credits for cloud AI Widgets. -->
 <script type="application/json" id="pricing-fallback">{{PRICING_JSON}}</script>
 <section class="hero" style="padding-bottom:40px">
   <div class="wrap">
@@ -33,7 +33,7 @@
           <li><span lang="zh">新账户赠送 <b data-config="signupCredits">100</b> 点</span><span lang="en"><b data-config="signupCredits">100</b> credits for new accounts</span></li>
           <li class="no"><span lang="zh">其余本地工具（试用期内可用）</span><span lang="en">Other local tools (during the trial)</span></li>
         </ul>
-        <a class="btn btn-ghost" href="/install/"><span lang="zh">免费下载</span><span lang="en">Download free</span></a>
+        <a class="btn btn-ghost" href="/#download"><span lang="zh">免费下载</span><span lang="en">Download free</span></a>
       </article>
 
       <article class="plan featured">
@@ -53,7 +53,7 @@
           <li><span lang="zh">附赠 <b data-config="proBonusCredits">100</b> 点</span><span lang="en"><b data-config="proBonusCredits">100</b> bonus credits</span></li>
         </ul>
         <p class="small" style="margin:-8px 0 20px"><span lang="zh">云端 AI Widget 不包含在 Pro 内，另按点数计费。</span><span lang="en">Cloud AI Widgets are not included in Pro and use credits.</span></p>
-        <a class="btn btn-primary" href="/install/"><span lang="zh">下载后在应用内购买</span><span lang="en">Buy inside the app</span></a>
+        <a class="btn btn-primary" href="/#download"><span lang="zh">下载后在应用内购买</span><span lang="en">Buy inside the app</span></a>
       </article>
 
       <article class="plan">
@@ -64,13 +64,20 @@
         <ul>
           <li><span lang="zh">只用于云端 AI Widget，本地功能从不扣点</span><span lang="en">Only for cloud AI Widgets; local features never use credits</span></li>
           <li><span lang="zh">同一账户的 Mac 共享余额</span><span lang="en">Shared across your Macs</span></li>
-          <li><span lang="zh">系统失败与排队超时自动退点</span><span lang="en">Automatic refunds for failures and timeouts</span></li>
+          <li><span lang="zh">所有失败任务自动全额退点</span><span lang="en">All failed tasks refund credits in full automatically</span></li>
           <li><span lang="zh">免费版也可以充值使用</span><span lang="en">Available on the Free plan too</span></li>
         </ul>
         <a class="btn btn-ghost" href="/widgets/"><span lang="zh">查看每个 Widget 的价格</span><span lang="en">See price per Widget</span></a>
       </article>
     </div>
 
+<!--if:!sales-->
+    <div class="notice" style="margin-top:22px">
+      <!--if:beta--><strong lang="zh">内测说明：</strong><strong lang="en">Beta note: </strong><!--endif--><!--if:!beta--><strong lang="zh">购买说明：</strong><strong lang="en">Purchase note: </strong><!--endif-->
+      <span lang="zh">应用内付款将在支付渠道审核通过后开放。正式价格会在开放前公布在本页；在此之前不会收取任何费用。</span>
+      <span lang="en">In-app payments will open after our payment provider completes its review. Final prices will appear here before checkout opens; nothing is charged before then.</span>
+    </div>
+    <!--endif-->
   </div>
 </section>
 
@@ -112,13 +119,13 @@
     </article>
     <article class="card">
       <h3><span lang="zh">付款方式</span><span lang="en">Payment methods</span></h3>
-      <p lang="zh">付款由 Pancake by Waffo 作为记录商户（Merchant of Record）处理，并负责相关税费。人民币订单使用微信支付；美元订单可以用 Visa、Mastercard、Apple Pay、Google Pay 或微信支付。所有价格均为含税价。</p>
-      <p lang="en">Payments are processed by Pancake by Waffo as Merchant of Record, which also handles applicable taxes. CNY orders use WeChat Pay; USD orders accept Visa, Mastercard, Apple Pay, Google Pay or WeChat Pay. Prices include tax.</p>
+      <p lang="zh">付款由 Pancake by Waffo 作为记录商户（Merchant of Record）处理，并负责相关税费。人民币订单使用微信支付；其他币种使用银行卡、Apple Pay 或 Google Pay，具体可用方式以收银台为准。所有价格均为含税价。</p>
+      <p lang="en">Payments are processed by Pancake by Waffo as Merchant of Record, which also handles applicable taxes. CNY orders use WeChat Pay; other currencies use cards, Apple Pay or Google Pay, subject to checkout availability. Prices include tax.</p>
     </article>
     <article class="card">
       <h3><span lang="zh">退款</span><span lang="en">Refunds</span></h3>
-      <p lang="zh">Pro 在付款后 14 天内可以全额退款。点数充值包在 14 天内且完全未使用时可以全额退款。系统原因失败的 Widget 任务会自动退回点数。详见<a class="accent" href="/refunds/">退款政策</a>。</p>
-      <p lang="en">Pro is fully refundable within 14 days of payment. Credit packs are fully refundable within 14 days if none of their credits have been used. Widget tasks that fail on our side refund credits automatically. See the <a class="accent" href="/refunds/">Refund Policy</a>.</p>
+      <p lang="zh">Pro 在付款后 14 天内可以全额退款。点数充值包在 14 天内且完全未使用时可以全额退款。所有失败的 Widget 任务都会自动全额退点，包括外部服务、网络或无效输入导致的失败。详见<a class="accent" href="/refunds/">退款政策</a>。</p>
+      <p lang="en">Pro is fully refundable within 14 days of payment. Credit packs are fully refundable within 14 days if none of their credits have been used. All failed Widget tasks refund credits in full automatically, including provider, network and invalid-input failures. See the <a class="accent" href="/refunds/">Refund Policy</a>.</p>
     </article>
   </div>
 </section>
@@ -127,8 +134,8 @@
   <div class="wrap">
     <div class="section-head">
       <h2 lang="zh">每个 AI Widget 的价格</h2><h2 lang="en">Price per AI Widget</h2>
-      <p class="lead" lang="zh">按每次运行计费。价格实时读取自 Glance Preview 服务，与应用内菜单显示一致。</p>
-      <p class="lead" lang="en">Charged per run. Prices are read live from the Glance Preview service and match the in-app menu.</p>
+      <p class="lead" lang="zh">按每次运行计费。价格实时读取自 Glance 服务，与应用内菜单显示一致。</p>
+      <p class="lead" lang="en">Charged per run. Prices are read live from the Glance service and match the in-app menu.</p>
     </div>
     <div class="notice" style="margin-bottom:22px">
       <strong lang="zh">底层 AI 模型：</strong><strong lang="en">Underlying AI models: </strong>

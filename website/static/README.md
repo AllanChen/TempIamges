@@ -1,7 +1,6 @@
 # Glance 官网
 
-正式站点：<https://glancepreview.com/>。网站同步分支为
-`website/ops`（仓库 `AllanChen/TempIamges`）；线上部署由 OpenBot 独占。
+正式站点：<https://glancepreview.com/>。Cloudflare Pages 项目：`glance`，生产分支：`main`。
 
 ## 构建与检查
 
@@ -11,12 +10,13 @@ python3 website/static/build.py
 python3 -m unittest discover -s website/static -p 'test_*.py'
 node --check website/static/src/assets/site.js
 node --check website/static/functions/_middleware.js
+node --test website/static/test_middleware.cjs website/static/test_presentation.cjs website/static/test_analytics.cjs
 git diff --check
 ```
 
 这是官网的静态生成流程，不构建或启动 macOS App。使用 Python 3.12 或更新版本。
 
-`build.py` 要求现有发行包位于 `src/download/Glance-1.0.0-beta.1.dmg`。DMG 由 Git 忽略；在新工作区中准备发行包时，应核对正式安装页公布的 SHA-256，不能用空文件代替。
+`build.py` 要求现有发行包位于 `src/download/Glance-1.0.4.dmg`。DMG 由 Git 忽略；在新工作区中准备发行包时，应核对正式安装页公布的 SHA-256，不能用空文件代替。正式版本还必须出现在签名 appcast 中，且引用的安装包及差分包必须存在、大小匹配；不要直接上传其他工作区的旧 public 目录。
 
 `refresh_public_snapshot.py` 从公开 API 更新 `src/public-snapshot.json`。每次发布前运行，确认 Widget 名称、计费单位和销售状态与服务端一致。构建器用它生成无需 JavaScript 即可阅读的 Widget 列表和当前定价状态；浏览器加载后仍向 API 获取实时数据。刷新失败时不要沿用旧快照发布价格变化。
 
@@ -24,6 +24,14 @@ git diff --check
 
 - 编辑 `src/pages/*.html`，文件首行声明路径、中文名、英文名和可选 `noindex`。
 - 同一源文件中的 `lang="zh"` / `lang="en"` 内容在构建时拆分，原路径提供中文，`/en/` 下提供英文。
+- 首页文案来自 `src/homepage.json`，由 `homepage.py` 生成中、英、日、德四个版本；其他页面继续提供中英文。日、德首页的子页面链接指向英文版。
+- 首页原生窗口结构位于 `src/artwork/`；当前 Figma 上下文保存在 `design/website/GlanceUnslopFigmaPlugin/web-context.json`。`prepare_figma_assets.cjs` 是构建素材的辅助工具，不是浏览器运行时。
+- 四段宣传视频及本地化封面在 `src/assets/video/widgets/`。对比演示另有 Sumi/Washi 和桌面/移动版本。浏览器按主题、尺寸和视口选择视频；减少动态效果时由用户手动播放。
+- `theme-init.js` 在样式加载前读取 `glance.theme`；没有手动选择时跟随系统。`presentation.js` 管理页头主题按钮、移动菜单和演示播放。
+- 首页入口 `/` 由 `functions/_middleware.js` 按 Cloudflare `request.cf.country`（访客 IP 所属地区）自动选择语言：CN/HK/MO/TW → 中文，JP → 日语，DE/AT/CH/LI → 德语，其余及未知地区 → English。不调用外部 IP 服务，也不保存原始 IP。
+- 页头手动选择语言后，通过 `glance.language` Cookie 记住一年，优先于 IP 判断；已有 `/en/`、`/ja/`、`/de/` 地址及其他页面路径不会被自动重定向。搜索引擎爬虫保留原始入口，自动判断使用不缓存的 302，防止地区结果串到其他访客。
+- `shizuka.css` 提供 Sumi/Washi 配色，`fonts.css` 使用本地字体子集。Unslop 方向及工具署名：Damir Sokolovsky，CC BY 4.0。
+- 当前支持邮箱为 `support@glancepreview.com`，在共享页脚保留。外部 X 链接仍由 `SUPPORT_X_URL` 配置。
 - `localize.py` 会转换内部页面链接，选择对应语言媒体，并保留脚本内容。
 - `build.py` 的 `DESCRIPTIONS` 保存各页的中英文描述；首页 title 也在生成器内。
 - 可索引页面生成 self-canonical 和双向 hreflang。语言切换使用真实链接，不依赖本地存储或浏览器语言。
@@ -32,26 +40,14 @@ git diff --check
 - 同一路径出现多个源文件时构建失败，防止页面和索引规则被覆盖。
 - 不统一刷新 sitemap 的 `lastmod`；目前省略该可选字段。
 
-## 线上部署与本地预览
+## 发布
 
-Cloudflare Pages 线上唯一部署源是 OpenBot（Allan 的 Mac）上的
-`/Users/allan/OpenBot/Shared/glance-site`（`website/ops` 分支的独立克隆），
-由 `/Users/allan/OpenBot/Shared/glance-ops/bin/deploy.sh` 发布：拉取 →
-构建 → 测试 → 提交 → 部署 → 线上核验 → 推回 `website/ops` → 通知 IndexNow。
-2026-11-09 起不再使用 Grok Bot 运维机。不要从 `TempImages` 工作区运行
-`wrangler pages deploy` 或直接推送生产站。
+确认 Cloudflare 凭据与账户已经通过环境变量配置，且目标项目域名包含 `glancepreview.com` 后，在本目录执行：
 
-本机改网站时，在 `website/ops`（或从它拉出的短分支）改 `website/static/src/`，
-推到 `origin/website/ops` 后，下一次 deploy.sh 会自动拉取并部署。
+```sh
+wrangler pages deploy public --project-name glance --branch main --commit-dirty=true
+```
 
-本地可在 `website/static/` 运行 `python3 build.py` 生成 `public/` 供预览。
-编辑 `src/`，`public/` 是构建产物，通常不要提交。
-
-当前品牌文案使用 `glancepreview.com`，客服为 X 私信 `@Sir03834855`；
-不要在当前页面新增 `mcreator.ai` 或 `support@mcreator.ai`。
-
-每日英文、日文、德文 SEO 内容由 Glance SEO 汇总 bot 生成并直接发布；
-本机不再单独发布同题内容，避免分叉。bot 发布后，将网站改动同步回
-`website/ops`。
+发布必须在 `website/static/` 中执行，以便包含 `functions/_middleware.js` 的域名跳转规则。不要把账户密钥写进源码或提交到 Git。发布后核对 `/`、`/en/`、语言子页面、sitemap、robots、支付页 `noindex`、下载校验值和域名跳转。
 
 SEO 调研与发布记录位于 [`../seo/`](../seo/)。

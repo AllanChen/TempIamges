@@ -32,7 +32,8 @@ class Localizer(HTMLParser):
             self.stack.append((tag, hidden))
         if hidden:
             return
-        if tag == 'a' and 'href' in values and 'lang-toggle' not in values.get('class', '').split():
+        classes = values.get('class', '').split()
+        if tag == 'a' and 'href' in values and not {'lang-toggle', 'lang-option'}.intersection(classes):
             url = urlsplit(values['href'])
             if not url.scheme and not url.netloc:
                 path, target = url.path, self.language
