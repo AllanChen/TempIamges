@@ -542,6 +542,12 @@ def main() -> None:
 /download/Glance-1.0.0-beta.1.dmg {DMG} 302
 /Glance-1.0.1.dmg {DMG} 302
 /download/Glance-1.0.1.dmg {DMG} 302
+/download/Glance-1.0.2.dmg {DMG} 302
+/updates/Glance-1.0.2.dmg {DMG} 302
+/download/Glance-1.0.3.dmg {DMG} 302
+/updates/Glance-1.0.3.dmg {DMG} 302
+/download/Glance-1.0.4.dmg {DMG} 302
+/updates/Glance-1.0.4.dmg {DMG} 302
 /download {DMG} 302
 /download/ {DMG} 302
 /aup /acceptable-use/ 301
