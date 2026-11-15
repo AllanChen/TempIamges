@@ -1,6 +1,7 @@
 import AppKit
 
 /// A Widget's optional result URL action stays separate from the generated bitmap.
+/// Drawn as a Figma Shizuka `IconButton`: 16 pt glyph, quiet wash on hover.
 final class WidgetResultURLButton: NSControl {
     var onPress: (() -> Void)?
     private let icon = NSImageView()
@@ -9,14 +10,13 @@ final class WidgetResultURLButton: NSControl {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 8
-        layer?.borderWidth = 1
-        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.accent.withAlphaComponent(0.72))
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        icon.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
-        icon.contentTintColor = PanelStyle.accent
-        icon.imageScaling = .scaleProportionallyUpOrDown
-        icon.frame = NSRect(x: 9, y: 9, width: 16, height: 16)
+        layer?.cornerRadius = PanelStyle.Radius.control
+        layer?.borderWidth = 0
+        layer?.backgroundColor = NSColor.clear.cgColor
+        icon.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 13, weight: .regular))
+        icon.contentTintColor = InspectInk.text2
+        icon.imageScaling = .scaleNone
         addSubview(icon)
         toolTip = "Copy result URL".localized
         setAccessibilityElement(true)
@@ -26,6 +26,10 @@ final class WidgetResultURLButton: NSControl {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func layout() {
+        super.layout()
+        icon.frame = NSRect(x: (bounds.width - 16) / 2, y: (bounds.height - 16) / 2, width: 16, height: 16)
+    }
     override func accessibilityPerformPress() -> Bool { onPress?(); return true }
     override func mouseDown(with event: NSEvent) {
         if bounds.contains(convert(event.locationInWindow, from: nil)) { onPress?() }
@@ -38,9 +42,11 @@ final class WidgetResultURLButton: NSControl {
         tracking = area
     }
     override func mouseEntered(with event: NSEvent) {
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar.blended(withFraction: 0.12, of: PanelStyle.accent) ?? PanelStyle.inspectToolbar)
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.controlFill)
+        icon.contentTintColor = InspectInk.text1
     }
     override func mouseExited(with event: NSEvent) {
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
+        layer?.backgroundColor = NSColor.clear.cgColor
+        icon.contentTintColor = InspectInk.text2
     }
 }

@@ -8,8 +8,10 @@ class PreviewPanel: NSPanel {
     var onInspectVideos: (([MediaInfo], Int) -> Void)?
     var onDismiss: (() -> Void)?
     // MARK: - Layout constants
-    private let panelCornerRadius: CGFloat = 20
-    private let headerHeight: CGFloat = 52
+    private let panelCornerRadius: CGFloat = PanelStyle.Radius.window
+    /// Title bar for the multi-item and document layouts. The single image
+    /// Peek has no title bar: its identity and actions live in the tile footer.
+    private var headerHeight: CGFloat { currentMode == .singleCard ? 0 : PanelStyle.titlebarHeight }
     /// Fixed width for single-card view; height follows a 9:16 portrait ratio.
     private let singleCardWidth: CGFloat = 320
     private var singleCardImageHeight: CGFloat { singleCardWidth * 16 / 9 }
@@ -35,7 +37,7 @@ class PreviewPanel: NSPanel {
     private let splitSidebarMaxWidth: CGFloat = 400
     private let splitterWidth: CGFloat = 4
     /// Height of the identity toolbar pinned above the split-view content area.
-    private let splitToolbarHeight: CGFloat = 52
+    private let splitToolbarHeight: CGFloat = PanelStyle.toolbarHeight
     private var userSidebarWidth: CGFloat {
         get {
             let saved = UserDefaults.standard.double(forKey: "PreviewPanelSidebarWidth")
@@ -65,7 +67,7 @@ class PreviewPanel: NSPanel {
     fileprivate static let filmstripBorder   = PanelStyle.warmCue
     fileprivate static let accentBlue        = PanelStyle.warmCue
     /// Hairline that defines the panel edge against any wallpaper.
-    fileprivate static let hairline          = PanelStyle.hairline
+    fileprivate static let hairline          = Peek.lineStrong
     /// Translucent card fill for tiles / grouped controls on the frost.
     fileprivate static let glassCard         = PanelStyle.glassCard
 
@@ -100,13 +102,13 @@ class PreviewPanel: NSPanel {
         blur.material = .hudWindow
         blur.blendingMode = .behindWindow
         blur.state = .active
-        blur.appearance = NSAppearance(named: .vibrantDark)
+        blur.appearance = PanelStyle.vibrantAppearance
         blur.wantsLayer = true
         blur.layer?.cornerRadius = cornerRadius
         blur.layer?.masksToBounds = true
 
         let tint = CALayer()
-        tint.backgroundColor = PanelStyle.canvas.withAlphaComponent(0.58).cgColor
+        tint.backgroundColor = PanelStyle.surface.withAlphaComponent(0.94).cgColor
         tint.cornerRadius = cornerRadius
         tint.frame = blur.bounds
         tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
@@ -277,9 +279,9 @@ class PreviewPanel: NSPanel {
     private func applyShadowToContent() {
         guard let root = contentView else { return }
         root.wantsLayer = true
-        root.layer?.shadowOpacity = 0.35
-        root.layer?.shadowRadius = 32
-        root.layer?.shadowOffset = NSSize(width: 0, height: 12)
+        root.layer?.shadowOpacity = 0.5
+        root.layer?.shadowRadius = 30
+        root.layer?.shadowOffset = NSSize(width: 0, height: -24)
         root.layer?.shadowColor = NSColor.black.cgColor
     }
 
@@ -382,7 +384,7 @@ class PreviewPanel: NSPanel {
         root.layer?.cornerRadius = panelCornerRadius
         root.layer?.masksToBounds = true
         root.layer?.backgroundColor = NSColor.clear.cgColor
-        root.layer?.borderColor = Self.hairline.cgColor
+        root.layer?.borderColor = Self.resolvedCG(Self.hairline)
         root.layer?.borderWidth = 1
 
         let frost = Self.makeFrostedBase(cornerRadius: panelCornerRadius)
@@ -399,8 +401,12 @@ class PreviewPanel: NSPanel {
         mainContent.autoresizingMask = [.width, .height]
 
         root.addSubview(mainContent)
-        root.addSubview(navBar)
-        navBarView = navBar
+        if headerHeight > 0 {
+            root.addSubview(navBar)
+            navBarView = navBar
+        } else {
+            navBarView = nil
+        }
 
         return root
     }
@@ -601,15 +607,19 @@ class PreviewPanel: NSPanel {
     // MARK: - Single-card layout
 
     private func buildSingleCard(info: MediaInfo) -> NSView {
+        // `16 · Peek / Image`: the 9:16 media area keeps its size and the
+        // identity footer sits below it, in place of the old title bar.
         let view = NSView(frame: NSRect(x: 0, y: 0,
                                         width: singleCardWidth,
-                                        height: singleCardImageHeight))
+                                        height: singleCardImageHeight + Peek.footerHeight))
         view.wantsLayer = true
-        view.layer?.backgroundColor = Self.darkInset.cgColor
+        view.layer?.backgroundColor = NSColor.clear.cgColor
         view.autoresizingMask = [.width, .height]
 
         let tile = MediaTileView(info: info, style: .singleCard, frame: view.bounds)
         tile.autoresizingMask = [.width, .height]
+        tile.showsCloseButton = true
+        tile.showsRevealButton = true
         tile.onClose = { [weak self] in self?.closePanel() }
         tile.onOpenExternally = { [weak self] in self?.closePanel() }
         let infoURL = info.url
@@ -650,11 +660,6 @@ class PreviewPanel: NSPanel {
         sidebarContainer.layer?.backgroundColor = NSColor.clear.cgColor
         sidebarContainer.layer?.masksToBounds = true
         sidebarContainer.autoresizingMask = [.height]
-
-        let frost = Self.makeFrostedBase(cornerRadius: 0)
-        frost.frame = sidebarContainer.bounds
-        frost.autoresizingMask = [.width, .height]
-        sidebarContainer.addSubview(frost)
 
         let scrollView = NSScrollView(frame: sidebarContainer.bounds)
         scrollView.autoresizingMask = [.width, .height]
@@ -700,44 +705,40 @@ class PreviewPanel: NSPanel {
         contentView.autoresizingMask = [.width, .height]
         splitContentView = contentView
 
-        // Identity toolbar pinned to the top of the content panel (frosted bar
-        // with filename + path·modified subtitle on the left, Reveal-in-Finder
-        // button on the right). Mirrors ContentViewerWindow's chrome. Sits as a
-        // sibling of the media body so it survives the per-selection rebuild.
-        let toolbar = PanelStyle.makeBarBlur()
-        toolbar.frame = NSRect(x: 0, y: contentH - splitToolbarHeight,
-                               width: contentW, height: splitToolbarHeight)
+        // Identity toolbar pinned to the top of the content panel: filename
+        // over a mono path·modified line on the left, Reveal-in-Finder on the
+        // right — the Peek footer's identity row. Sits as a sibling of the
+        // media body so it survives the per-selection rebuild.
+        let toolbar = NSView(frame: NSRect(x: 0, y: contentH - splitToolbarHeight,
+                                           width: contentW, height: splitToolbarHeight))
+        toolbar.wantsLayer = true
+        toolbar.layer?.backgroundColor = Self.resolvedCG(PanelStyle.surface)
         toolbar.autoresizingMask = [.width, .minYMargin]
-        PanelStyle.addHairline(to: toolbar, edge: .minY)
+        Peek.addRule(to: toolbar, edge: .minY)
 
-        let titleLbl = NSTextField(labelWithString: "")
-        titleLbl.font = PanelStyle.headline
-        titleLbl.textColor = PanelStyle.textPrimary
+        let titleLbl = Peek.label("", font: PanelStyle.inspectFont(ofSize: 13, weight: .medium),
+                                  color: PanelStyle.textPrimary)
         titleLbl.lineBreakMode = .byTruncatingMiddle
-        titleLbl.maximumNumberOfLines = 1
         titleLbl.autoresizingMask = [.width]
         toolbar.addSubview(titleLbl)
         splitToolbarTitle = titleLbl
 
-        let subtitleLbl = NSTextField(labelWithString: "")
-        subtitleLbl.font = PanelStyle.caption
-        subtitleLbl.textColor = PanelStyle.textSecondary
+        let subtitleLbl = Peek.label("", font: PanelStyle.monoFont(ofSize: 11), color: PanelStyle.textTertiary)
         subtitleLbl.lineBreakMode = .byTruncatingHead   // keep the path tail
-        subtitleLbl.maximumNumberOfLines = 1
         subtitleLbl.autoresizingMask = [.width]
         toolbar.addSubview(subtitleLbl)
         splitToolbarSubtitle = subtitleLbl
 
-        let folderBtn = PanelStyle.makeIconButton(symbol: "folder",
-                                                  tooltip: "Reveal in Finder".localized,
-                                                  target: self, action: #selector(splitFolderTapped))
+        let folderBtn = PeekIconButton(symbol: "folder", tooltip: "Reveal in Finder".localized,
+                                       target: self, action: #selector(splitFolderTapped))
+        folderBtn.acceptsFirstClick = false
         folderBtn.autoresizingMask = [.minXMargin]
         toolbar.addSubview(folderBtn)
         splitFolderBtn = folderBtn
 
-        let compareBtn = PanelStyle.makeIconButton(symbol: "rectangle.split.2x1",
-                                                   tooltip: "Compare videos".localized,
-                                                   target: self, action: #selector(splitCompareTapped))
+        let compareBtn = PeekIconButton(symbol: "rectangle.split.2x1", tooltip: "Compare videos".localized,
+                                        target: self, action: #selector(splitCompareTapped))
+        compareBtn.acceptsFirstClick = false
         compareBtn.autoresizingMask = [.minXMargin]
         compareBtn.isHidden = infos.count != 2 || !infos.allSatisfy({ $0.kind == .video })
         toolbar.addSubview(compareBtn)
@@ -774,13 +775,14 @@ class PreviewPanel: NSPanel {
         let rows = Int(ceil(Double(shownCount) / Double(max(columns, 1))))
         let tileWidth: CGFloat = columns == 3 ? 220 : 300
         let tileHeight: CGFloat = 240
-        let gap: CGFloat = 10
-        let padding: CGFloat = 12
+        // `14 · Quick Preview` grid rhythm: wide gutters, captions under images.
+        let gap: CGFloat = PanelStyle.Space.l
+        let padding: CGFloat = PanelStyle.Space.xl
         let width = CGFloat(columns) * tileWidth + CGFloat(max(0, columns - 1)) * gap + padding * 2
         let height = CGFloat(rows) * tileHeight + CGFloat(max(0, rows - 1)) * gap + padding * 2
         let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         container.wantsLayer = true
-        container.layer?.backgroundColor = Self.darkInset.cgColor
+        container.layer?.backgroundColor = NSColor.clear.cgColor
 
         var gridTiles: [MediaTileView] = []
         for index in 0..<mediaCount {
@@ -805,17 +807,15 @@ class PreviewPanel: NSPanel {
             let column = index % columns
             let x = padding + CGFloat(column) * (tileWidth + gap)
             let y = height - padding - CGFloat(row + 1) * tileHeight - CGFloat(row) * gap
-            let more = FirstMouseButton(title: "+\(infos.count - 5)", target: nil, action: nil)
-            more.frame = NSRect(x: x, y: y, width: tileWidth, height: tileHeight)
-            more.bezelStyle = .regularSquare
-            more.isBordered = false
-            more.font = NSFont.systemFont(ofSize: 28, weight: .semibold)
-            more.contentTintColor = PanelStyle.textPrimary
-            more.wantsLayer = true
-            more.layer?.cornerRadius = 12
-            more.layer?.backgroundColor = PanelStyle.glassCard.cgColor
-            more.target = self
-            more.action = #selector(openEntireImageGroup)
+            // Occupies the image slot of a tile; the caption band stays empty.
+            let caption = MediaTileView.masonryCaptionHeight
+            let more = PeekCenteredButton(title: "+\(infos.count - 5)",
+                                          font: PanelStyle.inspectFont(ofSize: 22, weight: .medium),
+                                          color: PanelStyle.textSecondary,
+                                          target: self, action: #selector(openEntireImageGroup))
+            more.frame = NSRect(x: x, y: y + caption, width: tileWidth, height: tileHeight - caption)
+            more.fill = PanelStyle.overlay
+            more.hoverFill = PanelStyle.hoverTinted(PanelStyle.overlay)
             container.addSubview(more)
         }
         tiles = gridTiles
@@ -833,7 +833,7 @@ class PreviewPanel: NSPanel {
 
         let container = NSView(frame: NSRect(x: 0, y: 0, width: contentW, height: contentH))
         container.wantsLayer = true
-        container.layer?.backgroundColor = Self.darkInset.cgColor
+        container.layer?.backgroundColor = Self.resolvedCG(Self.darkInset)
         container.layer?.masksToBounds = true
         container.autoresizingMask = [.width, .height]
 
@@ -895,10 +895,10 @@ class PreviewPanel: NSPanel {
         guard let toolbar = splitToolbar else { return }
         let barW = toolbar.bounds.width
         let barH = toolbar.bounds.height
-        let leftMargin: CGFloat = 16
-        let rightMargin: CGFloat = 12
-        let folderSize: CGFloat = 28
-        let labelGap: CGFloat = 12
+        let leftMargin: CGFloat = PanelStyle.Space.l
+        let rightMargin: CGFloat = PanelStyle.Space.s
+        let folderSize: CGFloat = Peek.iconButtonSide
+        let labelGap: CGFloat = 10
 
         let folderHidden = splitFolderBtn?.isHidden ?? true
         let folderX = barW - rightMargin - folderSize
@@ -906,7 +906,7 @@ class PreviewPanel: NSPanel {
                                        width: folderSize, height: folderSize)
 
         let compareHidden = splitCompareBtn?.isHidden ?? true
-        let compareX = folderX - (compareHidden ? 0 : folderSize + 6)
+        let compareX = folderX - (compareHidden ? 0 : folderSize + labelGap)
         splitCompareBtn?.frame = NSRect(x: compareX, y: (barH - folderSize) / 2,
                                         width: folderSize, height: folderSize)
 
@@ -919,8 +919,10 @@ class PreviewPanel: NSPanel {
             identityRight = barW - rightMargin
         }
         let identityWidth = max(60, identityRight - leftMargin)
-        splitToolbarTitle?.frame    = NSRect(x: leftMargin, y: barH - 29, width: identityWidth, height: 18)
-        splitToolbarSubtitle?.frame = NSRect(x: leftMargin, y: 9, width: identityWidth, height: 15)
+        // Figma footer identity block: 13pt name (16) + 3 + 11pt mono line (14).
+        let titleY = floor(barH - (barH - 33) / 2 - 16)
+        splitToolbarTitle?.frame    = NSRect(x: leftMargin, y: titleY, width: identityWidth, height: 16)
+        splitToolbarSubtitle?.frame = NSRect(x: leftMargin, y: titleY - 3 - 14, width: identityWidth, height: 14)
     }
 
     @objc private func splitFolderTapped() {
@@ -1078,23 +1080,19 @@ class PreviewPanel: NSPanel {
     // MARK: - Navigation bar (fixed at top)
 
     private func buildNavigationBar(width: CGFloat) -> NSView {
-        let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
+        // `14 · Quick Preview` title bar: panel ink, hairline below, centered
+        // Inter 13 title in text/2. The close control takes the traffic-light slot.
+        let barHeight = max(headerHeight, 1)
+        let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: barHeight))
         bar.wantsLayer = true
         bar.layer?.backgroundColor = NSColor.clear.cgColor
+        Peek.addRule(to: bar, edge: .minY)
 
-        let frost = Self.makeFrostedBase(cornerRadius: 0)
-        frost.frame = bar.bounds
-        frost.autoresizingMask = [.width, .height]
-        bar.addSubview(frost)
-
-        let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = Self.hairline.cgColor
-        sep.autoresizingMask = [.width]
-        bar.addSubview(sep)
-
-        let closeBtn = makeIconButton(symbol: "xmark", action: #selector(closeButtonTapped), tint: Self.textDark)
-        closeBtn.frame = NSRect(x: 16, y: (headerHeight - 28) / 2, width: 28, height: 28)
+        let closeBtn = makeIconButton(symbol: "xmark", action: #selector(closeButtonTapped), tint: Self.textSecondary)
+        closeBtn.toolTip = "Close".localized
+        closeBtn.setAccessibilityLabel("Close".localized)
+        closeBtn.frame = NSRect(x: PanelStyle.Space.m, y: (barHeight - Peek.iconButtonSide) / 2,
+                                width: Peek.iconButtonSide, height: Peek.iconButtonSide)
         closeBtn.tag = 1
         bar.addSubview(closeBtn)
         singleCloseBtn = closeBtn
@@ -1109,13 +1107,11 @@ class PreviewPanel: NSPanel {
                 ? currentInfos[0].filename
                 : String(format: "%d files".localized, currentInfos.count)
         }
-        let titleLbl = NSTextField(labelWithString: title)
-        titleLbl.textColor = Self.textDark
-        titleLbl.font = NSFont.systemFont(ofSize: 15, weight: .bold)
+        let titleLbl = Peek.label(title, font: PanelStyle.inspectFont(ofSize: 13, weight: .medium),
+                                  color: Self.textSecondary)
         titleLbl.alignment = .center
         titleLbl.lineBreakMode = .byTruncatingMiddle
-        titleLbl.maximumNumberOfLines = 1
-        titleLbl.frame = NSRect(x: 52, y: (headerHeight - 22) / 2, width: width - 104, height: 22)
+        titleLbl.frame = NSRect(x: 52, y: floor((barHeight - 16) / 2), width: max(0, width - 104), height: 16)
         titleLbl.autoresizingMask = [.width]
         titleLbl.tag = 3
         bar.addSubview(titleLbl)
@@ -1133,12 +1129,7 @@ class PreviewPanel: NSPanel {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
         bar.wantsLayer = true
         bar.layer?.backgroundColor = Self.resolvedCG(Self.panelBackground)
-
-        let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = Self.resolvedCG(Self.separator)
-        sep.autoresizingMask = [.width]
-        bar.addSubview(sep)
+        Peek.addRule(to: bar, edge: .minY)
 
         let leftBtn = makeIconButton(symbol: leftSymbol, action: leftAction, tint: Self.textDark)
         leftBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
@@ -1158,8 +1149,8 @@ class PreviewPanel: NSPanel {
         }
 
         let titleLbl = NSTextField(labelWithString: title)
-        titleLbl.textColor = Self.textDark
-        titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLbl.textColor = Self.textSecondary
+        titleLbl.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
         titleLbl.alignment = .center
         titleLbl.lineBreakMode = .byTruncatingMiddle
         titleLbl.maximumNumberOfLines = 1
@@ -1174,13 +1165,7 @@ class PreviewPanel: NSPanel {
     }
 
     private func makeIconButton(symbol: String, action: Selector, tint: NSColor) -> NSButton {
-        let btn = FirstMouseButton(frame: .zero)
-        btn.bezelStyle = .recessed
-        btn.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-        btn.imagePosition = .imageOnly
-        btn.isBordered = false
-        btn.target = self
-        btn.action = action
+        let btn = PeekIconButton(symbol: symbol, tooltip: nil, target: self, action: action)
         btn.contentTintColor = tint
         return btn
     }
@@ -1190,8 +1175,8 @@ class PreviewPanel: NSPanel {
     /// Small rounded badge with white text on a translucent dark fill.
     private func makePill(text: String, light: Bool) -> NSView {
         let lbl = NSTextField(labelWithString: text)
-        lbl.textColor = .white
-        lbl.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        lbl.textColor = PanelStyle.contrast
+        lbl.font = PanelStyle.inspectFont(ofSize: 11, weight: .medium)
         lbl.lineBreakMode = .byTruncatingMiddle
         lbl.maximumNumberOfLines = 1
         lbl.tag = 99
@@ -1202,7 +1187,7 @@ class PreviewPanel: NSPanel {
                                         width: min(textSize.width + padding * 2, 200),
                                         height: 22))
         pill.wantsLayer = true
-        pill.layer?.cornerRadius = 11
+        pill.layer?.cornerRadius = PanelStyle.Radius.thumb
         pill.layer?.masksToBounds = true
         pill.layer?.backgroundColor = (light ? Self.pillBackgroundLight : Self.pillBackground).cgColor
 
@@ -1215,13 +1200,13 @@ class PreviewPanel: NSPanel {
     private func makeMetaPill(info: MediaInfo) -> NSView {
         let pill = NSView(frame: .zero)
         pill.wantsLayer = true
-        pill.layer?.cornerRadius = 10
+        pill.layer?.cornerRadius = PanelStyle.Radius.control
         pill.layer?.masksToBounds = true
         pill.layer?.backgroundColor = Self.pillBackground.cgColor
 
         let name = NSTextField(labelWithString: info.filename)
-        name.textColor = .white
-        name.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        name.textColor = PanelStyle.contrast
+        name.font = PanelStyle.inspectFont(ofSize: 11, weight: .medium)
         name.alignment = .center
         name.lineBreakMode = .byTruncatingMiddle
         name.maximumNumberOfLines = 1
@@ -1229,8 +1214,8 @@ class PreviewPanel: NSPanel {
         metaPillFilename = name
 
         let meta = NSTextField(labelWithString: metaLineString(for: info))
-        meta.textColor = Self.textOnDarkSecondary
-        meta.font = NSFont.systemFont(ofSize: 10)
+        meta.textColor = PanelStyle.textTertiary
+        meta.font = PanelStyle.monoFont(ofSize: 10)
         meta.alignment = .center
         meta.lineBreakMode = .byTruncatingTail
         meta.maximumNumberOfLines = 3
@@ -1265,12 +1250,12 @@ class PreviewPanel: NSPanel {
         for i in 0..<visibleCount {
             let thumb = NSView(frame: NSRect(x: x, y: y, width: thumbW, height: thumbH))
             thumb.wantsLayer = true
-            thumb.layer?.cornerRadius = 6
+            thumb.layer?.cornerRadius = PanelStyle.Radius.thumb
             thumb.layer?.masksToBounds = true
             thumb.layer?.backgroundColor = Self.resolvedCG(Self.thumbPlaceholder)
             if i == selected {
-                thumb.layer?.borderColor = Self.filmstripBorder.cgColor
-                thumb.layer?.borderWidth = 2
+                thumb.layer?.borderColor = Self.resolvedCG(PanelStyle.textPrimary)
+                thumb.layer?.borderWidth = 1
             }
             strip.addSubview(thumb)
             x += thumbW + gap
@@ -1291,9 +1276,9 @@ class PreviewPanel: NSPanel {
             let dot = NSView(frame: NSRect(x: x, y: y, width: dotSize, height: dotSize))
             dot.wantsLayer = true
             dot.layer?.cornerRadius = dotSize / 2
-            dot.layer?.backgroundColor = (i == selected
-                ? PanelStyle.warmCue
-                : PanelStyle.textTertiary).cgColor
+            dot.layer?.backgroundColor = Self.resolvedCG(i == selected
+                ? PanelStyle.textPrimary
+                : Peek.text4)
             dotsView.addSubview(dot)
             x += dotSize + gap
         }
@@ -1305,11 +1290,12 @@ class PreviewPanel: NSPanel {
     private func makeBottomInfoBar(width: CGFloat, info: MediaInfo) -> NSView {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: bottomBarHeight))
         bar.wantsLayer = true
-        bar.layer?.backgroundColor = Self.bottomBar.cgColor
+        bar.layer?.backgroundColor = Self.resolvedCG(PanelStyle.surface)
+        Peek.addRule(to: bar, edge: .maxY)
 
         let nameLbl = NSTextField(labelWithString: info.filename)
         nameLbl.textColor = Self.textOnDark
-        nameLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        nameLbl.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
         nameLbl.lineBreakMode = .byTruncatingMiddle
         nameLbl.maximumNumberOfLines = 1
         nameLbl.frame = NSRect(x: 16, y: bottomBarHeight - 26, width: width - 32, height: 16)
@@ -1318,8 +1304,8 @@ class PreviewPanel: NSPanel {
         bottomFilenameLabel = nameLbl
 
         let dimsLbl = NSTextField(labelWithString: dimsString(for: info))
-        dimsLbl.textColor = Self.textOnDarkSecondary
-        dimsLbl.font = NSFont.systemFont(ofSize: 11)
+        dimsLbl.textColor = PanelStyle.textTertiary
+        dimsLbl.font = PanelStyle.monoFont(ofSize: 11)
         dimsLbl.lineBreakMode = .byTruncatingTail
         dimsLbl.maximumNumberOfLines = 1
         dimsLbl.frame = NSRect(x: 16, y: bottomBarHeight - 44, width: width - 32, height: 14)
@@ -1328,8 +1314,8 @@ class PreviewPanel: NSPanel {
         bottomDimsLabel = dimsLbl
 
         let sizeLbl = NSTextField(labelWithString: sizeFormatString(for: info))
-        sizeLbl.textColor = Self.textOnDarkSecondary
-        sizeLbl.font = NSFont.systemFont(ofSize: 11)
+        sizeLbl.textColor = PanelStyle.textTertiary
+        sizeLbl.font = PanelStyle.monoFont(ofSize: 11)
         sizeLbl.lineBreakMode = .byTruncatingTail
         sizeLbl.maximumNumberOfLines = 1
         sizeLbl.frame = NSRect(x: 16, y: 10, width: width - 32, height: 14)
@@ -1616,11 +1602,18 @@ class PreviewPanel: NSPanel {
 final class SplitterView: NSView {
     var onDrag: ((CGFloat) -> Void)?
     private var lastX: CGFloat = 0
+    /// 1px divider between the list and the detail — Figma `line/hair`.
+    private let rule = NSView()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+        rule.wantsLayer = true
+        rule.layer?.backgroundColor = PanelStyle.resolvedCG(Peek.lineHair)
+        rule.frame = NSRect(x: floor((frameRect.width - 1) / 2), y: 0, width: 1, height: frameRect.height)
+        rule.autoresizingMask = [.height]
+        addSubview(rule)
         addCursorRect(bounds, cursor: .resizeLeftRight)
     }
 
@@ -1653,6 +1646,9 @@ final class SplitterView: NSView {
     }
 }
 
+/// One row of the split-view list, styled after the `17 · Peek / States`
+/// "Several matches" rows: the selected row sits on ink/3, names are Inter
+/// and metadata is mono.
 final class SplitSidebarItem: NSView {
     var info: MediaInfo
     var isSelected: Bool = false {
@@ -1663,47 +1659,50 @@ final class SplitSidebarItem: NSView {
     private let thumbnailLayer = CALayer()
     private let nameLabel = NSTextField()
     private let metaLabel = NSTextField()
-    private let selectionIndicator = NSView()
+    private var hovering = false {
+        didSet { updateAppearance() }
+    }
+    private var hoverArea: NSTrackingArea?
 
     init(info: MediaInfo, frame: NSRect) {
         self.info = info
         super.init(frame: frame)
         wantsLayer = true
-        layer?.cornerRadius = 6
+        layer?.cornerRadius = PanelStyle.Radius.control
         layer?.masksToBounds = true
-
-        selectionIndicator.wantsLayer = true
-        selectionIndicator.layer?.backgroundColor = PanelStyle.warmCue.cgColor
-        selectionIndicator.layer?.cornerRadius = 1.5
-        selectionIndicator.isHidden = true
-        addSubview(selectionIndicator)
 
         thumbnailLayer.contentsGravity = .resizeAspectFill
         thumbnailLayer.masksToBounds = true
-        thumbnailLayer.cornerRadius = 4
+        thumbnailLayer.cornerRadius = PanelStyle.Radius.thumb
+        thumbnailLayer.backgroundColor = PanelStyle.resolvedCG(PanelStyle.overlay)
         layer?.addSublayer(thumbnailLayer)
 
         if info.kind != .image && info.kind != .video {
             let icon = FileTypeIcon.makeImage(for: info, size: CGSize(width: 48, height: 48))
             thumbnailLayer.contents = icon
+            thumbnailLayer.contentsGravity = .resizeAspect
+            thumbnailLayer.backgroundColor = NSColor.clear.cgColor
         }
 
         nameLabel.stringValue = info.filename
-        nameLabel.textColor = .white
-        nameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        nameLabel.font = PanelStyle.inspectFont(ofSize: 12)
         nameLabel.lineBreakMode = .byTruncatingMiddle
         nameLabel.maximumNumberOfLines = 1
         nameLabel.isEditable = false
+        nameLabel.isSelectable = false
         nameLabel.isBordered = false
+        nameLabel.drawsBackground = false
         nameLabel.backgroundColor = .clear
         addSubview(nameLabel)
 
-        metaLabel.textColor = PanelStyle.textSecondary
-        metaLabel.font = NSFont.systemFont(ofSize: 10)
+        metaLabel.textColor = PanelStyle.textTertiary
+        metaLabel.font = PanelStyle.monoFont(ofSize: 10)
         metaLabel.lineBreakMode = .byTruncatingTail
         metaLabel.maximumNumberOfLines = 1
         metaLabel.isEditable = false
+        metaLabel.isSelectable = false
         metaLabel.isBordered = false
+        metaLabel.drawsBackground = false
         metaLabel.backgroundColor = .clear
         addSubview(metaLabel)
 
@@ -1738,31 +1737,51 @@ final class SplitSidebarItem: NSView {
     }
 
     private func updateAppearance() {
+        let fill: NSColor
         if isSelected {
-            layer?.backgroundColor = PanelStyle.controlFill.cgColor
-            selectionIndicator.isHidden = false
+            fill = Peek.raised
+        } else if hovering {
+            fill = PanelStyle.rowHover
         } else {
-            layer?.backgroundColor = NSColor.clear.cgColor
-            selectionIndicator.isHidden = true
+            fill = .clear
         }
+        layer?.backgroundColor = PanelStyle.resolvedCG(fill)
+        nameLabel.textColor = isSelected ? PanelStyle.textPrimary : PanelStyle.textSecondary
+        setAccessibilitySelected(isSelected)
     }
 
     private func relayout() {
-        let thumbSize: CGFloat = 48
-        let pad: CGFloat = 8
+        // Rows keep their thumbnail; spacing follows the Figma row (10pt inset, 10pt gap).
+        let thumbSize: CGFloat = 40
+        let pad: CGFloat = 10
         let textX = pad + thumbSize + pad
-        let textW = bounds.width - textX - pad
+        let textW = max(0, bounds.width - textX - pad)
 
-        selectionIndicator.frame = NSRect(x: 0, y: 4, width: 3, height: bounds.height - 8)
-        thumbnailLayer.frame = NSRect(x: pad, y: (bounds.height - thumbSize) / 2, width: thumbSize, height: thumbSize)
-        nameLabel.frame = NSRect(x: textX, y: bounds.height / 2 - 2, width: textW, height: 16)
-        metaLabel.frame = NSRect(x: textX, y: bounds.height / 2 - 18, width: textW, height: 14)
+        thumbnailLayer.frame = NSRect(x: pad, y: floor((bounds.height - thumbSize) / 2),
+                                      width: thumbSize, height: thumbSize)
+        // Name (15) over mono meta (13), 2pt apart, centred as a block.
+        let blockTop = floor((bounds.height - 30) / 2)
+        nameLabel.frame = NSRect(x: textX, y: bounds.height - blockTop - 15, width: textW, height: 15)
+        metaLabel.frame = NSRect(x: textX, y: blockTop, width: textW, height: 13)
     }
 
     override func layout() {
         super.layout()
         relayout()
     }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero,
+                                  options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
 
     override func mouseDown(with event: NSEvent) {
         onSelect?()
@@ -1787,10 +1806,345 @@ final class FirstMouseButton: NSButton {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
+// MARK: - Shizuka Peek components
+
+/// Peek-local tokens from the `Glance · Shizuka` Figma (`16 · Peek / Image`,
+/// `17 · Peek / States`). Colours resolve through PanelStyle so Sumi and
+/// Washi stay in step.
+enum Peek {
+    /// `line/hair` — dividers inside the panel.
+    static let lineHair = PanelStyle.themed(PanelStyle.Sumi.line, PanelStyle.Washi.line)
+    /// `line/strong` — the panel edge and quiet-button borders.
+    static let lineStrong = PanelStyle.themed(PanelStyle.Sumi.lineStrong, PanelStyle.Washi.lineStrong)
+    /// `ink/3` — the selected row and the Inspect button.
+    static let raised = PanelStyle.themed(PanelStyle.Sumi.ink3, PanelStyle.Washi.ink3)
+    /// `ink/4` — loading-bar track.
+    static let track = PanelStyle.themed(PanelStyle.Sumi.ink4, PanelStyle.Washi.ink4)
+    static let text4 = PanelStyle.themed(PanelStyle.Sumi.text4, PanelStyle.Washi.text4)
+
+    /// Footer under the media: 8pt vertical padding around a 33pt identity block.
+    static let footerHeight: CGFloat = 49
+    static let iconButtonSide: CGFloat = 28
+
+    static func label(_ text: String, font: NSFont, color: NSColor) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = font
+        label.textColor = color
+        label.maximumNumberOfLines = 1
+        label.lineBreakMode = .byTruncatingTail
+        return label
+    }
+
+    /// 1px `line/hair` rule along one edge of `view`.
+    @discardableResult
+    static func addRule(to view: NSView, edge: NSRectEdge) -> NSView {
+        let rule = PanelStyle.addHairline(to: view, edge: edge)
+        rule.layer?.backgroundColor = PanelStyle.resolvedCG(lineHair)
+        return rule
+    }
+}
+
+/// Label that never takes clicks, so a button or tile underneath receives them.
+final class PassthroughLabel: NSTextField {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// Figma `IconButton`: 28×28, 6pt corners, 16pt glyph in text/2, quiet fill on hover.
+final class PeekIconButton: NSButton {
+    /// Mirrors `acceptsFirstMouse` so each control keeps its original click behaviour.
+    var acceptsFirstClick = true
+    private var hovering = false {
+        didSet { updateFill() }
+    }
+    private var hoverArea: NSTrackingArea?
+
+    init(symbol: String, tooltip: String?, target: AnyObject?, action: Selector?) {
+        super.init(frame: NSRect(x: 0, y: 0, width: Peek.iconButtonSide, height: Peek.iconButtonSide))
+        bezelStyle = .regularSquare
+        isBordered = false
+        title = ""
+        imagePosition = .imageOnly
+        imageScaling = .scaleNone
+        contentTintColor = PanelStyle.textSecondary
+        wantsLayer = true
+        layer?.cornerRadius = PanelStyle.Radius.control
+        setSymbol(symbol, description: tooltip)
+        toolTip = tooltip
+        if let tooltip { setAccessibilityLabel(tooltip) }
+        self.target = target
+        self.action = action
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func setSymbol(_ name: String, description: String?) {
+        let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
+        image = NSImage(systemSymbolName: name, accessibilityDescription: description)?
+            .withSymbolConfiguration(config)
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { acceptsFirstClick }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero,
+                                  options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+
+    override var isHidden: Bool {
+        didSet { if isHidden { hovering = false } }
+    }
+
+    private func updateFill() {
+        layer?.backgroundColor = PanelStyle.resolvedCG(hovering ? PanelStyle.controlFill : .clear)
+    }
+}
+
+/// Filled text button whose label is centred by explicit frame, not by the
+/// NSButton cell baseline. Used for the footer `Inspect` action and the grid
+/// overflow tile.
+final class PeekCenteredButton: NSButton {
+    var fill: NSColor = Peek.raised { didSet { updateFill() } }
+    var hoverFill: NSColor = PanelStyle.hoverTinted(Peek.raised) { didSet { updateFill() } }
+    var horizontalPadding: CGFloat = 10
+    private let label = PassthroughLabel(labelWithString: "")
+    private var hovering = false {
+        didSet { updateFill() }
+    }
+    private var hoverArea: NSTrackingArea?
+
+    init(title: String, font: NSFont, color: NSColor, target: AnyObject?, action: Selector?) {
+        super.init(frame: .zero)
+        bezelStyle = .regularSquare
+        isBordered = false
+        self.title = ""
+        imagePosition = .noImage
+        wantsLayer = true
+        layer?.cornerRadius = PanelStyle.Radius.control
+        layer?.masksToBounds = true
+        label.stringValue = title
+        label.font = font
+        label.textColor = color
+        label.alignment = .center
+        label.maximumNumberOfLines = 1
+        label.lineBreakMode = .byTruncatingTail
+        addSubview(label)
+        setAccessibilityLabel(title)
+        self.target = target
+        self.action = action
+        updateFill()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    /// Width for the title plus horizontal padding on both sides.
+    var fittingWidth: CGFloat {
+        ceil(label.attributedStringValue.size().width) + 4 + horizontalPadding * 2
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func layout() {
+        super.layout()
+        // Line box from the font metrics, centred in the button.
+        let font = label.font ?? PanelStyle.inspectFont(ofSize: 12)
+        let lineHeight = ceil(font.ascender - font.descender + font.leading)
+        label.frame = NSRect(x: 0, y: floor((bounds.height - lineHeight) / 2),
+                             width: bounds.width, height: lineHeight)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero,
+                                  options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+
+    private func updateFill() {
+        layer?.backgroundColor = PanelStyle.resolvedCG(hovering ? hoverFill : fill)
+    }
+}
+
+/// `17 · Peek / States` loading: a 120×2 indeterminate bar on ink/4, then an
+/// Inter caption in text/2 and the source in mono text/3.
+final class PeekLoadingView: NSView {
+    private let trackView = NSView()
+    private let segment = CALayer()
+    private let captionLabel = Peek.label("", font: PanelStyle.inspectFont(ofSize: 13),
+                                          color: PanelStyle.textSecondary)
+    private let detailLabel = Peek.label("", font: PanelStyle.monoFont(ofSize: 11),
+                                         color: PanelStyle.textTertiary)
+    private(set) var isLoading = false
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        trackView.wantsLayer = true
+        trackView.layer?.backgroundColor = PanelStyle.resolvedCG(Peek.track)
+        trackView.layer?.cornerRadius = 1
+        trackView.layer?.masksToBounds = true
+        segment.backgroundColor = PanelStyle.resolvedCG(PanelStyle.textSecondary)
+        segment.frame = NSRect(x: 30, y: 0, width: 44, height: 2)
+        trackView.layer?.addSublayer(segment)
+        addSubview(trackView)
+        for label in [captionLabel, detailLabel] {
+            label.alignment = .center
+            addSubview(label)
+        }
+        detailLabel.lineBreakMode = .byTruncatingMiddle
+        setAccessibilityElement(true)
+        setAccessibilityRole(.progressIndicator)
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    func configure(caption: String, detail: String?) {
+        captionLabel.stringValue = caption
+        detailLabel.stringValue = detail ?? ""
+        detailLabel.isHidden = detail?.isEmpty ?? true
+        setAccessibilityLabel(caption)
+        needsLayout = true
+    }
+
+    func setLoading(_ loading: Bool) {
+        guard loading != isLoading else { return }
+        isLoading = loading
+        isHidden = !loading
+        segment.removeAllAnimations()
+        guard loading, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        let slide = CABasicAnimation(keyPath: "position.x")
+        slide.fromValue = -22
+        slide.toValue = 142
+        slide.duration = 1.4
+        slide.repeatCount = .infinity
+        slide.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        segment.add(slide, forKey: "slide")
+    }
+
+    override func layout() {
+        super.layout()
+        // Column: bar 2 · 24 · caption 16 · 8 · detail 14 (Figma gap 8 + 8pt spacer).
+        let showsDetail = !detailLabel.isHidden
+        let blockH: CGFloat = 2 + 24 + 16 + (showsDetail ? 8 + 14 : 0)
+        let top = floor((bounds.height - blockH) / 2)
+        let textW = max(0, bounds.width - 64)
+        trackView.frame = NSRect(x: floor((bounds.width - 120) / 2), y: bounds.height - top - 2,
+                                 width: 120, height: 2)
+        let captionY = bounds.height - top - 2 - 24 - 16
+        captionLabel.frame = NSRect(x: 32, y: captionY, width: textW, height: 16)
+        detailLabel.frame = NSRect(x: 32, y: captionY - 8 - 14, width: textW, height: 14)
+    }
+}
+
+/// `17 · Peek / States` failure message: a mark (vermilion dot or search
+/// glyph), an Inter 13 title in text/1 and an optional 12/19 body in text/3.
+final class PeekMessageView: NSView {
+    enum Mark { case dot, search }
+
+    private let dot = NSView()
+    private let glyph = NSImageView()
+    private let titleLabel = Peek.label("", font: PanelStyle.inspectFont(ofSize: 13),
+                                        color: PanelStyle.textPrimary)
+    private let bodyLabel = NSTextField(wrappingLabelWithString: "")
+    private var mark: Mark = .dot
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        dot.wantsLayer = true
+        dot.layer?.cornerRadius = 3
+        dot.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.failure)
+        addSubview(dot)
+        glyph.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 16, weight: .regular))
+        glyph.contentTintColor = PanelStyle.textSecondary
+        glyph.imageScaling = .scaleNone
+        addSubview(glyph)
+        titleLabel.alignment = .center
+        titleLabel.lineBreakMode = .byTruncatingMiddle
+        addSubview(titleLabel)
+        bodyLabel.font = PanelStyle.inspectFont(ofSize: 12)
+        bodyLabel.textColor = PanelStyle.textTertiary
+        bodyLabel.alignment = .center
+        bodyLabel.maximumNumberOfLines = 4
+        bodyLabel.lineBreakMode = .byTruncatingTail
+        bodyLabel.isSelectable = false
+        addSubview(bodyLabel)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    func configure(mark: Mark, title: String, body: String?) {
+        self.mark = mark
+        dot.isHidden = mark != .dot
+        glyph.isHidden = mark != .search
+        titleLabel.stringValue = title
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.minimumLineHeight = 19
+        paragraph.maximumLineHeight = 19
+        paragraph.lineBreakMode = .byWordWrapping
+        bodyLabel.attributedStringValue = NSAttributedString(string: body ?? "", attributes: [
+            .font: PanelStyle.inspectFont(ofSize: 12),
+            .foregroundColor: PanelStyle.textTertiary,
+            .paragraphStyle: paragraph
+        ])
+        bodyLabel.isHidden = body?.isEmpty ?? true
+        setAccessibilityLabel([title, body].compactMap { $0 }.joined(separator: ". "))
+        needsLayout = true
+    }
+
+    override func layout() {
+        super.layout()
+        let markH: CGFloat = mark == .dot ? 6 : 20
+        let textW = min(352, max(0, bounds.width - 62))
+        var bodyH: CGFloat = 0
+        if !bodyLabel.isHidden {
+            let rect = bodyLabel.attributedStringValue.boundingRect(
+                with: NSSize(width: textW, height: 19 * 4),
+                options: [.usesLineFragmentOrigin, .usesFontLeading])
+            bodyH = min(19 * 4, ceil(rect.height / 19) * 19)
+        }
+        // mark · 8 · 6pt spacer · 8 · title 16 · 8 · body (Figma column).
+        let blockH = markH + 22 + 16 + (bodyH > 0 ? 8 + bodyH : 0)
+        var y = bounds.height - floor((bounds.height - blockH) / 2)
+        y -= markH
+        dot.frame = NSRect(x: floor(bounds.midX - 3), y: y, width: 6, height: 6)
+        glyph.frame = NSRect(x: floor(bounds.midX - 10), y: y, width: 20, height: 20)
+        y -= 22 + 16
+        titleLabel.frame = NSRect(x: floor((bounds.width - textW) / 2), y: y, width: textW, height: 16)
+        y -= 8 + bodyH
+        bodyLabel.frame = NSRect(x: floor((bounds.width - textW) / 2), y: y, width: textW, height: bodyH)
+    }
+}
+
 // MARK: - Tile view
 
 final class MediaTileView: NSView {
     enum Style { case singleCard, masonry }
+
+    /// Caption band under a grid tile's image: 8 gap, name row 15, 2, path row 13.
+    static let masonryCaptionHeight: CGFloat = 38
 
     var info: MediaInfo
     let style: Style
@@ -1798,22 +2152,33 @@ final class MediaTileView: NSView {
     private var mediaContainer: NSView!
     private let imageLayer = CALayer()
     private lazy var animationPlayer = ImageAnimationPlayer(view: self, layer: imageLayer)
-    private let loadingIndicator = FocusSweepLoadingView(frame: .zero)
-    private let loadFailedView = LoadFailedAnimationView(frame: .zero)
-    private let loadingLabel = NSTextField(labelWithString: "Searching…".localized)
-    private var downloadBtn: NSButton?
-    private let downloadLoadingIndicator = FocusSweepLoadingView(frame: .zero)
+    private let loadingView = PeekLoadingView(frame: .zero)
+    private let messageView = PeekMessageView(frame: .zero)
+    private var downloadBtn: PeekIconButton?
+    private let downloadLoadingIndicator = NSProgressIndicator()
     private var downloadState: DownloadState = .idle
     private var downloadedFileURL: URL?
 
     enum DownloadState { case idle, downloading, downloaded, failed }
 
-    // Masonry overlay
-    private let overlayGradient = CAGradientLayer()
+    /// singleCard: identity footer below the media (`16 · Peek / Image`).
+    private var footerView: NSView?
+    private var footerRule: NSView?
+    private var closeBtn: PeekIconButton?
+    private var inspectBtn: PeekCenteredButton?
+    private var revealBtn: PeekIconButton?
     private var filenameLabel: NSTextField?
     private var dimsLabel: NSTextField?
     private var sizeLabel: NSTextField?
+    /// masonry: mono path row under the caption.
     private var pathLabel: NSTextField?
+    private var hintText: String?
+    private var pathText = ""
+    private var showsMediaCanvas = false
+    private var hovering = false {
+        didSet { updateHover() }
+    }
+    private var hoverArea: NSTrackingArea?
 
     private var playerView: AVPlayerView?
     private var webMPlayerView: WebMVideoView?
@@ -1825,17 +2190,28 @@ final class MediaTileView: NSView {
     var onDownload: (() -> Void)?
     /// Called when the user clicks anywhere on the tile body (used to open
     /// markdown/webpage tiles in the viewer window).
-    var onTileTap: (() -> Void)?
+    var onTileTap: (() -> Void)? {
+        didSet { refreshFooterControls() }
+    }
     /// Called after the tile hands its content off to an external app
     /// (e.g. revealing a folder in Finder) so the panel can dismiss itself.
     var onOpenExternally: (() -> Void)?
+    /// The single-image Peek has no title bar, so its footer carries close.
+    var showsCloseButton = false {
+        didSet { refreshFooterControls() }
+    }
+    /// Reveal-in-Finder for local media on the standalone Peek card (the
+    /// split view already offers it in its toolbar).
+    var showsRevealButton = false {
+        didSet { refreshFooterControls() }
+    }
 
     private var openableIconView: NSImageView?
     /// Type-specific SF Symbol shown behind the spinner while the tile is
     /// still loading. Hidden once `setLoaded` runs.
     private var placeholderIconView: NSImageView?
-    /// "Reveal in Finder" overlay shown on local markdown / text tiles —
-    /// gives the user a one-click jump to the file's folder without
+    /// "Reveal in Finder" control shown on local markdown / text / folder
+    /// tiles — gives the user a one-click jump to the file's folder without
     /// triggering the tile's openable-viewer click.
     private var locateBtn: NSButton?
 
@@ -1845,110 +2221,71 @@ final class MediaTileView: NSView {
         super.init(frame: frame)
         wantsLayer = true
 
+        mediaContainer = PassthroughView()
+        mediaContainer.wantsLayer = true
+        mediaContainer.layer?.masksToBounds = true
+        addSubview(mediaContainer)
+
         switch style {
         case .singleCard:
-            layer?.backgroundColor = PanelStyle.canvas.cgColor
-
-            mediaContainer = PassthroughView()
-            mediaContainer.wantsLayer = true
-            mediaContainer.layer?.masksToBounds = true
-            mediaContainer.layer?.backgroundColor = PanelStyle.canvas.cgColor
-            addSubview(mediaContainer)
-
-            let ambientGradient = CAGradientLayer()
-            ambientGradient.colors = [
-                PanelStyle.overlay.cgColor,
-                PanelStyle.canvas.cgColor
-            ]
-            ambientGradient.locations = [0.0, 1.0]
-            ambientGradient.startPoint = CGPoint(x: 0.5, y: 0)
-            ambientGradient.endPoint = CGPoint(x: 0.5, y: 1)
-            mediaContainer.layer?.addSublayer(ambientGradient)
-
+            layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surface)
             imageLayer.contentsGravity = .resizeAspect
             imageLayer.masksToBounds = true
             mediaContainer.layer?.addSublayer(imageLayer)
 
-            overlayGradient.colors = [
-                NSColor(white: 0, alpha: 0.94).cgColor,
-                NSColor(white: 0, alpha: 0.60).cgColor,
-                NSColor(white: 0, alpha: 0.0).cgColor
-            ]
-            overlayGradient.locations = [0.0, 0.35, 1.0]
-            overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
-            overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
-            overlayGradient.isHidden = true
-            mediaContainer.layer?.addSublayer(overlayGradient)
+            let footer = NSView()
+            footer.wantsLayer = true
+            footer.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surface)
+            addSubview(footer)
+            footerView = footer
+            let rule = NSView()
+            rule.wantsLayer = true
+            rule.layer?.backgroundColor = PanelStyle.resolvedCG(Peek.lineHair)
+            footer.addSubview(rule)
+            footerRule = rule
 
-            let nameLbl = NSTextField(labelWithString: info.filename)
-            nameLbl.textColor = PanelStyle.textPrimary
-            nameLbl.font = NSFont.systemFont(ofSize: 17, weight: .bold)
+            let nameLbl = Peek.label(info.filename, font: PanelStyle.inspectFont(ofSize: 13, weight: .medium),
+                                     color: PanelStyle.textPrimary)
             nameLbl.lineBreakMode = .byTruncatingMiddle
-            nameLbl.maximumNumberOfLines = 1
-            nameLbl.isHidden = true
-            addSubview(nameLbl)
+            // Before the media resolves the footer already names what is
+            // being previewed — the file, or the token a search is looking for.
+            if let token = info.searchToken, !token.isEmpty {
+                nameLbl.stringValue = token
+            }
+            footer.addSubview(nameLbl)
             filenameLabel = nameLbl
 
-            let dimsLbl = NSTextField(labelWithString: "")
-            dimsLbl.textColor = PanelStyle.textSecondary
-            dimsLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-            dimsLbl.lineBreakMode = .byTruncatingTail
-            dimsLbl.maximumNumberOfLines = 3
-            dimsLbl.usesSingleLineMode = false
+            let dimsLbl = Peek.label("", font: PanelStyle.monoFont(ofSize: 11), color: PanelStyle.textTertiary)
             dimsLbl.isHidden = true
-            addSubview(dimsLbl)
+            footer.addSubview(dimsLbl)
             dimsLabel = dimsLbl
 
             let sizeLbl = NSTextField(labelWithString: "")
             sizeLbl.isHidden = true
-            addSubview(sizeLbl)
+            footer.addSubview(sizeLbl)
             sizeLabel = sizeLbl
 
         case .masonry:
-            // Translucent glass card sitting on the frosted base, with a
-            // hairline edge; the image itself rests on a dark canvas.
-            layer?.cornerRadius = 14
-            layer?.masksToBounds = true
-            layer?.backgroundColor = PanelStyle.glassCard.cgColor
-            layer?.borderColor = PanelStyle.hairline.cgColor
-            layer?.borderWidth = 1
-
-            mediaContainer = PassthroughView()
-            mediaContainer.wantsLayer = true
-            mediaContainer.layer?.masksToBounds = true
-            mediaContainer.layer?.backgroundColor = PanelStyle.canvas.cgColor
-            addSubview(mediaContainer)
+            // `14 · Quick Preview` grid item: a 6pt-rounded image with the
+            // name and mono metadata set underneath, no card chrome.
+            layer?.backgroundColor = NSColor.clear.cgColor
+            mediaContainer.layer?.cornerRadius = PanelStyle.Radius.control
+            mediaContainer.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.textPrimary)
+            mediaContainer.layer?.borderWidth = 0
 
             imageLayer.contentsGravity = .resizeAspectFill
             imageLayer.masksToBounds = true
             mediaContainer.layer?.addSublayer(imageLayer)
 
-            overlayGradient.colors = [
-                NSColor(white: 0, alpha: 0.92).cgColor,
-                NSColor(white: 0, alpha: 0.72).cgColor,
-                NSColor(white: 0, alpha: 0.0).cgColor
-            ]
-            overlayGradient.locations = [0.0, 0.35, 1.0]
-            overlayGradient.startPoint = CGPoint(x: 0.5, y: 0)
-            overlayGradient.endPoint = CGPoint(x: 0.5, y: 1)
-            overlayGradient.isHidden = true
-            mediaContainer.layer?.addSublayer(overlayGradient)
-
-            let nameLbl = NSTextField(labelWithString: info.filename)
-            nameLbl.textColor = PanelStyle.textPrimary
-            nameLbl.font = NSFont.systemFont(ofSize: 14, weight: .bold)
+            let nameLbl = Peek.label(info.filename, font: PanelStyle.inspectFont(ofSize: 12),
+                                     color: PanelStyle.textSecondary)
             nameLbl.lineBreakMode = .byTruncatingMiddle
-            nameLbl.maximumNumberOfLines = 1
             nameLbl.isHidden = true
             addSubview(nameLbl)
             filenameLabel = nameLbl
 
-            let dimsLbl = NSTextField(labelWithString: "")
-            dimsLbl.textColor = PanelStyle.textPrimary.withAlphaComponent(0.85)
-            dimsLbl.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-            dimsLbl.lineBreakMode = .byTruncatingTail
-            dimsLbl.maximumNumberOfLines = 3
-            dimsLbl.usesSingleLineMode = false
+            let dimsLbl = Peek.label("", font: PanelStyle.monoFont(ofSize: 10), color: PanelStyle.textTertiary)
+            dimsLbl.alignment = .right
             dimsLbl.isHidden = true
             addSubview(dimsLbl)
             dimsLabel = dimsLbl
@@ -1958,55 +2295,46 @@ final class MediaTileView: NSView {
             addSubview(sizeLbl)
             sizeLabel = sizeLbl
 
-            let pathLbl = NSTextField(labelWithString: "")
-            pathLbl.textColor = PanelStyle.textSecondary
-            pathLbl.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+            let pathLbl = Peek.label("", font: PanelStyle.monoFont(ofSize: 10), color: Peek.text4)
             pathLbl.lineBreakMode = .byTruncatingMiddle
-            pathLbl.maximumNumberOfLines = 1
             pathLbl.isHidden = true
             addSubview(pathLbl)
             pathLabel = pathLbl
         }
+        setMediaCanvas(false)
 
-        loadFailedView.isHidden = true
-        mediaContainer.addSubview(loadFailedView)
-        loadingIndicator.setLoading(true)
-        addSubview(loadingIndicator)
-
-        loadingLabel.textColor = PanelStyle.textPrimary.withAlphaComponent(0.85)
-        loadingLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        loadingLabel.alignment = .center
-        loadingLabel.maximumNumberOfLines = 1
-        loadingLabel.isHidden = true
-        addSubview(loadingLabel)
+        messageView.isHidden = true
+        addSubview(messageView)
+        loadingView.configure(caption: Self.loadingCaption(for: info), detail: Self.loadingDetail(for: info))
+        loadingView.setLoading(true)
+        addSubview(loadingView)
 
         // Action button + companion spinner. Remote items start in .idle
         // (click → download). Local items start in .downloaded with the
         // existing path (click → open).
-        let btn = NSButton(frame: .zero)
-        btn.bezelStyle = .recessed
-        btn.imagePosition = .imageOnly
-        btn.isBordered = false
-        btn.target = self
-        btn.action = #selector(downloadTapped)
-        addSubview(btn)
+        let btn = PeekIconButton(symbol: "arrow.down.circle", tooltip: nil,
+                                 target: self, action: #selector(downloadTapped))
+        btn.acceptsFirstClick = false
+        controlHost.addSubview(btn)
         downloadBtn = btn
 
-        downloadLoadingIndicator.showsCaption = false
+        downloadLoadingIndicator.style = .spinning
+        downloadLoadingIndicator.controlSize = .small
+        downloadLoadingIndicator.isDisplayedWhenStopped = false
+        downloadLoadingIndicator.appearance = PanelStyle.windowAppearance
         downloadLoadingIndicator.setAccessibilityLabel("Loading…".localized)
-        downloadLoadingIndicator.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.20, y: 0.20))
-        downloadLoadingIndicator.setLoading(false)
-        addSubview(downloadLoadingIndicator)
+        downloadLoadingIndicator.isHidden = true
+        controlHost.addSubview(downloadLoadingIndicator)
 
         if info.hasIconContent {
             // Tile body is the action target — no download/open button.
             // Covers markdown/text/webpage (open in viewer) and .other
             // (reveal in Finder).
             downloadBtn?.isHidden = true
-            downloadLoadingIndicator.setLoading(false)
+            setDownloadSpinner(false)
         } else if info.kind == .image || info.kind == .video {
             downloadBtn?.isHidden = true
-            downloadLoadingIndicator.setLoading(false)
+            setDownloadSpinner(false)
         } else if info.isLocal {
             setDownloadState(.downloaded, fileURL: info.url)
         } else {
@@ -2014,34 +2342,89 @@ final class MediaTileView: NSView {
         }
 
         installLocateButtonIfNeeded(for: info)
+        refreshFooterControls()
 
         relayoutChildren()
     }
 
+    /// Parent for the tile's controls: the footer on the Peek card, the tile
+    /// itself (over the image) in the grid.
+    private var controlHost: NSView { footerView ?? self }
+
+    private static func loadingCaption(for info: MediaInfo) -> String {
+        info.searchToken?.isEmpty == false ? "Searching…".localized : "Preparing preview".localized
+    }
+
+    private static func loadingDetail(for info: MediaInfo) -> String? {
+        if let token = info.searchToken, !token.isEmpty { return token }
+        if info.isLocal { return (info.url.path as NSString).abbreviatingWithTildeInPath }
+        let host = info.url.host ?? ""
+        return host.isEmpty ? info.url.absoluteString : host + info.url.path
+    }
+
     /// For local markdown / text files (the tile-clicks-into-viewer kinds),
-    /// drop a small folder badge in the bottom-right corner. Clicking it
-    /// jumps to Finder with the file pre-selected, instead of opening the
-    /// in-app viewer.
+    /// add a folder control. Clicking it jumps to Finder with the file
+    /// pre-selected, instead of opening the in-app viewer.
     private func installLocateButtonIfNeeded(for info: MediaInfo) {
         guard info.isLocal,
               info.kind == .markdown || info.kind == .text || info.kind == .folder else { return }
 
-        let btn = NSButton(frame: .zero)
-        btn.bezelStyle = .recessed
-        btn.imagePosition = .imageOnly
-        btn.isBordered = false
-        btn.target = self
-        btn.action = #selector(locateTapped)
-        btn.image = NSImage(systemSymbolName: "folder.fill",
-                             accessibilityDescription: "Reveal in Finder".localized)
-        btn.contentTintColor = .white
-        btn.toolTip = "Reveal in Finder".localized
-        addSubview(btn)
+        let btn = PeekIconButton(symbol: "folder", tooltip: "Reveal in Finder".localized,
+                                 target: self, action: #selector(locateTapped))
+        btn.acceptsFirstClick = false
+        controlHost.addSubview(btn)
         locateBtn = btn
     }
 
     @objc private func locateTapped() {
         NSWorkspace.shared.activateFileViewerSelecting([info.url])
+    }
+
+    /// Footer actions from `16 · Peek / Image`: reveal for local media,
+    /// Inspect where a click on the tile opens Inspect, and close.
+    private func refreshFooterControls() {
+        guard let footer = footerView else { return }
+        let tapOpensInspect: Bool
+        switch info.kind {
+        case .image, .webPage, .markdown, .text, .pdf: tapOpensInspect = onTileTap != nil
+        default: tapOpensInspect = false
+        }
+        if tapOpensInspect, inspectBtn == nil {
+            let btn = PeekCenteredButton(title: "Inspect".localized,
+                                         font: PanelStyle.inspectFont(ofSize: 12, weight: .medium),
+                                         color: PanelStyle.textPrimary,
+                                         target: self, action: #selector(inspectTapped))
+            btn.toolTip = "Open in Inspect".localized
+            footer.addSubview(btn)
+            inspectBtn = btn
+        }
+        inspectBtn?.isHidden = !tapOpensInspect
+
+        let revealsMedia = showsRevealButton && info.isLocal && (info.kind == .image || info.kind == .video)
+        if revealsMedia, revealBtn == nil {
+            let btn = PeekIconButton(symbol: "folder", tooltip: "Reveal in Finder".localized,
+                                     target: self, action: #selector(locateTapped))
+            footer.addSubview(btn)
+            revealBtn = btn
+        }
+        revealBtn?.isHidden = !revealsMedia
+
+        if showsCloseButton, closeBtn == nil {
+            let btn = PeekIconButton(symbol: "xmark", tooltip: "Close".localized,
+                                     target: self, action: #selector(closeTapped))
+            footer.addSubview(btn)
+            closeBtn = btn
+        }
+        closeBtn?.isHidden = !showsCloseButton
+        relayoutChildren()
+    }
+
+    @objc private func inspectTapped() {
+        onTileTap?()
+    }
+
+    @objc private func closeTapped() {
+        onClose?()
     }
 
     /// Install a kind-specific colored icon behind the spinner so each tile
@@ -2080,149 +2463,183 @@ final class MediaTileView: NSView {
         downloadedFileURL = fileURL
         switch state {
         case .idle:
-            downloadBtn?.image = NSImage(systemSymbolName: "arrow.down.circle.fill",
-                                          accessibilityDescription: "Download".localized)
-            downloadBtn?.contentTintColor = .white
+            downloadBtn?.setSymbol("arrow.down.circle", description: "Download".localized)
+            downloadBtn?.contentTintColor = PanelStyle.textSecondary
+            downloadBtn?.toolTip = "Download".localized
+            downloadBtn?.setAccessibilityLabel("Download".localized)
             downloadBtn?.isHidden = false
-            downloadLoadingIndicator.setLoading(false)
+            setDownloadSpinner(false)
         case .downloading:
             downloadBtn?.isHidden = true
-            downloadLoadingIndicator.setLoading(true)
+            setDownloadSpinner(true)
         case .downloaded:
-            // Folder badge — clicking reveals the file in Finder.
-            downloadBtn?.image = NSImage(systemSymbolName: "folder.fill",
-                                          accessibilityDescription: "Reveal in Finder".localized)
-            downloadBtn?.contentTintColor = .white
+            // Folder control — clicking reveals the file in Finder.
+            downloadBtn?.setSymbol("folder", description: "Reveal in Finder".localized)
+            downloadBtn?.contentTintColor = PanelStyle.textSecondary
             downloadBtn?.toolTip = "Reveal in Finder".localized
+            downloadBtn?.setAccessibilityLabel("Reveal in Finder".localized)
             downloadBtn?.isHidden = false
-            downloadLoadingIndicator.setLoading(false)
+            setDownloadSpinner(false)
         case .failed:
-            downloadBtn?.image = NSImage(systemSymbolName: "exclamationmark.circle.fill",
-                                          accessibilityDescription: "Download failed".localized)
-            downloadBtn?.contentTintColor = .systemRed
+            downloadBtn?.setSymbol("exclamationmark.circle", description: "Download failed".localized)
+            downloadBtn?.contentTintColor = PanelStyle.failure
+            downloadBtn?.toolTip = "Download failed".localized
+            downloadBtn?.setAccessibilityLabel("Download failed".localized)
             downloadBtn?.isHidden = false
-            downloadLoadingIndicator.setLoading(false)
+            setDownloadSpinner(false)
+        }
+        relayoutChildren()
+    }
+
+    private func setDownloadSpinner(_ spinning: Bool) {
+        downloadLoadingIndicator.isHidden = !spinning
+        if spinning {
+            downloadLoadingIndicator.startAnimation(nil)
+        } else {
+            downloadLoadingIndicator.stopAnimation(nil)
         }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    /// Media on ink/0 once something is showing; panel ink (with a hairline
+    /// over the footer) for loading, failure and icon states.
+    private func setMediaCanvas(_ showsMedia: Bool) {
+        showsMediaCanvas = showsMedia
+        let empty = style == .singleCard ? PanelStyle.surface : PanelStyle.overlay
+        mediaContainer.layer?.backgroundColor = PanelStyle.resolvedCG(showsMedia ? PanelStyle.canvas : empty)
+        footerRule?.isHidden = showsMedia
+    }
+
     func relayoutChildren() {
-        if let placeholder = placeholderIconView {
-            let side = min(bounds.width, bounds.height) * 0.42
-            placeholder.frame = NSRect(
-                x: (bounds.width  - side) / 2,
-                y: (bounds.height - side) / 2,
-                width: side, height: side
-            )
-        }
-        if let openable = openableIconView {
-            let side = min(bounds.width, bounds.height) * 0.68
-            openable.frame = NSRect(
-                x: (bounds.width  - side) / 2,
-                y: (bounds.height - side) / 2,
-                width: side, height: side
-            )
-        }
-        let hasHint = info.disambiguationHint?.isDisplayableValue == true
+        let mediaFrame: NSRect
         switch style {
         case .singleCard:
-            mediaContainer.frame = bounds
-            imageLayer.frame = mediaContainer.bounds
-            playerView?.frame = mediaContainer.bounds
-            webMPlayerView?.frame = mediaContainer.bounds
-            loadFailedView.frame = centeredFailureFrame(in: mediaContainer.bounds)
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            let gradH: CGFloat = hasHint ? 120 : 96
-            overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradH)
-            CATransaction.commit()
-            loadingIndicator.frame = NSRect(
-                x: bounds.midX - FocusSweepLoadingView.preferredSize.width / 2,
-                y: bounds.midY - FocusSweepLoadingView.preferredSize.height / 2 + 8,
-                width: FocusSweepLoadingView.preferredSize.width,
-                height: FocusSweepLoadingView.preferredSize.height
-            )
-            loadingLabel.frame = NSRect(x: 0, y: bounds.midY - 18,
-                                         width: bounds.width, height: 14)
-            let textX: CGFloat = 14
-            let dlBtnSize: CGFloat = 34
-            let dlReserved = (downloadBtn != nil) ? (dlBtnSize + 12) : 14
-            let textW = bounds.width - textX - dlReserved
-            let dimsHeight: CGFloat = hasHint ? 34 : 18
-            let filenameY: CGFloat = hasHint ? 52 : 36
-            let filenameHeight: CGFloat = hasHint ? 20 : 22
-            filenameLabel?.frame = NSRect(x: textX, y: filenameY, width: textW, height: filenameHeight)
-            dimsLabel?.frame     = NSRect(x: textX, y: 14, width: textW, height: dimsHeight)
-            sizeLabel?.frame     = .zero
-            downloadBtn?.frame = NSRect(
-                x: bounds.width - dlBtnSize - 10,
-                y: 22,
-                width: dlBtnSize, height: dlBtnSize
-            )
-            let downloadCenter = CGPoint(x: bounds.width - dlBtnSize / 2 - 10, y: 22 + dlBtnSize / 2)
-            downloadLoadingIndicator.frame = NSRect(
-                x: downloadCenter.x - FocusSweepLoadingView.preferredSize.width / 2,
-                y: downloadCenter.y - FocusSweepLoadingView.preferredSize.height / 2,
-                width: FocusSweepLoadingView.preferredSize.width,
-                height: FocusSweepLoadingView.preferredSize.height
-            )
-            locateBtn?.frame = NSRect(
-                x: bounds.width - dlBtnSize - 10,
-                y: 22,
-                width: dlBtnSize, height: dlBtnSize
-            )
-
+            mediaFrame = NSRect(x: 0, y: Peek.footerHeight,
+                                width: bounds.width, height: max(0, bounds.height - Peek.footerHeight))
         case .masonry:
-            mediaContainer.frame = NSRect(x: 0, y: 14, width: bounds.width, height: bounds.height - 14)
-            imageLayer.frame = mediaContainer.bounds
-            playerView?.frame = mediaContainer.bounds
-            webMPlayerView?.frame = mediaContainer.bounds
-            loadFailedView.frame = centeredFailureFrame(in: mediaContainer.bounds)
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            let gradientH: CGFloat = hasHint ? 100 : 76
-            overlayGradient.frame = NSRect(x: 0, y: 0, width: bounds.width, height: gradientH)
-            CATransaction.commit()
-            loadingIndicator.frame = NSRect(
-                x: bounds.midX - FocusSweepLoadingView.preferredSize.width / 2,
-                y: bounds.midY - FocusSweepLoadingView.preferredSize.height / 2 + 6,
-                width: FocusSweepLoadingView.preferredSize.width,
-                height: FocusSweepLoadingView.preferredSize.height
-            )
-            loadingLabel.frame = NSRect(x: 0, y: bounds.midY - 18,
-                                         width: bounds.width, height: 14)
+            let caption = Self.masonryCaptionHeight
+            mediaFrame = NSRect(x: 0, y: caption, width: bounds.width, height: max(0, bounds.height - caption))
+        }
+        mediaContainer.frame = mediaFrame
+        let media = mediaContainer.bounds
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        imageLayer.frame = media
+        CATransaction.commit()
+        playerView?.frame = media
+        webMPlayerView?.frame = media
+        loadingView.frame = mediaFrame
+        messageView.frame = mediaFrame
 
-            let textX: CGFloat = 8
-            let dlBtnSizeM: CGFloat = 28
-            let dlReservedM = (downloadBtn != nil) ? (dlBtnSizeM + 10) : 8
-            let textW = bounds.width - textX - dlReservedM
-            let dimsHeight: CGFloat = hasHint ? 28 : 14
-            let filenameY: CGFloat = hasHint ? 42 : 28
-            let filenameHeight: CGFloat = hasHint ? 14 : 18
-            filenameLabel?.frame = NSRect(x: textX, y: filenameY, width: textW, height: filenameHeight)
-            dimsLabel?.frame     = NSRect(x: textX, y: 10, width: textW, height: dimsHeight)
-            sizeLabel?.frame     = .zero
-            pathLabel?.frame     = NSRect(x: textX, y: 0, width: textW, height: 12)
-            downloadBtn?.frame = NSRect(
-                x: bounds.width - dlBtnSizeM - 6,
-                y: 14,
-                width: dlBtnSizeM, height: dlBtnSizeM
-            )
-            let downloadCenter = CGPoint(x: bounds.width - dlBtnSizeM / 2 - 6, y: 14 + dlBtnSizeM / 2)
-            downloadLoadingIndicator.frame = NSRect(
-                x: downloadCenter.x - FocusSweepLoadingView.preferredSize.width / 2,
-                y: downloadCenter.y - FocusSweepLoadingView.preferredSize.height / 2,
-                width: FocusSweepLoadingView.preferredSize.width,
-                height: FocusSweepLoadingView.preferredSize.height
-            )
-            locateBtn?.frame = NSRect(
-                x: bounds.width - dlBtnSizeM - 6,
-                y: 14,
-                width: dlBtnSizeM, height: dlBtnSizeM
-            )
+        if let placeholder = placeholderIconView {
+            let side = min(media.width, media.height) * 0.42
+            placeholder.frame = NSRect(x: (media.width - side) / 2, y: (media.height - side) / 2,
+                                       width: side, height: side)
+        }
+        if let openable = openableIconView {
+            let side = min(media.width, media.height) * 0.68
+            openable.frame = NSRect(x: (media.width - side) / 2, y: (media.height - side) / 2,
+                                    width: side, height: side)
+        }
+
+        switch style {
+        case .singleCard:
+            layoutFooter()
+        case .masonry:
+            layoutCaption(mediaFrame: mediaFrame)
         }
     }
+
+    /// Footer (Figma node `footer`): 16pt leading, 8pt trailing, 10pt gaps,
+    /// name 13/16 over mono meta 11/14, 28pt icon buttons, 27pt Inspect.
+    private func layoutFooter() {
+        guard let footer = footerView else { return }
+        let w = bounds.width
+        let h = Peek.footerHeight
+        footer.frame = NSRect(x: 0, y: 0, width: w, height: h)
+        footerRule?.frame = NSRect(x: 0, y: h - 1, width: w, height: 1)
+
+        let side = Peek.iconButtonSide
+        let iconY = (h - side) / 2
+        var right = w - PanelStyle.Space.s
+        func place(_ view: NSView?, width: CGFloat, height: CGFloat) {
+            guard let view, !view.isHidden else { return }
+            right -= width
+            view.frame = NSRect(x: right, y: floor((h - height) / 2), width: width, height: height)
+            right -= 10
+        }
+        place(closeBtn, width: side, height: side)
+        if let inspectBtn, !inspectBtn.isHidden {
+            place(inspectBtn, width: inspectBtn.fittingWidth, height: 27)
+        }
+        place(revealBtn, width: side, height: side)
+        place(locateBtn, width: side, height: side)
+        if let downloadBtn, !downloadBtn.isHidden {
+            place(downloadBtn, width: side, height: side)
+        } else if !downloadLoadingIndicator.isHidden {
+            right -= side
+            downloadLoadingIndicator.frame = NSRect(x: right + 6, y: iconY + 6, width: 16, height: 16)
+            right -= 10
+        }
+
+        let textX = PanelStyle.Space.l
+        let textW = max(0, right + 10 - 10 - textX)
+        let metaShown = dimsLabel?.isHidden == false && dimsLabel?.stringValue.isEmpty == false
+        if metaShown {
+            filenameLabel?.frame = NSRect(x: textX, y: h - 8 - 16, width: textW, height: 16)
+            dimsLabel?.frame = NSRect(x: textX, y: h - 8 - 16 - 3 - 14, width: textW, height: 14)
+        } else {
+            filenameLabel?.frame = NSRect(x: textX, y: floor((h - 16) / 2), width: textW, height: 16)
+            dimsLabel?.frame = .zero
+        }
+        sizeLabel?.frame = .zero
+    }
+
+    /// Caption under a grid image: name (Inter 12) left, mono meta right on
+    /// one row; the mono path row below. Controls float over the image corner.
+    private func layoutCaption(mediaFrame: NSRect) {
+        let w = bounds.width
+        let rowY: CGFloat = Self.masonryCaptionHeight - 8 - 15
+        let metaText = dimsLabel?.stringValue ?? ""
+        let metaW = metaText.isEmpty ? 0 : min(ceil(dimsLabel?.attributedStringValue.size().width ?? 0) + 4,
+                                              floor(w * 0.55))
+        dimsLabel?.frame = NSRect(x: w - metaW, y: rowY + 2, width: metaW, height: 13)
+        filenameLabel?.frame = NSRect(x: 0, y: rowY, width: max(0, w - metaW - (metaW > 0 ? 10 : 0)), height: 15)
+        pathLabel?.frame = NSRect(x: 0, y: 0, width: w, height: 13)
+        sizeLabel?.frame = .zero
+
+        let side = Peek.iconButtonSide
+        let x = mediaFrame.maxX - side - 6
+        let y = mediaFrame.minY + 6
+        let buttons: [NSButton?] = [downloadBtn, locateBtn]
+        for button in buttons {
+            button?.frame = NSRect(x: x, y: y, width: side, height: side)
+        }
+        downloadLoadingIndicator.frame = NSRect(x: x + 6, y: y + 6, width: 16, height: 16)
+    }
+
+    private func updateHover() {
+        guard style == .masonry else { return }
+        mediaContainer.layer?.borderWidth = hovering ? 1 : 0
+        if dimsLabel?.textColor != PanelStyle.failure {
+            filenameLabel?.textColor = hovering ? PanelStyle.textPrimary : PanelStyle.textSecondary
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        guard style == .masonry else { return }
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero,
+                                  options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -2238,10 +2655,8 @@ final class MediaTileView: NSView {
     }
 
     func setLoaded(_ media: LoadedMedia) {
-        loadingIndicator.setLoading(false)
-        loadFailedView.isHidden = true
-        loadingLabel.isHidden = true
-        overlayGradient.isHidden = false
+        loadingView.setLoading(false)
+        messageView.isHidden = true
         filenameLabel?.isHidden = false
         dimsLabel?.isHidden = false
         pathLabel?.isHidden = false
@@ -2251,72 +2666,77 @@ final class MediaTileView: NSView {
             animationPlayer.setImage(img)
             placeholderIconView?.removeFromSuperview()
             placeholderIconView = nil
+            setMediaCanvas(true)
             updateText(with: info)
         case .video(let url, _, let info):
             attachPlayer(url: url)
             placeholderIconView?.removeFromSuperview()
             placeholderIconView = nil
+            setMediaCanvas(true)
             updateText(with: info)
         case .openable(let info):
             // Markdown / text / webpage tile — promote the loading placeholder
             // icon to the final content glyph (larger, fully opaque).
             showOpenablePlaceholder(for: info)
+            setMediaCanvas(false)
             updateText(with: info)
         }
+        relayoutChildren()
     }
 
     func setFailed(message: String? = nil) {
-        loadingIndicator.setLoading(false)
-        loadFailedView.isHidden = false
+        loadingView.setLoading(false)
         placeholderIconView?.isHidden = true
         animationPlayer.setImage(nil)
-        loadingLabel.isHidden = true
-        overlayGradient.isHidden = false
+        setMediaCanvas(false)
         placeholderIconView?.alphaValue = 0.35
 
         if let token = info.searchToken, !token.isEmpty {
             // Spotlight search failure — show the token we were looking for.
-            loadingLabel.stringValue = "File not found".localized
-            loadingLabel.textColor = .systemRed
+            let detail = message ?? "No matching file found".localized
             filenameLabel?.stringValue = token
             filenameLabel?.isHidden = false
-            dimsLabel?.stringValue = message ?? "No matching file found".localized
-            dimsLabel?.isHidden = false
-            dimsLabel?.textColor = .systemRed
             if style == .masonry {
+                messageView.configure(mark: .search, title: "File not found".localized, body: nil)
+                dimsLabel?.stringValue = detail
+                dimsLabel?.isHidden = false
+                dimsLabel?.textColor = PanelStyle.failure
                 pathLabel?.stringValue = info.url.path
                 pathLabel?.isHidden = false
+            } else {
+                messageView.configure(mark: .search, title: "File not found".localized, body: detail)
+                dimsLabel?.stringValue = ""
+                dimsLabel?.isHidden = true
             }
         } else {
             // Normal media load failure.
-            loadingLabel.stringValue = message ?? "Failed".localized
-            loadingLabel.textColor = .systemRed
             filenameLabel?.isHidden = false
             dimsLabel?.isHidden = false
             if style == .masonry {
+                messageView.configure(mark: .dot, title: "Failed to load".localized, body: nil)
                 dimsLabel?.stringValue = message ?? "Failed to load".localized
-                dimsLabel?.textColor = .systemRed
+                dimsLabel?.textColor = PanelStyle.failure
                 pathLabel?.stringValue = info.url.path
                 pathLabel?.isHidden = false
+            } else {
+                messageView.configure(mark: .dot, title: "Failed to load".localized, body: message)
             }
         }
-    }
-
-    private func centeredFailureFrame(in bounds: NSRect) -> NSRect {
-        let side = min(LoadFailedAnimationView.preferredSize.width,
-                       max(96, min(bounds.width, bounds.height) * 0.72))
-        return NSRect(x: bounds.midX - side / 2,
-                      y: bounds.midY - side / 2 + 8,
-                      width: side, height: side)
+        dimsLabel?.toolTip = dimsLabel?.stringValue
+        messageView.isHidden = false
+        relayoutChildren()
     }
 
     func updateInfo(_ newInfo: MediaInfo) {
         self.info = newInfo
         updateText(with: newInfo)
+        relayoutChildren()
     }
 
     func teardown() {
         animationPlayer.stop()
+        loadingView.setLoading(false)
+        setDownloadSpinner(false)
         player?.pause()
         webMPlayerView?.pauseVideo()
         webMPlayerView?.stopLoading()
@@ -2345,10 +2765,11 @@ final class MediaTileView: NSView {
         }
         // Larger than the loading-state placeholder — this is the final
         // content for openable tiles, so let it dominate the card.
-        let side = min(bounds.width, bounds.height) * 0.68
-        icon.frame = NSRect(x: (bounds.width  - side) / 2,
-                             y: (bounds.height - side) / 2,
-                             width: side, height: side)
+        let media = mediaContainer.bounds
+        let side = min(media.width, media.height) * 0.68
+        icon.frame = NSRect(x: (media.width - side) / 2,
+                            y: (media.height - side) / 2,
+                            width: side, height: side)
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
@@ -2415,110 +2836,63 @@ final class MediaTileView: NSView {
     }
 
     private func updateText(with info: MediaInfo) {
-        switch info.kind {
-        case .image, .video:
-            applyMediaText(info: info)
-        case .markdown, .text, .pdf:
-            filenameLabel?.stringValue = info.filename
-            var pieces: [String] = []
-            if info.formatName.isDisplayableValue { pieces.append(info.formatName) }
-            if let bytes = info.fileSize {
-                let f = ByteCountFormatter()
-                f.countStyle = .file
-                pieces.append(f.string(fromByteCount: bytes))
-            }
-            let metaLine = pieces.joined(separator: " · ")
-            if let hint = info.disambiguationHint, hint.isDisplayableValue {
-                let hintText = String(format: "in %@".localized, hint)
-                dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
-            } else {
-                dimsLabel?.stringValue = metaLine
-            }
-            sizeLabel?.stringValue = ""
-            if style == .masonry {
-                pathLabel?.stringValue = info.url.path
-                pathLabel?.isHidden = false
-            }
-        case .webPage:
-            filenameLabel?.stringValue = info.url.host ?? info.filename
-            dimsLabel?.stringValue = info.url.absoluteString
-            sizeLabel?.stringValue = ""
-            if style == .masonry {
-                pathLabel?.stringValue = info.url.absoluteString
-                pathLabel?.isHidden = false
-            }
-        case .other:
-            filenameLabel?.stringValue = info.filename
-            var pieces: [String] = []
-            if info.formatName.isDisplayableValue { pieces.append(info.formatName) }
-            if let bytes = info.fileSize {
-                let f = ByteCountFormatter()
-                f.countStyle = .file
-                pieces.append(f.string(fromByteCount: bytes))
-            }
-            let metaLine = pieces.joined(separator: " · ")
-            if let hint = info.disambiguationHint, hint.isDisplayableValue {
-                let hintText = String(format: "in %@".localized, hint)
-                dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
-            } else {
-                dimsLabel?.stringValue = metaLine
-            }
-            sizeLabel?.stringValue = ""
-            if style == .masonry {
-                pathLabel?.stringValue = info.url.path
-                pathLabel?.isHidden = false
-            }
-        case .folder:
-            filenameLabel?.stringValue = info.filename
-            var pieces: [String] = []
-            if let bytes = info.fileSize {
-                let f = ByteCountFormatter()
-                f.countStyle = .file
-                pieces.append(f.string(fromByteCount: bytes))
-            }
-            let metaLine = pieces.joined(separator: " · ")
-            if let hint = info.disambiguationHint, hint.isDisplayableValue {
-                let hintText = String(format: "in %@".localized, hint)
-                dimsLabel?.stringValue = pieces.isEmpty ? hintText : "\(metaLine)\n\(hintText)"
-            } else {
-                dimsLabel?.stringValue = pieces.isEmpty ? "Folder".localized : metaLine
-            }
-            sizeLabel?.stringValue = ""
-            if style == .masonry {
-                pathLabel?.stringValue = info.url.path
-                pathLabel?.isHidden = false
-            }
-        }
-    }
-
-    private func applyMediaText(info: MediaInfo) {
-        filenameLabel?.stringValue = info.filename
-
-        var pieces: [String] = []
-        if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
-            pieces.append("\(Int(dim.width)) × \(Int(dim.height))")
-        }
-        if let bytes = info.fileSize {
+        let byteString = info.fileSize.map { bytes -> String in
             let f = ByteCountFormatter()
             f.countStyle = .file
-            pieces.append(f.string(fromByteCount: bytes))
+            return f.string(fromByteCount: bytes)
         }
-        if info.formatName.isDisplayableValue { pieces.append(info.formatName) }
+        let hint = info.disambiguationHint.flatMap { $0.isDisplayableValue ? $0 : nil }
+        var pieces: [String] = []
+        let title: String
+        var metaLine: String
+        var usesHint = true
+        let path: String
 
-        let metaLine = pieces.joined(separator: " · ")
-        if let hint = info.disambiguationHint, hint.isDisplayableValue {
-            let hintText = String(format: "in %@".localized, hint)
-            dimsLabel?.stringValue = "\(metaLine)\n\(hintText)"
-        } else {
+        switch info.kind {
+        case .image, .video:
+            title = info.filename
+            if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
+                pieces.append("\(Int(dim.width)) × \(Int(dim.height))")
+            }
+            if let byteString { pieces.append(byteString) }
+            if info.formatName.isDisplayableValue { pieces.append(info.formatName) }
+            metaLine = pieces.joined(separator: " · ")
+            path = info.url.isFileURL ? info.url.path : info.url.absoluteString
+        case .markdown, .text, .pdf, .other:
+            title = info.filename
+            if info.formatName.isDisplayableValue { pieces.append(info.formatName) }
+            if let byteString { pieces.append(byteString) }
+            metaLine = pieces.joined(separator: " · ")
+            path = info.url.path
+        case .webPage:
+            title = info.url.host ?? info.filename
+            metaLine = info.url.absoluteString
+            usesHint = false
+            path = info.url.absoluteString
+        case .folder:
+            title = info.filename
+            if let byteString { pieces.append(byteString) }
+            metaLine = pieces.joined(separator: " · ")
+            if pieces.isEmpty && hint == nil { metaLine = "Folder".localized }
+            path = info.url.path
+        }
+
+        filenameLabel?.stringValue = title
+        hintText = usesHint ? hint.map { String(format: "in %@".localized, $0) } : nil
+        pathText = path
+        switch style {
+        case .singleCard:
+            // One mono line in the footer: metadata, then where the file lives.
+            dimsLabel?.stringValue = [metaLine, hintText ?? ""]
+                .filter { !$0.isEmpty }
+                .joined(separator: "  ·  ")
+        case .masonry:
             dimsLabel?.stringValue = metaLine
-        }
-        sizeLabel?.stringValue = ""
-
-        if style == .masonry {
-            let path = info.url.isFileURL ? info.url.path : info.url.absoluteString
-            pathLabel?.stringValue = path
+            pathLabel?.stringValue = [hintText ?? "", path].filter { !$0.isEmpty }.joined(separator: "  ·  ")
             pathLabel?.isHidden = false
         }
+        dimsLabel?.toolTip = dimsLabel?.stringValue
+        sizeLabel?.stringValue = ""
     }
 }
 

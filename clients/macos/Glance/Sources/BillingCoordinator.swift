@@ -168,8 +168,10 @@ final class BillingCoordinator {
     return false
   }
   /// Preflight only: no task, upload or debit exists until completion returns a quote.
+  /// `onNeedsAttention` fires once if the check needs the user (an error, or a top-up) and so shows a panel.
   func confirmWidgetTask(widget: WidgetManifest, command: WidgetCommand, mediaURLs: [URL],
-                         over parent: NSWindow?, completion: @escaping (WidgetTaskQuote?) -> Void) {
+                         over parent: NSWindow?, onNeedsAttention: (() -> Void)? = nil,
+                         completion: @escaping (WidgetTaskQuote?) -> Void) {
     let panel = makePanel(over: parent)
     retain(panel)
     let ownerID = AuthManager.shared.session?.user.id
@@ -183,6 +185,7 @@ final class BillingCoordinator {
     func present() {
       guard !presented else { return }
       presented = true
+      onNeedsAttention?()
       panel.present(over: parent)
     }
     let release = panel.onDismiss

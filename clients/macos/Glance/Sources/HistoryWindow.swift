@@ -2,10 +2,10 @@ import AppKit
 import AVFoundation
 import ImageIO
 
-/// Preview History, built from the Figma "Preview History Redesign" board:
-/// a title bar, one row with search + type filters + Clear History, then the
-/// history grouped by day (or a flat result list while searching) as
-/// media-first cards.
+/// Preview History, built from the Figma "静 Shizuka" frame
+/// "11 · Preview History": a quiet title bar, one toolbar row (search, text
+/// filter tabs, item count, Clear…), then the history grouped by day (or a
+/// flat result list while searching) as a media-first grid.
 ///
 /// Cards are lightweight self-drawn views (not MediaTileView) so opening the
 /// window never blocks the main thread building AVPlayers / masonry tiles.
@@ -13,25 +13,25 @@ import ImageIO
 final class HistoryWindow: NSWindow, NSWindowDelegate {
     private static let contentSize = NSSize(width: 1280, height: 800)
 
-    // Figma metrics (top-left origin).
+    // Figma metrics (top-left origin, frame 12:648).
     private enum Metric {
-        static let titlebarH: CGFloat = 52
-        static let rowY: CGFloat = 68
-        static let margin: CGFloat = 40
-        static let searchSize = NSSize(width: 320, height: 40)
-        static let chipsX: CGFloat = 384
-        static let chipY: CGFloat = 72
-        static let chipH: CGFloat = 32
-        static let chipGap: CGFloat = 8
-        static let clearSize = NSSize(width: 132, height: 32)
-        static let dividerY: CGFloat = 124
-        /// Section title sits at y 148 in the window; the scroll view starts at 125.
-        static let docTopPad: CGFloat = 23
-        static let sectionToCards: CGFloat = 36
-        static let afterRow: CGFloat = 28
-        static let rowGap: CGFloat = 24
-        static let cardGap: CGFloat = 21
-        static let minCardW: CGFloat = 240
+        static let titlebarH = PanelStyle.titlebarHeight
+        static let margin = PanelStyle.Space.ma
+        static let toolbarY: CGFloat = 68
+        static let toolbarH: CGFloat = 32
+        static let searchW: CGFloat = 280
+        /// Tabs start 304 into the toolbar (search + 24).
+        static let tabsX: CGFloat = 304
+        static let tabGap: CGFloat = 18
+        static let countToClear = PanelStyle.Space.xl
+        /// Toolbar bottom to the first section title.
+        static let docTopPad: CGFloat = 40
+        static let headerH: CGFloat = 16
+        static let headerToGrid: CGFloat = 14
+        static let groupGap: CGFloat = 40
+        static let rowGap = PanelStyle.Space.xl
+        static let cardGap: CGFloat = 20
+        static let targetCardW: CGFloat = 204
     }
 
     private struct Group {
@@ -45,10 +45,10 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
     // Chrome
     private let contentContainer = FlippedDocView()
     private let titlebar = HistoryTitlebar()
-    private let searchBox = HistorySearchBox(frame: NSRect(origin: .zero, size: Metric.searchSize))
-    private let clearButton = HistoryClearButton(frame: NSRect(origin: .zero, size: Metric.clearSize))
-    private let divider = NSView()
-    private var chips: [(filter: HistoryFilter, view: HistoryChipView)] = []
+    private let searchBox = HistorySearchBox(frame: NSRect(x: 0, y: 0, width: Metric.searchW, height: Metric.toolbarH))
+    private let clearButton = HistoryClearButton(frame: .zero)
+    private let countLabel = HistoryCountLabel()
+    private var tabs: [(filter: HistoryFilter, view: HistoryFilterTab)] = []
     private let scrollView = NSScrollView()
     private let gridDocView = FlippedDocView()
     private let emptyView = HistoryEmptyView()
@@ -83,8 +83,8 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         isReleasedWhenClosed = false
-        appearance = NSAppearance(named: .darkAqua)
-        backgroundColor = HistoryStyle.background
+        appearance = PanelStyle.windowAppearance
+        backgroundColor = HistoryShizuka.background
         minSize = NSSize(width: 1000, height: 560)
         standardWindowButton(.closeButton)?.isHidden = true
         standardWindowButton(.miniaturizeButton)?.isHidden = true
@@ -111,7 +111,7 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
 
     private func buildUI() {
         contentContainer.wantsLayer = true
-        contentContainer.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryStyle.background)
+        contentContainer.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryShizuka.background)
         contentView = contentContainer
 
         titlebar.title = "Preview History".localized
@@ -124,21 +124,19 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         contentContainer.addSubview(searchBox)
 
         for filter in HistoryFilter.allCases {
-            let chip = HistoryChipView(frame: .zero)
-            chip.onClick = { [weak self] in
+            let tab = HistoryFilterTab(frame: .zero)
+            tab.onClick = { [weak self] in
                 self?.selectedFilter = filter
                 self?.applyFilter()
             }
-            contentContainer.addSubview(chip)
-            chips.append((filter, chip))
+            contentContainer.addSubview(tab)
+            tabs.append((filter, tab))
         }
 
+        contentContainer.addSubview(countLabel)
+        clearButton.title = Self.clearTitle
         clearButton.onClick = { [weak self] in self?.clearTapped() }
         contentContainer.addSubview(clearButton)
-
-        divider.wantsLayer = true
-        divider.layer?.backgroundColor = HistoryStyle.hairline.cgColor
-        contentContainer.addSubview(divider)
 
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
@@ -161,31 +159,37 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         applyBackingScale()
 
         titlebar.frame = NSRect(x: 0, y: 0, width: W, height: Metric.titlebarH)
-        closeTrafficButton.frame = NSRect(x: 20, y: 18, width: 12, height: 12)
-        minimizeTrafficButton.frame = NSRect(x: 40, y: 18, width: 12, height: 12)
-        zoomTrafficButton.frame = NSRect(x: 60, y: 18, width: 12, height: 12)
+        closeTrafficButton.frame = NSRect(x: 20, y: 16, width: 12, height: 12)
+        minimizeTrafficButton.frame = NSRect(x: 40, y: 16, width: 12, height: 12)
+        zoomTrafficButton.frame = NSRect(x: 60, y: 16, width: 12, height: 12)
 
-        searchBox.frame = NSRect(x: Metric.margin, y: Metric.rowY, width: Metric.searchSize.width, height: Metric.searchSize.height)
-        layoutChips()
-        clearButton.frame = NSRect(x: W - Metric.margin - Metric.clearSize.width, y: Metric.chipY,
-                                   width: Metric.clearSize.width, height: Metric.clearSize.height)
-        divider.frame = NSRect(x: 0, y: Metric.dividerY, width: W, height: 1)
+        searchBox.frame = NSRect(x: Metric.margin, y: Metric.toolbarY, width: Metric.searchW, height: Metric.toolbarH)
+        layoutToolbarTrailing()
 
-        let bodyY = Metric.dividerY + 1
+        let bodyY = Metric.toolbarY + Metric.toolbarH
         scrollView.frame = NSRect(x: 0, y: bodyY, width: W, height: H - bodyY)
         emptyView.frame = scrollView.frame
-        fadeView.frame = NSRect(x: 0, y: H - 100, width: W, height: 100)
+        fadeView.frame = NSRect(x: 0, y: H - 80, width: W, height: 80)
         layoutGrid()
     }
 
-    private func layoutChips() {
-        var x = Metric.chipsX
-        for (_, chip) in chips {
-            let width = chip.fittingWidth
-            chip.frame = NSRect(x: x, y: Metric.chipY, width: width, height: Metric.chipH)
-            x += width + Metric.chipGap
+    /// Tabs from x 304, then the right-aligned count and Clear… button.
+    private func layoutToolbarTrailing() {
+        let W = contentContainer.bounds.width
+        var x = Metric.margin + Metric.tabsX
+        for (_, tab) in tabs {
+            let width = ceil(tab.fittingWidth)
+            tab.frame = NSRect(x: x, y: Metric.toolbarY, width: width, height: Metric.toolbarH)
+            x += width + Metric.tabGap
         }
+        let clearW = ceil(clearButton.fittingWidth)
+        clearButton.frame = NSRect(x: W - Metric.margin - clearW, y: Metric.toolbarY, width: clearW, height: Metric.toolbarH)
+        let countRight = clearButton.isHidden ? W - Metric.margin : clearButton.frame.minX - Metric.countToClear
+        let countX = x - Metric.tabGap + Metric.countToClear
+        countLabel.frame = NSRect(x: countX, y: Metric.toolbarY, width: max(0, countRight - countX), height: Metric.toolbarH)
     }
+
+    private static var clearTitle: String { "Clear".localized + "…" }
 
     private func applyBackingScale() {
         let scale = backingScaleFactor
@@ -218,21 +222,21 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         let lowered = query.lowercased()
         let matching = lowered.isEmpty ? entries : entries.filter { $0.info.filename.lowercased().contains(lowered) }
 
-        // Chip counts follow the query; the selected chip filters the list.
-        for (filter, chip) in chips {
+        // Tab counts follow the query; the selected tab filters the list.
+        for (filter, tab) in tabs {
             let count = matching.filter { filter.matches($0.info) }.count
-            chip.title = filter.title
-            chip.count = count
-            chip.isActive = filter == selectedFilter
-            chip.isDimmed = count == 0 && filter != .all || entries.isEmpty
+            tab.title = filter.title
+            tab.count = count
+            tab.isActive = filter == selectedFilter
+            tab.isDimmed = count == 0 && filter != .all || entries.isEmpty
         }
-        layoutChips()
 
         let shown = matching.filter { selectedFilter.matches($0.info) }
-        titlebar.subtitle = lowered.isEmpty
+        countLabel.text = lowered.isEmpty
             ? String(format: "%d previews".localized, entries.count)
             : String(format: "%d results".localized, shown.count)
         clearButton.isHidden = entries.isEmpty
+        layoutToolbarTrailing()
         searchBox.alphaValue = entries.isEmpty ? 0.5 : 1
 
         groups = lowered.isEmpty
@@ -247,7 +251,7 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         scrollView.isHidden = empty
         if empty {
             if entries.isEmpty {
-                emptyView.configure(icon: "HistoryFocus", heading: "No previews yet".localized,
+                emptyView.configure(icon: "ShizukaImage", heading: "No previews yet".localized,
                                     detail: "Select a file path or image link anywhere and use your Glance shortcut.\nEverything you preview shows up here.".localized)
             } else {
                 emptyView.configure(icon: "HistorySearch", heading: "No matches".localized,
@@ -300,17 +304,18 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
         if contentW <= 0 { contentW = scrollView.frame.width }
         guard contentW > 0 else { return }
 
+        // Columns stay close to the 204 pt Figma item (six across at 1440).
         let avail = contentW - Metric.margin * 2
-        let cols = max(1, Int((avail + Metric.cardGap) / (Metric.minCardW + Metric.cardGap)))
+        let cols = max(1, Int(((avail + Metric.cardGap) / (Metric.targetCardW + Metric.cardGap)).rounded()))
         let cardW = floor((avail - Metric.cardGap * CGFloat(cols - 1)) / CGFloat(cols))
         let cardH = HistoryCardView.height(forWidth: cardW)
 
         var y = Metric.docTopPad
         var headerIndex = 0, cardIndex = 0
         for group in groups {
-            headers[headerIndex].frame = NSRect(x: Metric.margin, y: y, width: avail, height: 20)
+            headers[headerIndex].frame = NSRect(x: Metric.margin, y: y, width: avail, height: Metric.headerH)
             headerIndex += 1
-            y += Metric.sectionToCards
+            y += Metric.headerH + Metric.headerToGrid
             let rows = (group.entries.count + cols - 1) / cols
             for i in 0..<group.entries.count {
                 let row = i / cols, col = i % cols
@@ -319,10 +324,10 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
                                                 width: cardW, height: cardH)
                 cardIndex += 1
             }
-            y += CGFloat(rows) * cardH + CGFloat(max(0, rows - 1)) * Metric.rowGap + Metric.afterRow
+            y += CGFloat(rows) * cardH + CGFloat(max(0, rows - 1)) * Metric.rowGap + Metric.groupGap
         }
         gridDocView.frame = NSRect(x: 0, y: 0, width: contentW,
-                                   height: max(y + 60, scrollView.contentSize.height))
+                                   height: max(y + 40, scrollView.contentSize.height))
     }
 
     // MARK: Thumbnails and metadata
@@ -422,9 +427,9 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
     }
 
     private func metaText(for entry: HistoryEntry, flat: Bool, size: String? = nil) -> String {
-        var parts = [Self.formatName(for: entry.info)]
+        // Figma leads with the time ("09:12 · Finder"); format and size follow.
+        var parts = [timeText(for: entry.timestamp, flat: flat), Self.formatName(for: entry.info)]
         if let size = size ?? sizeCache[entry.info.url.path] { parts.append(size) }
-        parts.append(timeText(for: entry.timestamp, flat: flat))
         return parts.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
@@ -513,6 +518,7 @@ final class HistoryWindow: NSWindow, NSWindowDelegate {
     @objc private func languageChanged() {
         titlebar.title = "Preview History".localized
         searchBox.updatePlaceholder()
+        clearButton.title = Self.clearTitle
         applyFilter()
     }
 

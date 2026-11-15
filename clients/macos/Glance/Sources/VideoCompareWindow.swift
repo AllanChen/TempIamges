@@ -4,56 +4,50 @@ import AVKit
 import Network
 import WebKit
 
-/// Figma 110:50 — Video Inspect v4 / Focus / Portrait. All values are logical
-/// points. Convert the top-origin reference into AppKit's bottom-origin frames.
-/// The video filmstrip follows Image Inspection's smaller sizing per user request.
+/// Figma Shizuka `08 · Video Inspect` / `27 · Video Compare`, on Image
+/// Inspect's chrome: the 44 pt titlebar, the stage, a 28 pt transport row 24 pt
+/// below the stage and 16 pt above the 92 pt bottom bar (file info, filmstrip,
+/// position). Values are top-origin Figma points converted to AppKit frames.
 struct VideoInspectChromeLayout {
-    static let filmstripBaseSize: CGFloat = 96 * 0.8 * 0.8
-    static let filmstripBaseGap: CGFloat = 8
-    let toolbar: NSRect
-    let playback: NSRect
-    let timeline: NSRect
-    let currentTime: NSRect
-    let separator: NSRect
-    let duration: NSRect
+    static let filmstripBaseSize: CGFloat = InspectLayout.thumbSize
+    static let filmstripBaseGap: CGFloat = InspectLayout.thumbGap
+    static let transportHeight: CGFloat = 28
+    /// Stage → transport, and transport → bottom bar.
+    static let transportTopGap: CGFloat = 24
+    static let transportBottomGap: CGFloat = 16
+    /// Compare panes: 16 pt apart, the caption 16 pt below each pane.
+    static let compareGap: CGFloat = 16
+    static let captionGap: CGFloat = 16
+    static let stageTopMargin: CGFloat = 28
+    static let stageSideMargin: CGFloat = 44
+    /// Toasts clear the transport row and the bottom bar.
+    static let toastInset = InspectLayout.bottomBarHeight + transportBottomGap + transportHeight + PanelStyle.Space.m
+    let stage: NSRect
+    let transport: NSRect
     let filmstrip: NSRect
     let capture: NSRect
 
-    init(size: NSSize, videoCount: Int, showsRunningTask: Bool = false) {
-        func fromTop(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> NSRect {
-            NSRect(x: x, y: size.height - y - height, width: width, height: height)
-        }
-        // Reserve the same 34pt badge / 12pt gap as Image Inspect while a
-        // focused video runs a task; keep every toolbar button uniformly scaled.
-        let badgeX = max(8, size.width - 58)
-        let toolbarScale = showsRunningTask ? max(0.1, min(1, (badgeX - 20) / 274)) : 1
-        let toolbarWidth = 274 * toolbarScale
-        let centeredX = (size.width - toolbarWidth) / 2
-        let toolbarX = showsRunningTask ? min(centeredX, badgeX - 12 - toolbarWidth) : centeredX
-        toolbar = fromTop(toolbarX, size.width < 520 ? 56 : 24, toolbarWidth, 54 * toolbarScale)
-        let barWidth = min(1306, size.width - 48)
-        playback = fromTop((size.width - barWidth) / 2, size.height - 88, barWidth, 64)
-        // These four frames are local to the 64pt playback bar.
-        timeline = NSRect(x: 70, y: 20, width: barWidth - 212, height: 24)
-        currentTime = NSRect(x: barWidth - 126, y: 24, width: 42, height: 16)
-        separator = NSRect(x: barWidth - 82, y: 24, width: 12, height: 16)
-        duration = NSRect(x: barWidth - 68, y: 24, width: 52, height: 16)
+    init(size: NSSize, videoCount: Int) {
+        let barHeight = InspectLayout.bottomBarHeight
+        transport = NSRect(x: 0, y: barHeight + Self.transportBottomGap,
+                           width: size.width, height: Self.transportHeight)
+        let bandBottom = transport.maxY + Self.transportTopGap
+        let bandTop = size.height - InspectLayout.titlebarHeight
+        let band = max(0, bandTop - bandBottom)
+        let top = min(Self.stageTopMargin, max(PanelStyle.Space.m, floor(band * 0.05)))
+        let side = min(Self.stageSideMargin, max(PanelStyle.Space.l, floor(size.width * 0.04)))
+        stage = NSRect(x: side, y: bandBottom, width: max(0, size.width - side * 2), height: max(0, band - top))
+        // Up to eight tiles show in full; longer lists show eight and a half
+        // and scroll, as in Image Inspect.
         let count = CGFloat(max(1, videoCount))
-        // Match ImageInspectWindow's thumbnail scale, including its lower and
-        // upper bounds. Keep overflow scrollable instead of squeezing each tile.
-        let thumbnailScale = min(max(min(size.width / 1554, size.height / 1012), 0.62), 1.25)
-        let tile = Self.filmstripBaseSize * thumbnailScale
-        let gap = Self.filmstripBaseGap * thumbnailScale
-        let visibleWidth = count <= 8
-            ? count * tile + (count - 1) * gap
-            : 8.5 * tile + 8 * gap
-        let stripWidth = min(visibleWidth, max(1, size.width - 48))
-        filmstrip = fromTop((size.width - stripWidth) / 2, size.height - 108 - tile, stripWidth, tile)
-        var preview = fromTop(size.width - 244, size.height - 237, 220, 125)
-        if videoCount > 1 && preview.intersects(filmstrip) {
-            preview.origin.y = filmstrip.maxY + 24
-        }
-        capture = preview
+        let tile = Self.filmstripBaseSize
+        let gap = Self.filmstripBaseGap
+        let visibleWidth = count <= 8 ? count * tile + (count - 1) * gap : 8.5 * tile + 8 * gap
+        let infoRoom = min(240, max(120, size.width * 0.22))
+        let stripWidth = max(tile, min(visibleWidth, size.width - infoRoom * 2))
+        filmstrip = NSRect(x: ((size.width - stripWidth) / 2).rounded(), y: InspectLayout.filmstripBottom,
+                           width: stripWidth, height: tile)
+        capture = NSRect(x: max(0, stage.maxX - 220), y: stage.minY, width: 220, height: 125)
     }
 }
 
@@ -108,8 +102,14 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     private let replayButton = InspectToolbarButton(symbol: "arrow.counterclockwise", tooltip: "Replay".localized)
     private let pinButton = InspectToolbarButton(symbol: "pin", tooltip: "Pin on Top".localized)
     private let widgetMarketButton = InspectToolbarButton(symbol: "square.grid.2x2", tooltip: "Widget Market".localized)
+    private let infoButton = InspectToolbarButton(symbol: "info.circle", tooltip: "Video information".localized)
     private var isPinned = false
+    /// The transport row: play, time, scrubber, duration and Capture frame.
     private let playbackBar = VideoPlaybackBar()
+    private lazy var captureFrameButton = InspectDialogButton.make("Capture frame".localized, primary: false,
+                                                                    target: self, action: #selector(captureTapped))
+    private let bottomBar = InspectBottomBar()
+    private let compareCaptions = [VideoCompareCaption(), VideoCompareCaption()]
     private let captureFeedback = CaptureFeedbackView()
     private let captureThumbnail = CaptureThumbnailButton()
     private var pendingCaptureURL: URL?
@@ -155,7 +155,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
                    styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         title = "Video Inspect".localized
         titleVisibility = .hidden; titlebarAppearsTransparent = true
-        appearance = NSAppearance(named: .darkAqua); backgroundColor = PanelStyle.inspectCanvas
+        appearance = PanelStyle.windowAppearance; backgroundColor = PanelStyle.inspectCanvas
         contentMinSize = NSSize(width: 560, height: 488)
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -262,7 +262,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
         root.layer?.cornerRadius = 16
         root.layer?.borderWidth = 1
-        root.layer?.borderColor = PanelStyle.resolvedCG(NSColor.white.withAlphaComponent(0.22))
+        root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.contrast.withAlphaComponent(0.22))
         root.layer?.masksToBounds = true
         canvas.acceptsExtension = { ext in
             MediaDropCanvasView.videoExtensions.contains(ext) ||
@@ -272,6 +272,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         canvas.onDrop = { [weak self] url, point in
             self?.handleDroppedResource(url: url, at: point)
         }
+        // MARK: Titlebar — 44 pt drag region with the window controls on the left.
         identityBar.addSubview(trialBadge)
         [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].forEach(identityBar.addSubview)
         canvas.addSubview(identityBar)
@@ -283,40 +284,51 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         replayButton.target = self; replayButton.action = #selector(replayTapped)
         pinButton.target = self; pinButton.action = #selector(pinTapped)
         widgetMarketButton.target = self; widgetMarketButton.action = #selector(widgetMarketTapped)
+        infoButton.target = self; infoButton.action = #selector(infoTapped)
         pinButton.isActive = isPinned
-        for button in [captureButton, focusButton, compareButton,
-                       widgetMarketButton, moreButton] {
-            button.usesFigmaStyle = true
-            button.isBorderlessFigmaTile = true
+        // Shizuka `mode switch` (Focus, Capture, Compare, Widget Market) centred,
+        // `titlebar actions` (Information, More) on the right.
+        for button in [focusButton, captureButton, compareButton, widgetMarketButton, infoButton, moreButton] {
+            button.usesShizukaStyle = true
             button.updateTooltip(button.toolTip ?? "")
-            button.layer?.cornerRadius = 9
             inspectToolbar.addSubview(button)
         }
-        captureButton.setDesignIcon("VideoInspectCapture")
-        focusButton.setDesignIcon("VideoInspectFocus")
-        moreButton.setDesignIcon("VideoInspectMore")
-        compareButton.setDesignIcon("ToolbarCompare")
-        widgetMarketButton.setDesignIcon("ToolbarGrid")
+        focusButton.setSymbol("play")
+        captureButton.setSymbol("camera")
+        compareButton.setDesignIcon("ShizukaCompare")
+        widgetMarketButton.setDesignIcon("ShizukaGrid")
+        infoButton.setDesignIcon("ShizukaInfo")
+        moreButton.setDesignIcon("ShizukaMore")
         canvas.addSubview(inspectToolbar)
+
+        // MARK: Transport — Figma `transport` / `shared transport`.
         playButton.target = self; playButton.action = #selector(playTapped)
-        playButton.usesFigmaStyle = true
-        playButton.isBorderlessFigmaTile = true
+        playButton.usesShizukaStyle = true
         playButton.updateTooltip("Play".localized)
-        playButton.contentTintColor = PanelStyle.accent
         timeline.onChange = { [weak self] value in self?.seek(to: value) }
-        playButton.isActive = true
-        [playButton, timeline, currentLabel, separatorLabel, durationLabel].forEach { playbackBar.addSubview($0) }
+        currentLabel.textColor = InspectInk.text2
+        durationLabel.textColor = InspectInk.text3
+        durationLabel.alignment = .right
+        separatorLabel.isHidden = true
+        [playButton, currentLabel, separatorLabel, timeline, durationLabel, captureFrameButton].forEach { playbackBar.addSubview($0) }
         canvas.addSubview(playbackBar)
+
+        // MARK: Bottom bar — file info left, filmstrip centred, position right.
+        canvas.addSubview(bottomBar)
         filmstrip.onSelect = { [weak self] index in
             self?.selectVideo(index)
             self?.offerFailureActions(forItemAt: index)
         }; canvas.addSubview(filmstrip)
-        // The video fills the window; the controls float over it.
+        compareCaptions.forEach { caption in
+            caption.isHidden = true
+            canvas.addSubview(caption)
+        }
         inspectToolbar.isHidden = false; inspectToolbar.alphaValue = 1
         identityBar.isHidden = false; identityBar.alphaValue = 1
         filmstrip.isHidden = !showsVideoFilmstrip; filmstrip.alphaValue = 1
+        // The Shizuka bottom bar replaces the old running scrim behind the strip.
         runningStripShade.wantsLayer = true
-        runningStripShade.layer?.backgroundColor = HistoryStyle.hex(0x07080A, alpha: 0.55).cgColor
+        runningStripShade.layer?.backgroundColor = InspectInk.ink0.withAlphaComponent(0.55).cgColor
         runningStripShade.isHidden = true
         canvas.addSubview(runningStripShade, positioned: .below, relativeTo: filmstrip)
         runningVideoChip.showsSparks = false
@@ -324,6 +336,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         runningVideoChip.setAccessibilityElement(true)
         canvas.addSubview(runningVideoChip, positioned: .above, relativeTo: filmstrip)
         playbackBar.isHidden = false; playbackBar.alphaValue = 1
+        toastWindow.bottomInset = VideoInspectChromeLayout.toastInset
         infoPanel.autoresizingMask = [.width, .height]
         infoPanel.isHidden = true
         canvas.addSubview(infoPanel)
@@ -350,107 +363,211 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         guard b.width > 0, b.height > 0 else { return }
         canvas.layer?.cornerRadius = 16
         canvas.layer?.borderWidth = 1
-        trialBadge.frame=NSRect(x:max(92,b.width-166),y:8,width:min(146,max(0,b.width-102)),height:26)
-        trialBadge.refresh()
-        identityBar.frame = NSRect(x: 0, y: b.height - 44, width: b.width, height: 44)
+        let titleHeight = InspectLayout.titlebarHeight
+        let titlebar = NSRect(x: 0, y: b.height - titleHeight, width: b.width, height: titleHeight)
+        identityBar.frame = titlebar
+        inspectToolbar.frame = titlebar
+        // Figma traffic lights: 12 pt at x 20 / 40 / 60, 16 pt from the top.
         for (offset, button) in [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].enumerated() {
-            // Figma's 12pt traffic lights sit at top 18 inside its 16pt group.
-            button.frame = NSRect(x: 20 + CGFloat(offset) * 26, y: 14, width: 12, height: 12)
+            button.frame = NSRect(x: 20 + CGFloat(offset) * 20, y: titleHeight - 16 - 12, width: 12, height: 12)
+            button.layer?.cornerRadius = 6
         }
-        let infoWidth = infoVisible ? min(434, max(0, b.width - 320)) : 0
-        let canvasW = b.width - infoWidth
-        let geometry = VideoInspectChromeLayout(size: NSSize(width: canvasW, height: b.height),
-                                               videoCount: infos.count,
-                                               showsRunningTask: currentRunningTask != nil)
-        inspectToolbar.frame = geometry.toolbar
-        let toolbarScale = geometry.toolbar.width / 274
-        inspectToolbar.layer?.cornerRadius = 15 * toolbarScale
-        copyResultURLButton.frame = NSRect(x: max(8, canvasW - 24 - 34),
-                                           y: geometry.toolbar.midY - 17,
-                                           width: 34, height: 34)
-        func place(_ button: InspectToolbarButton, x: CGFloat) {
-            button.frame = NSRect(x: x * toolbarScale, y: 8 * toolbarScale,
-                                 width: 38 * toolbarScale, height: 38 * toolbarScale)
-            button.layer?.cornerRadius = 9 * toolbarScale
-            button.layer?.borderWidth = 0
-            button.setSymbolPointSize(18 * toolbarScale)
-        }
-        place(captureButton, x: 14)
-        place(focusButton, x: 66)
-        place(compareButton, x: 118)
-        place(widgetMarketButton, x: 170)
-        place(moreButton, x: 222)
+        layoutToolbar(width: b.width)
 
-        let videoRect = NSRect(x: 0, y: 0, width: canvasW, height: b.height)
-        infoPanel.frame = NSRect(x: canvasW, y: 0, width: infoWidth, height: b.height)
+        // Figma `28 · Video Inspect / Info`: a 320 pt panel under the titlebar.
+        let infoWidth = infoVisible ? min(320, max(0, b.width - 320)) : 0
+        let canvasW = b.width - infoWidth
+        infoPanel.frame = NSRect(x: canvasW, y: 0, width: infoWidth, height: max(0, b.height - titleHeight))
         infoPanel.isHidden = !infoVisible
+        let geometry = VideoInspectChromeLayout(size: NSSize(width: canvasW, height: b.height),
+                                               videoCount: infos.count)
+        let stage = geometry.stage
+        bottomBar.frame = NSRect(x: 0, y: 0, width: canvasW, height: InspectLayout.bottomBarHeight)
+        var transportSpan = stage
         if mode == .compare, activeIndices.count == 2 {
-            // Fit each complete video, then place the visible images beside
-            // each other. Equal half-window viewports put a large empty band
-            // between two portrait videos even though their pane gap is 2pt.
-            let gap: CGFloat = 2
-            let maxWidth = max(1, (videoRect.width - gap) / 2)
+            // Fit each complete video beside the centred seam, leaving room for
+            // the captions below. Spare width stays at the outside edges.
+            let gap = VideoInspectChromeLayout.compareGap
+            let captionRoom = VideoInspectChromeLayout.captionGap + VideoCompareCaption.height
+            let panes = NSRect(x: stage.minX, y: stage.minY + captionRoom,
+                               width: stage.width, height: max(1, stage.height - captionRoom))
+            let maxWidth = max(1, (panes.width - gap) / 2)
             func fittedSize(for slot: Int) -> CGSize {
                 guard let index = activeIndices[safe: slot] else {
-                    return CGSize(width: maxWidth, height: videoRect.height)
+                    return CGSize(width: maxWidth, height: panes.height)
                 }
                 let natural = infos[index].dimensions
                     ?? viewports[safe: slot]?.videoSize
                     ?? .zero
                 guard natural.width > 0, natural.height > 0 else {
-                    return CGSize(width: maxWidth, height: videoRect.height)
+                    return CGSize(width: maxWidth, height: panes.height)
                 }
-                let fit = min(maxWidth / natural.width, videoRect.height / natural.height)
+                let fit = min(maxWidth / natural.width, panes.height / natural.height)
                 return CGSize(width: natural.width * fit, height: natural.height * fit)
             }
             let left = fittedSize(for: 0)
             let right = fittedSize(for: 1)
-            // Keep the compare seam centered, as in Image Inspect. Any spare
-            // width stays at the outside edges instead of between the videos.
-            let seam = videoRect.midX
+            let seam = panes.midX
             viewports[safe: 0]?.frame = NSRect(x: seam - gap / 2 - left.width,
-                                                y: videoRect.midY - left.height / 2,
+                                                y: panes.midY - left.height / 2,
                                                 width: left.width, height: left.height)
             viewports[safe: 1]?.frame = NSRect(x: seam + gap / 2,
-                                                y: videoRect.midY - right.height / 2,
+                                                y: panes.midY - right.height / 2,
                                                 width: right.width, height: right.height)
+            let shown = activeVideoFrame
+            transportSpan = shown.isEmpty ? stage : NSRect(x: shown.minX, y: stage.minY, width: shown.width, height: 0)
         } else {
-            viewports[safe: 0]?.frame = videoRect
+            var shown = stage
+            if let index = activeIndices.first {
+                let natural = infos[safe: index]?.dimensions ?? viewports.first?.videoSize ?? .zero
+                if natural.width > 0, natural.height > 0, stage.width > 0, stage.height > 0 {
+                    let fit = min(stage.width / natural.width, stage.height / natural.height)
+                    let size = CGSize(width: natural.width * fit, height: natural.height * fit)
+                    shown = NSRect(x: stage.midX - size.width / 2, y: stage.midY - size.height / 2,
+                                   width: size.width, height: size.height)
+                }
+            }
+            viewports[safe: 0]?.frame = shown
             viewports[safe: 1]?.frame = .zero
+            // The transport lines up with the video, never narrower than 480 pt.
+            let width = min(stage.width, max(shown.width, 480))
+            transportSpan = NSRect(x: stage.midX - width / 2, y: stage.minY, width: width, height: 0)
         }
         for viewport in viewports {
-            let toolbarCenter = geometry.toolbar.midY - viewport.frame.minY
+            let toolbarCenter = titlebar.midY - viewport.frame.minY
             viewport.setWidgetIndicatorCenterY(
                 toolbarCenter >= 18 && toolbarCenter <= viewport.bounds.maxY - 18
                     ? toolbarCenter : nil)
         }
+        layoutCompareCaptions()
+        layoutTransport(NSRect(x: transportSpan.minX, y: geometry.transport.minY,
+                               width: transportSpan.width, height: geometry.transport.height))
 
-        playbackBar.frame = geometry.playback
-        playButton.frame = NSRect(x: 16, y: 13, width: 38, height: 38)
-        playButton.layer?.cornerRadius = 9
-        playButton.setSymbolPointSize(18)
-        timeline.frame = geometry.timeline
-        currentLabel.frame = geometry.currentTime
-        separatorLabel.frame = geometry.separator
-        durationLabel.frame = geometry.duration
-        filmstrip.frame = geometry.filmstrip
-        runningStripShade.frame = NSRect(x: 8, y: geometry.filmstrip.minY - 12,
-                                         width: max(0, canvasW - 16), height: geometry.filmstrip.height + 29)
+        filmstrip.frame = filmstrip.isHidden ? .zero : geometry.filmstrip
+        bottomBar.infoLimitX = filmstrip.isHidden ? .greatestFiniteMagnitude : geometry.filmstrip.minX - PanelStyle.Space.l
+        updateBottomBar()
+        runningStripShade.frame = .zero
         if currentRunningTask != nil,
-           let placement = TaskRunningPlacement.chip(canvas: videoRect.size,
-               stripTop: filmstrip.isHidden ? geometry.playback.maxY : runningStripShade.frame.maxY,
-               toolbarBottom: geometry.toolbar.minY) {
+           let placement = TaskRunningPlacement.chip(canvas: NSSize(width: canvasW, height: b.height),
+               stripTop: geometry.transport.maxY,
+               toolbarBottom: titlebar.minY) {
             runningVideoChip.style = placement.style
             runningVideoChip.frame = placement.frame
             runningVideoChip.isHidden = false
         } else {
             runningVideoChip.isHidden = true
         }
-        captureFeedback.frame = videoRect
+        captureFeedback.frame = activeVideoFrame.isEmpty ? stage : activeVideoFrame
         captureThumbnail.contentWidth = 220
         if !captureThumbnail.isHidden, pendingCaptureURL != nil {
             captureThumbnail.frame = geometry.capture
         }
+    }
+
+    /// Figma `mode switch` (28 pt tiles, 2 pt gaps, centred, 8 pt from the top)
+    /// and `titlebar actions` (4 pt gaps, 20 pt from the right edge), the Widget
+    /// result URL action and the trial badge before them — as in Image Inspect.
+    private func layoutToolbar(width: CGFloat) {
+        let size = InspectLayout.controlSize
+        let titleHeight = InspectLayout.titlebarHeight
+        let y = titleHeight - 8 - size
+        let modeButtons = [focusButton, captureButton, compareButton, widgetMarketButton]
+        let modeWidth = CGFloat(modeButtons.count) * size + CGFloat(modeButtons.count - 1) * 2
+        var x = ((width - modeWidth) / 2).rounded()
+        for button in modeButtons {
+            button.frame = NSRect(x: x, y: y, width: size, height: size)
+            x += size + 2
+        }
+        let modeMaxX = x - 2
+        var right = width - 20
+        for button in [infoButton, moreButton].reversed() {
+            button.frame = NSRect(x: right - size, y: y, width: size, height: size)
+            right -= size + 4
+        }
+        if !copyResultURLButton.isHidden {
+            copyResultURLButton.frame = NSRect(x: right - size, y: canvas.bounds.height - titleHeight + y,
+                                               width: size, height: size)
+            right -= size + 4
+        }
+        right += 4
+        let badgeWidth: CGFloat = 146
+        let badgeX = right - 12 - badgeWidth
+        trialBadge.frame = badgeX >= modeMaxX + 12
+            ? NSRect(x: badgeX, y: (titleHeight - 20) / 2, width: badgeWidth, height: 20) : .zero
+        trialBadge.refresh()
+    }
+
+    /// Figma `transport`: play (28), the current time 16 pt after it, the
+    /// scrubber, the duration and — in Focus — Capture frame, 16 pt apart.
+    /// The row is 32 pt high so the 32 pt button keeps its full hit area.
+    private func layoutTransport(_ row: NSRect) {
+        playbackBar.frame = NSRect(x: row.minX, y: row.minY - 2, width: row.width, height: row.height + 4)
+        let midY = playbackBar.bounds.midY
+        playButton.frame = NSRect(x: 0, y: midY - 14, width: 28, height: 28)
+        let currentWidth = max(33, currentLabel.preferredWidth, durationLabel.preferredWidth)
+        currentLabel.frame = NSRect(x: 44, y: midY - 7, width: currentWidth, height: 14)
+        var trailing = playbackBar.bounds.width
+        captureFrameButton.isHidden = mode == .compare
+        if !captureFrameButton.isHidden {
+            let width = InspectDialogButton.width(captureFrameButton.title)
+            captureFrameButton.frame = NSRect(x: trailing - width, y: 0, width: width, height: 32)
+            trailing = captureFrameButton.frame.minX - 16
+        }
+        let durationWidth = max(33, durationLabel.preferredWidth)
+        durationLabel.frame = NSRect(x: trailing - durationWidth, y: midY - 7, width: durationWidth, height: 14)
+        separatorLabel.frame = .zero
+        // The scrubber's knob overhangs its track by half its width.
+        let inset = WarmVideoTimeline.knobSize / 2
+        let timelineMinX = currentLabel.frame.maxX + 16 - inset
+        timeline.frame = NSRect(x: timelineMinX, y: midY - 7,
+                                width: max(0, durationLabel.frame.minX - 16 + inset - timelineMinX), height: 14)
+    }
+
+    /// Figma `27 · Video Compare`: each pane's caption 16 pt below the video.
+    private func layoutCompareCaptions() {
+        guard mode == .compare, viewports.count == 2, let pair = compareIndices else {
+            compareCaptions.forEach { $0.isHidden = true }
+            return
+        }
+        for (slot, index) in [pair.0, pair.1].enumerated() {
+            let caption = compareCaptions[slot]
+            guard let info = infos[safe: index], let viewport = viewports[safe: slot],
+                  !viewport.frame.isEmpty else {
+                caption.isHidden = true
+                continue
+            }
+            let height = VideoCompareCaption.height
+            caption.frame = NSRect(x: viewport.frame.minX,
+                                   y: viewport.frame.minY - VideoInspectChromeLayout.captionGap - height,
+                                   width: viewport.frame.width, height: height)
+            var meta: [String] = []
+            if let size = info.dimensions { meta.append("\(Int(size.width)) × \(Int(size.height))") }
+            let metadata = videoMetadata[safe: index] ?? nil
+            if let codec = metadata?.videoCodec { meta.append(codec) }
+            if let bitrate = metadata?.videoBitrate, bitrate > 0 {
+                meta.append(bitrate >= 1_000_000
+                    ? String(format: "%.1f Mbps", Double(bitrate) / 1_000_000)
+                    : String(format: "%.0f kbps", Double(bitrate) / 1_000))
+            }
+            caption.configure(letter: slot == 0 ? "A" : "B", name: info.filename,
+                              soundState: (viewport.isMuted ? "Muted" : "Sound on").localized,
+                              meta: meta.joined(separator: " · "))
+            caption.isHidden = false
+        }
+    }
+
+    /// Figma `file info` and `position` in Focus; Compare names each pane instead.
+    private func updateBottomBar() {
+        guard mode == .focus, let info = infos[safe: focusedIndex] else {
+            bottomBar.showSingle(name: "", meta: "", zoom: "", position: nil)
+            return
+        }
+        var parts: [String] = []
+        if let size = info.dimensions { parts.append("\(Int(size.width)) × \(Int(size.height))") }
+        if let codec = videoMetadata[safe: focusedIndex].flatMap({ $0?.videoCodec }) { parts.append(codec) }
+        if let duration = durations[safe: focusedIndex], duration > 0 { parts.append(Self.formatTime(duration)) }
+        bottomBar.showSingle(name: info.filename, meta: parts.joined(separator: "   "), zoom: "",
+                             position: infos.count > 1 ? "\(focusedIndex + 1) / \(infos.count)" : nil)
     }
 
     private func render() {
@@ -532,6 +649,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         }
         // Keep all chrome above the AVPlayer surfaces after every mode switch.
         canvas.addSubview(identityBar, positioned: .above, relativeTo: nil)
+        canvas.addSubview(bottomBar, positioned: .above, relativeTo: nil)
+        compareCaptions.forEach { canvas.addSubview($0, positioned: .above, relativeTo: nil) }
         canvas.addSubview(playbackBar, positioned: .above, relativeTo: nil)
         canvas.addSubview(runningStripShade, positioned: .above, relativeTo: nil)
         canvas.addSubview(filmstrip, positioned: .above, relativeTo: nil)
@@ -545,6 +664,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         compareButton.isEnabled = infos.count > 1
         focusButton.isActive = mode == .focus
         compareButton.isActive = mode == .compare
+        infoButton.isActive = infoVisible
         revealButton.isEnabled = activeIndices.contains { infos[$0].isLocal }
         filmstrip.isHidden = !showsVideoFilmstrip
         filmstrip.configure(infos: infos, selectedIndex: focusedIndex,
@@ -687,8 +807,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         currentLabel.stringValue = Self.formatTime(currentTime)
         durationLabel.stringValue = Self.formatTime(maximumDuration)
         if displayedPlaybackState != isPlaying {
-            if isPlaying { playButton.setDesignIcon("VideoInspectPause") }
-            else { playButton.setSymbol("play.fill") }
+            playButton.setSymbol(isPlaying ? "pause" : "play")
             playButton.updateTooltip(isPlaying ? "Pause".localized : "Play".localized)
             displayedPlaybackState = isPlaying
         }
@@ -772,14 +891,16 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         actionsPanel?.dismissChain()
         let panel = ActionMenuPanel(entries: buildMoreEntries(), style: .more)
         actionsPanel = panel
-        // Anchor the menu to the toolbar's bottom-right corner so it drops
-        // down from the toolbar with an 8pt gap and right-aligns with it.
-        let windowPoint = inspectToolbar.convert(NSPoint(x: inspectToolbar.bounds.maxX, y: 0), to: nil)
-        let screenPoint = convertToScreen(NSRect(origin: windowPoint, size: .zero)).origin
-        panel.presentBelowToolbar(at: screenPoint)
+        // Figma `21 · More menu`: the menu drops 6 pt below the ⋯ button and
+        // right-aligns with it, as in Image Inspect.
+        let buttonRect = moreButton.convert(moreButton.bounds, to: nil)
+        let screenPoint = convertToScreen(NSRect(origin: NSPoint(x: buttonRect.maxX, y: buttonRect.minY),
+                                                 size: .zero)).origin
+        panel.presentBelowToolbar(at: screenPoint, gap: 6)
     }
     @objc private func infoTapped() {
         infoVisible.toggle()
+        infoButton.isActive = infoVisible
         infoPanel.isHidden = !infoVisible
         refreshInfoPanel()
         layoutContent()
@@ -924,6 +1045,11 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
     }
     private func captureCurrentFrame(at time: Double, completion: @escaping (NSImage?) -> Void) {
         guard !viewports.isEmpty else { completion(nil); return }
+        // The capture editor lays the composite over both panes, so the seam in
+        // the image must match the on-screen seam, scaled to the frame's pixels.
+        let paneFrames = viewports.map(\.frame).sorted { $0.minX < $1.minX }
+        let screenGap = paneFrames.count > 1 ? max(0, paneFrames[1].minX - paneFrames[0].maxX) : 0
+        let screenHeight = paneFrames.first?.height ?? 0
         var captured = Array<NSImage?>(repeating: nil, count: viewports.count)
         let group = DispatchGroup()
         for (offset, viewport) in viewports.enumerated() {
@@ -941,8 +1067,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             let frames = captured.compactMap { $0 }
             guard !frames.isEmpty else { completion(nil); return }
             if frames.count == 1 { completion(frames[0]); return }
-            let gap: CGFloat = 2
             let height = frames.map(\.size.height).max() ?? 1
+            let gap = screenHeight > 0 && screenGap > 0 ? (screenGap * height / screenHeight).rounded() : 2
             let width = frames.reduce(0) { $0 + ($1.size.width * height / max(1, $1.size.height)) } + gap
             let output = NSImage(size: NSSize(width: width, height: height))
             output.lockFocus()
@@ -1073,6 +1199,7 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         guard viewports.indices.contains(slot) else { return }
         let viewport = viewports[slot]
         viewport.setMuted(!viewport.isMuted)
+        layoutCompareCaptions()
     }
 
     private func runWidget(widget: WidgetManifest, command: WidgetCommand) {
@@ -1092,7 +1219,8 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         }
         widgetInputPanel?.close()
         let panel = WidgetVideoInputPanel(widgetName: widget.displayName, sourceURL: info.url,
-                                          capabilities: capabilities)
+                                          capabilities: capabilities,
+                                          costText: widget.taskCreditCost == 0 ? "Free of charge".localized : widget.creditCostLabel)
         panel.onSubmit = { [weak self] input in
             guard let self, let first = input.mediaURLs.first else { return }
             let media = MediaInfo(url: first, isLocal: first.isFileURL, kind: .video)

@@ -103,7 +103,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
     /// the panel misbehaves.
     private func showFallbackMenu() {
         let fallback = NSMenu()
-        fallback.appearance = NSAppearance(named: .darkAqua)
+        fallback.appearance = PanelStyle.windowAppearance
         let home = NSMenuItem(title: "Open Home".localized, action: #selector(openHome), keyEquivalent: "")
         home.target = self; fallback.addItem(home)
         let prefs = NSMenuItem(title: "Preferences...".localized, action: #selector(openPreferences), keyEquivalent: "")

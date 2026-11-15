@@ -100,7 +100,7 @@ enum CaptureFreeze {
         context.clip(to: CGRect(x: 0, y: 0, width: split, height: height))
         drawAspectFit(b.image, in: canvas, context: context)
         context.restoreGState()
-        context.setFillColor(PanelStyle.textPrimary.withAlphaComponent(0.82).cgColor)
+        context.setFillColor(PanelStyle.exportDivider.cgColor)
         context.fill(CGRect(x: max(0, split - 1), y: 0, width: 2, height: height))
         return context.makeImage()
     }
@@ -123,7 +123,7 @@ enum CaptureFreeze {
     }
 
     private static func fill(_ context: CGContext, width: CGFloat, height: CGFloat) {
-        context.setFillColor(PanelStyle.imageCanvas.cgColor)
+        context.setFillColor(PanelStyle.exportCanvas.cgColor)
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     }
 

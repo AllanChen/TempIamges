@@ -1062,7 +1062,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     /// which is what the preview panel and history view read when picking
     /// dynamic / semantic colours.
     private func applyTheme() {
-        NSApp.appearance = Preferences.shared.theme.appearance
+        // Pin to the theme resolved at launch so system controls match PanelStyle.
+        NSApp.appearance = PanelStyle.windowAppearance
+    }
+
+    /// Quit and reopen this bundle once the current process has exited.
+    static func relaunch() {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"$0\"",
+                          Bundle.main.bundlePath]
+        do {
+            try task.run()
+        } catch {
+            Logger.error("AppDelegate: Could not schedule relaunch: \(error.localizedDescription)")
+            return
+        }
+        NSApp.terminate(nil)
     }
 
     func openPreferences() {

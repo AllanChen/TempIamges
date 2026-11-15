@@ -31,6 +31,11 @@ class Preferences {
         case japanese = "ja"
         case german = "de"
 
+        /// The language that follows the system language (English when the system language is not supported).
+        static var systemDefault: AppLanguage {
+            AppLanguage(rawValue: SystemLanguage.code(for: SystemLanguage.systemIdentifiers())) ?? .english
+        }
+
         var displayName: String {
             switch self {
             case .english: return "English"
@@ -63,10 +68,15 @@ class Preferences {
         set { defaults.set(newValue.rawValue, forKey: "\(suiteName).theme") }
     }
 
+    /// The user's language. Until one is chosen (the first launch) it follows the system language, falling back to
+    /// English when that is not supported, and that first value is kept. Choosing a language later replaces it.
     var appLanguage: AppLanguage {
         get {
-            let raw = defaults.string(forKey: "\(suiteName).language") ?? ""
-            return AppLanguage(rawValue: raw) ?? .english
+            let key = "\(suiteName).language"
+            if let raw = defaults.string(forKey: key), let language = AppLanguage(rawValue: raw) { return language }
+            let detected = AppLanguage.systemDefault
+            defaults.set(detected.rawValue, forKey: key)
+            return detected
         }
         set {
             defaults.set(newValue.rawValue, forKey: "\(suiteName).language")
@@ -211,6 +221,6 @@ class Preferences {
         activationMode = .optionSpace
         customHotkeyModifiers = []
         customHotkeyKeyCode = nil
-        appLanguage = .english
+        appLanguage = AppLanguage.systemDefault
     }
 }

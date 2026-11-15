@@ -375,6 +375,8 @@
 "Processing Widget…" = "Widget wird ausgeführt…";
 "Processing…" = "Verarbeitung läuft…";
 "Uploading…" = "Wird hochgeladen…";
+"Preparing" = "Wird vorbereitet";
+"Preparing…" = "Wird vorbereitet…";
 "Submitting…" = "Wird gesendet…";
 "Downloading result…" = "Ergebnis wird geladen…";
 "Widget completed" = "Widget abgeschlossen";
@@ -399,6 +401,10 @@
 "Select the area to change" = "Zu ändernden Bereich wählen";
 "Upload mask" = "Maske hochladen";
 "Draw mask" = "Maske zeichnen";
+"Paint it on the image." = "Male den Bereich direkt auf das Bild.";
+"Choose the image, describe the edit, then draw the mask." = "Wähle das Bild, beschreibe die Änderung und zeichne dann die Maske.";
+"Choose an image, then draw the area to change." = "Wähle ein Bild und zeichne dann den Bereich, der geändert werden soll.";
+"The highlighted area will be changed." = "Der markierte Bereich wird geändert.";
 "Change image" = "Bild ändern";
 "＋  Add image" = "＋  Bild hinzufügen";
 "4 images maximum · remove one to add another" = "Maximal 4 Bilder · zum Hinzufügen eines entfernen";
@@ -611,6 +617,7 @@
 "Search widgets" = "Widgets suchen";
 "Upgrade to Pro" = "Auf Pro upgraden";
 "Upgrade to Pro · from %@" = "Pro kaufen · ab %@";
+"from %@" = "ab %@";
 "Manage Pro" = "Pro verwalten";
 "Manage Pro…" = "Pro verwalten…";
 "Buy Glance Pro…" = "Glance Pro kaufen…";
@@ -943,3 +950,72 @@
 "This code has expired." = "Dieser Code ist abgelaufen.";
 "This account already has an active Pro license. The code was not consumed." = "Dieses Konto hat bereits eine aktive Pro-Lizenz. Der Code wurde nicht verbraucht.";
 "The code was not redeemed. Please try again." = "Der Code wurde nicht eingelöst. Bitte erneut versuchen.";
+
+/* Theme relaunch */
+"Relaunch Glance to apply the theme" = "Glance neu starten, um das Design anzuwenden";
+"Glance needs to relaunch to switch themes. If a Widget task is still uploading, choose Later and relaunch after it finishes." = "Zum Wechseln des Designs muss Glance neu starten. Wird noch eine Widget-Aufgabe hochgeladen, wähle „Später“ und starte nach dem Upload neu.";
+"Relaunch Now" = "Jetzt neu starten";
+"Later" = "Später";
+
+/* Shizuka Home */
+"Choose another" = "Anderen wählen";
+"Nothing here yet" = "Noch nichts hier";
+"Inspected files show up here." = "Angesehene Dateien erscheinen hier.";
+
+/* Shizuka Task Center */
+"Details" = "Details";
+"What failed" = "Was fehlgeschlagen ist";
+"What happened" = "Was passiert ist";
+"Reason" = "Grund";
+"No result" = "Kein Ergebnis";
+
+/* Shizuka Peek */
+"Inspect" = "Ansehen";
+
+/* Shizuka Image Inspect */
+"Image" = "Bild";
+"Color" = "Farbe";
+"1 task" = "1 Aufgabe";
+"Save as…" = "Sichern als …";
+"Icon (.icns)" = "Symbol (.icns)";
+"Original" = "Original";
+"New size" = "Neue Größe";
+"Couldn’t open %@" = "%@ kann nicht geöffnet werden";
+"Glance couldn’t read this image. The file may be damaged or in a format it can’t decode." = "Glance konnte dieses Bild nicht lesen. Die Datei ist möglicherweise beschädigt oder hat ein Format, das nicht dekodiert werden kann.";
+"Use ← → to keep browsing." = "Mit ← → weiterblättern.";
+
+/* Shizuka Sign in */
+"Sign in to Glance" = "Bei Glance anmelden";
+"Connect this Mac." = "Diesen Mac verbinden.";
+
+/* Shizuka Billing */
+"Pay with" = "Bezahlen mit";
+
+/* Shizuka menu bar & onboarding */
+"%d running" = "%d laufen";
+"Accessibility is still off — Peek won’t work until it’s allowed." = "Bedienungshilfen sind noch aus – Peek funktioniert erst nach der Freigabe.";
+
+/* Shizuka Preferences */
+"Show Peek when you press the activation hotkey." = "Peek anzeigen, wenn du das Aktivierungskürzel drückst.";
+
+/* Shizuka video & capture */
+"Sound on" = "Ton an";
+"Muted" = "Stumm";
+"Drag to select · ↵ save · esc cancel" = "Ziehen zum Auswählen · ↵ sichern · esc abbrechen";
+
+/* Shizuka content viewer */
+"Markdown" = "Markdown";
+"Previous match" = "Vorheriger Treffer";
+"Next match" = "Nächster Treffer";
+"1 line changed" = "1 Zeile geändert";
+"%d lines changed" = "%d Zeilen geändert";
+
+/* Shizuka widgets */
+"%d credit" = "%d Credit";
+"Cost" = "Kosten";
+"Prompt" = "Prompt";
+"Mask" = "Maske";
+"Drawn" = "Gezeichnet";
+"Base" = "Basis";
+"Add image" = "Bild hinzufügen";
+"Brush size" = "Pinselgröße";

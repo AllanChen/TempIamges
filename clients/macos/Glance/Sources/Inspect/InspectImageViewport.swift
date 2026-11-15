@@ -224,6 +224,10 @@ final class InspectImageViewport: NSView {
     var loadingIndicatorEnabled = true {
         didSet { updateLoadStatus() }
     }
+    /// The window draws its own load-error view in Focus; compare panes keep this art.
+    var showsFailureArt = true {
+        didSet { if showsFailureArt != oldValue { updateLoadStatus() } }
+    }
     /// Marks which compare slot is active — the side a filmstrip tap replaces.
     var isActiveSlot = false {
         didSet {
@@ -306,10 +310,10 @@ final class InspectImageViewport: NSView {
         registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
-        layer?.cornerRadius = 5
+        layer?.cornerRadius = 0
         layer?.masksToBounds = true
         imageLayer.contentsGravity = .resizeAspect
-        imageLayer.cornerRadius = 5
+        imageLayer.cornerRadius = 0   // the window clips the corners; nothing may show around the image
         imageLayer.masksToBounds = true
         imageLayer.borderWidth = 0
         layer?.addSublayer(imageLayer)
@@ -407,7 +411,7 @@ final class InspectImageViewport: NSView {
 
     private func updateLoadStatus() {
         let failed = image == nil && loadFailed
-        failureView.isHidden = !failed
+        failureView.isHidden = !failed || !showsFailureArt
         loadingView.setLoading(image == nil && loadingIndicatorEnabled && !failed)
     }
 
@@ -429,7 +433,7 @@ final class InspectImageViewport: NSView {
         isInteractionEnabled = true
         guard let task else { widgetStatusLabel.stringValue = ""; return }
         switch task.phase {
-        case .uploading: widgetStatusLabel.stringValue = "Uploading…".localized
+        case .uploading: widgetStatusLabel.stringValue = (task.isPreparing ? "Preparing…" : "Uploading…").localized
         case .submitting: widgetStatusLabel.stringValue = "Submitting…".localized
         case .processing: widgetStatusLabel.stringValue = task.progress > 0 ? "Processing \(task.progress)%" : "Processing…".localized
         case .downloading: widgetStatusLabel.stringValue = "Downloading result…".localized

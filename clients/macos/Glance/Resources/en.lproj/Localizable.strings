@@ -25,6 +25,7 @@
 "No worker has claimed this task yet. You can cancel; any deducted credits will be refunded." = "No worker has claimed this task yet. You can cancel; any deducted credits will be refunded.";
 "Upgrade to Pro" = "Upgrade to Pro";
 "Upgrade to Pro · from %@" = "Upgrade to Pro · from %@";
+"from %@" = "from %@";
 "Manage Pro" = "Manage Pro";
 "Manage Pro…" = "Manage Pro…";
 "Buy Glance Pro…" = "Buy Glance Pro…";
@@ -292,6 +293,8 @@
 "Processing Widget…" = "Processing Widget…";
 "Processing…" = "Processing…";
 "Uploading…" = "Uploading…";
+"Preparing" = "Preparing";
+"Preparing…" = "Preparing…";
 "Submitting…" = "Submitting…";
 "Downloading result…" = "Downloading result…";
 "Widget completed" = "Widget completed";
@@ -381,6 +384,10 @@
 "Select the area to change" = "Select the area to change";
 "Upload mask" = "Upload mask";
 "Draw mask" = "Draw mask";
+"Paint it on the image." = "Paint it on the image.";
+"Choose the image, describe the edit, then draw the mask." = "Choose the image, describe the edit, then draw the mask.";
+"Choose an image, then draw the area to change." = "Choose an image, then draw the area to change.";
+"The highlighted area will be changed." = "The highlighted area will be changed.";
 "Change image" = "Change image";
 "＋  Add image" = "＋  Add image";
 "4 images maximum · remove one to add another" = "4 images maximum · remove one to add another";
@@ -1057,3 +1064,72 @@
 "This code has expired." = "This code has expired.";
 "This account already has an active Pro license. The code was not consumed." = "This account already has an active Pro license. The code was not consumed.";
 "The code was not redeemed. Please try again." = "The code was not redeemed. Please try again.";
+
+/* Theme relaunch */
+"Relaunch Glance to apply the theme" = "Relaunch Glance to apply the theme";
+"Glance needs to relaunch to switch themes. If a Widget task is still uploading, choose Later and relaunch after it finishes." = "Glance needs to relaunch to switch themes. If a Widget task is still uploading, choose Later and relaunch after it finishes.";
+"Relaunch Now" = "Relaunch Now";
+"Later" = "Later";
+
+/* Shizuka Home */
+"Choose another" = "Choose another";
+"Nothing here yet" = "Nothing here yet";
+"Inspected files show up here." = "Inspected files show up here.";
+
+/* Shizuka Task Center */
+"Details" = "Details";
+"What failed" = "What failed";
+"What happened" = "What happened";
+"Reason" = "Reason";
+"No result" = "No result";
+
+/* Shizuka Peek */
+"Inspect" = "Inspect";
+
+/* Shizuka Image Inspect */
+"Image" = "Image";
+"Color" = "Color";
+"1 task" = "1 task";
+"Save as…" = "Save as…";
+"Icon (.icns)" = "Icon (.icns)";
+"Original" = "Original";
+"New size" = "New size";
+"Couldn’t open %@" = "Couldn’t open %@";
+"Glance couldn’t read this image. The file may be damaged or in a format it can’t decode." = "Glance couldn’t read this image. The file may be damaged or in a format it can’t decode.";
+"Use ← → to keep browsing." = "Use ← → to keep browsing.";
+
+/* Shizuka Sign in */
+"Sign in to Glance" = "Sign in to Glance";
+"Connect this Mac." = "Connect this Mac.";
+
+/* Shizuka Billing */
+"Pay with" = "Pay with";
+
+/* Shizuka menu bar & onboarding */
+"%d running" = "%d running";
+"Accessibility is still off — Peek won’t work until it’s allowed." = "Accessibility is still off — Peek won’t work until it’s allowed.";
+
+/* Shizuka Preferences */
+"Show Peek when you press the activation hotkey." = "Show Peek when you press the activation hotkey.";
+
+/* Shizuka video & capture */
+"Sound on" = "Sound on";
+"Muted" = "Muted";
+"Drag to select · ↵ save · esc cancel" = "Drag to select · ↵ save · esc cancel";
+
+/* Shizuka content viewer */
+"Markdown" = "Markdown";
+"Previous match" = "Previous match";
+"Next match" = "Next match";
+"1 line changed" = "1 line changed";
+"%d lines changed" = "%d lines changed";
+
+/* Shizuka widgets */
+"%d credit" = "%d credit";
+"Cost" = "Cost";
+"Prompt" = "Prompt";
+"Mask" = "Mask";
+"Drawn" = "Drawn";
+"Base" = "Base";
+"Add image" = "Add image";
+"Brush size" = "Brush size";

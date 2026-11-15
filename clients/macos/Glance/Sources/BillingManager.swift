@@ -65,13 +65,19 @@ final class BillingManager {
   var offlineAuthorizationExpired: Bool { signedClaims != nil && verifiedClaims == nil }
   var hasPro: Bool { verifiedClaims != nil }
   var shouldManagePro: Bool { hasPro || entitlements?.licenseStatus == "active" || offlineAuthorizationExpired }
-  var proEntryTitle: String {
-    if shouldManagePro { return "Manage Pro".localized }
-    guard let pricing, pricing.paymentsAvailable,
+  /// The lowest price of the Pro tiers that can be bought now, formatted ("$9.99"); nil when it is not known or Pro
+  /// is already owned. Read from the service's pricing, never written into the app.
+  var proEntryPriceText: String? {
+    guard !shouldManagePro, let pricing, pricing.paymentsAvailable,
           let amount = pricing.proTiers.filter({ $0.enabled && !$0.productID.isEmpty })
             .compactMap({ $0.price(pricing.defaultCurrency, launchUntil: pricing.launchUntil).amount }).min()
-    else { return "Upgrade to Pro".localized }
-    return String(format: "Upgrade to Pro · from %@".localized, money(amount, currency: pricing.defaultCurrency))
+    else { return nil }
+    return money(amount, currency: pricing.defaultCurrency)
+  }
+  var proEntryTitle: String {
+    if shouldManagePro { return "Manage Pro".localized }
+    guard let price = proEntryPriceText else { return "Upgrade to Pro".localized }
+    return String(format: "Upgrade to Pro · from %@".localized, price)
   }
   var licenseDurationLabel: String {
     if let expiry = entitlements?.accessExpiresAt {

@@ -111,80 +111,64 @@ final class VideoFilmstripScrollView: NSScrollView {
     }
 }
 
+/// Figma Shizuka `thumb`, as in Image Inspect: the image inset 4/48 of the
+/// tile at 55 % until selected, a 1 pt text/1 rule when selected, and task /
+/// result states as small marks inside the top-right corner.
 final class VideoFilmstripItem: NSView {
     var onClick: (() -> Void)?
     private let imageView = VideoThumbnailImageView()
-    private let runningOverlay = TaskRunningTileOverlay()
-    private let newBadge = VideoNonHitTestingView()
-    private let newLabel = PanelCenteredTextView()
-    private var previewInset: CGFloat = 3
+    private let ring = InspectRunningRing()
+    private let newMark = VideoNonHitTestingView()
+    private let failureMark = VideoNonHitTestingView()
     private var emphasized = false
-    private var showsTaskProgress = false
+    private var failed = false
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 9
+        layer?.cornerRadius = PanelStyle.Radius.control
         layer?.masksToBounds = true
-        layer?.backgroundColor = PanelStyle.inspectToolbar.cgColor
+        layer?.backgroundColor = NSColor.clear.cgColor
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.image = NSImage(systemSymbolName: "film", accessibilityDescription: nil)
         imageView.contentTintColor = PanelStyle.textTertiary
         addSubview(imageView)
-        runningOverlay.isHidden = true
-        addSubview(runningOverlay, positioned: .above, relativeTo: imageView)
-        newBadge.wantsLayer = true
-        newBadge.layer?.backgroundColor = PanelStyle.success.cgColor
-        newBadge.layer?.cornerRadius = 4
-        newBadge.layer?.masksToBounds = true
-        newBadge.isHidden = true
-        newLabel.string = "NEW"
-        newLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
-        newLabel.textColor = PanelStyle.accentInk
-        newBadge.addSubview(newLabel)
-        addSubview(newBadge, positioned: .above, relativeTo: runningOverlay)
+        ring.isHidden = true
+        addSubview(ring)
+        for (mark, hidden) in [(newMark, true), (failureMark, true)] {
+            mark.wantsLayer = true
+            mark.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.failure)
+            mark.isHidden = hidden
+            addSubview(mark)
+        }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    // Selection is communicated by the warm-cue border only (mirrors the image
-    // filmstrip); the frosted background stays the same either way.
     func configure(selected: Bool, compared: Bool) {
         emphasized = selected || compared
-        layer?.borderWidth = emphasized ? 2 : 1
-        layer?.borderColor = (emphasized ? PanelStyle.warmCue : PanelStyle.inspectLine).cgColor
-        previewInset = emphasized ? 2 : 3
+        updateRule()
+        imageView.alphaValue = emphasized ? 1 : 0.55
         needsLayout = true
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
         setAccessibilityValue(selected || compared ? 1 : 0)
     }
+    private func updateRule() {
+        let rule: NSColor? = failed ? PanelStyle.failure : emphasized ? InspectInk.text1 : nil
+        layer?.borderWidth = rule == nil ? 0 : 1
+        layer?.borderColor = rule.map { PanelStyle.resolvedCG($0) }
+    }
     func setWidgetTaskState(phase: WidgetTaskPhase?, progress: Int = 0, isResult: Bool,
                             activeTaskCount: Int, title: String) {
         let processing = phase?.isActive == true
-        let failed = phase?.isFailure == true
-        let showsProgress = processing && progress > 0 && !isResult
-        showsTaskProgress = showsProgress
-        runningOverlay.isHidden = !processing
-        layer?.borderWidth = emphasized || processing ? 2 : 1
-        previewInset = emphasized || processing ? 2 : 3
-        layer?.borderColor = (failed ? PanelStyle.failure :
-            (emphasized || processing ? PanelStyle.warmCue : PanelStyle.inspectLine)).cgColor
-        newBadge.isHidden = !(isResult || (showsProgress && bounds.width >= 56))
-        newLabel.textColor = showsProgress ? HistoryStyle.hex(0x0B2018) : PanelStyle.accentInk
-        newLabel.string = showsProgress ? "\(min(99, progress))%" : "NEW"
-        if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            if layer?.animation(forKey: "widgetBreathing") == nil {
-                let animation = CABasicAnimation(keyPath: "borderColor")
-                animation.fromValue = PanelStyle.warmCue.withAlphaComponent(0.30).cgColor
-                animation.toValue = PanelStyle.warmCue.cgColor
-                animation.duration = 0.75
-                animation.autoreverses = true
-                animation.repeatCount = .infinity
-                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                layer?.add(animation, forKey: "widgetBreathing")
-            }
-        } else {
-            layer?.removeAnimation(forKey: "widgetBreathing")
+        failed = phase?.isFailure == true
+        updateRule()
+        ring.isHidden = !processing
+        ring.progress = processing && progress > 0 ? progress : nil
+        newMark.isHidden = !isResult || processing || failed
+        failureMark.isHidden = !failed || processing
+        if processing {
+            let percent = progress > 0 ? ", \(min(99, progress))%" : ""
+            setAccessibilityLabel("\(title), \(activeTaskCount) Widget task running\(percent)")
         }
-        if processing { setAccessibilityLabel("\(title), \(activeTaskCount) Widget task running") }
         else if failed { setAccessibilityLabel("\(title), Widget task failed") }
         else if isResult { setAccessibilityLabel("\(title), Widget result just completed") }
         else { setAccessibilityLabel(title) }
@@ -192,27 +176,21 @@ final class VideoFilmstripItem: NSView {
     }
     func setThumbnail(_ image: NSImage) { imageView.image = image }
     func loadThumbnail(from url: URL) { DispatchQueue.global(qos: .userInitiated).async { [weak self] in let generator = AVAssetImageGenerator(asset: AVAsset(url: url)); generator.appliesPreferredTrackTransform = true; guard let image = try? generator.copyCGImage(at: .zero, actualTime: nil) else { return }; DispatchQueue.main.async { self?.imageView.image = NSImage(cgImage: image, size: NSSize(width: CGFloat(image.width), height: CGFloat(image.height))) } } }
+    /// Thumb geometry in 48 pt units; the marks stay inside the tile because
+    /// the video strip clips to its row.
     override func layout() {
         super.layout()
-        let scale = bounds.height / 96
-        layer?.cornerRadius = 9 * scale
-        imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
-        runningOverlay.frame = bounds
-        newBadge.layer?.cornerRadius = 4 * scale
-        newLabel.font = PanelStyle.inspectFont(ofSize: max(9, 10 * scale), weight: .semibold)
-        let badgeSize = CGSize(width: max(28, 48 * scale), height: max(14, 22 * scale))
-        newBadge.frame = NSRect(x: bounds.maxX - badgeSize.width, y: bounds.maxY - badgeSize.height,
-                                width: badgeSize.width, height: badgeSize.height)
-        let textHeight = max(8, 12 * scale)
-        newLabel.frame = NSRect(x: 0, y: (badgeSize.height - textHeight) / 2,
-                                width: badgeSize.width, height: textHeight)
-        if showsTaskProgress {
-            newBadge.isHidden = bounds.width < 56
-            newBadge.frame = NSRect(x: bounds.width - 36, y: bounds.height - 19, width: 31, height: 14)
-            newBadge.layer?.cornerRadius = 4
-            newLabel.font = PanelStyle.inspectFont(ofSize: 9, weight: .semibold)
-            newLabel.frame = newBadge.bounds
+        let s = min(bounds.width, bounds.height) / InspectLayout.thumbSize
+        func top(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+            NSRect(x: x * s, y: bounds.height - (y + h) * s, width: w * s, height: h * s)
         }
+        layer?.cornerRadius = PanelStyle.Radius.control * s
+        imageView.frame = top(4, 4, 40, 40)
+        ring.frame = top(14, 14, 20, 20)
+        failureMark.frame = top(35, 5, 8, 8)
+        failureMark.layer?.cornerRadius = 4 * s
+        newMark.frame = top(38, 5, 5, 5)
+        newMark.layer?.cornerRadius = 2.5 * s
     }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) { onClick?() }
@@ -241,7 +219,7 @@ final class VideoThumbnailImageView: NSImageView {
             source.origin.y = (image.size.height - source.height) / 2
         }
         NSGraphicsContext.saveGraphicsState()
-        let radius = min(bounds.width, bounds.height) * 6 / 96
+        let radius = min(bounds.width, bounds.height) * PanelStyle.Radius.thumb / 40
         NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).addClip()
         NSGraphicsContext.current?.imageInterpolation = .high
         image.draw(in: bounds, from: source, operation: .sourceOver,

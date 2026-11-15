@@ -1,7 +1,7 @@
 import AppKit
 
-// The app's one notification style (Figma "Toast"): a glass capsule with a
-// 32 pt icon badge, a 14 pt title and an optional 12 pt detail line.
+// The app's one notification style (Figma `15 · Toasts & feedback`): an
+// ink/3 capsule with a 16 pt icon, a 13 pt message and a mono detail.
 
 enum ToastKind {
     case success, info, error
@@ -16,23 +16,14 @@ enum ToastKind {
     var color: NSColor {
         switch self {
         case .success: return PanelStyle.success
-        case .info: return PanelStyle.textPrimary
+        case .info: return PanelStyle.textSecondary
         case .error: return PanelStyle.failure
         }
     }
-    var badgeAlpha: CGFloat { self == .info ? 0.10 : 0.16 }
 }
 
 private func toastFont(_ size: CGFloat, _ weight: NSFont.Weight) -> NSFont {
     PanelStyle.inspectFont(ofSize: size, weight: weight)
-}
-
-private func drawToastText(_ string: String, in rect: CGRect, font: NSFont, color: NSColor,
-                           truncation: NSLineBreakMode = .byTruncatingTail) {
-    let style = NSMutableParagraphStyle()
-    style.lineBreakMode = truncation
-    NSAttributedString(string: string, attributes: [.font: font, .foregroundColor: color, .paragraphStyle: style])
-        .draw(with: rect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
 }
 
 private func drawToastIcon(_ name: String, color: NSColor, in rect: CGRect) {
@@ -46,21 +37,14 @@ private func drawToastIcon(_ name: String, color: NSColor, in rect: CGRect) {
     tinted.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
 }
 
-private func drawToastBadge(kind: ToastKind, y: CGFloat) {
-    let badge = CGRect(x: 14, y: y, width: 32, height: 32)
-    kind.color.withAlphaComponent(kind.badgeAlpha).setFill()
-    NSBezierPath(ovalIn: badge).fill()
-    drawToastIcon(kind.iconName, color: kind.color, in: CGRect(x: badge.minX + 7, y: badge.minY + 7, width: 18, height: 18))
-}
-
-/// Title (+ optional detail) with the badge. The toast hugs its text: it grows
-/// with the message up to a maximum size, then wraps (and finally truncates).
+/// Message (+ optional detail). One line when it fits — icon, message and
+/// mono detail side by side (10 pt gaps, padding 14 / 16 × 10); otherwise
+/// the detail wraps below the message, and the toast stops growing at its maximum.
 final class ToastCardView: NSView {
-    private static let textInsetLeft: CGFloat = 58   // 14 + 32 badge + 12
-    private static let textInsetRight: CGFloat = 20
-    private static let minWidth: CGFloat = 200
-    private static let minHeight: CGFloat = 48
-    private static let detailGap: CGFloat = 3
+    private static let textInsetLeft: CGFloat = 40   // 14 + 16 icon + 10
+    private static let textInsetRight: CGFloat = 16
+    private static let minHeight: CGFloat = 38
+    private static let detailGap: CGFloat = 4
 
     private var kind = ToastKind.info
     private var title = ""
@@ -70,12 +54,12 @@ final class ToastCardView: NSView {
 
     private static func titleAttributes() -> [NSAttributedString.Key: Any] {
         let style = NSMutableParagraphStyle(); style.lineBreakMode = .byWordWrapping
-        return [.font: toastFont(14, .semibold), .foregroundColor: PanelStyle.textPrimary, .paragraphStyle: style]
+        return [.font: toastFont(13, .regular), .foregroundColor: PanelStyle.textPrimary, .paragraphStyle: style]
     }
     /// Paths and URLs have no spaces, so the detail wraps by character.
     private static func detailAttributes() -> [NSAttributedString.Key: Any] {
         let style = NSMutableParagraphStyle(); style.lineBreakMode = .byCharWrapping
-        return [.font: toastFont(12, .regular), .foregroundColor: PanelStyle.textSecondary, .paragraphStyle: style]
+        return [.font: PanelStyle.monoFont(ofSize: 11), .foregroundColor: PanelStyle.textTertiary, .paragraphStyle: style]
     }
 
     private static func height(of string: String, attributes: [NSAttributedString.Key: Any], width: CGFloat) -> CGFloat {
@@ -84,30 +68,35 @@ final class ToastCardView: NSView {
                           options: [.usesLineFragmentOrigin, .usesFontLeading]).height)
     }
 
-    /// Heights of the title and detail blocks for a toast `width` wide, limited
-    /// so the whole toast stays within `maxHeight`.
+    private static func oneLine(_ s: String, _ attributes: [NSAttributedString.Key: Any]) -> CGFloat {
+        ceil(NSAttributedString(string: s, attributes: attributes).size().width)
+    }
+
+    private static func singleLineWidth(title: String, detail: String?) -> CGFloat {
+        textInsetLeft + oneLine(title, titleAttributes())
+            + (detail.map { 10 + oneLine($0, detailAttributes()) } ?? 0) + textInsetRight
+    }
+
+    /// Heights of the message and detail blocks for a stacked toast `width` wide.
     private static func blocks(title: String, detail: String?, width: CGFloat, maxHeight: CGFloat) -> (title: CGFloat, detail: CGFloat) {
         let textWidth = width - textInsetLeft - textInsetRight
-        let padding: CGFloat = detail == nil ? 30 : 27
-        let room = max(18, maxHeight - padding)
+        let room = max(16, maxHeight - 20)
         let titleH = min(height(of: title, attributes: titleAttributes(), width: textWidth), room)
         guard let detail else { return (titleH, 0) }
-        let detailRoom = max(16, room - titleH - detailGap)
+        let detailRoom = max(14, room - titleH - detailGap)
         return (titleH, min(height(of: detail, attributes: detailAttributes(), width: textWidth), detailRoom))
     }
 
-    /// The toast's size: as wide as its text wants (200 minimum), never wider
-    /// than `maxWidth`; as tall as the wrapped text needs, never taller than `maxHeight`.
+    /// As wide as the text wants, never wider than `maxWidth`; as tall as the
+    /// wrapped text needs, never taller than `maxHeight`.
     static func fittingSize(title: String, detail: String?, maxWidth: CGFloat, maxHeight: CGFloat) -> NSSize {
-        func oneLine(_ s: String, _ attributes: [NSAttributedString.Key: Any]) -> CGFloat {
-            ceil(NSAttributedString(string: s, attributes: attributes).size().width)
-        }
+        let single = singleLineWidth(title: title, detail: detail)
+        if single <= maxWidth { return NSSize(width: single, height: min(maxHeight, minHeight)) }
         let wanted = max(oneLine(title, titleAttributes()), detail.map { oneLine($0, detailAttributes()) } ?? 0)
-        let width = min(maxWidth, max(min(minWidth, maxWidth), textInsetLeft + wanted + textInsetRight))
+        let width = min(maxWidth, textInsetLeft + wanted + textInsetRight)
         let heights = blocks(title: title, detail: detail, width: width, maxHeight: maxHeight)
         let content = heights.title + (detail == nil ? 0 : detailGap + heights.detail)
-        let height = min(maxHeight, max(minHeight, content + (detail == nil ? 30 : 27)))
-        return NSSize(width: width, height: height)
+        return NSSize(width: width, height: min(maxHeight, max(minHeight, content + 20)))
     }
 
     func configure(kind: ToastKind, title: String, detail: String?) {
@@ -116,62 +105,78 @@ final class ToastCardView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
+        let textWidth = bounds.width - Self.textInsetLeft - Self.textInsetRight
+        let titleWidth = Self.oneLine(title, Self.titleAttributes())
+        if bounds.height <= Self.minHeight + 0.5, Self.singleLineWidth(title: title, detail: detail) <= bounds.width + 0.5 {
+            // One line: the text frames sit 11 pt from the top of the 38 pt capsule.
+            drawToastIcon(kind.iconName, color: kind.color, in: CGRect(x: 14, y: 11, width: 16, height: 16))
+            NSAttributedString(string: title, attributes: Self.titleAttributes())
+                .draw(with: CGRect(x: Self.textInsetLeft, y: 11, width: titleWidth, height: 16),
+                      options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+            if let detail {
+                NSAttributedString(string: detail, attributes: Self.detailAttributes())
+                    .draw(with: CGRect(x: Self.textInsetLeft + titleWidth + 10, y: 12,
+                                       width: max(0, bounds.width - Self.textInsetLeft - titleWidth - 10 - Self.textInsetRight),
+                                       height: 14),
+                          options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+            }
+            return
+        }
         let heights = Self.blocks(title: title, detail: detail, width: bounds.width, maxHeight: bounds.height)
         let content = heights.title + (detail == nil ? 0 : Self.detailGap + heights.detail)
-        // One- and two-line toasts centre the badge; taller ones pin it to the top.
-        drawToastBadge(kind: kind, y: bounds.height <= 64 ? (bounds.height - 32) / 2 : 14)
-        let textWidth = bounds.width - Self.textInsetLeft - Self.textInsetRight
-        let top = max(12, ((bounds.height - content) / 2).rounded())
+        let top = max(10, ((bounds.height - content) / 2).rounded())
+        drawToastIcon(kind.iconName, color: kind.color, in: CGRect(x: 14, y: top, width: 16, height: 16))
         NSAttributedString(string: title, attributes: Self.titleAttributes())
             .draw(with: CGRect(x: Self.textInsetLeft, y: top, width: textWidth, height: heights.title),
                   options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         if let detail {
             NSAttributedString(string: detail, attributes: Self.detailAttributes())
-                .draw(with: CGRect(x: Self.textInsetLeft, y: top + heights.title + Self.detailGap, width: textWidth, height: heights.detail),
+                .draw(with: CGRect(x: Self.textInsetLeft, y: top + heights.title + Self.detailGap,
+                                   width: textWidth, height: heights.detail),
                       options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         }
     }
 }
 
-/// Keyboard Shortcuts: key chips on the left, meaning on the right.
+/// Figma `25 · Shortcuts`: a Mincho title and rows of meaning (13 pt text/2)
+/// with an ink/3 key chip (12 pt text/1) on the right, divided by line/hair.
 final class ToastShortcutsView: NSView {
-    static let width: CGFloat = 440
-    private static let rowHeight: CGFloat = 30
+    static let width: CGFloat = 520
+    private static let rowHeight: CGFloat = 33
     private var rows: [(String, String)] {
         [("← →", "Previous / next"), ("0", "Fit to window"), ("1", "Actual size"), ("+  −", "Zoom"),
-         ("Esc", "Exit compare / close"), ("⌥ click", "Compare with"), ("⌘C", "Copy"), ("⌘S", "Save"),
+         ("⌥-click", "Compare with"), ("Esc", "Exit compare / close"), ("⌘C", "Copy"), ("⌘S", "Save"),
          ("⌘L  ⌘R", "Rotate"), ("⌘I", "Info"), ("⌘⇧X", "Capture")]
     }
-    static var height: CGFloat { 14 + 32 + 12 + 11 * rowHeight + 14 }
+    /// Padding 28 top / 24 bottom, title 30, 16 pt gap, then the rows.
+    static var height: CGFloat { 28 + 30 + 16 + 11 * rowHeight + 24 }
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     override func draw(_ dirtyRect: NSRect) {
-        drawToastBadge(kind: .info, y: 14)
-        drawToastText("Keyboard Shortcuts".localized, in: CGRect(x: 58, y: 21, width: 340, height: 18),
-                      font: toastFont(14, .semibold), color: PanelStyle.textPrimary)
+        let inset: CGFloat = 32
+        let width = bounds.width - inset * 2
+        InspectText.draw("Keyboard Shortcuts".localized, in: CGRect(x: inset, y: 28, width: width, height: 30),
+                         font: PanelStyle.titleFont(ofSize: 22), color: InspectInk.text1)
+        let keyFont = toastFont(12, .regular)
         for (index, row) in rows.enumerated() {
-            let y = 14 + 32 + 12 + CGFloat(index) * Self.rowHeight
-            let keyWidth = ceil(NSAttributedString(string: row.0, attributes: [.font: toastFont(11, .medium)]).size().width)
-            let chip = CGRect(x: 14, y: y + 2, width: max(28, keyWidth + 16), height: 24)
-            NSColor.white.withAlphaComponent(0.08).setFill()
-            NSBezierPath(roundedRect: chip, xRadius: 6, yRadius: 6).fill()
-            NSColor.white.withAlphaComponent(0.08).setStroke()
-            let outline = NSBezierPath(roundedRect: chip.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
-            outline.lineWidth = 1; outline.stroke()
-            let centered = NSMutableParagraphStyle(); centered.alignment = .center
-            NSAttributedString(string: row.0, attributes: [.font: toastFont(11, .medium),
-                                                           .foregroundColor: PanelStyle.textPrimary,
-                                                           .paragraphStyle: centered])
-                .draw(with: CGRect(x: chip.minX, y: chip.minY + 5, width: chip.width, height: 14),
-                      options: [.usesLineFragmentOrigin])
-            drawToastText(row.1.localized, in: CGRect(x: 128, y: y + 6, width: 290, height: 16),
-                          font: toastFont(12, .regular), color: PanelStyle.textSecondary)
+            let y = 28 + 30 + 16 + CGFloat(index) * Self.rowHeight
+            InspectText.draw(row.1.localized, in: CGRect(x: inset, y: y + 8, width: width - 120, height: 16),
+                             font: toastFont(13, .regular), color: InspectInk.text2)
+            let keyWidth = InspectText.width(row.0, font: keyFont)
+            let chip = CGRect(x: bounds.width - inset - keyWidth - 14, y: y + 6.5, width: keyWidth + 14, height: 19)
+            InspectInk.ink3.setFill()
+            NSBezierPath(roundedRect: chip, xRadius: 4, yRadius: 4).fill()
+            InspectText.draw(row.0, in: CGRect(x: chip.minX + 7, y: chip.minY + 2, width: keyWidth, height: 15),
+                             font: keyFont, color: InspectInk.text1)
+            InspectInk.line.setFill()
+            NSRect(x: inset, y: y + Self.rowHeight - 1, width: width, height: 1).fill()
         }
     }
 }
 
-/// Glass background shared by the toast window and the cursor error tooltip.
+/// Plate shared by the toast window and the cursor error tooltip: ink/3 with a
+/// line/strong edge for toasts (10 pt corners), ink/1 for the shortcuts sheet (12 pt).
 final class ToastPanelContent: NSVisualEffectView {
     let card = ToastCardView()
     let shortcuts = ToastShortcutsView()
@@ -182,25 +187,28 @@ final class ToastPanelContent: NSVisualEffectView {
         material = .hudWindow
         blendingMode = .behindWindow
         state = .active
-        appearance = NSAppearance(named: .vibrantDark)
+        appearance = PanelStyle.vibrantAppearance
         wantsLayer = true
-        layer?.cornerRadius = 16
         layer?.masksToBounds = true
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
-        // A behind-window material ignores the layer's corner radius and fills
-        // the whole borderless window, which showed as a square plate (and a
-        // square shadow) behind the rounded card. The mask clips both.
-        maskImage = PanelStyle.roundedMask(radius: 16)
-        tint.backgroundColor = NSColor(srgbRed: 0x16 / 255, green: 0x17 / 255, blue: 0x19 / 255, alpha: 0.94).cgColor
+        layer?.borderColor = PanelStyle.resolvedCG(InspectInk.lineStrong)
         layer?.addSublayer(tint)
         for view in [card, shortcuts] {
             view.autoresizingMask = [.width, .height]
             addSubview(view)
         }
         shortcuts.isHidden = true
+        applyPlate(radius: 10, color: InspectInk.ink3.withAlphaComponent(0.96))
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    /// A behind-window material ignores the layer's corner radius and fills
+    /// the whole borderless window; the mask clips both it and its shadow.
+    private func applyPlate(radius: CGFloat, color: NSColor) {
+        layer?.cornerRadius = radius
+        maskImage = PanelStyle.roundedMask(radius: radius)
+        tint.backgroundColor = PanelStyle.resolvedCG(color)
+    }
 
     override func layout() {
         super.layout()
@@ -213,24 +221,31 @@ final class ToastPanelContent: NSVisualEffectView {
     /// Shows a title/detail toast and returns the size the window should take.
     func apply(kind: ToastKind, title: String, detail: String?, maxWidth: CGFloat, maxHeight: CGFloat) -> NSSize {
         card.isHidden = false; shortcuts.isHidden = true
+        applyPlate(radius: 10, color: InspectInk.ink3.withAlphaComponent(0.96))
         card.configure(kind: kind, title: title, detail: detail)
         return ToastCardView.fittingSize(title: title, detail: detail, maxWidth: maxWidth, maxHeight: maxHeight)
     }
 
     func applyShortcuts() -> NSSize {
         card.isHidden = true; shortcuts.isHidden = false
+        applyPlate(radius: PanelStyle.Radius.window, color: InspectInk.ink1)
         shortcuts.needsDisplay = true
         return NSSize(width: ToastShortcutsView.width, height: ToastShortcutsView.height)
     }
 }
 
-/// Short acknowledgement (saved, copied, failed) centred over a window.
+/// Short acknowledgement (saved, copied, failed) at the bottom centre of a
+/// window (Figma: "One line. Bottom-centre of the window."); the shortcuts
+/// sheet is centred.
 /// A child panel is used instead of a canvas subview so layer-backed image,
 /// WebKit, and AV surfaces can never render above it.
 final class InspectToastWindow: NSPanel {
     private let content = ToastPanelContent()
     private var hideWorkItem: DispatchWorkItem?
     private var toastAction: (() -> Void)?
+    /// Distance from the parent window's bottom edge to the toast. Windows with
+    /// a bottom bar raise it above their controls.
+    var bottomInset: CGFloat = PanelStyle.Space.xl
     private let actionButton = NSButton()
     @objc private func invokeAction() { let action = toastAction; toastAction = nil; orderOut(nil); action?() }
     func showAction(message: String, actionTitle: String, over parent: NSWindow, action: @escaping () -> Void) {
@@ -239,8 +254,8 @@ final class InspectToastWindow: NSPanel {
         present(size: NSSize(width: bodySize.width+64,height: bodySize.height),over:parent,duration:6)
         toastAction = action
         actionButton.title = actionTitle; actionButton.target = self; actionButton.action = #selector(invokeAction)
-        actionButton.isBordered = false; actionButton.contentTintColor = PanelStyle.warmCue
-        actionButton.font = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
+        actionButton.isBordered = false; actionButton.contentTintColor = InspectInk.text1
+        actionButton.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
         content.card.frame = NSRect(origin:.zero,size:bodySize)
         content.card.autoresizingMask = [.height]
         actionButton.frame = NSRect(x: bodySize.width, y: (bodySize.height-28)/2, width: 60, height: 28)
@@ -257,7 +272,7 @@ final class InspectToastWindow: NSPanel {
         isFloatingPanel = false
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
-        appearance = NSAppearance(named: .darkAqua)
+        appearance = PanelStyle.windowAppearance
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         contentView = content
         alphaValue = 0
@@ -286,13 +301,13 @@ final class InspectToastWindow: NSPanel {
     }
 
     func showShortcuts(over parentWindow: NSWindow, duration: TimeInterval = 7) {
-        present(size: content.applyShortcuts(), over: parentWindow, duration: duration)
+        present(size: content.applyShortcuts(), over: parentWindow, duration: duration, centered: true)
     }
 
-    private func present(size: NSSize, over parentWindow: NSWindow, duration: TimeInterval) {
+    private func present(size: NSSize, over parentWindow: NSWindow, duration: TimeInterval, centered: Bool = false) {
         hideWorkItem?.cancel()
-        let target = NSRect(x: (parentWindow.frame.midX - size.width / 2).rounded(),
-                            y: (parentWindow.frame.midY - size.height / 2).rounded(),
+        let y = centered ? parentWindow.frame.midY - size.height / 2 : parentWindow.frame.minY + bottomInset
+        let target = NSRect(x: (parentWindow.frame.midX - size.width / 2).rounded(), y: y.rounded(),
                             width: size.width, height: size.height)
         if parent !== parentWindow {
             if let parent { parent.removeChildWindow(self) }

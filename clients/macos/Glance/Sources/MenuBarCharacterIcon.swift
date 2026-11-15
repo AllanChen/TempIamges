@@ -1,8 +1,8 @@
 import AppKit
 
-/// The tray glyph from Figma "Menu Bar Icon / Character": the Glance peeker
-/// as a one-colour template image on the 18 pt grid. A round head looks over
-/// the frame's top edge with both hands on it; eyes are knocked out of the
+/// The tray glyph from Figma "Brand · App Icon" › "Tray · B · Peek": the Glance
+/// peeker as a one-colour template image on the 18 pt grid. A dome head looks
+/// over the frame's rim with both hands on it; eyes are knocked out of the
 /// head. Peek off raises the hands over the eyes; running tasks play a
 /// four-frame "glancing around" loop.
 ///
@@ -38,43 +38,54 @@ enum MenuBarCharacterIcon {
         return image
     }
 
-    // MARK: - Geometry (1 unit = 1 pt on the 18 pt canvas, top-left origin)
+    // MARK: - Geometry (Figma "Tray · B · Peek"; 1 unit = 1 pt on the 18 pt canvas, top-left origin)
 
-    private static func disc(_ cx: CGFloat, _ cy: CGFloat, _ d: CGFloat) -> NSBezierPath {
-        NSBezierPath(ovalIn: NSRect(x: cx - d / 2, y: cy - d / 2, width: d, height: d))
+    private static func pill(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSBezierPath {
+        NSBezierPath(roundedRect: NSRect(x: x, y: y, width: w, height: h), xRadius: h / 2, yRadius: h / 2)
     }
 
     private static func draw(_ state: State) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         NSColor.black.setFill()
 
-        // Silhouette: head over the frame's top edge.
-        disc(9, 8, 11).fill()
-        NSBezierPath(roundedRect: NSRect(x: 1.5, y: 12.25, width: 15, height: 2.25),
-                     xRadius: 1.125, yRadius: 1.125).fill()
+        // Dome head resting on the frame's rim, and the rim itself.
+        let head = NSBezierPath()
+        // The base dips under the rim so no seam shows where they meet.
+        head.move(to: NSPoint(x: 3.6, y: 13.4))
+        head.line(to: NSPoint(x: 3.6, y: 12.6))
+        head.curve(to: NSPoint(x: 9, y: 5.6), controlPoint1: NSPoint(x: 3.6, y: 8.9), controlPoint2: NSPoint(x: 6, y: 5.6))
+        head.curve(to: NSPoint(x: 14.4, y: 12.6), controlPoint1: NSPoint(x: 12, y: 5.6), controlPoint2: NSPoint(x: 14.4, y: 8.9))
+        head.line(to: NSPoint(x: 14.4, y: 13.4))
+        head.close()
+        head.fill()
+        pill(1.4, 12.6, 15.2, 2.2).fill()
 
         // Knockouts clear alpha, which is what a template image needs.
         ctx.saveGState()
         ctx.setBlendMode(.clear)
-        let covered = state == .peekOff
-        if !covered {
-            let dx: CGFloat = state == .lookLeft ? -0.9 : (state == .lookRight ? 0.9 : 0)
-            for cx in [6.8, 11.2] as [CGFloat] {
-                if state == .blink {
-                    NSBezierPath(roundedRect: NSRect(x: cx + dx - 1.1, y: 7.3, width: 2.2, height: 0.7),
-                                 xRadius: 0.35, yRadius: 0.35).fill()
-                } else {
-                    disc(cx + dx, 7.6, 2.2).fill()
-                }
+        switch state {
+        case .peekOff:
+            // A thin gap lets the raised hands read against the head.
+            pill(4.75, 8.25, 3.9, 2.9).fill()
+            pill(9.35, 8.25, 3.9, 2.9).fill()
+        case .blink:
+            pill(6.2, 9.4, 2.1, 0.7).fill()
+            pill(9.7, 9.4, 2.1, 0.7).fill()
+        default:
+            let dx: CGFloat = state == .lookLeft ? -0.8 : (state == .lookRight ? 0.8 : 0)
+            for cx in [7.25, 10.75] as [CGFloat] {
+                NSBezierPath(ovalIn: NSRect(x: cx + dx - 1.15, y: 8.55, width: 2.3, height: 2.3)).fill()
             }
         }
-        // A thin gap around each hand separates it from whatever is behind.
-        let hands: [(CGFloat, CGFloat, CGFloat)] = covered
-            ? [(6.8, 8.0, 4.4), (11.2, 8.0, 4.4)]
-            : [(5.2, 12.3, 3.2), (12.8, 12.3, 3.2)]
-        for (cx, cy, d) in hands { disc(cx, cy, d + 1.0).fill() }
         ctx.restoreGState()
 
-        for (cx, cy, d) in hands { disc(cx, cy, d).fill() }
+        // Hands: on the rim, or raised over the eyes when Peek is off.
+        if state == .peekOff {
+            pill(5.15, 8.65, 3.1, 2.1).fill()
+            pill(9.75, 8.65, 3.1, 2.1).fill()
+        } else {
+            pill(3.2, 11.6, 3.4, 2.1).fill()
+            pill(11.4, 11.6, 3.4, 2.1).fill()
+        }
     }
 }

@@ -6,8 +6,10 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
 
     private let webView: WKWebView
     private let loadingIndicator = FocusSweepLoadingView(frame: .zero)
+    /// 静 Shizuka window size (Figma "35 · Sign in", 480 × 600).
+    private static let panelSize = NSSize(width: 480, height: 600)
     private let loadFailedView = LoadFailedAnimationView(frame: .zero)
-    private let headerHeight: CGFloat = 48
+    private let headerHeight: CGFloat = PanelStyle.titlebarHeight
     private weak var titleLabel: NSTextField?
 
     private init() {
@@ -18,7 +20,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
         webView = WKWebView(frame: .zero, configuration: config)
 
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 500),
+            contentRect: NSRect(origin: .zero, size: Self.panelSize),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -40,18 +42,23 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
     }
 
     private func buildLayout() {
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 500))
+        let width = Self.panelSize.width
+        let height = Self.panelSize.height
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         root.wantsLayer = true
+        // Figma window chrome: ink/1 fill, 1px line/strong border, 12px radius.
         root.layer?.cornerRadius = 12
         root.layer?.masksToBounds = true
         root.layer?.backgroundColor = PanelStyle.surface.cgColor
+        root.layer?.borderWidth = 1
+        root.layer?.borderColor = PanelStyle.themed(PanelStyle.Sumi.lineStrong, PanelStyle.Washi.lineStrong).cgColor
 
-        let navBar = buildNavBar(width: 400)
-        navBar.frame = NSRect(x: 0, y: 500 - headerHeight, width: 400, height: headerHeight)
+        let navBar = buildNavBar(width: width)
+        navBar.frame = NSRect(x: 0, y: height - headerHeight, width: width, height: headerHeight)
         navBar.autoresizingMask = [.width, .minYMargin]
         root.addSubview(navBar)
 
-        let webFrame = NSRect(x: 0, y: 0, width: 400, height: 500 - headerHeight)
+        let webFrame = NSRect(x: 0, y: 0, width: width, height: height - headerHeight)
         webView.frame = webFrame
         webView.autoresizingMask = [.width, .height]
         root.addSubview(webView)
@@ -81,28 +88,24 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
     private func buildNavBar(width: CGFloat) -> NSView {
         let bar = NSView(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
         bar.wantsLayer = true
-        bar.layer?.backgroundColor = PanelStyle.overlay.cgColor
-
-        let sep = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 1))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = PanelStyle.hairline.cgColor
-        sep.autoresizingMask = [.width]
-        bar.addSubview(sep)
+        // The Figma title bar is part of the ink/1 window surface: no fill, no rule.
+        bar.layer?.backgroundColor = PanelStyle.surface.cgColor
 
         let closeBtn = NSButton(frame: .zero)
         closeBtn.bezelStyle = .recessed
         closeBtn.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: nil)
         closeBtn.imagePosition = .imageOnly
         closeBtn.isBordered = false
-        closeBtn.contentTintColor = PanelStyle.textPrimary
+        closeBtn.contentTintColor = PanelStyle.textSecondary
         closeBtn.target = self
         closeBtn.action = #selector(closeTapped)
         closeBtn.frame = NSRect(x: 12, y: (headerHeight - 24) / 2, width: 24, height: 24)
         bar.addSubview(closeBtn)
 
         let titleLbl = NSTextField(labelWithString: "Sign In".localized)
-        titleLbl.textColor = PanelStyle.textPrimary
-        titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        // Figma "Account" title: Inter Medium 13, text/2, centered.
+        titleLbl.textColor = PanelStyle.textSecondary
+        titleLbl.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         titleLbl.alignment = .center
         titleLbl.frame = NSRect(x: 48, y: (headerHeight - 18) / 2, width: width - 96, height: 18)
         titleLbl.autoresizingMask = [.width]
@@ -119,7 +122,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
     func show(at point: NSPoint) {
         loadCurrentState()
 
-        let size = NSSize(width: 400, height: 500)
+        let size = Self.panelSize
         let frame = ScreenManager.shared.centeredFrame(for: size, near: point)
         setFrame(frame, display: true)
         showAsKeyPanel()
@@ -248,10 +251,113 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
         }
     }
 
+    // MARK: - 静 Shizuka page styling
+
+    /// CSS color for a theme token, so the HTML pages follow Sumi / Washi.
+    private static func css(_ color: NSColor) -> String {
+        let c = color.usingColorSpace(.sRGB) ?? color
+        return String(format: "rgba(%ld,%ld,%ld,%.3f)",
+                      Int((c.redComponent * 255).rounded()),
+                      Int((c.greenComponent * 255).rounded()),
+                      Int((c.blueComponent * 255).rounded()),
+                      c.alphaComponent)
+    }
+
+    /// Theme tokens interpolated from `PanelStyle` (Sumi on dark, Washi on light)
+    /// plus the base type and control styles shared by both pages.
+    private static let baseCSS: String = {
+        let t = { (dark: NSColor, light: NSColor) in css(PanelStyle.themed(dark, light)) }
+        typealias S = PanelStyle.Sumi
+        typealias W = PanelStyle.Washi
+        return """
+        :root {
+            --ink-1: \(t(S.ink1, W.ink1));
+            --ink-2: \(t(S.ink2, W.ink2));
+            --ink-3: \(t(S.ink3, W.ink3));
+            --ink-4: \(t(S.ink4, W.ink4));
+            --line-hair: \(t(S.line, W.line));
+            --line-strong: \(t(S.lineStrong, W.lineStrong));
+            --text-1: \(t(S.text1, W.text1));
+            --text-2: \(t(S.text2, W.text2));
+            --text-3: \(t(S.text3, W.text3));
+            --text-4: \(t(S.text4, W.text4));
+            --accent: \(css(PanelStyle.accent));
+            --accent-ink: \(css(PanelStyle.accentInk));
+            --accent-hover: \(css(PanelStyle.accentHover));
+            --shu: \(t(S.shu, W.shu));
+            --font-ui: -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-title: "Hiragino Mincho ProN", "Hiragino Mincho Pro", serif;
+            --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            font-family: var(--font-ui);
+            background: var(--ink-1);
+            color: var(--text-1);
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            width: 100%;
+            min-height: 100%;
+            padding: 40px 48px 24px;
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            font-family: var(--font-title);
+            font-size: 28px;
+            line-height: 36px;
+            font-weight: 400;
+            color: var(--text-1);
+            overflow-wrap: anywhere;
+        }
+        .btn {
+            height: 32px;
+            padding: 0 16px;
+            border-radius: 6px;
+            border: 0;
+            background: var(--ink-3);
+            color: var(--text-1);
+            font-family: var(--font-ui);
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 32px;
+            white-space: nowrap;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:hover { background: var(--ink-4); }
+        .btn:disabled { opacity: 0.55; cursor: default; }
+        .btn:disabled:hover { background: var(--ink-3); }
+        .btn-primary { background: var(--accent); color: var(--accent-ink); }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-primary:disabled:hover { background: var(--accent); }
+        .btn:focus-visible, .link:focus-visible { outline: 1px solid var(--text-2); outline-offset: 2px; }
+        .link {
+            border: 0;
+            background: none;
+            padding: 0;
+            font-family: var(--font-ui);
+            font-size: 12px;
+            line-height: 15px;
+            color: var(--text-3);
+            cursor: pointer;
+            text-align: left;
+        }
+        .link:hover { color: var(--text-1); }
+        .link:disabled { opacity: 0.55; cursor: default; }
+        .link:disabled:hover { color: var(--text-3); }
+        """
+    }()
+
     private func loadAuthPage(status: String? = nil) {
         showLoading()
         titleLabel?.stringValue = "Sign In".localized
         let statusScript = status.map { "window.addEventListener('load', function() { window.GlanceAuth.setStatus(\(Self.jsString($0)), 'error'); });" } ?? ""
+        let codePlaceholder = htmlEscape("6 digit code".localized)
         let html = """
         <!DOCTYPE html>
         <html>
@@ -259,104 +365,125 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    background: #101113;
-                    color: #f2f0eb;
-                    min-height: 100vh;
-                    padding: 28px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .container { width: 100%; max-width: 320px; }
-                h1 { font-size: 22px; line-height: 1.2; font-weight: 650; text-align: center; margin-bottom: 8px; }
-                p { font-size: 13px; color: #a7a8aa; text-align: center; margin-bottom: 22px; }
-                .btn {
-                    width: 100%;
-                    min-height: 42px;
-                    border-radius: 8px;
-                    border: 1px solid rgba(242,240,235,0.10);
-                    background: #202329;
-                    color: #f2f0eb;
-                    font-size: 14px;
-                    font-weight: 560;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 9px;
-                    margin-bottom: 12px;
-                }
-                .btn:hover { background: #292d34; }
-                .btn:disabled { opacity: 0.55; cursor: default; }
-                .btn-primary { background: #e1b982; color: #101113; border-color: #e1b982; }
-                .btn-primary:hover { background: #edc995; }
+                \(Self.baseCSS)
+                h1 { margin-bottom: 8px; }
+                .sub { font-size: 13px; line-height: 20px; color: var(--text-2); margin-bottom: 32px; }
+                .btn-block { width: 100%; }
                 .divider {
                     display: flex;
                     align-items: center;
-                    color: #777a7e;
+                    gap: 12px;
+                    margin: 20px 0;
                     font-size: 12px;
-                    margin: 17px 0;
+                    line-height: 15px;
+                    color: var(--text-3);
+                    white-space: nowrap;
                 }
-                .divider:before, .divider:after { content: ""; flex: 1; height: 1px; background: rgba(242,240,235,0.10); }
-                .divider span { padding: 0 12px; }
-                input {
+                .divider:before, .divider:after { content: ""; flex: 1; height: 1px; background: var(--line-hair); }
+                input#email {
+                    display: block;
                     width: 100%;
-                    height: 40px;
-                    padding: 9px 11px;
-                    border: 1px solid rgba(242,240,235,0.10);
+                    height: 36px;
+                    padding: 9px 12px;
+                    border: 1px solid var(--line-hair);
                     border-radius: 8px;
-                    background: #17191c;
-                    color: #f2f0eb;
-                    font-size: 14px;
-                    margin-bottom: 10px;
+                    background: var(--ink-2);
+                    color: var(--text-1);
+                    font-family: var(--font-ui);
+                    font-size: 13px;
                     outline: none;
                 }
-                input:focus { border-color: #e1b982; box-shadow: 0 0 0 3px rgba(225,185,130,0.14); }
-                #codeWrap { display: none; }
-                #status {
-                    min-height: 36px;
+                input#email::placeholder { color: var(--text-3); }
+                input#email:focus { border-color: var(--text-2); }
+                #codeWrap { display: none; margin-top: 10px; }
+                .cells { position: relative; display: flex; gap: 8px; height: 48px; }
+                .cell {
+                    flex: 1 1 0;
+                    min-width: 0;
+                    height: 48px;
+                    border: 1px solid var(--line-hair);
                     border-radius: 8px;
-                    padding: 10px 11px;
-                    font-size: 12px;
-                    line-height: 1.35;
-                    color: #a7a8aa;
-                    text-align: center;
+                    background: var(--ink-2);
+                    color: var(--text-1);
+                    font-family: var(--font-mono);
+                    font-size: 18px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                    pointer-events: none;
                 }
-                #status.info { background: rgba(225,185,130,0.12); color: #e1b982; }
-                #status.ok { background: rgba(46,160,67,0.14); color: #79c98b; }
-                #status.error { background: rgba(218,54,51,0.14); color: #ff8b87; }
-                .google-mark { width: 18px; height: 18px; flex: 0 0 auto; }
+                .cell.active, .cell.selected { border-color: var(--text-2); }
+                /* The real field stays a single input (same value, paste,
+                   backspace and arrow keys); the cells only mirror it. */
+                input#code {
+                    position: absolute;
+                    inset: 0;
+                    width: 100%;
+                    height: 100%;
+                    opacity: 0;
+                    border: 0;
+                    font-size: 18px;
+                    cursor: text;
+                }
+                #status {
+                    margin-top: 10px;
+                    font-size: 12px;
+                    line-height: 18px;
+                    color: var(--text-3);
+                    overflow-wrap: anywhere;
+                }
+                #status:empty { display: none; }
+                #status.info, #status.ok { color: var(--text-2); }
+                #status.error { color: var(--shu); }
+                .actions { display: flex; align-items: center; gap: 8px; margin-top: 24px; }
+                .actions .spacer { flex: 1; }
+                #sendBtn { width: 100%; }
+                #verifyBtn { display: none; }
+                body.code-sent #verifyBtn { display: inline-flex; }
+                body.code-sent .actions .spacer { display: block; }
+                body:not(.code-sent) .actions .spacer { display: none; }
+                body.code-sent #sendBtn {
+                    width: auto;
+                    height: auto;
+                    padding: 0;
+                    border: 0;
+                    background: none;
+                    font-size: 12px;
+                    font-weight: 400;
+                    line-height: 15px;
+                    color: var(--text-3);
+                }
+                body.code-sent #sendBtn:hover { color: var(--text-1); }
+                body.code-sent #sendBtn:disabled:hover { color: var(--text-3); }
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>\(htmlEscape("Welcome to Glance".localized))</h1>
-                <p>\(htmlEscape("Sign in to Glance to connect this Mac.".localized))</p>
+                <h1>\(htmlEscape("Sign in to Glance".localized))</h1>
+                <p class="sub">\(htmlEscape("Connect this Mac.".localized))</p>
 
-                <button class="btn" onclick="GlanceAuth.google()">
-                    <svg class="google-mark" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    \(htmlEscape("Continue with Google".localized))
-                </button>
+                <button class="btn btn-primary btn-block" onclick="GlanceAuth.google()">\(htmlEscape("Continue with Google".localized))</button>
 
-                <div class="divider"><span>\(htmlEscape("or".localized))</span></div>
+                <div class="divider"><span>\(htmlEscape("Or use an email code".localized))</span></div>
 
                 <input type="email" id="email" autocomplete="email" placeholder="\(htmlEscape("Email address".localized))">
-                <button id="sendBtn" class="btn btn-primary" onclick="GlanceAuth.sendCode()">\(htmlEscape("Send code".localized))</button>
 
                 <div id="codeWrap">
-                    <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="\(htmlEscape("6 digit code".localized))">
-                    <button id="verifyBtn" class="btn btn-primary" onclick="GlanceAuth.verifyCode()">\(htmlEscape("Verify and sign in".localized))</button>
+                    <div class="cells">
+                        <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                        <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="\(codePlaceholder)" aria-label="\(codePlaceholder)">
+                    </div>
                 </div>
 
                 <div id="status"></div>
+
+                <div class="actions">
+                    <button id="sendBtn" class="btn" onclick="GlanceAuth.sendCode()">\(htmlEscape("Send code".localized))</button>
+                    <span class="spacer"></span>
+                    <button id="verifyBtn" class="btn" onclick="GlanceAuth.verifyCode()">\(htmlEscape("Verify and sign in".localized))</button>
+                </div>
             </div>
 
             <script>
@@ -392,6 +519,8 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
                     emailCodeSent(email) {
                         document.getElementById('email').value = email;
                         document.getElementById('codeWrap').style.display = 'block';
+                        document.body.classList.add('code-sent');
+                        document.getElementById('sendBtn').textContent = \(Self.jsString("Resend code".localized));
                         document.getElementById('code').focus();
                         this.setBusy(false);
                         this.setStatus(\(Self.jsString("Code sent. Check your email and enter the 6 digit code.".localized)), 'ok');
@@ -406,6 +535,27 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
                         status.className = tone || '';
                     }
                 };
+                (function() {
+                    const input = document.getElementById('code');
+                    const cells = Array.prototype.slice.call(document.querySelectorAll('.cell'));
+                    function render() {
+                        const value = input.value;
+                        const focused = document.activeElement === input;
+                        const start = input.selectionStart == null ? value.length : input.selectionStart;
+                        const end = input.selectionEnd == null ? start : input.selectionEnd;
+                        const caret = Math.min(start, cells.length - 1);
+                        cells.forEach(function(cell, index) {
+                            cell.textContent = value.charAt(index);
+                            cell.classList.toggle('active', focused && start === end && index === caret);
+                            cell.classList.toggle('selected', focused && start !== end && index >= start && index < end);
+                        });
+                    }
+                    ['input', 'focus', 'blur', 'keyup', 'click', 'select'].forEach(function(name) {
+                        input.addEventListener(name, render);
+                    });
+                    document.addEventListener('selectionchange', render);
+                    render();
+                })();
                 document.addEventListener('keydown', function(event) {
                     if (event.key === 'Enter') {
                         if (document.getElementById('codeWrap').style.display === 'block') {
@@ -449,93 +599,85 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    background: #101113;
-                    color: #f2f0eb;
-                    min-height: 100vh;
-                    padding: 28px;
+                \(Self.baseCSS)
+                .profile { display: flex; align-items: center; gap: 10px; min-width: 0; }
+                .avatar {
+                    width: 28px;
+                    height: 28px;
+                    flex: 0 0 28px;
+                    border-radius: 14px;
+                    background: var(--ink-4);
+                    color: var(--text-1);
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    font-size: 12px;
+                    font-weight: 500;
                 }
-                .container { width: 100%; max-width: 320px; }
-                .avatar {
-                    width: 56px;
-                    height: 56px;
-                    border-radius: 50%;
-                    background: #e1b982;
-                    color: #101113;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 24px;
-                    font-weight: 650;
-                    margin: 0 auto 16px;
+                .who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+                .name { font-size: 13px; color: var(--text-1); overflow-wrap: anywhere; }
+                .email { font-size: 11px; color: var(--text-3); overflow-wrap: anywhere; }
+                .eyebrow {
+                    margin-top: 40px;
+                    font-family: var(--font-mono);
+                    font-size: 11px;
+                    letter-spacing: 1.1px;
+                    text-transform: uppercase;
+                    color: var(--text-3);
                 }
-                h1 {
-                    font-size: 20px;
-                    line-height: 1.2;
-                    font-weight: 650;
-                    text-align: center;
-                    margin-bottom: 4px;
-                    overflow-wrap: anywhere;
+                .balance { display: flex; align-items: baseline; gap: 12px; margin-top: 14px; }
+                .amount {
+                    font-family: var(--font-title);
+                    font-size: 56px;
+                    line-height: 64px;
+                    font-weight: 400;
+                    color: var(--text-1);
                 }
-                .email {
-                    font-size: 13px;
-                    color: #a7a8aa;
-                    text-align: center;
-                    line-height: 1.4;
-                    margin-bottom: 22px;
-                    overflow-wrap: anywhere;
-                }
-                .info {
-                    border: 1px solid rgba(242,240,235,0.10);
-                    border-radius: 8px;
-                    background: #17191c;
-                    margin-bottom: 18px;
-                    overflow: hidden;
-                }
+                .unit { font-size: 15px; color: var(--text-2); }
+                .info { margin-top: 32px; border-top: 1px solid var(--line-hair); }
                 .row {
                     display: flex;
-                    align-items: flex-start;
+                    align-items: center;
                     justify-content: space-between;
-                    gap: 12px;
-                    padding: 11px 12px;
-                    border-bottom: 1px solid rgba(242,240,235,0.10);
-                    font-size: 13px;
+                    gap: 16px;
+                    padding: 11px 0;
+                    border-bottom: 1px solid var(--line-hair);
                 }
-                .row:last-child { border-bottom: 0; }
-                .label { color: #a7a8aa; flex: 0 0 auto; }
-                .value { color: #f2f0eb; text-align: right; overflow-wrap: anywhere; min-width: 0; }
-                .btn {
-                    width: 100%;
-                    min-height: 42px;
-                    border-radius: 8px;
-                    border: 1px solid rgba(242,240,235,0.10);
-                    background: #202329;
-                    color: #f2f0eb;
-                    font-size: 14px;
-                    font-weight: 560;
-                    cursor: pointer;
+                .label { font-size: 13px; color: var(--text-2); flex: 0 0 auto; }
+                .value {
+                    font-family: var(--font-mono);
+                    font-size: 12px;
+                    color: var(--text-1);
+                    text-align: right;
+                    overflow-wrap: anywhere;
+                    min-width: 0;
                 }
-                .btn:hover { background: #292d34; }
+                .footer { margin-top: auto; padding-top: 24px; }
             </style>
         </head>
         <body>
             <div class="container">
-                <div class="avatar">\(htmlEscape(initial))</div>
-                <h1>\(htmlEscape(displayName))</h1>
-                <div class="email">\(htmlEscape(email))</div>
+                <div class="profile">
+                    <div class="avatar">\(htmlEscape(initial))</div>
+                    <div class="who">
+                        <div class="name">\(htmlEscape(displayName))</div>
+                        <div class="email">\(htmlEscape(email))</div>
+                    </div>
+                </div>
+                <div class="eyebrow">\(htmlEscape("Credits".localized))</div>
+                <div class="balance">
+                    <span class="amount">\(session.user.credits.map(String.init) ?? "—")</span>
+                    <span class="unit">\(htmlEscape("credits".localized))</span>
+                </div>
                 <div class="info">
                     <div class="row"><span class="label">\(htmlEscape("Provider".localized))</span><span class="value">\(htmlEscape(provider))</span></div>
                     <div class="row"><span class="label">\(htmlEscape("User ID".localized))</span><span class="value">\(htmlEscape(userID))</span></div>
-                    <div class="row"><span class="label">\(htmlEscape("Credits".localized))</span><span class="value">\(session.user.credits.map(String.init) ?? "—")</span></div>
                     \(statusRow)
                     \(expiresRow)
                 </div>
-                <button class="btn" onclick="window.webkit.messageHandlers.loginHandler.postMessage({type:'logout'})">\(htmlEscape("Sign out".localized))</button>
+                <div class="footer">
+                    <button class="link" onclick="window.webkit.messageHandlers.loginHandler.postMessage({type:'logout'})">\(htmlEscape("Sign out".localized))</button>
+                </div>
             </div>
         </body>
         </html>

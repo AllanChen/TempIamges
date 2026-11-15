@@ -17,6 +17,7 @@
 		23351DDC3268AF8896BC75B2 /* PanelStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13155D15A2DBA8ED50704C8 /* PanelStyle.swift */; };
 		27A210A20912C7689F9B58B7 /* HistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C5179624322D2F186F271A1 /* HistoryManager.swift */; };
 		2C6ED2B68D4E7C2BDC9E9788 /* ContentViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE094D8C91B76410621B788E /* ContentViewerWindow.swift */; };
+		2CFC08E6156FD8C437A95792 /* SystemLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D1849541A8099E0CE3D930 /* SystemLanguage.swift */; };
 		32697069589E95C992054805 /* AppMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC29D5C8E74F61B1BDC50890 /* AppMenu.swift */; };
 		36190ACF12F79CE1E8E5926E /* TrafficLightButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD5EC8FEB4C74E4FD2B1F95 /* TrafficLightButton.swift */; };
 		3999291816C60724A9596385 /* LoginPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62246959374FE67D5FD83B9D /* LoginPanel.swift */; };
@@ -81,6 +82,7 @@
 		B7D0536BB572326DAE8768C3 /* Highlightr in Frameworks */ = {isa = PBXBuildFile; productRef = C96ACA981C9C32B7FA35152E /* Highlightr */; };
 		B9FD28DE21157B606E4EC18C /* InspectToastWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F782B64022CF60CCC6E4FC2 /* InspectToastWindow.swift */; };
 		BC7B4C576CE9D7E62A343E9D /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E389BCB266C4E57B04B570 /* AuthManager.swift */; };
+		CD5C510EA7F7E836219A354C /* ProPillButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682CE65B8CDCEC0C81B22E50 /* ProPillButton.swift */; };
 		D12206470892182751E6C498 /* Inter-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = 0FE438770872A37E845AF821 /* Inter-Medium.otf */; };
 		D3834956139A8B431E67870B /* InspectChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58BA428927C594B4BD425709 /* InspectChrome.swift */; };
 		D44D26ACDA05AD10CFA15A4B /* LoadFailed.gif in Resources */ = {isa = PBXBuildFile; fileRef = 790B6D57380E5760E9CEA752 /* LoadFailed.gif */; };
@@ -119,6 +121,7 @@
 		39E9F1A079DAD3F9EB65919E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3AC684C2865F0513FABF2A2E /* WidgetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetModels.swift; sourceTree = "<group>"; };
 		3C2064EDFFD2CC7D536C6DDA /* PeekDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeekDiagnostics.swift; sourceTree = "<group>"; };
+		40D1849541A8099E0CE3D930 /* SystemLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemLanguage.swift; sourceTree = "<group>"; };
 		41BADF761B708A92F9122A72 /* MediaDropCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaDropCanvasView.swift; sourceTree = "<group>"; };
 		41D7880C96EFB76392074D5A /* MediaThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaThumbnailCache.swift; sourceTree = "<group>"; };
 		420C3ADE27D193C5A08BBD67 /* ImageInspectWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInspectWindow.swift; sourceTree = "<group>"; };
@@ -140,6 +143,7 @@
 		62246959374FE67D5FD83B9D /* LoginPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginPanel.swift; sourceTree = "<group>"; };
 		658FDB8BCED20C2ECE359B84 /* ScreenManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenManager.swift; sourceTree = "<group>"; };
 		65CEF0151EE76A0D07CB9D9C /* CaptureFreeze.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureFreeze.swift; sourceTree = "<group>"; };
+		682CE65B8CDCEC0C81B22E50 /* ProPillButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProPillButton.swift; sourceTree = "<group>"; };
 		683FA1330AE6960F66402CEE /* WidgetTextResultWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTextResultWindow.swift; sourceTree = "<group>"; };
 		6B64B424505C01A08B5DFF29 /* FileTypeIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTypeIcon.swift; sourceTree = "<group>"; };
 		73A93F29C4F35BF5FC95B9EE /* ImageInfoPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageInfoPanels.swift; sourceTree = "<group>"; };
@@ -244,10 +248,12 @@
 				E2E2F8F90A0A7276E70FA93C /* PreferencesWindow.swift */,
 				1433E6467F5201FE5A730FEC /* PreviewPanel.swift */,
 				2A683F6DB94CE572022B5AA0 /* PreviewPanelPreview.swift */,
+				682CE65B8CDCEC0C81B22E50 /* ProPillButton.swift */,
 				658FDB8BCED20C2ECE359B84 /* ScreenManager.swift */,
 				9E3752BB582E3A80CC0F50EB /* SelectedTextExtractor.swift */,
 				CCE03B0D47694EA64670432E /* StatusBarController.swift */,
 				1226FC2E8B5B461B9BE59026 /* String+Localization.swift */,
+				40D1849541A8099E0CE3D930 /* SystemLanguage.swift */,
 				2DD5EC8FEB4C74E4FD2B1F95 /* TrafficLightButton.swift */,
 				207B6A5A2D3E895CC2A33A4D /* TrayPopoverPanel.swift */,
 				43C26EE249858E0FF034FEFB /* VideoCompareWindow.swift */,
@@ -493,10 +499,12 @@
 				4C6BAE97FDAAFBADB096007E /* PreferencesWindow.swift in Sources */,
 				860DD2F54F60A1504CB60E50 /* PreviewPanel.swift in Sources */,
 				59E94B3294CB2E062A068A55 /* PreviewPanelPreview.swift in Sources */,
+				CD5C510EA7F7E836219A354C /* ProPillButton.swift in Sources */,
 				AAE02EAD160CC4F1385DF930 /* ScreenManager.swift in Sources */,
 				DDC3B6DB4CA276E80EF371A9 /* SelectedTextExtractor.swift in Sources */,
 				AA5BDE8FB2A97259B0116087 /* StatusBarController.swift in Sources */,
 				EEDBCB39C263989AF783FAE6 /* String+Localization.swift in Sources */,
+				2CFC08E6156FD8C437A95792 /* SystemLanguage.swift in Sources */,
 				5E4E045334F7FC25E0122DDC /* TaskRunningViews.swift in Sources */,
 				36190ACF12F79CE1E8E5926E /* TrafficLightButton.swift in Sources */,
 				71331F7B62DF6B17CACBD94B /* TrayPopoverPanel.swift in Sources */,

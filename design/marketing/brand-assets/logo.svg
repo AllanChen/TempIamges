@@ -1,76 +1,17 @@
 <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <!-- Glance brand mark (Figma "App Logo / Tangible", concept B): the peeker —
-       a round amber character looking over a photo print that is developed on
-       the left and still grey on the right, hands on the frame edge.
-       Full-bleed 1024 version; scripts/render-app-icon.swift renders the
-       Dock icon set from the same geometry (squircle at 80% of the canvas). -->
-  <defs>
-    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1a1b1f"/><stop offset="1" stop-color="#0a0a0c"/>
-    </linearGradient>
-    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f0b896"/><stop offset="0.5" stop-color="#e8c87c"/><stop offset="1" stop-color="#d4a574"/>
-    </linearGradient>
-    <linearGradient id="print" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f2c9a2"/><stop offset="0.5" stop-color="#c98a62"/><stop offset="1" stop-color="#5a3226"/>
-    </linearGradient>
-    <filter id="drop" x="-20%" y="-20%" width="140%" height="160%">
-      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#000" flood-opacity="0.45"/>
-    </filter>
-    <filter id="drop-small" x="-30%" y="-30%" width="160%" height="180%">
-      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#000" flood-opacity="0.4"/>
-    </filter>
-    <clipPath id="photo-clip"><rect x="153.6" y="471" width="716.8" height="409.6" rx="71.7"/></clipPath>
-    <clipPath id="developed-clip"><rect x="153.6" y="471" width="394.2" height="409.6"/></clipPath>
-  </defs>
-
-  <!-- Matte body -->
-  <rect width="1024" height="1024" rx="229" fill="url(#body)"/>
-  <rect x="4" y="4" width="1016" height="1016" rx="227" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="8"/>
-
-  <!-- Head (behind the frame) -->
-  <circle cx="512" cy="430" r="256" fill="url(#amber)" filter="url(#drop)"/>
-  <ellipse cx="435" cy="261" rx="87" ry="36" fill="#fff" fill-opacity="0.35"/>
-  <!-- Eyes -->
-  <g>
-    <ellipse cx="435" cy="430" rx="59" ry="69" fill="#fff8f0"/>
-    <ellipse cx="435" cy="434" rx="35" ry="43" fill="#15110f"/>
-    <circle cx="422" cy="418" r="13" fill="#fff"/><circle cx="447" cy="451" r="6" fill="#fff"/>
-    <ellipse cx="589" cy="430" rx="59" ry="69" fill="#fff8f0"/>
-    <ellipse cx="589" cy="434" rx="35" ry="43" fill="#15110f"/>
-    <circle cx="576" cy="418" r="13" fill="#fff"/><circle cx="601" cy="451" r="6" fill="#fff"/>
-  </g>
-  <!-- Blush and mouth -->
-  <ellipse cx="338" cy="490" rx="46" ry="26" fill="#f07a6a" fill-opacity="0.35"/>
-  <ellipse cx="686" cy="490" rx="46" ry="26" fill="#f07a6a" fill-opacity="0.35"/>
-  <ellipse cx="512" cy="521" rx="22" ry="15" fill="#2a1614"/>
-  <ellipse cx="512" cy="534" rx="12" ry="7" fill="#e8705f"/>
-
-  <!-- Photo well and print -->
-  <rect x="141.3" y="458.8" width="741.4" height="434.2" rx="84" fill="#060607"/>
-  <g clip-path="url(#photo-clip)">
-    <rect x="153.6" y="471" width="716.8" height="409.6" fill="#2b2d33"/>
-    <circle cx="651" cy="597" r="53" fill="#4a4c53"/>
-    <ellipse cx="368" cy="819" rx="323" ry="123" fill="#24262b"/>
-    <ellipse cx="763" cy="880" rx="358" ry="123" fill="#1b1d21"/>
-    <g clip-path="url(#developed-clip)">
-      <rect x="153.6" y="471" width="716.8" height="409.6" fill="url(#print)"/>
-      <circle cx="651" cy="597" r="53" fill="#ffe3b8"/>
-      <ellipse cx="368" cy="819" rx="323" ry="123" fill="#8c4f3a"/>
-      <ellipse cx="763" cy="880" rx="358" ry="123" fill="#3b221c"/>
-    </g>
-  </g>
-  <rect x="153.6" y="471" width="716.8" height="409.6" rx="71.7" fill="none" stroke="#fff" stroke-opacity="0.10" stroke-width="4"/>
-  <!-- Slider line -->
-  <rect x="541.7" y="471" width="12.3" height="409.6" rx="6" fill="#fff" fill-opacity="0.85" filter="url(#drop-small)"/>
-
-  <!-- Hands on the frame edge -->
-  <g filter="url(#drop-small)">
-    <ellipse cx="307" cy="461" rx="61" ry="46" fill="url(#amber)"/>
-    <ellipse cx="717" cy="461" rx="61" ry="46" fill="url(#amber)"/>
-  </g>
-  <g fill="#f0b896">
-    <circle cx="281" cy="481" r="15"/><circle cx="316" cy="481" r="15"/><circle cx="351" cy="481" r="15"/>
-    <circle cx="691" cy="481" r="15"/><circle cx="726" cy="481" r="15"/><circle cx="761" cy="481" r="15"/>
-  </g>
+  <!-- Glance brand mark (Figma "Brand · App Icon" › "AppIcon / B · Peek", 静 Shizuka):
+       the peeker as flat paper on sumi ink — a dome head with two ink eyes looking
+       over the frame's paper rim, round hands on the rim, one vermilion mark.
+       Full-bleed 1024 version; clients/macos/scripts/render-app-icon.swift renders
+       the Dock icon set from the same geometry (squircle at 80% of the canvas). -->
+  <rect width="1024" height="1024" rx="229" fill="#151514"/>
+  <rect x="1.9" y="1.9" width="1020.2" height="1020.2" rx="227" fill="none" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="3.7"/>
+  <path d="M263.5 608.9A248.5 248.5 0 0 1 760.5 608.9Z" fill="#EAE7E0"/>
+  <circle cx="430.0" cy="512.0" r="37.3" fill="#151514"/>
+  <circle cx="594.0" cy="512.0" r="37.3" fill="#151514"/>
+  <rect x="139.2" y="608.9" width="745.6" height="288.3" rx="39.8" fill="#2E2E2B"/>
+  <rect x="139.2" y="608.9" width="745.6" height="17.4" rx="8.7" fill="#EAE7E0"/>
+  <rect x="241.1" y="579.1" width="114.3" height="54.7" rx="27.3" fill="#EAE7E0"/>
+  <rect x="668.6" y="579.1" width="114.3" height="54.7" rx="27.3" fill="#EAE7E0"/>
+  <circle cx="820.2" cy="832.6" r="22.4" fill="#C65A40"/>
 </svg>

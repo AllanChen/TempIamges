@@ -1,54 +1,330 @@
 import AppKit
 import UniformTypeIdentifiers
 
+/// Shizuka chrome shared by the Widget input windows (Figma `10 · Widget Input /
+/// Image + Prompt`, `29 · Draw Mask`, `30 · Multi-image`): a 1440 × 900 board with
+/// an ink/0 stage (0, 44, 1000 × 856), a hairline at x 1000 and a 360 pt form
+/// at x 1040. Frames are written in Figma's top-origin coordinates and converted
+/// to AppKit's bottom-origin frames by `frame(_:_:_:_:in:)`.
+enum WidgetInputStyle {
+    static let board = NSSize(width: 1440, height: 900)
+    static let stage = NSRect(x: 0, y: 44, width: 1000, height: 856)
+    static let formX: CGFloat = 1040
+    static let formWidth: CGFloat = 360
+    static let line = PanelStyle.themed(PanelStyle.Sumi.line, PanelStyle.Washi.line)
+    static let lineStrong = PanelStyle.themed(PanelStyle.Sumi.lineStrong, PanelStyle.Washi.lineStrong)
+    static let ink3 = PanelStyle.themed(PanelStyle.Sumi.ink3, PanelStyle.Washi.ink3)
+    /// The mask paint colour, unchanged: the accent in Sumi, vermilion in Washi.
+    static let maskColor = PanelStyle.themed(PanelStyle.accent, PanelStyle.Washi.shu)
+
+    /// A Figma top-origin rect inside a parent of `height`, as an AppKit frame.
+    static func frame(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat,
+                      in parentHeight: CGFloat = board.height) -> NSRect {
+        NSRect(x: x, y: parentHeight - y - height, width: width, height: height)
+    }
+
+    static func textWidth(_ string: String, font: NSFont) -> CGFloat {
+        ceil(NSAttributedString(string: string, attributes: [.font: font]).size().width)
+    }
+
+    /// Window planes, traffic lights, the centred title and the stage/form hairline.
+    /// Returns the stage view; the form is drawn straight onto `root`.
+    @discardableResult
+    static func buildChrome(in root: NSView, title: String, target: AnyObject,
+                            close: Selector, minimize: Selector, zoom: Selector) -> NSView {
+        let plane = NSView(frame: NSRect(origin: .zero, size: board))
+        plane.wantsLayer = true
+        plane.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surface)
+        root.addSubview(plane)
+        let stageView = NSView(frame: frame(stage.minX, stage.minY, stage.width, stage.height))
+        stageView.wantsLayer = true
+        stageView.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.canvas)
+        root.addSubview(stageView)
+        let divider = NSView(frame: frame(stage.maxX, stage.minY, 1, stage.height))
+        divider.wantsLayer = true
+        divider.layer?.backgroundColor = PanelStyle.resolvedCG(line)
+        root.addSubview(divider)
+        for (index, (color, action)) in [
+            (NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), close),
+            (NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), minimize),
+            (NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), zoom)
+        ].enumerated() {
+            let button = TrafficLightButton(color: color, target: target, action: action)
+            button.frame = frame(20 + CGFloat(index) * 20, 16, 12, 12)
+            root.addSubview(button)
+        }
+        if !title.isEmpty {
+            let titleView = text(title, font: PanelStyle.inspectFont(ofSize: 13, weight: .medium),
+                                 color: PanelStyle.textSecondary, frame: frame(100, 14, board.width - 200, 16))
+            titleView.alignment = .center
+            root.addSubview(titleView)
+        }
+        return stageView
+    }
+
+    static func text(_ value: String, font: NSFont, color: NSColor, frame: NSRect,
+                     lines: Int = 1, lineHeight: CGFloat? = nil) -> WidgetInputTextView {
+        let view = WidgetInputTextView(frame: frame)
+        view.string = value
+        view.font = font
+        view.textColor = color
+        view.maximumNumberOfLines = lines
+        view.lineHeight = lineHeight
+        return view
+    }
+
+    /// Form header: mono eyebrow (y 84), Mincho title (y 108, 38 tall) and a
+    /// two-line description (y 154).
+    static func addHeader(to root: NSView, eyebrow: String, title: String, description: String) {
+        let eyebrowView = text(eyebrow.uppercased(), font: PanelStyle.monoFont(ofSize: 11),
+                               color: PanelStyle.textTertiary, frame: frame(formX, 84, formWidth, 14))
+        eyebrowView.kern = 1.2
+        root.addSubview(eyebrowView)
+        root.addSubview(text(title, font: PanelStyle.titleFont(ofSize: 30), color: PanelStyle.textPrimary,
+                             frame: frame(formX, 108, formWidth, 38)))
+        root.addSubview(text(description, font: PanelStyle.inspectFont(ofSize: 13), color: PanelStyle.textSecondary,
+                             frame: frame(formX, 154, formWidth, 42), lines: 2, lineHeight: 21))
+    }
+
+    /// Section label (12, text/3) with an optional mono status at the right.
+    @discardableResult
+    static func addSectionLabel(to root: NSView, _ title: String, y: CGFloat,
+                                status: WidgetInputTextView? = nil) -> WidgetInputTextView {
+        root.addSubview(text(title, font: PanelStyle.inspectFont(ofSize: 12), color: PanelStyle.textTertiary,
+                             frame: frame(formX, y, 200, 15)))
+        if let status {
+            status.font = PanelStyle.monoFont(ofSize: 11)
+            status.textColor = PanelStyle.textTertiary
+            status.alignment = .right
+            status.frame = frame(formX + formWidth - 140, y, 140, 14)
+            root.addSubview(status)
+        }
+        return status ?? WidgetInputTextView(frame: .zero)
+    }
+
+    /// Board "cost" row: hairlines above and below, "Cost" at the left, the
+    /// Widget's configured price in mono at the right.
+    static func addCostRow(to root: NSView, cost: String, y: CGFloat) {
+        for lineY in [y, y + 35] {
+            let rule = NSView(frame: frame(formX, lineY, formWidth, 1))
+            rule.wantsLayer = true
+            rule.layer?.backgroundColor = PanelStyle.resolvedCG(line)
+            root.addSubview(rule)
+        }
+        root.addSubview(text("Cost".localized, font: PanelStyle.inspectFont(ofSize: 13),
+                             color: PanelStyle.textTertiary, frame: frame(formX, y + 10, 120, 16)))
+        let value = text(cost, font: PanelStyle.monoFont(ofSize: 13), color: PanelStyle.textPrimary,
+                         frame: frame(formX + 120, y + 10, formWidth - 120, 16))
+        value.alignment = .right
+        root.addSubview(value)
+    }
+
+    /// Board "Button": 32 pt, radius 6, label 13 medium. Primary is the accent
+    /// fill with accent ink; quiet is a strong hairline with text/1.
+    static func button(_ title: String, primary: Bool, target: AnyObject?, action: Selector?) -> PanelButton {
+        let button = PanelButton(title: title, target: target, action: action)
+        button.normalBackground = primary ? PanelStyle.accent : .clear
+        button.hoverBackground = primary ? PanelStyle.accentHover : PanelStyle.rowHover
+        button.titleColor = primary ? PanelStyle.accentInk : PanelStyle.textPrimary
+        button.titleFont = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
+        button.layer?.cornerRadius = PanelStyle.Radius.control
+        button.layer?.borderWidth = primary ? 0 : 1
+        button.layer?.borderColor = PanelStyle.resolvedCG(lineStrong)
+        return button
+    }
+
+    static func buttonWidth(_ title: String) -> CGFloat {
+        textWidth(title, font: PanelStyle.inspectFont(ofSize: 13, weight: .medium)) + 32
+    }
+
+    /// Board "actions" (y 836): Cancel at the form's left edge, the run action at its right.
+    static func addActions(to root: NSView, cancel: PanelButton, run: PanelButton, runTitle: String) {
+        let cancelWidth = buttonWidth("Cancel".localized)
+        cancel.frame = frame(formX, 836, cancelWidth, 32)
+        root.addSubview(cancel)
+        let runWidth = min(formWidth - cancelWidth - 16, buttonWidth(runTitle))
+        run.frame = frame(formX + formWidth - runWidth, 836, runWidth, 32)
+        root.addSubview(run)
+    }
+
+    /// Scale the 1440 × 900 board to fit the window, centred.
+    static func fit(_ root: NSView, in contentView: NSView?) {
+        let available = contentView?.bounds.size ?? board
+        let scale = min(available.width / board.width, available.height / board.height)
+        root.frame = NSRect(x: (available.width - board.width * scale) / 2,
+                            y: (available.height - board.height * scale) / 2,
+                            width: board.width * scale, height: board.height * scale)
+        root.bounds = NSRect(origin: .zero, size: board)
+    }
+
+    /// "3024 × 4032   JPEG   6.8 MB", read off the main thread.
+    static func loadImageDetails(_ url: URL, completion: @escaping (String) -> Void) {
+        DispatchQueue.global(qos: .utility).async {
+            var parts: [String] = []
+            if let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+               let width = properties[kCGImagePropertyPixelWidth] as? Int,
+               let height = properties[kCGImagePropertyPixelHeight] as? Int {
+                parts.append("\(width) × \(height)")
+            }
+            if !url.pathExtension.isEmpty { parts.append(url.pathExtension.uppercased()) }
+            if let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize {
+                parts.append(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))
+            }
+            let details = parts.joined(separator: "   ")
+            DispatchQueue.main.async { completion(details) }
+        }
+    }
+}
+
+/// A read-only Figma text frame. Draws into its own bounds so NSTextField cell
+/// padding never moves the specified position or wrapping width.
+final class WidgetInputTextView: NSView {
+    var string = "" { didSet { setAccessibilityLabel(string); needsDisplay = true } }
+    var font = PanelStyle.inspectFont(ofSize: 13) { didSet { needsDisplay = true } }
+    var textColor = PanelStyle.textPrimary { didSet { needsDisplay = true } }
+    var alignment: NSTextAlignment = .left { didSet { needsDisplay = true } }
+    var lineBreakMode: NSLineBreakMode = .byTruncatingTail { didSet { needsDisplay = true } }
+    var maximumNumberOfLines = 1 { didSet { needsDisplay = true } }
+    var lineHeight: CGFloat? { didSet { needsDisplay = true } }
+    var kern: CGFloat = 0 { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = alignment
+        paragraph.lineBreakMode = maximumNumberOfLines == 1 ? lineBreakMode : .byWordWrapping
+        if let lineHeight { paragraph.minimumLineHeight = lineHeight; paragraph.maximumLineHeight = lineHeight }
+        let text = NSAttributedString(string: string, attributes: [
+            .font: font, .foregroundColor: textColor, .paragraphStyle: paragraph, .kern: kern])
+        var rect = bounds
+        if maximumNumberOfLines > 0 {
+            let line = lineHeight ?? NSLayoutManager().defaultLineHeight(for: font)
+            rect.size.height = min(rect.height, line * CGFloat(maximumNumberOfLines))
+        }
+        text.draw(with: rect, options: [.usesLineFragmentOrigin, .usesFontLeading, .truncatesLastVisibleLine])
+    }
+}
+
+/// Board "prompt field" (360 × 148, radius 6): ink/0 with a strong hairline,
+/// text 14 inset (14, 12), placeholder in text/3. Disabled when the Widget
+/// takes no prompt, showing why in place of the text.
+final class WidgetPromptField: NSView {
+    let textView = NSTextView()
+    private let placeholder = WidgetInputTextView(frame: .zero)
+    private let isEnabled: Bool
+    var text: String { textView.string }
+
+    init(frame frameRect: NSRect, enabled: Bool) {
+        isEnabled = enabled
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.cornerRadius = PanelStyle.Radius.control
+        layer?.backgroundColor = PanelStyle.resolvedCG(enabled ? PanelStyle.canvas : PanelStyle.surface)
+        layer?.borderWidth = 1
+        layer?.borderColor = PanelStyle.resolvedCG(WidgetInputStyle.lineStrong)
+        let inset = NSRect(x: 14, y: 12, width: frameRect.width - 20, height: frameRect.height - 24)
+        let scroll = NSScrollView(frame: inset)
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        PanelStyle.styleScrollers(in: scroll)
+        scroll.borderType = .noBorder
+        textView.frame = scroll.contentView.bounds
+        textView.minSize = NSSize(width: 0, height: scroll.contentSize.height)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: scroll.contentSize.width - 6,
+                                                       height: CGFloat.greatestFiniteMagnitude)
+        textView.textContainer?.lineFragmentPadding = 0
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.minimumLineHeight = 22
+        paragraph.maximumLineHeight = 22
+        textView.defaultParagraphStyle = paragraph
+        textView.typingAttributes = [.font: PanelStyle.inspectFont(ofSize: 14), .paragraphStyle: paragraph,
+                                     .foregroundColor: enabled ? PanelStyle.textPrimary : PanelStyle.textTertiary]
+        textView.font = PanelStyle.inspectFont(ofSize: 14)
+        textView.textColor = enabled ? PanelStyle.textPrimary : PanelStyle.textTertiary
+        textView.insertionPointColor = PanelStyle.contrast
+        textView.isEditable = enabled
+        textView.isSelectable = enabled
+        textView.isRichText = false
+        textView.drawsBackground = false
+        textView.textContainerInset = .zero
+        scroll.documentView = textView
+        addSubview(scroll)
+        placeholder.font = PanelStyle.inspectFont(ofSize: 14)
+        placeholder.textColor = PanelStyle.textTertiary
+        placeholder.lineHeight = 22
+        placeholder.frame = NSRect(x: 14, y: frameRect.height - 12 - 22, width: frameRect.width - 28, height: 22)
+        addSubview(placeholder)
+        if enabled {
+            placeholder.string = "Describe what the Widget should do…".localized
+            NotificationCenter.default.addObserver(self, selector: #selector(textChanged),
+                                                   name: NSText.didChangeNotification, object: textView)
+        } else {
+            placeholder.string = "Prompt unavailable for this Widget".localized
+        }
+        setAccessibilityElement(false)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    @objc private func textChanged() { placeholder.isHidden = !textView.string.isEmpty }
+}
+
 /// The three Figma Widget Input layouts share one data model and one submission path.
 /// The selected image is always the first image sent to the Worker.
 final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
     var onSubmit: ((WidgetTaskInput) -> Void)?
     var onDismiss: (() -> Void)?
 
-    private enum Layout {
-        case imageText, imageMask, multipleImages
-
-        var width: CGFloat {
-            switch self {
-            case .imageText: 854
-            case .imageMask: 1054
-            case .multipleImages: 1066
-            }
-        }
-    }
+    private enum Layout { case imageText, imageMask, multipleImages }
 
     private let capabilities: WidgetInputCapabilities
     private let layout: Layout
     private let initialURL: URL
     private let initialImage: NSImage?
+    private let costText: String?
     private var mediaURLs: [URL]
     private var maskURL: URL?
     private var maskEditor: WidgetMaskEditorPanel?
     private var restoredFrame: NSRect?
-    private let designRoot = PanelStyle.makeFrostedBase(cornerRadius: 16)
-    private let body = NSView()
-    private let imageSection = NSView()
-    private let promptField = NSView()
-    private let promptView = NSTextView()
-    private let promptPlaceholder = NSTextField(labelWithString: "Describe what the Widget should do…".localized)
-    private let maskStatus = NSTextField(labelWithString: "No mask selected".localized)
+    private let designRoot = PanelStyle.makeFrostedBase(cornerRadius: PanelStyle.Radius.window)
+    private var imageSection = NSView()
+    private var sourcePreview: NSImageView?
+    private var promptField: WidgetPromptField?
+    /// The static hint under the mask description (Figma "Mask Hint"); the stage shows what was drawn.
+    private let maskStatus = WidgetInputTextView(frame: .zero)
+    private let maskState = WidgetInputTextView(frame: .zero)
+    /// The drawn mask, laid over the stage image in the mask colour.
     private let maskPreview = NSImageView()
-    private let countLabel = NSTextField(labelWithString: "")
-    private let errorLabel = NSTextField(labelWithString: "")
-    private let runButton = PanelButton(title: "Run Widget".localized, target: nil, action: nil)
+    private let countLabel = WidgetInputTextView(frame: .zero)
+    private let errorLabel = WidgetInputTextView(frame: .zero)
+    private let runButton = WidgetInputStyle.button("Run Widget".localized, primary: true, target: nil, action: nil)
 
+    /// `costText` is the Widget's configured price as the catalog states it
+    /// (for example `creditCostLabel`); the Cost row is shown only when given.
     init(widgetName: String, sourceURL: URL, sourceImage: NSImage?,
-         capabilities: WidgetInputCapabilities) {
+         capabilities: WidgetInputCapabilities, costText: String? = nil) {
         self.capabilities = capabilities
         self.initialURL = sourceURL
         self.initialImage = sourceImage
+        self.costText = costText
         self.mediaURLs = [sourceURL]
         layout = capabilities.maxImages > 1 ? .multipleImages
             : capabilities.acceptsMask ? .imageMask : .imageText
-        let size = NSSize(width: layout.width, height: 788)
-        super.init(contentRect: NSRect(origin: .zero, size: size),
+        super.init(contentRect: NSRect(origin: .zero, size: WidgetInputStyle.board),
                    styleMask: [.borderless, .closable, .miniaturizable],
                    backing: .buffered, defer: false)
         isOpaque = false
@@ -56,7 +332,7 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
         hasShadow = true
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
-        appearance = NSAppearance(named: .darkAqua)
+        appearance = PanelStyle.windowAppearance
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         buildUI(widgetName: widgetName)
     }
@@ -68,311 +344,241 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
     private func buildUI(widgetName: String) {
         let container = NSView(frame: NSRect(origin: .zero, size: frame.size))
         contentView = container
-        let frost = designRoot
-        frost.frame = container.bounds
-        frost.layer?.masksToBounds = true
-        frost.layer?.borderWidth = 1
-        frost.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        container.addSubview(frost)
+        let root = designRoot
+        root.frame = container.bounds
+        root.layer?.masksToBounds = true
+        root.layer?.borderWidth = 1
+        root.layer?.borderColor = PanelStyle.resolvedCG(WidgetInputStyle.lineStrong)
+        container.addSubview(root)
+        imageSection = WidgetInputStyle.buildChrome(in: root, title: widgetName, target: self,
+                                                    close: #selector(cancelTapped),
+                                                    minimize: #selector(minimizeTapped),
+                                                    zoom: #selector(zoomTapped))
 
-        let titlebar = NSView(frame: NSRect(x: 0, y: 740, width: layout.width, height: 48))
-        titlebar.wantsLayer = true
-        titlebar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-        frost.addSubview(titlebar)
-        addTrafficLight(to: titlebar, x: 24, color: NSColor(srgbRed: 237/255, green: 106/255, blue: 94/255, alpha: 1), action: #selector(cancelTapped))
-        addTrafficLight(to: titlebar, x: 44, color: NSColor(srgbRed: 244/255, green: 191/255, blue: 79/255, alpha: 1), action: #selector(minimizeTapped))
-        addTrafficLight(to: titlebar, x: 64, color: NSColor(srgbRed: 97/255, green: 197/255, blue: 84/255, alpha: 1), action: #selector(zoomTapped))
-        let windowTitle = label("Widget · \(widgetName)", size: 14, weight: .semibold,
-                                color: PanelStyle.textPrimary)
-        windowTitle.alignment = .center
-        windowTitle.frame = NSRect(x: 100, y: 15, width: layout.width - 200, height: 18)
-        titlebar.addSubview(windowTitle)
-
-        body.frame = NSRect(x: 0, y: 0, width: layout.width, height: 740)
-        body.wantsLayer = true
-        body.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-        frost.addSubview(body)
-        let title = label(layout == .multipleImages
-                          ? (capabilities.acceptsPrompt ? "Images and prompt" : "Images").localized
-                          : layout == .imageMask
-                          ? (capabilities.acceptsPrompt ? "Image, prompt and mask" : "Image and mask").localized
-                          : "Image and prompt".localized,
-                          size: 24, weight: .semibold, color: PanelStyle.textPrimary)
-        title.frame = NSRect(x: 32, y: 677, width: layout.width - 64, height: 30)
-        body.addSubview(title)
-        let subtitle = label(layout == .multipleImages
-                             ? (capabilities.minImages == 2 && capabilities.maxImages == 2
-                                ? "Use two images. The first image is the base.".localized
-                                : "Use up to four images. The first image is the base.".localized)
-                             : layout == .imageMask
-                             ? (capabilities.acceptsPrompt
-                                ? "Choose the image, describe the edit, then add a mask."
-                                : "Choose an image, then mark the area to change.").localized
-                             : "The prompt tells the Widget what to make or change.".localized,
-                             size: 12, color: PanelStyle.textSecondary)
-        subtitle.frame = NSRect(x: 32, y: 660, width: layout.width - 64, height: 16)
-        body.addSubview(subtitle)
-        divider(x: 32, y: 645, width: layout.width - 64, in: body)
-
-        imageSection.frame = NSRect(x: 0, y: 0, width: layout.width, height: 645)
-        body.addSubview(imageSection)
+        var kinds = [(layout == .multipleImages ? "Images" : "Image").localized]
+        if capabilities.acceptsPrompt { kinds.append("Prompt".localized) }
+        if layout == .imageMask { kinds.append("Mask".localized) }
+        let description = layout == .multipleImages
+            ? (capabilities.minImages == 2 && capabilities.maxImages == 2
+               ? "Use two images. The first image is the base.".localized
+               : "Use up to four images. The first image is the base.".localized)
+            : layout == .imageMask
+            ? (capabilities.acceptsPrompt
+               ? "Choose the image, describe the edit, then draw the mask."
+               : "Choose an image, then draw the area to change.").localized
+            : "The prompt tells the Widget what to make or change.".localized
+        WidgetInputStyle.addHeader(to: root, eyebrow: "\("Widget".localized)  ·  \(kinds.joined(separator: " + "))",
+                                   title: widgetName, description: description)
         renderImages()
 
-        switch layout {
-        case .imageText:
-            configurePrompt(x: 32, labelY: 228, width: 790, fieldY: 102, height: 117)
-        case .imageMask:
-            configurePrompt(x: 526, labelY: 608, width: 496, fieldY: 459, height: 145)
-            configureMask()
-        case .multipleImages:
-            configurePrompt(x: 32, labelY: 252, width: 1002, fieldY: 109, height: 134)
+        // Board form: section label at y 232, field at y 255 (148 tall).
+        // A mask Widget without a prompt shows no prompt field at all (not even a disabled one).
+        if layout != .imageMask || capabilities.acceptsPrompt {
+            WidgetInputStyle.addSectionLabel(to: root, "Prompt".localized, y: 232)
+            let field = WidgetPromptField(frame: WidgetInputStyle.frame(WidgetInputStyle.formX, 255,
+                                                                        WidgetInputStyle.formWidth, 148),
+                                          enabled: capabilities.acceptsPrompt)
+            root.addSubview(field)
+            promptField = field
         }
+        if layout == .imageMask { configureMask(in: root) }
+        if let costText { WidgetInputStyle.addCostRow(to: root, cost: costText, y: 720) }
 
-        errorLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        errorLabel.font = PanelStyle.inspectFont(ofSize: 12)
         errorLabel.textColor = PanelStyle.failure
-        errorLabel.frame = NSRect(x: 32, y: 75, width: layout.width - 280, height: 16)
-        body.addSubview(errorLabel)
+        errorLabel.maximumNumberOfLines = 2
+        errorLabel.frame = WidgetInputStyle.frame(WidgetInputStyle.formX, 790, WidgetInputStyle.formWidth, 32)
+        root.addSubview(errorLabel)
 
-        let cancel = actionButton("Cancel".localized, x: layout.width - 390, y: 33,
-                                  width: 140, action: #selector(cancelTapped))
-        body.addSubview(cancel)
         runButton.target = self
         runButton.action = #selector(runTapped)
-        runButton.normalBackground = PanelStyle.accent
-        runButton.hoverBackground = PanelStyle.accentHover
-        runButton.titleColor = PanelStyle.accentInk
-        runButton.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
-        runButton.layer?.borderWidth = 0
-        runButton.frame = NSRect(x: layout.width - 238, y: 33, width: 206, height: 36)
-        body.addSubview(runButton)
+        WidgetInputStyle.addActions(to: root,
+                                    cancel: WidgetInputStyle.button("Cancel".localized, primary: false,
+                                                                    target: self, action: #selector(cancelTapped)),
+                                    run: runButton, runTitle: "Run Widget".localized)
         updateRunState()
     }
 
-    private func configurePrompt(x: CGFloat, labelY: CGFloat, width: CGFloat,
-                                 fieldY: CGFloat, height: CGFloat) {
-        let enabled = capabilities.acceptsPrompt
-        let caption = label("PROMPT", size: 11, weight: .semibold,
-                            color: enabled ? PanelStyle.textSecondary : PanelStyle.textTertiary)
-        caption.frame = NSRect(x: x, y: labelY, width: width, height: 15)
-        body.addSubview(caption)
-        promptField.frame = NSRect(x: x, y: fieldY, width: width, height: height)
-        promptField.wantsLayer = true
-        promptField.layer?.cornerRadius = 9
-        promptField.layer?.backgroundColor = PanelStyle.resolvedCG(
-            enabled ? PanelStyle.inspectCanvas : PanelStyle.inspectChrome)
-        promptField.layer?.borderWidth = 1
-        promptField.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        body.addSubview(promptField)
-        let scroll = NSScrollView(frame: promptField.bounds.insetBy(dx: 17, dy: 13))
-        scroll.drawsBackground = false
-        scroll.hasVerticalScroller = true
-        PanelStyle.styleScrollers(in: scroll)
-        scroll.autohidesScrollers = true
-        scroll.borderType = .noBorder
-        promptView.frame = scroll.contentView.bounds
-        promptView.minSize = NSSize(width: 0, height: scroll.contentSize.height)
-        promptView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude,
-                                    height: CGFloat.greatestFiniteMagnitude)
-        promptView.isVerticallyResizable = true
-        promptView.isHorizontallyResizable = false
-        promptView.autoresizingMask = [.width]
-        promptView.textContainer?.widthTracksTextView = true
-        promptView.textContainer?.containerSize = NSSize(width: scroll.contentSize.width,
-                                                         height: CGFloat.greatestFiniteMagnitude)
-        promptView.font = PanelStyle.inspectFont(ofSize: 13)
-        promptView.textColor = enabled ? PanelStyle.textPrimary : PanelStyle.textTertiary
-        promptView.isEditable = enabled
-        promptView.isSelectable = enabled
-        promptView.isRichText = false
-        promptView.drawsBackground = false
-        promptView.textContainerInset = NSSize(width: 0, height: 0)
-        promptView.delegate = self
-        promptView.string = enabled ? "" : "Prompt unavailable for this Widget".localized
-        scroll.documentView = promptView
-        promptField.addSubview(scroll)
-        promptPlaceholder.font = PanelStyle.inspectFont(ofSize: 13)
-        promptPlaceholder.textColor = PanelStyle.textTertiary
-        promptPlaceholder.frame = NSRect(x: 19, y: height - 36, width: width - 38, height: 18)
-        promptPlaceholder.isHidden = !enabled
-        promptField.addSubview(promptPlaceholder)
+    /// Mask section under the prompt (or in its place): label with the drawn
+    /// state, what to do, a hint, and the one "Draw mask" action. The drawn
+    /// mask itself is shown over the stage image.
+    private func configureMask(in root: NSView) {
+        let top: CGFloat = capabilities.acceptsPrompt ? 427 : 232
+        let x = WidgetInputStyle.formX, width = WidgetInputStyle.formWidth
+        WidgetInputStyle.addSectionLabel(to: root, "Mask".localized, y: top, status: maskState)
+        root.addSubview(WidgetInputStyle.text("Select the area to change".localized,
+                                              font: PanelStyle.inspectFont(ofSize: 13, weight: .medium),
+                                              color: PanelStyle.textPrimary,
+                                              frame: WidgetInputStyle.frame(x, top + 25, width, 18)))
+        maskStatus.string = "Paint it on the image.".localized
+        maskStatus.font = PanelStyle.inspectFont(ofSize: 12)
+        maskStatus.textColor = PanelStyle.textTertiary
+        maskStatus.frame = WidgetInputStyle.frame(x, top + 46, width, 16)
+        root.addSubview(maskStatus)
+        let draw = WidgetInputStyle.button("Draw mask".localized, primary: false,
+                                           target: self, action: #selector(drawMaskTapped))
+        draw.frame = WidgetInputStyle.frame(x, top + 74, width, 32)
+        root.addSubview(draw)
+        maskPreview.imageScaling = .scaleAxesIndependently
+        maskPreview.alphaValue = 0.55
+        updateMaskState()
     }
 
-    private func configureMask() {
-        let caption = label("MASK", size: 11, weight: .semibold,
-                            color: PanelStyle.textSecondary)
-        caption.frame = NSRect(x: 526, y: 407, width: 496, height: 15)
-        body.addSubview(caption)
-        let field = NSView(frame: NSRect(x: 526, y: 175, width: 496, height: 223))
-        field.wantsLayer = true
-        field.layer?.cornerRadius = 9
-        field.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-        field.layer?.borderWidth = 1
-        field.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        body.addSubview(field)
-        maskPreview.frame = NSRect(x: 17, y: 61, width: 169, height: 145)
-        maskPreview.imageScaling = .scaleProportionallyUpOrDown
-        maskPreview.wantsLayer = true
-        maskPreview.layer?.cornerRadius = 8
-        maskPreview.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        maskPreview.layer?.borderWidth = 1
-        maskPreview.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        field.addSubview(maskPreview)
-        let description = label("Select the area to change".localized, size: 13,
-                                weight: .medium, color: PanelStyle.textPrimary)
-        description.frame = NSRect(x: 204, y: 177, width: 274, height: 18)
-        field.addSubview(description)
-        maskStatus.font = PanelStyle.inspectFont(ofSize: 11)
-        maskStatus.textColor = PanelStyle.textSecondary
-        maskStatus.lineBreakMode = .byTruncatingMiddle
-        maskStatus.frame = NSRect(x: 204, y: 150, width: 274, height: 16)
-        field.addSubview(maskStatus)
-        field.addSubview(actionButton("Upload mask".localized, x: 17, y: 9,
-                                      width: 220, action: #selector(uploadMaskTapped)))
-        field.addSubview(actionButton("Draw mask".localized, x: 254, y: 9,
-                                      width: 225, action: #selector(drawMaskTapped)))
+    private func updateMaskState() {
+        maskState.string = maskURL == nil ? "" : "Drawn".localized
+    }
+
+    /// The image being edited, as the editor will draw on it.
+    private var currentSourceImage: NSImage? {
+        sourcePreview?.image ?? (mediaURLs.first == initialURL ? initialImage : nil)
+    }
+
+    /// The mask overlay takes the shape the image has on the stage (aspect-fit
+    /// inside the image frame), so the drawn area lines up with the picture.
+    private func fitMaskPreview() {
+        guard layout == .imageMask, let sourcePreview else { return }
+        let area = sourcePreview.frame
+        guard let size = currentSourceImage?.size, size.width > 0, size.height > 0 else {
+            maskPreview.frame = area
+            return
+        }
+        let scale = min(area.width / size.width, area.height / size.height)
+        let width = (size.width * scale).rounded()
+        let height = (size.height * scale).rounded()
+        maskPreview.frame = NSRect(x: (area.midX - width / 2).rounded(), y: (area.midY - height / 2).rounded(),
+                                   width: width, height: height)
+    }
+
+    /// The drawn mask (white on transparent) recoloured in the mask colour.
+    private func tintedMask(_ mask: NSImage) -> NSImage {
+        NSImage(size: mask.size, flipped: false) { rect in
+            mask.draw(in: rect)
+            WidgetInputStyle.maskColor.set()
+            rect.fill(using: .sourceIn)
+            return true
+        }
+    }
+
+    /// Stage coordinates: Figma y minus the 44 pt title strip, inside the 856 pt stage.
+    private func stageFrame(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> NSRect {
+        WidgetInputStyle.frame(x, y - WidgetInputStyle.stage.minY, width, height,
+                               in: WidgetInputStyle.stage.height)
     }
 
     private func renderImages() {
         imageSection.subviews.forEach { $0.removeFromSuperview() }
+        sourcePreview = nil
         switch layout {
         case .imageText, .imageMask:
-            let wide = layout == .imageText
-            let imageFrame = NSRect(x: 32, y: wide ? 288 : 139,
-                                    width: wide ? 790 : 470,
-                                    height: wide ? 339 : 488)
-            addImagePreview(mediaURLs[0], frame: imageFrame, to: imageSection)
-            let name = label(mediaURLs[0].lastPathComponent, size: 12,
-                             color: PanelStyle.textSecondary)
-            name.frame = NSRect(x: 32, y: wide ? 260 : 110,
-                                width: imageFrame.width, height: 17)
+            // Board "image" (120, 116, 760 × 570), meta at y 706, "Change image" right-aligned at y 698.
+            let url = mediaURLs[0]
+            let preview = NSImageView(frame: stageFrame(120, 116, 760, 570))
+            preview.imageScaling = .scaleProportionallyUpOrDown
+            imageSection.addSubview(preview)
+            sourcePreview = preview
+            loadPreview(url, into: preview)
+            if layout == .imageMask {
+                imageSection.addSubview(maskPreview)
+                fitMaskPreview()
+            }
+            let nameFont = PanelStyle.inspectFont(ofSize: 13)
+            let changeWidth = WidgetInputStyle.buttonWidth("Change image".localized)
+            let nameWidth = min(WidgetInputStyle.textWidth(url.lastPathComponent, font: nameFont), 760 - changeWidth - 220)
+            let name = WidgetInputStyle.text(url.lastPathComponent, font: nameFont, color: PanelStyle.textPrimary,
+                                             frame: stageFrame(120, 706, nameWidth, 16))
+            name.lineBreakMode = .byTruncatingMiddle
             imageSection.addSubview(name)
-            imageSection.addSubview(actionButton("Change image".localized,
-                                                 x: 32, y: 33, width: 150,
-                                                 action: #selector(changeImageTapped)))
+            let details = WidgetInputStyle.text("", font: PanelStyle.monoFont(ofSize: 11), color: PanelStyle.textTertiary,
+                                                frame: stageFrame(120 + nameWidth + 16, 707, 760 - nameWidth - 16 - changeWidth - 16, 14))
+            imageSection.addSubview(details)
+            WidgetInputStyle.loadImageDetails(url) { [weak self, weak details] text in
+                guard self?.mediaURLs.first == url else { return }
+                details?.string = text
+            }
+            let change = WidgetInputStyle.button("Change image".localized, primary: false,
+                                                 target: self, action: #selector(changeImageTapped))
+            change.frame = stageFrame(880 - changeWidth, 698, changeWidth, 32)
+            imageSection.addSubview(change)
         case .multipleImages:
-            let title = label("IMAGES", size: 11, weight: .semibold,
-                              color: PanelStyle.textSecondary)
-            title.frame = NSRect(x: 32, y: 609, width: 300, height: 15)
-            imageSection.addSubview(title)
-            countLabel.stringValue = "\(mediaURLs.count) / \(capabilities.maxImages)"
-            countLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold)
-            countLabel.textColor = mediaURLs.count == capabilities.maxImages ? PanelStyle.accent : PanelStyle.textPrimary
-            countLabel.alignment = .right
-            countLabel.frame = NSRect(x: 956, y: 609, width: 76, height: 17)
-            imageSection.addSubview(countLabel)
+            // Board "inputs" at (84, 244): 196 × 262 tiles every 212 pt, a caption row 10 pt below.
             for (index, url) in mediaURLs.enumerated() {
-                let x = CGFloat(32 + index * 254)
-                let tile = NSView(frame: NSRect(x: x, y: 298, width: 238, height: 296))
-                tile.wantsLayer = true
-                tile.layer?.cornerRadius = 10
-                tile.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-                tile.layer?.borderWidth = 1
-                tile.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+                let x = 84 + CGFloat(index) * 212
+                let tile = WidgetInputImageTile(frame: stageFrame(x, 244, 196, 262))
+                tile.showsBaseOutline = index == 0
                 imageSection.addSubview(tile)
-                addImagePreview(url, frame: NSRect(x: 8, y: 64, width: 222, height: 224), to: tile)
-                if index == 0 {
-                    let badge = label("BASE", size: 10, weight: .semibold,
-                                      color: PanelStyle.accent)
-                    badge.alignment = .center
-                    badge.frame = NSRect(x: 18, y: 258, width: 56, height: 18)
-                    badge.wantsLayer = true
-                    badge.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-                    badge.layer?.cornerRadius = 6
-                    tile.addSubview(badge)
+                loadTileImage(url, into: tile)
+                if mediaURLs.count > 1 {
+                    let remove = WidgetInputRemoveButton(frame: NSRect(x: 166, y: 262 - 8 - 22, width: 22, height: 22))
+                    remove.target = self
+                    remove.action = #selector(removeImageTapped)
+                    remove.tag = index
+                    tile.addSubview(remove)
                 }
-                let remove = actionButton("×", x: 194, y: 252, width: 28,
-                                          action: #selector(removeImageTapped))
-                remove.tag = index
-                remove.isEnabled = mediaURLs.count > 1
-                tile.addSubview(remove)
-                let file = label(url.lastPathComponent, size: 12,
-                                 weight: .medium, color: PanelStyle.textPrimary)
+                imageSection.addSubview(WidgetInputStyle.text("\(index + 1)", font: PanelStyle.monoFont(ofSize: 11),
+                                                              color: PanelStyle.textTertiary,
+                                                              frame: stageFrame(x, 516, 12, 14)))
+                let file = WidgetInputStyle.text(url.lastPathComponent, font: PanelStyle.inspectFont(ofSize: 12),
+                                                 color: PanelStyle.textPrimary,
+                                                 frame: stageFrame(x + 15, 516, index == 0 ? 140 : 181, 15))
                 file.lineBreakMode = .byTruncatingMiddle
-                file.frame = NSRect(x: 12, y: 32, width: 214, height: 17)
-                tile.addSubview(file)
-                let order = label("IMAGE \(index + 1)", size: 10,
-                                  color: PanelStyle.textTertiary)
-                order.frame = NSRect(x: 12, y: 11, width: 214, height: 14)
-                tile.addSubview(order)
+                file.toolTip = url.lastPathComponent
+                imageSection.addSubview(file)
+                if index == 0 {
+                    let base = WidgetInputStyle.text("Base".localized, font: PanelStyle.inspectFont(ofSize: 11),
+                                                     color: PanelStyle.textTertiary, frame: stageFrame(x + 150, 516, 46, 13))
+                    base.alignment = .right
+                    imageSection.addSubview(base)
+                }
             }
             if mediaURLs.count < capabilities.maxImages {
-                let add = actionButton("＋  Add image".localized,
-                                       x: CGFloat(32 + mediaURLs.count * 254), y: 298,
-                                       width: 238, action: #selector(addImagesTapped))
-                add.frame.size.height = 296
+                let x = 84 + CGFloat(mediaURLs.count) * 212
+                let add = WidgetInputAddTile(frame: stageFrame(x, 244, 196, 41), title: "Add image".localized)
+                add.target = self
+                add.action = #selector(addImagesTapped)
                 imageSection.addSubview(add)
+                imageSection.addSubview(WidgetInputStyle.text("\(mediaURLs.count + 1)", font: PanelStyle.monoFont(ofSize: 11),
+                                                              color: PanelStyle.textTertiary,
+                                                              frame: stageFrame(x, 295, 12, 14)))
+                if mediaURLs.count >= capabilities.minImages {
+                    imageSection.addSubview(WidgetInputStyle.text("Optional".localized, font: PanelStyle.inspectFont(ofSize: 12),
+                                                                  color: PanelStyle.textTertiary,
+                                                                  frame: stageFrame(x + 15, 295, 181, 15)))
+                }
             }
-            let hint = label(capabilities.maxImages == 2
-                             ? "This Widget requires exactly two images.".localized
-                             : mediaURLs.count == 4
-                             ? "4 images maximum · remove one to add another".localized
-                             : "Images are sent from left to right · up to 4".localized,
-                             size: 11, color: PanelStyle.textSecondary)
-            hint.frame = NSRect(x: 32, y: 278, width: 900, height: 15)
+            let hint = WidgetInputStyle.text(capabilities.maxImages == 2
+                                             ? "This Widget requires exactly two images.".localized
+                                             : mediaURLs.count == 4
+                                             ? "4 images maximum · remove one to add another".localized
+                                             : "Images are sent from left to right · up to 4".localized,
+                                             font: PanelStyle.inspectFont(ofSize: 12), color: PanelStyle.textTertiary,
+                                             frame: stageFrame(84, 559, 600, 15))
             imageSection.addSubview(hint)
+            countLabel.string = "\(mediaURLs.count) / \(capabilities.maxImages)"
+            countLabel.font = PanelStyle.monoFont(ofSize: 11)
+            countLabel.textColor = mediaURLs.count == capabilities.maxImages ? PanelStyle.textPrimary : PanelStyle.textTertiary
+            countLabel.alignment = .right
+            countLabel.frame = stageFrame(716, 559, 200, 14)
+            imageSection.addSubview(countLabel)
         }
     }
 
-    private func addImagePreview(_ url: URL, frame: NSRect, to parent: NSView) {
-        let preview = NSImageView(frame: frame)
-        preview.imageScaling = .scaleProportionallyUpOrDown
-        preview.wantsLayer = true
-        preview.layer?.cornerRadius = 8
-        preview.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-        preview.layer?.borderWidth = 1
-        preview.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        parent.addSubview(preview)
+    private func loadPreview(_ url: URL, into preview: NSImageView) {
         if url == initialURL, let initialImage { preview.image = initialImage; return }
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .userInitiated).async { [weak preview, weak self] in
             let image = NSImage(contentsOf: url)
-            DispatchQueue.main.async { [weak preview] in preview?.image = image }
+            DispatchQueue.main.async { [weak preview, weak self] in
+                preview?.image = image
+                self?.fitMaskPreview()
+            }
         }
     }
 
-    private func label(_ value: String, size: CGFloat,
-                       weight: NSFont.Weight = .regular, color: NSColor) -> NSTextField {
-        let result = NSTextField(labelWithString: value)
-        result.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
-        result.textColor = color
-        return result
-    }
-
-    private func divider(x: CGFloat, y: CGFloat, width: CGFloat, in view: NSView) {
-        let line = NSView(frame: NSRect(x: x, y: y, width: width, height: 1))
-        line.wantsLayer = true
-        line.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        view.addSubview(line)
-    }
-
-    private func actionButton(_ title: String, x: CGFloat, y: CGFloat,
-                              width: CGFloat, action: Selector) -> PanelButton {
-        let result = PanelButton(title: title, target: self, action: action)
-        result.normalBackground = PanelStyle.inspectToolbar
-        result.hoverBackground = PanelStyle.inspectLine
-        result.titleColor = PanelStyle.textPrimary
-        result.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
-        result.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        result.frame = NSRect(x: x, y: y, width: width, height: 36)
-        return result
-    }
-
-    private func addTrafficLight(to parent: NSView, x: CGFloat,
-                                 color: NSColor, action: Selector) {
-        let button = NSButton(frame: NSRect(x: x - 6, y: 12, width: 24, height: 24))
-        button.isBordered = false
-        button.wantsLayer = true
-        let dot = CALayer()
-        dot.frame = NSRect(x: 6, y: 6, width: 12, height: 12)
-        dot.backgroundColor = color.cgColor
-        dot.cornerRadius = 6
-        button.layer?.addSublayer(dot)
-        button.target = self
-        button.action = action
-        parent.addSubview(button)
-    }
-
-    func textDidChange(_ notification: Notification) {
-        promptPlaceholder.isHidden = !capabilities.acceptsPrompt || !promptView.string.isEmpty
+    private func loadTileImage(_ url: URL, into tile: WidgetInputImageTile) {
+        if url == initialURL, let initialImage { tile.image = initialImage; return }
+        DispatchQueue.global(qos: .userInitiated).async { [weak tile] in
+            let image = NSImage(contentsOf: url)
+            DispatchQueue.main.async { [weak tile] in tile?.image = image }
+        }
     }
 
     private func updateRunState() {
@@ -388,16 +594,7 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
         makeKeyAndOrderFront(nil)
     }
 
-    private func fitDesignRoot() {
-        let design = NSSize(width: layout.width, height: 788)
-        let available = contentView?.bounds.size ?? design
-        let scale = min(available.width / design.width, available.height / design.height)
-        designRoot.frame = NSRect(x: (available.width - design.width * scale) / 2,
-                                  y: (available.height - design.height * scale) / 2,
-                                  width: design.width * scale,
-                                  height: design.height * scale)
-        designRoot.bounds = NSRect(origin: .zero, size: design)
-    }
+    private func fitDesignRoot() { WidgetInputStyle.fit(designRoot, in: contentView) }
 
     override func close() {
         maskEditor?.close()
@@ -427,7 +624,7 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
         guard runButton.isEnabled else { return }
         let input = WidgetTaskInput(mediaURLs: mediaURLs,
                                     prompt: capabilities.acceptsPrompt
-                                        ? promptView.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        ? (promptField?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                                         : nil,
                                     maskURL: maskURL,
                                     usesMultipleImages: layout == .multipleImages)
@@ -450,18 +647,19 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
                 guard let first = picker.urls.first else { return }
                 self.mediaURLs = [first]
                 self.maskURL = nil
-                self.maskStatus.stringValue = "No mask selected".localized
                 self.maskPreview.image = nil
+                self.updateMaskState()
             } else {
                 let available = max(0, self.capabilities.maxImages - self.mediaURLs.count)
                 let additions = picker.urls.filter { !self.mediaURLs.contains($0) }
                 self.mediaURLs.append(contentsOf: additions.prefix(available))
-                self.errorLabel.stringValue = additions.count > available
+                self.errorLabel.string = additions.count > available
                     ? (self.capabilities.maxImages == 2
                        ? "This Widget accepts at most two images.".localized
                        : "A Widget accepts at most four images.".localized) : ""
             }
             self.renderImages()
+            self.fitMaskPreview()
             self.updateRunState()
         }
     }
@@ -470,35 +668,21 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
         guard mediaURLs.count > 1, mediaURLs.indices.contains(sender.tag) else { return }
         mediaURLs.remove(at: sender.tag)
         maskURL = nil
-        maskStatus.stringValue = "No mask selected".localized
         maskPreview.image = nil
+        updateMaskState()
         renderImages()
         updateRunState()
     }
 
-    @objc private func uploadMaskTapped() {
-        let picker = NSOpenPanel()
-        picker.allowedContentTypes = [.png]
-        picker.canChooseDirectories = false
-        picker.allowsMultipleSelection = false
-        picker.beginSheetModal(for: self) { [weak self] response in
-            guard response == .OK, let self, let url = picker.urls.first else { return }
-            self.maskURL = url
-            self.maskStatus.stringValue = url.lastPathComponent
-            self.loadMaskPreview(from: url)
-            self.updateRunState()
-        }
-    }
-
     @objc private func drawMaskTapped() {
-        guard let source = imageSection.subviews.compactMap({ $0 as? NSImageView }).first?.image else {
-            errorLabel.stringValue = "The source image is still loading.".localized
+        guard let source = sourcePreview?.image else {
+            errorLabel.string = "The source image is still loading.".localized
             return
         }
         let editor = WidgetMaskEditorPanel(sourceImage: source)
         editor.onUse = { [weak self] url in
             self?.maskURL = url
-            self?.maskStatus.stringValue = url.lastPathComponent
+            self?.updateMaskState()
             self?.loadMaskPreview(from: url)
             self?.updateRunState()
         }
@@ -510,10 +694,114 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let image = NSImage(contentsOf: url)
             DispatchQueue.main.async { [weak self] in
-                guard self?.maskURL == url else { return }
-                self?.maskPreview.image = image
+                guard let self, self.maskURL == url else { return }
+                self.fitMaskPreview()
+                self.maskPreview.image = image.map { self.tintedMask($0) }
             }
         }
+    }
+}
+
+/// Board multi-image tile: the picture aspect-filled at radius 3; the base
+/// image carries a 1 pt text/1 outline.
+private final class WidgetInputImageTile: NSView {
+    var image: NSImage? { didSet { imageLayer.contents = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) } }
+    var showsBaseOutline = false { didSet { layer?.borderWidth = showsBaseOutline ? 1 : 0 } }
+    private let imageLayer = CALayer()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.cornerRadius = PanelStyle.Radius.thumb
+        layer?.masksToBounds = true
+        layer?.backgroundColor = PanelStyle.resolvedCG(WidgetInputStyle.ink3)
+        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.textPrimary)
+        imageLayer.contentsGravity = .resizeAspectFill
+        imageLayer.masksToBounds = true
+        layer?.addSublayer(imageLayer)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        imageLayer.frame = bounds
+        CATransaction.commit()
+    }
+}
+
+/// 22 pt round remove control drawn over a photo: black plate, white cross.
+final class WidgetInputRemoveButton: NSButton {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        title = ""
+        isBordered = false
+        imagePosition = .noImage
+        toolTip = "Remove".localized
+        setAccessibilityLabel("Remove".localized)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.black.withAlphaComponent(isHighlighted ? 0.85 : 0.7).setFill()
+        NSBezierPath(ovalIn: bounds).fill()
+        HistoryStyle.icon("HistoryClose", color: .white, size: 12)?
+            .draw(in: NSRect(x: (bounds.width - 12) / 2, y: (bounds.height - 12) / 2, width: 12, height: 12))
+    }
+}
+
+/// Board "Add image": a dashed strong hairline, a plus glyph and the label.
+final class WidgetInputAddTile: NSControl {
+    private let title: String
+    private var hovering = false { didSet { needsDisplay = true } }
+
+    init(frame frameRect: NSRect, title: String) {
+        self.title = title
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(title)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override var isFlipped: Bool { true }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+    }
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+    override func mouseDown(with event: NSEvent) { if isEnabled { sendAction(action, to: target) } }
+    override func accessibilityPerformPress() -> Bool { sendAction(action, to: target) }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5),
+                                xRadius: PanelStyle.Radius.thumb, yRadius: PanelStyle.Radius.thumb)
+        if hovering { PanelStyle.rowHover.setFill(); path.fill() }
+        path.setLineDash([3, 3], count: 2, phase: 0)
+        path.lineWidth = 1
+        WidgetInputStyle.lineStrong.setStroke()
+        path.stroke()
+        if let plus = NSImage(systemSymbolName: "plus", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 12, weight: .regular)) {
+            let tinted = NSImage(size: plus.size, flipped: false) { rect in
+                plus.draw(in: rect)
+                PanelStyle.textSecondary.set()
+                rect.fill(using: .sourceAtop)
+                return true
+            }
+            tinted.draw(in: NSRect(x: (bounds.width - plus.size.width) / 2, y: 1 + (16 - plus.size.height) / 2,
+                                   width: plus.size.width, height: plus.size.height),
+                        from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+        }
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        NSAttributedString(string: title, attributes: [
+            .font: PanelStyle.inspectFont(ofSize: 12), .foregroundColor: PanelStyle.textSecondary,
+            .paragraphStyle: paragraph
+        ]).draw(with: NSRect(x: 0, y: 25, width: bounds.width, height: 15), options: [.usesLineFragmentOrigin])
     }
 }
 
@@ -522,21 +810,32 @@ final class WidgetInputPanel: NSPanel, NSTextViewDelegate {
 private final class WidgetMaskCanvas: NSView {
     private struct Stroke {
         var points: [CGPoint]
-        let erases: Bool
         let widthFraction: CGFloat
     }
 
     let sourceImage: NSImage
-    var erases = false
-    var brushSize: CGFloat = 32
+    var brushSize: CGFloat = 32 { didSet { updateBrushCursor() } }
     private var strokes: [Stroke] = []
+    /// The pointer over the image is a circle the size of the brush (not a crosshair); the system cursor is blank there.
+    private let brushCursor = CAShapeLayer()
+    private var hoverPoint: CGPoint?
+    private static let blankCursor = NSCursor(
+        image: NSImage(size: NSSize(width: 16, height: 16), flipped: false) { _ in true },
+        hotSpot: NSPoint(x: 8, y: 8))
 
     init(sourceImage: NSImage) {
         self.sourceImage = sourceImage
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-        layer?.cornerRadius = 9
+        brushCursor.fillColor = nil
+        brushCursor.strokeColor = NSColor.white.withAlphaComponent(0.95).cgColor
+        brushCursor.lineWidth = 1.5
+        brushCursor.shadowColor = NSColor.black.cgColor
+        brushCursor.shadowOpacity = 0.55
+        brushCursor.shadowRadius = 2
+        brushCursor.shadowOffset = .zero
+        brushCursor.isHidden = true
+        layer?.addSublayer(brushCursor)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -560,21 +859,62 @@ private final class WidgetMaskCanvas: NSView {
         if let mask = Self.renderMask(strokes: strokes,
                                       width: max(1, Int(target.width)),
                                       height: max(1, Int(target.height)),
-                                      color: PanelStyle.accent.cgColor) {
+                                      color: WidgetInputStyle.maskColor.cgColor) {
             NSImage(cgImage: mask, size: target.size)
                 .draw(in: target, from: .zero, operation: .sourceOver, fraction: 0.55)
         }
-        PanelStyle.inspectLine.setStroke()
-        NSBezierPath(roundedRect: target, xRadius: 8, yRadius: 8).stroke()
     }
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         guard imageRect.contains(point) else { return }
         let normalized = normalize(point)
-        strokes.append(Stroke(points: [normalized], erases: erases,
-                              widthFraction: brushSize / max(1, sourceImage.size.width)))
+        // The brush is sized in on-screen points, as a fraction of the displayed image width, so it
+        // looks the same for a 600 px and a 6000 px photo; the export scales it to the source pixels.
+        strokes.append(Stroke(points: [normalized],
+                              widthFraction: brushSize / max(1, imageRect.width)))
         needsDisplay = true
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(imageRect, cursor: Self.blankCursor)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds,
+                                       options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+
+    override func mouseEntered(with event: NSEvent) { moveBrushCursor(to: convert(event.locationInWindow, from: nil)) }
+    override func mouseMoved(with event: NSEvent) { moveBrushCursor(to: convert(event.locationInWindow, from: nil)) }
+    override func mouseExited(with event: NSEvent) { hoverPoint = nil; updateBrushCursor() }
+
+    private func moveBrushCursor(to point: CGPoint) {
+        hoverPoint = imageRect.contains(point) ? point : nil
+        updateBrushCursor()
+    }
+
+    private func updateBrushCursor() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        if let hoverPoint {
+            let diameter = brushSize
+            brushCursor.path = CGPath(ellipseIn: CGRect(x: -diameter / 2, y: -diameter / 2,
+                                                        width: diameter, height: diameter), transform: nil)
+            brushCursor.position = hoverPoint
+            brushCursor.isHidden = false
+        } else {
+            brushCursor.isHidden = true
+        }
+        CATransaction.commit()
+    }
+
+    override func layout() {
+        super.layout()
+        window?.invalidateCursorRects(for: self)
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -584,6 +924,7 @@ private final class WidgetMaskCanvas: NSView {
         let clamped = CGPoint(x: max(rect.minX, min(point.x, rect.maxX)),
                               y: max(rect.minY, min(point.y, rect.maxY)))
         strokes[strokes.count - 1].points.append(normalize(clamped))
+        moveBrushCursor(to: point)
         needsDisplay = true
     }
 
@@ -595,7 +936,18 @@ private final class WidgetMaskCanvas: NSView {
 
     func undo() { if !strokes.isEmpty { strokes.removeLast(); needsDisplay = true } }
     func clear() { strokes.removeAll(); needsDisplay = true }
-    var hasPaint: Bool { strokes.contains { !$0.erases } }
+    /// True only when some painted pixels survive the erase strokes.
+    var hasPaint: Bool {
+        guard !strokes.isEmpty else { return false }
+        let rect = imageRect
+        let width = 128
+        let height = max(1, Int((CGFloat(width) * rect.height / max(1, rect.width)).rounded()))
+        guard let mask = Self.renderMask(strokes: strokes, width: width, height: height,
+                                         color: NSColor.white.cgColor),
+              let data = mask.dataProvider?.data as Data? else { return false }
+        // RGBA, premultiplied: every fourth byte is alpha.
+        return stride(from: 3, to: data.count, by: 4).contains { data[$0] > 0 }
+    }
 
     private static func renderMask(strokes: [Stroke], width: Int, height: Int,
                                    color: CGColor) -> CGImage? {
@@ -610,7 +962,6 @@ private final class WidgetMaskCanvas: NSView {
         context.setLineJoin(.round)
         for stroke in strokes {
             guard let first = stroke.points.first else { continue }
-            context.setBlendMode(stroke.erases ? .clear : .normal)
             context.setStrokeColor(color)
             context.setFillColor(color)
             let radius = max(1, stroke.widthFraction * CGFloat(width) / 2)
@@ -648,18 +999,102 @@ private final class WidgetMaskCanvas: NSView {
     }
 }
 
+/// Board "Size" slider (Figma 29): a 2 pt strong-hairline track filled in
+/// text/1 up to a 14 pt knob.
+private final class WidgetMaskSizeSlider: NSControl {
+    var minValue: Double = 8
+    var maxValue: Double = 128
+    var value: Double = 32 { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.slider)
+        setAccessibilityLabel("Brush size".localized)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private var fraction: CGFloat { CGFloat((value - minValue) / max(1, maxValue - minValue)) }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let travel = bounds.width - 14
+        let knobX = travel * fraction
+        WidgetInputStyle.lineStrong.setFill()
+        NSBezierPath(roundedRect: NSRect(x: 0, y: bounds.midY - 1, width: bounds.width, height: 2), xRadius: 1, yRadius: 1).fill()
+        PanelStyle.textPrimary.setFill()
+        NSBezierPath(roundedRect: NSRect(x: 0, y: bounds.midY - 1, width: knobX + 7, height: 2), xRadius: 1, yRadius: 1).fill()
+        NSBezierPath(ovalIn: NSRect(x: knobX, y: bounds.midY - 7, width: 14, height: 14)).fill()
+    }
+
+    override func mouseDown(with event: NSEvent) { track(event) }
+    override func mouseDragged(with event: NSEvent) { track(event) }
+
+    private func track(_ event: NSEvent) {
+        let x = convert(event.locationInWindow, from: nil).x - 7
+        set(minValue + Double(min(1, max(0, x / max(1, bounds.width - 14)))) * (maxValue - minValue))
+    }
+
+    private func set(_ newValue: Double) {
+        let clamped = min(maxValue, max(minValue, newValue.rounded()))
+        guard clamped != value else { return }
+        value = clamped
+        sendAction(action, to: target)
+    }
+
+    override func accessibilityValue() -> Any? { NSNumber(value: value) }
+    override func accessibilityPerformIncrement() -> Bool { set(value + 8); return true }
+    override func accessibilityPerformDecrement() -> Bool { set(value - 8); return true }
+}
+
+/// A text-only action (Figma 29 "Undo", "Clear mask"): 12 pt text/2, text/1 on hover.
+private final class WidgetInputTextButton: NSButton {
+    private var hovering = false { didSet { needsDisplay = true } }
+
+    init(title: String, target: AnyObject?, action: Selector?) {
+        super.init(frame: .zero)
+        self.title = title
+        self.target = target
+        self.action = action
+        isBordered = false
+        setAccessibilityLabel(title)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+    }
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+
+    override func draw(_ dirtyRect: NSRect) {
+        NSAttributedString(string: title, attributes: [
+            .font: PanelStyle.inspectFont(ofSize: 12),
+            .foregroundColor: hovering || isHighlighted ? PanelStyle.textPrimary : PanelStyle.textSecondary
+        ]).draw(with: NSRect(x: 0, y: 0, width: bounds.width, height: bounds.height),
+                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+    }
+    override var isFlipped: Bool { true }
+}
+
+/// Figma `29 · Widget Input / Draw Mask`: the image on the stage with the brush,
+/// the mask tools in the form. Exports the same white-on-transparent PNG.
 final class WidgetMaskEditorPanel: NSPanel {
     var onUse: ((URL) -> Void)?
     private let canvas: WidgetMaskCanvas
-    private let sizeLabel = NSTextField(labelWithString: "32 px")
-    private let errorLabel = NSTextField(labelWithString: "")
-    private let useButton = PanelButton(title: "Use mask".localized, target: nil, action: nil)
-    private let designRoot = PanelStyle.makeFrostedBase(cornerRadius: 16)
+    private let slider = WidgetMaskSizeSlider(frame: .zero)
+    private let sizeLabel = WidgetInputTextView(frame: .zero)
+    private let errorLabel = WidgetInputTextView(frame: .zero)
+    private let useButton = WidgetInputStyle.button("Use mask".localized, primary: true, target: nil, action: nil)
+    private let designRoot = PanelStyle.makeFrostedBase(cornerRadius: PanelStyle.Radius.window)
     private var restoredFrame: NSRect?
 
     init(sourceImage: NSImage) {
         canvas = WidgetMaskCanvas(sourceImage: sourceImage)
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 1210, height: 760),
+        super.init(contentRect: NSRect(origin: .zero, size: WidgetInputStyle.board),
                    styleMask: [.borderless, .closable, .miniaturizable],
                    backing: .buffered, defer: false)
         isOpaque = false
@@ -667,7 +1102,7 @@ final class WidgetMaskEditorPanel: NSPanel {
         hasShadow = true
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
-        appearance = NSAppearance(named: .darkAqua)
+        appearance = PanelStyle.windowAppearance
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         buildUI()
     }
@@ -677,111 +1112,87 @@ final class WidgetMaskEditorPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 
     private func buildUI() {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 1210, height: 760))
+        let container = NSView(frame: NSRect(origin: .zero, size: WidgetInputStyle.board))
         contentView = container
         let root = designRoot
         root.frame = container.bounds
         root.layer?.masksToBounds = true
         root.layer?.borderWidth = 1
-        root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        root.layer?.borderColor = PanelStyle.resolvedCG(WidgetInputStyle.lineStrong)
         container.addSubview(root)
-        for (x, color, action) in [
-            (24.0, NSColor(srgbRed: 237/255, green: 106/255, blue: 94/255, alpha: 1), #selector(cancelTapped)),
-            (44.0, NSColor(srgbRed: 244/255, green: 191/255, blue: 79/255, alpha: 1), #selector(minimizeTapped)),
-            (64.0, NSColor(srgbRed: 97/255, green: 197/255, blue: 84/255, alpha: 1), #selector(zoomTapped))
-        ] {
-            let button = NSButton(frame: NSRect(x: x - 6, y: 729, width: 24, height: 24))
-            button.isBordered = false
-            button.wantsLayer = true
-            let dot = CALayer()
-            dot.frame = NSRect(x: 6, y: 6, width: 12, height: 12)
-            dot.backgroundColor = color.cgColor
-            dot.cornerRadius = 6
-            button.layer?.addSublayer(dot)
-            button.target = self
-            button.action = action
-            root.addSubview(button)
-        }
-        let title = label("Draw mask".localized, 24, .semibold, PanelStyle.textPrimary)
-        title.frame = NSRect(x: 120, y: 705, width: 600, height: 32)
-        root.addSubview(title)
-        let help = label("Paint the area the Widget should change.".localized,
-                         12, .regular, PanelStyle.textSecondary)
-        help.frame = NSRect(x: 32, y: 682, width: 800, height: 16)
-        root.addSubview(help)
-        canvas.frame = NSRect(x: 32, y: 113, width: 811, height: 537)
+        WidgetInputStyle.buildChrome(in: root, title: "", target: self, close: #selector(cancelTapped),
+                                     minimize: #selector(minimizeTapped), zoom: #selector(zoomTapped))
+        WidgetInputStyle.addHeader(to: root, eyebrow: "\("Widget".localized)  ·  \("Mask".localized)",
+                                   title: "Draw mask".localized,
+                                   description: "Paint the area the Widget should change.".localized)
+        // Board "image" (120, 116, 760 × 570); the canvas keeps its 10 pt inset around the picture.
+        canvas.frame = WidgetInputStyle.frame(110, 106, 780, 590)
         root.addSubview(canvas)
-        let tools = NSView(frame: NSRect(x: 877, y: 113, width: 301, height: 537))
-        tools.wantsLayer = true
-        tools.layer?.cornerRadius = 9
-        tools.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectCanvas)
-        tools.layer?.borderWidth = 1
-        tools.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        root.addSubview(tools)
-        let heading = label("TOOLS", 11, .semibold, PanelStyle.textTertiary)
-        heading.frame = NSRect(x: 20, y: 498, width: 261, height: 15)
-        tools.addSubview(heading)
-        tools.addSubview(button("Brush".localized, x: 20, y: 441, width: 124,
-                                action: #selector(brushTapped)))
-        tools.addSubview(button("Erase".localized, x: 157, y: 441, width: 124,
-                                action: #selector(eraseTapped)))
-        let brushLabel = label("BRUSH SIZE", 11, .semibold, PanelStyle.textTertiary)
-        brushLabel.frame = NSRect(x: 20, y: 395, width: 261, height: 15)
-        tools.addSubview(brushLabel)
-        let slider = NSSlider(frame: NSRect(x: 20, y: 357, width: 261, height: 24))
-        slider.minValue = 8
-        slider.maxValue = 128
-        slider.doubleValue = 32
+
+        let x = WidgetInputStyle.formX, width = WidgetInputStyle.formWidth
+        WidgetInputStyle.addSectionLabel(to: root, "Mask".localized, y: 232)
+        // Board "tool": a 31 pt ink/2 track holding the selected Brush (ink/3). There is no
+        // eraser (Undo and Clear mask cover mistakes), so Brush spans the track.
+        let track = NSView(frame: WidgetInputStyle.frame(x, 255, width, 31))
+        track.wantsLayer = true
+        track.layer?.cornerRadius = PanelStyle.Radius.control
+        track.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.overlay)
+        root.addSubview(track)
+        let brush = NSView(frame: NSRect(x: 2, y: 2, width: width - 4, height: 27))
+        brush.wantsLayer = true
+        brush.layer?.cornerRadius = PanelStyle.Radius.control - 1
+        brush.layer?.backgroundColor = PanelStyle.resolvedCG(WidgetInputStyle.ink3)
+        track.addSubview(brush)
+        let brushTitle = PanelCenteredTextView(frame: brush.bounds)
+        brushTitle.string = "Brush".localized
+        brushTitle.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
+        brushTitle.textColor = PanelStyle.textPrimary
+        brush.addSubview(brushTitle)
+
+        root.addSubview(WidgetInputStyle.text("Size".localized, font: PanelStyle.inspectFont(ofSize: 12),
+                                              color: PanelStyle.textTertiary, frame: WidgetInputStyle.frame(x, 300, 30, 15)))
+        slider.frame = WidgetInputStyle.frame(x + 34, 300.5, 270, 14)
         slider.target = self
         slider.action = #selector(sizeChanged(_:))
-        tools.addSubview(slider)
-        sizeLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        root.addSubview(slider)
+        sizeLabel.string = "32 px"
+        sizeLabel.font = PanelStyle.monoFont(ofSize: 11)
         sizeLabel.textColor = PanelStyle.textSecondary
-        sizeLabel.frame = NSRect(x: 20, y: 333, width: 261, height: 15)
-        tools.addSubview(sizeLabel)
-        tools.addSubview(button("Undo".localized, x: 20, y: 269, width: 124,
-                                action: #selector(undoTapped)))
-        tools.addSubview(button("Clear mask".localized, x: 157, y: 269, width: 124,
-                                action: #selector(clearTapped)))
-        let guide = label("Orange shows the selected area.".localized,
-                          12, .regular, PanelStyle.textSecondary)
-        guide.frame = NSRect(x: 20, y: 220, width: 261, height: 30)
-        tools.addSubview(guide)
-        errorLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        sizeLabel.alignment = .right
+        sizeLabel.frame = WidgetInputStyle.frame(x + width - 50, 300.5, 50, 14)
+        root.addSubview(sizeLabel)
+
+        let undoTitle = "Undo".localized
+        let undoWidth = WidgetInputStyle.textWidth(undoTitle, font: PanelStyle.inspectFont(ofSize: 12)) + 2
+        let undo = WidgetInputTextButton(title: undoTitle, target: self, action: #selector(undoTapped))
+        undo.frame = WidgetInputStyle.frame(x, 329, undoWidth, 15)
+        root.addSubview(undo)
+        let clearTitle = "Clear mask".localized
+        let clear = WidgetInputTextButton(title: clearTitle, target: self, action: #selector(clearTapped))
+        clear.frame = WidgetInputStyle.frame(x + undoWidth + 16, 329,
+                                             WidgetInputStyle.textWidth(clearTitle, font: PanelStyle.inspectFont(ofSize: 12)) + 2, 15)
+        root.addSubview(clear)
+
+        let swatch = NSView(frame: WidgetInputStyle.frame(x, 360.5, 10, 10))
+        swatch.wantsLayer = true
+        swatch.layer?.cornerRadius = 2
+        swatch.layer?.backgroundColor = PanelStyle.resolvedCG(WidgetInputStyle.maskColor)
+        root.addSubview(swatch)
+        root.addSubview(WidgetInputStyle.text("The highlighted area will be changed.".localized,
+                                              font: PanelStyle.inspectFont(ofSize: 12), color: PanelStyle.textTertiary,
+                                              frame: WidgetInputStyle.frame(x + 18, 358, width - 18, 15)))
+
+        errorLabel.font = PanelStyle.inspectFont(ofSize: 12)
         errorLabel.textColor = PanelStyle.failure
-        errorLabel.frame = NSRect(x: 32, y: 75, width: 700, height: 16)
+        errorLabel.maximumNumberOfLines = 2
+        errorLabel.frame = WidgetInputStyle.frame(x, 790, width, 32)
         root.addSubview(errorLabel)
-        root.addSubview(button("Cancel".localized, x: 902, y: 32, width: 124,
-                               action: #selector(cancelTapped)))
         useButton.target = self
         useButton.action = #selector(useTapped)
-        useButton.normalBackground = PanelStyle.accent
-        useButton.hoverBackground = PanelStyle.accentHover
-        useButton.titleColor = PanelStyle.accentInk
-        useButton.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
-        useButton.layer?.borderWidth = 0
-        useButton.frame = NSRect(x: 1038, y: 32, width: 140, height: 36)
-        root.addSubview(useButton)
-    }
-
-    private func label(_ value: String, _ size: CGFloat,
-                       _ weight: NSFont.Weight, _ color: NSColor) -> NSTextField {
-        let field = NSTextField(labelWithString: value)
-        field.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
-        field.textColor = color
-        return field
-    }
-
-    private func button(_ title: String, x: CGFloat, y: CGFloat,
-                        width: CGFloat, action: Selector) -> PanelButton {
-        let button = PanelButton(title: title, target: self, action: action)
-        button.normalBackground = PanelStyle.inspectToolbar
-        button.hoverBackground = PanelStyle.inspectLine
-        button.titleColor = PanelStyle.textPrimary
-        button.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
-        button.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        button.frame = NSRect(x: x, y: y, width: width, height: 36)
-        return button
+        WidgetInputStyle.addActions(to: root,
+                                    cancel: WidgetInputStyle.button("Cancel".localized, primary: false,
+                                                                    target: self, action: #selector(cancelTapped)),
+                                    run: useButton, runTitle: "Use mask".localized)
     }
 
     func present(over parentWindow: NSWindow) {
@@ -791,16 +1202,7 @@ final class WidgetMaskEditorPanel: NSPanel {
         makeKeyAndOrderFront(nil)
     }
 
-    private func fitDesignRoot() {
-        let design = NSSize(width: 1210, height: 760)
-        let available = contentView?.bounds.size ?? design
-        let scale = min(available.width / design.width, available.height / design.height)
-        designRoot.frame = NSRect(x: (available.width - design.width * scale) / 2,
-                                  y: (available.height - design.height * scale) / 2,
-                                  width: design.width * scale,
-                                  height: design.height * scale)
-        designRoot.bounds = NSRect(origin: .zero, size: design)
-    }
+    private func fitDesignRoot() { WidgetInputStyle.fit(designRoot, in: contentView) }
 
     override func close() {
         parent?.removeChildWindow(self)
@@ -819,22 +1221,20 @@ final class WidgetMaskEditorPanel: NSPanel {
         }
         fitDesignRoot()
     }
-    @objc private func brushTapped() { canvas.erases = false }
-    @objc private func eraseTapped() { canvas.erases = true }
     @objc private func undoTapped() { canvas.undo() }
     @objc private func clearTapped() { canvas.clear() }
-    @objc private func sizeChanged(_ sender: NSSlider) {
-        canvas.brushSize = CGFloat(sender.doubleValue)
-        sizeLabel.stringValue = "\(Int(sender.doubleValue)) px"
+    @objc private func sizeChanged(_ sender: WidgetMaskSizeSlider) {
+        canvas.brushSize = CGFloat(sender.value)
+        sizeLabel.string = "\(Int(sender.value)) px"
     }
 
     @objc private func useTapped() {
         guard canvas.hasPaint else {
-            errorLabel.stringValue = "Draw a mask before using it.".localized
+            errorLabel.string = "Draw a mask before using it.".localized
             return
         }
         guard let export = canvas.maskExporter() else {
-            errorLabel.stringValue = WidgetMaskError.exportFailed.localizedDescription
+            errorLabel.string = WidgetMaskError.exportFailed.localizedDescription
             return
         }
         useButton.isEnabled = false
@@ -853,7 +1253,7 @@ final class WidgetMaskEditorPanel: NSPanel {
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self?.errorLabel.stringValue = error.localizedDescription
+                    self?.errorLabel.string = error.localizedDescription
                     self?.useButton.isEnabled = true
                 }
             }

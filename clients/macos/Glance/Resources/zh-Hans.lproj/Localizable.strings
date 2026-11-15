@@ -25,6 +25,7 @@
 "No worker has claimed this task yet. You can cancel; any deducted credits will be refunded." = "任务尚未被执行器领取。可以取消任务，已扣点数将退还。";
 "Upgrade to Pro" = "升级 Pro";
 "Upgrade to Pro · from %@" = "升级 Pro · %@ 起";
+"from %@" = "%@ 起";
 "Manage Pro" = "管理 Pro";
 "Manage Pro…" = "管理 Pro…";
 "Buy Glance Pro…" = "购买 Glance Pro…";
@@ -296,6 +297,8 @@
 "Processing Widget…" = "Widget 处理中…";
 "Processing…" = "处理中…";
 "Uploading…" = "上传中…";
+"Preparing" = "准备中";
+"Preparing…" = "准备中…";
 "Submitting…" = "提交中…";
 "Downloading result…" = "正在下载结果…";
 "Widget completed" = "Widget 已完成";
@@ -384,6 +387,11 @@
 "Select the area to change" = "选择需要修改的区域";
 "Upload mask" = "上传遮罩";
 "Draw mask" = "绘制遮罩";
+"Paint it on the image." = "在图片上涂抹。";
+"Choose the image, describe the edit, then draw the mask." = "选择图片，描述修改内容，然后绘制遮罩。";
+"Choose an image, then draw the area to change." = "选择一张图片，然后绘制要修改的区域。";
+"选择图片，描述修改内容，然后绘制蒙版。" = "选择图片，描述修改内容，然后绘制蒙版。";
+"The highlighted area will be changed." = "高亮的区域将被修改。";
 "Change image" = "更换图片";
 "＋  Add image" = "＋  添加图片";
 "4 images maximum · remove one to add another" = "最多四张图片 · 移除一张后可继续添加";
@@ -1058,3 +1066,72 @@
 "This code has expired." = "此兑换码已过期。";
 "This account already has an active Pro license. The code was not consumed." = "此账户已有有效的 Pro 授权，兑换码未被使用。";
 "The code was not redeemed. Please try again." = "兑换未完成，请重试。";
+
+/* Theme relaunch */
+"Relaunch Glance to apply the theme" = "重新启动 Glance 以应用主题";
+"Glance needs to relaunch to switch themes. If a Widget task is still uploading, choose Later and relaunch after it finishes." = "切换主题需要重新启动 Glance。如果还有 Widget 任务正在上传，请选择“稍后”，等上传完成后再重启。";
+"Relaunch Now" = "立即重启";
+"Later" = "稍后";
+
+/* Shizuka Home */
+"Choose another" = "换一个";
+"Nothing here yet" = "这里还没有内容";
+"Inspected files show up here." = "查看过的文件会显示在这里。";
+
+/* Shizuka Task Center */
+"Details" = "详情";
+"What failed" = "失败内容";
+"What happened" = "发生了什么";
+"Reason" = "原因";
+"No result" = "没有结果";
+
+/* Shizuka Peek */
+"Inspect" = "查看";
+
+/* Shizuka Image Inspect */
+"Image" = "图片";
+"Color" = "颜色";
+"1 task" = "1 个任务";
+"Save as…" = "存储为…";
+"Icon (.icns)" = "图标 (.icns)";
+"Original" = "原始";
+"New size" = "新尺寸";
+"Couldn’t open %@" = "无法打开 %@";
+"Glance couldn’t read this image. The file may be damaged or in a format it can’t decode." = "Glance 无法读取这张图片。文件可能已损坏，或是无法解码的格式。";
+"Use ← → to keep browsing." = "用 ← → 继续浏览。";
+
+/* Shizuka Sign in */
+"Sign in to Glance" = "登录 Glance";
+"Connect this Mac." = "连接这台 Mac。";
+
+/* Shizuka Billing */
+"Pay with" = "支付方式";
+
+/* Shizuka menu bar & onboarding */
+"%d running" = "%d 个进行中";
+"Accessibility is still off — Peek won’t work until it’s allowed." = "辅助功能尚未开启，开启前 Peek 无法使用。";
+
+/* Shizuka Preferences */
+"Show Peek when you press the activation hotkey." = "按下激活快捷键时显示 Peek。";
+
+/* Shizuka video & capture */
+"Sound on" = "有声音";
+"Muted" = "已静音";
+"Drag to select · ↵ save · esc cancel" = "拖动选择 · ↵ 保存 · esc 取消";
+
+/* Shizuka content viewer */
+"Markdown" = "Markdown";
+"Previous match" = "上一个匹配";
+"Next match" = "下一个匹配";
+"1 line changed" = "1 行有改动";
+"%d lines changed" = "%d 行有改动";
+
+/* Shizuka widgets */
+"%d credit" = "%d 额度";
+"Cost" = "费用";
+"Prompt" = "提示词";
+"Mask" = "遮罩";
+"Drawn" = "已绘制";
+"Base" = "基准";
+"Add image" = "添加图片";
+"Brush size" = "笔刷大小";

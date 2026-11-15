@@ -29,28 +29,32 @@ final class VideoInformationView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        // Figma `28 · Video Inspect / Info`: ink/1 panel with a line/hair edge,
+        // a Mincho title and key (12 pt text/3) / value (mono 11 pt text/1) rows.
+        layer?.backgroundColor = PanelStyle.resolvedCG(InspectInk.ink1)
         layer?.borderWidth = 1
-        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 17, weight: .semibold)
-        titleLabel.textColor = PanelStyle.textPrimary
+        layer?.borderColor = PanelStyle.resolvedCG(InspectInk.line)
+        titleLabel.font = PanelStyle.titleFont(ofSize: 20)
+        titleLabel.textColor = InspectInk.text1
+        titleLabel.lineBreakMode = .byTruncatingTail
         addSubview(titleLabel)
         for key in keys {
             let label = NSTextField(labelWithString: key.localized)
-            label.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
-            label.textColor = PanelStyle.textTertiary
+            label.font = PanelStyle.inspectFont(ofSize: 12)
+            label.textColor = InspectInk.text3
             addSubview(label)
             keyLabels.append(label)
             let value = NSTextField(labelWithString: "—")
-            value.font = PanelStyle.inspectFont(ofSize: 13)
-            value.textColor = PanelStyle.textPrimary
+            value.font = PanelStyle.monoFont(ofSize: 11)
+            value.textColor = InspectInk.text1
+            value.alignment = .right
             value.lineBreakMode = .byTruncatingMiddle
             value.isSelectable = true
             addSubview(value)
             valueLabels.append(value)
             let line = NSView()
             line.wantsLayer = true
-            line.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+            line.layer?.backgroundColor = PanelStyle.resolvedCG(InspectInk.line)
             addSubview(line)
             dividers.append(line)
         }
@@ -61,22 +65,19 @@ final class VideoInformationView: NSView {
     override func layout() {
         super.layout()
         guard bounds.width > 0, bounds.height > 0 else { return }
-        let sx = bounds.width / 434, sy = bounds.height / 847
-        let scale = min(sx, sy)
-        layer?.borderWidth = max(1, scale)
+        // Fixed Figma metrics (top-origin): padding 28 / 24, title on a 28 pt
+        // line, rows of 32 pt (8 + 15 + 8 + 1 rule) from y 80.
         func topFrame(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
-            NSRect(x: x * sx, y: bounds.height - (y + h) * sy,
-                   width: w * sx, height: h * sy)
+            NSRect(x: x, y: bounds.height - (y + h), width: w, height: h)
         }
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 17 * scale, weight: .semibold)
-        titleLabel.frame = topFrame(36, 24, 362, 21)
+        let inset: CGFloat = 24
+        let width = max(0, bounds.width - inset * 2)
+        titleLabel.frame = topFrame(inset, 28, width, 28)
         for index in keys.indices {
-            let y = CGFloat(84 + index * 38)
-            keyLabels[index].font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .medium)
-            valueLabels[index].font = PanelStyle.inspectFont(ofSize: 13 * scale)
-            keyLabels[index].frame = topFrame(36, y, 124, 16)
-            valueLabels[index].frame = topFrame(174, y, 220, 16)
-            dividers[index].frame = topFrame(36, y + 30, 362, 1)
+            let y = CGFloat(80 + index * 32)
+            keyLabels[index].frame = topFrame(inset, y + 8, width * 0.45, 15)
+            valueLabels[index].frame = topFrame(inset + width * 0.45, y + 8, width * 0.55, 15)
+            dividers[index].frame = topFrame(inset, y + 31, width, 1)
         }
     }
 
@@ -150,7 +151,7 @@ final class CaptureThumbnailButton: NSButton {
         let textFrame = NSRect(x: footer.minX + 10, y: footer.minY + 5,
                                width: content.width - 20, height: 15)
         label.draw(at: NSPoint(x: textFrame.minX, y: textFrame.midY - label.size().height / 2))
-        NSColor.white.withAlphaComponent(0.12).setStroke()
+        PanelStyle.contrast.withAlphaComponent(0.12).setStroke()
         NSBezierPath(roundedRect: content.insetBy(dx: 0.5, dy: 0.5), xRadius: 12, yRadius: 12).stroke()
         NSGraphicsContext.restoreGraphicsState()
     }

@@ -1,8 +1,9 @@
 import AppKit
 
-/// Full-window capture overlay (Figma "Capture Editor"): the frozen picture,
-/// a 55% mask outside the crop box, the crop box with thirds and 8 handles, a
-/// size readout and the floating bar (ratio dropdown | Cancel | Capture).
+/// Full-window capture overlay (Figma Shizuka `24 · Capture`): the frozen
+/// picture, a dim outside the crop frame, the white frame with thirds and 8
+/// handles, the pixel size tag above it, the floating capture toolbar
+/// (Ratio segment | close | Save) below it and the shortcut hint pill.
 ///
 /// Everything is laid out in flipped (top-left) coordinates so the numbers can
 /// be read straight off the Figma frame.
@@ -13,14 +14,13 @@ final class CaptureEditorView: NSView {
     private let frozen: CGImage
     private let nsImage: NSImage
     private var ratio: CaptureRatio = .free
-    private var listOpen = false
 
     /// Selection as a unit rect over the displayed image, so it survives resizes.
     /// Starts as a centred square (the Free ratio, with a 1:1 starting shape).
     private var unitSelection = CGRect(x: 0, y: 0, width: 1, height: 1)
 
     private let bar = CaptureBar()
-    private let list = CaptureRatioList()
+    private let hint = CaptureHintPill()
 
     private enum Drag {
         case none
@@ -30,9 +30,12 @@ final class CaptureEditorView: NSView {
     }
     private var drag: Drag = .none
 
-    // Figma metrics (Capture Editor, 1554 × 1012 board).
-    private let handleSize: CGFloat = 10
-    private let barBottomInset: CGFloat = 24
+    // Figma metrics (24 · Capture, 1440 × 900 board).
+    private let handleSize: CGFloat = 7
+    /// The toolbar sits 14 pt below the frame, right-aligned with it.
+    private let barGap: CGFloat = 14
+    /// The hint pill's foot is 31 pt above the bottom edge.
+    private let hintBottomInset: CGFloat = 31
     /// Where the frozen picture sits, in this view's top-left coordinates —
     /// the spot it occupied on screen, so opening the editor doesn't move it.
     /// Nil fits the picture to the whole view.
@@ -55,15 +58,12 @@ final class CaptureEditorView: NSView {
         wantsLayer = true
         autoresizingMask = [.width, .height]
 
-        bar.ratioText = ratio.displayLabel
-        bar.onToggleList = { [weak self] in self?.toggleList() }
+        bar.selected = ratio
+        bar.onSelect = { [weak self] picked in self?.pick(picked) }
         bar.onCancel = { [weak self] in self?.onCancel?() }
         bar.onCapture = { [weak self] in self?.commit() }
         addSubview(bar)
-
-        list.isHidden = true
-        list.onSelect = { [weak self] picked in self?.pick(picked) }
-        addSubview(list)
+        addSubview(hint)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
@@ -87,6 +87,7 @@ final class CaptureEditorView: NSView {
             unitSelection = CGRect(x: (newValue.minX - r.minX) / r.width, y: (newValue.minY - r.minY) / r.height,
                                    width: newValue.width / r.width, height: newValue.height / r.height)
             needsDisplay = true
+            needsLayout = true
             window?.invalidateCursorRects(for: self)
         }
     }
@@ -98,36 +99,30 @@ final class CaptureEditorView: NSView {
 
     override func layout() {
         super.layout()
-        // Bar: 362 × 52, centred, 24 above the bottom edge.
-        let barSize = CaptureBar.size
-        bar.frame = CGRect(x: ((bounds.width - barSize.width) / 2).rounded(),
-                           y: bounds.height - barBottomInset - barSize.height,
-                           width: barSize.width, height: barSize.height)
-        // List opens upward, 8 above the bar, aligned with the dropdown.
-        let listSize = CaptureRatioList.size
-        list.frame = CGRect(x: bar.frame.minX + 8, y: bar.frame.minY - 8 - listSize.height,
-                            width: listSize.width, height: listSize.height)
+        let hintSize = hint.preferredSize
+        hint.frame = CGRect(x: ((bounds.width - hintSize.width) / 2).rounded(),
+                            y: bounds.height - hintBottomInset - hintSize.height,
+                            width: hintSize.width, height: hintSize.height)
+        // Below the frame and right-aligned with it; above it when there is no
+        // room below, and inside its foot when there is room on neither side.
+        let size = bar.preferredSize
+        let box = selection
+        let floor = hint.frame.minY - 8
+        var y = box.maxY + barGap
+        if y + size.height > floor {
+            y = box.minY - barGap - size.height
+            if y < 8 { y = min(box.maxY, floor) - barGap - size.height }
+        }
+        let x = min(max(8, box.maxX - size.width), bounds.width - size.width - 8)
+        bar.frame = CGRect(x: x.rounded(), y: max(8, y).rounded(), width: size.width, height: size.height)
         window?.invalidateCursorRects(for: self)
     }
 
     // MARK: Actions
 
-    private func toggleList() {
-        listOpen.toggle()
-        list.selected = ratio
-        list.isHidden = !listOpen
-    }
-
-    private func closeList() {
-        guard listOpen else { return }
-        listOpen = false
-        list.isHidden = true
-    }
-
     private func pick(_ picked: CaptureRatio) {
         ratio = picked
-        bar.ratioText = picked.displayLabel
-        closeList()
+        bar.selected = picked
         // Centred in the picture at 70% of its extent, so there is room to
         // move and enlarge the box instead of it filling the whole image.
         let image = imageRect
@@ -152,6 +147,7 @@ final class CaptureEditorView: NSView {
         nsImage.draw(in: image, from: .zero, operation: .sourceOver, fraction: 1,
                      respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high.rawValue])
 
+        // Marks over the picture are literal black and white, as in Figma.
         let box = selection
         let mask = NSBezierPath(rect: bounds)
         mask.append(NSBezierPath(rect: box))
@@ -159,56 +155,46 @@ final class CaptureEditorView: NSView {
         NSColor.black.withAlphaComponent(0.55).setFill()
         mask.fill()
 
-        // Thirds.
-        NSColor.white.withAlphaComponent(0.28).setStroke()
-        let thirds = NSBezierPath()
-        thirds.lineWidth = 1
+        // Thirds, 1 pt.
+        NSColor.white.withAlphaComponent(0.28).setFill()
         for i in 1...2 {
-            let x = box.minX + box.width * CGFloat(i) / 3
-            let y = box.minY + box.height * CGFloat(i) / 3
-            thirds.move(to: CGPoint(x: x, y: box.minY)); thirds.line(to: CGPoint(x: x, y: box.maxY))
-            thirds.move(to: CGPoint(x: box.minX, y: y)); thirds.line(to: CGPoint(x: box.maxX, y: y))
+            let x = (box.minX + box.width * CGFloat(i) / 3).rounded(.down)
+            let y = (box.minY + box.height * CGFloat(i) / 3).rounded(.down)
+            CGRect(x: x, y: box.minY, width: 1, height: box.height).fill()
+            CGRect(x: box.minX, y: y, width: box.width, height: 1).fill()
         }
-        thirds.stroke()
 
-        // Crop box, 1.5 pt stroke.
-        NSColor.white.withAlphaComponent(0.95).setStroke()
-        let outline = NSBezierPath(rect: box)
-        outline.lineWidth = 1.5
+        // Selection, 1 pt white inside the frame.
+        NSColor.white.setStroke()
+        let outline = NSBezierPath(rect: box.insetBy(dx: 0.5, dy: 0.5))
+        outline.lineWidth = 1
         outline.stroke()
 
         drawHandles(on: box)
-        drawReadout(for: box)
+        drawSizeTag(for: box)
     }
 
+    /// Figma `handle`: 7 pt white squares centred on the frame's corners and edges.
     private func drawHandles(on box: CGRect) {
+        NSColor.white.setFill()
         for handle in CaptureHandle.allCases {
             let p = handle.position(on: box)
-            let rect = CGRect(x: p.x - handleSize / 2, y: p.y - handleSize / 2, width: handleSize, height: handleSize)
-            NSGraphicsContext.saveGraphicsState()
-            let shadow = NSShadow()
-            shadow.shadowColor = NSColor.black.withAlphaComponent(0.35)
-            shadow.shadowBlurRadius = 3
-            shadow.shadowOffset = NSSize(width: 0, height: -1)   // flipped: negative height = down
-            shadow.set()
-            NSColor.white.setFill()
-            NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
-            NSGraphicsContext.restoreGraphicsState()
+            CGRect(x: p.x - handleSize / 2, y: p.y - handleSize / 2, width: handleSize, height: handleSize).fill()
         }
     }
 
-    private func drawReadout(for box: CGRect) {
-        let frame = CGRect(x: box.minX, y: max(8, box.minY - 30), width: 96, height: 22)
-        PanelStyle.canvasTint(0x161719, alpha: 0.9).setFill()
-        NSBezierPath(roundedRect: frame, xRadius: 6, yRadius: 6).fill()
+    /// Figma size tag: ink/0, radius 3, mono 11 text/1 with 8 × 3 padding,
+    /// its foot 6 pt above the frame.
+    private func drawSizeTag(for box: CGRect) {
         let crop = pixelCrop
-        let text = "\(Int(crop.width)) × \(Int(crop.height))" as NSString
-        let style = NSMutableParagraphStyle()
-        style.alignment = .center
-        text.draw(in: CGRect(x: frame.minX, y: frame.minY + 4, width: frame.width, height: 14),
-                  withAttributes: [.font: NSFont.systemFont(ofSize: 11, weight: .medium),
-                                   .foregroundColor: NSColor(srgbRed: 0xF3 / 255, green: 0xF3 / 255, blue: 0xF3 / 255, alpha: 1),
-                                   .paragraphStyle: style])
+        let text = "\(Int(crop.width)) × \(Int(crop.height))"
+        let font = PanelStyle.monoFont(ofSize: 11)
+        let width = InspectText.width(text, font: font) + 16
+        let frame = CGRect(x: box.minX, y: max(8, box.minY - 26), width: width, height: 20)
+        InspectInk.ink0.setFill()
+        NSBezierPath(roundedRect: frame, xRadius: PanelStyle.Radius.thumb, yRadius: PanelStyle.Radius.thumb).fill()
+        InspectText.draw(text, in: CGRect(x: frame.minX + 8, y: frame.minY + 3, width: width - 16, height: 14),
+                         font: font, color: InspectInk.text1, truncation: .byClipping)
     }
 
     // MARK: Mouse
@@ -238,7 +224,6 @@ final class CaptureEditorView: NSView {
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         let point = convert(event.locationInWindow, from: nil)
-        if listOpen { closeList() }
         let area = imageRect
         if let handle = handle(at: point) {
             drag = .handle(handle, start: selection)
@@ -279,7 +264,7 @@ final class CaptureEditorView: NSView {
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 53: // esc
-            if listOpen { closeList() } else { onCancel?() }
+            onCancel?()
         case 36, 76: // return, enter
             commit()
         default:
@@ -290,30 +275,30 @@ final class CaptureEditorView: NSView {
 
 private extension CaptureRatio {
     var displayLabel: String { self == .free ? "Free".localized : label }
+    /// Figma's segment order: Free, square, landscape before portrait.
+    static let segmentOrder: [CaptureRatio] = [.free, .square, .fourThree, .threeFour, .sixteenNine, .nineSixteen]
 }
 
-private extension PanelStyle {
-    static func canvasTint(_ hex: Int, alpha: CGFloat) -> NSColor {
-        NSColor(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
-                blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
-    }
-}
+// MARK: - Toolbar
 
-// MARK: - Bar
-
-/// The floating bar: ratio dropdown | divider | Cancel | Capture (Figma 362 × 52).
+/// Figma `capture toolbar`: ink/1, a line rule, radius 8, 46 pt high —
+/// "Ratio", the ratio segments, a divider, close, and the primary Save.
 private final class CaptureBar: NSView {
-    static let size = CGSize(width: 346, height: 52)
-
-    var ratioText = "" { didSet { dropdown.value = ratioText } }
-    var onToggleList: (() -> Void)?
+    var selected: CaptureRatio = .free { didSet { segments.selected = selected } }
+    var onSelect: ((CaptureRatio) -> Void)? {
+        get { segments.onSelect }
+        set { segments.onSelect = newValue }
+    }
     var onCancel: (() -> Void)?
     var onCapture: (() -> Void)?
 
-    private let blur = PanelStyle.makeBarBlur()
-    private let dropdown = CaptureDropdown(frame: CGRect(x: 8, y: 8, width: 132, height: 36))
-    private let cancel = CaptureBarButton(frame: CGRect(x: 156, y: 8, width: 78, height: 36), primary: false)
-    private let capture = CaptureBarButton(frame: CGRect(x: 242, y: 8, width: 96, height: 36), primary: true)
+    private let ratioLabel = InspectTextLabel("Ratio".localized, font: PanelStyle.inspectFont(ofSize: 12),
+                                              color: InspectInk.text3)
+    private let segments = CaptureRatioSegments()
+    private let divider = NSView()
+    private let close = InspectToolbarButton(symbol: "xmark", tooltip: "Cancel".localized)
+    private lazy var save = InspectDialogButton.make("Save".localized, primary: true,
+                                                     target: self, action: #selector(saveTapped))
 
     override var isFlipped: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
@@ -321,200 +306,92 @@ private final class CaptureBar: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        layer?.cornerRadius = 15
-        layer?.masksToBounds = true
+        layer?.cornerRadius = PanelStyle.cornerSmall
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
-
-        blur.frame = bounds
-        blur.autoresizingMask = [.width, .height]
-        addSubview(blur)
-        let tint = NSView(frame: bounds)
-        tint.wantsLayer = true
-        tint.layer?.backgroundColor = NSColor(srgbRed: 0x16 / 255, green: 0x17 / 255, blue: 0x19 / 255, alpha: 0.92).cgColor
-        tint.autoresizingMask = [.width, .height]
-        addSubview(tint)
-
-        dropdown.onClick = { [weak self] in self?.onToggleList?() }
-        addSubview(dropdown)
-
-        let divider = NSView(frame: CGRect(x: 148, y: 12, width: 1, height: 28))
+        layer?.borderColor = PanelStyle.resolvedCG(InspectInk.line)
+        layer?.backgroundColor = PanelStyle.resolvedCG(InspectInk.ink1)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.toolbar)
+        setAccessibilityLabel("Capture".localized)
+        addSubview(ratioLabel)
+        addSubview(segments)
         divider.wantsLayer = true
-        divider.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        divider.layer?.backgroundColor = PanelStyle.resolvedCG(InspectInk.lineStrong)
         addSubview(divider)
-
-        cancel.title = "Cancel".localized
-        cancel.onClick = { [weak self] in self?.onCancel?() }
-        addSubview(cancel)
-
-        capture.title = "Capture".localized
-        capture.icon = NSImage(named: "ToolbarCapture")
-        capture.onClick = { [weak self] in self?.onCapture?() }
-        addSubview(capture)
+        close.usesShizukaStyle = true
+        close.target = self
+        close.action = #selector(cancelTapped)
+        close.updateTooltip("Cancel".localized)
+        addSubview(close)
+        addSubview(save)
     }
 
-    convenience init() {
-        self.init(frame: CGRect(origin: .zero, size: CaptureBar.size))
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
-}
-
-private func tinted(_ image: NSImage, _ color: NSColor, size: CGSize) -> NSImage {
-    NSImage(size: size, flipped: false) { rect in
-        image.draw(in: rect)
-        color.set()
-        rect.fill(using: .sourceAtop)
-        return true
-    }
-}
-
-/// "Ratio  Free  ⌄" (Figma 132 × 36).
-private final class CaptureDropdown: NSView {
-    var value = "" { didSet { needsDisplay = true } }
-    var onClick: (() -> Void)?
-    private var hovering = false
-
-    override var isFlipped: Bool { true }
-    override var mouseDownCanMoveWindow: Bool { false }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self))
-    }
-    override func mouseEntered(with event: NSEvent) { hovering = true; needsDisplay = true }
-    override func mouseExited(with event: NSEvent) { hovering = false; needsDisplay = true }
-    override func mouseDown(with event: NSEvent) { onClick?() }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 9, yRadius: 9)
-        (hovering ? PanelStyle.canvasTint(0x25262B, alpha: 1) : PanelStyle.canvasTint(0x1D1E22, alpha: 1)).setFill()
-        path.fill()
-        NSColor.white.withAlphaComponent(0.12).setStroke()
-        path.lineWidth = 1
-        path.stroke()
-
-        ("Ratio".localized as NSString).draw(in: CGRect(x: 12, y: 11, width: 38, height: 14),
-            withAttributes: [.font: NSFont.systemFont(ofSize: 11, weight: .regular),
-                             .foregroundColor: PanelStyle.textTertiary])
-        (value as NSString).draw(in: CGRect(x: 50, y: 10, width: 52, height: 16),
-            withAttributes: [.font: NSFont.systemFont(ofSize: 12, weight: .semibold),
-                             .foregroundColor: PanelStyle.textPrimary])
-        // Figma chevronDown: path "m5 7 4 4 4-4" in an 18-unit box shown at 16 pt,
-        // 1.5-unit round stroke, at (width - 26, 10).
-        let unit: CGFloat = 16 / 18
-        let origin = CGPoint(x: bounds.width - 26, y: 10)
-        let chevron = NSBezierPath()
-        chevron.move(to: CGPoint(x: origin.x + 5 * unit, y: origin.y + 7 * unit))
-        chevron.line(to: CGPoint(x: origin.x + 9 * unit, y: origin.y + 11 * unit))
-        chevron.line(to: CGPoint(x: origin.x + 13 * unit, y: origin.y + 7 * unit))
-        chevron.lineWidth = 1.5 * unit
-        chevron.lineCapStyle = .round
-        chevron.lineJoinStyle = .round
-        NSColor(srgbRed: 0xD8 / 255, green: 0xD3 / 255, blue: 0xCE / 255, alpha: 1).setStroke()
-        chevron.stroke()
-    }
-}
-
-/// Cancel (quiet) and Capture (amber primary), 36 high, radius 9.
-private final class CaptureBarButton: NSView {
-    var title = "" { didSet { needsDisplay = true } }
-    var icon: NSImage?
-    var onClick: (() -> Void)?
-    private let primary: Bool
-    private var hovering = false
-    private var pressed = false
-
-    override var isFlipped: Bool { true }
-    override var mouseDownCanMoveWindow: Bool { false }
-
-    init(frame: NSRect, primary: Bool) {
-        self.primary = primary
-        super.init(frame: frame)
-    }
+    convenience init() { self.init(frame: .zero) }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self))
-    }
-    override func mouseEntered(with event: NSEvent) { hovering = true; needsDisplay = true }
-    override func mouseExited(with event: NSEvent) { hovering = false; pressed = false; needsDisplay = true }
-    override func mouseDown(with event: NSEvent) { pressed = true; needsDisplay = true }
-    override func mouseUp(with event: NSEvent) {
-        let inside = bounds.contains(convert(event.locationInWindow, from: nil))
-        pressed = false
-        needsDisplay = true
-        if inside { onClick?() }
+    private var saveWidth: CGFloat { InspectDialogButton.width(save.title) }
+
+    /// Label frame 7 + 41, then 4 pt gaps: segments, divider, close (28), Save; 7 pt right padding.
+    var preferredSize: CGSize {
+        CGSize(width: 7 + 41 + 4 + segments.preferredWidth + 4 + 1 + 4 + 28 + 4 + saveWidth + 7, height: 46)
     }
 
-    override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 9, yRadius: 9)
-        if primary {
-            (hovering ? PanelStyle.accentHover : PanelStyle.warmCue).setFill()
-            path.fill()
-            if pressed { NSColor.black.withAlphaComponent(0.12).setFill(); path.fill() }
-            // Icon + label are centred together, horizontally and vertically.
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
-                .foregroundColor: PanelStyle.accentInk]
-            let textWidth = ceil((title as NSString).size(withAttributes: attributes).width)
-            let iconWidth: CGFloat = icon == nil ? 0 : 16 + 6
-            var x = ((bounds.width - iconWidth - textWidth) / 2).rounded()
-            if let icon {
-                tinted(icon, PanelStyle.accentInk, size: CGSize(width: 16, height: 16))
-                    .draw(in: CGRect(x: x, y: 10, width: 16, height: 16),
-                          from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
-                x += iconWidth
-            }
-            (title as NSString).draw(in: CGRect(x: x, y: 10, width: textWidth + 2, height: 16),
-                                     withAttributes: attributes)
-        } else {
-            (hovering ? PanelStyle.canvasTint(0x25262B, alpha: 1) : PanelStyle.canvasTint(0x1D1E22, alpha: 1)).setFill()
-            path.fill()
-            NSColor.white.withAlphaComponent(0.12).setStroke()
-            path.lineWidth = 1
-            path.stroke()
-            let style = NSMutableParagraphStyle()
-            style.alignment = .center
-            (title as NSString).draw(in: CGRect(x: 0, y: 10, width: bounds.width, height: 16),
-                withAttributes: [.font: NSFont.systemFont(ofSize: 12, weight: .medium),
-                                 .foregroundColor: PanelStyle.textPrimary,
-                                 .paragraphStyle: style])
-        }
+    override func layout() {
+        super.layout()
+        let labelWidth = max(25, ratioLabel.preferredWidth)
+        ratioLabel.frame = CGRect(x: 15, y: 15.5, width: labelWidth, height: 15)
+        segments.frame = CGRect(x: 52, y: 10.5, width: segments.preferredWidth, height: 25)
+        divider.frame = CGRect(x: segments.frame.maxX + 4, y: 14, width: 1, height: 18)
+        close.frame = CGRect(x: divider.frame.maxX + 4, y: 9, width: 28, height: 28)
+        save.frame = CGRect(x: close.frame.maxX + 4, y: 7, width: saveWidth, height: 32)
     }
+
+    @objc private func cancelTapped() { onCancel?() }
+    @objc private func saveTapped() { onCapture?() }
 }
 
-// MARK: - Ratio list
-
-/// The open dropdown: 132 wide, 30 pt rows, 6 pt padding, radius 10.
-private final class CaptureRatioList: NSView {
-    static let rowHeight: CGFloat = 30
-    static let padding: CGFloat = 6
-    static let size = CGSize(width: 132,
-                             height: padding * 2 + rowHeight * CGFloat(CaptureRatio.allCases.count))
-
-    var selected: CaptureRatio = .free { didSet { needsDisplay = true } }
+/// Figma ratio segments: 25 pt high, 10 pt side padding, 4 pt apart, 12 pt
+/// text/2; the selected ratio on ink/4 in text/1.
+private final class CaptureRatioSegments: NSView {
+    var selected: CaptureRatio = .free { didSet { needsDisplay = true; updateAccessibility() } }
     var onSelect: ((CaptureRatio) -> Void)?
     private var hovered: CaptureRatio?
+    private static let font = PanelStyle.inspectFont(ofSize: 12)
+    private static let selectedFont = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
 
     override var isFlipped: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.radioGroup)
+        setAccessibilityLabel("Ratio".localized)
+        updateAccessibility()
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private var frames: [(CaptureRatio, CGRect)] {
+        var x: CGFloat = 0
+        return CaptureRatio.segmentOrder.map { ratio in
+            let width = InspectText.width(ratio.displayLabel, font: Self.selectedFont) + 20
+            defer { x += width + 4 }
+            return (ratio, CGRect(x: x, y: 0, width: width, height: 25))
+        }
+    }
+
+    var preferredWidth: CGFloat { frames.last.map { $0.1.maxX } ?? 0 }
+
+    private func ratio(at point: CGPoint) -> CaptureRatio? {
+        frames.first { $0.1.contains(point) }?.0
+    }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         trackingAreas.forEach(removeTrackingArea)
         addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways], owner: self))
     }
-
-    private func ratio(at point: CGPoint) -> CaptureRatio? {
-        let index = Int(floor((point.y - Self.padding) / Self.rowHeight))
-        let all = CaptureRatio.allCases
-        return all.indices.contains(index) ? all[index] : nil
-    }
-
     override func mouseMoved(with event: NSEvent) {
         hovered = ratio(at: convert(event.locationInWindow, from: nil)); needsDisplay = true
     }
@@ -524,30 +401,49 @@ private final class CaptureRatioList: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10)
-        PanelStyle.canvasTint(0x1C1D21, alpha: 1).setFill()
-        path.fill()
-        NSColor.white.withAlphaComponent(0.10).setStroke()
-        path.lineWidth = 1
-        path.stroke()
-
-        for (index, item) in CaptureRatio.allCases.enumerated() {
-            let row = CGRect(x: Self.padding, y: Self.padding + CGFloat(index) * Self.rowHeight,
-                             width: bounds.width - Self.padding * 2, height: Self.rowHeight)
-            if hovered == item {
-                PanelStyle.rowHover.setFill()
-                NSBezierPath(roundedRect: row, xRadius: 7, yRadius: 7).fill()
+        for (ratio, frame) in frames {
+            let isSelected = ratio == selected
+            if isSelected || hovered == ratio {
+                (isSelected ? InspectInk.ink4 : PanelStyle.controlFill).setFill()
+                NSBezierPath(roundedRect: frame, xRadius: PanelStyle.Radius.control,
+                             yRadius: PanelStyle.Radius.control).fill()
             }
-            let isSelected = item == selected
-            let label = (item == .free ? "Free".localized : item.label) as NSString
-            label.draw(in: CGRect(x: row.minX + 8, y: row.minY + 7, width: row.width - 36, height: 16),
-                       withAttributes: [.font: NSFont.systemFont(ofSize: 12, weight: isSelected ? .semibold : .regular),
-                                        .foregroundColor: isSelected ? PanelStyle.warmCue : PanelStyle.textPrimary])
-            if isSelected, let check = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil) {
-                tinted(check, PanelStyle.warmCue, size: CGSize(width: 14, height: 14))
-                    .draw(in: CGRect(x: row.minX + row.width - 24, y: row.minY + 8, width: 14, height: 14),
-                          from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
-            }
+            InspectText.draw(ratio.displayLabel, in: CGRect(x: frame.minX, y: 5, width: frame.width, height: 15),
+                             font: isSelected ? Self.selectedFont : Self.font,
+                             color: isSelected || hovered == ratio ? InspectInk.text1 : InspectInk.text2,
+                             align: .center, truncation: .byClipping)
         }
+    }
+
+    private func updateAccessibility() {
+        setAccessibilityValue(selected.displayLabel)
+    }
+}
+
+// MARK: - Hint
+
+/// Figma hint pill: ink/1, radius 6, 12 pt text/2 with 10 × 5 padding.
+private final class CaptureHintPill: NSView {
+    private let text = "Drag to select · ↵ save · esc cancel".localized
+    private static let font = PanelStyle.inspectFont(ofSize: 12)
+
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+        setAccessibilityLabel(text)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    var preferredSize: CGSize { CGSize(width: InspectText.width(text, font: Self.font) + 20, height: 25) }
+
+    override func draw(_ dirtyRect: NSRect) {
+        InspectInk.ink1.setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: PanelStyle.Radius.control, yRadius: PanelStyle.Radius.control).fill()
+        InspectText.draw(text, in: CGRect(x: 10, y: 5, width: bounds.width - 20, height: 15),
+                         font: Self.font, color: InspectInk.text2, align: .center, truncation: .byClipping)
     }
 }

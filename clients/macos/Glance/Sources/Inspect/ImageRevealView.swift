@@ -7,6 +7,8 @@ final class ImageRevealView: NSView {
     private let failureView = LoadFailedAnimationView(frame: .zero)
     private let maskLayer = CALayer()
     private let divider = NSView()
+    /// Figma compare `handle`: a 28 pt ink/0 disc with a text/1 rim and ‹ › chevrons.
+    private let handle = InspectSliderHandle()
     private weak var textSelectionViewport: InspectImageViewport?
     private var fraction: CGFloat = 0.5
     private var textCursorTrackingArea: NSTrackingArea?
@@ -64,8 +66,9 @@ final class ImageRevealView: NSView {
         overlayViewport.wantsLayer = true
         overlayViewport.layer?.mask = maskLayer
         divider.wantsLayer = true
-        divider.layer?.backgroundColor = PanelStyle.textPrimary.withAlphaComponent(0.82).cgColor
+        divider.layer?.backgroundColor = PanelStyle.imageDivider.cgColor
         addSubview(divider)
+        addSubview(handle)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -133,6 +136,7 @@ final class ImageRevealView: NSView {
     func rotate(byQuarters delta: Int) {
         viewport.rotate(byQuarters: delta)
         overlayViewport.rotate(byQuarters: delta)
+        updateMask()
     }
 
     func flip(horizontal: Bool) {
@@ -156,9 +160,10 @@ final class ImageRevealView: NSView {
         viewport.isHidden = isWaitingForPair
         overlayViewport.isHidden = isWaitingForPair
         divider.isHidden = isWaitingForPair
+        handle.isHidden = isWaitingForPair
         failureView.isHidden = !failed
         loadingView.setLoading(isWaitingForPair && !failed)
-        invalidateTextCursor()
+        updateMask()
     }
 
     override func layout() {
@@ -206,6 +211,7 @@ final class ImageRevealView: NSView {
         if event.clickCount == 2 {
             viewport.mouseDown(with: event)
             overlayViewport.apply(state: viewport.viewportState, notify: false)
+            updateMask()
             return
         }
         fraction = max(0, min(1, point.x / max(bounds.width, 1)))
@@ -220,6 +226,7 @@ final class ImageRevealView: NSView {
             || abs(event.scrollingDeltaX) <= abs(event.scrollingDeltaY) {
             viewport.scrollWheel(with: event)
             overlayViewport.apply(state: viewport.viewportState, notify: false)
+            updateMask()
             return
         }
         let step = event.scrollingDeltaX / max(bounds.width, 1)
@@ -237,6 +244,7 @@ final class ImageRevealView: NSView {
     override func magnify(with event: NSEvent) {
         viewport.magnify(with: event)
         overlayViewport.apply(state: viewport.viewportState, notify: false)
+        updateMask()
     }
 
     private func updateMask() {
@@ -244,8 +252,48 @@ final class ImageRevealView: NSView {
         CATransaction.setDisableActions(true)
         maskLayer.backgroundColor = NSColor.black.cgColor
         maskLayer.frame = NSRect(x: 0, y: 0, width: bounds.width * fraction, height: bounds.height)
-        divider.frame = NSRect(x: bounds.width * fraction - 1, y: 0, width: 2, height: bounds.height)
+        // Figma `split line`: 1 pt across the image (not the empty stage around it).
+        var span = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height)
+        if let shown = viewport.captureDisplayRect(in: self) {
+            let local = isFlipped ? shown : CGRect(x: shown.minX, y: bounds.height - shown.maxY,
+                                                   width: shown.width, height: shown.height)
+            let visible = local.intersection(bounds)
+            if !visible.isNull, !visible.isEmpty { span = visible }
+        }
+        let x = (bounds.width * fraction).rounded()
+        divider.frame = NSRect(x: x - 0.5, y: span.minY, width: 1, height: span.height)
+        handle.frame = NSRect(x: x - 14, y: (span.midY - 14).rounded(), width: 28, height: 28)
         CATransaction.commit()
         invalidateTextCursor()
+    }
+}
+
+/// Figma compare `handle` (28 pt): ink/0 disc, 1 pt text/1 rim, a pair of
+/// 16 pt chevrons overlapping by 6 pt. Drawn over the photo; never takes clicks.
+final class InspectSliderHandle: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let disc = NSBezierPath(ovalIn: bounds.insetBy(dx: 0.5, dy: 0.5))
+        InspectInk.ink0.setFill()
+        disc.fill()
+        InspectInk.text1.setStroke()
+        disc.lineWidth = 1
+        disc.stroke()
+        // ‹ › centred: each chevron 3 × 6 pt, 4 pt apart.
+        let chevrons = NSBezierPath()
+        let cx = bounds.midX, cy = bounds.midY
+        chevrons.move(to: NSPoint(x: cx - 2, y: cy - 3))
+        chevrons.line(to: NSPoint(x: cx - 5, y: cy))
+        chevrons.line(to: NSPoint(x: cx - 2, y: cy + 3))
+        chevrons.move(to: NSPoint(x: cx + 2, y: cy - 3))
+        chevrons.line(to: NSPoint(x: cx + 5, y: cy))
+        chevrons.line(to: NSPoint(x: cx + 2, y: cy + 3))
+        chevrons.lineWidth = 1.25
+        chevrons.lineCapStyle = .round
+        chevrons.lineJoinStyle = .round
+        InspectInk.text1.setStroke()
+        chevrons.stroke()
     }
 }

@@ -3,30 +3,27 @@ import AppKit
 final class OnboardingWindow: NSWindow {
     /// Posted when the permission guide is dismissed, whichever way.
     static let didClose = Notification.Name("GlanceOnboardingDidClose")
-    /// Figma frame (580 × 650) minus the Input Monitoring row and its 10pt gap:
-    /// Peek needs only Accessibility, which also covers event listening.
-    private static let designSize = NSSize(width: 580, height: 570)
+    /// Figma `12 · Onboarding / Permissions` (640 × 620). Peek needs only
+    /// Accessibility, which also covers event listening, so the Input
+    /// Monitoring row is not shown; the free space stays above the actions.
+    private static let designSize = NSSize(width: 640, height: 620)
 
     private let root = NSView()
     private let titlebar = OnboardingTitlebar()
-    private let windowTitle = NSTextField(labelWithString: "Welcome to Glance".localized)
-    private let body = NSView()
-    private let appMark = NSView()
-    private let markIcon = NSImageView()
     private let heading = NSTextField(labelWithString: "Set up permissions".localized)
     private let explanation = NSTextField(wrappingLabelWithString:
         "Permissions enable shortcuts and access to protected files. You can skip setup and keep using Glance.".localized)
-    private let permissionList = NSView()
     private let accessibilityRow = PermissionStatusView(
-        symbol: "A", title: "Accessibility".localized,
+        number: "01", title: "Accessibility".localized,
         description: "Read selection and recognize shortcuts".localized)
     private let fullDiskAccessRow = PermissionStatusView(
-        symbol: "F", title: "Full Disk Access".localized,
-        description: "Optional: access protected files".localized)
-    private let continueButton = PanelStyle.makePrimaryButton(title: "Continue".localized, target: nil, action: nil)
+        number: "02", title: "Full Disk Access".localized,
+        description: "Optional: access protected files".localized, optional: true)
     private let permissionHelpButton = PanelStyle.makeQuietButton(title: "Glance not listed?".localized, target: nil, action: nil)
-    private let footnote = NSTextField(labelWithString:
-        "Permissions stay under your control in macOS System Settings.".localized)
+    private let blockingDot = NSView()
+    private let blockingLabel = PanelCenteredTextView()
+    private let footnote = PanelCenteredTextView()
+    private let continueButton = PanelStyle.makePrimaryButton(title: "Continue".localized, target: nil, action: nil)
     private var permissionCheckGeneration = UUID()
 
     init() {
@@ -37,10 +34,10 @@ final class OnboardingWindow: NSWindow {
         title = "Welcome to Glance".localized
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
-        appearance = NSAppearance(named: .darkAqua)
-        backgroundColor = PanelStyle.inspectBackground
+        appearance = PanelStyle.windowAppearance
+        backgroundColor = PanelStyle.surface
         contentAspectRatio = Self.designSize
-        minSize = NSSize(width: min(480, initial.width), height: min(472, initial.height))
+        minSize = NSSize(width: min(512, initial.width), height: min(496, initial.height))
         isReleasedWhenClosed = false
         level = .normal
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -61,65 +58,62 @@ final class OnboardingWindow: NSWindow {
     private func buildUI() {
         contentView = root
         root.wantsLayer = true
-        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
+        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surface)
         root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
         root.layer?.borderWidth = 1
-        root.layer?.cornerRadius = 16
+        root.layer?.cornerRadius = PanelStyle.Radius.window
         root.layer?.masksToBounds = true
 
-        configureLabel(windowTitle, size: 12, color: PanelStyle.textPrimary,
-                       weight: .semibold, alignment: .center)
-        titlebar.addSubview(windowTitle)
-        let traffic: [(String, NSColor, Selector)] = [
-            ("Close".localized, NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), #selector(closeTapped)),
-            ("Minimize".localized, NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), #selector(minimizeTapped)),
-            ("Zoom".localized, NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), #selector(zoomTapped))
+        let traffic: [(NSColor, Selector)] = [
+            (NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), #selector(closeTapped)),
+            (NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), #selector(minimizeTapped)),
+            (NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), #selector(zoomTapped))
         ]
-        for (_, color, action) in traffic {
-            let control = TrafficLightButton(color: color, target: self, action: action)
-            titlebar.addSubview(control)
+        for (color, action) in traffic {
+            titlebar.addSubview(TrafficLightButton(color: color, target: self, action: action))
         }
         root.addSubview(titlebar)
 
-        body.wantsLayer = true
-        body.layer?.backgroundColor = PanelStyle.resolvedCG(
-            NSColor(srgbRed: 11 / 255, green: 12 / 255, blue: 15 / 255, alpha: 1))
-        root.addSubview(body)
-
-        // The Glance app icon fills the 68 × 68 mark slot; it carries its own rounded shape.
-        appMark.wantsLayer = true
-        body.addSubview(appMark)
-        markIcon.image = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
-        markIcon.imageScaling = .scaleProportionallyUpOrDown
-        markIcon.setAccessibilityLabel("Glance")
-        appMark.addSubview(markIcon)
-
-        configureLabel(heading, size: 20, color: PanelStyle.textPrimary,
-                       weight: .semibold, alignment: .center)
-        configureLabel(explanation, size: 12, color: PanelStyle.textSecondary, alignment: .center)
-        explanation.maximumNumberOfLines = 0
+        heading.textColor = PanelStyle.textPrimary
+        heading.lineBreakMode = .byTruncatingTail
+        root.addSubview(heading)
+        explanation.textColor = PanelStyle.textSecondary
+        explanation.maximumNumberOfLines = 2
         explanation.lineBreakMode = .byWordWrapping
-        body.addSubview(heading)
-        body.addSubview(explanation)
+        root.addSubview(explanation)
 
-        permissionList.wantsLayer = true
-        permissionList.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-        body.addSubview(permissionList)
         accessibilityRow.onOpenSettings = { PermissionManager.shared.openAccessibilitySettings() }
         fullDiskAccessRow.onOpenSettings = { PermissionManager.shared.openFullDiskAccessSettings() }
-        [accessibilityRow, fullDiskAccessRow].forEach(permissionList.addSubview)
+        [accessibilityRow, fullDiskAccessRow].forEach(root.addSubview)
+
+        permissionHelpButton.target = self
+        permissionHelpButton.action = #selector(showPermissionHelp)
+        permissionHelpButton.normalBackground = .clear
+        permissionHelpButton.hoverBackground = PanelStyle.controlFill
+        permissionHelpButton.titleColor = PanelStyle.textTertiary
+        permissionHelpButton.layer?.borderWidth = 0
+        root.addSubview(permissionHelpButton)
+
+        // Blocking reason: a small shu dot and one sentence, only while Peek can't run.
+        blockingDot.wantsLayer = true
+        blockingDot.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.failure)
+        root.addSubview(blockingDot)
+        blockingLabel.string = "Accessibility is still off — Peek won’t work until it’s allowed.".localized
+        blockingLabel.textColor = PanelStyle.textSecondary
+        blockingLabel.alignment = .left
+        root.addSubview(blockingLabel)
+
+        footnote.string = "Permissions stay under your control in macOS System Settings.".localized
+        footnote.textColor = PanelStyle.textTertiary
+        footnote.alignment = .left
+        root.addSubview(footnote)
 
         continueButton.target = self
         continueButton.action = #selector(continuePressed)
         continueButton.isEnabled = true
         continueButton.keyEquivalent = "\r"
-        continueButton.titleFont = PanelStyle.inspectFont(ofSize: 12, weight: .semibold)
-        body.addSubview(continueButton)
-        permissionHelpButton.target = self
-        permissionHelpButton.action = #selector(showPermissionHelp)
-        body.addSubview(permissionHelpButton)
-        configureLabel(footnote, size: 10, color: PanelStyle.textTertiary, alignment: .center)
-        body.addSubview(footnote)
+        continueButton.layer?.borderWidth = 0
+        root.addSubview(continueButton)
         layoutContent()
     }
 
@@ -134,52 +128,58 @@ final class OnboardingWindow: NSWindow {
         let sx = size.width / Self.designSize.width
         let sy = size.height / Self.designSize.height
         let scale = min(sx, sy)
-        root.layer?.cornerRadius = 16 * scale
-        root.layer?.borderWidth = max(1, scale)
-        titlebar.frame = NSRect(x: 0, y: size.height - 44 * sy,
-                                width: size.width, height: 44 * sy)
-        windowTitle.font = PanelStyle.inspectFont(ofSize: 12 * scale, weight: .semibold)
-        windowTitle.frame = NSRect(x: 0, y: 16 * sy, width: size.width, height: 15 * sy)
-        for (index, button) in titlebar.subviews.compactMap({ $0 as? TrafficLightButton }).enumerated() {
-            button.frame = NSRect(x: CGFloat(16 + index * 18) * sx, y: 16 * sy,
-                                  width: 11 * sx, height: 11 * sy)
-            button.layer?.cornerRadius = 5.5 * scale
-        }
-        body.frame = NSRect(x: 0, y: 0, width: size.width, height: 526 * sy)
+        /// Figma top-origin frame → AppKit bottom-origin frame in the scaled window.
         func fromTop(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
-            NSRect(x: x * sx, y: body.bounds.height - (y + h) * sy,
-                   width: w * sx, height: h * sy)
+            NSRect(x: x * sx, y: size.height - (y + h) * sy, width: w * sx, height: h * sy)
         }
-        appMark.frame = fromTop(256, 32, 68, 68)
-        markIcon.frame = appMark.bounds
-        heading.font = PanelStyle.inspectFont(ofSize: 20 * scale, weight: .semibold)
-        heading.frame = fromTop(0, 125, 580, 24)
-        explanation.font = PanelStyle.inspectFont(ofSize: 12 * scale)
-        explanation.frame = fromTop(75, 164, 430, 30)
-        // Figma "Permission List": rows are 468 × 70, inset 17 from the sides and
-        // 10 apart. With two rows (y 0 / 80) the 243pt panel becomes 163pt and
-        // everything below it moves up by the removed 80pt.
-        permissionList.frame = fromTop(39, 227, 502, 163)
-        func listRow(_ top: CGFloat) -> NSRect {
-            NSRect(x: 17 * sx, y: (163 - top - 70) * sy, width: 468 * sx, height: 70 * sy)
+        func textWidth(_ text: String, _ font: NSFont) -> CGFloat {
+            ceil((text as NSString).size(withAttributes: [.font: font]).width)
         }
-        accessibilityRow.frame = listRow(0)
-        fullDiskAccessRow.frame = listRow(80)
-        permissionHelpButton.frame = fromTop(76, 400, 428, 24)
-        permissionHelpButton.titleFont = PanelStyle.inspectFont(ofSize: 11 * scale)
-        continueButton.frame = fromTop(76, 432, 428, 38)
-        continueButton.layer?.cornerRadius = 8 * scale
-        footnote.font = PanelStyle.inspectFont(ofSize: 10 * scale)
-        footnote.frame = fromTop(0, 485, 580, 12)
-    }
+        root.layer?.cornerRadius = PanelStyle.Radius.window * scale
+        root.layer?.borderWidth = max(1, scale)
 
-    private func configureLabel(_ label: NSTextField, size: CGFloat, color: NSColor,
-                                weight: NSFont.Weight = .regular,
-                                alignment: NSTextAlignment = .left) {
-        label.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
-        label.textColor = color
-        label.alignment = alignment
-        label.lineBreakMode = .byTruncatingTail
+        titlebar.frame = fromTop(0, 0, Self.designSize.width, 44)
+        for (index, button) in titlebar.subviews.compactMap({ $0 as? TrafficLightButton }).enumerated() {
+            button.frame = NSRect(x: CGFloat(20 + index * 20) * sx, y: titlebar.bounds.height - 28 * sy,
+                                  width: 12 * sx, height: 12 * sy)
+        }
+
+        // Content column: x 64, width 512, starting 76 below the top.
+        heading.font = PanelStyle.titleFont(ofSize: 30 * scale)
+        heading.frame = fromTop(64, 106, 512, 38)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.minimumLineHeight = 21 * scale
+        paragraph.maximumLineHeight = 21 * scale
+        paragraph.lineBreakMode = .byWordWrapping
+        explanation.attributedStringValue = NSAttributedString(
+            string: explanation.stringValue,
+            attributes: [.font: PanelStyle.inspectFont(ofSize: 13 * scale),
+                         .foregroundColor: PanelStyle.textSecondary,
+                         .paragraphStyle: paragraph])
+        explanation.frame = fromTop(64, 154, 512, 42)
+
+        accessibilityRow.frame = fromTop(64, 232, 512, 69)
+        fullDiskAccessRow.frame = fromTop(64, 301, 512, 69)
+
+        let helpFont = PanelStyle.inspectFont(ofSize: 12 * scale)
+        permissionHelpButton.titleFont = helpFont
+        let helpWidth = textWidth(permissionHelpButton.title, helpFont) / sx + 16
+        permissionHelpButton.frame = fromTop(56, 382, helpWidth, 24)
+        permissionHelpButton.layer?.cornerRadius = PanelStyle.Radius.control * scale
+
+        blockingDot.frame = fromTop(64, 522, 5, 5)
+        blockingDot.layer?.cornerRadius = 2.5 * scale
+        blockingLabel.font = PanelStyle.inspectFont(ofSize: 12 * scale)
+        blockingLabel.frame = fromTop(77, 517, 499, 15)
+
+        let continueFont = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .medium)
+        continueButton.titleFont = continueFont
+        let continueWidth = max(89, textWidth(continueButton.title, continueFont) / sx + 32)
+        continueButton.frame = fromTop(576 - continueWidth, 548, continueWidth, 32)
+        continueButton.layer?.cornerRadius = PanelStyle.Radius.control * scale
+
+        footnote.font = PanelStyle.inspectFont(ofSize: 12 * scale)
+        footnote.frame = fromTop(64, 556.5, 576 - continueWidth - 8 - 64, 15)
     }
 
     private func updatePermissionStatus() {
@@ -187,6 +187,8 @@ final class OnboardingWindow: NSWindow {
         let accessibility = manager.isAccessibilityGranted
         accessibilityRow.updateStatus(granted: accessibility)
         // Permissions enable individual features; they never gate leaving setup.
+        blockingDot.isHidden = accessibility
+        blockingLabel.isHidden = accessibility
 
         let generation = UUID()
         permissionCheckGeneration = generation
@@ -230,61 +232,77 @@ final class OnboardingWindow: NSWindow {
     }
 }
 
+/// Transparent drag strip across the top 44 pt; double-click zooms.
 private final class OnboardingTitlebar: NSView {
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 { window?.zoom(nil) }
         else { window?.performDrag(with: event) }
     }
 }
 
+/// Figma `permission` row (512 × 69): mono number, title (+ Optional tag),
+/// description, and either a moss "Allowed" check or an Open Settings button.
+/// Rows are separated by a bottom hairline; no cards.
 final class PermissionStatusView: NSView {
     var onOpenSettings: (() -> Void)?
 
-    private let symbol: String
-    private let symbolBackground = NSView()
-    private let symbolLabel = NSTextField(labelWithString: "")
-    private let titleLabel: NSTextField
-    private let detailLabel: NSTextField
-    private let statusButton = PanelStyle.makeQuietButton(title: "", target: nil, action: nil)
+    private static let designSize = NSSize(width: 512, height: 69)
+
+    private let numberLabel = PanelCenteredTextView()
+    private let titleLabel = PanelCenteredTextView()
+    private let optionalLabel = PanelCenteredTextView()
+    private let detailLabel = PanelCenteredTextView()
+    private let allowedIcon = NSImageView()
+    private let allowedLabel = PanelCenteredTextView()
+    private let statusButton = PanelStyle.makeQuietButton(title: "Open Settings".localized, target: nil, action: nil)
     private let separator = NSView()
+    private let isOptional: Bool
     private var granted = false
 
-    init(symbol: String, title: String, description: String) {
-        self.symbol = symbol
-        titleLabel = NSTextField(labelWithString: title)
-        detailLabel = NSTextField(labelWithString: description)
+    init(number: String, title: String, description: String, optional: Bool = false) {
+        isOptional = optional
         super.init(frame: .zero)
-        wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-        symbolBackground.wantsLayer = true
-        symbolBackground.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        symbolBackground.layer?.cornerRadius = 10
-        addSubview(symbolBackground)
-        symbolLabel.stringValue = symbol
-        symbolLabel.alignment = .center
-        symbolLabel.textColor = PanelStyle.textSecondary
-        symbolBackground.addSubview(symbolLabel)
+        numberLabel.string = number
+        numberLabel.textColor = PanelStyle.textTertiary
+        numberLabel.alignment = .left
+        titleLabel.string = title
         titleLabel.textColor = PanelStyle.textPrimary
+        titleLabel.alignment = .left
+        optionalLabel.string = "Optional".localized
+        optionalLabel.textColor = PanelStyle.textTertiary
+        optionalLabel.alignment = .left
+        optionalLabel.isHidden = !optional
+        detailLabel.string = description
         detailLabel.textColor = PanelStyle.textTertiary
-        titleLabel.lineBreakMode = .byTruncatingTail
-        detailLabel.lineBreakMode = .byTruncatingTail
-        addSubview(titleLabel)
-        addSubview(detailLabel)
+        detailLabel.alignment = .left
+        [numberLabel, titleLabel, optionalLabel, detailLabel].forEach(addSubview)
+
+        allowedIcon.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)
+        allowedIcon.imageScaling = .scaleProportionallyDown
+        allowedIcon.contentTintColor = PanelStyle.success
+        addSubview(allowedIcon)
+        allowedLabel.string = "Allowed".localized
+        allowedLabel.textColor = PanelStyle.success
+        allowedLabel.alignment = .right
+        addSubview(allowedLabel)
+
+        // Required permissions use a filled quiet button; optional ones an outlined one.
         statusButton.target = self
         statusButton.action = #selector(statusTapped)
-        statusButton.setAccessibilityLabel(title)
+        statusButton.titleColor = PanelStyle.textPrimary
+        statusButton.normalBackground = optional ? .clear : PanelStyle.controlFillHi
+        statusButton.hoverBackground = optional ? PanelStyle.controlFill : PanelStyle.hoverTinted(PanelStyle.controlFillHi)
+        statusButton.layer?.borderWidth = optional ? 1 : 0
+        statusButton.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        statusButton.toolTip = "Open Settings".localized
+        statusButton.setAccessibilityLabel("\(title), \("Open Settings".localized)")
         addSubview(statusButton)
+
         separator.wantsLayer = true
-        separator.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        separator.layer?.backgroundColor = PanelStyle.resolvedCG(
+            PanelStyle.themed(PanelStyle.Sumi.line, PanelStyle.Washi.line))
         addSubview(separator)
+        setAccessibilityElement(false)
         updateStatus(granted: false)
     }
 
@@ -293,37 +311,54 @@ final class PermissionStatusView: NSView {
     override func layout() {
         super.layout()
         guard bounds.width > 0, bounds.height > 0 else { return }
-        let sx = bounds.width / 468
-        let sy = bounds.height / 70
+        let sx = bounds.width / Self.designSize.width
+        let sy = bounds.height / Self.designSize.height
         let scale = min(sx, sy)
-        symbolBackground.frame = NSRect(x: 0, y: 15 * sy, width: 40 * sx, height: 40 * sy)
-        symbolBackground.layer?.cornerRadius = 10 * scale
-        symbolLabel.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
-        symbolLabel.frame = NSRect(x: 0, y: 12 * sy, width: 40 * sx, height: 16 * sy)
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .semibold)
-        titleLabel.frame = NSRect(x: 54 * sx, y: 42 * sy, width: 284 * sx, height: 16 * sy)
-        detailLabel.font = PanelStyle.inspectFont(ofSize: 11 * scale)
-        detailLabel.frame = NSRect(x: 54 * sx, y: 20 * sy, width: 284 * sx, height: 13 * sy)
-        statusButton.titleFont = PanelStyle.inspectFont(ofSize: 11 * scale, weight: .medium)
-        statusButton.frame = NSRect(x: 354 * sx, y: 18 * sy, width: 114 * sx, height: 34 * sy)
-        statusButton.layer?.cornerRadius = 8 * scale
-        separator.frame = NSRect(x: 0, y: 0, width: bounds.width, height: max(1, sy))
+        func fromTop(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+            NSRect(x: x * sx, y: bounds.height - (y + h) * sy, width: w * sx, height: h * sy)
+        }
+        func designWidth(_ text: String, _ font: NSFont) -> CGFloat {
+            ceil((text as NSString).size(withAttributes: [.font: font]).width) / sx
+        }
+
+        numberLabel.font = PanelStyle.monoFont(ofSize: 11 * scale)
+        numberLabel.frame = fromTop(0, 27, 24, 14)
+
+        let statusFont = PanelStyle.inspectFont(ofSize: 13 * scale, weight: .medium)
+        statusButton.titleFont = statusFont
+        let buttonWidth = designWidth(statusButton.title, statusFont) + 32
+        statusButton.frame = fromTop(512 - buttonWidth, 18, buttonWidth, 32)
+        statusButton.layer?.cornerRadius = PanelStyle.Radius.control * scale
+
+        let allowedFont = PanelStyle.inspectFont(ofSize: 12 * scale)
+        allowedLabel.font = allowedFont
+        let allowedWidth = designWidth(allowedLabel.string, allowedFont)
+        allowedLabel.frame = fromTop(512 - allowedWidth, 26.5, allowedWidth, 15)
+        allowedIcon.frame = fromTop(512 - allowedWidth - 22, 26, 16, 16)
+
+        let trailing = granted ? allowedWidth + 22 : buttonWidth
+        let textWidth = 512 - 30 - trailing - 16
+        let titleFont = PanelStyle.inspectFont(ofSize: 14 * scale)
+        titleLabel.font = titleFont
+        let titleWidth = min(designWidth(titleLabel.string, titleFont), textWidth)
+        titleLabel.frame = fromTop(30, 16, titleWidth, 17)
+        let optionalFont = PanelStyle.inspectFont(ofSize: 11 * scale)
+        optionalLabel.font = optionalFont
+        optionalLabel.frame = fromTop(30 + titleWidth + 8, 18,
+                                      max(0, min(designWidth(optionalLabel.string, optionalFont), textWidth - titleWidth - 8)), 13)
+        detailLabel.font = PanelStyle.inspectFont(ofSize: 12 * scale)
+        detailLabel.frame = fromTop(30, 37, textWidth, 15)
+
+        separator.frame = NSRect(x: 0, y: 0, width: bounds.width, height: max(1, scale))
     }
 
     func updateStatus(granted: Bool) {
         self.granted = granted
-        let value = granted ? "Allowed".localized : "Open Settings".localized
-        statusButton.title = value
-        statusButton.titleColor = granted ? PanelStyle.success : PanelStyle.accent
-        statusButton.normalBackground = granted
-            ? NSColor(srgbRed: 23 / 255, green: 48 / 255, blue: 39 / 255, alpha: 1)
-            : PanelStyle.inspectToolbar
-        statusButton.hoverBackground = granted
-            ? statusButton.normalBackground
-            : PanelStyle.surfaceElevated
-        statusButton.layer?.borderWidth = 0
-        statusButton.toolTip = granted ? "" : "Open Settings".localized
-        statusButton.setAccessibilityLabel("\(titleLabel.stringValue), \(value)")
+        statusButton.isHidden = granted
+        allowedIcon.isHidden = !granted
+        allowedLabel.isHidden = !granted
+        allowedLabel.setAccessibilityLabel("\(titleLabel.string), \("Allowed".localized)")
+        needsLayout = true
     }
 
     @objc private func statusTapped() {

@@ -2,6 +2,9 @@ import AppKit
 import WebKit
 import Highlightr
 
+/// Content window docked beside PreviewPanel. Layout follows Figma
+/// `18 · Content Viewer / Markdown`: a 44 pt titlebar (traffic lights, centred
+/// title, action segments + icons), the body, and a 32 pt status bar.
 final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKNavigationDelegate {
     static let shared = ContentPanel()
 
@@ -9,18 +12,21 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     private let textView: NSTextView
     private let textScroll: NSScrollView
     private let imageView: ImageFillView
-    private let toolbarBar = PanelStyle.makeBarBlur()
-    private let filenameLabel = NSTextField(labelWithString: "")  // identity: file name
-    private let saveButton = NSButton()
+    private let titlebar = ContentTitlebarView()
+    private let actionGroup = ContentSegmentGroup()
+    private let saveButton = ContentSegmentButton(text: "Save".localized)
     private var findButton = NSButton()     // toggles the find bar
-    private let gitDiffButton = NSButton()
+    private let gitDiffButton = ContentSegmentButton(text: "Diff".localized)
     private var locateButton = NSButton()   // Reveal in Finder, local-only
-    private let modifiedLabel = NSTextField(labelWithString: "")  // identity subtitle: path · modified
+    private let statusBar = ContentStatusBar()  // path · kind · size · modified
     private let addressBar = NSTextField()
 
-    private let webFindBar = PanelStyle.makeBarBlur()
-    private let webFindField = NSTextField()
-    private let webFindCountLabel = NSTextField(labelWithString: "")
+    private lazy var webFindBar = ContentFindBar(target: self,
+                                                 previous: #selector(webFindPrev(_:)),
+                                                 next: #selector(webFindNext(_:)),
+                                                 done: #selector(hideWebFindBar))
+    private var webFindField: NSTextField { webFindBar.field }
+    private var webFindCountLabel: NSTextField { webFindBar.countLabel }
     private var webFindMatchCount = 0
     private var webFindCurrentIndex = -1
 
@@ -34,17 +40,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     /// True once the editable text view has unsaved user edits.
     private var isDirty: Bool = false
 
-    private let headerHeight: CGFloat = 56
-    private let toolbarH: CGFloat = 52
-    private let imageInfoBarH: CGFloat = 56
-
     private weak var loadingOverlay: NSView?
     private weak var loadingIndicator: FocusSweepLoadingView?
     private weak var loadFailedView: LoadFailedAnimationView?
-
-    private let imageInfoBar = PanelStyle.makeBarBlur()
-    private let imageInfoNameLabel = NSTextField(labelWithString: "")
-    private let imageInfoMetaLabel = NSTextField(labelWithString: "")
 
     private(set) var hasBeenManuallyMoved: Bool = false
     private var escapeLocalMonitor: Any?
@@ -69,6 +67,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         webView = WKWebView(frame: .zero, configuration: config)
 
         let tv = PanelStyle.makeCodeTextView()
+        tv.textContainerInset = NSSize(width: 20, height: 16)
         textView = tv
 
         let scroll = NSScrollView(frame: .zero)
@@ -86,7 +85,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         let initialFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0))
         super.init(
             contentRect: initialFrame,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -100,13 +99,14 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isReleasedWhenClosed = false
 
-        // Commit the whole window to the dark-glass look so it matches
-        // PreviewPanel regardless of the system theme. A transparent, title-less
-        // titlebar lets the top of the window read as one continuous dark strip
-        // (traffic lights on the left, our toolbar below).
-        appearance = NSAppearance(named: .darkAqua)
+        // Commit the whole window to Glance's theme so it matches PreviewPanel
+        // regardless of the system theme. The custom 44 pt titlebar draws the
+        // traffic lights; the system title and buttons stay hidden.
+        appearance = PanelStyle.windowAppearance
+        backgroundColor = ContentChrome.window
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
+        ContentChrome.hideSystemTrafficLights(of: self)
 
         buildLayout()
         showWebView()
@@ -214,7 +214,8 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         let maxWindowHeight: CGFloat = 900
         let minWindowWidth: CGFloat = 300
         let minWindowHeight: CGFloat = 200
-        let extraHeight: CGFloat = 44 + 56
+        // Titlebar + status bar around the image.
+        let extraHeight: CGFloat = ContentChrome.titlebarHeight + ContentChrome.statusHeight
 
         let screenSize = NSScreen.main?.visibleFrame.size ?? NSSize(width: 1280, height: 800)
         let maxW = min(maxWindowWidth, screenSize.width * 0.8)
@@ -271,92 +272,56 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
 
     private func buildLayout() {
         let root = NSView(frame: NSRect(x: 0, y: 0, width: 652.0, height: 962.0))
-        root.wantsLayer = true
-        // Solid dark base. The bars on top are translucent vibrant-dark frost,
-        // so this only shows in the gaps / during transitions.
-        root.layer?.backgroundColor = PanelStyle.surface.cgColor
+        // Solid ink/1 base, shared by the titlebar, body and status bar.
+        ContentChrome.paint(root, ContentChrome.window)
+        let bounds = root.bounds
+        let titleH = ContentChrome.titlebarHeight
+        let statusH = ContentChrome.statusHeight
 
-        let bodyFrame = NSRect(x: 0, y: 0, width: 652.0, height: 962.0)
+        titlebar.frame = NSRect(x: 0, y: bounds.height - titleH, width: bounds.width, height: titleH)
+        titlebar.autoresizingMask = [.width, .minYMargin]
+        titlebar.onResize = { [weak self] in self?.layoutToolbarButtons() }
+        // Clicking the chrome counts as taking the window over from PreviewPanel.
+        titlebar.onMouseDown = { [weak self] in self?.hasBeenManuallyMoved = true }
 
-        toolbarBar.frame = NSRect(x: 0, y: bodyFrame.height - toolbarH,
-                                  width: bodyFrame.width, height: toolbarH)
-        toolbarBar.autoresizingMask = [.width, .minYMargin]
-        PanelStyle.addHairline(to: toolbarBar, edge: .minY)
-
-        // ── Identity (left): filename over a path · modified subtitle ──
-        filenameLabel.font = PanelStyle.headline
-        filenameLabel.textColor = PanelStyle.textPrimary
-        filenameLabel.lineBreakMode = .byTruncatingMiddle
-        filenameLabel.maximumNumberOfLines = 1
-        filenameLabel.autoresizingMask = [.width]
-        toolbarBar.addSubview(filenameLabel)
-
-        modifiedLabel.font = PanelStyle.caption
-        modifiedLabel.textColor = PanelStyle.textSecondary
-        modifiedLabel.alignment = .left
-        modifiedLabel.lineBreakMode = .byTruncatingHead   // keep the filename tail
-        modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.autoresizingMask = [.width]
-        toolbarBar.addSubview(modifiedLabel)
-
-        // Address bar replaces the identity block for web pages.
-        addressBar.font = PanelStyle.label
-        addressBar.alignment = .left
+        // Address bar replaces the centred title for web pages.
+        ContentChrome.styleAddressBar(addressBar)
         addressBar.isEditable = false
-        addressBar.isSelectable = true
-        addressBar.isBordered = false
-        addressBar.isBezeled = false
-        addressBar.drawsBackground = true
-        addressBar.backgroundColor = PanelStyle.controlFill
-        addressBar.textColor = PanelStyle.textSecondary
-        addressBar.wantsLayer = true
-        addressBar.layer?.cornerRadius = 6
-        addressBar.layer?.masksToBounds = true
-        addressBar.autoresizingMask = [.width]
         addressBar.isHidden = true
-        toolbarBar.addSubview(addressBar)
+        titlebar.addSubview(addressBar)
 
-        // ── Actions (right): Find, Locate (icons) + Diff + Save (text) ──
-        findButton = PanelStyle.makeIconButton(symbol: "magnifyingglass",
-                                               tooltip: "Find in page".localized,
-                                               target: self, action: #selector(findTapped))
-        findButton.autoresizingMask = [.minXMargin]
-        toolbarBar.addSubview(findButton)
+        // ── Actions (right): Save + Diff segments, then Find / Locate icons ──
+        findButton = ContentChrome.makeIconButton(symbol: "magnifyingglass",
+                                                  tooltip: "Find in page".localized,
+                                                  target: self, action: #selector(findTapped))
+        titlebar.addSubview(findButton)
 
-        locateButton = PanelStyle.makeIconButton(symbol: "folder",
-                                                 tooltip: "Reveal in Finder".localized,
-                                                 target: self, action: #selector(locateTapped))
-        locateButton.autoresizingMask = [.minXMargin]
+        locateButton = ContentChrome.makeIconButton(symbol: "folder",
+                                                    tooltip: "Reveal in Finder".localized,
+                                                    target: self, action: #selector(locateTapped))
         locateButton.isHidden = true
-        toolbarBar.addSubview(locateButton)
+        titlebar.addSubview(locateButton)
 
-        gitDiffButton.bezelStyle = .texturedRounded
-        gitDiffButton.title = "Diff".localized
         gitDiffButton.target = self
         gitDiffButton.action = #selector(gitDiffTapped)
         gitDiffButton.toolTip = "Compare with Git".localized
-        gitDiffButton.autoresizingMask = [.minXMargin]
         gitDiffButton.isHidden = true
-        toolbarBar.addSubview(gitDiffButton)
+        actionGroup.addSubview(gitDiffButton)
 
-        saveButton.bezelStyle = .texturedRounded
-        saveButton.title = "Save".localized
+        saveButton.activatesWhenEnabled = true
         saveButton.keyEquivalent = "s"
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.autoresizingMask = [.minXMargin]
         saveButton.isEnabled = false   // always visible, lit only when dirty
-        toolbarBar.addSubview(saveButton)
-
-        root.addSubview(toolbarBar)
-        layoutToolbarButtons()
+        actionGroup.addSubview(saveButton)
+        titlebar.addSubview(actionGroup)
 
         // Dirty-tracking for the editable text view.
         textView.delegate = self
 
-        let contentFrame = NSRect(x: 0, y: 0, width: bodyFrame.width,
-                                   height: bodyFrame.height - toolbarH)
+        let contentFrame = NSRect(x: 0, y: statusH, width: bounds.width,
+                                  height: bounds.height - titleH - statusH)
         webView.frame = contentFrame
         webView.autoresizingMask = [.width, .height]
         root.addSubview(webView)
@@ -367,6 +332,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
 
         textScroll.frame = contentFrame
         textScroll.autoresizingMask = [.width, .height]
+        textScroll.drawsBackground = false
         textView.textContainer?.containerSize = NSSize(
             width: contentFrame.width,
             height: CGFloat.greatestFiniteMagnitude
@@ -374,48 +340,8 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         textView.textContainer?.widthTracksTextView = true
         root.addSubview(textScroll)
 
-        let findBarH: CGFloat = 36
-        webFindBar.frame = NSRect(
-            x: 0, y: contentFrame.maxY - findBarH,
-            width: contentFrame.width, height: findBarH
-        )
-        webFindBar.autoresizingMask = [.width, .minYMargin]
-        webFindBar.isHidden = true
-        PanelStyle.addHairline(to: webFindBar, edge: .minY)
-
-        webFindField.placeholderString = "Find in page".localized
-        webFindField.frame = NSRect(x: 12, y: 6, width: 240, height: 24)
-        webFindField.delegate = self
-        webFindBar.addSubview(webFindField)
-
-        webFindCountLabel.font = PanelStyle.caption
-        webFindCountLabel.textColor = PanelStyle.textSecondary
-        webFindCountLabel.frame = NSRect(x: 260, y: 9, width: 80, height: 18)
-        webFindBar.addSubview(webFindCountLabel)
-
-        let prevBtn = NSButton(title: "‹", target: self, action: #selector(webFindPrev))
-        prevBtn.bezelStyle = .texturedRounded
-        prevBtn.frame = NSRect(x: contentFrame.width - 140, y: 6, width: 32, height: 24)
-        prevBtn.autoresizingMask = [.minXMargin]
-        webFindBar.addSubview(prevBtn)
-
-        let nextBtn = NSButton(title: "›", target: self, action: #selector(webFindNext))
-        nextBtn.bezelStyle = .texturedRounded
-        nextBtn.frame = NSRect(x: contentFrame.width - 102, y: 6, width: 32, height: 24)
-        nextBtn.autoresizingMask = [.minXMargin]
-        webFindBar.addSubview(nextBtn)
-
-        let doneBtn = NSButton(title: "Done".localized, target: self, action: #selector(hideWebFindBar))
-        doneBtn.bezelStyle = .texturedRounded
-        doneBtn.frame = NSRect(x: contentFrame.width - 60, y: 6, width: 50, height: 24)
-        doneBtn.autoresizingMask = [.minXMargin]
-        webFindBar.addSubview(doneBtn)
-
-        root.addSubview(webFindBar)
-
         let overlay = NSView(frame: contentFrame)
-        overlay.wantsLayer = true
-        overlay.layer?.backgroundColor = PanelStyle.surface.cgColor
+        ContentChrome.paint(overlay, ContentChrome.window)
         overlay.autoresizingMask = [.width, .height]
         overlay.isHidden = true
 
@@ -443,77 +369,38 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         self.loadingIndicator = loadingIndicator
         self.loadFailedView = loadFailedView
 
-        imageInfoBar.frame = NSRect(x: 0, y: 0,
-                                     width: bodyFrame.width, height: imageInfoBarH)
-        imageInfoBar.autoresizingMask = [.width, .maxYMargin]
-        imageInfoBar.isHidden = true
-        PanelStyle.addHairline(to: imageInfoBar, edge: .maxY)
+        // ─── Web find card (floats over the top-right of the document) ───
+        webFindBar.frame = NSRect(origin: ContentChrome.findBarOrigin(in: bounds),
+                                  size: ContentChrome.findBarSize)
+        webFindBar.autoresizingMask = [.minXMargin, .minYMargin]
+        webFindBar.isHidden = true
+        webFindField.delegate = self
+        root.addSubview(webFindBar)
 
-        imageInfoNameLabel.font = PanelStyle.title
-        imageInfoNameLabel.textColor = PanelStyle.textPrimary
-        imageInfoNameLabel.lineBreakMode = .byTruncatingMiddle
-        imageInfoNameLabel.maximumNumberOfLines = 1
-        imageInfoNameLabel.frame = NSRect(x: 20, y: 30,
-                                           width: bodyFrame.width - 40, height: 20)
-        imageInfoNameLabel.autoresizingMask = [.width]
-        imageInfoBar.addSubview(imageInfoNameLabel)
+        statusBar.frame = NSRect(x: 0, y: 0, width: bounds.width, height: statusH)
+        statusBar.autoresizingMask = [.width, .maxYMargin]
+        root.addSubview(statusBar)
 
-        imageInfoMetaLabel.font = PanelStyle.caption
-        imageInfoMetaLabel.textColor = PanelStyle.textSecondary
-        imageInfoMetaLabel.lineBreakMode = .byTruncatingTail
-        imageInfoMetaLabel.maximumNumberOfLines = 1
-        imageInfoMetaLabel.frame = NSRect(x: 20, y: 9,
-                                           width: bodyFrame.width - 40, height: 14)
-        imageInfoMetaLabel.autoresizingMask = [.width]
-        imageInfoBar.addSubview(imageInfoMetaLabel)
-
-        root.addSubview(imageInfoBar)
-
+        root.addSubview(titlebar)
         contentView = root
+        layoutToolbarButtons()
     }
 
-    /// Pack the right action group (Save + Diff + icon buttons) right-to-left,
-    /// hidden ones collapsing, then size the left identity block / address bar
-    /// to fill the remaining space.
+    /// Pack the right action group (icons, then the Save + Diff segments)
+    /// right-to-left, hidden ones collapsing, then centre the title / address
+    /// bar in the remaining space.
     private func layoutToolbarButtons() {
-        let gap: CGFloat = 8
-        let textW: CGFloat = 72
-        let iconW: CGFloat = 30
-        let ctrlH: CGFloat = 26
-        let rightMargin: CGFloat = 16
-        let leftMargin: CGFloat = 18
-        let labelGap: CGFloat = 16
-        let barH = toolbarBar.bounds.height
-        let ctrlY = (barH - ctrlH) / 2
-        let bodyWidth = toolbarBar.bounds.width
-
-        // Right group, packed right→left; each entry carries its width.
-        let group: [(NSButton, CGFloat)] = [
-            (saveButton, textW),
-            (gitDiffButton, textW),
-            (locateButton, iconW),
-            (findButton, iconW),
-        ]
-        var currentRight = bodyWidth - rightMargin
-        var leftmostVisibleX: CGFloat?
-        for (button, w) in group {
-            guard !button.isHidden else { continue }
-            let x = currentRight - w
-            button.frame = NSRect(x: x, y: ctrlY, width: w, height: ctrlH)
-            leftmostVisibleX = x
-            currentRight = x - gap
-        }
-
-        let identityRight = leftmostVisibleX.map { $0 - labelGap } ?? (bodyWidth - rightMargin)
-        let identityWidth = max(80, identityRight - leftMargin)
-
-        if !filenameLabel.isHidden {
-            filenameLabel.frame = NSRect(x: leftMargin, y: barH - 29, width: identityWidth, height: 18)
-            modifiedLabel.frame  = NSRect(x: leftMargin, y: 9, width: identityWidth, height: 15)
-        }
-        if !addressBar.isHidden {
-            addressBar.frame = NSRect(x: leftMargin, y: (barH - 26) / 2, width: identityWidth, height: 26)
-        }
+        let groupMinX = ContentChrome.layoutTrailingControls(
+            in: titlebar,
+            icons: [locateButton, findButton],
+            group: actionGroup,
+            segments: [
+                (saveButton, ContentSegmentButton.width(for: ["Save".localized, "Saved ✓".localized])),
+                (gitDiffButton, ContentSegmentButton.width(for: ["Diff".localized, "..."])),
+            ]
+        )
+        titlebar.centerTitle(addressBar.isHidden ? titlebar.titleLabel : addressBar,
+                             rightLimit: groupMinX - 12)
     }
 
     func dismiss() {
@@ -588,7 +475,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         case .markdown:
             currentURL = info.url
             kind = .markdown
-            imageInfoBar.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
             showFileIdentity(for: info.url)
             refreshSaveButton()
@@ -597,7 +483,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         case .text:
             currentURL = info.url
             kind = .text
-            imageInfoBar.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
             showFileIdentity(for: info.url)
             refreshGitDiffAvailability(for: info.url)
@@ -605,7 +490,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         case .pdf:
             currentURL = info.url
             kind = .pdf
-            imageInfoBar.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
             showFileIdentity(for: info.url)
             refreshSaveButton()
@@ -619,7 +503,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
             currentURL = info.url
             kind = .image
             resetZoom()
-            imageInfoBar.isHidden = false
             locateButton.isHidden = !info.url.isFileURL
             showFileIdentity(for: info.url)
             refreshSaveButton()
@@ -647,7 +530,6 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         default:
             currentURL = info.url
             kind = .webpage
-            imageInfoBar.isHidden = true
             locateButton.isHidden = !info.url.isFileURL
             showAddressBarIdentity(for: info.url)
             refreshSaveButton()
@@ -672,7 +554,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
             let html = """
             <html><head><style>
             body { margin: 0; display: flex; align-items: center; justify-content: center;
-                   background: #101113; height: 100vh; overflow: hidden; }
+                   background: \(ContentChrome.css(PanelStyle.canvas)); height: 100vh; overflow: hidden; }
             img { max-width: 100%; max-height: 100%; object-fit: contain; }
             </style></head><body><img src="\(url.absoluteString)"></body></html>
             """
@@ -707,7 +589,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     private func renderMarkdownView(url: URL) {
         Task.detached { [weak self] in
             let raw = await ContentViewerWindow.fetchTextContent(from: url)
-            let html = ContentViewerWindow.wrapMarkdownInHTML(raw)
+            let html = ContentViewerWindow.wrapMarkdownInHTML(raw, documentTop: ContentChrome.documentTop)
             await MainActor.run {
                 self?.webView.loadHTMLString(html, baseURL: url)
                 self?.showWebView()
@@ -754,25 +636,27 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         imageView.isHidden = false
     }
 
-    // MARK: - Identity (toolbar left)
+    // MARK: - Identity (titlebar + status bar)
 
     private func showFileIdentity(for url: URL) {
         addressBar.isHidden = true
-        filenameLabel.isHidden = false
-        modifiedLabel.isHidden = false
-        filenameLabel.stringValue = url.lastPathComponent
-        modifiedLabel.stringValue = ContentViewerWindow.subtitleString(for: url)
-        modifiedLabel.toolTip = url.isFileURL ? url.path : url.absoluteString
+        titlebar.titleLabel.isHidden = false
+        titlebar.titleLabel.stringValue = url.lastPathComponent
+        titlebar.titleLabel.toolTip = url.isFileURL ? url.path : url.absoluteString
+        let kindLabel = kind == .markdown ? "Markdown".localized : url.pathExtension.uppercased()
+        statusBar.show(left: ContentChrome.statusPath(for: url),
+                       right: ContentChrome.statusDetail(for: url, kindLabel: kindLabel),
+                       leftToolTip: url.isFileURL ? url.path : url.absoluteString)
     }
 
     private func showAddressBarIdentity(for url: URL) {
-        filenameLabel.isHidden = true
-        modifiedLabel.isHidden = true
+        titlebar.titleLabel.isHidden = true
         addressBar.isHidden = false
         addressBar.stringValue = url.absoluteString
         addressBar.isEditable = true
         addressBar.target = self
         addressBar.action = #selector(addressBarSubmitted)
+        statusBar.show(left: "", right: "", leftToolTip: nil)
     }
 
     /// Save is always visible; only clickable for a dirty, local, editable file.
@@ -793,14 +677,14 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     @objc private func gitDiffTapped() {
         guard let context = currentGitContext else { return }
         gitDiffButton.isEnabled = false
-        gitDiffButton.title = "..."
+        gitDiffButton.text = "..."
 
         DispatchQueue.global(qos: .userInitiated).async {
             let snapshot = GitDiffService.makeSnapshot(for: context)
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.gitDiffButton.isEnabled = true
-                self.gitDiffButton.title = "Diff".localized
+                self.gitDiffButton.text = "Diff".localized
 
                 guard let snapshot = snapshot else {
                     let alert = NSAlert()
@@ -853,9 +737,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
             try body.write(to: url, atomically: true, encoding: .utf8)
             isDirty = false
             saveButton.isEnabled = false
-            saveButton.title = "Saved ✓".localized
+            saveButton.text = "Saved ✓".localized
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                self?.saveButton.title = "Save".localized
+                self?.saveButton.text = "Save".localized
             }
         } catch {
             let alert = NSAlert(error: error)
@@ -876,7 +760,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         currentGitContext = nil
         gitDiffButton.isHidden = true
         gitDiffButton.isEnabled = true
-        gitDiffButton.title = "Diff".localized
+        gitDiffButton.text = "Diff".localized
         layoutToolbarButtons()
     }
 
@@ -895,9 +779,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         }
     }
 
+    /// Image metadata (format · size · dimensions) on the status bar's right;
+    /// the filename is the window title.
     private func updateImageInfoBar(with info: MediaInfo) {
-        imageInfoNameLabel.stringValue = info.filename
-
         var parts: [String] = []
         if info.formatName.isDisplayableValue {
             parts.append(info.formatName)
@@ -910,7 +794,9 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
         if let dim = info.dimensions, dim.width > 0, dim.height > 0 {
             parts.append("\(Int(dim.width)) × \(Int(dim.height))")
         }
-        imageInfoMetaLabel.stringValue = parts.joined(separator: " · ")
+        statusBar.show(left: ContentChrome.statusPath(for: info.url),
+                       right: parts.joined(separator: " · "),
+                       leftToolTip: info.url.isFileURL ? info.url.path : info.url.absoluteString)
     }
 
     // MARK: - Find
@@ -963,7 +849,7 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
 
     private func showWebFindBar() {
         webFindBar.isHidden = false
-        webFindBar.frame.origin.y = (contentView?.bounds.height ?? 0) - headerHeight - toolbarH - webFindBar.bounds.height
+        webFindBar.frame.origin = ContentChrome.findBarOrigin(in: contentView?.bounds ?? .zero)
         makeFirstResponder(webFindField)
         webFindField.selectText(nil)
         if !webFindField.stringValue.isEmpty {
@@ -1045,18 +931,15 @@ final class ContentPanel: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKN
     }
 
     @objc private func updateAppearance() {
-        // The panel commits to the dark-glass palette regardless of the system
-        // theme (the frosted bars are vibrant-dark NSVisualEffectViews), so all
-        // we need to do on a preferences change is re-assert the dark base and
-        // re-tint the hairline separators.
+        // Theme tokens are fixed for the session (a theme change relaunches), so
+        // a preferences change only re-asserts the layer colour snapshots.
         guard let root = contentView else { return }
-        root.layer?.backgroundColor = PanelStyle.surface.cgColor
-        loadingOverlay?.layer?.backgroundColor = PanelStyle.surface.cgColor
-        for bar in [toolbarBar, webFindBar, imageInfoBar] {
-            for sub in bar.subviews where sub.frame.height == 1 {
-                sub.layer?.backgroundColor = PanelStyle.hairline.cgColor
-            }
-        }
+        ContentChrome.paint(root, ContentChrome.window)
+        if let loadingOverlay { ContentChrome.paint(loadingOverlay, ContentChrome.window) }
+        titlebar.applyTheme()
+        actionGroup.applyTheme()
+        statusBar.applyTheme()
+        webFindBar.applyTheme()
     }
 
 
@@ -1283,8 +1166,8 @@ private enum GitDiffService {
             return Snapshot(fileURL: context.fileURL,
                             rootURL: context.rootURL,
                             relativePath: context.relativePath,
-                            beforeTitle: "Before - \(shortHash(beforeRev))",
-                            afterTitle: "After - \(shortHash(afterRev))",
+                            beforeTitle: "\(columnTitle("Before - HEAD".localized).label) - \(shortHash(beforeRev))",
+                            afterTitle: "\(columnTitle("After - Working Tree".localized).label) - \(shortHash(afterRev))",
                             beforeText: beforeText,
                             afterText: afterText,
                             summary: "Last committed change".localized)
@@ -1299,6 +1182,13 @@ private enum GitDiffService {
                         beforeText: beforeText,
                         afterText: currentText,
                         summary: "No working-tree changes".localized)
+    }
+
+    /// Split a "Before - HEAD" style column title into its label and the
+    /// revision / tree meta shown beside it in mono.
+    static func columnTitle(_ title: String) -> (label: String, meta: String) {
+        guard let range = title.range(of: " - ") else { return (title, "") }
+        return (String(title[..<range.lowerBound]), String(title[range.upperBound...]))
     }
 
     private static func showFile(_ revision: String, relativePath: String, rootURL: URL) -> String? {
@@ -1379,10 +1269,15 @@ private enum GitDiffService {
     }
 }
 
+/// Side-by-side Git diff, laid out after Figma `19 · Content Viewer / Git Diff`:
+/// a 44 pt titlebar, a 40 pt Before / After header, two hairline-split code
+/// columns with mono line numbers, and a 32 pt status bar.
 private final class GitDiffWindow: NSWindow {
     private let leftScroll: NSScrollView
     private let rightScroll: NSScrollView
     private var isSyncingScroll = false
+    private let titlebar = ContentTitlebarView()
+    private let statusBar = ContentStatusBar()
 
     init(snapshot: GitDiffService.Snapshot) {
         let diff = Self.makeSideBySideDiff(before: snapshot.beforeText, after: snapshot.afterText)
@@ -1391,121 +1286,120 @@ private final class GitDiffWindow: NSWindow {
 
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 1200, height: 760),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
 
         isReleasedWhenClosed = false
         title = "Git Diff - \(snapshot.fileURL.lastPathComponent)"
-        buildLayout(snapshot: snapshot)
+        appearance = PanelStyle.windowAppearance
+        backgroundColor = ContentChrome.window
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+        ContentChrome.hideSystemTrafficLights(of: self)
+        buildLayout(snapshot: snapshot, changedRows: diff.changedRows)
         center()
         installScrollSync()
     }
 
-    private func buildLayout(snapshot: GitDiffService.Snapshot) {
-        let root = NSView()
-        root.wantsLayer = true
-        root.layer?.backgroundColor = PanelStyle.canvas.cgColor
+    private func buildLayout(snapshot: GitDiffService.Snapshot, changedRows: Int) {
+        let size = NSSize(width: 1200, height: 760)
+        let root = NSView(frame: NSRect(origin: .zero, size: size))
+        ContentChrome.paint(root, ContentChrome.window)
         contentView = root
+        let w = size.width, h = size.height
+        let titleH = ContentChrome.titlebarHeight
+        let headerH: CGFloat = 40
+        let statusH = ContentChrome.statusHeight
+        let bodyH = h - titleH - headerH - statusH
 
-        let header = NSView()
-        header.translatesAutoresizingMaskIntoConstraints = false
-        header.wantsLayer = true
-        header.layer?.backgroundColor = PanelStyle.surface.cgColor
-        root.addSubview(header)
+        titlebar.frame = NSRect(x: 0, y: h - titleH, width: w, height: titleH)
+        titlebar.autoresizingMask = [.width, .minYMargin]
+        titlebar.titleLabel.stringValue = snapshot.fileURL.lastPathComponent
+        titlebar.titleLabel.toolTip = snapshot.fileURL.path
+        titlebar.onResize = { [weak self] in
+            guard let bar = self?.titlebar else { return }
+            bar.centerTitle(bar.titleLabel, rightLimit: bar.bounds.width - 20)
+        }
+        titlebar.centerTitle(titlebar.titleLabel, rightLimit: w - 20)
 
-        let pathLabel = NSTextField(labelWithString: snapshot.fileURL.path)
-        pathLabel.translatesAutoresizingMaskIntoConstraints = false
-        pathLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        pathLabel.lineBreakMode = .byTruncatingMiddle
-        pathLabel.maximumNumberOfLines = 1
-        pathLabel.isSelectable = true
-        header.addSubview(pathLabel)
+        let header = NSView(frame: NSRect(x: 0, y: h - titleH - headerH, width: w, height: headerH))
+        header.autoresizingMask = [.width, .minYMargin]
+        let before = makeColumnHeader(title: snapshot.beforeTitle,
+                                      frame: NSRect(x: 0, y: 0, width: w / 2, height: headerH))
+        before.autoresizingMask = [.width, .maxXMargin]
+        header.addSubview(before)
+        let after = makeColumnHeader(title: snapshot.afterTitle,
+                                     frame: NSRect(x: w / 2, y: 0, width: w / 2, height: headerH))
+        after.autoresizingMask = [.width, .minXMargin]
+        header.addSubview(after)
+        let headerRule = NSView(frame: NSRect(x: 0, y: 0, width: w, height: 1))
+        headerRule.autoresizingMask = [.width]
+        ContentChrome.paint(headerRule, ContentChrome.line)
+        header.addSubview(headerRule)
 
-        let summaryLabel = NSTextField(labelWithString: "\(snapshot.summary)  •  \(snapshot.relativePath)")
-        summaryLabel.translatesAutoresizingMaskIntoConstraints = false
-        summaryLabel.font = NSFont.systemFont(ofSize: 11)
-        summaryLabel.textColor = PanelStyle.textSecondary
-        summaryLabel.lineBreakMode = .byTruncatingMiddle
-        summaryLabel.maximumNumberOfLines = 1
-        header.addSubview(summaryLabel)
+        leftScroll.frame = NSRect(x: 0, y: statusH, width: w / 2, height: bodyH)
+        leftScroll.autoresizingMask = [.width, .height, .maxXMargin]
+        rightScroll.frame = NSRect(x: w / 2, y: statusH, width: w / 2, height: bodyH)
+        rightScroll.autoresizingMask = [.width, .height, .minXMargin]
+        let divider = NSView(frame: NSRect(x: w / 2, y: statusH, width: 1, height: bodyH))
+        divider.autoresizingMask = [.height, .minXMargin, .maxXMargin]
+        ContentChrome.paint(divider, ContentChrome.line)
 
-        let stack = NSStackView()
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.orientation = .horizontal
-        stack.distribution = .fillEqually
-        stack.spacing = 1
-        root.addSubview(stack)
+        // "N lines changed" (Figma) followed by the repo-relative path.
+        let countText = changedRows == 1
+            ? "1 line changed".localized
+            : String(format: "%d lines changed".localized, changedRows)
+        let left = NSMutableAttributedString(string: countText, attributes: [
+            .font: PanelStyle.inspectFont(ofSize: 12), .foregroundColor: PanelStyle.textSecondary])
+        left.append(NSAttributedString(string: "   " + snapshot.relativePath, attributes: [
+            .font: PanelStyle.monoFont(ofSize: 11), .foregroundColor: PanelStyle.textTertiary]))
+        statusBar.frame = NSRect(x: 0, y: 0, width: w, height: statusH)
+        statusBar.autoresizingMask = [.width, .maxYMargin]
+        statusBar.leftLabel.lineBreakMode = .byTruncatingTail
+        statusBar.show(attributedLeft: left, right: "Compare with Git".localized + " · " + snapshot.summary)
+        statusBar.leftLabel.toolTip = snapshot.fileURL.path
 
-        stack.addArrangedSubview(makeColumn(title: snapshot.beforeTitle, scrollView: leftScroll))
-        stack.addArrangedSubview(makeColumn(title: snapshot.afterTitle, scrollView: rightScroll))
-
-        NSLayoutConstraint.activate([
-            header.topAnchor.constraint(equalTo: root.topAnchor),
-            header.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            header.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            header.heightAnchor.constraint(equalToConstant: 56),
-
-            pathLabel.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 14),
-            pathLabel.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -14),
-            pathLabel.topAnchor.constraint(equalTo: header.topAnchor, constant: 9),
-            pathLabel.heightAnchor.constraint(equalToConstant: 18),
-
-            summaryLabel.leadingAnchor.constraint(equalTo: pathLabel.leadingAnchor),
-            summaryLabel.trailingAnchor.constraint(equalTo: pathLabel.trailingAnchor),
-            summaryLabel.topAnchor.constraint(equalTo: pathLabel.bottomAnchor, constant: 2),
-            summaryLabel.heightAnchor.constraint(equalToConstant: 16),
-
-            stack.topAnchor.constraint(equalTo: header.bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: root.bottomAnchor)
-        ])
+        for view in [leftScroll, rightScroll, divider, header, statusBar, titlebar] as [NSView] {
+            root.addSubview(view)
+        }
     }
 
-    private func makeColumn(title: String, scrollView: NSScrollView) -> NSView {
-        let column = NSView()
-        column.translatesAutoresizingMaskIntoConstraints = false
+    /// "Before" in Inter 12 medium, the revision / tree beside it in mono.
+    /// Figma text frames: label x 24 / y 12 / h 15, meta 10 pt after / y 12.5 / h 14.
+    private func makeColumnHeader(title: String, frame: NSRect) -> NSView {
+        let column = NSView(frame: frame)
+        let parts = GitDiffService.columnTitle(title)
+        let label = ContentChrome.makeLabel(font: PanelStyle.inspectFont(ofSize: 12, weight: .medium),
+                                            color: PanelStyle.textPrimary)
+        label.stringValue = parts.label
+        let labelW = ceil(label.attributedStringValue.size().width) + 2
+        label.frame = NSRect(x: 24, y: frame.height - 12 - 15, width: labelW, height: 15)
+        column.addSubview(label)
 
-        let titleLabel = NSTextField(labelWithString: title)
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        titleLabel.alignment = .center
-        titleLabel.wantsLayer = true
-        titleLabel.layer?.backgroundColor = PanelStyle.surface.cgColor
-        column.addSubview(titleLabel)
-
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        column.addSubview(scrollView)
-
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: column.topAnchor),
-            titleLabel.leadingAnchor.constraint(equalTo: column.leadingAnchor),
-            titleLabel.trailingAnchor.constraint(equalTo: column.trailingAnchor),
-            titleLabel.heightAnchor.constraint(equalToConstant: 32),
-
-            scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: column.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: column.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: column.bottomAnchor)
-        ])
-
+        let meta = ContentChrome.makeLabel(font: PanelStyle.monoFont(ofSize: 11),
+                                           color: PanelStyle.textTertiary)
+        meta.stringValue = parts.meta
+        meta.frame = NSRect(x: label.frame.maxX + 8, y: frame.height - 12.5 - 14,
+                            width: max(0, frame.width - label.frame.maxX - 32), height: 14)
+        meta.autoresizingMask = [.width]
+        column.addSubview(meta)
         return column
     }
 
     private static func makeCodeScroll(attributedText: NSAttributedString) -> NSScrollView {
-        let textView = NSTextView(frame: .zero)
-        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let textView = DiffTextView(frame: .zero)
+        textView.font = PanelStyle.monoFont(ofSize: 12)
         textView.isEditable = false
         textView.isSelectable = true
         textView.isRichText = true
         textView.drawsBackground = true
-        // Keep editable code and Markdown surfaces in the same dark glass
-        // workbench as Image Inspect. The system textBackgroundColor falls
-        // back to white on macOS even when the window uses vibrantDark.
-        textView.backgroundColor = PanelStyle.canvas
-        textView.textColor = NSColor.textColor
+        // Same ink/1 plane as the window; the system textBackgroundColor
+        // falls back to white even under a dark appearance.
+        textView.backgroundColor = ContentChrome.window
+        textView.textContainerInset = NSSize(width: 0, height: 12)
+        textView.textContainer?.lineFragmentPadding = 0
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = true
         textView.autoresizingMask = [.width]
@@ -1521,6 +1415,7 @@ private final class GitDiffWindow: NSWindow {
         scrollView.hasHorizontalScroller = true
         PanelStyle.styleScrollers(in: scrollView)
         scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
         scrollView.documentView = textView
         return scrollView
     }
@@ -1552,15 +1447,22 @@ private final class GitDiffWindow: NSWindow {
     private struct RenderedDiff {
         let left: NSAttributedString
         let right: NSAttributedString
+        let changedRows: Int
     }
 
     private static func makeSideBySideDiff(before: String, after: String) -> RenderedDiff {
         let beforeLines = splitLines(before)
         let afterLines = splitLines(after)
         let rows = diffRows(before: beforeLines, after: afterLines)
+        let changed = rows.filter { $0.left.kind == .deleted || $0.right.kind == .inserted }.count
+        // Both columns share one code indent so long line numbers stay aligned.
+        let maxNumber = rows.map { max($0.left.number ?? 0, $0.right.number ?? 0) }.max() ?? 0
+        let digitW = ("0" as NSString).size(withAttributes: [.font: PanelStyle.monoFont(ofSize: 11)]).width
+        let codeX = max(48, ceil(16 + CGFloat(String(maxNumber).count) * digitW + 12))
         return RenderedDiff(
-            left: attributedText(for: rows.map(\.left)),
-            right: attributedText(for: rows.map(\.right))
+            left: attributedText(for: rows.map(\.left), codeX: codeX),
+            right: attributedText(for: rows.map(\.right), codeX: codeX),
+            changedRows: changed
         )
     }
 
@@ -1711,59 +1613,50 @@ private final class GitDiffWindow: NSWindow {
         return rows
     }
 
-    private static func attributedText(for cells: [DiffCell]) -> NSAttributedString {
+    /// One 26 pt row per cell: the line number at x 16 (mono 11) and the code
+    /// at `codeX` (mono 12). Changed rows carry `DiffTextView.kindKey` so the
+    /// view paints the full-width tint and 2 pt bar behind them.
+    private static func attributedText(for cells: [DiffCell], codeX: CGFloat) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let codeFont = PanelStyle.monoFont(ofSize: 12)
+        let numberFont = PanelStyle.monoFont(ofSize: 11)
+        let rowHeight: CGFloat = 26
+        let natural = NSLayoutManager().defaultLineHeight(for: codeFont)
+        let baselineOffset = max(0, (rowHeight - natural) / 2)
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineBreakMode = .byClipping
-        paragraph.lineSpacing = 1
+        paragraph.minimumLineHeight = rowHeight
+        paragraph.maximumLineHeight = rowHeight
+        paragraph.firstLineHeadIndent = 16
+        paragraph.headIndent = codeX
+        paragraph.tabStops = [NSTextTab(textAlignment: .left, location: codeX)]
 
         for cell in cells {
-            let number = cell.number.map { String(format: "%5d", $0) } ?? "     "
-            let marker: String
-            switch cell.kind {
-            case .deleted: marker = "-"
-            case .inserted: marker = "+"
-            default: marker = " "
-            }
-
-            let line = "\(number) \(marker) \(cell.text)\n"
-            var attributes: [NSAttributedString.Key: Any] = [
-                .font: font,
-                .foregroundColor: NSColor.textColor,
-                .paragraphStyle: paragraph
-            ]
-
+            let changed = cell.kind == .deleted || cell.kind == .inserted
+            let number = cell.number.map(String.init) ?? ""
+            let line = NSMutableAttributedString(string: number + "\t", attributes: [
+                .font: numberFont,
+                .foregroundColor: changed ? PanelStyle.textTertiary : ContentChrome.text4,
+                .paragraphStyle: paragraph,
+                .baselineOffset: baselineOffset
+            ])
+            line.append(NSAttributedString(string: cell.text + "\n", attributes: [
+                .font: codeFont,
+                .foregroundColor: changed ? PanelStyle.textPrimary : PanelStyle.textSecondary,
+                .paragraphStyle: paragraph,
+                .baselineOffset: baselineOffset
+            ]))
             switch cell.kind {
             case .deleted:
-                attributes[.backgroundColor] = NSColor.systemRed.withAlphaComponent(0.18)
+                line.addAttribute(DiffTextView.kindKey, value: DiffTextView.deleted,
+                                  range: NSRange(location: 0, length: line.length))
             case .inserted:
-                attributes[.backgroundColor] = NSColor.systemGreen.withAlphaComponent(0.20)
-            case .placeholder:
-                attributes[.foregroundColor] = NSColor.clear
-            case .unchanged:
+                line.addAttribute(DiffTextView.kindKey, value: DiffTextView.inserted,
+                                  range: NSRange(location: 0, length: line.length))
+            case .unchanged, .placeholder:
                 break
             }
-
-            let attributed = NSMutableAttributedString(string: line, attributes: attributes)
-            if cell.kind != .placeholder {
-                attributed.addAttributes(
-                    [.foregroundColor: PanelStyle.textSecondary],
-                    range: NSRange(location: 0, length: min(5, attributed.length))
-                )
-                if cell.kind == .deleted {
-                    attributed.addAttributes(
-                        [.foregroundColor: NSColor.systemRed],
-                        range: NSRange(location: 6, length: 1)
-                    )
-                } else if cell.kind == .inserted {
-                    attributed.addAttributes(
-                        [.foregroundColor: NSColor.systemGreen],
-                        range: NSRange(location: 6, length: 1)
-                    )
-                }
-            }
-            result.append(attributed)
+            result.append(line)
         }
         return result
     }
@@ -1805,5 +1698,48 @@ private final class GitDiffWindow: NSWindow {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+}
+
+/// Read-only diff column that paints changed rows edge to edge: a 14 % moss
+/// (inserted) or shu (deleted) tint inset 1 pt top and bottom, plus a 2 pt bar
+/// on the leading edge.
+private final class DiffTextView: NSTextView {
+    static let kindKey = NSAttributedString.Key("GlanceDiffKind")
+    static let deleted = 1
+    static let inserted = 2
+
+    /// Keep the view at least as wide as the column so tints span it.
+    override func setFrameSize(_ newSize: NSSize) {
+        var size = newSize
+        if let clip = enclosingScrollView?.contentSize { size.width = max(size.width, clip.width) }
+        super.setFrameSize(size)
+    }
+
+    override func viewWillDraw() {
+        if let clip = enclosingScrollView?.contentSize, frame.width < clip.width {
+            setFrameSize(NSSize(width: clip.width, height: frame.height))
+        }
+        super.viewWillDraw()
+    }
+
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
+        guard let layoutManager, let textContainer, let storage = textStorage, storage.length > 0 else { return }
+        let origin = textContainerOrigin
+        let glyphs = layoutManager.glyphRange(forBoundingRect: rect.offsetBy(dx: -origin.x, dy: -origin.y),
+                                              in: textContainer)
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphs) { lineRect, _, _, glyphRange, _ in
+            let index = layoutManager.characterIndexForGlyph(at: glyphRange.location)
+            guard index < storage.length,
+                  let kind = storage.attribute(Self.kindKey, at: index, effectiveRange: nil) as? Int else { return }
+            let color = kind == Self.deleted ? PanelStyle.failure : PanelStyle.success
+            let row = NSRect(x: 0, y: lineRect.minY + origin.y + 1,
+                             width: self.bounds.width, height: lineRect.height - 2)
+            color.withAlphaComponent(0.14).setFill()
+            row.fill(using: .sourceOver)
+            color.setFill()
+            NSRect(x: 0, y: row.minY, width: 2, height: row.height).fill(using: .sourceOver)
+        }
     }
 }

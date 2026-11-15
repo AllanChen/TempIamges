@@ -30,7 +30,7 @@ final class FocusSweepLoadingView: NSView {
         focusArtwork.wantsLayer = true
         addSubview(focusArtwork)
 
-        let accent = NSColor(srgbRed: 232 / 255, green: 168 / 255, blue: 125 / 255, alpha: 1)
+        let accent = PanelStyle.themed(NSColor(srgbRed: 232 / 255, green: 168 / 255, blue: 125 / 255, alpha: 1), PanelStyle.Washi.text1)
         for (view, radius) in [(beam, CGFloat(0)), (scanLine, CGFloat(1))] {
             view.wantsLayer = true
             view.layer?.backgroundColor = accent.cgColor
@@ -40,13 +40,13 @@ final class FocusSweepLoadingView: NSView {
         for (view, name) in zip([imageGlyph] + corners,
                                 ["FocusSweepImage", "FocusSweepCornerTL", "FocusSweepCornerTR",
                                  "FocusSweepCornerBL", "FocusSweepCornerBR"]) {
-            view.image = NSImage(named: NSImage.Name(name))
+            view.image = PanelStyle.washiTinted(NSImage(named: NSImage.Name(name)), PanelStyle.Washi.text3)
             view.imageScaling = .scaleProportionallyUpOrDown
             view.wantsLayer = true
             focusArtwork.addSubview(view)
         }
         caption.font = PanelStyle.inspectFont(ofSize: 14)
-        caption.textColor = NSColor(srgbRed: 0.72, green: 0.69, blue: 0.67, alpha: 1)
+        caption.textColor = PanelStyle.themed(NSColor(srgbRed: 0.72, green: 0.69, blue: 0.67, alpha: 1), PanelStyle.Washi.text2)
         caption.alignment = .center
         caption.frame = NSRect(x: 0, y: 0, width: 160, height: 24)
         caption.wantsLayer = true
@@ -198,6 +198,9 @@ enum PanelStyle {
     /// Style scrollbars inside Glance-owned WebKit documents, including nested
     /// code blocks. The 12px lane leaves a centered 3px track and 4px thumb.
     static func styleWebScrollbars(in configuration: WKWebViewConfiguration) {
+        let track = isLight ? "rgba(213,209,198,.8)" : "rgba(52,53,58,.8)"
+        let thumb = isLight ? "rgba(141,137,127,1)" : "rgba(232,168,124,.86)"
+        let thumbActive = isLight ? "#5C5952" : "#E8A87C"
         let script = WKUserScript(source: """
             (() => {
               if (document.getElementById('glance-scrollbar-style')) return;
@@ -206,19 +209,19 @@ enum PanelStyle {
               style.textContent = `
                 ::-webkit-scrollbar { width: 12px; height: 12px; }
                 ::-webkit-scrollbar-track:vertical {
-                  background: linear-gradient(to right, transparent 4.5px, rgba(52,53,58,.8) 4.5px,
-                    rgba(52,53,58,.8) 7.5px, transparent 7.5px);
+                  background: linear-gradient(to right, transparent 4.5px, \(track) 4.5px,
+                    \(track) 7.5px, transparent 7.5px);
                 }
                 ::-webkit-scrollbar-track:horizontal {
-                  background: linear-gradient(to bottom, transparent 4.5px, rgba(52,53,58,.8) 4.5px,
-                    rgba(52,53,58,.8) 7.5px, transparent 7.5px);
+                  background: linear-gradient(to bottom, transparent 4.5px, \(track) 4.5px,
+                    \(track) 7.5px, transparent 7.5px);
                 }
                 ::-webkit-scrollbar-thumb {
-                  background: rgba(232,168,124,.86); border: 4px solid transparent;
+                  background: \(thumb); border: 4px solid transparent;
                   border-radius: 6px; background-clip: padding-box;
                 }
                 ::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:active {
-                  background-color: #E8A87C;
+                  background-color: \(thumbActive);
                 }
                 ::-webkit-scrollbar-corner { background: transparent; }
               `;
@@ -228,83 +231,198 @@ enum PanelStyle {
         configuration.userContentController.addUserScript(script)
     }
 
+    // MARK: - Theme
+
+    /// True when Glance runs the Washi (light) theme. Resolved once at launch
+    /// from the Theme preference — `.system` follows macOS — so every token and
+    /// every snapshot `cgColor` agrees for the whole session. Changing the theme
+    /// asks for a relaunch (see PreferencesWindow).
+    static let isLight: Bool = {
+        switch Preferences.shared.theme {
+        case .light: return true
+        case .dark: return false
+        case .system: return UserDefaults.standard.string(forKey: "AppleInterfaceStyle") != "Dark"
+        }
+    }()
+
+    /// Pick the dark (Sumi, the shipped palette) or light (Washi) value.
+    static func themed(_ dark: NSColor, _ light: NSColor) -> NSColor { isLight ? light : dark }
+
+    /// Window appearance for system controls, menus and text fields.
+    static var windowAppearance: NSAppearance? { NSAppearance(named: isLight ? .aqua : .darkAqua) }
+    /// Vibrant appearance for frosted NSVisualEffectViews.
+    static var vibrantAppearance: NSAppearance? { NSAppearance(named: isLight ? .vibrantLight : .vibrantDark) }
+
+    static func hex(_ value: Int, alpha: CGFloat = 1) -> NSColor {
+        NSColor(srgbRed: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255,
+                blue: CGFloat(value & 0xFF) / 255, alpha: alpha)
+    }
+
+    /// Washi paper and ink — the `Glance · Shizuka` Figma light palette.
+    enum Washi {
+        static let ink0 = PanelStyle.hex(0xEFEDE6)
+        static let ink1 = PanelStyle.hex(0xFAF9F5)
+        static let ink2 = PanelStyle.hex(0xF3F1EB)
+        static let ink3 = PanelStyle.hex(0xEAE7DF)
+        static let ink4 = PanelStyle.hex(0xDDD9CF)
+        static let line = PanelStyle.hex(0xE7E4DC)
+        static let lineStrong = PanelStyle.hex(0xD5D1C6)
+        static let text1 = PanelStyle.hex(0x1C1B19)
+        static let text2 = PanelStyle.hex(0x5C5952)
+        static let text3 = PanelStyle.hex(0x8D897F)
+        static let text4 = PanelStyle.hex(0xB6B2A8)
+        static let shu = PanelStyle.hex(0xB5462E)
+        static let moss = PanelStyle.hex(0x5D7046)
+        static let ai = PanelStyle.hex(0x476780)
+    }
+
+    /// Sumi ink — the `Glance · Shizuka` Figma dark palette.
+    enum Sumi {
+        static let ink0 = PanelStyle.hex(0x0F0F0E)
+        static let ink1 = PanelStyle.hex(0x151514)
+        static let ink2 = PanelStyle.hex(0x1B1B1A)
+        static let ink3 = PanelStyle.hex(0x242422)
+        static let ink4 = PanelStyle.hex(0x2E2E2B)
+        static let line = PanelStyle.hex(0x262624)
+        static let lineStrong = PanelStyle.hex(0x34342F)
+        static let text1 = PanelStyle.hex(0xEAE7E0)
+        static let text2 = PanelStyle.hex(0xA19D94)
+        static let text3 = PanelStyle.hex(0x6B6862)
+        static let text4 = PanelStyle.hex(0x47453F)
+        static let shu = PanelStyle.hex(0xC65A40)
+        static let moss = PanelStyle.hex(0x8C9C72)
+        static let ai = PanelStyle.hex(0x6F8AA0)
+    }
+
+    /// Recolour a full-colour asset (drawn for Sumi) as a flat glyph for Washi.
+    /// Returns the original image in the dark theme.
+    static func washiTinted(_ image: NSImage?, _ color: NSColor) -> NSImage? {
+        guard isLight, let image else { return image }
+        return NSImage(size: image.size, flipped: false) { rect in
+            image.draw(in: rect)
+            color.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+    }
+
+    /// The colour UI tints are mixed from: white over Sumi, ink over Washi.
+    /// Use for hairlines, hover washes and translucent control fills on chrome;
+    /// keep literal white/black for marks drawn over photos and video.
+    static let contrast = themed(Sumi.text1, Washi.text1)
+
     // MARK: - Palette
 
-    /// Deepest image/background plane — Quiet Darkroom `#09090B`.
-    static let canvas = NSColor(srgbRed: 9 / 255, green: 9 / 255, blue: 11 / 255, alpha: 1)
-    /// Primary chrome plane — `#111114`.
-    static let surface = NSColor(srgbRed: 17 / 255, green: 17 / 255, blue: 20 / 255, alpha: 1)
-    /// Raised controls and cards — `#17171C`.
-    static let overlay = NSColor(srgbRed: 23 / 255, green: 23 / 255, blue: 28 / 255, alpha: 1)
-    /// Toolbar chrome plane, one step below `surface` — `#0D0D10`.
-    static let chrome = NSColor(srgbRed: 13 / 255, green: 13 / 255, blue: 16 / 255, alpha: 1)
-    /// Elevated surface for floating menus and cards — `#201F25`.
-    static let surfaceElevated = NSColor(srgbRed: 32 / 255, green: 31 / 255, blue: 37 / 255, alpha: 1)
+    /// Deepest plane, behind images — ink/0.
+    static let canvas = themed(Sumi.ink0, Washi.ink0)
+    /// Primary window plane — ink/1.
+    static let surface = themed(Sumi.ink1, Washi.ink1)
+    /// Fields and quiet fills — ink/2.
+    static let overlay = themed(Sumi.ink2, Washi.ink2)
+    /// Bar chrome plane — ink/2.
+    static let chrome = themed(Sumi.ink2, Washi.ink2)
+    /// Selected rows and active tools — ink/4.
+    static let surfaceElevated = themed(Sumi.ink4, Washi.ink4)
     /// Image Inspect Figma palette. Kept separate so other Glance windows can
     /// migrate independently without inheriting the denser inspector chrome.
-    static let inspectBackground = NSColor(srgbRed: 6 / 255, green: 7 / 255, blue: 10 / 255, alpha: 1)
-    static let inspectChrome = NSColor(srgbRed: 23 / 255, green: 24 / 255, blue: 29 / 255, alpha: 1)
-    static let inspectToolbar = NSColor(srgbRed: 44 / 255, green: 45 / 255, blue: 49 / 255, alpha: 1)
-    static let inspectCanvas = NSColor(srgbRed: 9 / 255, green: 10 / 255, blue: 13 / 255, alpha: 1)
-    static let inspectStatus = NSColor(srgbRed: 26 / 255, green: 27 / 255, blue: 32 / 255, alpha: 1)
-    static let inspectLine = NSColor(srgbRed: 52 / 255, green: 53 / 255, blue: 58 / 255, alpha: 1)
+    static let inspectBackground = themed(Sumi.ink0, Washi.ink0)
+    static let inspectChrome = themed(Sumi.ink1, Washi.ink1)
+    static let inspectToolbar = themed(Sumi.ink3, Washi.ink3)
+    static let inspectCanvas = themed(Sumi.ink0, Washi.ink0)
+    static let inspectStatus = themed(Sumi.ink2, Washi.ink2)
+    static let inspectLine = themed(Sumi.lineStrong, Washi.lineStrong)
     /// Semantic alias matching the V2 spec: raised surface (`overlay`).
     static var surfaceRaised: NSColor { overlay }
 
-    /// Warm off-white primary text — `#F3EEE8`.
-    static let textPrimary = NSColor(srgbRed: 243 / 255, green: 238 / 255, blue: 232 / 255, alpha: 1)
-    /// Secondary / supporting text — `#AAA4A0`.
-    static let textSecondary = NSColor(srgbRed: 170 / 255, green: 164 / 255, blue: 160 / 255, alpha: 1)
-    /// Tertiary text (timestamps, counts, hints).
-    static let textTertiary = NSColor(srgbRed: 114 / 255, green: 109 / 255, blue: 105 / 255, alpha: 1)
-    /// Warm apricot interaction cue, the only brand accent — `#E8A87C`.
-    static let warmCue = NSColor(srgbRed: 232 / 255, green: 168 / 255, blue: 124 / 255, alpha: 1)
+    /// Primary text — text/1.
+    static let textPrimary = themed(Sumi.text1, Washi.text1)
+    /// Secondary text — text/2.
+    static let textSecondary = themed(Sumi.text2, Washi.text2)
+    /// Tertiary text (timestamps, counts, hints) — text/3.
+    static let textTertiary = themed(Sumi.text3, Washi.text3)
+    /// Interaction cue: primary buttons, selection outlines. Paper on Sumi,
+    /// ink on Washi; vermilion (`failure`) is reserved for marks.
+    static let warmCue = themed(Sumi.text1, Washi.text1)
     /// `Glance / Scrollbar System` track and thumb tokens.
     static let scrollbarTrack = inspectLine.withAlphaComponent(0.8)
-    static let scrollbarThumb = warmCue.withAlphaComponent(0.86)
-    static let scrollbarThumbActive = warmCue
-    /// Dark ink drawn on top of `accent` fills (primary buttons) — `#21130D`.
-    static let accentInk = NSColor(srgbRed: 33 / 255, green: 19 / 255, blue: 13 / 255, alpha: 1)
-    /// Accent hover fill — `#F0B58E`.
-    static let accentHover = NSColor(srgbRed: 240 / 255, green: 181 / 255, blue: 142 / 255, alpha: 1)
+    static let scrollbarThumb = themed(Sumi.text3, Washi.text3)
+    static let scrollbarThumbActive = themed(Sumi.text2, Washi.text2)
+    /// Text drawn on top of `accent` fills (primary buttons).
+    static let accentInk = themed(Sumi.ink0, Washi.ink1)
+    /// Accent hover fill.
+    static let accentHover = themed(PanelStyle.hex(0xFFFFFF), PanelStyle.hex(0x3A3833))
     /// Subtle accent tint for selected/active backgrounds.
-    static let accentSubtleFill = warmCue.withAlphaComponent(0.12)
+    static let accentSubtleFill = warmCue.withAlphaComponent(isLight ? 0.06 : 0.12)
     /// Subtle accent tint for selected/active borders.
-    static let accentSubtleBorder = warmCue.withAlphaComponent(0.35)
+    static let accentSubtleBorder = warmCue.withAlphaComponent(isLight ? 0.25 : 0.35)
 
     /// Hairline that defines a bar edge / separator on the frost.
     static let hairline       = textPrimary.withAlphaComponent(0.10)
     /// Pointer-over tint for list rows and cards (History, Task Center): a
     /// touch of light over the darkroom surface, well below selection.
-    static let rowHover       = textPrimary.withAlphaComponent(0.06)
+    static let rowHover       = textPrimary.withAlphaComponent(isLight ? 0.04 : 0.06)
     /// `base` with the hover tint laid over it, for opaque layer backgrounds.
     static func hoverTinted(_ base: NSColor) -> NSColor {
-        base.blended(withFraction: 0.06, of: textPrimary) ?? base
+        base.blended(withFraction: isLight ? 0.04 : 0.06, of: textPrimary) ?? base
     }
     /// Translucent fill for a top/bottom bar sitting on the frost.
-    static let barFill        = overlay.withAlphaComponent(0.72)
+    static let barFill        = overlay.withAlphaComponent(isLight ? 0.86 : 0.72)
     /// Translucent fill for an inline control (button, field) on the frost.
-    static let controlFill    = textPrimary.withAlphaComponent(0.09)
+    static let controlFill    = textPrimary.withAlphaComponent(isLight ? 0.06 : 0.09)
     /// Hover/active state of `controlFill`.
-    static let controlFillHi  = textPrimary.withAlphaComponent(0.16)
+    static let controlFillHi  = textPrimary.withAlphaComponent(isLight ? 0.11 : 0.16)
     /// Translucent card fill for grouped controls / overlays.
-    static let glassCard      = overlay.withAlphaComponent(0.76)
+    static let glassCard      = overlay.withAlphaComponent(isLight ? 0.90 : 0.76)
 
-    /// Always-dark neutral canvas behind images — the image needs a dark frame
-    /// to read against, even on the frosted base.
+    /// Neutral canvas behind images — darkroom black in Sumi, warm paper in Washi.
     static let imageCanvas    = canvas
 
     static let accent         = warmCue
+    /// Colours baked into exported and captured images. Fixed, so a file looks
+    /// the same whichever theme produced it.
+    static let exportCanvas = NSColor(srgbRed: 9 / 255, green: 9 / 255, blue: 11 / 255, alpha: 1)
+    static let exportDivider = NSColor(srgbRed: 243 / 255, green: 238 / 255, blue: 232 / 255, alpha: 0.82)
+    /// Compare divider drawn over photos in the viewer.
+    static let imageDivider = themed(textPrimary.withAlphaComponent(0.82), NSColor.white.withAlphaComponent(0.9))
     /// Semantic colours shared by task, Widget, and validation states.
-    static let success        = NSColor(srgbRed: 143 / 255, green: 208 / 255, blue: 175 / 255, alpha: 1)
-    static let failure        = NSColor(srgbRed: 241 / 255, green: 139 / 255, blue: 134 / 255, alpha: 1)
-    static let info           = NSColor(srgbRed: 169 / 255, green: 197 / 255, blue: 239 / 255, alpha: 1)
+    static let success        = themed(Sumi.moss, Washi.moss)
+    static let failure        = themed(Sumi.shu, Washi.shu)
+    static let info           = themed(Sumi.ai, Washi.ai)
     /// Alias matching the V2 spec vocabulary.
     static var danger: NSColor { failure }
     static let cornerSmall: CGFloat = 8
     static let cornerMedium: CGFloat = 12
     static let cornerLarge: CGFloat = 16
     static let spacing: CGFloat = 8
+
+    // MARK: - Shizuka type and space (Figma `00 · Foundations`)
+
+    /// Mincho display face for window and section titles only. Figma uses
+    /// Shippori Mincho; macOS ships Hiragino Mincho, the closest available.
+    static func titleFont(ofSize size: CGFloat) -> NSFont {
+        NSFont(name: "HiraMinProN-W3", size: size) ?? .systemFont(ofSize: size, weight: .regular)
+    }
+    /// Metadata face: dimensions, sizes, counts, timestamps, shortcuts.
+    /// Figma uses Geist Mono; SF Mono is the system equivalent.
+    static func monoFont(ofSize size: CGFloat) -> NSFont {
+        .monospacedSystemFont(ofSize: size, weight: .regular)
+    }
+    /// Spacing scale. Group with space, not boxes (間).
+    enum Space {
+        static let xs: CGFloat = 4
+        static let s: CGFloat = 8
+        static let m: CGFloat = 12
+        static let l: CGFloat = 16
+        static let xl: CGFloat = 24
+        static let xxl: CGFloat = 32
+        static let ma: CGFloat = 56
+    }
+    /// Corner radii: thumbnails 3, controls 6, windows and popovers 12.
+    enum Radius {
+        static let thumb: CGFloat = 3
+        static let control: CGFloat = 6
+        static let window: CGFloat = 12
+    }
 
     // MARK: - Workbench geometry (V2 spec)
 
@@ -367,7 +485,7 @@ enum PanelStyle {
         blur.material = .headerView
         blur.blendingMode = .withinWindow
         blur.state = .active
-        blur.appearance = NSAppearance(named: .vibrantDark)
+        blur.appearance = vibrantAppearance
         return blur
     }
 
@@ -396,7 +514,7 @@ enum PanelStyle {
         blur.material = .hudWindow
         blur.blendingMode = .behindWindow
         blur.state = .active
-        blur.appearance = NSAppearance(named: .vibrantDark)
+        blur.appearance = vibrantAppearance
         blur.wantsLayer = true
         blur.layer?.cornerRadius = cornerRadius
         blur.layer?.masksToBounds = true
@@ -413,7 +531,7 @@ enum PanelStyle {
     /// Theme name (a highlight.js theme bundled with Highlightr) used for the
     /// editable code view — a dark theme whose background sits close to the
     /// panel's dark base.
-    static let codeTheme = "tomorrow-night"
+    static let codeTheme = isLight ? "github" : "tomorrow-night"
 
     /// Build an editable, syntax-highlighting code text view backed by
     /// Highlightr's `CodeAttributedString`. Highlighting re-runs automatically
@@ -455,7 +573,7 @@ enum PanelStyle {
         tv.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         tv.drawsBackground = true
         tv.backgroundColor = storage.highlightr.theme.themeBackgroundColor
-        tv.insertionPointColor = .white
+        tv.insertionPointColor = contrast
         return tv
     }
 
@@ -758,7 +876,7 @@ final class GlanceScrollIndicator: NSView {
 final class PanelCenteredTextView: NSView {
     var string = "" { didSet { setAccessibilityLabel(string); needsDisplay = true } }
     var font = PanelStyle.inspectFont(ofSize: 11) { didSet { needsDisplay = true } }
-    var textColor = NSColor.white { didSet { needsDisplay = true } }
+    var textColor = PanelStyle.contrast { didSet { needsDisplay = true } }
     var alignment: NSTextAlignment = .center { didSet { needsDisplay = true } }
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }

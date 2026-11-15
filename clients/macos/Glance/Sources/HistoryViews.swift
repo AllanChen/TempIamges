@@ -1,8 +1,8 @@
 import AppKit
 
-// Views for the Preview History window, built from the Figma
-// "Preview History Redesign" board. Everything is flipped (top-left origin) so
-// the numbers below are the board's own coordinates.
+// Views for the Preview History window, built from the Figma "静 Shizuka"
+// frame "11 · Preview History". Everything is flipped (top-left origin) so the
+// numbers below are the frame's own coordinates.
 
 // MARK: - Model
 
@@ -45,11 +45,13 @@ enum HistoryStyle {
         NSColor(srgbRed: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255,
                 blue: CGFloat(value & 0xFF) / 255, alpha: alpha)
     }
-    static let background = hex(0x0B0C0F)
-    static let field = hex(0x14151A)
-    static let chipActiveFill = hex(0x34251F, alpha: 0.96)
-    static let overlayFill = hex(0x161719)
-    static let hairline = NSColor.white.withAlphaComponent(0.07)
+    static let background = PanelStyle.themed(hex(0x0B0C0F), PanelStyle.Washi.ink1)
+    static let field = PanelStyle.themed(hex(0x14151A), PanelStyle.Washi.ink2)
+    static let chipActiveFill = PanelStyle.themed(hex(0x34251F, alpha: 0.96), PanelStyle.Washi.ink4)
+    static let overlayFill = PanelStyle.themed(hex(0x161719), PanelStyle.Washi.ink1)
+    /// Glyph drawn on `overlayFill` buttons that float over thumbnails.
+    static let overlayGlyph = PanelStyle.themed(hex(0xF3F3F3), PanelStyle.Washi.text1)
+    static let hairline = PanelStyle.contrast.withAlphaComponent(0.07)
     static let text = PanelStyle.textPrimary
     static let secondary = PanelStyle.textSecondary
     static let muted = PanelStyle.textTertiary
@@ -96,27 +98,7 @@ enum HistoryStyle {
     }
 }
 
-// MARK: - Title bar
-
-/// Window drag region with the centred title and subtitle (13 / 11 pt).
-final class HistoryTitlebar: NSView {
-    var title = "" { didSet { needsDisplay = true } }
-    var subtitle = "" { didSet { needsDisplay = true } }
-    override var isFlipped: Bool { true }
-
-    override func draw(_ dirtyRect: NSRect) {
-        HistoryStyle.draw(title, in: CGRect(x: 100, y: 12, width: bounds.width - 200, height: 16), size: 13,
-                          weight: .semibold, color: HistoryStyle.text, align: .center)
-        HistoryStyle.draw(subtitle, in: CGRect(x: 100, y: 31, width: bounds.width - 200, height: 14), size: 11,
-                          color: HistoryStyle.muted, align: .center)
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        if event.clickCount == 2 { window?.zoom(nil) } else { window?.performDrag(with: event) }
-    }
-}
-
-// MARK: - Search
+// MARK: - Text field (also used by Task Center)
 
 final class HistoryTextField: NSTextField {
     var onFocusChange: ((Bool) -> Void)?
@@ -131,7 +113,67 @@ final class HistoryTextField: NSTextField {
     }
 }
 
-/// 320 × 40 search field: icon, text, and either a ⌘F hint or a clear button.
+// MARK: - Shizuka palette (Preview History only)
+
+/// Preview History colours and text helpers on the Sumi / Washi ink scale.
+/// `HistoryStyle` stays as-is because other windows share it.
+enum HistoryShizuka {
+    static let background = PanelStyle.surface
+    static let field = PanelStyle.overlay
+    static let badge = PanelStyle.canvas
+    static let line = PanelStyle.themed(PanelStyle.Sumi.line, PanelStyle.Washi.line)
+    static let lineStrong = PanelStyle.themed(PanelStyle.Sumi.lineStrong, PanelStyle.Washi.lineStrong)
+    static let text1 = PanelStyle.textPrimary
+    static let text2 = PanelStyle.textSecondary
+    static let text3 = PanelStyle.textTertiary
+    static let text4 = PanelStyle.themed(PanelStyle.Sumi.text4, PanelStyle.Washi.text4)
+    static let shu = PanelStyle.failure
+
+    static func ui(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
+        PanelStyle.inspectFont(ofSize: size, weight: weight)
+    }
+    static func mono(_ size: CGFloat) -> NSFont { PanelStyle.monoFont(ofSize: size) }
+
+    static func attributes(_ font: NSFont, _ color: NSColor, align: NSTextAlignment = .left,
+                           truncation: NSLineBreakMode = .byTruncatingTail) -> [NSAttributedString.Key: Any] {
+        let style = NSMutableParagraphStyle()
+        style.alignment = align
+        style.lineBreakMode = truncation
+        return [.font: font, .foregroundColor: color, .paragraphStyle: style]
+    }
+
+    static func draw(_ string: String, in rect: CGRect, font: NSFont, color: NSColor,
+                     align: NSTextAlignment = .left, truncation: NSLineBreakMode = .byTruncatingTail) {
+        NSAttributedString(string: string, attributes: attributes(font, color, align: align, truncation: truncation))
+            .draw(with: rect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+    }
+
+    static func width(_ string: String, font: NSFont) -> CGFloat {
+        ceil(NSAttributedString(string: string, attributes: [.font: font]).size().width)
+    }
+}
+
+// MARK: - Title bar
+
+/// Window drag region with the centred 13 pt title (frame y 14).
+final class HistoryTitlebar: NSView {
+    var title = "" { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        HistoryShizuka.draw(title, in: CGRect(x: 100, y: 14, width: bounds.width - 200, height: 16),
+                            font: HistoryShizuka.ui(13), color: HistoryShizuka.text2, align: .center)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 { window?.zoom(nil) } else { window?.performDrag(with: event) }
+    }
+}
+
+// MARK: - Search
+
+/// 280 × 32 search field: icon at 11, text at 35, and either a ⌘F hint or a
+/// clear button on the right.
 final class HistorySearchBox: NSView, NSTextFieldDelegate {
     let field = HistoryTextField()
     var onChange: (() -> Void)?
@@ -145,8 +187,8 @@ final class HistorySearchBox: NSView, NSTextFieldDelegate {
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.font = PanelStyle.inspectFont(ofSize: 13)
-        field.textColor = HistoryStyle.text
+        field.font = HistoryShizuka.ui(13)
+        field.textColor = HistoryShizuka.text1
         field.cell?.usesSingleLineMode = true
         field.cell?.isScrollable = true
         field.delegate = self
@@ -159,7 +201,7 @@ final class HistorySearchBox: NSView, NSTextFieldDelegate {
     func updatePlaceholder() {
         field.placeholderAttributedString = NSAttributedString(
             string: "Search filename".localized,
-            attributes: [.font: PanelStyle.inspectFont(ofSize: 13), .foregroundColor: HistoryStyle.muted])
+            attributes: [.font: HistoryShizuka.ui(13), .foregroundColor: HistoryShizuka.text3])
     }
 
     func focus() {
@@ -173,31 +215,29 @@ final class HistorySearchBox: NSView, NSTextFieldDelegate {
         onChange?()
     }
 
-    private var clearRect: CGRect { CGRect(x: bounds.width - 12 - 20, y: 10, width: 20, height: 20) }
+    private var clearRect: CGRect { CGRect(x: bounds.width - 8 - 16, y: 8, width: 16, height: 16) }
 
     override func layout() {
         super.layout()
-        field.frame = CGRect(x: 40, y: 11, width: bounds.width - 40 - 44, height: 18)
+        field.frame = CGRect(x: 35, y: 7, width: bounds.width - 35 - 36, height: 18)
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 12, yRadius: 12)
-        HistoryStyle.field.setFill(); path.fill()
-        (focused ? HistoryStyle.accent.withAlphaComponent(0.6) : NSColor.white.withAlphaComponent(0.10)).setStroke()
+        let radius = PanelStyle.Radius.control
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius)
+        HistoryShizuka.field.setFill(); path.fill()
+        (focused ? HistoryShizuka.text4 : HistoryShizuka.line).setStroke()
         path.lineWidth = 1; path.stroke()
-        HistoryStyle.drawIcon("HistorySearch", color: focused ? HistoryStyle.accent : HistoryStyle.muted,
-                              in: CGRect(x: 13, y: 11, width: 18, height: 18))
+        HistoryStyle.drawIcon("HistorySearch", color: focused ? HistoryShizuka.text2 : HistoryShizuka.text3,
+                              in: CGRect(x: 11, y: 8, width: 16, height: 16))
         if field.stringValue.isEmpty {
-            let kbd = CGRect(x: bounds.width - 12 - 34, y: 9, width: 34, height: 22)
-            NSColor.white.withAlphaComponent(0.06).setFill()
-            NSBezierPath(roundedRect: kbd, xRadius: 6, yRadius: 6).fill()
-            HistoryStyle.draw("⌘F", in: CGRect(x: kbd.minX, y: kbd.minY + 4, width: kbd.width, height: 14), size: 11,
-                              weight: .medium, color: HistoryStyle.muted, align: .center)
+            HistoryShizuka.draw("⌘F", in: CGRect(x: bounds.width - 10 - 40, y: 9.5, width: 40, height: 13),
+                                font: HistoryShizuka.mono(10), color: HistoryShizuka.text4, align: .right)
         } else {
-            NSColor.white.withAlphaComponent(0.10).setFill()
+            PanelStyle.contrast.withAlphaComponent(0.10).setFill()
             NSBezierPath(ovalIn: clearRect).fill()
-            HistoryStyle.drawIcon("HistoryClose", color: HistoryStyle.secondary,
-                                  in: CGRect(x: clearRect.minX + 4, y: clearRect.minY + 4, width: 12, height: 12))
+            HistoryStyle.drawIcon("HistoryClose", color: HistoryShizuka.text2,
+                                  in: CGRect(x: clearRect.minX + 3, y: clearRect.minY + 3, width: 10, height: 10))
         }
     }
 
@@ -219,9 +259,11 @@ final class HistorySearchBox: NSView, NSTextFieldDelegate {
     }
 }
 
-// MARK: - Filter chips and clear button
+// MARK: - Filter tabs, count and clear button
 
-final class HistoryChipView: NSView {
+/// Text tab: 12 pt label (selected text/1 medium, others text/3) followed by
+/// its mono match count. The view spans the 32 pt toolbar for an easy target.
+final class HistoryFilterTab: NSView {
     var title = "" { didSet { needsDisplay = true } }
     var count = 0 { didSet { needsDisplay = true } }
     var isActive = false { didSet { needsDisplay = true } }
@@ -230,10 +272,14 @@ final class HistoryChipView: NSView {
     private var hovering = false { didSet { needsDisplay = true } }
 
     override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    private var labelFont: NSFont { HistoryShizuka.ui(12, isActive ? .medium : .regular) }
+    private static let countGap: CGFloat = 4
 
     var fittingWidth: CGFloat {
-        14 + HistoryStyle.width(title, size: 12, weight: isActive ? .semibold : .medium) + 7
-            + HistoryStyle.width(String(count), size: 12) + 14
+        HistoryShizuka.width(title, font: labelFont) + Self.countGap
+            + HistoryShizuka.width(String(count), font: HistoryShizuka.mono(10))
     }
 
     override func updateTrackingAreas() {
@@ -246,29 +292,36 @@ final class HistoryChipView: NSView {
     override func mouseDown(with event: NSEvent) { if !isDimmed { onClick?() } }
 
     override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 16, yRadius: 16)
-        if isActive {
-            HistoryStyle.chipActiveFill.setFill()
-        } else {
-            NSColor.white.withAlphaComponent(hovering && !isDimmed ? 0.09 : 0.05).setFill()
-        }
-        path.fill()
-        (isActive ? HistoryStyle.accent.withAlphaComponent(0.6) : NSColor.white.withAlphaComponent(0.08)).setStroke()
-        path.lineWidth = 1; path.stroke()
-        let labelWeight: NSFont.Weight = isActive ? .semibold : .medium
-        let labelWidth = HistoryStyle.width(title, size: 12, weight: labelWeight)
-        HistoryStyle.draw(title, in: CGRect(x: 14, y: 8, width: labelWidth + 2, height: 16), size: 12, weight: labelWeight,
-                          color: isActive ? HistoryStyle.accent : HistoryStyle.secondary)
-        HistoryStyle.draw(String(count), in: CGRect(x: 14 + labelWidth + 7, y: 8, width: 60, height: 16), size: 12,
-                          color: isActive ? HistoryStyle.accent : HistoryStyle.muted)
+        let color = isActive ? HistoryShizuka.text1 : (hovering && !isDimmed ? HistoryShizuka.text2 : HistoryShizuka.text3)
+        let labelWidth = HistoryShizuka.width(title, font: labelFont)
+        HistoryShizuka.draw(title, in: CGRect(x: 0, y: 8.5, width: labelWidth + 1, height: 15), font: labelFont, color: color)
+        HistoryShizuka.draw(String(count), in: CGRect(x: labelWidth + Self.countGap, y: 10, width: 40, height: 13),
+                            font: HistoryShizuka.mono(10), color: HistoryShizuka.text4)
     }
 }
 
-/// Quiet danger pill, 132 × 32.
+/// Right-aligned 12 pt text/3 item count in the toolbar.
+final class HistoryCountLabel: NSView {
+    var text = "" { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        HistoryShizuka.draw(text, in: CGRect(x: 0, y: 8.5, width: bounds.width, height: 15),
+                            font: HistoryShizuka.ui(12), color: HistoryShizuka.text3, align: .right)
+    }
+}
+
+/// Quiet outline button, 32 pt high, 17 pt side padding, 13 pt medium label.
 final class HistoryClearButton: NSView {
     var onClick: (() -> Void)?
+    var title = "" { didSet { needsDisplay = true } }
     private var hovering = false { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    private static let font = HistoryShizuka.ui(13, .medium)
+    var fittingWidth: CGFloat { HistoryShizuka.width(title, font: Self.font) + 34 }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -280,19 +333,19 @@ final class HistoryClearButton: NSView {
     override func mouseDown(with event: NSEvent) { onClick?() }
 
     override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 16, yRadius: 16)
-        if hovering { HistoryStyle.danger.withAlphaComponent(0.08).setFill(); path.fill() }
-        HistoryStyle.danger.withAlphaComponent(0.32).setStroke()
+        let radius = PanelStyle.Radius.control
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius)
+        if hovering { PanelStyle.rowHover.setFill(); path.fill() }
+        HistoryShizuka.lineStrong.setStroke()
         path.lineWidth = 1; path.stroke()
-        HistoryStyle.drawIcon("HistoryClear", color: HistoryStyle.danger, in: CGRect(x: 12, y: 8, width: 16, height: 16))
-        HistoryStyle.draw("Clear History".localized, in: CGRect(x: 34, y: 8, width: bounds.width - 40, height: 16), size: 12,
-                          weight: .medium, color: HistoryStyle.danger)
+        HistoryShizuka.draw(title, in: CGRect(x: 0, y: 8, width: bounds.width, height: 16),
+                            font: Self.font, color: HistoryShizuka.text1, align: .center)
     }
 }
 
 // MARK: - Section header
 
-/// "Today  5 ────────" — title 15 semibold, count 12, hairline to the margin.
+/// "Today  6" — 13 pt medium title, mono count in text/4. No rule: space groups.
 final class HistorySectionHeader: NSView {
     private let title: String
     private let count: Int
@@ -307,25 +360,17 @@ final class HistorySectionHeader: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     override func draw(_ dirtyRect: NSRect) {
-        let titleWidth = HistoryStyle.width(title, size: 15, weight: .semibold)
-        HistoryStyle.draw(title, in: CGRect(x: 0, y: 0, width: min(titleWidth + 2, bounds.width), height: 20), size: 15,
-                          weight: .semibold, color: HistoryStyle.text)
-        let countX = titleWidth + 10
-        let countText = String(count)
-        let countWidth = HistoryStyle.width(countText, size: 12)
-        HistoryStyle.draw(countText, in: CGRect(x: countX, y: 2, width: countWidth + 2, height: 16), size: 12,
-                          color: HistoryStyle.muted)
-        let lineX = countX + countWidth + 16
-        if lineX < bounds.width {
-            HistoryStyle.hairline.setFill()
-            CGRect(x: lineX, y: 10, width: bounds.width - lineX, height: 1).fill()
-        }
+        let font = HistoryShizuka.ui(13, .medium)
+        let titleWidth = min(HistoryShizuka.width(title, font: font) + 1, bounds.width)
+        HistoryShizuka.draw(title, in: CGRect(x: 0, y: 0, width: titleWidth, height: 16), font: font, color: HistoryShizuka.text1)
+        HistoryShizuka.draw(String(count), in: CGRect(x: titleWidth + 7, y: 1.5, width: 60, height: 14),
+                            font: HistoryShizuka.mono(11), color: HistoryShizuka.text4)
     }
 }
 
 // MARK: - Card
 
-/// Round 30 pt hover action on a thumbnail (Reveal in Finder / Remove).
+/// 24 pt hover action on a thumbnail (Reveal in Finder / Remove).
 final class HistoryActionButton: NSView {
     var onClick: (() -> Void)?
     private let iconName: String
@@ -335,7 +380,7 @@ final class HistoryActionButton: NSView {
 
     init(icon: String, tooltip: String) {
         iconName = icon
-        super.init(frame: CGRect(x: 0, y: 0, width: 30, height: 30))
+        super.init(frame: CGRect(x: 0, y: 0, width: 24, height: 24))
         toolTip = tooltip
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
@@ -350,16 +395,18 @@ final class HistoryActionButton: NSView {
     override func mouseDown(with event: NSEvent) { onClick?() }
 
     override func draw(_ dirtyRect: NSRect) {
-        let circle = NSBezierPath(ovalIn: bounds.insetBy(dx: 0.5, dy: 0.5))
-        HistoryStyle.overlayFill.withAlphaComponent(hovering ? 0.96 : 0.84).setFill(); circle.fill()
-        NSColor.white.withAlphaComponent(hovering ? 0.28 : 0.16).setStroke()
-        circle.lineWidth = 1; circle.stroke()
-        HistoryStyle.drawIcon(iconName, color: HistoryStyle.hex(0xF3F3F3), in: CGRect(x: 7, y: 7, width: 16, height: 16))
+        let radius = PanelStyle.Radius.control
+        let box = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius)
+        HistoryShizuka.badge.withAlphaComponent(hovering ? 1 : 0.86).setFill(); box.fill()
+        (hovering ? HistoryShizuka.lineStrong : HistoryShizuka.line).setStroke()
+        box.lineWidth = 1; box.stroke()
+        HistoryStyle.drawIcon(iconName, color: hovering ? HistoryShizuka.text1 : HistoryShizuka.text2,
+                              in: CGRect(x: 5, y: 5, width: 14, height: 14))
     }
 }
 
-/// Everything painted over the thumbnail: document tile, video badges, the
-/// Result pill, load state, and the hover veil.
+/// Everything painted over the thumbnail: document tile, video badge, the
+/// Result mark, load state, and the hover veil.
 private final class HistoryThumbOverlay: NSView {
     enum State { case loading, loaded, failed, document }
     var state = State.loading { didSet { needsDisplay = true } }
@@ -376,76 +423,69 @@ private final class HistoryThumbOverlay: NSView {
         let w = bounds.width, h = bounds.height
         switch state {
         case .document:
-            let top = (h - 88) / 2 + 2
-            let tile = CGRect(x: (w - 64) / 2, y: top, width: 64, height: 64)
-            HistoryStyle.hex(0x202126).setFill()
-            NSBezierPath(roundedRect: tile, xRadius: 18, yRadius: 18).fill()
-            NSColor.white.withAlphaComponent(0.08).setStroke()
-            let outline = NSBezierPath(roundedRect: tile.insetBy(dx: 0.5, dy: 0.5), xRadius: 18, yRadius: 18)
-            outline.lineWidth = 1; outline.stroke()
-            HistoryStyle.drawIcon("HistoryFile", color: HistoryStyle.secondary,
-                                  in: CGRect(x: tile.minX + 16, y: tile.minY + 16, width: 32, height: 32))
-            HistoryStyle.draw(extensionLabel, in: CGRect(x: 0, y: tile.maxY + 10, width: w, height: 14), size: 11,
-                              weight: .semibold, color: HistoryStyle.muted, align: .center)
+            let icon = CGRect(x: ((w - 16) / 2).rounded(), y: ((h - 16) / 2).rounded(), width: 16, height: 16)
+            HistoryStyle.drawIcon("HistoryFile", color: HistoryShizuka.text3, in: icon)
+            HistoryShizuka.draw(extensionLabel, in: CGRect(x: 0, y: icon.maxY + 8, width: w, height: 13),
+                                font: HistoryShizuka.mono(10), color: HistoryShizuka.text4, align: .center)
         case .loading:
             if !isVideo {
-                HistoryStyle.draw("Loading…".localized, in: CGRect(x: 0, y: h / 2 - 8, width: w, height: 16), size: 11,
-                                  color: HistoryStyle.muted, align: .center)
+                HistoryShizuka.draw("Loading…".localized, in: CGRect(x: 0, y: h / 2 - 7.5, width: w, height: 15),
+                                    font: HistoryShizuka.ui(11), color: HistoryShizuka.text3, align: .center)
             }
         case .failed:
-            HistoryStyle.draw("Failed to load".localized, in: CGRect(x: 0, y: h / 2 - 8, width: w, height: 16), size: 11,
-                              color: HistoryStyle.danger, align: .center)
+            HistoryShizuka.draw("Failed to load".localized, in: CGRect(x: 0, y: h / 2 - 7.5, width: w, height: 15),
+                                font: HistoryShizuka.ui(11), color: HistoryShizuka.shu, align: .center)
         case .loaded:
             break
         }
-        if isVideo {
-            NSColor.black.withAlphaComponent(0.18).setFill()
-            bounds.fill()
-            let badge = CGRect(x: (w - 40) / 2, y: (h - 40) / 2, width: 40, height: 40)
-            NSColor.black.withAlphaComponent(0.5).setFill()
-            NSBezierPath(ovalIn: badge).fill()
-            NSColor.white.withAlphaComponent(0.28).setStroke()
-            let ring = NSBezierPath(ovalIn: badge.insetBy(dx: 0.5, dy: 0.5))
-            ring.lineWidth = 1; ring.stroke()
-            HistoryStyle.drawIcon("HistoryPlay", color: HistoryStyle.hex(0xF3F3F3),
-                                  in: CGRect(x: badge.minX + 11, y: badge.minY + 11, width: 18, height: 18))
-            if let duration {
-                let pillW = max(46, HistoryStyle.width(duration, size: 11, weight: .medium) + 16)
-                let pill = CGRect(x: w - 10 - pillW, y: h - 10 - 20, width: pillW, height: 20)
-                NSColor.black.withAlphaComponent(0.62).setFill()
-                NSBezierPath(roundedRect: pill, xRadius: 6, yRadius: 6).fill()
-                HistoryStyle.draw(duration, in: CGRect(x: pill.minX, y: pill.minY + 3, width: pill.width, height: 14), size: 11,
-                                  weight: .medium, color: HistoryStyle.hex(0xF3F3F3), align: .center)
-            }
-        }
-        if isResult {
-            let label = "Result".localized
-            let pillW = max(58, 22 + HistoryStyle.width(label, size: 11, weight: .semibold) + 8)
-            let pill = CGRect(x: 10, y: 10, width: pillW, height: 22)
-            HistoryStyle.overlayFill.withAlphaComponent(0.8).setFill()
-            NSBezierPath(roundedRect: pill, xRadius: 11, yRadius: 11).fill()
-            HistoryStyle.accent.withAlphaComponent(0.5).setStroke()
-            let outline = NSBezierPath(roundedRect: pill.insetBy(dx: 0.5, dy: 0.5), xRadius: 11, yRadius: 11)
-            outline.lineWidth = 1; outline.stroke()
-            HistoryStyle.accent.setFill()
-            NSBezierPath(ovalIn: CGRect(x: pill.minX + 10, y: pill.minY + 8, width: 6, height: 6)).fill()
-            HistoryStyle.draw(label, in: CGRect(x: pill.minX + 22, y: pill.minY + 4, width: pillW - 24, height: 14), size: 11,
-                              weight: .semibold, color: HistoryStyle.accent)
-        }
+        if isVideo { drawVideoBadge(height: h) }
+        if isResult { drawResultMark() }
         if hovering {
-            NSColor.white.withAlphaComponent(0.05).setFill()
+            PanelStyle.contrast.withAlphaComponent(0.05).setFill()
             bounds.fill()
         }
     }
+
+    /// Bottom-left: play glyph plus the mono duration once it is known (8, h − 30, 56 × 19).
+    private func drawVideoBadge(height h: CGFloat) {
+        let font = HistoryShizuka.mono(10)
+        let textWidth = duration.map { HistoryShizuka.width($0, font: font) } ?? 0
+        let badgeW = duration == nil ? 22 : max(56, 20 + textWidth + 6)
+        let badge = CGRect(x: 8, y: h - 11 - 19, width: badgeW, height: 19)
+        let radius = PanelStyle.Radius.thumb
+        HistoryShizuka.badge.setFill()
+        NSBezierPath(roundedRect: badge, xRadius: radius, yRadius: radius).fill()
+        HistoryStyle.drawIcon("HistoryPlay", color: HistoryShizuka.text1,
+                              in: CGRect(x: badge.minX + 6, y: badge.minY + 4.5, width: 10, height: 10))
+        if let duration {
+            HistoryShizuka.draw(duration, in: CGRect(x: badge.minX + 20, y: badge.minY + 3, width: badgeW - 20, height: 13),
+                                font: font, color: HistoryShizuka.text1)
+        }
+    }
+
+    /// Top-left: a vermilion dot (the one accent) and "Result" on the same badge chrome.
+    private func drawResultMark() {
+        let font = HistoryShizuka.ui(10, .medium)
+        let label = "Result".localized
+        let badge = CGRect(x: 8, y: 8, width: 17 + HistoryShizuka.width(label, font: font) + 7, height: 19)
+        let radius = PanelStyle.Radius.thumb
+        HistoryShizuka.badge.setFill()
+        NSBezierPath(roundedRect: badge, xRadius: radius, yRadius: radius).fill()
+        HistoryShizuka.shu.setFill()
+        NSBezierPath(ovalIn: CGRect(x: badge.minX + 7, y: badge.minY + 6.5, width: 6, height: 6)).fill()
+        HistoryShizuka.draw(label, in: CGRect(x: badge.minX + 17, y: badge.minY + 3, width: badge.width - 17, height: 13),
+                            font: font, color: HistoryShizuka.text1)
+    }
 }
 
-/// Media-first card: a clean thumbnail with the name and metadata underneath.
-/// Hovering lightens the thumbnail, lifts it with a shadow and reveals the
-/// Reveal in Finder / Remove actions.
+/// Media-first item: a 4:3-ish thumbnail (204 × 147 in Figma) with the name
+/// and a mono metadata line underneath. Hovering outlines the thumbnail and
+/// reveals the Reveal in Finder / Remove actions.
 final class HistoryCardView: NSView {
-    static let metaBlock: CGFloat = 52
+    /// 8 + name 15 + 8 + meta 13.
+    static let metaBlock: CGFloat = 44
     static func height(forWidth width: CGFloat) -> CGFloat { thumbHeight(forWidth: width) + metaBlock }
-    static func thumbHeight(forWidth width: CGFloat) -> CGFloat { (width * 188 / 278).rounded() }
+    static func thumbHeight(forWidth width: CGFloat) -> CGFloat { (width * 147 / 204).rounded() }
 
     var onOpen: (() -> Void)?
     var onReveal: (() -> Void)?
@@ -454,8 +494,8 @@ final class HistoryCardView: NSView {
     let entry: HistoryEntry
     private let highlight: String
     private var metaText: String
+    private var hasImage = false
 
-    private let shadowLayer = CALayer()
     private let thumb = NSView()
     private let imageHost = NSView()
     private let overlay = HistoryThumbOverlay()
@@ -470,22 +510,11 @@ final class HistoryCardView: NSView {
         self.metaText = meta
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.masksToBounds = false
-
-        shadowLayer.backgroundColor = HistoryStyle.field.cgColor
-        shadowLayer.cornerRadius = 12
-        shadowLayer.shadowColor = NSColor.black.cgColor
-        shadowLayer.shadowOpacity = 0
-        shadowLayer.shadowRadius = 12
-        shadowLayer.shadowOffset = CGSize(width: 0, height: -10)
-        layer?.insertSublayer(shadowLayer, at: 0)
 
         thumb.wantsLayer = true
-        thumb.layer?.cornerRadius = 12
+        thumb.layer?.cornerRadius = PanelStyle.Radius.thumb
         thumb.layer?.masksToBounds = true
-        thumb.layer?.backgroundColor = HistoryStyle.field.cgColor
-        thumb.layer?.borderWidth = 1
-        thumb.layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
+        thumb.layer?.backgroundColor = PanelStyle.resolvedCG(HistoryShizuka.field)
         addSubview(thumb)
 
         imageHost.wantsLayer = true
@@ -504,6 +533,7 @@ final class HistoryCardView: NSView {
         removeButton.isHidden = true
         thumb.addSubview(revealButton)
         thumb.addSubview(removeButton)
+        updateBorder()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
@@ -522,28 +552,32 @@ final class HistoryCardView: NSView {
     func setThumbnail(_ image: CGImage) {
         imageHost.layer?.contents = image
         overlay.state = .loaded
+        hasImage = true
+        updateBorder()
     }
     func setFailed() { overlay.state = .failed }
     func setDocument() { overlay.state = .document }
     func setDuration(_ text: String) { overlay.duration = text }
     func setMeta(_ text: String) { metaText = text; needsDisplay = true }
 
+    /// Photos run edge to edge; placeholder tiles keep a hairline. Hover
+    /// strengthens the line on both.
+    private func updateBorder() {
+        let showLine = hovering || !hasImage
+        thumb.layer?.borderWidth = showLine ? 1 : 0
+        thumb.layer?.borderColor = PanelStyle.resolvedCG(hovering ? HistoryShizuka.lineStrong : HistoryShizuka.line)
+    }
+
     // MARK: Layout
 
     override func layout() {
         super.layout()
-        let thumbH = Self.thumbHeight(forWidth: bounds.width)
-        let frame = CGRect(x: 0, y: 0, width: bounds.width, height: thumbH)
-        thumb.frame = frame
+        let w = bounds.width
+        thumb.frame = CGRect(x: 0, y: 0, width: w, height: Self.thumbHeight(forWidth: w))
         imageHost.frame = thumb.bounds
         overlay.frame = thumb.bounds
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        shadowLayer.frame = frame
-        CATransaction.commit()
-        let w = bounds.width
-        removeButton.frame = CGRect(x: w - 10 - 30, y: 10, width: 30, height: 30)
-        revealButton.frame = CGRect(x: w - 10 - 68, y: 10, width: 30, height: 30)
+        removeButton.frame = CGRect(x: w - 8 - 24, y: 8, width: 24, height: 24)
+        revealButton.frame = CGRect(x: w - 8 - 24 - 4 - 24, y: 8, width: 24, height: 24)
     }
 
     // MARK: Hover
@@ -554,9 +588,7 @@ final class HistoryCardView: NSView {
             overlay.hovering = hovering
             removeButton.isHidden = !hovering
             revealButton.isHidden = !hovering || !entry.info.isLocal
-            thumb.layer?.borderWidth = hovering ? 1.5 : 1
-            thumb.layer?.borderColor = NSColor.white.withAlphaComponent(hovering ? 0.38 : 0.08).cgColor
-            shadowLayer.shadowOpacity = hovering ? 0.45 : 0
+            updateBorder()
         }
     }
 
@@ -574,52 +606,68 @@ final class HistoryCardView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let thumbH = Self.thumbHeight(forWidth: bounds.width)
-        let textWidth = bounds.width - 4
         let name = entry.info.filename
-        let style = NSMutableParagraphStyle()
-        style.lineBreakMode = .byTruncatingMiddle
-        let normal: [NSAttributedString.Key: Any] = [
-            .font: PanelStyle.inspectFont(ofSize: 13, weight: .medium), .foregroundColor: HistoryStyle.text, .paragraphStyle: style]
-        let attributed = NSMutableAttributedString(string: name, attributes: normal)
+        let attributed = NSMutableAttributedString(
+            string: name, attributes: HistoryShizuka.attributes(HistoryShizuka.ui(12), HistoryShizuka.text1, truncation: .byTruncatingMiddle))
         if !highlight.isEmpty, let range = name.range(of: highlight, options: [.caseInsensitive, .diacriticInsensitive]) {
-            attributed.addAttributes([.font: PanelStyle.inspectFont(ofSize: 13, weight: .semibold),
-                                      .foregroundColor: HistoryStyle.accent], range: NSRange(range, in: name))
+            attributed.addAttributes([.font: HistoryShizuka.ui(12, .semibold),
+                                      .backgroundColor: PanelStyle.contrast.withAlphaComponent(0.14)],
+                                     range: NSRange(range, in: name))
         }
-        attributed.draw(with: CGRect(x: 2, y: thumbH + 10, width: textWidth, height: 16),
+        attributed.draw(with: CGRect(x: 0, y: thumbH + 8, width: bounds.width, height: 15),
                         options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
-        HistoryStyle.draw(metaText, in: CGRect(x: 2, y: thumbH + 30, width: textWidth, height: 14), size: 11,
-                          color: HistoryStyle.muted)
+        HistoryShizuka.draw(metaText, in: CGRect(x: 0, y: thumbH + 31, width: bounds.width, height: 13),
+                            font: HistoryShizuka.mono(10), color: HistoryShizuka.text3)
     }
 }
 
 // MARK: - Empty state
 
-/// Shown when there is no history yet, or a search / filter finds nothing.
+/// "No previews yet" / "No matches": 24 pt icon, Mincho title, one quiet
+/// sentence (Figma "47 · Empty states"), centred in the list area.
 final class HistoryEmptyView: NSView {
-    private var icon = "HistoryFocus"
+    private var icon = "ShizukaImage"
     private var heading = ""
     private var detail = ""
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    private static let detailWidth: CGFloat = 254
 
     func configure(icon: String, heading: String, detail: String) {
         self.icon = icon; self.heading = heading; self.detail = detail
         needsDisplay = true
     }
 
+    private var detailAttributes: [NSAttributedString.Key: Any] {
+        var attributes = HistoryShizuka.attributes(HistoryShizuka.ui(13), HistoryShizuka.text3, align: .center, truncation: .byWordWrapping)
+        if let style = (attributes[.paragraphStyle] as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle {
+            style.minimumLineHeight = 19
+            style.maximumLineHeight = 19
+            attributes[.paragraphStyle] = style
+        }
+        return attributes
+    }
+
     override func draw(_ dirtyRect: NSRect) {
-        let top = max(40, bounds.height / 2 - 120)
-        let tile = CGRect(x: (bounds.width - 96) / 2, y: top, width: 96, height: 96)
-        HistoryStyle.field.setFill()
-        NSBezierPath(roundedRect: tile, xRadius: 28, yRadius: 28).fill()
-        NSColor.white.withAlphaComponent(0.08).setStroke()
-        let outline = NSBezierPath(roundedRect: tile.insetBy(dx: 0.5, dy: 0.5), xRadius: 28, yRadius: 28)
-        outline.lineWidth = 1; outline.stroke()
-        HistoryStyle.drawIcon(icon, color: HistoryStyle.muted, in: CGRect(x: tile.minX + 28, y: tile.minY + 28, width: 40, height: 40))
-        HistoryStyle.draw(heading, in: CGRect(x: 0, y: tile.maxY + 28, width: bounds.width, height: 26), size: 20,
-                          weight: .semibold, color: HistoryStyle.text, align: .center)
-        HistoryStyle.draw(detail, in: CGRect(x: (bounds.width - 460) / 2, y: tile.maxY + 64, width: 460, height: 44), size: 13,
-                          color: HistoryStyle.secondary, align: .center, truncation: .byWordWrapping)
+        let detailText = NSAttributedString(string: detail, attributes: detailAttributes)
+        let detailH = ceil(detailText.boundingRect(with: NSSize(width: Self.detailWidth, height: 400),
+                                                   options: [.usesLineFragmentOrigin]).height)
+        // icon 24, 26 to the title (10 + 6 + 10), title 28, 10, detail.
+        let blockH = 24 + 26 + 28 + 10 + detailH
+        let top = max(Space.top, ((bounds.height - blockH) / 2 - Space.lift).rounded())
+        HistoryStyle.drawIcon(icon, color: HistoryShizuka.text3, in: CGRect(x: ((bounds.width - 24) / 2).rounded(), y: top, width: 24, height: 24))
+        HistoryShizuka.draw(heading, in: CGRect(x: 0, y: top + 50, width: bounds.width, height: 28),
+                            font: PanelStyle.titleFont(ofSize: 22), color: HistoryShizuka.text1, align: .center)
+        detailText.draw(with: CGRect(x: ((bounds.width - Self.detailWidth) / 2).rounded(), y: top + 88,
+                                     width: Self.detailWidth, height: detailH),
+                        options: [.usesLineFragmentOrigin])
+    }
+
+    private enum Space {
+        static let top = PanelStyle.Space.xxl
+        /// Sit slightly above centre, as the toolbar already weights the top.
+        static let lift = PanelStyle.Space.xl
     }
 }
 
@@ -631,7 +679,8 @@ final class HistoryFadeView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        gradient.colors = [HistoryStyle.background.withAlphaComponent(0).cgColor, HistoryStyle.background.cgColor]
+        gradient.colors = [PanelStyle.resolvedCG(HistoryShizuka.background.withAlphaComponent(0)),
+                           PanelStyle.resolvedCG(HistoryShizuka.background)]
         gradient.startPoint = CGPoint(x: 0.5, y: 1)   // view is not flipped: y 1 is the top
         gradient.endPoint = CGPoint(x: 0.5, y: 0)
         layer?.addSublayer(gradient)

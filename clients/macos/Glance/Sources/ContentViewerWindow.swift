@@ -12,23 +12,29 @@ import Highlightr
 ///   swaps to the raw source in NSTextView.
 /// - For local files a Save button writes the buffer back to disk. Remote
 ///   files are editable in-memory but the Save button is disabled.
+///
+/// Layout follows Figma `18 · Content Viewer / Markdown`: a 44 pt titlebar with
+/// a centred title and the action segments, the body, and a 32 pt status bar.
 final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelegate, WKNavigationDelegate {
     private let webView: WKWebView
     private let textView: NSTextView
     private let textScroll: NSScrollView
-    private let toolbarBar = PanelStyle.makeBarBlur()
-    private let filenameLabel = NSTextField(labelWithString: "")  // identity: file name
-    private let saveButton = NSButton()
+    private let titlebar = ContentTitlebarView()
+    private let actionGroup = ContentSegmentGroup()
+    private let saveButton = ContentSegmentButton(text: "Save".localized)
     private var findButton = NSButton()     // toggles the find bar
     private var locateButton = NSButton()   // Reveal in Finder, local-only
-    private let modifiedLabel = NSTextField(labelWithString: "")  // identity subtitle: path · modified
+    private let statusBar = ContentStatusBar()  // path · kind · size · modified
     private let addressBar = NSTextField()
     private let loadingIndicator = FocusSweepLoadingView(frame: .zero)
 
     // WebView find UI
-    private let webFindBar = PanelStyle.makeBarBlur()
-    private let webFindField = NSTextField()
-    private let webFindCountLabel = NSTextField(labelWithString: "")
+    private lazy var webFindBar = ContentFindBar(target: self,
+                                                 previous: #selector(webFindPrev(_:)),
+                                                 next: #selector(webFindNext(_:)),
+                                                 done: #selector(hideWebFindBar))
+    private var webFindField: NSTextField { webFindBar.field }
+    private var webFindCountLabel: NSTextField { webFindBar.countLabel }
     private var webFindMatchCount = 0
     private var webFindCurrentIndex = -1
     private var escapeKeyMonitor: Any?
@@ -48,9 +54,6 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     private var isDirty: Bool = false
 
     init() {
-        // Standard desktop browser dimensions — fits most modern websites
-        // comfortably without dominating the screen.
-        let initialSize = NSSize(width: 1100, height: 720)
         let config = WKWebViewConfiguration()
         PanelStyle.styleWebScrollbars(in: config)
         // Inject the find helper so every loaded document has window.__tdfind.
@@ -64,6 +67,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         webView.allowsMagnification = false
 
         let tv = PanelStyle.makeCodeTextView()
+        tv.textContainerInset = NSSize(width: 20, height: 16)
         textView = tv
 
         let scroll = NSScrollView(frame: .zero)
@@ -77,7 +81,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         let initialFrame = ScreenManager.shared.contentFrame(for: NSSize(width: 652.0, height: 962.0))
         super.init(
             contentRect: initialFrame,
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -86,10 +90,12 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         webView.underPageBackgroundColor = .clear
         self.isReleasedWhenClosed = false
         self.title = "Glance".localized
-        // Match ContentPanel's dark-glass chrome regardless of system theme.
-        appearance = NSAppearance(named: .darkAqua)
+        // Match ContentPanel's chrome regardless of system theme.
+        appearance = PanelStyle.windowAppearance
+        backgroundColor = ContentChrome.window
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
+        ContentChrome.hideSystemTrafficLights(of: self)
         installEscapeKeyMonitor()
         installZoomMonitor()
         observeThemeChanges()
@@ -196,95 +202,68 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     private func buildLayout() {
         guard let content = contentView else { return }
         let bounds = content.bounds
-        let toolbarH: CGFloat = 52
+        let titleH = ContentChrome.titlebarHeight
+        let statusH = ContentChrome.statusHeight
+        ContentChrome.paint(content, ContentChrome.window)
 
-        // Toolbar across the top: identity block on the left, action icons +
-        // Save on the right (positions set in layoutToolbarButtons).
-        toolbarBar.frame = NSRect(x: 0, y: bounds.height - toolbarH,
-                                width: bounds.width, height: toolbarH)
-        toolbarBar.autoresizingMask = [.width, .minYMargin]
-        PanelStyle.addHairline(to: toolbarBar, edge: .minY)
+        // Titlebar: traffic lights, centred identity, action segments + icons.
+        titlebar.frame = NSRect(x: 0, y: bounds.height - titleH, width: bounds.width, height: titleH)
+        titlebar.autoresizingMask = [.width, .minYMargin]
+        titlebar.onResize = { [weak self] in self?.layoutToolbarButtons() }
+        content.addSubview(titlebar)
 
-        // ── Identity (left): filename over a path · modified subtitle ──
-        filenameLabel.font = PanelStyle.headline
-        filenameLabel.textColor = PanelStyle.textPrimary
-        filenameLabel.lineBreakMode = .byTruncatingMiddle
-        filenameLabel.maximumNumberOfLines = 1
-        filenameLabel.autoresizingMask = [.width]
-        toolbarBar.addSubview(filenameLabel)
-
-        modifiedLabel.font = PanelStyle.caption
-        modifiedLabel.textColor = PanelStyle.textSecondary
-        modifiedLabel.alignment = .left
-        modifiedLabel.lineBreakMode = .byTruncatingHead   // keep the filename tail
-        modifiedLabel.maximumNumberOfLines = 1
-        modifiedLabel.autoresizingMask = [.width]
-        toolbarBar.addSubview(modifiedLabel)
-
-        // Address bar replaces the identity block for web pages.
-        addressBar.font = PanelStyle.label
-        addressBar.alignment = .left
+        // Address bar replaces the centred title for web pages.
+        ContentChrome.styleAddressBar(addressBar)
         addressBar.isEditable = true
-        addressBar.isSelectable = true
-        addressBar.isBordered = false
-        addressBar.isBezeled = false
-        addressBar.drawsBackground = true
-        addressBar.backgroundColor = PanelStyle.controlFill
-        addressBar.textColor = PanelStyle.textSecondary
-        addressBar.wantsLayer = true
-        addressBar.layer?.cornerRadius = 6
-        addressBar.layer?.masksToBounds = true
-        addressBar.autoresizingMask = [.width]
         addressBar.isHidden = true
         addressBar.target = self
         addressBar.action = #selector(addressBarSubmitted)
-        toolbarBar.addSubview(addressBar)
+        titlebar.addSubview(addressBar)
 
-        // ── Actions (right): Find, Locate (icons) + Save (text) ──
-        findButton = PanelStyle.makeIconButton(symbol: "magnifyingglass",
-                                               tooltip: "Find in page".localized,
-                                               target: self, action: #selector(findTapped))
-        findButton.autoresizingMask = [.minXMargin]
-        toolbarBar.addSubview(findButton)
+        findButton = ContentChrome.makeIconButton(symbol: "magnifyingglass",
+                                                  tooltip: "Find in page".localized,
+                                                  target: self, action: #selector(findTapped))
+        titlebar.addSubview(findButton)
 
-        locateButton = PanelStyle.makeIconButton(symbol: "folder",
-                                                 tooltip: "Reveal in Finder".localized,
-                                                 target: self, action: #selector(locateTapped))
-        locateButton.autoresizingMask = [.minXMargin]
+        locateButton = ContentChrome.makeIconButton(symbol: "folder",
+                                                    tooltip: "Reveal in Finder".localized,
+                                                    target: self, action: #selector(locateTapped))
         locateButton.isHidden = true
-        toolbarBar.addSubview(locateButton)
+        titlebar.addSubview(locateButton)
 
-        saveButton.bezelStyle = .texturedRounded
-        saveButton.title = "Save".localized
+        saveButton.activatesWhenEnabled = true
         saveButton.keyEquivalent = "s"
         saveButton.keyEquivalentModifierMask = [.command]
         saveButton.target = self
         saveButton.action = #selector(saveTapped)
-        saveButton.autoresizingMask = [.minXMargin]
         saveButton.isEnabled = false   // always visible, lit only when dirty
-        toolbarBar.addSubview(saveButton)
-
-        content.addSubview(toolbarBar)
+        actionGroup.addSubview(saveButton)
+        titlebar.addSubview(actionGroup)
 
         // Dirty-tracking for the editable text view.
         textView.delegate = self
 
-        // Body — webView + textScroll occupy the area below the toolbar.
-        let bodyFrame = NSRect(x: 0, y: 0, width: bounds.width,
-                                height: bounds.height - toolbarH)
+        statusBar.frame = NSRect(x: 0, y: 0, width: bounds.width, height: statusH)
+        statusBar.autoresizingMask = [.width, .maxYMargin]
+        content.addSubview(statusBar)
+
+        // Body — webView + textScroll fill the space between the two bars.
+        let bodyFrame = NSRect(x: 0, y: statusH, width: bounds.width,
+                               height: bounds.height - titleH - statusH)
         webView.frame = bodyFrame
         webView.autoresizingMask = [.width, .height]
-        content.addSubview(webView)
+        content.addSubview(webView, positioned: .below, relativeTo: titlebar)
 
         textScroll.frame = bodyFrame
         textScroll.autoresizingMask = [.width, .height]
+        textScroll.drawsBackground = false
         // Track the scroll view's content width so the text view word-wraps.
         textView.textContainer?.containerSize = NSSize(
             width: bodyFrame.width,
             height: CGFloat.greatestFiniteMagnitude
         )
         textView.textContainer?.widthTracksTextView = true
-        content.addSubview(textScroll)
+        content.addSubview(textScroll, positioned: .below, relativeTo: titlebar)
 
         loadingIndicator.frame = NSRect(
             x: bodyFrame.midX - FocusSweepLoadingView.preferredSize.width / 2,
@@ -295,109 +274,47 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         loadingIndicator.autoresizingMask = [.minXMargin, .minYMargin, .maxXMargin, .maxYMargin]
         content.addSubview(loadingIndicator)
 
-        // ─── Web find bar (overlays the top edge of the web view) ───────
-        let findBarH: CGFloat = 36
-        webFindBar.frame = NSRect(
-            x: 0, y: bodyFrame.maxY - findBarH,
-            width: bodyFrame.width, height: findBarH
-        )
-        webFindBar.autoresizingMask = [.width, .minYMargin]
+        // ─── Web find card (floats over the top-right of the document) ───
+        webFindBar.frame = NSRect(origin: ContentChrome.findBarOrigin(in: bounds),
+                                  size: ContentChrome.findBarSize)
+        webFindBar.autoresizingMask = [.minXMargin, .minYMargin]
         webFindBar.isHidden = true
-        PanelStyle.addHairline(to: webFindBar, edge: .minY)
-
-        webFindField.placeholderString = "Find in page".localized
-        webFindField.frame = NSRect(x: 12, y: 6, width: 240, height: 24)
         webFindField.delegate = self
-        webFindBar.addSubview(webFindField)
-
-        webFindCountLabel.font = PanelStyle.caption
-        webFindCountLabel.textColor = PanelStyle.textSecondary
-        webFindCountLabel.frame = NSRect(x: 260, y: 9, width: 80, height: 18)
-        webFindBar.addSubview(webFindCountLabel)
-
-        let prevBtn = NSButton(title: "‹", target: self, action: #selector(webFindPrev))
-        prevBtn.bezelStyle = .texturedRounded
-        prevBtn.frame = NSRect(x: bodyFrame.width - 140, y: 6, width: 32, height: 24)
-        prevBtn.autoresizingMask = [.minXMargin]
-        webFindBar.addSubview(prevBtn)
-
-        let nextBtn = NSButton(title: "›", target: self, action: #selector(webFindNext))
-        nextBtn.bezelStyle = .texturedRounded
-        nextBtn.frame = NSRect(x: bodyFrame.width - 102, y: 6, width: 32, height: 24)
-        nextBtn.autoresizingMask = [.minXMargin]
-        webFindBar.addSubview(nextBtn)
-
-        let doneBtn = NSButton(title: "Done".localized, target: self, action: #selector(hideWebFindBar))
-        doneBtn.bezelStyle = .texturedRounded
-        doneBtn.frame = NSRect(x: bodyFrame.width - 60, y: 6, width: 50, height: 24)
-        doneBtn.autoresizingMask = [.minXMargin]
-        webFindBar.addSubview(doneBtn)
-
         content.addSubview(webFindBar)
         layoutToolbarButtons()
     }
 
-    /// Pack the right action group (Save + icon buttons) right-to-left, hidden
-    /// ones collapsing, then size the left identity block / address bar to fill
-    /// the remaining space.
+    /// Pack the right action group (icons, then the Save segment) right-to-left,
+    /// hidden ones collapsing, then centre the title / address bar in the rest.
     private func layoutToolbarButtons() {
-        let gap: CGFloat = 8
-        let saveW: CGFloat = 72
-        let iconW: CGFloat = 30
-        let ctrlH: CGFloat = 26
-        let rightMargin: CGFloat = 16
-        let leftMargin: CGFloat = 18
-        let labelGap: CGFloat = 16
-        let barH = toolbarBar.bounds.height
-        let ctrlY = (barH - ctrlH) / 2
-        let bodyWidth = toolbarBar.bounds.width
-
-        // Right group, packed right→left; each entry carries its width.
-        let group: [(NSButton, CGFloat)] = [
-            (saveButton, saveW),
-            (locateButton, iconW),
-            (findButton, iconW),
-        ]
-        var currentRight = bodyWidth - rightMargin
-        var leftmostVisibleX: CGFloat?
-        for (button, w) in group {
-            guard !button.isHidden else { continue }
-            let x = currentRight - w
-            button.frame = NSRect(x: x, y: ctrlY, width: w, height: ctrlH)
-            leftmostVisibleX = x
-            currentRight = x - gap
-        }
-
-        let identityRight = leftmostVisibleX.map { $0 - labelGap } ?? (bodyWidth - rightMargin)
-        let identityWidth = max(80, identityRight - leftMargin)
-
-        // Two-line identity block (filename over subtitle).
-        if !filenameLabel.isHidden {
-            filenameLabel.frame = NSRect(x: leftMargin, y: barH - 29, width: identityWidth, height: 18)
-            modifiedLabel.frame  = NSRect(x: leftMargin, y: 9, width: identityWidth, height: 15)
-        }
-        // Address bar (web pages) fills the same area, vertically centered.
-        if !addressBar.isHidden {
-            addressBar.frame = NSRect(x: leftMargin, y: (barH - 26) / 2, width: identityWidth, height: 26)
-        }
+        let groupMinX = ContentChrome.layoutTrailingControls(
+            in: titlebar,
+            icons: [locateButton, findButton],
+            group: actionGroup,
+            segments: [(saveButton, ContentSegmentButton.width(for: ["Save".localized, "Saved ✓".localized]))]
+        )
+        titlebar.centerTitle(addressBar.isHidden ? titlebar.titleLabel : addressBar,
+                             rightLimit: groupMinX - 12)
     }
 
-    // MARK: - Identity (toolbar left)
+    // MARK: - Identity (titlebar + status bar)
 
     private func showFileIdentity(for url: URL) {
         addressBar.isHidden = true
-        filenameLabel.isHidden = false
-        modifiedLabel.isHidden = false
-        filenameLabel.stringValue = url.lastPathComponent
-        modifiedLabel.stringValue = Self.subtitleString(for: url)
-        modifiedLabel.toolTip = url.isFileURL ? url.path : url.absoluteString
+        titlebar.titleLabel.isHidden = false
+        titlebar.titleLabel.stringValue = url.lastPathComponent
+        titlebar.titleLabel.toolTip = url.isFileURL ? url.path : url.absoluteString
+        let kindLabel = kind == .markdown ? "Markdown".localized : url.pathExtension.uppercased()
+        statusBar.show(left: ContentChrome.statusPath(for: url),
+                       right: ContentChrome.statusDetail(for: url, kindLabel: kindLabel),
+                       leftToolTip: url.isFileURL ? url.path : url.absoluteString)
     }
 
     private func showAddressBarIdentity(for url: URL) {
-        filenameLabel.isHidden = true
-        modifiedLabel.isHidden = true
+        titlebar.titleLabel.isHidden = true
         addressBar.isHidden = false
         addressBar.stringValue = url.absoluteString
+        statusBar.show(left: "", right: "", leftToolTip: nil)
     }
 
     /// "~/dir · Modified <date>" subtitle shown under the filename.
@@ -412,7 +329,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         return parts.joined(separator: " · ")
     }
 
-    private static func modificationDate(for url: URL) -> Date? {
+    static func modificationDate(for url: URL) -> Date? {
         guard url.isFileURL,
               let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) else { return nil }
         return attrs[.modificationDate] as? Date
@@ -449,7 +366,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     private func renderMarkdownView(url: URL) {
         Task.detached { [weak self] in
             let raw = await Self.fetchTextContent(from: url)
-            let html = Self.wrapMarkdownInHTML(raw)
+            let html = Self.wrapMarkdownInHTML(raw, documentTop: ContentChrome.documentTop)
             await MainActor.run {
                 self?.webView.loadHTMLString(html, baseURL: url)
                 self?.showWebView()
@@ -528,9 +445,9 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
             try body.write(to: url, atomically: true, encoding: .utf8)
             isDirty = false
             saveButton.isEnabled = false
-            saveButton.title = "Saved ✓".localized
+            saveButton.text = "Saved ✓".localized
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                self?.saveButton.title = "Save".localized
+                self?.saveButton.text = "Save".localized
             }
         } catch {
             let alert = NSAlert(error: error)
@@ -744,12 +661,12 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     }
 
     @objc private func updateToolbarAppearance() {
-        // Dark-glass chrome is theme-independent; just re-tint the hairlines.
-        for bar in [toolbarBar, webFindBar] {
-            for sub in bar.subviews where sub.frame.height == 1 {
-                sub.layer?.backgroundColor = PanelStyle.hairline.cgColor
-            }
-        }
+        // Theme tokens are fixed for the session; re-assert the layer snapshots.
+        if let content = contentView { ContentChrome.paint(content, ContentChrome.window) }
+        titlebar.applyTheme()
+        actionGroup.applyTheme()
+        statusBar.applyTheme()
+        webFindBar.applyTheme()
     }
 
     // MARK: - Find shortcuts
@@ -813,7 +730,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
 
     private func showWebFindBar() {
         webFindBar.isHidden = false
-        webFindBar.frame.origin.y = (contentView?.bounds.height ?? 0) - 52 /* toolbar */ - webFindBar.bounds.height
+        webFindBar.frame.origin = ContentChrome.findBarOrigin(in: contentView?.bounds ?? .zero)
         makeFirstResponder(webFindField)
         webFindField.selectText(nil)
         if !webFindField.stringValue.isEmpty {
@@ -910,8 +827,12 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
 
     /// JS injected at document-end on every page load. Exposes
     /// `window.__tdfind` with `highlight(query)`, `next()`, `prev()`,
-    /// `clear()`.
-    static let findHelperJS: String = """
+    /// `clear()`. Matches are vermilion marks (Figma `find match`).
+    static let findHelperJS: String = {
+        let current = ContentChrome.css(PanelStyle.failure)
+        let currentInk = ContentChrome.css(PanelStyle.themed(PanelStyle.Sumi.text1, PanelStyle.Washi.ink1))
+        let other = ContentChrome.css(PanelStyle.failure, alpha: 0.28)
+        return """
     (function(){
       if (window.__tdfind) return;
       const SCROLL_OPTS = { block: 'center', behavior: 'smooth' };
@@ -929,8 +850,8 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
       }
       function refresh(self){
         for (let i = 0; i < self.marks.length; i++) {
-          self.marks[i].style.background = (i === self.current) ? '#e1b982' : '#cda873';
-          self.marks[i].style.color = '#000';
+          self.marks[i].style.background = (i === self.current) ? '\(current)' : '\(other)';
+          self.marks[i].style.color = (i === self.current) ? '\(currentInk)' : 'inherit';
         }
         if (self.current >= 0 && self.current < self.marks.length) {
           self.marks[self.current].scrollIntoView(SCROLL_OPTS);
@@ -969,8 +890,9 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
               if (i > last) frag.appendChild(document.createTextNode(text.slice(last, i)));
               const mk = document.createElement('mark');
               mk.className = 'tdfind';
-              mk.style.background = '#cda873';
-              mk.style.color = '#000';
+              mk.style.background = '\(other)';
+              mk.style.color = 'inherit';
+              mk.style.borderRadius = '3px';
               mk.textContent = text.slice(i, i + q.length);
               frag.appendChild(mk);
               marks.push(mk);
@@ -999,6 +921,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
       };
     })();
     """
+    }()
 
     /// Language identifier for Highlightr (highlight.js). Reuses the Prism map
     /// and remaps the few names that differ between the two.
@@ -1080,39 +1003,41 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/\(PanelStyle.isLight ? "prism" : "prism-tomorrow").min.css">
           <style>
+            \(ContentChrome.rootCSS)
             body {
-              font-family: ui-monospace, "SF Mono", Menlo, monospace;
+              font-family: var(--font-mono);
               font-size: 13px;
               line-height: 1.6;
               margin: 0;
               padding: 16px 22px 40px;
-              background: #101113;
-              color: #f2f0eb;
+              background: var(--ink1);
+              color: var(--text1);
               -webkit-font-smoothing: antialiased;
             }
-            ::selection { background: rgba(225,185,130,0.26); }
+            ::selection { background: var(--selection); }
             .file-header {
-              font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+              font-family: var(--font-ui);
               font-size: 11px;
-              font-weight: 600;
+              font-weight: 500;
               letter-spacing: 0.02em;
-              color: #a7a8aa;
+              color: var(--text3);
               margin: -4px -6px 14px;
               padding: 6px 10px;
-              border-radius: 7px;
-              background: #202329;
+              border-radius: 6px;
+              background: var(--ink2);
               display: flex;
               justify-content: space-between;
             }
             .file-header span:first-child { text-transform: uppercase; }
+            .file-header span:last-child { font-family: var(--font-mono); }
             pre {
               margin: 0;
               background: transparent !important;
             }
             code {
-              font-family: ui-monospace, "SF Mono", Menlo, monospace;
+              font-family: var(--font-mono);
               font-size: 13px;
               line-height: 1.6;
             }
@@ -1126,7 +1051,7 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
               text-shadow: none !important;
             }
             :not(pre) > code[class*="language-"] {
-              background: #202329 !important;
+              background: var(--ink2) !important;
               padding: 2px 5px !important;
               border-radius: 4px;
             }
@@ -1143,8 +1068,10 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
     }
 
     /// Wrap markdown source in an HTML host page that renders via marked.js
-    /// from a CDN (falls back to plain-text display when offline).
-    static func wrapMarkdownInHTML(_ markdown: String) -> String {
+    /// from a CDN (falls back to plain-text display when offline). The reading
+    /// column follows Figma `18 · Content Viewer / Markdown`; `documentTop`
+    /// leaves room for the content windows' floating find card.
+    static func wrapMarkdownInHTML(_ markdown: String, documentTop: Int = 40) -> String {
         let escaped = markdown
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
@@ -1157,71 +1084,72 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
-            /* Dark reading theme — committed to dark so the rendered page sits
-               cohesively inside Glance's dark-glass panel regardless of the
-               system appearance. */
-            :root {
-              --bg: #101113;
-              --surface: #17191c;
-              --overlay: #202329;
-              --fg: #f2f0eb;
-              --muted: #a7a8aa;
-              --hairline: rgba(242,240,235,0.10);
-              --fill: #17191c;
-              --fill-strong: #202329;
-              --accent: #e1b982;
-            }
+            /* Reading theme follows Glance's theme tokens, not the system appearance. */
+            \(ContentChrome.rootCSS)
             * { box-sizing: border-box; }
-            html { -webkit-text-size-adjust: 100%; }
+            html { -webkit-text-size-adjust: 100%; background: var(--ink1); }
             body {
-              font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
-                           system-ui, sans-serif;
+              font-family: var(--font-ui);
               font-size: 15px;
-              line-height: 1.72;
-              color: var(--fg);
-              background: var(--bg);
-              max-width: 740px;
+              line-height: 26px;
+              color: var(--text2);
+              background: var(--ink1);
+              max-width: 688px;
               margin: 0 auto;
-              padding: 40px 28px 64px;
+              padding: \(documentTop)px 24px 64px;
               -webkit-font-smoothing: antialiased;
             }
-            ::selection { background: rgba(225,185,130,0.26); }
-            h1, h2, h3, h4, h5, h6 {
-              line-height: 1.3; margin: 1.6em 0 0.6em; font-weight: 600;
-              letter-spacing: -0.01em; color: var(--fg);
+            ::selection { background: var(--selection); }
+            #rendered > :first-child { margin-top: 0; }
+            h1, h2, h3, h4, h5, h6 { color: var(--text1); margin: 32px 0 12px; }
+            h1 {
+              font-family: var(--font-title);
+              font-size: 34px; line-height: 44px; font-weight: 400;
             }
-            h1 { font-size: 1.9em; border-bottom: 1px solid var(--hairline); padding-bottom: 0.3em; }
-            h2 { font-size: 1.5em; border-bottom: 1px solid var(--hairline); padding-bottom: 0.25em; }
-            h3 { font-size: 1.25em; }
-            h4 { font-size: 1.05em; }
-            p, ul, ol, blockquote, table { margin: 0.9em 0; }
+            h2 { font-size: 16px; line-height: 22px; font-weight: 500; }
+            h3 { font-size: 15px; line-height: 22px; font-weight: 500; }
+            h4, h5, h6 { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--text2); }
+            p, ul, ol, blockquote, table, pre { margin: 0 0 12px; }
             ul, ol { padding-left: 1.4em; }
-            li { margin: 0.25em 0; }
+            li { margin: 4px 0; }
+            li::marker { color: var(--text3); }
+            strong, b { color: var(--text1); font-weight: 600; }
             blockquote {
-              border-left: 3px solid var(--accent);
-              padding: 0.2em 0 0.2em 1em; margin-left: 0;
-              color: var(--muted);
+              border-left: 2px solid var(--line-strong);
+              padding: 0 0 0 16px;
+              color: var(--text3);
             }
-            hr { border: none; border-top: 1px solid var(--hairline); margin: 2em 0; }
+            hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
             code {
-              font-family: ui-monospace, "SF Mono", Menlo, monospace;
-              background: var(--fill-strong); padding: 0.15em 0.4em;
-              border-radius: 5px; font-size: 0.88em;
+              font-family: var(--font-mono);
+              font-size: 0.86em;
+              color: var(--text1);
+              background: var(--ink2);
+              padding: 0.1em 0.35em;
+              border-radius: 4px;
             }
             pre {
-              background: var(--surface); border: 1px solid var(--hairline);
-              padding: 14px 16px; border-radius: 10px;
+              background: var(--ink2);
+              padding: 13px 18px;
+              border-radius: 6px;
               white-space: pre-wrap; word-wrap: break-word;
-              overflow-x: auto; line-height: 1.55;
+              overflow-x: auto;
             }
-            pre code { background: transparent; padding: 0; font-size: 0.86em; border: none; }
-            img { max-width: 100%; height: auto; border-radius: 8px; }
-            a { color: var(--accent); text-decoration: none; }
+            pre code {
+              background: transparent; padding: 0; border-radius: 0;
+              font-size: 12.5px; line-height: 22px; color: var(--text1);
+            }
+            img { max-width: 100%; height: auto; border-radius: 3px; }
+            a { color: var(--ai); text-decoration: none; }
             a:hover { text-decoration: underline; }
-            table { border-collapse: collapse; width: 100%; font-size: 0.92em; }
-            th, td { border: 1px solid var(--hairline); padding: 7px 12px; text-align: left; }
-            th { background: var(--fill); font-weight: 600; }
-            tr:nth-child(even) td { background: rgba(32,35,41,0.52); }
+            table { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 17px; }
+            th, td {
+              height: 36px; padding: 0 16px 0 0; text-align: left; vertical-align: middle;
+              border-bottom: 1px solid var(--line);
+            }
+            th { color: var(--text3); font-size: 12px; font-weight: 500; border-bottom-color: var(--line-strong); }
+            td:first-child { color: var(--text1); }
+            td:first-child code { background: transparent; padding: 0; font-size: 12px; }
           </style>
         </head>
         <body>
@@ -1246,5 +1174,452 @@ final class ContentViewerWindow: NSWindow, NSTextFieldDelegate, NSTextViewDelega
         </body>
         </html>
         """
+    }
+}
+
+// MARK: - 静 Shizuka content chrome
+
+/// Shared geometry, tokens and builders for the content surfaces: Figma
+/// `18 · Content Viewer / Markdown` and `19 · Content Viewer / Git Diff`.
+/// Used by ContentViewerWindow, ContentPanel and its Git diff window.
+enum ContentChrome {
+    static let titlebarHeight: CGFloat = 44
+    static let statusHeight: CGFloat = 32
+    static let findBarSize = NSSize(width: 254, height: 40)
+    /// Figma find card: 24 pt from the right edge, 56 pt below the window top.
+    static let findBarRight: CGFloat = 24
+    static let findBarTop: CGFloat = 56
+    /// Figma document top (y 120) minus the 44 pt titlebar.
+    static let documentTop = 76
+
+    static let window = PanelStyle.surface                                   // ink/1
+    static let card = PanelStyle.overlay                                     // ink/2
+    static let segmentActive = PanelStyle.surfaceElevated                    // ink/4
+    static let line = PanelStyle.themed(PanelStyle.Sumi.line, PanelStyle.Washi.line)
+    static let text4 = PanelStyle.themed(PanelStyle.Sumi.text4, PanelStyle.Washi.text4)
+
+    static func findBarOrigin(in bounds: NSRect) -> NSPoint {
+        NSPoint(x: bounds.width - findBarRight - findBarSize.width,
+                y: bounds.height - findBarTop - findBarSize.height)
+    }
+
+    static func paint(_ view: NSView, _ color: NSColor) {
+        view.wantsLayer = true
+        view.layer?.backgroundColor = PanelStyle.resolvedCG(color)
+    }
+
+    /// The red / yellow / green buttons are drawn by `ContentTitlebarView` so
+    /// they sit centred in the 44 pt titlebar.
+    static func hideSystemTrafficLights(of window: NSWindow) {
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+    }
+
+    /// 28 pt borderless SF Symbol button (Figma `IconButton`).
+    static func makeIconButton(symbol: String, tooltip: String,
+                               target: AnyObject?, action: Selector) -> NSButton {
+        let btn = PanelStyle.makeIconButton(symbol: symbol, tooltip: tooltip, target: target, action: action)
+        btn.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
+        btn.contentTintColor = PanelStyle.textSecondary
+        btn.setAccessibilityLabel(tooltip)
+        return btn
+    }
+
+    static func makeLabel(font: NSFont, color: NSColor, alignment: NSTextAlignment = .left,
+                          truncation: NSLineBreakMode = .byTruncatingTail) -> NSTextField {
+        let label = NSTextField(labelWithString: "")
+        label.font = font
+        label.textColor = color
+        label.alignment = alignment
+        label.lineBreakMode = truncation
+        label.maximumNumberOfLines = 1
+        label.cell?.truncatesLastVisibleLine = true
+        return label
+    }
+
+    static func styleAddressBar(_ field: NSTextField) {
+        field.font = PanelStyle.inspectFont(ofSize: 12)
+        field.alignment = .center
+        field.isSelectable = true
+        field.isBordered = false
+        field.isBezeled = false
+        field.focusRingType = .none
+        field.drawsBackground = true
+        field.backgroundColor = card
+        field.textColor = PanelStyle.textSecondary
+        field.wantsLayer = true
+        field.layer?.cornerRadius = PanelStyle.Radius.control
+        field.layer?.masksToBounds = true
+    }
+
+    /// Lay out the titlebar's trailing controls right-to-left — 28 pt icons at
+    /// the edge, then the segment group — and return the group's min x.
+    @discardableResult
+    static func layoutTrailingControls(in bar: NSView, icons: [NSButton],
+                                       group: ContentSegmentGroup,
+                                       segments: [(ContentSegmentButton, CGFloat)]) -> CGFloat {
+        var right = bar.bounds.width - 20
+        for icon in icons where !icon.isHidden {
+            icon.frame = NSRect(x: right - 28, y: 8, width: 28, height: 28)
+            right -= 28 + 4
+        }
+        if right < bar.bounds.width - 20 { right -= 4 }
+        let width = group.arrange(segments)
+        group.isHidden = width == 0
+        group.frame = NSRect(x: right - width, y: 8, width: width, height: 27)
+        return width == 0 ? right : group.frame.minX
+    }
+
+    /// Path shown in the status bar: `~`-abbreviated for files, the URL otherwise.
+    static func statusPath(for url: URL) -> String {
+        url.isFileURL ? (url.path as NSString).abbreviatingWithTildeInPath : url.absoluteString
+    }
+
+    /// "Markdown · 4 KB · Modified <date>" for the status bar's right side.
+    static func statusDetail(for url: URL, kindLabel: String) -> String {
+        var parts: [String] = []
+        if !kindLabel.isEmpty { parts.append(kindLabel) }
+        if url.isFileURL,
+           let size = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? NSNumber {
+            let f = ByteCountFormatter()
+            f.countStyle = .file
+            parts.append(f.string(fromByteCount: size.int64Value))
+        }
+        if let date = ContentViewerWindow.modificationDate(for: url) {
+            parts.append("Modified ".localized + ContentViewerWindow.friendlyDate(date))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    // MARK: CSS
+
+    static func css(_ color: NSColor, alpha: CGFloat? = nil) -> String {
+        let c = color.usingColorSpace(.sRGB) ?? color
+        return String(format: "rgba(%ld,%ld,%ld,%.3f)",
+                      Int((c.redComponent * 255).rounded()),
+                      Int((c.greenComponent * 255).rounded()),
+                      Int((c.blueComponent * 255).rounded()),
+                      alpha ?? c.alphaComponent)
+    }
+
+    /// Theme tokens for Glance-owned HTML documents (Sumi on dark, Washi on light).
+    static let rootCSS: String = {
+        typealias S = PanelStyle.Sumi
+        typealias W = PanelStyle.Washi
+        let t = { (dark: NSColor, light: NSColor) in css(PanelStyle.themed(dark, light)) }
+        return """
+        :root {
+          color-scheme: \(PanelStyle.isLight ? "light" : "dark");
+          --ink0: \(t(S.ink0, W.ink0));
+          --ink1: \(t(S.ink1, W.ink1));
+          --ink2: \(t(S.ink2, W.ink2));
+          --ink3: \(t(S.ink3, W.ink3));
+          --ink4: \(t(S.ink4, W.ink4));
+          --line: \(t(S.line, W.line));
+          --line-strong: \(t(S.lineStrong, W.lineStrong));
+          --text1: \(t(S.text1, W.text1));
+          --text2: \(t(S.text2, W.text2));
+          --text3: \(t(S.text3, W.text3));
+          --text4: \(t(S.text4, W.text4));
+          --shu: \(t(S.shu, W.shu));
+          --moss: \(t(S.moss, W.moss));
+          --ai: \(t(S.ai, W.ai));
+          --selection: \(css(PanelStyle.contrast, alpha: PanelStyle.isLight ? 0.12 : 0.18));
+          --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+          --font-title: "Hiragino Mincho ProN", "Hiragino Mincho Pro", serif;
+          --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+        }
+        """
+    }()
+}
+
+/// 44 pt titlebar: traffic lights at (20, 16), a centred title, and room for
+/// trailing controls. Dragging it moves the window; double-click zooms.
+final class ContentTitlebarView: NSView {
+    let titleLabel = ContentChrome.makeLabel(font: PanelStyle.inspectFont(ofSize: 13, weight: .medium),
+                                             color: PanelStyle.textSecondary,
+                                             alignment: .center, truncation: .byTruncatingMiddle)
+    var onResize: (() -> Void)?
+    var onMouseDown: (() -> Void)?
+
+    private lazy var lights: [TrafficLightButton] = [
+        TrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1),
+                           target: self, action: #selector(closeTapped)),
+        TrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1),
+                           target: self, action: #selector(minimizeTapped)),
+        TrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1),
+                           target: self, action: #selector(zoomTapped)),
+    ]
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        ContentChrome.paint(self, ContentChrome.window)
+        for (index, light) in lights.enumerated() {
+            light.frame = NSRect(x: 20 + CGFloat(index) * 20, y: 16, width: 12, height: 12)
+            light.autoresizingMask = [.minYMargin]
+            addSubview(light)
+        }
+        addSubview(titleLabel)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        onResize?()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onMouseDown?()
+        if event.clickCount == 2 { window?.zoom(nil) } else { window?.performDrag(with: event) }
+    }
+
+    /// Centre `view` on the titlebar, clear of the traffic lights and of
+    /// anything right of `rightLimit`. Titles use the Figma 16 pt text frame at
+    /// y 14; the web address field is a 26 pt control.
+    func centerTitle(_ view: NSView, rightLimit: CGFloat) {
+        let mid = bounds.midX
+        let half = max(20, min(mid - 84, rightLimit - mid))
+        if view === titleLabel {
+            titleLabel.frame = NSRect(x: mid - half, y: 14, width: half * 2, height: 16)
+        } else {
+            let width = min(half * 2, 560)
+            view.frame = NSRect(x: mid - width / 2, y: 9, width: width, height: 26)
+        }
+    }
+
+    func applyTheme() {
+        ContentChrome.paint(self, ContentChrome.window)
+    }
+
+    @objc private func closeTapped() { window?.close() }
+    @objc private func minimizeTapped() { window?.miniaturize(nil) }
+    @objc private func zoomTapped() { window?.zoom(nil) }
+}
+
+/// Figma `segmented`: an ink/2 well (radius 6) holding 23 pt segments.
+final class ContentSegmentGroup: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.cornerRadius = PanelStyle.Radius.control
+        applyTheme()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    /// Place visible segments left-to-right with 2 pt insets; returns the width.
+    func arrange(_ segments: [(ContentSegmentButton, CGFloat)]) -> CGFloat {
+        var x: CGFloat = 2
+        var any = false
+        for (button, width) in segments where !button.isHidden {
+            button.frame = NSRect(x: x, y: 2, width: width, height: 23)
+            x += width + 2
+            any = true
+        }
+        return any ? x : 0
+    }
+
+    func applyTheme() {
+        layer?.backgroundColor = PanelStyle.resolvedCG(ContentChrome.card)
+    }
+}
+
+/// A text segment in the titlebar group (and the find card's Done). Active
+/// segments sit on ink/4 with text/1; resting ones are text/3 on the well.
+final class ContentSegmentButton: NSButton {
+    var text: String { didSet { refresh() } }
+    var isActive = false { didSet { refresh() } }
+    /// Lit like an active segment whenever clickable (Save once dirty).
+    var activatesWhenEnabled = false { didSet { refresh() } }
+    var restingColor = PanelStyle.textTertiary { didSet { refresh() } }
+    override var isEnabled: Bool { didSet { refresh() } }
+
+    static let font = PanelStyle.inspectFont(ofSize: 12)
+    private var hovering = false
+    private var tracking: NSTrackingArea?
+
+    init(text: String, target: AnyObject? = nil, action: Selector? = nil) {
+        self.text = text
+        super.init(frame: .zero)
+        cell = ContentCenteredButtonCell(textCell: text)
+        self.target = target
+        self.action = action
+        bezelStyle = .recessed
+        isBordered = false
+        setButtonType(.momentaryChange)
+        wantsLayer = true
+        layer?.cornerRadius = 4
+        refresh()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    /// Figma segments pad their label by 10 pt each side; size for the widest text.
+    static func width(for texts: [String]) -> CGFloat {
+        let widest = texts.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
+        return ceil(widest) + 20
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let area = NSTrackingArea(rect: bounds,
+                                  options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { hovering = true; refresh() }
+    override func mouseExited(with event: NSEvent) { hovering = false; refresh() }
+
+    private func refresh() {
+        let lit = isActive || (activatesWhenEnabled && isEnabled)
+        let fill: NSColor
+        if lit { fill = ContentChrome.segmentActive }
+        else if hovering && isEnabled { fill = PanelStyle.controlFill }
+        else { fill = .clear }
+        layer?.backgroundColor = PanelStyle.resolvedCG(fill)
+        let color: NSColor
+        if !isEnabled { color = ContentChrome.text4 }
+        else if lit { color = PanelStyle.textPrimary }
+        else if hovering { color = PanelStyle.textSecondary }
+        else { color = restingColor }
+        attributedTitle = NSAttributedString(string: text,
+                                             attributes: [.font: Self.font, .foregroundColor: color])
+        setAccessibilityLabel(text)
+    }
+}
+
+private final class ContentCenteredButtonCell: NSButtonCell {
+    override func drawTitle(_ title: NSAttributedString, withFrame frame: NSRect, in controlView: NSView) -> NSRect {
+        let textHeight = min(frame.height, ceil(title.size().height))
+        let centered = NSRect(x: frame.minX, y: frame.midY - textHeight / 2,
+                              width: frame.width, height: textHeight)
+        return super.drawTitle(title, withFrame: centered, in: controlView)
+    }
+}
+
+/// Figma `find in page`: a 254 × 40 ink/2 card with a hairline edge holding
+/// the query, a mono match count, previous / next and Done.
+final class ContentFindBar: NSView {
+    let field = NSTextField()
+    let countLabel = ContentChrome.makeLabel(font: PanelStyle.monoFont(ofSize: 11),
+                                             color: PanelStyle.textTertiary)
+    private let icon = NSImageView()
+    private let doneButton: ContentSegmentButton
+
+    init(target: AnyObject, previous: Selector, next: Selector, done: Selector) {
+        doneButton = ContentSegmentButton(text: "Done".localized, target: target, action: done)
+        super.init(frame: NSRect(origin: .zero, size: ContentChrome.findBarSize))
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.borderWidth = 1
+
+        icon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
+        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
+        icon.contentTintColor = PanelStyle.textTertiary
+        icon.frame = NSRect(x: 13, y: 12, width: 16, height: 16)
+        addSubview(icon)
+
+        field.font = PanelStyle.inspectFont(ofSize: 13)
+        field.textColor = PanelStyle.textPrimary
+        field.isBordered = false
+        field.isBezeled = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.lineBreakMode = .byClipping
+        field.cell?.isScrollable = true
+        field.placeholderAttributedString = NSAttributedString(
+            string: "Find in page".localized,
+            attributes: [.font: PanelStyle.inspectFont(ofSize: 13), .foregroundColor: PanelStyle.textTertiary])
+        field.setAccessibilityLabel("Find in page".localized)
+        field.frame = NSRect(x: 39, y: 12, width: 55, height: 16)
+        addSubview(field)
+
+        countLabel.frame = NSRect(x: 98, y: 13, width: 40, height: 14)
+        addSubview(countLabel)
+
+        let prev = ContentChrome.makeIconButton(symbol: "chevron.up", tooltip: "Previous match".localized,
+                                                target: target, action: previous)
+        prev.frame = NSRect(x: 141, y: 6, width: 28, height: 28)
+        addSubview(prev)
+        let nextButton = ContentChrome.makeIconButton(symbol: "chevron.down", tooltip: "Next match".localized,
+                                                      target: target, action: next)
+        nextButton.frame = NSRect(x: 177, y: 6, width: 28, height: 28)
+        addSubview(nextButton)
+
+        doneButton.restingColor = PanelStyle.textSecondary
+        doneButton.frame = NSRect(x: 209, y: 6, width: 42, height: 28)
+        addSubview(doneButton)
+        applyTheme()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func applyTheme() {
+        layer?.backgroundColor = PanelStyle.resolvedCG(ContentChrome.card)
+        layer?.borderColor = PanelStyle.resolvedCG(ContentChrome.line)
+    }
+}
+
+/// 32 pt status bar: a hairline on top, a mono path on the left and Inter
+/// metadata on the right (Figma `status`).
+final class ContentStatusBar: NSView {
+    let leftLabel = ContentChrome.makeLabel(font: PanelStyle.monoFont(ofSize: 11),
+                                            color: PanelStyle.textTertiary, truncation: .byTruncatingHead)
+    let rightLabel = ContentChrome.makeLabel(font: PanelStyle.inspectFont(ofSize: 12),
+                                             color: PanelStyle.textTertiary, alignment: .right)
+    private let rule = NSView()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        addSubview(rule)
+        addSubview(leftLabel)
+        addSubview(rightLabel)
+        applyTheme()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func show(left: String, right: String, leftToolTip: String?) {
+        leftLabel.stringValue = left
+        leftLabel.toolTip = leftToolTip
+        rightLabel.stringValue = right
+        layoutLabels()
+    }
+
+    /// Diff status: a styled left run (count + path) instead of a plain path.
+    func show(attributedLeft: NSAttributedString, right: String) {
+        leftLabel.attributedStringValue = attributedLeft
+        leftLabel.toolTip = nil
+        rightLabel.stringValue = right
+        layoutLabels()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        layoutLabels()
+    }
+
+    /// Text frames from Figma: left x 20 / y 10 / h 14, right ends 20 pt from
+    /// the edge at y 9 / h 15 (top-origin, converted for the 32 pt bar).
+    private func layoutLabels() {
+        let h = bounds.height
+        rule.frame = NSRect(x: 0, y: h - 1, width: bounds.width, height: 1)
+        let rightWidth = min(ceil(rightLabel.attributedStringValue.size().width) + 4,
+                             max(0, bounds.width / 2 - 20))
+        rightLabel.frame = NSRect(x: bounds.width - 20 - rightWidth, y: h - 9 - 15, width: rightWidth, height: 15)
+        let leftRight = rightWidth > 0 ? rightLabel.frame.minX - 16 : bounds.width - 20
+        leftLabel.frame = NSRect(x: 20, y: h - 10 - 14, width: max(0, leftRight - 20), height: 14)
+    }
+
+    func applyTheme() {
+        ContentChrome.paint(self, ContentChrome.window)
+        ContentChrome.paint(rule, ContentChrome.line)
     }
 }

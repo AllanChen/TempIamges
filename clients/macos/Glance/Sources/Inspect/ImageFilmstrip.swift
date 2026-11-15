@@ -15,8 +15,8 @@ final class ImageFilmstripView: NSView {
     private var compareIndices: (Int, Int)?
     /// Generated type icons for non-image items (mixed sessions), by index.
     private var iconCache: [Int: NSImage] = [:]
-    private var tileSize: CGFloat = 96
-    private var itemGap: CGFloat = 10
+    private var tileSize: CGFloat = InspectLayout.thumbSize
+    private var itemGap: CGFloat = InspectLayout.thumbGap
     private var scrollOffset: CGFloat = 0
     private var pendingRevealIndex: Int?
 
@@ -151,6 +151,8 @@ final class ImageFilmstripView: NSView {
         }
         scrollOffset = min(scrollOffset, maxScrollOffset)
         for (index, item) in itemViews {
+            // Tiles sit on the bottom edge; the headroom above them carries
+            // the compare captions and the corner marks.
             item.frame = NSRect(x: CGFloat(index) * (tileSize + itemGap) - scrollOffset,
                                 y: 0, width: tileSize, height: tileSize)
         }
@@ -177,6 +179,10 @@ final class ImageFilmstripView: NSView {
                 itemViews[index] = item
             }
             let isCompared = compareIndices.map { $0.0 == index || $0.1 == index } ?? false
+            var compareSlot: String?
+            if let pair = compareIndices {
+                if pair.0 == index { compareSlot = "A" } else if pair.1 == index { compareSlot = "B" }
+            }
             // In compare mode the border means pair membership only. The
             // browse/focus selection is intentionally ignored so a stale
             // focusedIndex can never create a third highlighted thumbnail.
@@ -193,6 +199,7 @@ final class ImageFilmstripView: NSView {
             item.configure(image: thumbnail(for: index), title: infos[index].filename,
                            selected: isSelected,
                            compared: isCompared,
+                           compareSlot: compareSlot,
                            taskPhase: (task ?? resultTask)?.phase,
                            taskProgress: task?.progress ?? 0,
                            isResult: resultTask != nil || isGeneratedResult(infos[index].url),
@@ -228,7 +235,7 @@ final class NonHitTestingImageView: NSImageView {
             source.origin.y = (image.size.height - source.height) / 2
         }
         NSGraphicsContext.saveGraphicsState()
-        let radius = min(bounds.width, bounds.height) * 6 / 96
+        let radius = min(bounds.width, bounds.height) * PanelStyle.Radius.thumb / 40
         NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).addClip()
         NSGraphicsContext.current?.imageInterpolation = .high
         image.draw(in: bounds, from: source, operation: .sourceOver,
@@ -237,58 +244,60 @@ final class NonHitTestingImageView: NSImageView {
     }
 }
 
+/// One Figma `thumb`: a 48 pt tile with a 40 pt image inset 4 pt. Every
+/// state keeps that geometry; selection is a 1 pt rule and task, result and
+/// compare states are overlays in the corner or the headroom above the tile.
 final class ImageFilmstripItem: NSView {
     var onClick: ((NSEvent.ModifierFlags) -> Void)?
     private let imageView = NonHitTestingImageView()
-    private let runningOverlay = TaskRunningTileOverlay()
-    private var showsTaskProgress = false
-    private let taskBadge = CALayer()
-    private let tagBackground = InspectNonHitTestingView()
-    private let tagLabel = PanelCenteredTextView()
+    private let ring = InspectRunningRing()
+    private let newMark = InspectNonHitTestingView()
+    private let failureMark = InspectNonHitTestingView()
+    private let failureGlyph = PanelCenteredTextView()
+    private let slotCaption = PanelCenteredTextView()
     private let ossCaptionBackground = InspectNonHitTestingView()
     private let ossCaptionLabel = PanelCenteredTextView()
-    private let plusLabel = CATextLayer()
-    private var previewInset: CGFloat = 4
+    private let plusLabel = PanelCenteredTextView()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 9
-        layer?.masksToBounds = true
-        layer?.backgroundColor = PanelStyle.inspectChrome.cgColor
+        // Marks extend into the strip's headroom; the image clips itself.
+        layer?.masksToBounds = false
+        layer?.cornerRadius = PanelStyle.Radius.control
+        layer?.backgroundColor = NSColor.clear.cgColor
         addSubview(imageView)
-        runningOverlay.isHidden = true
-        addSubview(runningOverlay)
-        taskBadge.cornerRadius = 3.5
-        taskBadge.isHidden = true
-        layer?.addSublayer(taskBadge)
-        // Keep the corner badge in the view hierarchy above the thumbnail
-        // image. Parent CALayer overlays can be occluded by AppKit subviews.
-        tagBackground.wantsLayer = true
-        tagBackground.layer?.backgroundColor = PanelStyle.success.cgColor
-        tagBackground.layer?.cornerRadius = 4
-        tagBackground.layer?.masksToBounds = true
-        tagBackground.isHidden = true
-        addSubview(tagBackground, positioned: .above, relativeTo: runningOverlay)
-        tagLabel.string = "NEW"
-        tagLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
-        tagLabel.textColor = PanelStyle.accentInk
-        tagBackground.addSubview(tagLabel)
         ossCaptionBackground.wantsLayer = true
-        ossCaptionBackground.layer?.cornerRadius = 5
-        ossCaptionBackground.layer?.masksToBounds = true
+        ossCaptionBackground.layer?.backgroundColor = PanelStyle.resolvedCG(InspectInk.ink0.withAlphaComponent(0.85))
+        ossCaptionBackground.layer?.cornerRadius = 2
         ossCaptionBackground.isHidden = true
-        addSubview(ossCaptionBackground, positioned: .above, relativeTo: tagBackground)
-        ossCaptionLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
+        ossCaptionLabel.font = PanelStyle.monoFont(ofSize: 8)
+        ossCaptionLabel.textColor = InspectInk.text1
         ossCaptionBackground.addSubview(ossCaptionLabel)
-        // "+" glyph for the add tile.
-        plusLabel.font = NSFont.systemFont(ofSize: 19, weight: .regular)
-        plusLabel.fontSize = 19
-        plusLabel.foregroundColor = PanelStyle.textTertiary.cgColor
-        plusLabel.alignmentMode = .center
-        plusLabel.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+        addSubview(ossCaptionBackground)
+        ring.isHidden = true
+        addSubview(ring)
+        newMark.wantsLayer = true
+        newMark.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.failure)
+        newMark.isHidden = true
+        addSubview(newMark)
+        failureMark.wantsLayer = true
+        failureMark.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.failure)
+        failureMark.isHidden = true
+        failureGlyph.string = "!"
+        failureGlyph.font = PanelStyle.inspectFont(ofSize: 9, weight: .semibold)
+        failureGlyph.textColor = PanelStyle.accentInk
+        failureMark.addSubview(failureGlyph)
+        addSubview(failureMark)
+        slotCaption.font = PanelStyle.monoFont(ofSize: 10)
+        slotCaption.textColor = InspectInk.text2
+        slotCaption.isHidden = true
+        addSubview(slotCaption)
+        plusLabel.string = "+"
+        plusLabel.font = PanelStyle.inspectFont(ofSize: 17)
+        plusLabel.textColor = InspectInk.text3
         plusLabel.isHidden = true
-        layer?.addSublayer(plusLabel)
+        addSubview(plusLabel)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -301,17 +310,15 @@ final class ImageFilmstripItem: NSView {
 
     /// The trailing "+" tile (spec `.thumb.add`).
     func configureAddTile() {
-        runningOverlay.isHidden = true
-        showsTaskProgress = false
-        layer?.removeAnimation(forKey: "widgetBreathing")
         imageView.image = nil
-        layer?.borderWidth = 1
-        layer?.borderColor = PanelStyle.hairline.cgColor
-        taskBadge.isHidden = true
-        tagBackground.isHidden = true
+        ring.isHidden = true
+        newMark.isHidden = true
+        failureMark.isHidden = true
+        slotCaption.isHidden = true
         ossCaptionBackground.isHidden = true
+        layer?.borderWidth = 1
+        layer?.borderColor = PanelStyle.resolvedCG(InspectInk.lineStrong)
         plusLabel.isHidden = false
-        plusLabel.string = "+"
         toolTip = "Add".localized
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
@@ -319,6 +326,7 @@ final class ImageFilmstripItem: NSView {
     }
 
     func configure(image: NSImage?, title: String, selected: Bool, compared: Bool,
+                   compareSlot: String? = nil,
                    taskPhase: WidgetTaskPhase?, taskProgress: Int = 0, isResult: Bool = false,
                    ossCaption: String? = nil,
                    activeTaskCount: Int) {
@@ -329,92 +337,60 @@ final class ImageFilmstripItem: NSView {
         setAccessibilityLabel(title)
         plusLabel.isHidden = true
         let processing = taskPhase?.isActive == true
-        runningOverlay.isHidden = !processing
         let failed = taskPhase?.isFailure == true
-        let completedResult = isResult
-        let emphasized = selected || compared || processing
-        layer?.borderWidth = emphasized ? 2 : 1
-        previewInset = emphasized ? 2 : 3
-        layer?.borderColor = (failed ? PanelStyle.failure : (emphasized ? PanelStyle.warmCue : PanelStyle.inspectLine)).cgColor
-        taskBadge.isHidden = !failed
-        taskBadge.backgroundColor = PanelStyle.failure.cgColor
-        // The same corner badge shows progress while a task runs on this image
-        // and NEW once a result arrived — one overlay, no extra geometry.
-        let showsProgress = processing && taskProgress > 0 && !completedResult
-        showsTaskProgress = showsProgress
-        tagLabel.textColor = showsProgress ? HistoryStyle.hex(0x0B2018) : PanelStyle.accentInk
-        tagBackground.isHidden = !(completedResult || (showsProgress && bounds.width >= 56))
-        if showsProgress { tagLabel.string = "\(min(99, taskProgress))%" }
-        else if completedResult { tagLabel.string = "NEW" }
+        // Figma: unselected thumbnails rest at 55 %; selected and paired
+        // thumbnails are full strength with a 1 pt rule (B in text/2).
+        let emphasized = selected || compared
+        imageView.alphaValue = emphasized ? 1 : 0.55
+        let rule: NSColor? = failed ? PanelStyle.failure
+            : compareSlot == "B" ? InspectInk.text2
+            : emphasized ? InspectInk.text1 : nil
+        layer?.borderWidth = rule == nil ? 0 : 1
+        layer?.borderColor = rule.map { PanelStyle.resolvedCG($0) }
+        ring.isHidden = !processing
+        ring.progress = processing && taskProgress > 0 ? taskProgress : nil
+        failureMark.isHidden = !failed || processing
+        newMark.isHidden = !isResult || processing || failed
+        slotCaption.string = compareSlot ?? ""
+        slotCaption.isHidden = compareSlot == nil
         ossCaptionBackground.isHidden = ossCaption == nil
         if let ossCaption {
-            let isOSSResult = ossCaption == "RESULT · OSS"
-            ossCaptionBackground.layer?.backgroundColor = NSColor(
-                srgbRed: isOSSResult ? 48 / 255 : 16 / 255,
-                green: isOSSResult ? 35 / 255 : 17 / 255,
-                blue: isOSSResult ? 31 / 255 : 21 / 255,
-                alpha: 1
-            ).cgColor
-            ossCaptionLabel.textColor = isOSSResult ? PanelStyle.accent : PanelStyle.textPrimary
-            ossCaptionLabel.string = ossCaption
+            // The tile is too small for the full caption; it stays the
+            // accessibility description.
+            ossCaptionLabel.string = "OSS"
+            ossCaptionBackground.setAccessibilityLabel(ossCaption)
         }
-        if processing && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            if layer?.animation(forKey: "widgetBreathing") == nil {
-                let animation = CABasicAnimation(keyPath: "borderColor")
-                animation.fromValue = PanelStyle.warmCue.withAlphaComponent(0.30).cgColor
-                animation.toValue = PanelStyle.warmCue.cgColor
-                animation.duration = 0.75
-                animation.autoreverses = true
-                animation.repeatCount = .infinity
-                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                layer?.add(animation, forKey: "widgetBreathing")
-            }
-        } else {
-            layer?.removeAnimation(forKey: "widgetBreathing")
+        if processing {
+            let progress = taskProgress > 0 ? ", \(min(99, taskProgress))%" : ""
+            setAccessibilityLabel("\(title), \(activeTaskCount) Widget task running\(progress)")
         }
-        if processing { setAccessibilityLabel("\(title), \(activeTaskCount) Widget task running") }
         else if failed { setAccessibilityLabel("\(title), Widget task failed") }
-        else if completedResult { setAccessibilityLabel("\(title), Widget result just completed") }
+        else if isResult { setAccessibilityLabel("\(title), Widget result just completed") }
         needsLayout = true
     }
 
+    /// Figma thumb (top-origin): image 4/4/40/40, running ring 20 pt centred on
+    /// the image, failure mark 14 pt at (34, −2), NEW mark 5 pt at (40, −1),
+    /// compare caption at (20, −17).
     override func layout() {
         super.layout()
-        let scale = min(bounds.width, bounds.height) / 96
-        layer?.cornerRadius = 9 * scale
-        tagBackground.layer?.cornerRadius = 4 * scale
-        // Figma 176:90 / 176:92: 48×22 at the top-right of a 96×96 tile,
-        // with a centered 48×12 Inter Semibold text frame. At small window
-        // sizes the font stops shrinking at 9pt, so keep its badge and text
-        // frame large enough to show all of NEW without resizing the tile.
-        tagLabel.font = PanelStyle.inspectFont(ofSize: max(9, 10 * scale), weight: .semibold)
-        taskBadge.cornerRadius = 3.5 * scale
-        imageView.frame = bounds.insetBy(dx: previewInset * scale, dy: previewInset * scale)
-        runningOverlay.frame = bounds
-        taskBadge.frame = NSRect(x: bounds.maxX - 9 * scale, y: bounds.maxY - 9 * scale,
-                                 width: 7 * scale, height: 7 * scale)
-        let tagSize = CGSize(width: max(28, 48 * scale), height: max(14, 22 * scale))
-        tagBackground.frame = CGRect(x: bounds.maxX - tagSize.width,
-                                     y: bounds.maxY - tagSize.height,
-                                     width: tagSize.width, height: tagSize.height)
-        let tagTextHeight = max(8, 12 * scale)
-        tagLabel.frame = NSRect(x: 0, y: (tagSize.height - tagTextHeight) / 2,
-                                width: tagSize.width, height: tagTextHeight)
-        if showsTaskProgress {
-            tagBackground.isHidden = bounds.width < 56
-            tagBackground.frame = CGRect(x: bounds.width - 36, y: bounds.height - 19, width: 31, height: 14)
-            tagBackground.layer?.cornerRadius = 4
-            tagLabel.font = PanelStyle.inspectFont(ofSize: 9, weight: .semibold)
-            tagLabel.frame = tagBackground.bounds
+        let s = min(bounds.width, bounds.height) / InspectLayout.thumbSize
+        let h = bounds.height
+        func top(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ hh: CGFloat) -> NSRect {
+            NSRect(x: x * s, y: h - (y + hh) * s, width: w * s, height: hh * s)
         }
-        ossCaptionBackground.layer?.cornerRadius = 5 * scale
-        ossCaptionBackground.frame = NSRect(x: 4 * scale, y: 4 * scale,
-                                             width: bounds.width - 8 * scale, height: 23 * scale)
-        ossCaptionLabel.font = PanelStyle.inspectFont(ofSize: max(8, 10 * scale), weight: .semibold)
-        ossCaptionLabel.frame = NSRect(x: 0, y: 5 * scale,
-                                       width: ossCaptionBackground.bounds.width,
-                                       height: 12 * scale)
-        plusLabel.frame = CGRect(x: 0, y: bounds.height / 2 - 14, width: bounds.width, height: 28)
+        layer?.cornerRadius = PanelStyle.Radius.control * s
+        imageView.frame = top(4, 4, 40, 40)
+        ring.frame = top(14, 14, 20, 20)
+        failureMark.frame = top(34, -2, 14, 14)
+        failureMark.layer?.cornerRadius = 7 * s
+        failureGlyph.frame = failureMark.bounds
+        newMark.frame = top(40, -1, 5, 5)
+        newMark.layer?.cornerRadius = 2.5 * s
+        slotCaption.frame = top(0, -17, 48, 12)
+        ossCaptionBackground.frame = top(6, 32, 20, 10)
+        ossCaptionLabel.frame = ossCaptionBackground.bounds
+        plusLabel.frame = bounds
     }
 }
 

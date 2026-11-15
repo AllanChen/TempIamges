@@ -1,105 +1,44 @@
 import AppKit
 
-/// Image Inspect's Figma-defined right inspector. Matches the
-/// "Dark Refresh v3 / Image Inspect / Clean Editable" image information panel:
-/// frosted dark card, title + filename hint, and two-column metadata rows.
+/// Image Inspect's information panel (Figma `20 · Image Inspect / Info`):
+/// the file name in Mincho, its folder in mono, then Image / Color / File
+/// sections of key (12 pt text/3) and value (mono 11 pt text/1) rows.
 final class FigmaImageInspectorView: NSView {
     /// The panel is a borderless child window, so it carries its own close control.
     var onClose: (() -> Void)?
-    private lazy var closeButton = PanelStyle.makeIconButton(symbol: "xmark", tooltip: "Close".localized,
-                                                             target: self, action: #selector(closeTapped))
-    private let titleLabel = NSTextField(labelWithString: "Image information".localized)
-    private let subtitleLabel = NSTextField(labelWithString: "")
-    // Figma panel shows six metadata rows; Alpha is omitted to match the design.
-    private let keys = ["Name", "Dimensions", "Format", "File size", "Color profile", "Created"]
-    private var keyLabels: [NSTextField] = []
-    private var valueLabels: [NSTextField] = []
-    private var dividers: [NSView] = []
+    private lazy var closeButton: InspectToolbarButton = {
+        let button = InspectToolbarButton(symbol: "xmark", tooltip: "Close".localized)
+        button.usesShizukaStyle = true
+        button.target = self
+        button.action = #selector(closeTapped)
+        return button
+    }()
     private var items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)] = []
+    private var title = ""
+    private var folder = ""
+    private var sections: [(String, [(String, String)])] = []
 
-    // MARK: Layout metrics (points at 1×, matching Figma)
-    private let padX: CGFloat = 23
-    private let rowInsetX: CGFloat = 35
-    private let rowValueX: CGFloat = 173
-    private let headerTop: CGFloat = 23
-    private let headerDividerY: CGFloat = 81
-    private let rowStartY: CGFloat = 111
-    private let rowHeight: CGFloat = 46
+    private static let padX: CGFloat = 24
+    private static let keyFont = PanelStyle.inspectFont(ofSize: 12)
+    private static let valueFont = PanelStyle.monoFont(ofSize: 11)
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
-
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 17, weight: .semibold)
-        titleLabel.textColor = PanelStyle.textPrimary
-        addSubview(titleLabel)
         addSubview(closeButton)
-
-        subtitleLabel.font = PanelStyle.inspectFont(ofSize: 11)
-        subtitleLabel.textColor = PanelStyle.textSecondary
-        subtitleLabel.lineBreakMode = .byTruncatingMiddle
-        addSubview(subtitleLabel)
-
-        for key in keys {
-            let keyLabel = NSTextField(labelWithString: key.localized)
-            keyLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
-            keyLabel.textColor = PanelStyle.textTertiary
-            addSubview(keyLabel)
-            keyLabels.append(keyLabel)
-
-            let valueLabel = NSTextField(labelWithString: "—")
-            valueLabel.font = PanelStyle.inspectFont(ofSize: 13)
-            valueLabel.textColor = PanelStyle.textPrimary
-            valueLabel.lineBreakMode = .byTruncatingMiddle
-            valueLabel.isSelectable = true
-            addSubview(valueLabel)
-            valueLabels.append(valueLabel)
-
-            let divider = NSView()
-            divider.wantsLayer = true
-            divider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-            addSubview(divider)
-            dividers.append(divider)
-        }
-        // One extra divider for the header separator (white at 12% opacity).
-        let headerDivider = NSView()
-        headerDivider.wantsLayer = true
-        addSubview(headerDivider)
-        dividers.insert(headerDivider, at: 0)
-
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityLabel("Image information".localized)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override var isFlipped: Bool { true }
 
     override func layout() {
         super.layout()
-        guard bounds.width > 0, bounds.height > 0 else { return }
-
-        func topFrame(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
-            NSRect(x: x, y: bounds.height - y - h, width: w, height: h)
-        }
-
-        let closeSize: CGFloat = 24
-        closeButton.frame = topFrame(bounds.width - padX - closeSize, headerTop - 2, closeSize, closeSize)
-        titleLabel.frame = topFrame(padX, headerTop, bounds.width - padX * 2 - closeSize - 8, 21)
-        subtitleLabel.frame = topFrame(padX, headerTop + 28, bounds.width - padX * 2 - closeSize - 8, 13)
-
-        let headerDivider = dividers[0]
-        headerDivider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.textPrimary.withAlphaComponent(0.12))
-        headerDivider.frame = topFrame(padX, headerDividerY, bounds.width - padX * 2, 1)
-
-        for index in keys.indices {
-            let y = rowStartY + CGFloat(index) * rowHeight
-            keyLabels[index].frame = topFrame(rowInsetX, y, rowValueX - rowInsetX - 8, 16)
-            valueLabels[index].frame = topFrame(rowValueX, y, bounds.width - rowValueX - rowInsetX, 16)
-            // Row dividers sit below each value (except we reuse the first divider
-            // for the header; metadata dividers start at index 1).
-            let dividerIndex = index + 1
-            if dividerIndex < dividers.count {
-                dividers[dividerIndex].frame = topFrame(rowInsetX, y + 30, bounds.width - rowInsetX * 2, 1)
-            }
-        }
+        closeButton.frame = NSRect(x: bounds.width - 16 - InspectLayout.controlSize, y: 26,
+                                   width: InspectLayout.controlSize, height: InspectLayout.controlSize)
     }
 
     func show(items: [(index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)]) {
@@ -116,39 +55,94 @@ final class FigmaImageInspectorView: NSView {
 
     private func display(_ item: (index: Int, info: MediaInfo, metadata: ImageTechnicalMetadata?)) {
         let info = item.info
-        let dimensions = info.dimensions.map { "\(Int($0.width)) × \(Int($0.height))" } ?? "—"
-        let size = info.fileSize.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "—"
+        let metadata = item.metadata
+        let dash = "—"
+        let dimensions = info.dimensions.map { "\(Int($0.width)) × \(Int($0.height))" } ?? dash
+        let size = info.fileSize.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? dash
         let created: String = {
             guard info.isLocal,
                   let attributes = try? FileManager.default.attributesOfItem(atPath: info.url.path),
-                  let date = attributes[.creationDate] as? Date else { return "—" }
+                  let date = attributes[.creationDate] as? Date else { return dash }
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             formatter.timeStyle = .short
             return formatter.string(from: date)
         }()
-        let values = [
-            info.filename,
-            dimensions,
-            info.formatName.isDisplayableValue ? info.formatName : "—",
-            size,
-            item.metadata?.colorSpace?.isDisplayableValue == true ? item.metadata!.colorSpace! : "—",
-            created
+        let location = info.isLocal
+            ? (info.url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+            : (info.url.host ?? info.url.absoluteString)
+        title = info.filename
+        folder = location
+        sections = [
+            ("Image".localized, [
+                ("Dimensions".localized, dimensions),
+                ("Aspect ratio".localized, Self.aspectRatio(info.dimensions) ?? dash),
+                ("Format".localized, info.formatName.isDisplayableValue ? info.formatName : dash),
+                ("File size".localized, size)
+            ]),
+            ("Color".localized, [
+                ("Color space".localized, metadata?.colorSpace?.isDisplayableValue == true ? metadata!.colorSpace! : dash),
+                ("Bit depth".localized, metadata?.bitDepth.map { "\($0)-bit" } ?? dash),
+                ("Alpha".localized, metadata?.hasAlpha.map { ($0 ? "Yes" : "No").localized } ?? dash)
+            ]),
+            ("File".localized, [
+                ("Created".localized, created),
+                ("Path".localized, location)
+            ])
         ]
-        for (label, value) in zip(valueLabels, values) { label.stringValue = value }
-        subtitleLabel.stringValue = info.filename
+        needsDisplay = true
     }
+
+    /// "4 : 3" for common ratios, otherwise the decimal ratio.
+    private static func aspectRatio(_ size: CGSize?) -> String? {
+        guard let size, size.width > 0, size.height > 0 else { return nil }
+        func gcd(_ a: Int, _ b: Int) -> Int { b == 0 ? a : gcd(b, a % b) }
+        let w = Int(size.width.rounded()), h = Int(size.height.rounded())
+        let divisor = max(1, gcd(w, h))
+        let (rw, rh) = (w / divisor, h / divisor)
+        if rw <= 32, rh <= 32 { return "\(rw) : \(rh)" }
+        return String(format: "%.3f", size.width / size.height)
+    }
+
+    /// Figma (top-origin): padding 28 / 24, title 20 pt on a 28 pt line, 4,
+    /// folder 14, 24, then per section: caption 15, 4, rows of 32 (8 + 15 + 8 + 1 rule), 24.
+    override func draw(_ dirtyRect: NSRect) {
+        let x = Self.padX
+        let width = bounds.width - x * 2
+        InspectText.draw(title, in: NSRect(x: x, y: 28, width: width - InspectLayout.controlSize - 8, height: 28),
+                         font: PanelStyle.titleFont(ofSize: 20), color: InspectInk.text1, truncation: .byTruncatingMiddle)
+        InspectText.draw(folder, in: NSRect(x: x, y: 60, width: width, height: 14),
+                         font: Self.valueFont, color: InspectInk.text3, truncation: .byTruncatingMiddle)
+        var y: CGFloat = 60 + 14 + 24
+        for (caption, rows) in sections {
+            InspectText.draw(caption, in: NSRect(x: x, y: y, width: width, height: 15),
+                             font: Self.keyFont, color: InspectInk.text3)
+            y += 15 + 4
+            for (key, value) in rows {
+                let keyWidth = min(width * 0.45, InspectText.width(key, font: Self.keyFont))
+                InspectText.draw(key, in: NSRect(x: x, y: y + 8, width: keyWidth, height: 15),
+                                 font: Self.keyFont, color: InspectInk.text3)
+                let valueX = x + keyWidth + 8
+                InspectText.draw(value, in: NSRect(x: valueX, y: y + 8.5, width: max(0, x + width - valueX), height: 14),
+                                 font: Self.valueFont, color: InspectInk.text1, align: .right,
+                                 truncation: .byTruncatingMiddle)
+                InspectInk.line.setFill()
+                NSRect(x: x, y: y + 31, width: width, height: 1).fill()
+                y += 32
+            }
+            y += 24
+        }
+    }
+
+    /// Height the content needs (used to size the panel).
+    static var contentHeight: CGFloat { 60 + 14 + 24 + 3 * (15 + 4 + 24) + 9 * 32 }
 }
 
-/// Image Information as its own frosted child window, attached to the right edge
-/// of the Image Inspect window — matches the Figma panel exactly.
+/// Image Information as its own child window attached to the right edge of
+/// the Image Inspect window: the Figma 320 pt ink/1 panel, top-aligned.
 final class ImageInfoPanel: NSPanel {
-    private static let panelWidth: CGFloat = 372
-    /// The card ends with the last metadata row: its divider finishes at y 372
-    /// (rowStartY 111 + 5 rows × 46 + 30 + 1) plus a 24pt bottom margin that
-    /// mirrors the 23pt header margin. The old 684 height reserved space for
-    /// the Quick Actions buttons, which no longer exist.
-    private static let panelHeight: CGFloat = 396
+    private static let panelWidth: CGFloat = 320
+    private static let panelHeight: CGFloat = FigmaImageInspectorView.contentHeight
     private weak var attachedParent: NSWindow?
 
     init() {
@@ -156,73 +150,25 @@ final class ImageInfoPanel: NSPanel {
                    styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = false
+        hasShadow = true
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
-        appearance = NSAppearance(named: .darkAqua)
+        appearance = PanelStyle.windowAppearance
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        // Outer wrapper casts the Figma shadow; inner content clips the frost.
-        let wrapper = NSView(frame: NSRect(x: 0, y: 0, width: Self.panelWidth, height: Self.panelHeight))
-        wrapper.wantsLayer = true
-        wrapper.layer?.masksToBounds = false
-        wrapper.layer?.shadowColor = NSColor.black.withAlphaComponent(0.32).cgColor
-        wrapper.layer?.shadowOffset = CGSize(width: 0, height: -12)
-        wrapper.layer?.shadowRadius = 28
-        wrapper.layer?.shadowOpacity = 1
-
-        let root = NSView(frame: wrapper.bounds)
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: Self.panelWidth, height: Self.panelHeight))
         root.wantsLayer = true
-        root.layer?.cornerRadius = 16
+        root.layer?.backgroundColor = PanelStyle.resolvedCG(InspectInk.ink1)
+        root.layer?.cornerRadius = PanelStyle.Radius.window
         root.layer?.masksToBounds = true
         root.layer?.borderWidth = 1
-        root.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        root.layer?.borderColor = PanelStyle.resolvedCG(InspectInk.lineStrong)
         root.autoresizingMask = [.width, .height]
-        wrapper.addSubview(root)
-
-        // Frosted base: NSVisualEffectView samples from behind the panel, and a
-        // tint layer biases it toward the Figma rgba(22,23,25,0.92) fill.
-        let blur = NSVisualEffectView()
-        blur.material = .hudWindow
-        blur.blendingMode = .behindWindow
-        blur.state = .active
-        blur.appearance = NSAppearance(named: .vibrantDark)
-        blur.wantsLayer = true
-        blur.layer?.cornerRadius = 16
-        blur.layer?.masksToBounds = true
-        // Behind-window blur ignores layer masking; without this the panel shows
-        // square corners and a square window shadow.
-        blur.maskImage = PanelStyle.roundedMask(radius: 16)
-        blur.frame = root.bounds
-        blur.autoresizingMask = [.width, .height]
-        root.addSubview(blur)
-
-        let tint = CALayer()
-        tint.backgroundColor = NSColor(srgbRed: 22 / 255, green: 23 / 255, blue: 25 / 255, alpha: 0.92).cgColor
-        tint.cornerRadius = 16
-        tint.frame = root.bounds
-        tint.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-        blur.layer?.addSublayer(tint)
-
-        contentView = wrapper
-        updateRoundedShadow()
-    }
-
-    override func setFrame(_ frameRect: NSRect, display flag: Bool) {
-        super.setFrame(frameRect, display: flag)
-        updateRoundedShadow()
-    }
-
-    private func updateRoundedShadow() {
-        guard let contentView else { return }
-        contentView.layer?.cornerRadius = 16
-        contentView.layer?.shadowPath = CGPath(roundedRect: contentView.bounds,
-                                               cornerWidth: 16, cornerHeight: 16, transform: nil)
+        contentView = root
     }
 
     func setContent(_ view: NSView) {
-        guard let wrapper = contentView,
-              let root = wrapper.subviews.first else { return }
+        guard let root = contentView else { return }
         if view.superview !== root {
             view.removeFromSuperview()
             view.frame = root.bounds
@@ -252,10 +198,7 @@ final class ImageInfoPanel: NSPanel {
         var x = parent.frame.maxX + gap
         if x + width > visible.maxX { x = max(visible.minX, parent.frame.minX - width - gap) }
         x = max(visible.minX, min(x, visible.maxX - width))
-        // Fixed card height; just slide it up/down to stay on screen as much as
-        // possible.
-        // Align the child panel to the parent's top edge, matching the Figma
-        // side-panel presentation rather than docking it to the bottom.
+        // Align the panel to the parent's top edge, as the Figma side panel.
         let y = max(visible.minY, min(parent.frame.maxY - height, visible.maxY - height))
         setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
         contentView?.layoutSubtreeIfNeeded()

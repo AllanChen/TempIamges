@@ -52,81 +52,46 @@ final class WidgetTextResultWindow: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
-        appearance = NSAppearance(named: .darkAqua)
+        appearance = PanelStyle.windowAppearance
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         animationBehavior = .none
         NotificationCenter.default.addObserver(self, selector: #selector(didBecomeKey),
                                                name: NSWindow.didBecomeKeyNotification, object: self)
 
         let windowContainer = NSView()
-        windowContainer.wantsLayer = true
-        windowContainer.layer?.cornerRadius = 16
-        windowContainer.layer?.cornerCurve = .continuous
-        windowContainer.layer?.masksToBounds = true
         contentView = windowContainer
-        windowContainer.superview?.wantsLayer = true
-        windowContainer.superview?.layer?.cornerRadius = 16
-        windowContainer.superview?.layer?.cornerCurve = .continuous
-        windowContainer.superview?.layer?.masksToBounds = true
-
-        let frost = PanelStyle.makeFrostedBase(cornerRadius: 16)
-        frost.layer?.masksToBounds = true
-        frost.layer?.borderWidth = 1
-        frost.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.textPrimary.withAlphaComponent(0.14))
-        frost.frame = windowContainer.bounds
-        frost.autoresizingMask = [.width, .height]
-        windowContainer.addSubview(frost)
-        rootView.wantsLayer = true
-        rootView.layer?.cornerRadius = 16
-        rootView.layer?.cornerCurve = .continuous
-        rootView.layer?.masksToBounds = true
-        frost.addSubview(rootView)
-        rootView.frame = frost.bounds
-        rootView.autoresizingMask = [.width, .height]
-
-        titlebar.wantsLayer = true
-        titlebar.layer?.backgroundColor = PanelStyle.resolvedCG(
-            NSColor(srgbRed: 23 / 255, green: 24 / 255, blue: 29 / 255, alpha: 0.88))
-        rootView.addSubview(titlebar)
-
-        [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton].forEach(titlebar.addSubview)
-        titleLabel.string = "Widget Result".localized
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold)
-        titleLabel.textColor = PanelStyle.textPrimary
-        titleLabel.alignment = .center
-        titlebar.addSubview(titleLabel)
-        titlebarDivider.wantsLayer = true
-        titlebarDivider.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
-        titlebar.addSubview(titlebarDivider)
+        WidgetTextResultChrome.styleWindow(container: windowContainer, root: rootView)
+        WidgetTextResultChrome.styleTitlebar(titlebar, title: titleLabel, text: "Widget Result".localized,
+                                             traffic: [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton],
+                                             divider: titlebarDivider, in: rootView)
+        copyButton.idleTitle = "Copy result".localized
         copyButton.onPress = { [weak self] in self?.copyResult() }
-        titlebar.addSubview(copyButton)
+        rootView.addSubview(copyButton)
 
-        widgetNameLabel.font = PanelStyle.inspectFont(ofSize: 17, weight: .semibold)
-        widgetNameLabel.textColor = PanelStyle.textPrimary
+        // Figma `33 · Widget Result / Text`: a 44 pt source thumbnail, the
+        // Widget name (13 pt medium) and the source in mono, then a caption.
+        widgetNameLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
+        widgetNameLabel.textColor = InspectInk.text1
         widgetNameLabel.lineBreakMode = .byTruncatingTail
         rootView.addSubview(widgetNameLabel)
 
-        statusLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
-        statusLabel.textColor = PanelStyle.success
-        statusDot.layer?.cornerRadius = 4
+        statusLabel.font = PanelStyle.monoFont(ofSize: 11)
+        statusLabel.textColor = InspectInk.text3
+        statusDot.isHidden = true
         rootView.addSubview(statusDot)
         rootView.addSubview(statusLabel)
 
         rootView.addSubview(inputPreview)
-        inputLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
-        inputLabel.textColor = PanelStyle.textTertiary
+        inputLabel.isHidden = true
         rootView.addSubview(inputLabel)
-        filenameLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
-        filenameLabel.textColor = PanelStyle.textPrimary
+        filenameLabel.font = PanelStyle.monoFont(ofSize: 11)
+        filenameLabel.textColor = InspectInk.text3
         filenameLabel.lineBreakMode = .byTruncatingMiddle
         rootView.addSubview(filenameLabel)
-        metadataLabel.font = PanelStyle.inspectFont(ofSize: 11)
-        metadataLabel.textColor = PanelStyle.textSecondary
-        metadataLabel.lineBreakMode = .byTruncatingTail
+        metadataLabel.isHidden = true
         rootView.addSubview(metadataLabel)
 
-        contentDivider.wantsLayer = true
-        contentDivider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        contentDivider.isHidden = true
         rootView.addSubview(contentDivider)
 
         resultScroll.drawsBackground = false
@@ -151,16 +116,11 @@ final class WidgetTextResultWindow: NSPanel {
         resultScroll.documentView = resultTextView
         rootView.addSubview(resultScroll)
 
-        footerDivider.wantsLayer = true
-        footerDivider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        rootView.addSubview(footerDivider)
-        typeLabel.font = PanelStyle.inspectFont(ofSize: 11)
-        typeLabel.textColor = PanelStyle.textTertiary
+        WidgetTextResultChrome.styleFooter(divider: footerDivider, count: characterCountLabel, in: rootView)
+        // The result type is part of the caption above the text.
+        typeLabel.isHidden = true
         rootView.addSubview(typeLabel)
-        characterCountLabel.font = PanelStyle.inspectFont(ofSize: 11)
-        characterCountLabel.textColor = PanelStyle.textTertiary
-        characterCountLabel.alignment = .right
-        rootView.addSubview(characterCountLabel)
+        statusLabel.stringValue = Self.captionText
 
         rootView.onLayout = { [weak self] bounds in self?.layoutContent(in: bounds) }
         layoutContent(in: rootView.bounds)
@@ -172,45 +132,42 @@ final class WidgetTextResultWindow: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
+    /// Figma `RESULT  ·  PLAIN TEXT` caption (mono 11, text/3).
+    private static var captionText: String {
+        ("Result".localized + "  ·  " + "Plain text".localized).uppercased()
+    }
+
+    /// Figma (top-origin, 31 pt sides): header at 71 (44 pt thumbnail, name and
+    /// source beside it), caption 28 pt below, the text 12 pt below that, and
+    /// the footer rule 16 pt above the 32 pt Copy button, 25 pt from the foot.
     private func layoutContent(in bounds: NSRect) {
         let width = bounds.width
         let height = bounds.height
-        let titlebarHeight: CGFloat = 58
-        titlebar.frame = NSRect(x: 0, y: height - titlebarHeight,
-                                width: width, height: titlebarHeight)
-        closeTrafficButton.frame = NSRect(x: 14, y: 19, width: 20, height: 20)
-        minimizeTrafficButton.frame = NSRect(x: 34, y: 19, width: 20, height: 20)
-        zoomTrafficButton.frame = NSRect(x: 54, y: 19, width: 20, height: 20)
-        titleLabel.frame = NSRect(x: 0, y: 20, width: width, height: 18)
-        titlebarDivider.frame = NSRect(x: 0, y: 0, width: width, height: 1)
-        copyButton.frame = NSRect(x: width - 102, y: 13, width: 82, height: 32)
-
-        widgetNameLabel.frame = frameFromTop(x: 28, y: 82, width: max(0, width - 176),
-                                             height: 22, containerHeight: height)
-        statusDot.frame = frameFromTop(x: width - 105, y: 88, width: 8, height: 8,
-                                       containerHeight: height)
-        statusLabel.frame = frameFromTop(x: width - 89, y: 84, width: 61, height: 14,
-                                         containerHeight: height)
-        statusLabel.alignment = .right
-        inputPreview.frame = frameFromTop(x: 28, y: 126, width: 128, height: 96,
-                                          containerHeight: height)
-        inputLabel.frame = frameFromTop(x: 176, y: 132, width: max(0, width - 204), height: 14,
-                                        containerHeight: height)
-        filenameLabel.frame = frameFromTop(x: 176, y: 157, width: max(0, width - 204), height: 18,
+        WidgetTextResultChrome.layoutTitlebar(titlebar, title: titleLabel,
+                                              traffic: [closeTrafficButton, minimizeTrafficButton, zoomTrafficButton],
+                                              divider: titlebarDivider, width: width, height: height)
+        let inset: CGFloat = 31
+        let textWidth = max(0, width - inset * 2)
+        inputPreview.frame = frameFromTop(x: inset, y: 71, width: 44, height: 44, containerHeight: height)
+        widgetNameLabel.frame = frameFromTop(x: inset + 56, y: 76, width: max(0, textWidth - 56), height: 17,
+                                             containerHeight: height)
+        filenameLabel.frame = frameFromTop(x: inset + 56, y: 96, width: max(0, textWidth - 56), height: 15,
                                            containerHeight: height)
-        metadataLabel.frame = frameFromTop(x: 176, y: 183, width: max(0, width - 204), height: 16,
-                                           containerHeight: height)
-        contentDivider.frame = frameFromTop(x: 28, y: 250, width: max(0, width - 56), height: 1,
-                                            containerHeight: height)
+        statusLabel.frame = frameFromTop(x: inset, y: 143, width: textWidth, height: 15, containerHeight: height)
+        statusLabel.alignment = .left
+        statusDot.frame = .zero
+        inputLabel.frame = .zero
+        metadataLabel.frame = .zero
+        contentDivider.frame = .zero
 
-        let footerY: CGFloat = 66
-        footerDivider.frame = NSRect(x: 28, y: footerY, width: max(0, width - 56), height: 1)
-        typeLabel.frame = NSRect(x: 28, y: 24, width: 120, height: 16)
-        characterCountLabel.frame = NSRect(x: max(148, width - 178), y: 24,
-                                           width: 150, height: 16)
-        let resultTop = max(footerY + 14, height - 280)
-        resultScroll.frame = NSRect(x: 28, y: footerY + 14, width: max(0, width - 56),
-                                    height: max(0, resultTop - footerY - 14))
+        let copyWidth = copyButton.preferredWidth
+        copyButton.frame = NSRect(x: width - inset - copyWidth, y: 25, width: copyWidth, height: 32)
+        let footerY = WidgetTextResultChrome.layoutFooter(divider: footerDivider, count: characterCountLabel,
+                                                          inset: inset, width: width)
+        typeLabel.frame = .zero
+        let resultTop = height - 170
+        resultScroll.frame = NSRect(x: inset, y: footerY + 16, width: textWidth,
+                                    height: max(0, resultTop - footerY - 16))
         layoutResultText()
     }
 
@@ -226,7 +183,7 @@ final class WidgetTextResultWindow: NSPanel {
         copyButton.isEnabled = false
         copyButton.setCopied(false)
         widgetNameLabel.stringValue = task.widgetName
-        filenameLabel.stringValue = source.filename
+        filenameLabel.stringValue = source.filename + "  ·  " + Self.metadataText(for: source)
         metadataLabel.stringValue = Self.metadataText(for: source)
         inputPreview.image = sourceImage
         characterCountLabel.stringValue = "0 characters".localized
@@ -241,7 +198,7 @@ final class WidgetTextResultWindow: NSPanel {
     func showResult(_ text: String) {
         resultText = text
         let displayed = text.isEmpty ? "No text returned".localized : text
-        setResultText(displayed, color: PanelStyle.textPrimary,
+        setResultText(displayed, color: InspectInk.text1,
                       characterCount: text.count)
         copyButton.isEnabled = !text.isEmpty
         resultTextView.scrollToBeginningOfDocument(nil)
@@ -255,8 +212,8 @@ final class WidgetTextResultWindow: NSPanel {
 
     private func setResultText(_ text: String, color: NSColor, characterCount: Int?) {
         let paragraph = NSMutableParagraphStyle()
-        paragraph.minimumLineHeight = 24
-        paragraph.maximumLineHeight = 24
+        paragraph.minimumLineHeight = 26
+        paragraph.maximumLineHeight = 26
         paragraph.lineBreakMode = .byWordWrapping
         resultTextView.textStorage?.setAttributedString(NSAttributedString(
             string: text,
@@ -374,43 +331,47 @@ final class WidgetTextResultTitlebar: NSView {
     }
 }
 
+/// Figma primary `Button` (text/1 fill, 13 pt medium ink label, 32 pt high,
+/// 16 pt padding). Shows "Copied" briefly after a copy.
 final class WidgetTextCopyButton: NSControl {
     var onPress: (() -> Void)?
-    private let icon = NSImageView()
-    private let label = NSTextField(labelWithString: "Copy".localized)
+    /// The resting title ("Copy result", "Copy All").
+    var idleTitle = "Copy".localized { didSet { if !copied { title = idleTitle } } }
+    private var title = "Copy".localized { didSet { setAccessibilityLabel(title); needsDisplay = true } }
+    private var copied = false
+    private var hovering = false
     private var tracking: NSTrackingArea?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 8
-        layer?.borderWidth = 1
-        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-        icon.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
-        icon.imageScaling = .scaleProportionallyUpOrDown
-        icon.contentTintColor = PanelStyle.accent
-        addSubview(icon)
-        label.font = PanelStyle.inspectFont(ofSize: 11, weight: .semibold)
-        label.textColor = PanelStyle.accent
-        label.alignment = .center
-        addSubview(label)
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
-        setAccessibilityLabel("Copy result".localized)
+        setAccessibilityLabel(title)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
         return bounds.contains(local) ? self : nil
     }
     override func accessibilityPerformPress() -> Bool { performPress(); return true }
-    override func layout() {
-        super.layout()
-        icon.frame = NSRect(x: 11, y: 8.5, width: 15, height: 15)
-        label.frame = NSRect(x: 28, y: 8, width: max(0, bounds.width - 36), height: 16)
+    /// Wide enough for both the resting and the "Copied" title, so it never jumps.
+    var preferredWidth: CGFloat {
+        max(InspectDialogButton.width(idleTitle), InspectDialogButton.width("Copied".localized))
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let plate = NSBezierPath(roundedRect: bounds, xRadius: PanelStyle.Radius.control, yRadius: PanelStyle.Radius.control)
+        (hovering && isEnabled ? PanelStyle.accentHover : InspectInk.text1).setFill()
+        plate.fill()
+        // Centre the 13 pt label in the 32 pt plate (Figma auto layout, items-center).
+        let font = InspectDialogButton.font
+        let lineHeight = ceil(font.ascender - font.descender + font.leading)
+        InspectText.draw(title, in: NSRect(x: 0, y: (bounds.height - lineHeight) / 2, width: bounds.width, height: lineHeight),
+                         font: font, color: PanelStyle.accentInk, align: .center)
     }
     override func mouseDown(with event: NSEvent) {
         if isEnabled, bounds.contains(convert(event.locationInWindow, from: nil)) { performPress() }
@@ -424,15 +385,8 @@ final class WidgetTextCopyButton: NSControl {
         addTrackingArea(area)
         tracking = area
     }
-    override func mouseEntered(with event: NSEvent) {
-        guard isEnabled else { return }
-        layer?.backgroundColor = PanelStyle.resolvedCG(
-            PanelStyle.inspectToolbar.blended(withFraction: 0.12, of: PanelStyle.accent)
-                ?? PanelStyle.inspectToolbar)
-    }
-    override func mouseExited(with event: NSEvent) {
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-    }
+    override func mouseEntered(with event: NSEvent) { hovering = true; needsDisplay = true }
+    override func mouseExited(with event: NSEvent) { hovering = false; needsDisplay = true }
     override var isEnabled: Bool {
         didSet {
             alphaValue = isEnabled ? 1 : 0.45
@@ -440,13 +394,81 @@ final class WidgetTextCopyButton: NSControl {
         }
     }
     func setCopied(_ copied: Bool) {
-        icon.image = NSImage(systemSymbolName: copied ? "checkmark" : "doc.on.doc",
-                             accessibilityDescription: nil)
-        icon.contentTintColor = copied ? PanelStyle.success : PanelStyle.accent
-        label.stringValue = copied ? "Copied".localized : "Copy".localized
-        label.textColor = copied ? PanelStyle.success : PanelStyle.accent
+        self.copied = copied
+        title = copied ? "Copied".localized : idleTitle
     }
     private func performPress() { onPress?() }
+}
+
+/// Shared Shizuka chrome of the side text windows (Recognize Text, Widget
+/// Result): ink/1 plate, line/strong edge, 12 pt corners, a 44 pt titlebar
+/// with 12 pt window controls and a 13 pt text/2 title.
+enum WidgetTextResultChrome {
+    static func styleWindow(container: NSView, root: NSView) {
+        container.wantsLayer = true
+        container.layer?.cornerRadius = PanelStyle.Radius.window
+        container.layer?.masksToBounds = true
+        container.superview?.wantsLayer = true
+        container.superview?.layer?.cornerRadius = PanelStyle.Radius.window
+        container.superview?.layer?.masksToBounds = true
+        root.wantsLayer = true
+        root.layer?.backgroundColor = PanelStyle.resolvedCG(InspectInk.ink1)
+        root.layer?.cornerRadius = PanelStyle.Radius.window
+        root.layer?.masksToBounds = true
+        root.layer?.borderWidth = 1
+        root.layer?.borderColor = PanelStyle.resolvedCG(InspectInk.lineStrong)
+        root.frame = container.bounds
+        root.autoresizingMask = [.width, .height]
+        container.addSubview(root)
+    }
+
+    static func styleTitlebar(_ titlebar: NSView, title: PanelCenteredTextView, text: String,
+                              traffic: [NSView], divider: NSView, in root: NSView) {
+        titlebar.wantsLayer = true
+        titlebar.layer?.backgroundColor = NSColor.clear.cgColor
+        root.addSubview(titlebar)
+        traffic.forEach(titlebar.addSubview)
+        title.string = text
+        title.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
+        title.textColor = InspectInk.text2
+        title.alignment = .center
+        titlebar.addSubview(title)
+        // The Shizuka side windows have no titlebar rule.
+        divider.isHidden = true
+        titlebar.addSubview(divider)
+    }
+
+    static func layoutTitlebar(_ titlebar: NSView, title: PanelCenteredTextView, traffic: [NSView],
+                               divider: NSView, width: CGFloat, height: CGFloat) {
+        let barHeight = InspectLayout.titlebarHeight
+        titlebar.frame = NSRect(x: 0, y: height - barHeight, width: width, height: barHeight)
+        for (index, button) in traffic.enumerated() {
+            button.frame = NSRect(x: 20 + CGFloat(index) * 20, y: barHeight - 16 - 12, width: 12, height: 12)
+            button.layer?.cornerRadius = 6
+        }
+        title.frame = NSRect(x: 80, y: barHeight - 13 - 16, width: max(0, width - 160), height: 16)
+        divider.frame = .zero
+    }
+
+    static func styleFooter(divider: NSView, count: NSTextField, in root: NSView) {
+        divider.wantsLayer = true
+        divider.layer?.backgroundColor = PanelStyle.resolvedCG(InspectInk.line)
+        root.addSubview(divider)
+        count.font = PanelStyle.monoFont(ofSize: 11)
+        count.textColor = InspectInk.text3
+        count.alignment = .left
+        root.addSubview(count)
+    }
+
+    /// Rule 16 pt above the 32 pt button row that sits 25 pt from the foot; the
+    /// count is centred on that row. Returns the rule's y.
+    @discardableResult
+    static func layoutFooter(divider: NSView, count: NSTextField, inset: CGFloat, width: CGFloat) -> CGFloat {
+        let ruleY: CGFloat = 25 + 32 + 16
+        divider.frame = NSRect(x: inset, y: ruleY, width: max(0, width - inset * 2), height: 1)
+        count.frame = NSRect(x: inset, y: 25 + (32 - 14) / 2, width: max(0, width / 2 - inset), height: 14)
+        return ruleY
+    }
 }
 
 final class WidgetTextInputPreviewView: NSView {
@@ -455,7 +477,7 @@ final class WidgetTextInputPreviewView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 9
+        layer?.cornerRadius = 4
         layer?.masksToBounds = true
     }
 
@@ -463,7 +485,7 @@ final class WidgetTextInputPreviewView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        let path = NSBezierPath(roundedRect: bounds, xRadius: 9, yRadius: 9)
+        let path = NSBezierPath(roundedRect: bounds, xRadius: 4, yRadius: 4)
         NSGraphicsContext.saveGraphicsState()
         path.addClip()
         PanelStyle.inspectCanvas.setFill()
@@ -482,8 +504,5 @@ final class WidgetTextInputPreviewView: NSView {
                              from: .zero, operation: .sourceOver, fraction: 0.45)
         }
         NSGraphicsContext.restoreGraphicsState()
-        PanelStyle.inspectLine.setStroke()
-        path.lineWidth = 1
-        path.stroke()
     }
 }

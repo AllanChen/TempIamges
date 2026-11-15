@@ -60,6 +60,9 @@ struct WidgetTaskRecord: Codable, Identifiable {
         }
         return creditCost == 0 ? "Free of charge".localized : nil
     }
+    /// True from the click until the price check has answered: the running state is already shown, but nothing has
+    /// been uploaded or submitted and nothing can be charged yet.
+    var isPreparing: Bool { phase == .uploading && quote == nil && requestKey == nil && remoteTaskID == nil }
     var source: URL? { URL(string: sourceURL) }
     var output: URL? { outputPath.map { URL(fileURLWithPath: $0) } }
     /// "Queued · 3 ahead · ~2 min" while the service has not handed the task to
@@ -111,6 +114,9 @@ final class WidgetTaskManager {
     }
 
     private var preflightKeys = Set<String>()
+    /// Records created at the click, before the price check answers, so the running state appears at once. They are
+    /// never saved and never reach the service; the real run takes one over, or it is discarded. Main thread only.
+    private var provisionalIDs = Set<UUID>()
 
     var activeCount: Int { records.filter { $0.phase.isActive }.count }
     func activeRecords(for source: URL) -> [WidgetTaskRecord] { records.filter { $0.phase.isActive && $0.source?.taskKey == source.taskKey } }
@@ -133,7 +139,7 @@ final class WidgetTaskManager {
     @discardableResult
     func start(widget: WidgetManifest, command: WidgetCommand, media: MediaInfo,
                input: WidgetTaskInput? = nil, over parent: NSWindow? = nil,
-               confirmedQuote: WidgetTaskQuote? = nil) -> UUID? {
+               confirmedQuote: WidgetTaskQuote? = nil, provisionalID: UUID? = nil) -> UUID? {
         // A menu or input panel opened before the Widget was taken down must
         // not start a run the service will reject.
         guard WidgetRegistry.shared.isAvailable(id: widget.id) else {
@@ -143,7 +149,7 @@ final class WidgetTaskManager {
         guard BillingCoordinator.shared.requireWidgetSignIn(over: parent ?? NSApp.keyWindow, freeWidget: widget.taskCreditCost == 0, completion: { [weak self, weak parent] in
             _ = self?.start(widget: widget, command: command, media: media, input: input, over: parent)
         }) else { return nil }
-        let matching = records.filter { $0.phase.isActive && $0.source?.taskKey == media.url.taskKey && $0.widgetID == widget.id && $0.commandID == command.id }
+        let matching = records.filter { $0.id != provisionalID && $0.phase.isActive && $0.source?.taskKey == media.url.taskKey && $0.widgetID == widget.id && $0.commandID == command.id }
         if !matching.isEmpty {
             // Uploading/submitting tasks legitimately have no remote ID yet.
             // Do not turn a second click into another independently billed task.
@@ -156,28 +162,34 @@ final class WidgetTaskManager {
         let preflightKey = "\(widget.id)|\(command.id)|\(media.url.absoluteString)"
         guard let quote = confirmedQuote else {
             guard preflightKeys.insert(preflightKey).inserted else { return nil }
+            // The price check is a network round trip: show the running state right away instead of nothing.
+            let provisional = beginProvisional(widget: widget, command: command, media: media, input: input)
             BillingCoordinator.shared.confirmWidgetTask(widget: widget, command: command,
-                mediaURLs: input?.mediaURLs ?? [media.url], over: parent ?? NSApp.keyWindow) { [weak self, weak parent] quote in
+                mediaURLs: input?.mediaURLs ?? [media.url], over: parent ?? NSApp.keyWindow,
+                onNeedsAttention: { [weak self] in
+                    // The user has to act (top up, fix an error): the running state would be misleading.
+                    self?.discardProvisional(provisional)
+                }) { [weak self, weak parent] quote in
                 guard let self else { return }
                 self.preflightKeys.remove(preflightKey)
-                guard let quote else { return }
+                guard let quote else { self.discardProvisional(provisional); return }
                 _ = self.start(widget: widget, command: command, media: media, input: input,
-                               over: parent, confirmedQuote: quote)
+                               over: parent, confirmedQuote: quote, provisionalID: provisional)
             }
             return nil
         }
-        let id = UUID()
+        let id = provisionalID.flatMap { provisionalIDs.contains($0) ? $0 : nil } ?? UUID()
         requestNotificationPermissionIfNeeded()
-        // Names are display snapshots for the Task Center, taken in the app's language.
-        let shownCommand = widget.localized(command)
-        records.insert(WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.displayName,
-            commandID: command.id, commandName: shownCommand.name, outputTypes: command.outputs,
-            showResultURL: command.showResultURL,
-            sourceURL: media.url.absoluteString,
-            sourceKind: media.kind == .video ? "video" : "image",
-            createdAt: Date(), updatedAt: Date(), remoteTaskID: nil, phase: .uploading,
-            progress: 0, outputPath: nil, outputURLString: nil, errorMessage: nil,
-            input: input, quote: quote, creditCost: quote.totalCredits, requestKey: id.uuidString, ownerUserID: AuthManager.shared.session?.user.id), at: 0)
+        if provisionalIDs.remove(id) != nil, let index = records.firstIndex(where: { $0.id == id }) {
+            // The record that has shown the running state since the click now carries the confirmed quote.
+            records[index].quote = quote
+            records[index].creditCost = quote.totalCredits
+            records[index].requestKey = id.uuidString
+            records[index].ownerUserID = AuthManager.shared.session?.user.id
+            records[index].updatedAt = Date()
+        } else {
+            records.insert(makeRecord(id: id, widget: widget, command: command, media: media, input: input, quote: quote), at: 0)
+        }
         changed()
         // Persist the request identity before any upload/submission can leave.
         save { [weak self] saved in
@@ -514,6 +526,36 @@ final class WidgetTaskManager {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.reconcileSettlement(id) }
     }
 
+    /// Names are display snapshots for the Task Center, taken in the app's language.
+    private func makeRecord(id: UUID, widget: WidgetManifest, command: WidgetCommand, media: MediaInfo,
+                            input: WidgetTaskInput?, quote: WidgetTaskQuote?) -> WidgetTaskRecord {
+        let shownCommand = widget.localized(command)
+        return WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.displayName,
+            commandID: command.id, commandName: shownCommand.name, outputTypes: command.outputs,
+            showResultURL: command.showResultURL,
+            sourceURL: media.url.absoluteString,
+            sourceKind: media.kind == .video ? "video" : "image",
+            createdAt: Date(), updatedAt: Date(), remoteTaskID: nil, phase: .uploading,
+            progress: 0, outputPath: nil, outputURLString: nil, errorMessage: nil,
+            input: input, quote: quote, creditCost: quote?.totalCredits,
+            requestKey: quote == nil ? nil : id.uuidString, ownerUserID: AuthManager.shared.session?.user.id)
+    }
+
+    private func beginProvisional(widget: WidgetManifest, command: WidgetCommand, media: MediaInfo,
+                                  input: WidgetTaskInput?) -> UUID {
+        let id = UUID()
+        provisionalIDs.insert(id)
+        records.insert(makeRecord(id: id, widget: widget, command: command, media: media, input: input, quote: nil), at: 0)
+        changed()
+        return id
+    }
+
+    private func discardProvisional(_ id: UUID) {
+        guard provisionalIDs.remove(id) != nil else { return }
+        records.removeAll { $0.id == id }
+        changed()
+    }
+
     private func changed() {
         let pending = records.filter { $0.settlementOutcome != nil || $0.phase.isActive }
         let history = records.filter { $0.settlementOutcome == nil && !$0.phase.isActive }
@@ -525,7 +567,8 @@ final class WidgetTaskManager {
     private var storeURL: URL { let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!.appendingPathComponent("Glance", isDirectory: true); try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true); return folder.appendingPathComponent("widget-tasks.json") }
     private func load() { guard let data = try? Data(contentsOf: storeURL) else { return }; let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601; records = (try? decoder.decode([WidgetTaskRecord].self, from: data)) ?? [] }
     private func save(completion: ((Bool) -> Void)? = nil) {
-        let snapshot = records, url = storeURL
+        // A record that is only waiting for its price check is never persisted.
+        let snapshot = records.filter { !provisionalIDs.contains($0.id) }, url = storeURL
         ioQueue.async {
             let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = [.prettyPrinted]

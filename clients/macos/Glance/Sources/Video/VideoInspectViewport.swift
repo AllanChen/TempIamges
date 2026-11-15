@@ -75,12 +75,13 @@ final class VideoInspectViewport: NSView {
         super.init(frame: .zero)
         registerForDraggedTypes(MediaDropCanvasView.imageDraggedTypes)
         wantsLayer = true
-        layer?.cornerRadius = 5
+        // Figma Shizuka `video frame`: square corners on the ink/0 stage.
+        layer?.cornerRadius = 0
         layer?.masksToBounds = true
         layer?.backgroundColor = PanelStyle.inspectCanvas.cgColor
         if let playerView {
             playerView.wantsLayer = true
-            playerView.layer?.cornerRadius = 5
+            playerView.layer?.cornerRadius = 0
             playerView.layer?.masksToBounds = true
             addSubview(playerView)
             frameObservation = playerView.observe(\.isReadyForDisplay, options: [.initial, .new]) { [weak self] _, _ in
@@ -88,7 +89,7 @@ final class VideoInspectViewport: NSView {
             }
         }
         if let webMView {
-            webMView.layer?.cornerRadius = 5
+            webMView.layer?.cornerRadius = 0
             webMView.layer?.masksToBounds = true
             webMView.onReady = { [weak self] duration, size in
                 guard let self else { return }
@@ -140,16 +141,13 @@ final class VideoInspectViewport: NSView {
         widgetProcessingBorder.layer?.cornerRadius = 12
         widgetProcessingBorder.isHidden = true
         addSubview(widgetProcessingBorder, positioned: .above, relativeTo: nil)
-        // Same 34pt Task Running badge as Image Inspect (Figma 215:5801).
+        // 34 pt Task Running badge: an ink/1 disc with a hairline; Shizuka
+        // takes depth from tone, so it carries no glow.
         widgetProcessingIndicator.wantsLayer = true
-        widgetProcessingIndicator.layer?.backgroundColor = HistoryStyle.hex(0x161719, alpha: 0.9).cgColor
+        widgetProcessingIndicator.layer?.backgroundColor = InspectInk.ink1.withAlphaComponent(0.92).cgColor
         widgetProcessingIndicator.layer?.cornerRadius = 17
         widgetProcessingIndicator.layer?.borderWidth = 1
-        widgetProcessingIndicator.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
-        widgetProcessingIndicator.layer?.shadowColor = PanelStyle.warmCue.cgColor
-        widgetProcessingIndicator.layer?.shadowOpacity = 0.35
-        widgetProcessingIndicator.layer?.shadowOffset = .zero
-        widgetProcessingIndicator.layer?.shadowRadius = 10
+        widgetProcessingIndicator.layer?.borderColor = InspectInk.lineStrong.cgColor
         widgetProcessingIndicator.addSubview(widgetProcessingPeeker)
         widgetProcessingIndicator.setAccessibilityElement(true)
         widgetProcessingIndicator.setAccessibilityLabel("Task running".localized)

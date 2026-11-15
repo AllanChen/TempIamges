@@ -86,8 +86,8 @@ final class PeekerView: NSView {
         for shape in [head, edge] + eyes + hands { body.addSublayer(shape) }
         head.fillColor = PanelStyle.textPrimary.cgColor
         edge.fillColor = PanelStyle.textPrimary.cgColor
-        eyes.forEach { $0.fillColor = HistoryStyle.hex(0x161719).cgColor }
-        hands.forEach { $0.fillColor = PanelStyle.warmCue.cgColor }
+        eyes.forEach { $0.fillColor = PanelStyle.themed(HistoryStyle.hex(0x161719), PanelStyle.Washi.ink1).cgColor }
+        hands.forEach { $0.fillColor = PeekerPalette.hands.cgColor }
         for _ in 0..<3 {
             let spark = CAShapeLayer()
             spark.fillColor = PanelStyle.warmCue.cgColor
@@ -186,7 +186,7 @@ final class PeekerView: NSView {
             return
         }
         PeekerMotion.transition(animated: false) {
-            hands.forEach { $0.fillColor = PanelStyle.warmCue.cgColor; $0.transform = CATransform3DIdentity }
+            hands.forEach { $0.fillColor = PeekerPalette.hands.cgColor; $0.transform = CATransform3DIdentity }
             body.transform = CATransform3DIdentity
             if PeekerMotion.reduced {
                 // Frame 1, still: eyes left, sparkles at their frame-1 glow.
@@ -259,7 +259,7 @@ final class TaskRunningChip: NSView {
         layer?.shadowOffset = CGSize(width: 0, height: -12)
         peeker.showsSparks = true
         addSubview(peeker)
-        track.backgroundColor = NSColor.white.withAlphaComponent(0.10).cgColor
+        track.backgroundColor = PanelStyle.contrast.withAlphaComponent(0.10).cgColor
         track.masksToBounds = true
         let accent = PanelStyle.warmCue
         shimmer.colors = [accent.withAlphaComponent(0).cgColor, accent.cgColor, accent.withAlphaComponent(0).cgColor]
@@ -382,8 +382,8 @@ final class TaskRunningChip: NSView {
         let s = scale
         let radius = (compact ? 14.0 : 20.0) * s
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius)
-        HistoryStyle.hex(0x18191D, alpha: 0.96).setFill(); path.fill()
-        NSColor.white.withAlphaComponent(0.12).setStroke()
+        PanelStyle.themed(HistoryStyle.hex(0x18191D, alpha: 0.96), PanelStyle.Washi.ink1.withAlphaComponent(0.96)).setFill(); path.fill()
+        PanelStyle.contrast.withAlphaComponent(0.12).setStroke()
         path.lineWidth = max(1, s); path.stroke()
         let titleWidth = HistoryStyle.draw(title, in: CGRect(x: textX * s, y: textY * s, width: (compact ? 150 : 200) * s, height: 18 * s), size: titleSize * s,
                                            weight: .semibold, color: HistoryStyle.text)
@@ -425,10 +425,10 @@ final class TaskRunningTileOverlay: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = NSColor.black.withAlphaComponent(0.35).cgColor
+        layer?.backgroundColor = PanelStyle.themed(NSColor.black.withAlphaComponent(0.35), PanelStyle.Washi.ink1.withAlphaComponent(0.6)).cgColor
         layer?.masksToBounds = true
         addSubview(peeker)
-        track.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        track.backgroundColor = PanelStyle.contrast.withAlphaComponent(0.1).cgColor
         track.cornerRadius = 1
         track.masksToBounds = true
         let accent = PanelStyle.warmCue
@@ -502,5 +502,237 @@ final class TaskRunningEllipsis: NSView {
                 dot.add(PeekerMotion.animation("opacity", PeekerMotion.dots.map { $0[i] }), forKey: "count")
             }
         }
+    }
+}
+
+/// The peeker's hands: warm cue on Sumi; on Washi a softer ink so they read
+/// apart from the sumi head.
+private enum PeekerPalette {
+    static let hands = PanelStyle.themed(PanelStyle.warmCue, PanelStyle.Washi.text3)
+}
+
+// MARK: - Shizuka Widget running (Figma `32 · Image Inspect / Widget running`)
+
+/// Laid over the image a Widget is processing: an ink/0 veil at 35 %, a soft
+/// light sweep and a 2 pt progress rule along the image's foot. The image
+/// stays inspectable; this view never takes clicks.
+final class InspectRunningVeil: NSView {
+    /// Task progress 0–100; nil or 0 shows only the track.
+    var progress: Int? { didSet { if progress != oldValue { needsLayout = true } } }
+    private let veil = CALayer()
+    private let sweep = CAGradientLayer()
+    private let track = CALayer()
+    private let fill = CALayer()
+    private var animationState: String?
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.masksToBounds = true
+        veil.backgroundColor = PanelStyle.resolvedCG(InspectInk.ink0.withAlphaComponent(0.35))
+        // A highlight drawn over the photo itself, so literal white is intended.
+        sweep.colors = [NSColor.white.withAlphaComponent(0).cgColor,
+                        NSColor.white.withAlphaComponent(0.08).cgColor,
+                        NSColor.white.withAlphaComponent(0).cgColor]
+        sweep.startPoint = CGPoint(x: 0, y: 0.5)
+        sweep.endPoint = CGPoint(x: 1, y: 0.5)
+        track.backgroundColor = PanelStyle.resolvedCG(InspectInk.ink4)
+        fill.backgroundColor = PanelStyle.resolvedCG(InspectInk.text1)
+        for sublayer in [veil, sweep, track, fill] { layer?.addSublayer(sublayer) }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); refreshAnimation() }
+    override func viewDidHide() { super.viewDidHide(); refreshAnimation() }
+    override func viewDidUnhide() { super.viewDidUnhide(); refreshAnimation() }
+
+    private var sweepWidth: CGFloat { min(220, bounds.width * 0.45) }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        veil.frame = bounds
+        sweep.frame = CGRect(x: -sweepWidth, y: 0, width: sweepWidth, height: bounds.height)
+        track.frame = CGRect(x: 0, y: 0, width: bounds.width, height: 2)
+        let fraction = CGFloat(min(100, max(0, progress ?? 0))) / 100
+        fill.frame = CGRect(x: 0, y: 0, width: bounds.width * fraction, height: 2)
+        CATransaction.commit()
+        refreshAnimation()
+    }
+
+    private func refreshAnimation() {
+        let visible = window != nil && !isHiddenOrHasHiddenAncestor
+        let state = "\(bounds.size)-\(PeekerMotion.reduced)"
+        if visible, animationState == state { return }
+        animationState = visible ? state : nil
+        sweep.removeAllAnimations()
+        sweep.isHidden = !visible || PeekerMotion.reduced
+        guard visible, !PeekerMotion.reduced, bounds.width > 0 else { return }
+        let move = CABasicAnimation(keyPath: "transform.translation.x")
+        move.fromValue = 0
+        move.toValue = bounds.width + sweepWidth
+        move.duration = PeekerMotion.duration
+        move.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        move.repeatCount = .infinity
+        sweep.add(move, forKey: "sweep")
+    }
+}
+
+/// The task capsule near the foot of the processed image: an ai dot, the
+/// Widget name (13 pt), progress in mono and a Cancel link.
+final class InspectRunningPill: NSView {
+    var onCancel: (() -> Void)?
+    private var title = ""
+    private var progressText: String?
+    private let cancelButton = InspectTextButton(title: "Cancel".localized, font: PanelStyle.inspectFont(ofSize: 12),
+                                                 color: InspectInk.text2)
+    private static let titleFont = PanelStyle.inspectFont(ofSize: 13)
+    private static let progressFont = PanelStyle.monoFont(ofSize: 11)
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        cancelButton.onPress = { [weak self] in self?.onCancel?() }
+        addSubview(cancelButton)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let hit = super.hitTest(point)
+        return hit === cancelButton ? hit : nil
+    }
+
+    func configure(title: String, progress: Int?, canCancel: Bool) {
+        self.title = title
+        progressText = progress.map { "\(min(99, max(0, $0)))%" }
+        cancelButton.title = "Cancel".localized
+        cancelButton.isHidden = !canCancel
+        setAccessibilityLabel([title, progressText, "Task running".localized].compactMap { $0 }.joined(separator: ", "))
+        needsLayout = true
+        needsDisplay = true
+    }
+
+    /// Padding 14 × 8, a 6 pt dot and 8 pt gaps (Figma 26:1520).
+    var preferredSize: NSSize {
+        var width: CGFloat = 14 + 6 + 8 + InspectText.width(title, font: Self.titleFont)
+        if let progressText { width += 8 + InspectText.width(progressText, font: Self.progressFont) }
+        if !cancelButton.isHidden { width += 8 + cancelButton.preferredWidth }
+        return NSSize(width: width + 14, height: 31)
+    }
+
+    override func layout() {
+        super.layout()
+        let width = cancelButton.preferredWidth
+        cancelButton.frame = NSRect(x: bounds.width - 14 - width, y: 8, width: width, height: 15)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let radius = bounds.height / 2
+        let capsule = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius)
+        InspectInk.ink1.withAlphaComponent(0.92).setFill()
+        capsule.fill()
+        InspectInk.lineStrong.setStroke()
+        capsule.lineWidth = 1
+        capsule.stroke()
+        PanelStyle.info.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 14, y: (bounds.height - 6) / 2, width: 6, height: 6)).fill()
+        let titleEnd = cancelButton.isHidden ? bounds.width - 14 : cancelButton.frame.minX - 8
+        let progressWidth = progressText.map { InspectText.width($0, font: Self.progressFont) } ?? 0
+        let titleWidth = max(0, titleEnd - 28 - (progressText == nil ? 0 : progressWidth + 8))
+        InspectText.draw(title, in: NSRect(x: 28, y: 7, width: titleWidth, height: 16),
+                         font: Self.titleFont, color: InspectInk.text1)
+        if let progressText {
+            InspectText.draw(progressText, in: NSRect(x: 28 + min(titleWidth, InspectText.width(title, font: Self.titleFont)) + 8,
+                                                      y: 8.5, width: progressWidth, height: 14),
+                             font: Self.progressFont, color: InspectInk.text3)
+        }
+    }
+}
+
+/// Filmstrip `running ring` (14 pt, ai): spins while a task has no progress
+/// yet, and becomes a determinate arc once progress is reported.
+final class InspectRunningRing: NSView {
+    var progress: Int? { didSet { if progress != oldValue { needsLayout = true } } }
+    private let backdrop = CAShapeLayer()
+    private let track = CAShapeLayer()
+    private let arc = CAShapeLayer()
+    private var animationState: String?
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        // A small disc and faint track keep the loader legible over any photo.
+        backdrop.fillColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome.withAlphaComponent(0.86))
+        layer?.addSublayer(backdrop)
+        track.fillColor = nil
+        track.strokeColor = PanelStyle.resolvedCG(PanelStyle.contrast.withAlphaComponent(0.18))
+        layer?.addSublayer(track)
+        arc.fillColor = nil
+        arc.strokeColor = PanelStyle.resolvedCG(PanelStyle.info)
+        arc.lineCap = .round
+        layer?.addSublayer(arc)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); refreshAnimation() }
+    override func viewDidHide() { super.viewDidHide(); refreshAnimation() }
+    override func viewDidUnhide() { super.viewDidUnhide(); refreshAnimation() }
+
+    private var determinate: Bool { (progress ?? 0) > 0 }
+
+    override func layout() {
+        super.layout()
+        let size = min(bounds.width, bounds.height)
+        let lineWidth = max(1, 1.4 * size / 20)
+        let square = CGRect(x: (bounds.width - size) / 2, y: (bounds.height - size) / 2, width: size, height: size)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        backdrop.frame = square
+        backdrop.path = CGPath(ellipseIn: CGRect(origin: .zero, size: square.size), transform: nil)
+        // The arc spins about its own centre, so it gets the same square frame.
+        for ringLayer in [track, arc] {
+            ringLayer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            ringLayer.bounds = CGRect(origin: .zero, size: square.size)
+            ringLayer.position = CGPoint(x: square.midX, y: square.midY)
+            ringLayer.lineWidth = lineWidth
+        }
+        // Start at 12 o'clock and run clockwise in the bottom-origin layer; inset
+        // inside the disc.
+        let center = CGPoint(x: size / 2, y: size / 2)
+        let radius = size * 0.32
+        let path = CGMutablePath()
+        path.addArc(center: center, radius: radius, startAngle: .pi / 2,
+                    endAngle: .pi / 2 - 2 * .pi, clockwise: true)
+        track.path = path
+        arc.path = path
+        arc.strokeEnd = determinate ? CGFloat(min(100, progress ?? 0)) / 100 : 0.75
+        CATransaction.commit()
+        refreshAnimation()
+    }
+
+    private func refreshAnimation() {
+        let visible = window != nil && !isHiddenOrHasHiddenAncestor
+        let spins = visible && !determinate && !PeekerMotion.reduced
+        let state = "\(bounds.size)-\(spins)"
+        if animationState == state { return }
+        animationState = state
+        arc.removeAnimation(forKey: "spin")
+        guard spins else { return }
+        let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+        spin.fromValue = 0
+        spin.toValue = -2 * CGFloat.pi
+        spin.duration = 1.2
+        spin.repeatCount = .infinity
+        arc.add(spin, forKey: "spin")
     }
 }

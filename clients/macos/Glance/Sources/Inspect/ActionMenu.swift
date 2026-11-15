@@ -13,8 +13,11 @@ struct ActionMenuEntry {
     var requiresPro: Bool = false
     var submenu: [ActionMenuEntry]? = nil
     var action: (() -> Void)? = nil
+    /// A non-interactive section caption (Figma `Actions`, `Export`, `Tools`).
+    var isHeader = false
 
     static func separator() -> ActionMenuEntry { ActionMenuEntry(isSeparator: true) }
+    static func header(_ title: String) -> ActionMenuEntry { ActionMenuEntry(title: title, enabled: false, isHeader: true) }
 }
 
 /// Measure the real localized glyphs, with room for an independent cost badge.
@@ -43,7 +46,7 @@ enum WidgetMenuMetrics {
     static func width(for entries: [ActionMenuEntry], heading: String, availableWidth: CGFloat = .greatestFiniteMagnitude) -> CGFloat {
         let headerWidth = 32 + textWidth(heading, size: 11, weight: .medium) + 12
             + textWidth("pts/task".localized, size: 11)
-        let rows = entries.filter { !$0.isSeparator }.map { entry -> CGFloat in
+        let rows = entries.filter { !$0.isSeparator && !$0.isHeader }.map { entry -> CGFloat in
             let disclosure: CGFloat = entry.submenu != nil || entry.showsDisclosure ? 18 : 0
             if let cost = entry.creditCost {
                 // Outer 6+6, inner 10+10, a 10pt gap, then the badge.
@@ -62,9 +65,13 @@ enum WidgetMenuMetrics {
 final class ActionMenuPanel: NSPanel {
     enum Style { case context, more }
 
-    private static let menuWidth: CGFloat = 216
-    private static let rowHeight: CGFloat = 26
-    private static let separatorHeight: CGFloat = 9
+    /// Figma `21 · More menu`: 260 pt wide (submenus 180), 6 pt padding,
+    /// 28 pt rows, 11 pt separators and 23 pt section captions.
+    private static let menuWidth: CGFloat = 260
+    private static let submenuWidth: CGFloat = 180
+    private static let rowHeight: CGFloat = 28
+    private static let separatorHeight: CGFloat = 11
+    private static let headerHeight: CGFloat = 23
     private static let padding: CGFloat = 6
 
     private let entries: [ActionMenuEntry]
@@ -79,17 +86,22 @@ final class ActionMenuPanel: NSPanel {
     private var submenuWorkItem: DispatchWorkItem?
     private var isDismissing = false
 
-    init(entries: [ActionMenuEntry], style: Style = .context, widgetMenuHeading: String? = nil) {
+    init(entries: [ActionMenuEntry], style: Style = .context, widgetMenuHeading: String? = nil,
+         isSubmenu: Bool = false) {
         self.entries = entries
         self.style = style
         let compact = entries.contains { $0.creditCost != nil }
         let heading = widgetMenuHeading ?? "Installed".localized
         let cursorScreen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
+        let plainWidth = isSubmenu ? max(Self.submenuWidth, ActionMenuRow.preferredWidth(for: entries) + Self.padding * 2)
+                                   : Self.menuWidth
         let width = compact ? WidgetMenuMetrics.width(for: entries, heading: heading,
-            availableWidth: max(0, (cursorScreen?.visibleFrame.width ?? WidgetMenuMetrics.maximumWidth) - 8)) : Self.menuWidth
+            availableWidth: max(0, (cursorScreen?.visibleFrame.width ?? WidgetMenuMetrics.maximumWidth) - 8))
+            : min(Self.menuWidth, plainWidth)
         let separatorHeight: CGFloat = compact ? 14 : Self.separatorHeight
         func rowHeight(_ entry: ActionMenuEntry) -> CGFloat {
-            compact ? (entry.creditCost == nil ? 24 : WidgetMenuMetrics.rowHeight) : Self.rowHeight
+            if entry.isHeader { return Self.headerHeight }
+            return compact ? (entry.creditCost == nil ? 24 : WidgetMenuMetrics.rowHeight) : Self.rowHeight
         }
         var height = compact ? WidgetMenuMetrics.headerHeight + 5 : Self.padding * 2
         for entry in entries {
@@ -102,22 +114,22 @@ final class ActionMenuPanel: NSPanel {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = compact || style == .context
+        hasShadow = true
         hidesOnDeactivate = true
-        appearance = NSAppearance(named: .darkAqua)
+        appearance = PanelStyle.windowAppearance
         collectionBehavior = [.canJoinAllSpaces]
         guard let content = contentView else { return }
         // Keep menu text in a normal compositing layer. Rendering labels on
         // top of NSVisualEffectView vibrancy makes them look soft/gray on
         // Retina displays, especially while the panel is animating.
         content.wantsLayer = true
-        content.layer?.backgroundColor = compact ? PanelStyle.resolvedCG(PanelStyle.inspectChrome) : style == .more
-            ? NSColor(srgbRed: 28 / 255, green: 29 / 255, blue: 33 / 255, alpha: 1).cgColor
-            : PanelStyle.surface.cgColor
+        // Figma action menu: ink/2 plate, line/strong edge, 10 pt corners.
+        content.layer?.backgroundColor = compact ? PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+            : PanelStyle.resolvedCG(InspectInk.ink2)
         content.layer?.cornerRadius = 10
-        content.layer?.borderWidth = compact || style == .context ? 1 : 0
-        if compact { content.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor }
-        else if style == .context { content.layer?.borderColor = PanelStyle.hairline.cgColor }
+        content.layer?.borderWidth = 1
+        content.layer?.borderColor = compact ? PanelStyle.contrast.withAlphaComponent(0.12).cgColor
+            : PanelStyle.resolvedCG(InspectInk.lineStrong)
 
         if compact {
             let header = WidgetMenuHeaderView(title: heading)
@@ -127,17 +139,25 @@ final class ActionMenuPanel: NSPanel {
         var y = height - (compact ? WidgetMenuMetrics.headerHeight : Self.padding)
         for entry in entries {
             if entry.isSeparator {
-                let sepX: CGFloat = compact ? 12 : style == .more ? 13 : Self.padding + 6
-                let sepWidth: CGFloat = compact ? width - 24 : style == .more ? 190 : Self.menuWidth - sepX * 2
-                let sepY = compact ? y - 9 : y - Self.separatorHeight + (style == .more ? 5 : 4)
+                // Figma: a 1 pt line/hair rule, 10 pt in from the row edges, 5 pt from the top.
+                let sepX: CGFloat = compact ? 12 : Self.padding + 10
+                let sepWidth: CGFloat = width - sepX * 2
+                let sepY = compact ? y - 9 : y - 5 - 1
                 let sep = NSView(frame: NSRect(x: sepX, y: sepY,
                                                width: sepWidth, height: 1))
                 sep.wantsLayer = true
-                sep.layer?.backgroundColor = compact ? NSColor.white.withAlphaComponent(0.09).cgColor : style == .more
-                    ? NSColor(srgbRed: 69 / 255, green: 71 / 255, blue: 77 / 255, alpha: 1).cgColor
-                    : PanelStyle.hairline.cgColor
+                sep.layer?.backgroundColor = compact ? PanelStyle.contrast.withAlphaComponent(0.09).cgColor
+                    : PanelStyle.resolvedCG(InspectInk.line)
                 content.addSubview(sep)
                 y -= separatorHeight
+                continue
+            }
+            if entry.isHeader {
+                let header = ActionMenuHeaderView(title: entry.title)
+                header.frame = NSRect(x: Self.padding, y: y - Self.headerHeight,
+                                      width: width - Self.padding * 2, height: Self.headerHeight)
+                content.addSubview(header)
+                y -= Self.headerHeight
                 continue
             }
             let row = ActionMenuRow(entry: entry, usesMoreStyle: style == .more,
@@ -234,10 +254,9 @@ final class ActionMenuPanel: NSPanel {
     /// Present below a toolbar control. `screenPoint` is the control's bottom
     /// edge in AppKit screen coordinates; unlike `present(at:)`, this does not
     /// interpret the point as the menu's top edge.
-    func presentBelowToolbar(at screenPoint: NSPoint) {
+    func presentBelowToolbar(at screenPoint: NSPoint, gap: CGFloat = 8) {
         parentPanel = nil
         let size = frame.size
-        let gap: CGFloat = 8
         // The menu drops down from the toolbar: its right edge aligns with the
         // toolbar's right edge and there is an 8pt gap between them.
         var origin = NSPoint(x: screenPoint.x - size.width,
@@ -393,9 +412,11 @@ final class ActionMenuPanel: NSPanel {
         childPanel?.dismissChain()
         // Inherit the parent's look: the ⋯ menu is .more, the right-click menu .context.
         let child = ActionMenuPanel(entries: entries, style: style,
-            widgetMenuHeading: row.entry.creditCost != nil ? row.entry.title : nil)
+            widgetMenuHeading: row.entry.creditCost != nil ? row.entry.title : nil, isSubmenu: true)
         childPanel = child
-        let rowTopRight = row.convert(NSPoint(x: row.bounds.width, y: row.bounds.height), to: nil)
+        // Rows are flipped; take the top-right corner from the window-space rect.
+        let rowRect = row.convert(row.bounds, to: nil)
+        let rowTopRight = NSPoint(x: rowRect.maxX, y: rowRect.maxY)
         let screenPoint = convertToScreen(NSRect(origin: rowTopRight, size: .zero)).origin
         // rowTopRight stops at the content padding (6pt before the panel
         // edge), so add padding + gap to guarantee no panel overlap.
@@ -427,8 +448,27 @@ private final class WidgetMenuHeaderView: NSView {
     }
 }
 
-/// One menu row: title (+ optional shortcut hint or submenu chevron),
-/// warm-cue highlight with dark text for contrast.
+/// Figma section caption: 11 pt text/3, 10 pt in, 6 pt from the top.
+private final class ActionMenuHeaderView: NSView {
+    private let title: String
+    override var isFlipped: Bool { true }
+    init(title: String) {
+        self.title = title
+        super.init(frame: .zero)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+        setAccessibilityLabel(title)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func draw(_ dirtyRect: NSRect) {
+        InspectText.draw(title, in: NSRect(x: 10, y: 6, width: bounds.width - 20, height: 13),
+                         font: PanelStyle.inspectFont(ofSize: 11), color: InspectInk.text3)
+    }
+}
+
+/// One menu row (Figma 28 pt): 13 pt title 10 pt in, a 12 pt shortcut or a
+/// 16 pt chevron 10 pt from the right, ink/4 when highlighted.
 final class ActionMenuRow: NSView {
     let entry: ActionMenuEntry
     private let usesMoreStyle: Bool
@@ -436,10 +476,20 @@ final class ActionMenuRow: NSView {
     var onHover: ((ActionMenuRow) -> Void)?
     var onActivate: ((ActionMenuRow) -> Void)?
     private(set) var isHighlightedState = false
-    private let titleLabel = NSTextField(labelWithString: "")
-    private let shortcutLabel = NSTextField(labelWithString: "")
-    private let chevronLabel = NSTextField(labelWithString: "›")
     private let lockIcon = NSImageView()
+    private static let titleFont = PanelStyle.inspectFont(ofSize: 13)
+    private static let shortcutFont = PanelStyle.inspectFont(ofSize: 12)
+
+    /// Room a row needs for its title, shortcut and chevron.
+    static func preferredWidth(for entries: [ActionMenuEntry]) -> CGFloat {
+        entries.filter { !$0.isSeparator }.map { entry in
+            var width = 10 + InspectText.width(entry.title, font: titleFont) + 10
+            if let shortcut = entry.shortcut { width += 10 + InspectText.width(shortcut, font: shortcutFont) }
+            if entry.submenu != nil || entry.showsDisclosure { width += 10 + 16 }
+            if entry.requiresPro { width += 18 }
+            return width
+        }.max() ?? 0
+    }
     private let creditBadge = NSView()
     private let creditLabel = PanelCenteredTextView()
 
@@ -469,22 +519,11 @@ final class ActionMenuRow: NSView {
             updateColors()
             return
         }
-        layer?.cornerRadius = usesMoreStyle ? 6 : 5
-        titleLabel.stringValue = entry.title
-        titleLabel.font = usesMoreStyle ? PanelStyle.inspectFont(ofSize: 13)
-                                        : NSFont.systemFont(ofSize: 13, weight: .medium)
-        titleLabel.lineBreakMode = .byTruncatingTail
-        addSubview(titleLabel)
-        if let shortcut = entry.shortcut {
-            shortcutLabel.stringValue = shortcut
-            shortcutLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-            shortcutLabel.alignment = .right
-            addSubview(shortcutLabel)
-        }
-        if entry.submenu != nil {
-            chevronLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
-            addSubview(chevronLabel)
-        }
+        layer?.cornerRadius = PanelStyle.Radius.control
+        setAccessibilityElement(true)
+        setAccessibilityRole(.menuItem)
+        setAccessibilityLabel(entry.title)
+        setAccessibilityEnabled(entry.enabled)
         if entry.requiresPro {
             lockIcon.image = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: "Requires Pro".localized)
             lockIcon.contentTintColor = PanelStyle.textTertiary
@@ -494,7 +533,7 @@ final class ActionMenuRow: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override var isFlipped: Bool { usesWidgetMenuStyle }
+    override var isFlipped: Bool { true }
 
     // Swallow all hits at the row level so the labels never consume events.
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -522,29 +561,49 @@ final class ActionMenuRow: NSView {
             }
             return
         }
-        // Center the labels vertically by their real line height — a
-        // full-height text field draws its text on the baseline, not centered.
-        let titleHeight = ceil(titleLabel.cell?.cellSize.height ?? bounds.height)
-        let centeredY = (bounds.height - titleHeight) / 2
-        titleLabel.frame = NSRect(x: 10, y: centeredY, width: bounds.width - 62, height: titleHeight)
-        lockIcon.frame = NSRect(x: bounds.width - 70, y: (bounds.height - 12)/2, width: 12, height: 12)
-        shortcutLabel.frame = NSRect(x: bounds.width - 52, y: centeredY, width: 40, height: titleHeight)
-        chevronLabel.frame = NSRect(x: bounds.width - 20, y: centeredY, width: 12, height: titleHeight)
+        lockIcon.frame = NSRect(x: trailingContentMinX - 8 - 12, y: (bounds.height - 12) / 2, width: 12, height: 12)
     }
 
+    private var shortcutWidth: CGFloat { entry.shortcut.map { InspectText.width($0, font: Self.shortcutFont) } ?? 0 }
+    private var hasChevron: Bool { entry.submenu != nil || entry.showsDisclosure }
+
+    /// Left edge of the shortcut or chevron at the right of the row.
+    private var trailingContentMinX: CGFloat {
+        if hasChevron { return bounds.width - 10 - 16 }
+        if entry.shortcut != nil { return bounds.width - 10 - shortcutWidth }
+        return bounds.width - 10
+    }
+
+    private var plainTitleColor: NSColor { entry.enabled ? InspectInk.text1 : InspectInk.text4 }
+
     override func draw(_ dirtyRect: NSRect) {
-        guard usesWidgetMenuStyle else { super.draw(dirtyRect); return }
+        guard usesWidgetMenuStyle else {
+            // Figma text frames (top-origin): title y 6 / 16 pt, shortcut y 6.5 / 15 pt.
+            let titleEnd = trailingContentMinX - (entry.requiresPro ? 28 : 10)
+            InspectText.draw(entry.title, in: NSRect(x: 10, y: 6, width: max(0, titleEnd - 10), height: 16),
+                             font: Self.titleFont, color: plainTitleColor)
+            if let shortcut = entry.shortcut, !hasChevron {
+                InspectText.draw(shortcut, in: NSRect(x: bounds.width - 10 - shortcutWidth, y: 6.5,
+                                                      width: shortcutWidth, height: 15),
+                                 font: Self.shortcutFont, color: entry.enabled ? InspectInk.text3 : InspectInk.text4)
+            }
+            if hasChevron {
+                HistoryStyle.drawIcon("WidgetMenuChevron", color: entry.enabled ? InspectInk.text3 : InspectInk.text4,
+                                      in: NSRect(x: bounds.width - 10 - 14, y: (bounds.height - 12) / 2, width: 12, height: 12))
+            }
+            return
+        }
         let hasDisclosure = entry.submenu != nil || entry.showsDisclosure
         let end = entry.creditCost != nil ? creditBadge.frame.minX - 10
             : bounds.width - (hasDisclosure ? 38 : 10)
-        let color = !entry.enabled ? PanelStyle.textTertiary : isHighlightedState ? PanelStyle.accentInk
+        let color = !entry.enabled ? PanelStyle.textTertiary : isHighlightedState ? ActionMenuTheme.highlightText
             : entry.creditCost == nil ? PanelStyle.textSecondary : PanelStyle.textPrimary
         HistoryStyle.draw(entry.title, in: NSRect(x: 10, y: entry.creditCost == nil ? 4 : 6,
             width: max(0, end - 10), height: entry.creditCost == nil ? 15 : 16),
             size: entry.creditCost == nil ? 12 : 13, weight: entry.creditCost == nil ? .regular : .medium,
             color: color)
         if hasDisclosure {
-            HistoryStyle.drawIcon("WidgetMenuChevron", color: isHighlightedState ? PanelStyle.accentInk : PanelStyle.textTertiary,
+            HistoryStyle.drawIcon("WidgetMenuChevron", color: isHighlightedState ? ActionMenuTheme.highlightText : PanelStyle.textTertiary,
                 in: NSRect(x: bounds.width - (entry.creditCost == nil ? 24 : 22), y: (bounds.height - 12) / 2, width: 12, height: 12))
         }
     }
@@ -558,10 +617,10 @@ final class ActionMenuRow: NSView {
     func setHighlighted(_ highlighted: Bool) {
         guard highlighted != isHighlightedState else { return }
         isHighlightedState = highlighted
-        let color = usesMoreStyle
-            ? NSColor(srgbRed: 61 / 255, green: 48 / 255, blue: 43 / 255,
-                      alpha: highlighted ? 0.8 : 0).cgColor
-            : (highlighted ? PanelStyle.warmCue.cgColor : NSColor.clear.cgColor)
+        // Figma highlighted row: ink/4 with 6 pt corners; the text keeps its colour.
+        let color = usesWidgetMenuStyle
+            ? (highlighted ? ActionMenuTheme.highlightFill.cgColor : NSColor.clear.cgColor)
+            : PanelStyle.resolvedCG(InspectInk.ink4.withAlphaComponent(highlighted ? 1 : 0))
         if usesMoreStyle, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
            let layer = layer {
             let transition = CABasicAnimation(keyPath: "backgroundColor")
@@ -583,26 +642,16 @@ final class ActionMenuRow: NSView {
             alphaValue = entry.enabled ? 1 : 0.55
             if let cost = entry.creditCost {
                 creditBadge.layer?.backgroundColor = PanelStyle.resolvedCG(isHighlightedState
-                    ? PanelStyle.accentInk.withAlphaComponent(0.09)
-                    : cost == 0 ? PanelStyle.success.withAlphaComponent(0.10) : NSColor.white.withAlphaComponent(0.06))
-                creditLabel.textColor = isHighlightedState ? PanelStyle.accentInk : !entry.enabled ? PanelStyle.textTertiary
+                    ? ActionMenuTheme.highlightText.withAlphaComponent(0.09)
+                    : cost == 0 ? PanelStyle.success.withAlphaComponent(0.10) : PanelStyle.contrast.withAlphaComponent(0.06))
+                creditLabel.textColor = isHighlightedState ? ActionMenuTheme.highlightText : !entry.enabled ? PanelStyle.textTertiary
                     : cost == 0 ? PanelStyle.success : PanelStyle.textSecondary
             }
             needsDisplay = true
             return
         }
-        let color: NSColor
-        if !entry.enabled { color = PanelStyle.textTertiary }
-        else if usesMoreStyle { color = NSColor(srgbRed: 237 / 255, green: 232 / 255,
-                                               blue: 227 / 255, alpha: 1) }
-        else if isHighlightedState { color = PanelStyle.canvas }
-        else { color = PanelStyle.textPrimary }
-        titleLabel.textColor = color
-        shortcutLabel.textColor = isHighlightedState && entry.enabled
-            ? PanelStyle.canvas.withAlphaComponent(0.72)
-            : PanelStyle.textTertiary
-        chevronLabel.textColor = color
         alphaValue = 1
+        needsDisplay = true
     }
 
     override func mouseEntered(with event: NSEvent) { onHover?(self) }
@@ -611,4 +660,11 @@ final class ActionMenuRow: NSView {
         guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
         onActivate?(self)
     }
+}
+
+/// Menu row highlight. Sumi keeps the warm-cue bar with dark ink; Washi uses a
+/// quiet paper fill with sumi text, matching the Figma menus.
+private enum ActionMenuTheme {
+    static let highlightFill = PanelStyle.themed(PanelStyle.warmCue, PanelStyle.Washi.ink4)
+    static let highlightText = PanelStyle.themed(PanelStyle.accentInk, PanelStyle.Washi.text1)
 }

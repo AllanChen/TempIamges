@@ -1,8 +1,8 @@
 #!/usr/bin/env swift
-// Renders AppIcon.appiconset from the Glance brand character (Figma "App Logo /
-// Tangible", concept B): the peeker looking over a half-developed photo print.
-// Geometry mirrors the plugin's `tangibleCharacterIcon`; the menu bar uses the
-// same character as a flat template glyph (MenuBarCharacterIcon.swift).
+// Renders AppIcon.appiconset from the Glance brand character (Figma "Brand ·
+// App Icon" › "AppIcon / B · Peek"): the peeker looking over the frame's rim,
+// flat paper on sumi ink. The menu bar uses the same character as a flat
+// template glyph (MenuBarCharacterIcon.swift).
 //
 // Usage (from the repo root):  swift clients/macos/scripts/render-app-icon.swift          # AppIcon.appiconset
 //                              swift clients/macos/scripts/render-app-icon.swift --logo   # logo.png (full bleed)
@@ -38,131 +38,55 @@ func color(_ hex: String, _ alpha: CGFloat = 1) -> CGColor {
                                 CGFloat(v & 0xFF) / 255, alpha])!
 }
 
-func gradient(_ hexes: [String], alpha: CGFloat = 1) -> CGGradient {
-    let colors = hexes.map { color($0, alpha) } as CFArray
-    let locations = (0..<hexes.count).map { CGFloat($0) / CGFloat(max(1, hexes.count - 1)) }
-    return CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!, colors: colors, locations: locations)!
+/// Fills `path` with a flat colour.
+func fill(_ ctx: CGContext, _ path: CGPath, _ hex: String, _ alpha: CGFloat = 1) {
+    ctx.setFillColor(color(hex, alpha)); ctx.addPath(path); ctx.fillPath()
 }
 
-let amber = ["#E8A87C", "#D4A574", "#C8AA82"]
-let amberLight = ["#F0B896", "#E8C87C"]
-
-/// Fills `path` with a top-left → bottom-right gradient across `box`.
-func fill(_ ctx: CGContext, _ path: CGPath, _ grad: CGGradient, box: CGRect) {
-    ctx.saveGState()
-    ctx.addPath(path); ctx.clip()
-    ctx.drawLinearGradient(grad, start: CGPoint(x: box.minX, y: box.minY),
-                           end: CGPoint(x: box.maxX, y: box.maxY), options: [])
-    ctx.restoreGState()
-}
-
-func stroke(_ ctx: CGContext, _ path: CGPath, width: CGFloat, _ grad: CGGradient, box: CGRect,
-            cap: CGLineCap = .butt) {
-    let outline = path.copy(strokingWithWidth: width, lineCap: cap, lineJoin: .round, miterLimit: 10)
-    fill(ctx, outline, grad, box: box)
-}
-
-// Concept B from Figma "App Logo / Tangible": the Glance peeker — a round
-// amber character looking over a photo print that is developed on the left
-// and still grey on the right, hands on the frame edge. No hat.
+// Figma "Brand · App Icon" › "AppIcon / B · Peek" (静 Shizuka): the peeker as
+// flat paper on sumi ink — a dome head with two ink eyes looking over the
+// frame's paper rim, round hands on the rim, one vermilion mark on the frame.
+// Fractions are of the squircle side (Figma's 824 pt icon body).
 func draw(into ctx: CGContext, pixels: Int) {
     let k = CGFloat(pixels) / canvas
     ctx.translateBy(x: 0, y: CGFloat(pixels))
     ctx.scaleBy(x: k, y: -k)
     ctx.setAllowsAntialiasing(true)
-    ctx.interpolationQuality = .high
 
     let s = squircle
     let o = (canvas - s) / 2
-    func R(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect { CGRect(x: o + x * s, y: o + y * s, width: w * s, height: h * s) }
-    func fillGrad(_ path: CGPath, _ grad: CGGradient, _ box: CGRect, vertical: Bool = false) {
-        ctx.saveGState(); ctx.addPath(path); ctx.clip()
-        let start = CGPoint(x: box.minX, y: box.minY)
-        let end = vertical ? CGPoint(x: box.minX, y: box.maxY) : CGPoint(x: box.maxX, y: box.maxY)
-        ctx.drawLinearGradient(grad, start: start, end: end, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
-        ctx.restoreGState()
-    }
-    // Shadow offsets are in base space (unflipped): negative y drops downward.
-    func withShadow(_ dy: CGFloat, _ blur: CGFloat, _ alpha: CGFloat, _ body: () -> Void) {
-        ctx.saveGState()
-        ctx.setShadow(offset: CGSize(width: 0, height: -dy * s * k), blur: blur * s * k, color: color("#000000", alpha))
-        body()
-        ctx.restoreGState()
-    }
-    func ellipsePath(_ r: CGRect) -> CGPath { CGPath(ellipseIn: r, transform: nil) }
+    func u(_ v: CGFloat) -> CGFloat { v / 824 * s }
+    func R(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect { CGRect(x: o + u(x), y: o + u(y), width: u(w), height: u(h)) }
     func rounded(_ r: CGRect, _ radius: CGFloat) -> CGPath { CGPath(roundedRect: r, cornerWidth: radius, cornerHeight: radius, transform: nil) }
-    let amberHead = gradient(["#F0B896", "#E8C87C", "#D4A574"])
 
-    // Matte body.
-    let bodyRect = R(0, 0, 1, 1)
+    let paper = "#EAE7E0", ink = "#151514", well = "#2E2E2B", shu = "#C65A40"
+
+    // Ink body with a faint top-edge hairline.
+    let bodyRect = CGRect(x: o, y: o, width: s, height: s)
     let body = rounded(bodyRect, s * cornerRatio)
-    fillGrad(body, gradient(["#1A1B1F", "#0A0A0C"]), bodyRect, vertical: true)
+    fill(ctx, body, ink)
     ctx.saveGState(); ctx.addPath(body); ctx.clip()
-    // Top-edge hairline of light.
-    ctx.setStrokeColor(color("#FFFFFF", 0.07)); ctx.setLineWidth(s * 0.008)
-    ctx.addPath(rounded(bodyRect.insetBy(dx: s * 0.004, dy: s * 0.004), s * cornerRatio)); ctx.strokePath()
+    ctx.setStrokeColor(color("#FFFFFF", 0.07)); ctx.setLineWidth(u(3))
+    ctx.addPath(rounded(bodyRect.insetBy(dx: u(1.5), dy: u(1.5)), s * cornerRatio)); ctx.strokePath()
     ctx.restoreGState()
 
-    // Head (behind the frame), highlight.
-    let hd = 0.50
-    let hx = 0.5 - hd / 2, hy = 0.17
-    let headRect = R(hx, hy, hd, hd)
-    withShadow(0.02, 0.04, 0.45) { fillGrad(ellipsePath(headRect), amberHead, headRect) }
-    ctx.setFillColor(color("#FFFFFF", 0.35))
-    ctx.fillEllipse(in: R(hx + hd * 0.18, hy + hd * 0.10, hd * 0.34, hd * 0.14))
+    // Head: the upper half of a disc resting on the frame's rim.
+    let head = CGMutablePath()
+    head.addArc(center: CGPoint(x: o + u(412), y: o + u(490)), radius: u(200),
+                startAngle: .pi, endAngle: 0, clockwise: false)
+    head.closeSubpath()
+    fill(ctx, head, paper)
+    for cx in [346.0, 478.0] as [CGFloat] {
+        fill(ctx, CGPath(ellipseIn: R(cx - 30, 382, 60, 60), transform: nil), ink)
+    }
 
-    // Eyes: big, low, close together; two glints each.
-    let ey = hy + hd * 0.50, ew = 0.115, eh = 0.135
-    for cx in [0.5 - 0.075, 0.5 + 0.075] {
-        ctx.setFillColor(color("#FFF8F0"))
-        ctx.fillEllipse(in: R(cx - ew / 2, ey - eh / 2, ew, eh))
-        ctx.setFillColor(color("#15110F"))
-        ctx.fillEllipse(in: R(cx - ew * 0.30, ey - eh * 0.22, ew * 0.60, eh * 0.62))
-        ctx.setFillColor(color("#FFFFFF"))
-        ctx.fillEllipse(in: R(cx - ew * 0.22, ey - eh * 0.18, ew * 0.22, ew * 0.22))
-        ctx.fillEllipse(in: R(cx + ew * 0.06, ey + eh * 0.12, ew * 0.10, ew * 0.10))
+    // Frame (the photo well) with its paper rim, hands on the rim, and the mark.
+    fill(ctx, rounded(R(112, 490, 600, 232), u(32)), well)
+    fill(ctx, rounded(R(112, 490, 600, 14), u(7)), paper)
+    for x in [194.0, 538.0] as [CGFloat] {
+        fill(ctx, rounded(R(x, 466, 92, 44), u(22)), paper)
     }
-    // Blush and a tiny open-mouth smile.
-    ctx.setFillColor(color("#F07A6A", 0.35))
-    for cx in [0.5 - 0.17, 0.5 + 0.17] { ctx.fillEllipse(in: R(cx - 0.045, ey + eh * 0.25, 0.09, 0.05)) }
-    ctx.setFillColor(color("#2A1614")); ctx.fillEllipse(in: R(0.5 - 0.022, ey + eh * 0.55, 0.044, 0.03))
-    ctx.setFillColor(color("#E8705F")); ctx.fillEllipse(in: R(0.5 - 0.012, ey + eh * 0.55 + 0.013, 0.024, 0.014))
-
-    // Photo well and the print.
-    let fx = 0.15, fy = 0.46, fw = 0.70, fh = 0.40, fr = 0.07, split = 0.55
-    ctx.setFillColor(color("#060607"))
-    ctx.addPath(rounded(R(fx - 0.012, fy - 0.012, fw + 0.024, fh + 0.024), (fr + 0.012) * s)); ctx.fillPath()
-    let photoRect = R(fx, fy, fw, fh)
-    let photo = rounded(photoRect, fr * s)
-    func scene(_ clip: CGPath, sun: String, far: String, near: String) {
-        ctx.saveGState(); ctx.addPath(clip); ctx.clip()
-        ctx.setFillColor(color(sun)); ctx.fillEllipse(in: CGRect(x: photoRect.minX + photoRect.width * 0.62, y: photoRect.minY + photoRect.height * 0.18, width: photoRect.height * 0.26, height: photoRect.height * 0.26))
-        ctx.setFillColor(color(far)); ctx.fillEllipse(in: CGRect(x: photoRect.minX - photoRect.width * 0.15, y: photoRect.minY + photoRect.height * 0.55, width: photoRect.width * 0.9, height: photoRect.height * 0.6))
-        ctx.setFillColor(color(near)); ctx.fillEllipse(in: CGRect(x: photoRect.minX + photoRect.width * 0.35, y: photoRect.minY + photoRect.height * 0.7, width: photoRect.width * 1.0, height: photoRect.height * 0.6))
-        ctx.restoreGState()
-    }
-    ctx.setFillColor(color("#2B2D33")); ctx.addPath(photo); ctx.fillPath()
-    scene(photo, sun: "#4A4C53", far: "#24262B", near: "#1B1D21")
-    // Developed half.
-    let devClip = CGMutablePath(); devClip.addRect(CGRect(x: photoRect.minX, y: photoRect.minY, width: photoRect.width * split, height: photoRect.height))
-    ctx.saveGState(); ctx.addPath(devClip); ctx.clip()
-    fillGrad(photo, gradient(["#F2C9A2", "#C98A62", "#5A3226"]), photoRect, vertical: true)
-    scene(photo, sun: "#FFE3B8", far: "#8C4F3A", near: "#3B221C")
-    ctx.restoreGState()
-    // Print edge.
-    ctx.setStrokeColor(color("#FFFFFF", 0.10)); ctx.setLineWidth(s * 0.004); ctx.addPath(photo); ctx.strokePath()
-    // Slider line.
-    withShadow(0, 0.008, 0.5) {
-        ctx.setFillColor(color("#FFFFFF", 0.85))
-        ctx.addPath(rounded(R(fx + fw * split - 0.006, fy, 0.012, fh), 0.006 * s)); ctx.fillPath()
-    }
-    // Hands on the frame edge, with finger bumps.
-    for cx in [0.5 - 0.20, 0.5 + 0.20] {
-        let hand = R(cx - 0.06, fy - 0.055, 0.12, 0.09)
-        withShadow(0.008, 0.014, 0.4) { fillGrad(ellipsePath(hand), amberHead, hand) }
-        ctx.setFillColor(color("#F0B896"))
-        for i in 0..<3 { ctx.fillEllipse(in: R(cx - 0.045 + Double(i) * 0.034, fy - 0.005, 0.03, 0.03)) }
-    }
+    fill(ctx, CGPath(ellipseIn: R(642, 652, 36, 36), transform: nil), shu)
 }
 
 func render(pixels: Int) -> CGImage {

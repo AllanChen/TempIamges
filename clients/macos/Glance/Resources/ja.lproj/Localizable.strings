@@ -375,6 +375,8 @@
 "Processing Widget…" = "Widget を処理中…";
 "Processing…" = "処理中…";
 "Uploading…" = "アップロード中…";
+"Preparing" = "準備中";
+"Preparing…" = "準備中…";
 "Submitting…" = "送信中…";
 "Downloading result…" = "結果をダウンロード中…";
 "Widget completed" = "Widget の処理が完了しました";
@@ -399,6 +401,10 @@
 "Select the area to change" = "変更する領域を選択";
 "Upload mask" = "マスクをアップロード";
 "Draw mask" = "マスクを描画";
+"Paint it on the image." = "画像の上でなぞってください。";
+"Choose the image, describe the edit, then draw the mask." = "画像を選び、編集内容を入力してから、マスクを描いてください。";
+"Choose an image, then draw the area to change." = "画像を選び、変更したい領域を描いてください。";
+"The highlighted area will be changed." = "ハイライトされた領域が変更されます。";
 "Change image" = "画像を変更";
 "＋  Add image" = "＋  画像を追加";
 "4 images maximum · remove one to add another" = "最大4枚です。追加するには1枚削除してください";
@@ -611,6 +617,7 @@
 "Search widgets" = "Widget を検索";
 "Upgrade to Pro" = "Pro にアップグレード";
 "Upgrade to Pro · from %@" = "Pro にアップグレード · %@～";
+"from %@" = "%@～";
 "Manage Pro" = "Pro を管理";
 "Manage Pro…" = "Pro を管理…";
 "Buy Glance Pro…" = "Glance Pro を購入…";
@@ -943,3 +950,72 @@
 "This code has expired." = "このコードは期限切れです。";
 "This account already has an active Pro license. The code was not consumed." = "有効な Pro ライセンスがあります。コードは消費されていません。";
 "The code was not redeemed. Please try again." = "コードを引き換えられませんでした。再試行してください。";
+
+/* Theme relaunch */
+"Relaunch Glance to apply the theme" = "テーマを適用するには Glance を再起動してください";
+"Glance needs to relaunch to switch themes. If a Widget task is still uploading, choose Later and relaunch after it finishes." = "テーマを切り替えるには Glance の再起動が必要です。Widget タスクのアップロード中は「あとで」を選び、完了後に再起動してください。";
+"Relaunch Now" = "今すぐ再起動";
+"Later" = "あとで";
+
+/* Shizuka Home */
+"Choose another" = "別のフォルダを選ぶ";
+"Nothing here yet" = "まだ何もありません";
+"Inspected files show up here." = "表示したファイルがここに並びます。";
+
+/* Shizuka Task Center */
+"Details" = "詳細";
+"What failed" = "失敗した処理";
+"What happened" = "経緯";
+"Reason" = "理由";
+"No result" = "結果なし";
+
+/* Shizuka Peek */
+"Inspect" = "表示";
+
+/* Shizuka Image Inspect */
+"Image" = "画像";
+"Color" = "カラー";
+"1 task" = "タスク 1 件";
+"Save as…" = "別名で保存…";
+"Icon (.icns)" = "アイコン (.icns)";
+"Original" = "元のサイズ";
+"New size" = "新しいサイズ";
+"Couldn’t open %@" = "%@ を開けません";
+"Glance couldn’t read this image. The file may be damaged or in a format it can’t decode." = "Glance はこの画像を読み込めませんでした。ファイルが破損しているか、デコードできない形式の可能性があります。";
+"Use ← → to keep browsing." = "← → で閲覧を続けられます。";
+
+/* Shizuka Sign in */
+"Sign in to Glance" = "Glance にサインイン";
+"Connect this Mac." = "この Mac を接続します。";
+
+/* Shizuka Billing */
+"Pay with" = "支払い方法";
+
+/* Shizuka menu bar & onboarding */
+"%d running" = "%d 件実行中";
+"Accessibility is still off — Peek won’t work until it’s allowed." = "アクセシビリティがオフのため、許可するまで Peek は使えません。";
+
+/* Shizuka Preferences */
+"Show Peek when you press the activation hotkey." = "アクティベーションのショートカットを押すと Peek を表示します。";
+
+/* Shizuka video & capture */
+"Sound on" = "サウンドオン";
+"Muted" = "ミュート中";
+"Drag to select · ↵ save · esc cancel" = "ドラッグで選択 · ↵ 保存 · esc キャンセル";
+
+/* Shizuka content viewer */
+"Markdown" = "Markdown";
+"Previous match" = "前の一致";
+"Next match" = "次の一致";
+"1 line changed" = "1 行変更";
+"%d lines changed" = "%d 行変更";
+
+/* Shizuka widgets */
+"%d credit" = "%d クレジット";
+"Cost" = "費用";
+"Prompt" = "プロンプト";
+"Mask" = "マスク";
+"Drawn" = "描画済み";
+"Base" = "ベース";
+"Add image" = "画像を追加";
+"Brush size" = "ブラシサイズ";

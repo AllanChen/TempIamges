@@ -14,27 +14,30 @@ protocol TrayPopoverDelegate: AnyObject {
     func trayQuit()
 }
 
-/// A frosted-dark tray panel that replaces the native gray NSMenu, matching the
-/// Figma "Tray Popover / Clean Editable" frame. Borderless NSPanel anchored
-/// under the status-bar icon; closes when it loses focus.
+/// The menu bar popover (Figma `06 · Menu Bar Popover`, states in `49 · Menu
+/// Bar / States`): one calm translucent ink/2 surface replacing the native
+/// NSMenu. Borderless NSPanel anchored under the status-bar icon; closes when
+/// it loses focus.
 final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
     weak var trayDelegate: TrayPopoverDelegate?
 
-    private static let panelSize = NSSize(width: 300, height: 452)
+    private static let panelSize = NSSize(width: 288, height: 341)
 
     private let root = NSView()
-    private let previewSubLabel = NSTextField(labelWithString: "")
+    private let surface = NSView()
+    private let brandLabel = PanelCenteredTextView()
+    private let peekDot = NSView()
+    private let previewSubLabel = PanelCenteredTextView()
     private let previewToggle = TrayToggle()
-    private var rows: [TrayRow] = []
     private let tasksRow: TrayRow
     private let permissionsRow: TrayRow
     private let accountRow: TrayRow
 
     init(delegate: TrayPopoverDelegate) {
         self.trayDelegate = delegate
-        self.tasksRow = TrayRow(icon: "checklist", title: "Tasks".localized)
-        self.permissionsRow = TrayRow(icon: "checkmark.shield", title: "Permissions".localized)
-        self.accountRow = TrayRow(icon: "person.crop.circle", title: "Account".localized)
+        self.tasksRow = TrayRow(icon: "list.bullet", title: "Tasks".localized)
+        self.permissionsRow = TrayRow(icon: "shield", title: "Permissions".localized)
+        self.accountRow = TrayRow(icon: "person", title: "Account".localized)
         super.init(contentRect: NSRect(origin: .zero, size: Self.panelSize),
                    styleMask: [.borderless, .nonactivatingPanel],
                    backing: .buffered, defer: false)
@@ -46,104 +49,96 @@ final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
         backgroundColor = .clear
         isOpaque = false
         hasShadow = true
-        appearance = NSAppearance(named: .darkAqua)
+        appearance = PanelStyle.windowAppearance
         buildUI()
     }
 
     // MARK: Build
 
+    /// Figma frame in top-origin popover coordinates → AppKit frame.
+    private func fromTop(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect {
+        NSRect(x: x, y: Self.panelSize.height - y - h, width: w, height: h)
+    }
+
     private func buildUI() {
-        root.wantsLayer = true
-        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-        root.layer?.cornerRadius = 16
-        root.layer?.masksToBounds = true
-        root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        root.layer?.borderWidth = 1
+        let bounds = NSRect(origin: .zero, size: Self.panelSize)
+        root.frame = bounds
         contentView = root
 
-        let W = Self.panelSize.width
+        let blur = NSVisualEffectView(frame: bounds)
+        blur.material = .popover
+        blur.blendingMode = .behindWindow
+        blur.state = .active
+        blur.appearance = PanelStyle.vibrantAppearance
+        blur.maskImage = PanelStyle.roundedMask(radius: PanelStyle.Radius.window)
+        root.addSubview(blur)
 
-        // Header: brand mark + preview toggle
-        let mark = NSView(frame: NSRect(x: 16, y: Self.panelSize.height - 50, width: 34, height: 34))
-        mark.wantsLayer = true
-        mark.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accentSubtleFill)
-        mark.layer?.cornerRadius = 9
-        root.addSubview(mark)
-        let glyph = NSImageView(frame: NSRect(x: 8, y: 8, width: 18, height: 18))
-        // Same character as the menu bar item (Figma "Menu Bar Icon / Character"),
-        // in the accent colour here because the mark sits on Glance's own chrome.
-        glyph.image = MenuBarCharacterIcon.image(for: .default)
-        glyph.contentTintColor = PanelStyle.accent
-        mark.addSubview(glyph)
+        surface.frame = bounds
+        surface.wantsLayer = true
+        surface.layer?.backgroundColor = PanelStyle.resolvedCG(
+            PanelStyle.themed(PanelStyle.Sumi.ink2, PanelStyle.Washi.ink2).withAlphaComponent(0.94))
+        surface.layer?.cornerRadius = PanelStyle.Radius.window
+        surface.layer?.masksToBounds = true
+        surface.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        surface.layer?.borderWidth = 1
+        root.addSubview(surface)
 
-        let brand = makeLabel("Glance".localized, size: 15, weight: .semibold, color: PanelStyle.textPrimary)
-        brand.frame = NSRect(x: 60, y: Self.panelSize.height - 34, width: 150, height: 20)
-        root.addSubview(brand)
-        previewSubLabel.font = PanelStyle.inspectFont(ofSize: 10, weight: .medium)
-        previewSubLabel.frame = NSRect(x: 60, y: Self.panelSize.height - 50, width: 170, height: 14)
-        previewSubLabel.isBordered = false
-        previewSubLabel.isEditable = false
-        previewSubLabel.backgroundColor = .clear
-        root.addSubview(previewSubLabel)
-
-        previewToggle.frame = NSRect(x: W - 50, y: Self.panelSize.height - 43, width: 38, height: 21)
+        // Header: wordmark, Peek state, Peek toggle.
+        brandLabel.string = "Glance".localized
+        brandLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
+        brandLabel.textColor = PanelStyle.textPrimary
+        brandLabel.alignment = .left
+        brandLabel.frame = fromTop(17, 17, 200, 16)
+        surface.addSubview(brandLabel)
+        peekDot.wantsLayer = true
+        peekDot.layer?.cornerRadius = 2.5
+        peekDot.frame = fromTop(17, 40, 5, 5)
+        surface.addSubview(peekDot)
+        previewSubLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        previewSubLabel.textColor = PanelStyle.textTertiary
+        previewSubLabel.alignment = .left
+        previewSubLabel.frame = fromTop(28, 36, 190, 13)
+        surface.addSubview(previewSubLabel)
+        previewToggle.frame = fromTop(241, 24, 30, 18)
         previewToggle.onToggle = { [weak self] in self?.trayDelegate?.trayTogglePreview() }
-        root.addSubview(previewToggle)
+        surface.addSubview(previewToggle)
 
-        addHairline(y: Self.panelSize.height - 66)
+        addDivider(top: 61)
 
-        // Primary: Open Home
-        let home = TrayPrimaryButton(title: "Open Glance Home".localized, symbol: "house.fill")
-        home.frame = NSRect(x: 12, y: Self.panelSize.height - 124, width: W - 24, height: 44)
-        home.onClick = { [weak self] in self?.fire { $0.trayOpenHome() } }
-        root.addSubview(home)
-
-        // Navigation rows
-        var y = Self.panelSize.height - 138 - 40
-        placeRow(tasksRow, y: y) { [weak self] in self?.fire { $0.trayOpenTasks() } }; y -= 44
+        let home = TrayRow(icon: "photo", title: "Open Glance Home".localized)
+        placeRow(home, top: 72) { [weak self] in self?.fire { $0.trayOpenHome() } }
+        placeRow(tasksRow, top: 102) { [weak self] in self?.fire { $0.trayOpenTasks() } }
         let history = TrayRow(icon: "clock.arrow.circlepath", title: "Preview History".localized)
-        placeRow(history, y: y) { [weak self] in self?.fire { $0.trayOpenHistory() } }; y -= 44
-        let prefs = TrayRow(icon: "gearshape", title: "Preferences".localized, trailing: "⌘,")
-        placeRow(prefs, y: y) { [weak self] in self?.fire { $0.trayOpenPreferences() } }; y -= 12
+        placeRow(history, top: 132) { [weak self] in self?.fire { $0.trayOpenHistory() } }
+        let prefs = TrayRow(icon: "slider.horizontal.3", title: "Preferences...".localized, shortcut: "⌘,")
+        placeRow(prefs, top: 162) { [weak self] in self?.fire { $0.trayOpenPreferences() } }
 
-        addHairline(y: y); y -= 44
+        addDivider(top: 192)
 
-        // Status rows
-        placeRow(permissionsRow, y: y) { [weak self] in self?.fire { $0.trayOpenPermissions() } }; y -= 44
-        placeRow(accountRow, y: y) { [weak self] in self?.fire { $0.trayOpenAccount() } }; y -= 12
+        placeRow(permissionsRow, top: 203) { [weak self] in self?.fire { $0.trayOpenPermissions() } }
+        placeRow(accountRow, top: 233) { [weak self] in self?.fire { $0.trayOpenAccount() } }
 
-        addHairline(y: y); y -= 34
+        addDivider(top: 263)
 
-        // Footer: About / Quit
-        let about = TrayTextButton(title: "About Glance".localized, align: .left)
-        about.frame = NSRect(x: 24, y: y, width: 140, height: 18)
-        about.onClick = { [weak self] in self?.fire { $0.trayShowAbout() } }
-        root.addSubview(about)
-        let quit = TrayTextButton(title: "Quit".localized, align: .right)
-        quit.frame = NSRect(x: W - 100 - 24, y: y, width: 100, height: 18)
-        quit.onClick = { [weak self] in self?.fire { $0.trayQuit() } }
-        root.addSubview(quit)
+        let about = TrayRow(icon: nil, title: "About Glance".localized)
+        placeRow(about, top: 274) { [weak self] in self?.fire { $0.trayShowAbout() } }
+        let quit = TrayRow(icon: nil, title: "Quit".localized)
+        placeRow(quit, top: 304) { [weak self] in self?.fire { $0.trayQuit() } }
     }
 
-    private func placeRow(_ row: TrayRow, y: CGFloat, action: @escaping () -> Void) {
-        row.frame = NSRect(x: 12, y: y, width: Self.panelSize.width - 24, height: 40)
+    private func placeRow(_ row: TrayRow, top: CGFloat, action: @escaping () -> Void) {
+        row.frame = fromTop(7, top, Self.panelSize.width - 14, 30)
         row.onClick = action
-        root.addSubview(row)
-        rows.append(row)
+        surface.addSubview(row)
     }
 
-    private func addHairline(y: CGFloat) {
-        let line = NSView(frame: NSRect(x: 12, y: y, width: Self.panelSize.width - 24, height: 1))
+    /// Figma divider: an 11 pt band holding a 1 pt line inset 10 pt inside the rows.
+    private func addDivider(top: CGFloat) {
+        let line = NSView(frame: fromTop(17, top + 5, Self.panelSize.width - 34, 1))
         line.wantsLayer = true
-        line.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        root.addSubview(line)
-    }
-
-    private func makeLabel(_ text: String, size: CGFloat, weight: NSFont.Weight, color: NSColor) -> NSTextField {
-        let label = NSTextField(labelWithString: text)
-        label.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
-        label.textColor = color
-        return label
+        line.layer?.backgroundColor = PanelStyle.resolvedCG(
+            PanelStyle.themed(PanelStyle.Sumi.line, PanelStyle.Washi.line))
+        surface.addSubview(line)
     }
 
     /// Run a delegate action then close the panel (menu-like behavior).
@@ -157,20 +152,23 @@ final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
     func refreshState() {
         let on = Preferences.shared.peekEnabled
         previewToggle.setOn(on)
-        previewSubLabel.stringValue = on ? "Peek is on".localized : "Peek is off".localized
-        previewSubLabel.textColor = on ? PanelStyle.success : PanelStyle.textTertiary
+        previewSubLabel.string = on ? "Peek is on".localized : "Peek is off".localized
+        peekDot.layer?.backgroundColor = PanelStyle.resolvedCG(
+            on ? PanelStyle.success : PanelStyle.themed(PanelStyle.Sumi.text4, PanelStyle.Washi.text4))
 
         let taskCount = WidgetTaskManager.shared.activeCount
-        tasksRow.setBadge(taskCount > 0 ? "\(taskCount)" : nil)
+        tasksRow.setTrailing(taskCount > 0 ? String(format: "%d running".localized, taskCount) : nil,
+                             color: PanelStyle.info)
 
         let pm = PermissionManager.shared
         let granted = pm.canUsePeek
         permissionsRow.setTrailing(granted ? "All set".localized : "Action needed".localized,
-                                   color: granted ? PanelStyle.success : PanelStyle.danger)
+                                   color: granted ? PanelStyle.success : PanelStyle.failure)
 
         let signedIn = AuthManager.shared.isSignedIn
-        accountRow.setTitle(BillingManager.shared.trialBadge ?? (BillingManager.shared.hasPro ? "Glance Pro" : signedIn ? "Account".localized : "Sign in".localized))
-        accountRow.setTrailing(AuthManager.shared.session?.user.credits.map { String(format: "%d credits".localized, $0) }, color: PanelStyle.textSecondary)
+        accountRow.setTitle(BillingManager.shared.trialBadge ?? (BillingManager.shared.hasPro ? "Glance Pro" : "Account".localized))
+        let credits = AuthManager.shared.session?.user.credits.map { String(format: "%d credits".localized, $0) }
+        accountRow.setTrailing(signedIn ? credits : "Sign in".localized, color: PanelStyle.textTertiary)
     }
 
     /// Show the panel anchored under the status-bar button; close on outside click.
@@ -195,61 +193,63 @@ final class TrayPopoverPanel: NSPanel, NSWindowDelegate {
 
 // MARK: - Row / control views
 
+/// Figma `item / …`: 274 × 30, 16 pt line icon in text/2 at x 10, label at x 36,
+/// trailing status or shortcut right-aligned to x 264. Hover fills ink/4.
 private final class TrayRow: NSView {
     var onClick: (() -> Void)?
     private let iconView = NSImageView()
     private let titleLabel = PanelCenteredTextView()
     private let trailingLabel = PanelCenteredTextView()
-    private let badge = PanelCenteredTextView()
-    private var hovering = false
+    private let hasIcon: Bool
+    private let hasShortcut: Bool
 
-    init(icon: String, title: String, trailing: String? = nil) {
+    init(icon: String?, title: String, shortcut: String? = nil) {
+        hasIcon = icon != nil
+        hasShortcut = shortcut != nil
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.cornerRadius = 8
-        iconView.image = NSImage(systemSymbolName: icon, accessibilityDescription: nil)
-        iconView.contentTintColor = PanelStyle.textSecondary
-        addSubview(iconView)
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
-        titleLabel.textColor = PanelStyle.textPrimary
+        layer?.cornerRadius = PanelStyle.Radius.control
+        if let icon {
+            iconView.image = NSImage(systemSymbolName: icon, accessibilityDescription: nil)?
+                .withSymbolConfiguration(.init(pointSize: 13, weight: .regular))
+            iconView.imageScaling = .scaleProportionallyDown
+            iconView.contentTintColor = PanelStyle.textSecondary
+            addSubview(iconView)
+        }
+        titleLabel.font = PanelStyle.inspectFont(ofSize: 13)
+        titleLabel.textColor = hasIcon ? PanelStyle.textPrimary : PanelStyle.textSecondary
         titleLabel.alignment = .left
         titleLabel.string = title
         addSubview(titleLabel)
-        trailingLabel.font = PanelStyle.inspectFont(ofSize: 11)
+        trailingLabel.font = hasShortcut ? PanelStyle.monoFont(ofSize: 11) : PanelStyle.inspectFont(ofSize: 12)
         trailingLabel.textColor = PanelStyle.textTertiary
         trailingLabel.alignment = .right
-        trailingLabel.string = trailing ?? ""
+        trailingLabel.string = shortcut ?? ""
         addSubview(trailingLabel)
-        badge.font = PanelStyle.inspectFont(ofSize: 10, weight: .semibold)
-        badge.textColor = PanelStyle.accentInk
-        badge.alignment = .center
-        badge.wantsLayer = true
-        badge.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
-        badge.layer?.cornerRadius = 9
-        badge.isHidden = true
-        addSubview(badge)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(title)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func setBadge(_ text: String?) {
-        badge.isHidden = text == nil
-        badge.string = text ?? ""
-        needsLayout = true
-    }
     func setTrailing(_ text: String?, color: NSColor) {
         trailingLabel.string = text ?? ""
         trailingLabel.textColor = color
     }
-    func setTitle(_ text: String) { titleLabel.string = text }
+    func setTitle(_ text: String) {
+        titleLabel.string = text
+        setAccessibilityLabel(text)
+    }
 
     override func layout() {
         super.layout()
-        iconView.frame = NSRect(x: 12, y: (bounds.height - 18) / 2, width: 18, height: 18)
-        titleLabel.frame = NSRect(x: 42, y: (bounds.height - 16) / 2, width: bounds.width - 140, height: 16)
-        trailingLabel.frame = NSRect(x: bounds.width - 126, y: (bounds.height - 14) / 2, width: 114, height: 14)
-        if !badge.isHidden {
-            badge.frame = NSRect(x: bounds.width - 44, y: (bounds.height - 20) / 2, width: 32, height: 20)
-        }
+        // Rows are 30 tall; Figma y values are converted from the row's top edge.
+        iconView.frame = NSRect(x: 10, y: bounds.height - 23, width: 16, height: 16)
+        let titleX: CGFloat = hasIcon ? 36 : 10
+        titleLabel.frame = NSRect(x: titleX, y: bounds.height - 23, width: bounds.width - titleX - 120, height: 16)
+        trailingLabel.frame = hasShortcut
+            ? NSRect(x: bounds.width - 10 - 40, y: bounds.height - 22, width: 40, height: 14)
+            : NSRect(x: bounds.width - 10 - 110, y: bounds.height - 22.5, width: 110, height: 15)
     }
 
     override func updateTrackingAreas() {
@@ -258,56 +258,17 @@ private final class TrayRow: NSView {
         addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self))
     }
     override func mouseEntered(with event: NSEvent) {
-        hovering = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.controlFill)
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surfaceElevated)
     }
     override func mouseExited(with event: NSEvent) {
-        hovering = false
         layer?.backgroundColor = .clear
     }
     override func mouseDown(with event: NSEvent) { onClick?() }
+    override func accessibilityPerformPress() -> Bool { onClick?(); return true }
 }
 
-private final class TrayPrimaryButton: NSView {
-    var onClick: (() -> Void)?
-    init(title: String, symbol: String) {
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.accent)
-        layer?.cornerRadius = 10
-        let icon = NSImageView(frame: NSRect(x: 16, y: 13, width: 18, height: 18))
-        icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
-        icon.contentTintColor = PanelStyle.accentInk
-        addSubview(icon)
-        let label = PanelCenteredTextView()
-        label.string = title
-        label.font = PanelStyle.inspectFont(ofSize: 13, weight: .semibold)
-        label.textColor = PanelStyle.accentInk
-        label.alignment = .left
-        label.frame = NSRect(x: 44, y: 0, width: 200, height: 44)
-        addSubview(label)
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func mouseDown(with event: NSEvent) { onClick?() }
-}
-
-private final class TrayTextButton: NSView {
-    var onClick: (() -> Void)?
-    private let label = PanelCenteredTextView()
-
-    init(title: String, align: NSTextAlignment) {
-        super.init(frame: .zero)
-        label.string = title
-        label.font = PanelStyle.inspectFont(ofSize: 12)
-        label.textColor = PanelStyle.textTertiary
-        label.alignment = align
-        addSubview(label)
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layout() { super.layout(); label.frame = bounds }
-    override func mouseDown(with event: NSEvent) { onClick?() }
-}
-
+/// Figma `Toggle`, 30 × 18: text/1 track with an ink knob when on, ink/4 track
+/// with a text/3 knob when off.
 private final class TrayToggle: NSView {
     var onToggle: (() -> Void)?
     private let knob = NSView()
@@ -316,20 +277,25 @@ private final class TrayToggle: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 10.5
         knob.wantsLayer = true
-        knob.layer?.cornerRadius = 8.5
         addSubview(knob)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.checkBox)
+        setAccessibilityLabel("Peek".localized)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func setOn(_ on: Bool) {
         isOn = on
-        layer?.backgroundColor = PanelStyle.resolvedCG(on ? PanelStyle.accent : PanelStyle.controlFill)
-        let knobX: CGFloat = on ? bounds.width - 19 : 2
-        knob.frame = NSRect(x: knobX, y: 2, width: 17, height: 17)
-        knob.layer?.backgroundColor = PanelStyle.resolvedCG(on ? PanelStyle.accentInk : PanelStyle.textSecondary)
+        layer?.cornerRadius = bounds.height / 2
+        layer?.backgroundColor = PanelStyle.resolvedCG(on ? PanelStyle.accent : PanelStyle.surfaceElevated)
+        let side = bounds.height - 4
+        knob.frame = NSRect(x: on ? bounds.width - side - 2 : 2, y: 2, width: side, height: side)
+        knob.layer?.cornerRadius = side / 2
+        knob.layer?.backgroundColor = PanelStyle.resolvedCG(on ? PanelStyle.accentInk : PanelStyle.textTertiary)
+        setAccessibilityValue(on)
     }
     override func layout() { super.layout(); setOn(isOn) }
     override func mouseDown(with event: NSEvent) { onToggle?() }
+    override func accessibilityPerformPress() -> Bool { onToggle?(); return true }
 }

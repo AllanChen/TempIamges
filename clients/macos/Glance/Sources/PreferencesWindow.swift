@@ -57,45 +57,75 @@ final class ShortcutRecorderField: NSTextField {
     }
 }
 
-/// Compact preferences using the shared panel chrome and fixed point sizes.
-/// The form scrolls independently, so resizing never shrinks text or controls.
+/// Preferences laid out from Figma `05 · Preferences` and its Peek / Appearance
+/// pages (Glance · Shizuka): a 212 pt sidebar of pages and actions, and a
+/// scrolling page of settings. The root view is flipped, so frames below use
+/// the Figma top-origin coordinates directly.
 final class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
-    private static let openingSize = NSSize(width: 780, height: 640)
+    private static let openingSize = NSSize(width: 960, height: 720)
+
+    private enum Page {
+        case general, peek, appearance
+
+        var title: String {
+            switch self {
+            case .general: return "General".localized
+            case .peek: return "Peek".localized
+            case .appearance: return "Appearance".localized
+            }
+        }
+
+        var summary: String {
+            switch self {
+            case .general: return "Control startup, language, previews, and the way Glance works in the background.".localized
+            case .peek: return "Preview the selected text with the activation hotkey.".localized
+            case .appearance: return "Follow the system, or pin Glance to light or dark.".localized
+            }
+        }
+    }
+
+    /// Figma geometry, in points from the window's top-left corner.
+    private enum Metrics {
+        static let titlebarHeight: CGFloat = 44
+        static let sidebarWidth: CGFloat = 212
+        static let navOrigin = NSPoint(x: 12, y: 60)
+        static let navItemSize = NSSize(width: 188, height: 30)
+        static let navItemStep: CGFloat = 32
+        static let contentX: CGFloat = 276
+        static let contentTop: CGFloat = 84
+        static let contentTrailing: CGFloat = 64
+        static let footerBottom: CGFloat = 39
+        static let scrollBottom: CGFloat = 56
+        static let rowHeight: CGFloat = 64
+    }
 
     private let root = PreferencesFlippedView()
     private let titlebar = PreferencesTitlebar()
-    private let titleLabel = PreferencesPassthroughLabel(labelWithString: "Glance Preferences".localized)
-    private let subtitleLabel = PreferencesPassthroughLabel(labelWithString: "General".localized)
+    private let titleLabel = PreferencesTextLabel("Preferences".localized, font: PanelStyle.inspectFont(ofSize: 13, weight: .medium),
+                                                  color: PanelStyle.textSecondary, alignment: .center)
     private lazy var closeTraffic = TrafficLightButton(color: NSColor(srgbRed: 237 / 255, green: 106 / 255, blue: 94 / 255, alpha: 1), target: self, action: #selector(closeTapped))
     private lazy var minimizeTraffic = TrafficLightButton(color: NSColor(srgbRed: 244 / 255, green: 191 / 255, blue: 79 / 255, alpha: 1), target: self, action: #selector(minimizeTapped))
     private lazy var zoomTraffic = TrafficLightButton(color: NSColor(srgbRed: 97 / 255, green: 197 / 255, blue: 84 / 255, alpha: 1), target: self, action: #selector(zoomTapped))
-    private let iconToolbar = PreferencesFlippedView()
-    private lazy var generalButton = PreferencesIconButton(icon: "PrefsIconSettings", tooltip: "General".localized) { }
-    private lazy var appearanceButton = PreferencesIconButton(icon: "PrefsIconGrid", tooltip: "Appearance".localized) { [weak self] in self?.scrollToAppearance() }
-    private lazy var privacyButton = PreferencesIconButton(icon: "PrefsIconShield", tooltip: "Privacy".localized) { (NSApp.delegate as? AppDelegate)?.checkAndRequestPermissions() }
-    private lazy var infoButton = PreferencesIconButton(icon: "PrefsIconInfo", tooltip: "Information".localized) { [weak self] in self?.showAbout() }
-    private let navigation = PreferencesFlippedView()
-    private var tabs: [PreferencesTab] = []
-    private let form = NSView()
+    private let sidebarDivider = NSView()
+    private var navItems: [(item: PreferencesNavItem, page: Page?)] = []
     private let formScroll = NSScrollView()
     private let formDocument = PreferencesFlippedView()
-    private let heading = NSTextField(labelWithString: "General".localized)
-    private let pageDescription = NSTextField(labelWithString: "Control startup, language, previews, and the way Glance works in the background.".localized)
-    private let statusbar = PreferencesFlippedView()
-    private let statusLeft = NSTextField(labelWithString: "Glance Preferences".localized)
-    private let statusCenter = NSTextField(labelWithString: "Changes are saved automatically".localized)
+    private let heading = PreferencesTextLabel("", font: PanelStyle.titleFont(ofSize: 28), color: PanelStyle.textPrimary)
+    private let pageDescription = PreferencesTextLabel("", font: PanelStyle.inspectFont(ofSize: 13), color: PanelStyle.textSecondary)
+    private let footer = PreferencesTextLabel("Changes are saved automatically".localized, font: PanelStyle.inspectFont(ofSize: 12),
+                                              color: PanelStyle.textTertiary)
     private lazy var resetButton = PreferencesTextButton(title: "Reset to Defaults".localized) { [weak self] in self?.resetToDefaults() }
+    private var page: Page = .general
 
-    // Rows, in board order. The custom-shortcut row only shows in Custom mode.
-    private var groups: [(label: NSTextField, rows: [PreferencesRow])] = []
+    // Groups per page, in Figma order. The custom-shortcut row only shows in Custom mode.
+    private var groups: [(page: Page, label: PreferencesTextLabel, rows: [PreferencesRow])] = []
+    private let themePicker = PreferencesThemePicker()
     private lazy var launchRow = PreferencesRow(title: "Launch Glance at login".localized, explanation: "Keep the menu bar companion ready when macOS starts.".localized, control: .toggle)
-    private lazy var peekRow = PreferencesRow(title: "Enable Peek".localized, explanation: "Preview the selected text with the activation hotkey.".localized, control: .toggle)
-    private lazy var hotkeyRow = PreferencesRow(title: "Activation hotkey".localized, explanation: "", control: .selection)
+    private lazy var peekRow = PreferencesRow(title: "Enable Peek".localized, explanation: "Show Peek when you press the activation hotkey.".localized, control: .toggle)
+    private lazy var hotkeyRow = PreferencesRow(title: "Activation hotkey".localized, explanation: "", control: .segments)
     private lazy var shortcutRow = PreferencesRow(title: "Custom shortcut".localized, explanation: "Click the field, then press up to three keys.".localized, control: .shortcut)
-    private lazy var languageRow = PreferencesRow(title: "Interface language".localized, explanation: "Reopen windows to apply the new language.".localized, control: .selection)
-    private lazy var themeRow = PreferencesRow(title: "Theme".localized, explanation: "Follow the system, or pin Glance to light or dark.".localized, control: .selection)
     private lazy var clipboardRow = PreferencesRow(title: "Read clipboard when nothing is selected".localized, explanation: "Peek shows the clipboard when no text is selected.".localized, control: .toggle)
-    private var languageAppearanceLabel: NSTextField?
+    private lazy var languageRow = PreferencesRow(title: "Interface language".localized, explanation: "Reopen windows to apply the new language.".localized, control: .selection)
     private var recordedModifiers: NSEvent.ModifierFlags = []
     private var recordedKeyCode: UInt16?
 
@@ -109,17 +139,18 @@ final class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         titlebarAppearsTransparent = true
         isMovableByWindowBackground = false
         isReleasedWhenClosed = false
-        appearance = NSAppearance(named: .darkAqua)
-        backgroundColor = PanelStyle.inspectBackground
-        minSize = NSSize(width: 720, height: 480)
+        appearance = PanelStyle.windowAppearance
+        backgroundColor = PanelStyle.inspectChrome
+        minSize = NSSize(width: 860, height: 560)
         standardWindowButton(.closeButton)?.isHidden = true
         standardWindowButton(.miniaturizeButton)?.isHidden = true
         standardWindowButton(.zoomButton)?.isHidden = true
         buildUI()
         loadSettings()
+        select(.general)
     }
 
-    /// Open at an ordinary window size, centered and clamped to the cursor's screen.
+    /// Open at the Figma window size, centered and clamped to the cursor's screen.
     private static func initialFrame() -> NSRect {
         ScreenManager.shared.contentFrame(for: openingSize)
     }
@@ -129,62 +160,54 @@ final class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private func buildUI() {
         contentView = root
         root.wantsLayer = true
-        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectBackground)
-        root.layer?.cornerRadius = 16
+        root.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        root.layer?.cornerRadius = PanelStyle.Radius.window
         root.layer?.borderWidth = 1
         root.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
         root.layer?.masksToBounds = true
         root.onLayout = { [weak self] in self?.layoutContent() }
 
-        // 01 / Titlebar: #17181D, 58 pt.
-        titlebar.wantsLayer = true
-        titlebar.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
-        configure(titleLabel, size: 15, weight: .semibold, color: PanelStyle.textPrimary, alignment: .center)
-        configure(subtitleLabel, size: 11, weight: .regular, color: PanelStyle.textTertiary, alignment: .center)
+        // Titlebar: 44 pt drag region with the traffic lights and a centred 13 medium title.
         titlebar.addSubview(titleLabel)
-        titlebar.addSubview(subtitleLabel)
         [closeTraffic, minimizeTraffic, zoomTraffic].forEach { titlebar.addSubview($0) }
         root.addSubview(titlebar)
 
-        // Icon toolbar, with fixed-size buttons.
-        configurePanel(iconToolbar, color: PanelStyle.inspectToolbar)
-        generalButton.isActive = true
-        [generalButton, appearanceButton, privacyButton, infoButton].forEach { iconToolbar.addSubview($0) }
-        root.addSubview(iconToolbar)
+        sidebarDivider.wantsLayer = true
+        sidebarDivider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.themed(PanelStyle.Sumi.line, PanelStyle.Washi.line))
+        root.addSubview(sidebarDivider)
 
-        // General is the only settings page.
-        configurePanel(navigation, color: HistoryStyle.hex(0x111217))
-        let general = PreferencesTab(title: "General".localized, icon: "PrefsIconSettings", selected: true)
-        navigation.addSubview(general)
-        let account = PreferencesTab(title: "Account and license".localized, icon: "PrefsIconInfo", selected: false)
-        account.onPress = { [weak self] in BillingCoordinator.shared.showAccount(over: self) }
-        navigation.addSubview(account)
-        tabs = [general, account]
-        root.addSubview(navigation)
+        // Sidebar: settings pages, then the actions that open other windows.
+        let entries: [(String, PreferencesGlyph, Page?, (() -> Void)?)] = [
+            ("General".localized, .adjust, .general, nil),
+            ("Peek".localized, .image, .peek, nil),
+            ("Appearance".localized, .sparkle, .appearance, nil),
+            ("Account".localized, .user, nil, { [weak self] in BillingCoordinator.shared.showAccount(over: self) }),
+            ("Privacy".localized, .shield, nil, { (NSApp.delegate as? AppDelegate)?.checkAndRequestPermissions() }),
+            ("About Glance".localized, .info, nil, { [weak self] in self?.showAbout() })
+        ]
+        for (title, glyph, page, action) in entries {
+            let item = PreferencesNavItem(title: title, glyph: glyph)
+            item.onPress = { [weak self] in
+                if let page { self?.select(page) } else { action?() }
+            }
+            navItems.append((item, page))
+            root.addSubview(item)
+        }
 
-        // 04 / General Settings: #17181D. The rows scroll when they outgrow the pane.
-        form.wantsLayer = true
-        form.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectChrome)
+        // Page content scrolls when it outgrows the window.
         formScroll.drawsBackground = false
         formScroll.hasVerticalScroller = true
         PanelStyle.styleScrollers(in: formScroll)
-        formScroll.autohidesScrollers = true
-        formScroll.scrollerStyle = .overlay
         formScroll.borderType = .noBorder
         formScroll.documentView = formDocument
-        form.addSubview(formScroll)
-        configure(heading, size: 22, weight: .semibold, color: PanelStyle.textPrimary, alignment: .left)
-        configure(pageDescription, size: 12, weight: .regular, color: PanelStyle.textSecondary, alignment: .left)
-        pageDescription.lineBreakMode = .byWordWrapping
-        pageDescription.maximumNumberOfLines = 2
+        root.addSubview(formScroll)
         formDocument.addSubview(heading)
         formDocument.addSubview(pageDescription)
-        let languageLabel = groupLabel("Language & Appearance".localized)
-        languageAppearanceLabel = languageLabel
-        groups = [(groupLabel("Startup".localized), [launchRow]),
-                  (groupLabel("Peek".localized), [peekRow, hotkeyRow, shortcutRow]),
-                  (languageLabel, [languageRow, themeRow]),
-                  (groupLabel("Clipboard".localized), [clipboardRow])]
+        formDocument.addSubview(themePicker)
+        groups = [(.general, groupLabel("Startup".localized), [launchRow]),
+                  (.peek, groupLabel("Peek".localized), [peekRow, hotkeyRow, shortcutRow]),
+                  (.peek, groupLabel("Clipboard".localized), [clipboardRow]),
+                  (.appearance, groupLabel("Language".localized), [languageRow])]
         for group in groups {
             formDocument.addSubview(group.label)
             for row in group.rows { formDocument.addSubview(row) }
@@ -196,48 +219,34 @@ final class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
             NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
         }
         clipboardRow.onToggle = { value in Preferences.shared.readClipboard = value; NotificationCenter.default.post(name: .preferencesDidChange, object: nil) }
-        hotkeyRow.selection.options = Preferences.ActivationMode.allCases.map { $0.displayName.localized }
-        hotkeyRow.selection.onSelect = { [weak self] index in self?.modeChanged(to: Preferences.ActivationMode.allCases[index]) }
+        hotkeyRow.segments.options = Preferences.ActivationMode.allCases.map { $0.displayName.localized }
+        hotkeyRow.segments.onSelect = { [weak self] index in self?.modeChanged(to: Preferences.ActivationMode.allCases[index]) }
         languageRow.selection.options = Preferences.AppLanguage.allCases.map(\.displayName)
         languageRow.selection.onSelect = { [weak self] index in self?.languageChanged(to: Preferences.AppLanguage.allCases[index]) }
-        themeRow.selection.options = Preferences.Theme.allCases.map(\.displayName)
-        themeRow.selection.onSelect = { [weak self] index in self?.themeChanged(to: Preferences.Theme.allCases[index]) }
+        themePicker.onSelect = { [weak self] theme in self?.themeChanged(to: theme) }
         shortcutRow.shortcutField.recorderDelegate = self
-        root.addSubview(form)
 
-        // 06 / Statusbar: #1A1B20 with the line stroke, 37 pt.
-        configurePanel(statusbar, color: HistoryStyle.hex(0x1A1B20))
-        configure(statusLeft, size: 12, weight: .regular, color: PanelStyle.textSecondary, alignment: .left)
-        configure(statusCenter, size: 12, weight: .regular, color: PanelStyle.textSecondary, alignment: .center)
-        statusbar.addSubview(statusCenter)
-        statusbar.addSubview(statusLeft)
-        statusbar.addSubview(resetButton)
-        root.addSubview(statusbar)
+        // Footer: the autosave note, with the global reset trailing it.
+        root.addSubview(footer)
+        root.addSubview(resetButton)
         layoutContent()
     }
 
-    private func groupLabel(_ title: String) -> NSTextField {
-        let label = NSTextField(labelWithString: title.uppercased())
-        configure(label, size: 11, weight: .semibold, color: PanelStyle.textSecondary, alignment: .left)
-        return label
+    private func groupLabel(_ title: String) -> PreferencesTextLabel {
+        PreferencesTextLabel(title, font: PanelStyle.inspectFont(ofSize: 12), color: PanelStyle.textTertiary)
     }
 
-    private func configurePanel(_ view: NSView, color: NSColor) {
-        view.wantsLayer = true
-        view.layer?.backgroundColor = PanelStyle.resolvedCG(color)
-        view.layer?.borderWidth = 1
-        view.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+    private func select(_ page: Page) {
+        self.page = page
+        for entry in navItems { entry.item.isSelected = entry.page == page }
+        heading.text = page.title
+        pageDescription.text = page.summary
+        layoutContent()
+        formScroll.contentView.scroll(to: .zero)
+        formScroll.reflectScrolledClipView(formScroll.contentView)
     }
 
-    private func configure(_ label: NSTextField, size: CGFloat, weight: NSFont.Weight, color: NSColor, alignment: NSTextAlignment) {
-        label.font = PanelStyle.inspectFont(ofSize: size, weight: weight)
-        label.textColor = color
-        label.alignment = alignment
-        label.lineBreakMode = .byTruncatingTail
-        label.maximumNumberOfLines = 1
-    }
-
-    // MARK: Layout (fixed point sizes; the root view is flipped)
+    // MARK: Layout (Figma top-origin points; the root view is flipped)
 
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         super.setFrame(frameRect, display: flag)
@@ -247,68 +256,64 @@ final class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private func layoutContent() {
         let width = root.bounds.width, height = root.bounds.height
         guard width > 0, height > 0 else { return }
-        let titlebarHeight: CGFloat = 58
-        let toolbarHeight: CGFloat = 54
-        let statusHeight: CGFloat = 37
-        let sidebarWidth: CGFloat = 156
-        let bodyTop = titlebarHeight + toolbarHeight
-        let bodyHeight = max(0, height - bodyTop - statusHeight)
 
-        titlebar.frame = NSRect(x: 0, y: 0, width: width, height: titlebarHeight)
+        titlebar.frame = NSRect(x: 0, y: 0, width: width, height: Metrics.titlebarHeight)
         [closeTraffic, minimizeTraffic, zoomTraffic].enumerated().forEach { index, button in
-            button.frame = NSRect(x: 20 + CGFloat(index) * 20, y: 23, width: 12, height: 12)
+            button.frame = NSRect(x: 20 + CGFloat(index) * 20, y: 16, width: 12, height: 12)
         }
-        titleLabel.frame = NSRect(x: 100, y: 12, width: width - 200, height: 18)
-        subtitleLabel.frame = NSRect(x: 100, y: 34, width: width - 200, height: 14)
+        titleLabel.frame = NSRect(x: 100, y: 14, width: max(0, width - 200), height: 16)
 
-        iconToolbar.frame = NSRect(x: 0, y: titlebarHeight, width: width, height: toolbarHeight)
-        for (button, x) in [(generalButton, 20), (appearanceButton, 68), (privacyButton, width - 106), (infoButton, width - 58)] as [(PreferencesIconButton, CGFloat)] {
-            button.frame = NSRect(x: x, y: 8, width: 38, height: 38)
-        }
-
-        navigation.frame = NSRect(x: 0, y: bodyTop, width: sidebarWidth, height: bodyHeight)
-        for (index, tab) in tabs.enumerated() {
-            tab.frame = NSRect(x: 12, y: 20 + CGFloat(index) * 54, width: sidebarWidth - 24, height: 44)
+        sidebarDivider.frame = NSRect(x: Metrics.sidebarWidth, y: Metrics.titlebarHeight,
+                                      width: 1, height: max(0, height - Metrics.titlebarHeight))
+        for (index, entry) in navItems.enumerated() {
+            entry.item.frame = NSRect(origin: NSPoint(x: Metrics.navOrigin.x, y: Metrics.navOrigin.y + CGFloat(index) * Metrics.navItemStep),
+                                      size: Metrics.navItemSize)
         }
 
-        form.frame = NSRect(x: sidebarWidth, y: bodyTop, width: width - sidebarWidth, height: bodyHeight)
-        formScroll.frame = form.bounds
+        let scrollX = Metrics.sidebarWidth + 1
+        formScroll.frame = NSRect(x: scrollX, y: Metrics.titlebarHeight, width: max(0, width - scrollX),
+                                  height: max(0, height - Metrics.titlebarHeight - Metrics.scrollBottom))
         layoutForm()
 
-        statusbar.frame = NSRect(x: 0, y: height - statusHeight, width: width, height: statusHeight)
-        statusLeft.frame = NSRect(x: 20, y: 11, width: sidebarWidth - 20, height: 15)
+        let contentWidth = max(0, width - Metrics.contentX - Metrics.contentTrailing)
         let resetWidth = resetButton.designWidth
-        resetButton.frame = NSRect(x: width - 20 - resetWidth, y: 8, width: resetWidth, height: 21)
-        statusCenter.frame = NSRect(x: sidebarWidth + 12, y: 11,
-                                   width: max(0, resetButton.frame.minX - sidebarWidth - 24), height: 15)
+        let footerY = height - Metrics.footerBottom
+        resetButton.frame = NSRect(x: Metrics.contentX + contentWidth - resetWidth, y: footerY, width: resetWidth, height: 15)
+        footer.frame = NSRect(x: Metrics.contentX, y: footerY, width: max(0, resetButton.frame.minX - Metrics.contentX - 16), height: 15)
     }
 
+    /// Content column: Mincho title 36, 8 gap, summary 16, 36 gap, then groups
+    /// of a 15 pt label, 6 gap and 64 pt rows, 32 apart.
     private func layoutForm() {
         let documentWidth = max(0, formScroll.contentSize.width)
-        let inset: CGFloat = 28
-        let contentWidth = max(0, documentWidth - inset * 2)
-        heading.frame = NSRect(x: inset, y: 24, width: contentWidth, height: 27)
-        pageDescription.frame = NSRect(x: inset, y: 62, width: contentWidth, height: 32)
-        var y: CGFloat = 116
-        for group in groups {
-            let rows = group.rows.filter { !$0.isHidden }
-            group.label.frame = NSRect(x: inset, y: y, width: contentWidth, height: 15)
-            y += 30
-            for row in rows {
-                row.frame = NSRect(x: inset, y: y, width: contentWidth, height: 73)
-                y += 85
-            }
-            y += 12
-        }
-        let contentHeight = max(formScroll.contentSize.height, y + 12)
-        formDocument.frame = NSRect(x: 0, y: 0, width: documentWidth, height: contentHeight)
-    }
+        let x = Metrics.contentX - formScroll.frame.minX
+        let contentWidth = max(0, documentWidth - x - Metrics.contentTrailing)
+        var y = Metrics.contentTop - Metrics.titlebarHeight
+        heading.frame = NSRect(x: x, y: y, width: contentWidth, height: 36)
+        pageDescription.frame = NSRect(x: x, y: y + 44, width: contentWidth, height: 16)
+        y += 96
 
-    private func scrollToAppearance() {
-        guard let label = languageAppearanceLabel else { return }
-        let target = max(0, label.frame.minY - 24)
-        formScroll.contentView.scroll(to: NSPoint(x: 0, y: target))
-        formScroll.reflectScrolledClipView(formScroll.contentView)
+        themePicker.isHidden = page != .appearance
+        if page == .appearance {
+            themePicker.frame = NSRect(x: x, y: y, width: contentWidth, height: 138)
+            y += 138 + 32
+        }
+        let showsShortcut = Preferences.shared.activationMode == .custom
+        for group in groups {
+            let visible = group.page == page
+            group.label.isHidden = !visible
+            for row in group.rows { row.isHidden = !visible || (row === shortcutRow && !showsShortcut) }
+            guard visible else { continue }
+            group.label.frame = NSRect(x: x, y: y, width: contentWidth, height: 15)
+            y += 15 + 6
+            for row in group.rows where !row.isHidden {
+                row.frame = NSRect(x: x, y: y, width: contentWidth, height: Metrics.rowHeight)
+                y += Metrics.rowHeight
+            }
+            y += 32
+        }
+        let contentHeight = max(formScroll.contentSize.height, y)
+        formDocument.frame = NSRect(x: 0, y: 0, width: documentWidth, height: contentHeight)
     }
 
     // MARK: Settings
@@ -318,9 +323,9 @@ final class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         launchRow.toggle.isOn = prefs.launchAtLogin
         peekRow.toggle.isOn = prefs.peekEnabled
         clipboardRow.toggle.isOn = prefs.readClipboard
-        hotkeyRow.selection.selectedIndex = Preferences.ActivationMode.allCases.firstIndex(of: prefs.activationMode) ?? 0
+        hotkeyRow.segments.selectedIndex = Preferences.ActivationMode.allCases.firstIndex(of: prefs.activationMode) ?? 0
         languageRow.selection.selectedIndex = Preferences.AppLanguage.allCases.firstIndex(of: prefs.appLanguage) ?? 0
-        themeRow.selection.selectedIndex = Preferences.Theme.allCases.firstIndex(of: prefs.theme) ?? 0
+        themePicker.selected = prefs.theme
         updateHotkeyRow()
     }
 
@@ -331,9 +336,7 @@ final class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
         let symbol = hotkeyDisplayString(modifiers: prefs.effectiveModifiers, keyCode: prefs.effectiveKeyCode)
         hotkeyRow.explanation = !prefs.peekEnabled ? "No hotkey while Peek is disabled.".localized
             : (symbol.isEmpty ? "(no hotkey — preview disabled)".localized : String(format: "Press %@ to show or hide Peek.".localized, symbol))
-        let isCustom = prefs.activationMode == .custom
-        shortcutRow.isHidden = !isCustom
-        if isCustom {
+        if prefs.activationMode == .custom {
             shortcutRow.shortcutField.stringValue = hotkeyDisplayString(modifiers: prefs.customHotkeyModifiers, keyCode: prefs.customHotkeyKeyCode)
             shortcutRow.shortcutField.placeholderString = "Click to record shortcut".localized
         }
@@ -363,8 +366,17 @@ final class PreferencesWindow: NSWindow, ShortcutRecorderDelegate {
     private func themeChanged(to theme: Preferences.Theme) {
         guard theme != Preferences.shared.theme else { return }
         Preferences.shared.theme = theme
-        NSApp.appearance = theme.appearance
         NotificationCenter.default.post(name: .preferencesDidChange, object: nil)
+        // Colours are resolved once per launch, so a new theme applies after a relaunch.
+        let alert = NSAlert()
+        alert.messageText = "Relaunch Glance to apply the theme".localized
+        alert.informativeText = "Glance needs to relaunch to switch themes. If a Widget task is still uploading, choose Later and relaunch after it finishes.".localized
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Relaunch Now".localized)
+        alert.addButton(withTitle: "Later".localized)
+        if alert.runModal() == .alertFirstButtonReturn {
+            AppDelegate.relaunch()
+        }
     }
 
     private func resetToDefaults() {
@@ -574,76 +586,145 @@ private final class PreferencesTitlebar: NSView {
     override func mouseDown(with event: NSEvent) { event.clickCount == 2 ? window?.zoom(nil) : window?.performDrag(with: event) }
 }
 
-private final class PreferencesPassthroughLabel: NSTextField {
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-}
-
-/// Board icon button: 38 × 38, radius 8, raised fill, line stroke; active = accent stroke 58 % and accent icon.
-private final class PreferencesIconButton: NSView {
-    var isActive = false { didSet { needsDisplay = true } }
-    private let icon: String
-    private let onClick: () -> Void
-    private var hovering = false { didSet { needsDisplay = true } }
+/// One line of text drawn inside its Figma frame: vertically centred on the
+/// font's ascender/descender and truncated at the tail, so neither intrinsic
+/// size nor cell padding moves it. Clicks pass through.
+private final class PreferencesTextLabel: NSView {
+    var text: String { didSet { needsDisplay = true; setAccessibilityValue(text) } }
+    var font: NSFont { didSet { needsDisplay = true } }
+    var color: NSColor { didSet { needsDisplay = true } }
+    private let alignment: NSTextAlignment
     override var isFlipped: Bool { true }
-    override var mouseDownCanMoveWindow: Bool { false }
 
-    init(icon: String, tooltip: String, onClick: @escaping () -> Void) {
-        self.icon = icon; self.onClick = onClick
+    init(_ text: String, font: NSFont, color: NSColor, alignment: NSTextAlignment = .left) {
+        self.text = text; self.font = font; self.color = color; self.alignment = alignment
         super.init(frame: .zero)
-        toolTip = tooltip
-        setAccessibilityLabel(tooltip)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+        setAccessibilityValue(text)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
-    }
-    override func mouseEntered(with event: NSEvent) { hovering = true }
-    override func mouseExited(with event: NSEvent) { hovering = false }
-    override func mouseDown(with event: NSEvent) { onClick() }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
     override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 8, yRadius: 8)
-        (hovering ? PanelStyle.hoverTinted(PanelStyle.inspectToolbar) : PanelStyle.inspectToolbar).setFill(); path.fill()
-        (isActive ? PanelStyle.accent.withAlphaComponent(0.58) : PanelStyle.inspectLine).setStroke()
-        path.lineWidth = 1; path.stroke()
-        HistoryStyle.drawIcon(icon, color: isActive ? PanelStyle.accent : PanelStyle.textPrimary,
-                              in: CGRect(x: 10, y: 10, width: 18, height: 18))
+        PreferencesDrawing.text(text, in: bounds, font: font, color: color, alignment: alignment)
     }
 }
 
-/// Navigation tab: 254 × 44, radius 8. Selected: #3A2C26 fill, accent 45 % stroke,
-/// accent icon and 12 semibold label; unselected: secondary icon and 12 medium label.
-private final class PreferencesTab: NSView {
-    var onPress: (() -> Void)?
-    override func mouseDown(with event: NSEvent) { onPress?() }
-    override var mouseDownCanMoveWindow: Bool { false }
-    private let title: String
-    private let icon: String
-    private let selected: Bool
-    override var isFlipped: Bool { true }
+private enum PreferencesDrawing {
+    static func attributes(font: NSFont, color: NSColor, alignment: NSTextAlignment = .left) -> [NSAttributedString.Key: Any] {
+        let style = NSMutableParagraphStyle()
+        style.alignment = alignment
+        style.lineBreakMode = .byTruncatingTail
+        return [.font: font, .foregroundColor: color, .paragraphStyle: style]
+    }
 
-    init(title: String, icon: String, selected: Bool) {
-        self.title = title; self.icon = icon; self.selected = selected
+    static func width(_ text: String, font: NSFont) -> CGFloat {
+        ceil(NSAttributedString(string: text, attributes: [.font: font]).size().width)
+    }
+
+    /// Draws one line centred vertically in `rect` (flipped context).
+    static func text(_ text: String, in rect: NSRect, font: NSFont, color: NSColor, alignment: NSTextAlignment = .left) {
+        let lineHeight = ceil(font.ascender - font.descender)
+        let line = NSRect(x: rect.minX, y: rect.minY + (rect.height - lineHeight) / 2, width: rect.width, height: lineHeight)
+        NSAttributedString(string: text, attributes: attributes(font: font, color: color, alignment: alignment))
+            .draw(with: line, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+    }
+}
+
+/// Figma 16 pt stroke icons (1.5 pt, round caps), drawn in a flipped view.
+private enum PreferencesGlyph {
+    case adjust, image, sparkle, user, shield, info, check, chevronDown
+
+    func draw(in rect: NSRect, color: NSColor) {
+        let path = NSBezierPath()
+        let p = { (x: CGFloat, y: CGFloat) in NSPoint(x: x, y: y) }
+        switch self {
+        case .adjust:
+            for (a, b) in [(p(14, 2.667), p(9.333, 2.667)), (p(9.333, 1.333), p(9.333, 4)), (p(6.667, 2.667), p(2, 2.667)),
+                           (p(14, 8), p(8, 8)), (p(5.333, 8), p(2, 8)), (p(5.333, 6.667), p(5.333, 9.333)),
+                           (p(14, 13.333), p(10.667, 13.333)), (p(10.667, 12), p(10.667, 14.667)), (p(8, 13.333), p(2, 13.333))] {
+                path.move(to: a); path.line(to: b)
+            }
+        case .image:
+            path.appendRoundedRect(NSRect(x: 2, y: 2, width: 12, height: 12), xRadius: 1.333, yRadius: 1.333)
+            path.appendOval(in: NSRect(x: 4.667, y: 4.667, width: 2.667, height: 2.667))
+            path.move(to: p(14, 10)); path.line(to: p(11.943, 7.943))
+            path.curve(to: p(10.057, 7.943), controlPoint1: p(11.422, 7.422), controlPoint2: p(10.578, 7.422))
+            path.line(to: p(4, 14))
+        case .sparkle:
+            path.move(to: p(8, 2))
+            for point in [p(9.267, 5.867), p(13.333, 7.133), p(9.467, 8.4), p(8, 12.267), p(6.733, 8.4), p(2.867, 7.133), p(6.733, 5.867)] {
+                path.line(to: point)
+            }
+            path.close()
+        case .user:
+            path.appendOval(in: NSRect(x: 4.667, y: 2, width: 6.667, height: 6.667))
+            path.move(to: p(13.333, 14))
+            path.appendArc(withCenter: p(8, 14), radius: 5.333, startAngle: 0, endAngle: 180, clockwise: true)
+        case .shield:
+            path.move(to: p(13.333, 8.667))
+            path.curve(to: p(8, 14.667), controlPoint1: p(13.333, 12), controlPoint2: p(11, 13.667))
+            path.curve(to: p(2.667, 8.667), controlPoint1: p(5, 13.667), controlPoint2: p(2.667, 12))
+            path.line(to: p(2.667, 4))
+            path.curve(to: p(3.333, 3.333), controlPoint1: p(2.667, 3.632), controlPoint2: p(2.965, 3.333))
+            path.curve(to: p(8, 1.333), controlPoint1: p(4.667, 3.333), controlPoint2: p(6.333, 2.533))
+            path.curve(to: p(12.667, 3.333), controlPoint1: p(9.673, 2.54), controlPoint2: p(11.333, 3.333))
+            path.curve(to: p(13.333, 4), controlPoint1: p(13.035, 3.333), controlPoint2: p(13.333, 3.632))
+            path.close()
+        case .info:
+            path.appendOval(in: NSRect(x: 1.333, y: 1.333, width: 13.333, height: 13.333))
+            path.move(to: p(8, 10.667)); path.line(to: p(8, 8))
+            path.move(to: p(8, 5.333)); path.line(to: p(8.007, 5.333))
+        case .check:
+            path.move(to: p(13.333, 4)); path.line(to: p(6, 11.333)); path.line(to: p(2.667, 8))
+        case .chevronDown:
+            path.move(to: p(4, 6)); path.line(to: p(8, 10)); path.line(to: p(12, 6))
+        }
+        var transform = AffineTransform(translationByX: rect.minX, byY: rect.minY)
+        transform.scale(rect.width / 16)
+        path.transform(using: transform)
+        path.lineWidth = 1.5 * rect.width / 16
+        path.lineCapStyle = .round
+        path.lineJoinStyle = .round
+        color.setStroke()
+        path.stroke()
+    }
+}
+
+/// Sidebar item: 188 × 30, radius 6, icon at (10, 7) and 13 regular label at
+/// (36, 7). Selected = ink/3 fill with text/1 icon and label; otherwise a
+/// text/3 icon and text/2 label.
+private final class PreferencesNavItem: NSView {
+    var onPress: (() -> Void)?
+    var isSelected = false { didSet { needsDisplay = true; setAccessibilitySelected(isSelected) } }
+    private let title: String
+    private let glyph: PreferencesGlyph
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    init(title: String, glyph: PreferencesGlyph) {
+        self.title = title; self.glyph = glyph
         super.init(frame: .zero)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
         setAccessibilityLabel(title)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func mouseDown(with event: NSEvent) { onPress?() }
+    override func accessibilityPerformPress() -> Bool { onPress?(); return true }
     override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 8, yRadius: 8)
-        (selected ? HistoryStyle.hex(0x3A2C26) : HistoryStyle.hex(0x111217)).setFill(); path.fill()
-        if selected {
-            PanelStyle.accent.withAlphaComponent(0.45).setStroke(); path.lineWidth = 1; path.stroke()
+        if isSelected {
+            PanelStyle.inspectToolbar.setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: PanelStyle.Radius.control, yRadius: PanelStyle.Radius.control).fill()
         }
-        let tint = selected ? PanelStyle.accent : PanelStyle.textSecondary
-        HistoryStyle.drawIcon(icon, color: tint, in: CGRect(x: 13, y: 13, width: 18, height: 18))
-        HistoryStyle.draw(title, in: CGRect(x: 43, y: 13, width: bounds.width - 50, height: 16),
-                          size: 12, weight: selected ? .semibold : .medium, color: tint)
+        glyph.draw(in: NSRect(x: 10, y: 7, width: 16, height: 16), color: isSelected ? PanelStyle.textPrimary : PanelStyle.textTertiary)
+        PreferencesDrawing.text(title, in: NSRect(x: 36, y: 7, width: max(0, bounds.width - 46), height: 16),
+                                font: PanelStyle.inspectFont(ofSize: 13), color: isSelected ? PanelStyle.textPrimary : PanelStyle.textSecondary)
     }
 }
 
-/// Board toggle: 38 × 21 track, radius 11; on = accent track with an ink knob at
-/// x 19, off = raised track with a secondary knob at x 2. Knob is 17.
+/// Toggle: 30 × 18 pill with a 14 pt knob. On = text/1 track with an ink/1
+/// knob at x 14; off = ink/4 track with a text/3 knob at x 2.
 private final class PreferencesToggle: NSControl {
     var isOn = false { didSet { needsLayout = true; needsDisplay = true } }
     var onChange: ((Bool) -> Void)?
@@ -659,44 +740,59 @@ private final class PreferencesToggle: NSControl {
         setAccessibilityRole(.checkBox)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    private var knobFrame: NSRect { NSRect(x: isOn ? 14 : 2, y: 2, width: 14, height: 14) }
     override func layout() {
         super.layout()
         layer?.cornerRadius = bounds.height / 2
-        layer?.backgroundColor = PanelStyle.resolvedCG(isOn ? PanelStyle.accent : PanelStyle.inspectToolbar)
-        knob.layer?.backgroundColor = PanelStyle.resolvedCG(isOn ? PanelStyle.accentInk : PanelStyle.textSecondary)
-        knob.layer?.cornerRadius = 8.5
-        knob.frame = NSRect(x: (isOn ? 19 : 2), y: 2, width: 17, height: 17)
+        layer?.backgroundColor = PanelStyle.resolvedCG(isOn ? PanelStyle.textPrimary : PanelStyle.surfaceElevated)
+        knob.layer?.backgroundColor = PanelStyle.resolvedCG(isOn ? PanelStyle.surface : PanelStyle.textTertiary)
+        knob.layer?.cornerRadius = 7
+        knob.frame = knobFrame
         setAccessibilityValue(isOn ? "1" : "0")
     }
-    override func mouseDown(with event: NSEvent) {
+    override func mouseDown(with event: NSEvent) { flip() }
+    override func accessibilityPerformPress() -> Bool { flip(); return true }
+    private func flip() {
         isOn.toggle()
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.18
-            self.knob.animator().frame = NSRect(x: (self.isOn ? 19 : 2), y: 2, width: 17, height: 17)
+            self.knob.animator().frame = self.knobFrame
         }
         onChange?(isOn)
     }
 }
 
-/// Board selection: 135 × 32 raised box, radius 8, 11 medium value at (12, 9).
-/// Click pops a menu with the options.
+/// Select: 13 regular text/2 value, 6 gap, 16 pt text/3 chevron, right-aligned
+/// in its row. Click pops a menu with the options.
 private final class PreferencesSelection: NSView {
-    var options: [String] = [] { didSet { needsDisplay = true } }
-    var selectedIndex = 0 { didSet { needsDisplay = true } }
+    var options: [String] = [] { didSet { needsDisplay = true; updateAccessibility() } }
+    var selectedIndex = 0 { didSet { needsDisplay = true; updateAccessibility(); superview?.needsLayout = true } }
     var onSelect: ((Int) -> Void)?
+    private static let font = PanelStyle.inspectFont(ofSize: 13)
     override var isFlipped: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
+    private var value: String { options.indices.contains(selectedIndex) ? options[selectedIndex] : "" }
+    var designWidth: CGFloat { PreferencesDrawing.width(value, font: Self.font) + 6 + 16 }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.popUpButton)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    private func updateAccessibility() { setAccessibilityValue(value) }
 
     override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds, xRadius: 8, yRadius: 8)
-        PanelStyle.inspectToolbar.setFill(); path.fill()
-        let value = options.indices.contains(selectedIndex) ? options[selectedIndex] : ""
-        HistoryStyle.draw(value, in: CGRect(x: 12, y: 9, width: bounds.width - 24, height: 14),
-                          size: 12, weight: .medium, color: PanelStyle.textPrimary)
+        let y = (bounds.height - 16) / 2
+        PreferencesDrawing.text(value, in: NSRect(x: 0, y: y, width: max(0, bounds.width - 22), height: 16),
+                                font: Self.font, color: PanelStyle.textSecondary, alignment: .right)
+        PreferencesGlyph.chevronDown.draw(in: NSRect(x: bounds.width - 16, y: y, width: 16, height: 16), color: PanelStyle.textTertiary)
     }
-    override func mouseDown(with event: NSEvent) {
+    override func mouseDown(with event: NSEvent) { showMenu() }
+    override func accessibilityPerformPress() -> Bool { showMenu(); return true }
+    private func showMenu() {
         let menu = NSMenu()
-        menu.appearance = NSAppearance(named: .darkAqua)
+        menu.appearance = PanelStyle.windowAppearance
         for (index, option) in options.enumerated() {
             let item = NSMenuItem(title: option, action: #selector(pick(_:)), keyEquivalent: "")
             item.target = self; item.tag = index
@@ -712,18 +808,130 @@ private final class PreferencesSelection: NSView {
     }
 }
 
-/// Status bar text action ("Reset to Defaults"): 12 medium, secondary; accent on hover.
+/// Segmented preset: ink/2 track, radius 7, 2 pt padding and gap; 23 pt
+/// segments with 10 pt side padding and 12 regular labels. Selected = ink/4
+/// fill, radius 5, text/1 label; others text/3.
+private final class PreferencesSegments: NSView {
+    var options: [String] = [] { didSet { rebuild() } }
+    var selectedIndex = 0 { didSet { segments.enumerated().forEach { $0.element.isSelected = $0.offset == selectedIndex } } }
+    var onSelect: ((Int) -> Void)?
+    private var segments: [PreferencesSegment] = []
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+    var designWidth: CGFloat { segments.reduce(2) { $0 + $1.designWidth + 2 } }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        setAccessibilityElement(true)
+        setAccessibilityRole(.radioGroup)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private func rebuild() {
+        segments.forEach { $0.removeFromSuperview() }
+        segments = options.enumerated().map { index, title in
+            let segment = PreferencesSegment(title: title)
+            segment.isSelected = index == selectedIndex
+            segment.onPress = { [weak self] in
+                guard let self, index != self.selectedIndex else { return }
+                self.selectedIndex = index
+                self.onSelect?(index)
+            }
+            addSubview(segment)
+            return segment
+        }
+        needsLayout = true
+    }
+    override func layout() {
+        super.layout()
+        layer?.cornerRadius = 7
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.overlay)
+        var x: CGFloat = 2
+        for segment in segments {
+            segment.frame = NSRect(x: x, y: 2, width: segment.designWidth, height: 23)
+            x += segment.designWidth + 2
+        }
+    }
+}
+
+private final class PreferencesSegment: NSView {
+    var isSelected = false { didSet { needsDisplay = true; setAccessibilityValue(isSelected ? "1" : "0") } }
+    var onPress: (() -> Void)?
+    private let title: String
+    private static let font = PanelStyle.inspectFont(ofSize: 12)
+    var designWidth: CGFloat { PreferencesDrawing.width(title, font: Self.font) + 20 }
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    init(title: String) {
+        self.title = title
+        super.init(frame: .zero)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.radioButton)
+        setAccessibilityLabel(title)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func mouseDown(with event: NSEvent) { onPress?() }
+    override func accessibilityPerformPress() -> Bool { onPress?(); return true }
+    override func draw(_ dirtyRect: NSRect) {
+        if isSelected {
+            PanelStyle.surfaceElevated.setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: 5, yRadius: 5).fill()
+        }
+        PreferencesDrawing.text(title, in: NSRect(x: 10, y: 4, width: max(0, bounds.width - 20), height: 15), font: Self.font,
+                                color: isSelected ? PanelStyle.textPrimary : PanelStyle.textTertiary, alignment: .center)
+    }
+}
+
+/// Hotkey recorder box: ink/2 fill, text/3 border, radius 6, 35 pt tall, with
+/// the shortcut in mono 12. A click anywhere in the box starts recording.
+private final class PreferencesShortcutBox: NSView {
+    let field = ShortcutRecorderField()
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        field.isEditable = false
+        field.isSelectable = false
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.alignment = .center
+        field.lineBreakMode = .byTruncatingTail
+        field.font = PanelStyle.monoFont(ofSize: 12)
+        field.textColor = PanelStyle.textPrimary
+        field.placeholderString = "Click to record shortcut".localized
+        addSubview(field)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func mouseDown(with event: NSEvent) { field.beginRecording() }
+    override func layout() {
+        super.layout()
+        layer?.cornerRadius = PanelStyle.Radius.control
+        layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.overlay)
+        layer?.borderWidth = 1
+        layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.textTertiary)
+        field.frame = NSRect(x: 12, y: (bounds.height - 16) / 2, width: max(0, bounds.width - 24), height: 16)
+    }
+}
+
+/// Footer text action ("Reset to Defaults"): 12 regular text/2; text/1 on hover.
 private final class PreferencesTextButton: NSView {
     private let title: String
     private let onClick: () -> Void
+    private static let font = PanelStyle.inspectFont(ofSize: 12)
     private var hovering = false { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
-    var designWidth: CGFloat { HistoryStyle.width(title, size: 12, weight: .medium) + 8 }
+    var designWidth: CGFloat { PreferencesDrawing.width(title, font: Self.font) }
 
     init(title: String, onClick: @escaping () -> Void) {
         self.title = title; self.onClick = onClick
         super.init(frame: .zero)
+        setAccessibilityElement(true)
         setAccessibilityRole(.button)
         setAccessibilityLabel(title)
     }
@@ -736,83 +944,174 @@ private final class PreferencesTextButton: NSView {
     override func mouseEntered(with event: NSEvent) { hovering = true }
     override func mouseExited(with event: NSEvent) { hovering = false }
     override func mouseDown(with event: NSEvent) { onClick() }
+    override func accessibilityPerformPress() -> Bool { onClick(); return true }
     override func draw(_ dirtyRect: NSRect) {
-        HistoryStyle.draw(title, in: CGRect(x: 4, y: 3, width: bounds.width - 8, height: 15), size: 12,
-                          weight: .medium, color: hovering ? PanelStyle.accent : PanelStyle.textSecondary, align: .right)
+        PreferencesDrawing.text(title, in: bounds, font: Self.font,
+                                color: hovering ? PanelStyle.textPrimary : PanelStyle.textSecondary, alignment: .right)
     }
 }
 
-/// A fixed-height settings row with a trailing control and a wrapping explanation.
+/// Setting row: 64 pt with a line/hair bottom border. 13 regular text/1 title
+/// at y 14 and 12 regular text/3 explanation at y 34, 16 pt before the
+/// trailing control, which is centred vertically.
 private final class PreferencesRow: NSView {
-    enum Control { case toggle, selection, shortcut }
-    var explanation: String { didSet { explanationLabel.stringValue = explanation } }
+    enum Control { case toggle, selection, segments, shortcut }
+    var explanation: String { didSet { explanationLabel.text = explanation } }
     var onToggle: ((Bool) -> Void)? { didSet { toggle.onChange = onToggle } }
     let toggle = PreferencesToggle()
     let selection = PreferencesSelection()
-    let shortcutField = ShortcutRecorderField()
-    private let shortcutBox = NSView()
+    let segments = PreferencesSegments()
+    private let shortcutBox = PreferencesShortcutBox()
+    var shortcutField: ShortcutRecorderField { shortcutBox.field }
     private let control: Control
-    private let titleLabel: NSTextField
-    private let explanationLabel: NSTextField
+    private let titleLabel: PreferencesTextLabel
+    private let explanationLabel: PreferencesTextLabel
     private let divider = NSView()
     override var isFlipped: Bool { true }
 
     init(title: String, explanation: String, control: Control) {
         self.control = control
         self.explanation = explanation
-        titleLabel = NSTextField(labelWithString: title)
-        explanationLabel = NSTextField(labelWithString: explanation)
+        titleLabel = PreferencesTextLabel(title, font: PanelStyle.inspectFont(ofSize: 13), color: PanelStyle.textPrimary)
+        explanationLabel = PreferencesTextLabel(explanation, font: PanelStyle.inspectFont(ofSize: 12), color: PanelStyle.textTertiary)
         super.init(frame: .zero)
-        titleLabel.textColor = PanelStyle.textPrimary
-        explanationLabel.textColor = PanelStyle.textSecondary
-        for label in [titleLabel, explanationLabel] {
-            label.lineBreakMode = .byTruncatingTail
-            label.maximumNumberOfLines = 1
-            addSubview(label)
-        }
-        explanationLabel.lineBreakMode = .byWordWrapping
-        explanationLabel.maximumNumberOfLines = 2
+        addSubview(titleLabel)
+        addSubview(explanationLabel)
         divider.wantsLayer = true
-        divider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
+        divider.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.themed(PanelStyle.Sumi.line, PanelStyle.Washi.line))
         addSubview(divider)
         switch control {
-        case .toggle: addSubview(toggle)
-        case .selection: addSubview(selection)
-        case .shortcut:
-            shortcutBox.wantsLayer = true
-            shortcutBox.layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.inspectToolbar)
-            shortcutField.isEditable = false
-            shortcutField.isSelectable = false
-            shortcutField.isBordered = false
-            shortcutField.drawsBackground = false
-            shortcutField.focusRingType = .none
-            shortcutField.textColor = PanelStyle.textPrimary
-            shortcutField.placeholderString = "Click to record shortcut".localized
-            shortcutBox.addSubview(shortcutField)
-            addSubview(shortcutBox)
+        case .toggle: addSubview(toggle); toggle.setAccessibilityLabel(title)
+        case .selection: addSubview(selection); selection.setAccessibilityLabel(title)
+        case .segments: addSubview(segments); segments.setAccessibilityLabel(title)
+        case .shortcut: addSubview(shortcutBox); shortcutField.setAccessibilityLabel(title)
         }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     override func layout() {
         super.layout()
-        let controlWidth: CGFloat = control == .toggle ? 38 : 135
-        let controlX = max(0, bounds.width - controlWidth)
-        titleLabel.font = PanelStyle.inspectFont(ofSize: 13, weight: .medium)
-        explanationLabel.font = PanelStyle.inspectFont(ofSize: 12)
-        titleLabel.frame = NSRect(x: 0, y: 5, width: max(0, controlX - 16), height: 18)
-        explanationLabel.frame = NSRect(x: 0, y: 32, width: bounds.width, height: 30)
-        divider.frame = NSRect(x: 0, y: 72, width: bounds.width, height: 1)
+        let controlFrame: NSRect
         switch control {
         case .toggle:
-            toggle.frame = NSRect(x: controlX, y: 4, width: 38, height: 21)
+            controlFrame = NSRect(x: bounds.width - 30, y: 23, width: 30, height: 18)
+            toggle.frame = controlFrame
         case .selection:
-            selection.frame = NSRect(x: controlX, y: 0, width: 135, height: 32)
+            let width = selection.designWidth
+            controlFrame = NSRect(x: bounds.width - width, y: 16, width: width, height: 32)
+            selection.frame = controlFrame
+        case .segments:
+            let width = segments.designWidth
+            controlFrame = NSRect(x: bounds.width - width, y: 18.5, width: width, height: 27)
+            segments.frame = controlFrame
         case .shortcut:
-            shortcutBox.frame = NSRect(x: controlX, y: 0, width: 135, height: 32)
-            shortcutBox.layer?.cornerRadius = 8
-            shortcutField.font = PanelStyle.inspectFont(ofSize: 12, weight: .medium)
-            shortcutField.frame = NSRect(x: 10, y: 8, width: 115, height: 16)
+            controlFrame = NSRect(x: bounds.width - 160, y: 14.5, width: 160, height: 35)
+            shortcutBox.frame = controlFrame
+        }
+        let textWidth = max(0, controlFrame.minX - 16)
+        titleLabel.frame = NSRect(x: 0, y: 14, width: textWidth, height: 16)
+        explanationLabel.frame = NSRect(x: 0, y: 34, width: textWidth, height: 15)
+        divider.frame = NSRect(x: 0, y: bounds.height - 1, width: bounds.width, height: 1)
+    }
+}
+
+/// Appearance picker: three 112 pt previews, 16 apart, with a 13 regular
+/// caption 10 below. Selected = 1.5 pt text/1 border, text/1 caption and a
+/// check; otherwise a line/strong border and text/2 caption.
+private final class PreferencesThemePicker: NSView {
+    var selected: Preferences.Theme = .system { didSet { cards.forEach { $0.isSelected = $0.theme == selected } } }
+    var onSelect: ((Preferences.Theme) -> Void)?
+    private var cards: [PreferencesThemeCard] = []
+    override var isFlipped: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.radioGroup)
+        setAccessibilityLabel("Theme".localized)
+        cards = Preferences.Theme.allCases.map { theme in
+            let card = PreferencesThemeCard(theme: theme)
+            card.onPress = { [weak self] in
+                guard let self, theme != self.selected else { return }
+                self.selected = theme
+                self.onSelect?(theme)
+            }
+            addSubview(card)
+            return card
+        }
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func layout() {
+        super.layout()
+        let count = CGFloat(cards.count)
+        let width = max(0, (bounds.width - 16 * (count - 1)) / count)
+        for (index, card) in cards.enumerated() {
+            card.frame = NSRect(x: CGFloat(index) * (width + 16), y: 0, width: width, height: bounds.height)
+        }
+    }
+}
+
+private final class PreferencesThemeCard: NSView {
+    let theme: Preferences.Theme
+    var isSelected = false { didSet { needsDisplay = true; setAccessibilityValue(isSelected ? "1" : "0") } }
+    var onPress: (() -> Void)?
+    private static let font = PanelStyle.inspectFont(ofSize: 13)
+    override var isFlipped: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    init(theme: Preferences.Theme) {
+        self.theme = theme
+        super.init(frame: .zero)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.radioButton)
+        setAccessibilityLabel(theme.displayName)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    override func mouseDown(with event: NSEvent) { onPress?() }
+    override func accessibilityPerformPress() -> Bool { onPress?(); return true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        // The previews depict the two palettes themselves, so they use the
+        // fixed Washi / Sumi values rather than the running theme.
+        let preview = NSRect(x: 0, y: 0, width: bounds.width, height: 112)
+        let shape = NSBezierPath(roundedRect: preview.insetBy(dx: 0.5, dy: 0.5), xRadius: 8, yRadius: 8)
+        let ink: NSColor
+        NSGraphicsContext.saveGraphicsState()
+        shape.addClip()
+        switch theme {
+        case .system:
+            PanelStyle.Washi.ink1.setFill(); preview.fill()
+            PanelStyle.Sumi.ink1.setFill(); NSRect(x: preview.midX, y: 0, width: preview.width / 2, height: preview.height).fill()
+            ink = PanelStyle.Washi.text3
+        case .light:
+            PanelStyle.Washi.ink1.setFill(); preview.fill()
+            ink = PanelStyle.Washi.text1
+        case .dark:
+            PanelStyle.Sumi.ink1.setFill(); preview.fill()
+            ink = PanelStyle.Sumi.text1
+        }
+        for (rect, alpha) in [(NSRect(x: 13, y: 13, width: 60, height: 6), 0.9), (NSRect(x: 13, y: 29, width: 110, height: 4), 0.35),
+                              (NSRect(x: 13, y: 39, width: 90, height: 4), 0.35), (NSRect(x: 13, y: 63, width: 130, height: 34), 0.12)] {
+            ink.withAlphaComponent(alpha).setFill()
+            NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        if isSelected {
+            let border = NSBezierPath(roundedRect: preview.insetBy(dx: 0.75, dy: 0.75), xRadius: 8, yRadius: 8)
+            border.lineWidth = 1.5
+            PanelStyle.textPrimary.setStroke(); border.stroke()
+        } else {
+            shape.lineWidth = 1
+            PanelStyle.inspectLine.setStroke(); shape.stroke()
+        }
+
+        let title = theme.displayName
+        let titleWidth = min(PreferencesDrawing.width(title, font: Self.font), max(0, bounds.width - (isSelected ? 22 : 0)))
+        PreferencesDrawing.text(title, in: NSRect(x: 0, y: 122, width: titleWidth, height: 16), font: Self.font,
+                                color: isSelected ? PanelStyle.textPrimary : PanelStyle.textSecondary)
+        if isSelected {
+            PreferencesGlyph.check.draw(in: NSRect(x: titleWidth + 6, y: 122, width: 16, height: 16), color: PanelStyle.textPrimary)
         }
     }
 }
