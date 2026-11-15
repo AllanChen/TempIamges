@@ -21,6 +21,16 @@ function savedLanguage(request) {
   return null;
 }
 
+// The visitor's first preferred browser language, when it is one we publish.
+// Checked before the IP country, so an English browser in Taiwan gets English
+// and a Chinese browser abroad stays on the Chinese entry.
+function browserLanguage(request) {
+  const first = (request.headers.get('Accept-Language') || '').split(',')[0].trim().toLowerCase();
+  if (!first || first === '*') return null;
+  const base = first.split(';')[0].split('-')[0];
+  return SUPPORTED_LANGUAGES.has(base) ? base : null;
+}
+
 function isSearchCrawler(request) {
   return request.cf?.botManagement?.verifiedBot === true ||
     /Googlebot|bingbot|DuckDuckBot|Baiduspider|YandexBot|Applebot/i.test(request.headers.get('User-Agent') || '');
@@ -30,6 +40,7 @@ function privateHeaders(headers) {
   headers.set('Cache-Control', 'private, no-store');
   const vary = new Set((headers.get('Vary') || '').split(',').map(s => s.trim()).filter(Boolean));
   if (![...vary].some(s => s.toLowerCase() === 'cookie')) vary.add('Cookie');
+  if (![...vary].some(s => s.toLowerCase() === 'accept-language')) vary.add('Accept-Language');
   headers.set('Vary', [...vary].join(', '));
 }
 
@@ -42,12 +53,12 @@ export async function onRequest({ request, next }) {
   }
   // Only the language-neutral entry point is negotiated. Explicit language
   // URLs, downloads, payment callbacks, assets and deep links retain their URL.
-  // Cloudflare derives cf.country from the visitor IP; no IP lookup service or
-  // raw IP storage is needed. Unknown/unsupported locations fall back to English.
+  // Order: saved choice, browser language, then Cloudflare's cf.country (no IP
+  // lookup service or raw IP storage). Anything else falls back to English.
   const negotiate = url.pathname === '/' && ['GET', 'HEAD'].includes(request.method) && !isSearchCrawler(request);
   const preview = url.hostname.endsWith('.pages.dev');
   if (negotiate) {
-    const language = savedLanguage(request) || COUNTRY_LANGUAGES[request.cf?.country] || 'en';
+    const language = savedLanguage(request) || browserLanguage(request) || COUNTRY_LANGUAGES[request.cf?.country] || 'en';
     if (language !== 'zh') {
       url.pathname = '/' + language + '/';
       const headers = new Headers({ Location: url.toString() });

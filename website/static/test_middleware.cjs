@@ -5,9 +5,10 @@ const {readFileSync} = require('node:fs');
 const middleware = import('data:text/javascript;base64,' +
   readFileSync(__dirname + '/functions/_middleware.js').toString('base64'));
 
-async function visit(path='/', {country, cookie, agent='Mozilla/5.0', method='GET', host='glancepreview.com', verifiedBot=false}={}) {
+async function visit(path='/', {country, cookie, agent='Mozilla/5.0', method='GET', host='glancepreview.com', verifiedBot=false, lang}={}) {
   const headers = new Headers({'User-Agent':agent});
   if (cookie) headers.set('Cookie', cookie);
+  if (lang) headers.set('Accept-Language', lang);
   const request = new Request('https://' + host + path, {method,headers});
   Object.defineProperty(request, 'cf', {value:{country,botManagement:{verifiedBot}}});
   let passed = false;
@@ -58,10 +59,10 @@ test('personalized redirects preserve query strings and are never shared-cacheab
   const {response} = await visit('/?utm_source=x&ref=example',{country:'JP',method:'HEAD'});
   assert.equal(response.headers.get('Location'),'https://glancepreview.com/ja/?utm_source=x&ref=example');
   assert.equal(response.headers.get('Cache-Control'),'private, no-store');
-  assert.equal(response.headers.get('Vary'),'Cookie');
+  assert.equal(response.headers.get('Vary'),'Cookie, Accept-Language');
   const chinese = (await visit('/',{country:'CN'})).response;
   assert.equal(chinese.headers.get('Cache-Control'),'private, no-store');
-  assert.equal(chinese.headers.get('Vary'),'Accept-Encoding, Cookie');
+  assert.equal(chinese.headers.get('Vary'),'Accept-Encoding, Cookie, Accept-Language');
 });
 test('canonical domain redirects and preview noindex still work',async()=>{
   const alias = (await visit('/?ref=x',{host:'www.glancepreview.com',country:'JP'})).response;
@@ -77,4 +78,23 @@ test('search crawlers can still discover the canonical Chinese entry',async()=>{
     const {response,passed} = await visit('/',{country:'US',...options});
     assert.equal(passed,true);assert.equal(response.status,200);
   }
+});
+
+test('browser language comes before the IP country; Chinese browsers stay on the Chinese entry',async()=>{
+  for (const [lang,country,expected] of [['en-US,en;q=0.9','TW','en'],['ja-JP,ja;q=0.9','CN','ja'],['de-DE','US','de'],['en','JP','en']]) {
+    const {response,passed} = await visit('/',{lang,country});
+    assert.equal(response.status,302); assert.equal(passed,false);
+    assert.equal(response.headers.get('Location'),'https://glancepreview.com/'+expected+'/');
+    assert.match(response.headers.get('Vary'),/Accept-Language/);
+  }
+  for (const [lang,country] of [['zh-CN,zh;q=0.9','US'],['zh-TW','DE']]) {
+    const {response,passed} = await visit('/',{lang,country});
+    assert.equal(response.status,200); assert.equal(passed,true);
+  }
+  const fr = await visit('/',{lang:'fr-FR,fr;q=0.9',country:'JP'});
+  assert.equal(fr.response.headers.get('Location'),'https://glancepreview.com/ja/');
+  const saved = await visit('/',{lang:'en-US',country:'US',cookie:'glance.language=zh'});
+  assert.equal(saved.response.status,200);
+  const bot = await visit('/',{lang:'en-US',country:'US',agent:'Mozilla/5.0 (compatible; Googlebot/2.1)'});
+  assert.equal(bot.response.status,200); assert.equal(bot.passed,true);
 });

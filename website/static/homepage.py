@@ -31,6 +31,11 @@ def artwork(kind, lang):
     return ''.join(parts)
 
 
+# Screen readers and search engines read the product name as part of the main heading;
+# the visible two-line headline stays exactly as designed.
+BRAND_PREFIX = {"zh": "Glance Preview：", "en": "Glance Preview: ", "ja": "Glance Preview：", "de": "Glance Preview: "}
+
+
 def render_home(lang, snapshot, dmg, version, size, checksum):
     sections = COPY[lang]['sections']
     def section(prefix):
@@ -72,7 +77,7 @@ def render_home(lang, snapshot, dmg, version, size, checksum):
                   f'<a href="{base}.mp4">{escape(play)}</a></video>'
                   f'<button class="promo-control" type="button" hidden data-play="{escape(play)}" data-pause="{escape(pause)}" aria-label="{escape(play)}" aria-pressed="false">{icon}<span class="control-label">{escape(play)}</span></button></figure>')
     h = section('02 ')
-    out = [f'<div class="home-page"><section class="home-hero wrap">{label(h)}<div class="home-hero-grid"><div class="home-hero-copy"><h1>{get(h,"Hero headline")}</h1><p class="home-lead">{get(h,"Hero description")}</p><div class="home-actions">{download(h)}<a href="/#loop">{get(h,"Link / Widget demonstrations")}</a></div></div><div class="home-product" role="img" aria-label="{escape(value(h,"Product caption"))}">{artwork("hero",lang)}<p class="product-caption">{get(h,"Product caption")}</p></div></div><div class="home-facts">' + ''.join(f'<span>{get(h,f"Free start fact {i}")}</span>' for i in range(1,4)) + '</div></section>']
+    out = [f'<div class="home-page"><section class="home-hero wrap">{label(h)}<div class="home-hero-grid"><div class="home-hero-copy"><h1><span class="visually-hidden">{escape(BRAND_PREFIX.get(lang, "Glance Preview: "))}</span>{get(h,"Hero headline")}</h1><p class="home-lead">{get(h,"Hero description")}</p><div class="home-actions">{download(h)}<a href="/#loop">{get(h,"Link / Widget demonstrations")}</a></div></div><div class="home-product" role="img" aria-label="{escape(value(h,"Product caption"))}">{artwork("hero",lang)}<p class="product-caption">{get(h,"Product caption")}</p></div></div><div class="home-facts">' + ''.join(f'<span>{get(h,f"Free start fact {i}")}</span>' for i in range(1,4)) + '</div></section>']
     intro = section('03 ')
     out.append(f'<section id="loop" class="home-intro wrap"><div>{label(intro)}<h2>{get(intro,"Workflow headline")}</h2></div><p>{get(intro,"Workflow introduction")}</p></section>')
     for i, (prefix, key) in enumerate((('04.1','background'), ('04.2','compare'), ('04.3','expand'), ('06 ','outfit'))):

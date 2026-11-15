@@ -348,7 +348,7 @@
             ],
             [
               "Tool description / 无需权限，即刻开始",
-              "打开 Glance 就能看图。首次使用无需账户，也无需系统权限。"
+              "打开 Glance Preview 就能看图。首次使用无需账户，也无需系统权限。"
             ]
           ],
           "media": []
@@ -913,7 +913,7 @@
             ],
             [
               "Tool description / Start without permissions",
-              "Open Glance and view a file. No account or system permissions needed to start."
+              "Open Glance Preview and view a file. No account or system permissions needed to start."
             ]
           ],
           "media": []
@@ -1774,7 +1774,7 @@
             ],
             [
               "Product caption",
-              "Alles beginnt mit deinem Foto."
+              "Alles beginnt mit Ihrem Foto."
             ],
             [
               "Free start fact 1",
@@ -1812,7 +1812,7 @@
             ],
             [
               "Workflow introduction",
-              "Wähle ein Widget und vergleiche\ndas Ergebnis mit dem Original."
+              "Wählen Sie ein Widget und vergleichen Sie\ndas Ergebnis mit dem Original."
             ]
           ],
           "media": []
@@ -1831,7 +1831,7 @@
             ],
             [
               "Widget explanation",
-              "Löse die Person als transparentes PNG vom Hintergrund – für dein nächstes Layout oder eine neue Komposition."
+              "Lösen Sie die Person als transparentes PNG vom Hintergrund – für Ihr nächstes Layout oder eine neue Komposition."
             ]
           ],
           "media": [
@@ -1891,7 +1891,7 @@
             ],
             [
               "Widget headline",
-              "Mehr Raum\nfür dein Foto."
+              "Mehr Raum\nfür Ihr Foto."
             ],
             [
               "Widget explanation",
@@ -1921,11 +1921,11 @@
             ],
             [
               "Widget explanation",
-              "Nutze ein Personenfoto und eine Kleidungsvorlage für einen neuen Look. Vergleiche die Änderung jederzeit mit dem Original."
+              "Nutzen Sie ein Personenfoto und eine Kleidungsvorlage für einen neuen Look. Vergleichen Sie die Änderung jederzeit mit dem Original."
             ],
             [
               "More Widget capabilities",
-              "Entdecke auch Bereichsbearbeitung, Hochskalierung, Wasserzeichenentfernung für Bilder und Videos, Bildhosting, Bild-zu-Prompt und Neugestaltung."
+              "Außerdem gibt es Bereichsbearbeitung, Hochskalierung, Wasserzeichenentfernung für Bilder und Videos, Bildhosting, Bild-zu-Prompt und Neugestaltung."
             ],
             [
               "Browse all Widgets",
@@ -1933,7 +1933,7 @@
             ],
             [
               "Cloud processing disclosure",
-              "Die Kosten siehst du vor dem Start. Cloud-Widgets laden die eingereichten Medien hoch. Bei fehlgeschlagenen Aufgaben werden alle Credits erstattet."
+              "Die Kosten sehen Sie vor dem Start. Cloud-Widgets laden die eingereichten Medien hoch. Bei fehlgeschlagenen Aufgaben werden alle Credits erstattet."
             ]
           ],
           "media": [
@@ -1975,7 +1975,7 @@
             ],
             [
               "OCR description",
-              "Erkenne Text direkt auf deinem Mac, wähle ihn aus und kopiere ihn. Ohne Pro, Credits oder Upload."
+              "Erkennen Sie Text direkt auf Ihrem Mac, wählen Sie ihn aus und kopieren Sie ihn. Ohne Pro, Credits oder Upload."
             ],
             [
               "OCR step 2",
@@ -2019,15 +2019,15 @@
             ],
             [
               "Tool name / Peek, when you want it",
-              "Peek, wenn du es brauchst"
+              "Peek, wenn Sie es brauchen"
             ],
             [
               "Tool description / Local toolbox",
-              "Konvertieren, komprimieren, exportieren, drehen, zuschneiden und Base64-Werkzeuge nutzen – direkt auf deinem Mac."
+              "Konvertieren, komprimieren, exportieren, drehen, zuschneiden und Base64-Werkzeuge nutzen – direkt auf Ihrem Mac."
             ],
             [
               "Tool description / Peek, when you want it",
-              "Wähle einen Bildlink oder Dateipfad und drücke Option + Leertaste. Optional und standardmäßig aus."
+              "Markieren Sie einen Bildlink oder Dateipfad und drücken Sie Option + Leertaste. Optional und standardmäßig aus."
             ],
             [
               "Tool name / Task Center",
@@ -2039,11 +2039,11 @@
             ],
             [
               "Tool description / Task Center",
-              "Verfolge wartende, laufende und fertige Aufgaben. Beim Abbrechen einer wartenden Aufgabe erhältst du die Credits zurück."
+              "Verfolgen Sie wartende, laufende und fertige Aufgaben. Beim Abbrechen einer wartenden Aufgabe erhalten Sie die Credits zurück."
             ],
             [
               "Tool description / Start without permissions",
-              "Öffne Glance und sieh dir eine Datei an. Zum Start brauchst du weder Konto noch Systemfreigaben."
+              "Öffnen Sie Glance Preview und sehen Sie sich eine Datei an. Zum Start brauchen Sie weder Konto noch Systemfreigaben."
             ]
           ],
           "media": []
@@ -2141,11 +2141,11 @@
             ],
             [
               "Download headline",
-              "Dein nächstes Bild\nist hier zu Hause."
+              "Ihr nächstes Bild\nist hier zu Hause."
             ],
             [
               "Download description",
-              "Starte mit dem kostenlosen Betrachter. Teste alle lokalen Werkzeuge 14 Tage lang – ohne Konto oder Zahlungsmittel."
+              "Starten Sie mit dem kostenlosen Betrachter. Testen Sie alle lokalen Werkzeuge 14 Tage lang – ohne Konto oder Zahlungsmittel."
             ],
             [
               "Download for Mac",
@@ -2184,11 +2184,11 @@
             ],
             [
               "Answer / 0",
-              "Für Ansicht, Vergleich, Screenshots und OCR nicht. Für Cloud-Widgets und Käufe meldest du dich an."
+              "Für Ansicht, Vergleich, Screenshots und OCR nicht. Für Cloud-Widgets und Käufe melden Sie sich an."
             ],
             [
               "Answer / 1",
-              "Ansicht und lokale Werkzeuge laufen auf deinem Mac. Nur an ein Cloud-Widget gesendete Medien werden hochgeladen."
+              "Ansicht und lokale Werkzeuge laufen auf Ihrem Mac. Nur an ein Cloud-Widget gesendete Medien werden hochgeladen."
             ],
             [
               "Question / Is Pro a subscription?",
@@ -2220,7 +2220,7 @@
             ],
             [
               "Answer / 5",
-              "Wähle ein Produkt in der App. An der Kasse siehst du die für deine Währung verfügbaren Zahlungsmethoden."
+              "Wählen Sie ein Produkt in der App. An der Kasse sehen Sie die für Ihre Währung verfügbaren Zahlungsmethoden."
             ]
           ],
           "media": []
