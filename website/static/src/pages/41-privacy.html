@@ -24,6 +24,7 @@
         <li><strong>Credits and orders:</strong> your credit balance and ledger, and order records from our payment provider: order ID, product, amount, currency, buyer email, billing country and status. We never receive your full card number.</li>
         <li><strong>Product analytics:</strong> trial, sign-in, local-tool and purchase interactions use a hashed device identifier and, when signed in, an account ID. Website page categories and key clicks use a random tab-session identifier, kept in session storage until the tab closes. If you arrive through a campaign link, we also record only its utm_source, utm_medium, utm_campaign and utm_content values (for example, which post the visit came from) with those website events, and remove these parameters from the address bar. Website analytics respect Do Not Track and Global Privacy Control. Analytics do not include media, prompts, email addresses, full URLs, other query parameters or referrers, and website visits are not linked to your Mac or account. We use these records to understand onboarding and purchase problems; website events are deleted after 90 days.</li>
         <li><strong>Request metadata:</strong> IP-derived country (used to pick the default currency and the processing region) and standard server logs.</li>
+        <li><strong>Network country for cloud Widgets:</strong> when you run a cloud Widget, the app asks our service for the country of your network connection to choose the processing route. If that lookup fails, the app asks the third-party service ipapi.co instead, which receives your public IP address. Only the two-letter country code is kept, and it is not used for advertising or tracking.</li>
       </ul>
 
       <h2>3. How we use it</h2>
@@ -38,6 +39,7 @@
         <li><strong>Cloudflare</strong> — hosting, database and file storage.</li>
         <li><strong>Google</strong> — only if you choose Google sign-in.</li>
         <li><strong>Resend</strong> — delivers email verification codes.</li>
+        <li><strong>ipapi.co</strong> — receives your public IP address only if our own country lookup fails when you run a cloud Widget; it returns a two-letter country code.</li>
         <li><strong>RunningHub (runninghub.cn)</strong> — receives the media and parameters of tasks for the AI Widgets that run on it.</li>
         <li><strong>Freeimage.host</strong> — receives images you upload with the Image Hosting Widget from mainland China; such links are public.</li>
         <li><strong>Pancake by Waffo</strong> — our Merchant of Record; processes payments, taxes and refunds under its own privacy policy.</li>
@@ -80,6 +82,7 @@
         <li><strong>点数与订单：</strong>点数余额与流水，以及支付渠道提供的订单记录：订单号、商品、金额、币种、买家邮箱、账单国家和状态。我们不会收到你的完整银行卡号。</li>
         <li><strong>产品统计：</strong>试用、登录、本地工具和购买交互使用经过哈希的设备标识，登录后关联账户 ID。官网仅记录页面类别与关键点击，使用随机的标签页会话标识，存放于关闭标签页即清除的会话存储中；通过推广链接访问时，仅额外记录链接中的 utm_source、utm_medium、utm_campaign、utm_content 四项渠道参数（例如访问来自哪条帖子），并从地址栏移除这些参数。尊重浏览器的 Do Not Track 和 Global Privacy Control 信号。统计不包含媒体、提示词、邮箱、完整网址、其他查询参数或来源网址，官网访问也不会与你的 Mac 或账户关联，用于发现入门和购买流程中的问题。官网原始事件保留 90 天。</li>
         <li><strong>请求元数据：</strong>根据 IP 判断的国家（用于选择默认币种和处理区域）及标准服务器日志。</li>
+        <li><strong>云端 Widget 的网络所在国家：</strong>运行云端 Widget 时，App 会向我们的服务查询你的网络所在国家，用于选择处理线路；如果查询失败，会向第三方服务 ipapi.co 查询，对方会看到你的公网 IP。只保留两位国家代码，不用于广告或追踪。</li>
       </ul>
 
       <h2>3. 数据用途</h2>
@@ -94,6 +97,7 @@
         <li><strong>Cloudflare：</strong>托管、数据库和文件存储。</li>
         <li><strong>Google：</strong>仅在你选择 Google 登录时。</li>
         <li><strong>Resend：</strong>发送邮箱验证码。</li>
+        <li><strong>ipapi.co：</strong>仅在你运行云端 Widget、且我们自己的国家查询失败时，接收你的公网 IP，返回两位国家代码。</li>
         <li><strong>RunningHub（runninghub.cn）：</strong>接收在其平台上运行的 AI Widget 任务的媒体和参数。</li>
         <li><strong>Freeimage.host：</strong>接收中国大陆用户通过「免费图床」Widget 上传的图片，生成的链接是公开的。</li>
         <li><strong>Pancake by Waffo：</strong>我们的记录商户，依照其自身隐私政策处理付款、税费和退款。</li>
