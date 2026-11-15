@@ -341,5 +341,13 @@ class SiteTests(unittest.TestCase):
                 self.assertNotIn('Accessibility and Input Monitoring permissions', text)
 
 
+    def test_language_menu_is_a_dropdown(self):
+        css = (build.SRC / 'assets' / 'shizuka.css').read_text()
+        self.assertIn('.lang-menu:not([open])>.lang-menu-list{display:none}', css)
+        self.assertIn('.lang-menu[open]>.lang-menu-list{position:absolute', css)
+        self.assertIn('flex-direction:column', css)
+        self.assertIn('.nav .lang-option{display:block', css)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -17,7 +17,13 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var
 .btn-primary,.btn-primary:hover{background:var(--text);color:var(--bg)}
 .btn-primary:hover{opacity:.88}.btn-ghost{background:transparent}.btn-ghost:hover{background:var(--card-2);border-color:var(--line-2)}
 .lang-toggle{border:0;border-radius:4px;padding:10px 0;color:var(--text-2)}
+.lang-menu{position:relative}
+.lang-menu>summary{list-style:none}
+.lang-menu>summary::-webkit-details-marker{display:none}
+.lang-menu:not([open])>.lang-menu-list{display:none}
+.lang-menu[open]>.lang-menu-list{position:absolute;top:calc(100% + 8px);right:0;z-index:20;display:flex;flex-direction:column;min-width:140px;padding:6px;border:1px solid var(--line)}
 .lang-menu-list{border-radius:6px;background:var(--bg-2);box-shadow:0 12px 24px #0002}
+.nav .lang-option{display:block;padding:10px 12px;border-radius:4px}
 .nav .lang-option:hover,.nav .lang-option:focus-visible{background:var(--card-2)}
 .theme-toggle{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--text);cursor:pointer;padding:8px}
 .theme-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
