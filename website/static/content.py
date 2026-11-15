@@ -136,8 +136,8 @@ def shell(b, path, title, desc, body, schema="", noindex=False, og_type="website
 <meta name="theme-color" content="#151514">
 <script src="/assets/theme-init.js?v={b.ASSET_VERSION}"></script>
 {robots}
-<link rel="icon" type="image/png" href="/assets/img/favicon-64.png">
-<link rel="apple-touch-icon" href="/assets/img/logo-256.png">
+<link rel="icon" type="image/png" href="/assets/img/favicon-64.png?v=1.1.0">
+<link rel="apple-touch-icon" href="/assets/img/logo-256.png?v=1.1.0">
 <link rel="stylesheet" href="/assets/site.css?v={b.ASSET_VERSION}">
 <link rel="stylesheet" href="/assets/fonts.css?v={b.ASSET_VERSION}">
 <link rel="stylesheet" href="/assets/shizuka.css?v={b.ASSET_VERSION}">

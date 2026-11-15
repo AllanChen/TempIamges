@@ -320,8 +320,8 @@ def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
 <script src="/assets/theme-init.js?v={ASSET_VERSION}"></script>
 {robots}
 {verify}
-<link rel="icon" type="image/png" href="/assets/img/favicon-64.png">
-<link rel="apple-touch-icon" href="/assets/img/logo-256.png">
+<link rel="icon" type="image/png" href="/assets/img/favicon-64.png?v=1.1.0">
+<link rel="apple-touch-icon" href="/assets/img/logo-256.png?v=1.1.0">
 <link rel="stylesheet" href="/assets/site.css?v={ASSET_VERSION}">
 <link rel="stylesheet" href="/assets/fonts.css?v={ASSET_VERSION}">
 <link rel="stylesheet" href="/assets/shizuka.css?v={ASSET_VERSION}">
