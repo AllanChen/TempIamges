@@ -338,6 +338,10 @@ final class BillingCoordinator {
       }
       return
     }
+    #if MAS
+    purchaseFromAppStore(product: product, pack: pack, tier: tier, panel: panel, parent: parent)
+    return
+    #else
     let key = UUID().uuidString
     func create() {
       BillingManager.shared.createOrder(
@@ -390,7 +394,53 @@ final class BillingCoordinator {
       }
     }
     create()
+    #endif
   }
+  #if MAS
+  /// App Store build: Apple's purchase sheet replaces the hosted checkout. The
+  /// service grants the purchase before StoreKit's transaction is finished.
+  private func purchaseFromAppStore(
+    product: String, pack: BillingPack?, tier: BillingTier?, panel: BillingWindow, parent: NSWindow?
+  ) {
+    guard let productID = pack.map(AppStorePurchases.productID(pack:))
+      ?? tier.map(AppStorePurchases.productID(tier:)) else { return }
+    func purchase() {
+      panel.showStatus(
+        title: "Waiting for the App Store…".localized,
+        subtitle: "Complete the purchase in the App Store window.".localized,
+        primary: "Close".localized, onPrimary: { panel.dismiss() })
+      AppStorePurchases.shared.purchase(productID) { [weak self, weak panel, weak parent] result in
+        guard let self, let panel else { return }
+        switch result {
+        case .success(let status):
+          guard let userID = AuthManager.shared.session?.user.id else { return }
+          self.fulfilled(Payment(order: status.order, ownerID: userID, panel: panel, parent: parent), status: status)
+        case .failure(AppStorePurchaseError.cancelled):
+          product == "credits" ? panel.showTopup() : panel.showPro()
+        case .failure(AppStorePurchaseError.pending):
+          panel.showStatus(
+            title: "Purchase awaiting approval".localized,
+            subtitle: AppStorePurchaseError.pending.localizedDescription,
+            primary: "Done".localized, onPrimary: { panel.dismiss() })
+        case .failure(let error as BillingAPIError) where error.code == "app_store_account_mismatch":
+          panel.showError(error.localizedDescription)
+        case .failure(let error as BillingAPIError) where error.code.hasPrefix("app_store_"):
+          // Apple charged, but the service has not recorded it yet. The
+          // transaction stays open and is retried automatically.
+          panel.showStatus(
+            title: "Purchase received, still confirming".localized,
+            subtitle: error.localizedDescription,
+            primary: "Done".localized, onPrimary: { panel.dismiss() },
+            iconName: "BillingWarning",
+            explanation: "If it hasn't arrived after you reopen Glance, choose Glance > Restore Purchases.".localized)
+        case .failure(let error):
+          panel.showError(error.localizedDescription, retry: purchase)
+        }
+      }
+    }
+    purchase()
+  }
+  #endif
   private func showPayment(_ payment: Payment, confirming: Bool = false) {
     guard !payment.abandoned else { return }
     let slow = Date().timeIntervalSince(payment.started) > 120

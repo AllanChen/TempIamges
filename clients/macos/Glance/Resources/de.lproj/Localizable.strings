@@ -1037,3 +1037,36 @@
 "Glance couldn't turn on the Peek shortcut" = "Glance konnte das Peek-Tastenkürzel nicht aktivieren";
 "macOS didn't allow this shortcut. Recent macOS versions block shortcuts that use only Option (⌥) or Shift. Choose a shortcut that includes Command (⌘) or Control (⌃) in Preferences, then Peek will work right away." = "macOS hat dieses Tastenkürzel nicht erlaubt. Neuere macOS-Versionen blockieren Kürzel, die nur Wahl (⌥) oder Umschalt verwenden. Wähle in den Einstellungen ein Kürzel mit Befehl (⌘) oder Control (⌃), dann funktioniert Peek sofort.";
 "Open Preferences" = "Einstellungen öffnen";
+
+/* Mac App Store purchases */
+"The purchase was cancelled. You were not charged." = "Der Kauf wurde abgebrochen. Dir wurde nichts berechnet.";
+"Your purchase is waiting for approval. Glance adds it automatically once the App Store approves it." = "Dein Kauf wartet auf Genehmigung. Glance fügt ihn automatisch hinzu, sobald der App Store ihn genehmigt.";
+"This product isn't available in the App Store right now. You were not charged. Try again later." = "Dieses Produkt ist im App Store gerade nicht verfügbar. Dir wurde nichts berechnet. Versuche es später erneut.";
+"Glance couldn't confirm your account before the purchase. You were not charged. Check your connection and try again." = "Glance konnte dein Konto vor dem Kauf nicht bestätigen. Dir wurde nichts berechnet. Prüfe deine Verbindung und versuche es erneut.";
+"Waiting for the App Store…" = "Warte auf den App Store …";
+"Complete the purchase in the App Store window." = "Schließe den Kauf im App-Store-Fenster ab.";
+"Purchase awaiting approval" = "Kauf wartet auf Genehmigung";
+"Purchase received, still confirming" = "Kauf erhalten, Bestätigung läuft";
+"If it hasn't arrived after you reopen Glance, choose Glance > Restore Purchases." = "Falls er nach dem erneuten Öffnen von Glance nicht angekommen ist, wähle „Glance > Käufe wiederherstellen“.";
+"Refunds are handled by Apple" = "Erstattungen erfolgen über Apple";
+"Request a refund from Apple. Once Apple approves it, Glance removes this purchase automatically." = "Beantrage die Erstattung bei Apple. Sobald Apple sie genehmigt, entfernt Glance diesen Kauf automatisch.";
+"Request a refund from Apple" = "Erstattung bei Apple beantragen";
+"Restore Purchases" = "Käufe wiederherstellen";
+"Purchases restored" = "Käufe wiederhergestellt";
+"No purchases to restore" = "Keine Käufe zum Wiederherstellen";
+"Your App Store purchases are linked to this Glance account." = "Deine App-Store-Käufe sind mit diesem Glance-Konto verknüpft.";
+"This Apple ID has no Glance purchases that aren't already on this account." = "Diese Apple-ID hat keine Glance-Käufe, die nicht schon auf diesem Konto sind.";
+"Purchases couldn't be restored" = "Käufe konnten nicht wiederhergestellt werden";
+"Nothing was charged. Check your connection and try again." = "Es wurde nichts berechnet. Prüfe deine Verbindung und versuche es erneut.";
+"App Store purchases are not configured yet. Your purchase is kept and Glance will retry." = "App-Store-Käufe sind noch nicht eingerichtet. Dein Kauf bleibt erhalten und Glance versucht es erneut.";
+"Could not reach the App Store. Your purchase is kept and Glance will retry." = "Der App Store war nicht erreichbar. Dein Kauf bleibt erhalten und Glance versucht es erneut.";
+"The App Store could not confirm this purchase right now. Your purchase is kept and Glance will retry." = "Der App Store kann diesen Kauf gerade nicht bestätigen. Dein Kauf bleibt erhalten und Glance versucht es erneut.";
+"The App Store returned an incomplete purchase. Glance will retry." = "Der App Store hat einen unvollständigen Kauf geliefert. Glance versucht es erneut.";
+"A valid App Store transaction ID is required." = "Eine gültige App-Store-Transaktions-ID ist erforderlich.";
+"This App Store purchase belongs to a different Glance account. Sign in with the account you used to buy it." = "Dieser App-Store-Kauf gehört zu einem anderen Glance-Konto. Melde dich mit dem Konto an, mit dem du gekauft hast.";
+"The App Store has not confirmed this purchase yet. Glance will retry automatically." = "Der App Store hat diesen Kauf noch nicht bestätigt. Glance versucht es automatisch erneut.";
+"This purchase is not for Glance." = "Dieser Kauf gehört nicht zu Glance.";
+"Apple refunded or revoked this purchase, so nothing was added." = "Apple hat diesen Kauf erstattet oder widerrufen, daher wurde nichts hinzugefügt.";
+"Glance does not recognize this App Store product. Contact support with your Apple receipt." = "Glance erkennt dieses App-Store-Produkt nicht. Wende dich mit deinem Apple-Beleg an den Support.";
+"This credit package has no credits configured." = "Für dieses Credit-Paket sind keine Credits eingerichtet.";
+"Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it." = "Erstattungen für App-Store-Käufe erfolgen über Apple. Beantrage sie unter reportaproblem.apple.com; Glance entfernt den Kauf automatisch, sobald Apple sie genehmigt.";

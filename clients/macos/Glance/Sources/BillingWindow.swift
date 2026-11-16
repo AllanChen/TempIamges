@@ -105,6 +105,9 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         case .wallet: self.showWallet()
         case .account: self.showAccount()
         case .topup: self.showTopup()
+        #if MAS
+        case .pro: self.showPro()  // App Store prices arrive after the page opens.
+        #endif
         default: break
         }
       })
@@ -686,9 +689,17 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
           format: "%@ costs %d credits. Current balance: %d. Nothing has been charged.".localized,
           taskName ?? "Widget", cost, balance))
     errorY = 476
+    #if MAS
+    AppStorePurchases.shared.loadProducts(for: config)
+    let packs = config.packs.filter {
+      $0.enabled && ($0.price(currency).points ?? 0) > 0
+        && AppStorePurchases.shared.isAvailable(AppStorePurchases.productID(pack: $0))
+    }
+    #else
     let packs = config.packs.filter {
       $0.enabled && $0.price(currency).amount != nil && !$0.productID.isEmpty
     }
+    #endif
     if !packs.contains(where: { $0.id == selectedPackID }) {
       selectedPackID =
         packs.first(where: { $0.recommended && balance + ($0.price(currency).points ?? 0) >= cost }
@@ -717,13 +728,15 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         String(price.points ?? 0) + " " + "credits".localized, x: 106, y: y + 12, width: 300,
         size: 14, height: 20, singleLine: true)
       label(
-        BillingManager.shared.money(price.amount, currency: currency), x: 412, y: y + 12,
+        priceText(pack), x: 412, y: y + 12,
         width: 148, size: 14, weight: .medium, align: .right, height: 20, singleLine: true)
     }
-    if packs.count > 3 && config.paymentsAvailable {  // Admin can add packages; keep all of them reachable.
+    if packs.count > 3 && paymentsAvailable(config) {  // Admin can add packages; keep all of them reachable.
       quiet("More packages".localized, y: 345) { [weak self] in self?.chooseMorePackages(packs) }
     }
-    paymentSwitch(y: 377)
+    #if !MAS
+    paymentSwitch(y: 377)  // The App Store build pays through Apple.
+    #endif
     if taskCost != nil && !requiresTaskConfirmation {
       let check = BillingCheckboxButton(
         checkboxWithTitle: "Automatically submit this task after credits arrive".localized,
@@ -740,22 +753,24 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       "Balance after top-up".localized,
       String(balance + (selected?.price(currency).points ?? 0)) + " " + "credits".localized,
       y: balanceY, mono: true)
-    let amount = BillingManager.shared.money(selected?.price(currency).amount, currency: currency)
+    let amount = selected.map(priceText) ?? BillingManager.shared.money(nil, currency: currency)
     primary(String(format: "Continue to payment %@".localized, amount)) { [weak self] in
       guard let self, let selected else { return }
       self.onCheckout?("credits", selected, nil, self.currency, selected.price(self.currency))
     }
     quiet("Not now".localized) { [weak self] in self?.dismiss() }
+    #if !MAS
     note("You can switch to USD card payments if WeChat Pay is unavailable.".localized)
+    #endif
     if selected == nil {
       inlineError("No credit packages are available yet.".localized)
       disablePrimary()
     }
-    if !config.paymentsAvailable {
+    if !paymentsAvailable(config) {
       inlineError("Payments are not available yet. Contact support for credits.".localized)
       disablePrimary()
     }
-    if !config.paymentsAvailable && !config.supportEmail.isEmpty {
+    if !paymentsAvailable(config) && !config.supportEmail.isEmpty {
       quiet("Contact support".localized) {
         var link = URLComponents()
         link.scheme = "mailto"
@@ -768,12 +783,29 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       }
     }
   }
+  /// A pack's price: Apple's storefront price in the App Store build.
+  private func priceText(_ pack: BillingPack) -> String {
+    #if MAS
+    return AppStorePurchases.shared.displayPrice(AppStorePurchases.productID(pack: pack))
+      ?? BillingManager.shared.money(nil, currency: currency)
+    #else
+    return BillingManager.shared.money(pack.price(currency).amount, currency: currency)
+    #endif
+  }
+  /// The App Store build is purchasable whenever Apple returns the product.
+  private func paymentsAvailable(_ config: BillingPricing) -> Bool {
+    #if MAS
+    return true
+    #else
+    return config.paymentsAvailable
+    #endif
+  }
   private func chooseMorePackages(_ packs: [BillingPack]) {
     let menu = NSMenu()
     for pack in packs {
       let item = NSMenuItem(
         title:
-          "\(pack.price(currency).points ?? 0) \("credits".localized) · \(BillingManager.shared.money(pack.price(currency).amount,currency:currency))",
+          "\(pack.price(currency).points ?? 0) \("credits".localized) · \(priceText(pack))",
         action: #selector(packChosen(_:)), keyEquivalent: "")
       item.representedObject = pack.id
       item.target = self
@@ -865,6 +897,12 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       upgrade ? "Upgrade Pro".localized : "Glance Pro",
       subtitle: "Buy local tools once. Cloud Widgets use credits separately.".localized)
     tierCards(tiers, y: 186)
+    #if MAS
+    AppStorePurchases.shared.loadProducts(for: config)
+    let storePrice = AppStorePurchases.shared.displayPrice(AppStorePurchases.productID(tier: tier))
+    #endif
+    // Launch discounts come from the web price list; the App Store sets its own prices.
+    #if !MAS
     if let amount = price.amount {
       let regular = tier.regularPrice(currency)
       let discounted = regular.amount != nil && regular.amount != amount
@@ -880,6 +918,7 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         caption.attributedStringValue = string
       }
     }
+    #endif
     row("Included".localized, "All features".localized, y: 326, singleLine: true)
     row(
       "Macs / updates".localized,
@@ -890,25 +929,32 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         format: "%d credits".localized,
         upgrade || manager.entitlements?.proBonusEligible == false ? 0 : config.proBonusCredits),
       y: 398, singleLine: true, mono: true)
+    #if !MAS
     paymentSwitch(y: 446)
+    #endif
     if !upgrade && manager.remainingTrialDays > 0 {
       label(
         String(format: "Trial: %d days left".localized, manager.remainingTrialDays), x: 64,
         y: footerY + 7, width: 180, color: PanelStyle.textSecondary, singleLine: true)
     }
-    primary(
-      (upgrade ? "Upgrade".localized : "Buy Pro".localized)
-        + (price.amount == nil ? "" : " · " + manager.money(price.amount, currency: currency))
-    ) { [weak self] in
+    #if MAS
+    let priceSuffix = storePrice.map { " · " + $0 } ?? ""
+    #else
+    let priceSuffix = price.amount == nil ? "" : " · " + manager.money(price.amount, currency: currency)
+    #endif
+    primary((upgrade ? "Upgrade".localized : "Buy Pro".localized) + priceSuffix) { [weak self] in
       guard let self else { return }
       self.onCheckout?("pro", nil, tier, self.currency, price)
     }
     quiet("Not now".localized) { [weak self] in self?.dismiss() }
     // Signed out, the button leads to sign-in and the refreshed, per-account
     // offer (the owner's test account gets mock checkout), so it stays enabled.
-    if AuthManager.shared.isSignedIn
-      && (!config.paymentsAvailable || price.amount == nil || tier.productID.isEmpty)
-    {
+    #if MAS
+    let unavailable = storePrice == nil
+    #else
+    let unavailable = !config.paymentsAvailable || price.amount == nil || tier.productID.isEmpty
+    #endif
+    if AuthManager.shared.isSignedIn && unavailable {
       inlineError("This product is not available yet.".localized, footer: true)
       disablePrimary()
     } else if config.mockCheckout == true {
@@ -940,13 +986,18 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         card.layer?.borderColor = PanelStyle.inspectLine.cgColor
         root.addSubview(card)
       }
+      #if MAS
+      let priceLabel = AppStorePurchases.shared.displayPrice(AppStorePurchases.productID(tier: tier))
+      #else
       let amount = tier.price(currency, launchUntil: config.launchUntil).amount
+      let priceLabel = amount.map { BillingManager.shared.money($0, currency: currency) }
+      #endif
       label(
         tier.localizedName, x: x + 16, y: y + 16, width: width - 52, size: 13, weight: .medium,
         height: 19, singleLine: true)
-      if amount != nil {
+      if let priceLabel {
         label(
-          BillingManager.shared.money(amount, currency: currency), x: x + 16, y: y + 40,
+          priceLabel, x: x + 16, y: y + 40,
           width: width - 32, font: PanelStyle.titleFont(ofSize: 26), height: 34, lineHeight: 34,
           singleLine: true)
       }
@@ -1327,6 +1378,17 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         onPrimary: { [weak self] in self?.showOrders() },
         explanation: "Your entitlement changes only after the payment provider confirms the refund."
           .localized)
+      return
+    }
+    if order.store == "app_store" {
+      // Apple refunds App Store purchases; the service removes the purchase
+      // when Apple's refund notification arrives.
+      showStatus(
+        title: "Refunds are handled by Apple".localized,
+        subtitle: "Request a refund from Apple. Once Apple approves it, Glance removes this purchase automatically.".localized,
+        primary: "Request a refund from Apple".localized, secondary: "Back to account".localized,
+        onPrimary: { NSWorkspace.shared.open(URL(string: "https://reportaproblem.apple.com")!) },
+        onSecondary: { [weak self] in self?.showAccount() })
       return
     }
     if ["expired", "abandoned"].contains(order.status) {

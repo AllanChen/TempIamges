@@ -209,6 +209,8 @@ struct BillingEntitlements: Decodable {
   let credential: BillingCredential?
   let serverTime: String
   let enforcementEnabled: Bool
+  /// UUID attached to App Store purchases so the service can match them to this account.
+  let appStoreAccountToken: String?
 }
 struct BillingOrder: Codable {
   let id: String
@@ -227,6 +229,8 @@ struct BillingOrder: Codable {
   let expiresAt: String
   let refundStatus: String?
   let refundReason: String?
+  /// "app_store" for Mac App Store purchases; Apple handles their refunds.
+  let store: String?
   let intentID: String?
   var isPaid: Bool { status == "paid" || status == "refund_failed" }
   var isTerminal: Bool { ["paid", "refund_failed", "refunded", "expired"].contains(status) }

@@ -1151,3 +1151,36 @@
 "Glance couldn't turn on the Peek shortcut" = "Glance couldn't turn on the Peek shortcut";
 "macOS didn't allow this shortcut. Recent macOS versions block shortcuts that use only Option (⌥) or Shift. Choose a shortcut that includes Command (⌘) or Control (⌃) in Preferences, then Peek will work right away." = "macOS didn't allow this shortcut. Recent macOS versions block shortcuts that use only Option (⌥) or Shift. Choose a shortcut that includes Command (⌘) or Control (⌃) in Preferences, then Peek will work right away.";
 "Open Preferences" = "Open Preferences";
+
+/* Mac App Store purchases */
+"The purchase was cancelled. You were not charged." = "The purchase was cancelled. You were not charged.";
+"Your purchase is waiting for approval. Glance adds it automatically once the App Store approves it." = "Your purchase is waiting for approval. Glance adds it automatically once the App Store approves it.";
+"This product isn't available in the App Store right now. You were not charged. Try again later." = "This product isn't available in the App Store right now. You were not charged. Try again later.";
+"Glance couldn't confirm your account before the purchase. You were not charged. Check your connection and try again." = "Glance couldn't confirm your account before the purchase. You were not charged. Check your connection and try again.";
+"Waiting for the App Store…" = "Waiting for the App Store…";
+"Complete the purchase in the App Store window." = "Complete the purchase in the App Store window.";
+"Purchase awaiting approval" = "Purchase awaiting approval";
+"Purchase received, still confirming" = "Purchase received, still confirming";
+"If it hasn't arrived after you reopen Glance, choose Glance > Restore Purchases." = "If it hasn't arrived after you reopen Glance, choose Glance > Restore Purchases.";
+"Refunds are handled by Apple" = "Refunds are handled by Apple";
+"Request a refund from Apple. Once Apple approves it, Glance removes this purchase automatically." = "Request a refund from Apple. Once Apple approves it, Glance removes this purchase automatically.";
+"Request a refund from Apple" = "Request a refund from Apple";
+"Restore Purchases" = "Restore Purchases";
+"Purchases restored" = "Purchases restored";
+"No purchases to restore" = "No purchases to restore";
+"Your App Store purchases are linked to this Glance account." = "Your App Store purchases are linked to this Glance account.";
+"This Apple ID has no Glance purchases that aren't already on this account." = "This Apple ID has no Glance purchases that aren't already on this account.";
+"Purchases couldn't be restored" = "Purchases couldn't be restored";
+"Nothing was charged. Check your connection and try again." = "Nothing was charged. Check your connection and try again.";
+"App Store purchases are not configured yet. Your purchase is kept and Glance will retry." = "App Store purchases are not configured yet. Your purchase is kept and Glance will retry.";
+"Could not reach the App Store. Your purchase is kept and Glance will retry." = "Could not reach the App Store. Your purchase is kept and Glance will retry.";
+"The App Store could not confirm this purchase right now. Your purchase is kept and Glance will retry." = "The App Store could not confirm this purchase right now. Your purchase is kept and Glance will retry.";
+"The App Store returned an incomplete purchase. Glance will retry." = "The App Store returned an incomplete purchase. Glance will retry.";
+"A valid App Store transaction ID is required." = "A valid App Store transaction ID is required.";
+"This App Store purchase belongs to a different Glance account. Sign in with the account you used to buy it." = "This App Store purchase belongs to a different Glance account. Sign in with the account you used to buy it.";
+"The App Store has not confirmed this purchase yet. Glance will retry automatically." = "The App Store has not confirmed this purchase yet. Glance will retry automatically.";
+"This purchase is not for Glance." = "This purchase is not for Glance.";
+"Apple refunded or revoked this purchase, so nothing was added." = "Apple refunded or revoked this purchase, so nothing was added.";
+"Glance does not recognize this App Store product. Contact support with your Apple receipt." = "Glance does not recognize this App Store product. Contact support with your Apple receipt.";
+"This credit package has no credits configured." = "This credit package has no credits configured.";
+"Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it." = "Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it.";

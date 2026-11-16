@@ -1153,3 +1153,36 @@
 "Glance couldn't turn on the Peek shortcut" = "Glance 无法启用 Peek 快捷键";
 "macOS didn't allow this shortcut. Recent macOS versions block shortcuts that use only Option (⌥) or Shift. Choose a shortcut that includes Command (⌘) or Control (⌃) in Preferences, then Peek will work right away." = "macOS 不允许使用这个快捷键。较新的 macOS 会阻止只用 Option (⌥) 或 Shift 的快捷键。请在偏好设置中选择包含 Command (⌘) 或 Control (⌃) 的快捷键，Peek 会立即生效。";
 "Open Preferences" = "打开偏好设置";
+
+/* Mac App Store purchases */
+"The purchase was cancelled. You were not charged." = "购买已取消，你没有被扣款。";
+"Your purchase is waiting for approval. Glance adds it automatically once the App Store approves it." = "你的购买正在等待批准。App Store 批准后，Glance 会自动添加。";
+"This product isn't available in the App Store right now. You were not charged. Try again later." = "App Store 目前无法提供此商品，你没有被扣款。请稍后再试。";
+"Glance couldn't confirm your account before the purchase. You were not charged. Check your connection and try again." = "购买前 Glance 无法确认你的账户，你没有被扣款。请检查网络连接后重试。";
+"Waiting for the App Store…" = "正在等待 App Store…";
+"Complete the purchase in the App Store window." = "请在 App Store 窗口中完成购买。";
+"Purchase awaiting approval" = "购买等待批准";
+"Purchase received, still confirming" = "已收到购买，仍在确认";
+"If it hasn't arrived after you reopen Glance, choose Glance > Restore Purchases." = "如果重新打开 Glance 后仍未到账，请选择“Glance > 恢复购买”。";
+"Refunds are handled by Apple" = "退款由 Apple 处理";
+"Request a refund from Apple. Once Apple approves it, Glance removes this purchase automatically." = "请向 Apple 申请退款。Apple 批准后，Glance 会自动移除这笔购买。";
+"Request a refund from Apple" = "向 Apple 申请退款";
+"Restore Purchases" = "恢复购买";
+"Purchases restored" = "已恢复购买";
+"No purchases to restore" = "没有可恢复的购买";
+"Your App Store purchases are linked to this Glance account." = "你的 App Store 购买已关联到此 Glance 账户。";
+"This Apple ID has no Glance purchases that aren't already on this account." = "此 Apple ID 没有尚未关联到此账户的 Glance 购买。";
+"Purchases couldn't be restored" = "无法恢复购买";
+"Nothing was charged. Check your connection and try again." = "没有产生任何扣款。请检查网络连接后重试。";
+"App Store purchases are not configured yet. Your purchase is kept and Glance will retry." = "App Store 购买尚未配置完成。你的购买已保留，Glance 会自动重试。";
+"Could not reach the App Store. Your purchase is kept and Glance will retry." = "无法连接 App Store。你的购买已保留，Glance 会自动重试。";
+"The App Store could not confirm this purchase right now. Your purchase is kept and Glance will retry." = "App Store 暂时无法确认这笔购买。你的购买已保留，Glance 会自动重试。";
+"The App Store returned an incomplete purchase. Glance will retry." = "App Store 返回的购买信息不完整，Glance 会自动重试。";
+"A valid App Store transaction ID is required." = "需要有效的 App Store 交易编号。";
+"This App Store purchase belongs to a different Glance account. Sign in with the account you used to buy it." = "这笔 App Store 购买属于另一个 Glance 账户。请登录购买时使用的账户。";
+"The App Store has not confirmed this purchase yet. Glance will retry automatically." = "App Store 尚未确认这笔购买，Glance 会自动重试。";
+"This purchase is not for Glance." = "这笔购买不属于 Glance。";
+"Apple refunded or revoked this purchase, so nothing was added." = "Apple 已退款或撤销这笔购买，因此没有添加任何内容。";
+"Glance does not recognize this App Store product. Contact support with your Apple receipt." = "Glance 无法识别此 App Store 商品。请携带 Apple 收据联系客服。";
+"This credit package has no credits configured." = "此积分包未配置积分数量。";
+"Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it." = "App Store 购买的退款由 Apple 处理。请在 reportaproblem.apple.com 申请；Apple 批准后，Glance 会自动移除这笔购买。";

@@ -68,11 +68,17 @@ final class BillingManager {
   /// The lowest price of the Pro tiers that can be bought now, formatted ("$9.99"); nil when it is not known or Pro
   /// is already owned. Read from the service's pricing, never written into the app.
   var proEntryPriceText: String? {
+    #if MAS
+    guard !shouldManagePro, let pricing else { return nil }
+    return AppStorePurchases.shared.lowestDisplayPrice(
+      pricing.proTiers.filter(\.enabled).map(AppStorePurchases.productID(tier:)))
+    #else
     guard !shouldManagePro, let pricing, pricing.paymentsAvailable,
           let amount = pricing.proTiers.filter({ $0.enabled && !$0.productID.isEmpty })
             .compactMap({ $0.price(pricing.defaultCurrency, launchUntil: pricing.launchUntil).amount }).min()
     else { return nil }
     return money(amount, currency: pricing.defaultCurrency)
+    #endif
   }
   var proEntryTitle: String {
     if shouldManagePro { return "Manage Pro".localized }
@@ -188,6 +194,9 @@ final class BillingManager {
         }
         self.enforcementEnabled = value.enabled && value.paymentsAvailable
         if let now = BillingDates.parse(value.serverTime) { self.trial.observe(now) }
+        #if MAS
+        AppStorePurchases.shared.loadProducts(for: value)
+        #endif
         self.changed()
       } else if case .failure(let error as BillingAPIError) = result,
         error.code == "not_found" {
@@ -325,6 +334,10 @@ final class BillingManager {
       changed()
       return
     }
+    #if MAS
+    // Purchases made while signed out or interrupted are recorded now.
+    AppStorePurchases.shared.processUnfinished()
+    #endif
     request("/api/v2/account/trial", body: ["startedAt": BillingDates.string(trial.startedAt)]) {
       (result: Result<BillingEntitlements, Error>) in
       if case .success(let value) = result { self.apply(value) }

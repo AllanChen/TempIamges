@@ -61,6 +61,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         setupMainMenu()
         #if MAS
         FolderAccess.shared.restore()
+        AppStorePurchases.shared.start()
         #else
         AppUpdater.shared.start()
         #endif

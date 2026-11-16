@@ -18,6 +18,9 @@ extension AppDelegate {
         appMenu.addItem(menuItem("Check for Updates…", #selector(AppUpdater.checkForUpdates(_:)), target: AppUpdater.shared))
         #endif
         appMenu.addItem(menuItem("Buy Glance Pro…", #selector(openProFromMenu(_:)), target: self))
+        #if MAS
+        appMenu.addItem(menuItem("Restore Purchases", #selector(restorePurchasesFromMenu(_:)), target: self))
+        #endif
         appMenu.addItem(.separator())
         appMenu.addItem(menuItem("Preferences...", #selector(openPreferencesFromMenu(_:)), key: ",", target: self))
         #if MAS
@@ -132,6 +135,29 @@ extension AppDelegate {
     @objc private func openPreferencesFromMenu(_ sender: Any?) { openPreferences() }
     #if MAS
     @objc private func grantFolderAccessFromMenu(_ sender: Any?) { FolderAccess.shared.requestAccess() }
+    @objc private func restorePurchasesFromMenu(_ sender: Any?) {
+        guard AuthManager.shared.isSignedIn else {
+            BillingCoordinator.shared.showAccount()  // Signing in comes first; purchases belong to an account.
+            return
+        }
+        AppStorePurchases.shared.restore { result in
+            let alert = NSAlert()
+            switch result {
+            case .success(let count):
+                alert.messageText = count > 0 ? "Purchases restored".localized : "No purchases to restore".localized
+                alert.informativeText = count > 0
+                    ? "Your App Store purchases are linked to this Glance account.".localized
+                    : "This Apple ID has no Glance purchases that aren't already on this account.".localized
+            case .failure(let error):
+                alert.alertStyle = .warning
+                alert.messageText = "Purchases couldn't be restored".localized
+                alert.informativeText = error.localizedDescription + "\n\n"
+                    + "Nothing was charged. Check your connection and try again.".localized
+            }
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+    }
     #endif
     @objc private func openProFromMenu(_ sender: Any?) {
         NSApp.activate(ignoringOtherApps: true)
