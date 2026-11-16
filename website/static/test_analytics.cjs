@@ -80,3 +80,15 @@ test('privacy signals still clean UTM links without sending events',()=>{
   assert.equal(r.calls.length,0);
   assert.deepEqual(r.replaced,['/en/pricing/#token']);
 });
+
+test('every built homepage DMG link is tracked as a download CTA',()=>{
+  const {readFileSync,existsSync}=require('node:fs');
+  for (const page of ['index.html','en/index.html','ja/index.html','de/index.html']) {
+    const file=__dirname+'/public/'+page;
+    if (!existsSync(file)) continue;
+    const html=readFileSync(file,'utf8');
+    const links=html.match(/<a\b[^>]*href="[^"]*\.dmg"[^>]*>/g)||[];
+    assert.ok(links.length>0, page+' has no DMG link');
+    for (const a of links) assert.match(a,/data-download-cta="/, page+': '+a);
+  }
+});

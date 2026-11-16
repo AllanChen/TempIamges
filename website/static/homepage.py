@@ -48,7 +48,7 @@ def render_home(lang, snapshot, dmg, version, size, checksum):
         return f'<p class="home-label">{get(rows, "Section label")}</p>'
     def download(rows):
         button = next(v for k, v in rows if k in ('Download for Mac', '下载 Mac 版', '下载 Mac 版 →') or k.startswith('Download'))
-        return f'<a class="btn btn-primary" href="{dmg}">{text(button)} <span aria-hidden="true">↓</span></a>'
+        return f'<a class="btn btn-primary" href="{dmg}" download data-download-cta="home" data-app-version="{escape(version)}">{text(button)} <span aria-hidden="true">↓</span></a>'
     play, pause = {'zh': ('播放演示', '暂停演示'), 'en': ('Play demo', 'Pause demo'), 'ja': ('デモを再生', 'デモを一時停止'), 'de': ('Demo abspielen', 'Demo pausieren')}[lang]
     def media(key):
         base = f'/assets/video/widgets/{key}-{lang}'
@@ -101,7 +101,7 @@ def render_home(lang, snapshot, dmg, version, size, checksum):
     plan_names = [v for k,v in rows if k.startswith('Plan name /')]
     links = [v for k,v in rows if k.startswith('Link /')]
     for i in range(3):
-        out.append(f'<article><h3>{text(plan_names[i])}</h3><p class="home-price" data-home-price="{i}">{text(prices[i])}</p><p class="plan-term">{get(rows,f"Plan term / {i}")}</p><p>{get(rows,f"Plan description / {i}")}</p><a href="{dmg if i==0 else "/pricing/"}">{text(links[i])}</a></article>')
+        out.append(f'<article><h3>{text(plan_names[i])}</h3><p class="home-price" data-home-price="{i}">{text(prices[i])}</p><p class="plan-term">{get(rows,f"Plan term / {i}")}</p><p>{get(rows,f"Plan description / {i}")}</p><a href="{dmg if i==0 else "/pricing/"}"{(' download data-download-cta="home" data-app-version="' + escape(version) + '"') if i==0 else ""}>{text(links[i])}</a></article>')
     out.append(f'</div><p class="home-disclosure">{get(rows,"Pricing disclosure")}</p><script id="home-pricing" type="application/json">{json.dumps(pricing).replace("<", chr(92)+"u003c")}</script></section>')
     rows = section('08 ')
     guide = next(v for k,v in rows if k.startswith('Link /'))

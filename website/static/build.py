@@ -221,12 +221,12 @@ def footer() -> str:
         de="Die Vorschau für das KI-Zeitalter: Bilder und Videos ansehen, direkt mit KI überarbeiten und vergleichen.")}</p>
     </div>
     <div><h4>{bi("产品", "Product", ja="製品", de="Produkt")}</h4>
-      <a href="/#loop">{bi("功能", "Features", ja="機能", de="Funktionen")}</a><a href="/widgets/">{bi("AI Widget", "AI Widgets", ja="AI Widget（英語）", de="KI-Widgets (Englisch)")}</a>
-      <a href="/ai-models/">{legal("AI 模型说明", "AI Model Disclosure", "AI モデルの開示", "Offenlegung der KI-Modelle")}</a>
-      <a href="/pricing/">{legal("价格", "Pricing", "料金", "Preise")}</a><a href="/install/">{legal("下载与安装", "Download & install", "ダウンロードとインストール", "Download &amp; Installation")}</a></div>
+      <a href="/#loop">{bi("功能", "Features", ja="機能", de="Funktionen")}</a><a href="/widgets/">{bi("AI Widget", "AI Widgets", ja="AI Widget", de="KI-Widgets")}</a>
+      <a href="/ai-models/">{bi("AI 模型说明", "AI Model Disclosure", ja="AI モデルの開示", de="Offenlegung der KI-Modelle")}</a>
+      <a href="/pricing/">{bi("价格", "Pricing", ja="料金", de="Preise")}</a><a href="/install/">{bi("下载与安装", "Download & install", ja="ダウンロードとインストール", de="Download &amp; Installation")}</a></div>
     <div><h4>{bi("使用指南", "Guides", ja="ガイド", de="Anleitungen")}</h4>
-      <a href="/compare-images-mac/">{legal("对比两张图片", "Compare two images", "2 枚の画像を比較", "Zwei Bilder vergleichen")}</a>
-      <a href="/copy-text-from-image-mac/">{legal("从图片复制文字", "Copy text from an image", "画像から文字をコピー", "Text aus einem Bild kopieren")}</a>
+      <a href="/compare-images-mac/">{bi("对比两张图片", "Compare two images", ja="2 枚の画像を比較", de="Zwei Bilder vergleichen")}</a>
+      <a href="/copy-text-from-image-mac/">{bi("从图片复制文字", "Copy text from an image", ja="画像から文字をコピー", de="Text aus einem Bild kopieren")}</a>
       <a href="/en/use-cases/">{bi("使用场景", "Use cases", ja="使い方", de="Anwendungsfälle")}</a>
       <a href="/en/blog/">{bi("博客", "Blog", ja="ブログ", de="Blog")}</a></div>
     <div><h4>{bi("政策", "Legal", ja="規約とポリシー", de="Rechtliches")}</h4>
