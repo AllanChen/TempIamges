@@ -40,7 +40,7 @@ export async function authenticatedUser(env: Env, request: Request): Promise<Use
   if (!user) throw new Error("Unauthorized");
   return user;
 }
-async function upsertUser(env: Env, email: string, google?: { sub: string; name?: string; picture?: string }, deviceHash?: string | null) {
+async function upsertUser(env: Env, email: string, google?: { sub: string; name?: string; picture?: string }, deviceHash?: string | null, provider?: string) {
   const t = stamp();
   const config=await readPricing(env);
   await env.DB.batch([
@@ -48,7 +48,7 @@ async function upsertUser(env: Env, email: string, google?: { sub: string; name?
       VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET
       google_id=COALESCE(excluded.google_id,users.google_id),name=COALESCE(excluded.name,users.name),
       avatar_url=COALESCE(excluded.avatar_url,users.avatar_url),updated_at=excluded.updated_at,last_login_at=excluded.last_login_at`)
-      .bind(email, google?.sub ?? null, google?.name ?? null, google?.picture ?? null, google ? "google" : "email", t, t, t),
+      .bind(email, google?.sub ?? null, google?.name ?? null, google?.picture ?? null, provider ?? (google ? "google" : "email"), t, t, t),
     ...(deviceHash ? [
       env.DB.prepare(`INSERT OR IGNORE INTO signup_devices(device_hash,user_id,created_at)
         SELECT ?,id,? FROM users WHERE email=? AND status='active'
@@ -163,6 +163,69 @@ async function googleCallback(env: Env, request: Request) {
   callback.searchParams.set("code", nativeCode);
   return Response.redirect(callback.toString(), 302);
 }
+// Apple's signing keys rotate rarely; refetch when a token names an unknown key.
+let appleKeys: { keys: (JsonWebKey & { kid?: string })[]; fetchedAt: number } | null = null;
+async function appleKey(kid: string) {
+  const known = () => appleKeys?.keys.find(key => key.kid === kid);
+  if (!known() || Date.now() - (appleKeys?.fetchedAt ?? 0) > 86400000) {
+    const response = await fetch("https://appleid.apple.com/auth/keys", { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new Error("Apple keys unavailable");
+    appleKeys = { keys: (await response.json() as { keys: (JsonWebKey & { kid?: string })[] }).keys, fetchedAt: Date.now() };
+  }
+  const jwk = known();
+  return jwk ? crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]) : null;
+}
+function base64urlBytes(value: string) {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  return Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+}
+type AppleClaims = { iss?: string; aud?: string | string[]; exp?: number; sub?: string; nonce?: string;
+  email?: string; email_verified?: boolean | string };
+/** Verifies a Sign in with Apple identity token and returns its claims, or null. */
+export async function verifyAppleIdentityToken(env: Env, token: string, rawNonce: string): Promise<AppleClaims | null> {
+  const [header, payload, signature] = token.split(".");
+  if (!header || !payload || !signature) return null;
+  let head: { kid?: string; alg?: string }, claims: AppleClaims;
+  try {
+    head = JSON.parse(new TextDecoder().decode(base64urlBytes(header)));
+    claims = JSON.parse(new TextDecoder().decode(base64urlBytes(payload)));
+  } catch { return null; }
+  if (head.alg !== "RS256" || !head.kid) return null;
+  const key = await appleKey(head.kid);
+  if (!key || !await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, base64urlBytes(signature),
+    new TextEncoder().encode(`${header}.${payload}`))) return null;
+  const audience = env.APP_STORE_BUNDLE_ID || "com.glance.app";
+  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  // The client sends the raw nonce; the token carries its SHA-256, so a token
+  // captured from another sign-in can't be replayed.
+  const nonce = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawNonce)))]
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+  if (claims.iss !== "https://appleid.apple.com" || !audiences.includes(audience) || !claims.sub
+    || typeof claims.exp !== "number" || claims.exp * 1000 < Date.now() || claims.nonce !== nonce) return null;
+  return claims;
+}
+async function appleSignIn(env: Env, request: Request) {
+  const data = await body(request);
+  if (typeof data.identityToken !== "string" || typeof data.nonce !== "string" || !/^[A-Za-z0-9_-]{16,128}$/.test(data.nonce))
+    return failure("invalid_login", "Invalid Sign in with Apple request. Please try again.");
+  let claims: AppleClaims | null;
+  try { claims = await verifyAppleIdentityToken(env, data.identityToken, data.nonce); }
+  catch { return failure("apple_unavailable", "Could not reach Apple to verify your sign-in. Check your connection and try again.", 502); }
+  if (!claims) return failure("apple_invalid_token", "Apple could not confirm this sign-in. Please try again.", 401);
+  const linked = await env.DB.prepare("SELECT * FROM users WHERE apple_id=?").bind(claims.sub).first<User>();
+  if (linked) {
+    await env.DB.prepare("UPDATE users SET last_login_at=?,updated_at=? WHERE id=?").bind(stamp(), stamp(), linked.id).run();
+    return session(env, linked);
+  }
+  const email = emailAddress(claims.email);
+  if (!email || !(claims.email_verified === true || claims.email_verified === "true"))
+    return failure("apple_email_missing", "Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method.", 403);
+  const device = typeof data.deviceID === "string" ? data.deviceID : request.headers.get("X-Glance-Device");
+  const deviceHash = device && /^[A-Za-z0-9_-]{16,128}$/.test(device) ? await hash(device) : null;
+  const user = await upsertUser(env, email, undefined, deviceHash, "apple");
+  await env.DB.prepare("UPDATE users SET apple_id=? WHERE id=? AND apple_id IS NULL").bind(claims.sub, user.id).run();
+  return session(env, user);
+}
 async function exchangeCode(env: Env, request: Request) {
   const data = await body(request);
   if (typeof data.code !== "string" || typeof data.code_verifier !== "string" || !/^[A-Za-z0-9_-]{43,128}$/.test(data.code_verifier)) return failure("invalid_code", "Invalid sign-in code.");
@@ -182,6 +245,7 @@ export async function userRoutes(env: Env, request: Request): Promise<Response |
   if (method === "POST" && path === "/auth/email/send-code") return sendEmailCode(env, request);
   if (method === "POST" && path === "/auth/email/verify-code") return verifyEmailCode(env, request);
   if (method === "POST" && path === "/auth/native/exchange") return exchangeCode(env, request);
+  if (method === "POST" && path === "/auth/apple") return appleSignIn(env, request);
   if (method === "POST" && path === "/auth/logout") {
     await env.DB.prepare("DELETE FROM user_sessions WHERE token_hash=?").bind(await hash(bearer(request))).run();
     return reply({ signed_out: true });
