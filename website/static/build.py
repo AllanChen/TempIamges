@@ -118,6 +118,8 @@ DESCRIPTIONS = {
 }
 
 PAGE_TITLES = {
+    '/install/': ('下载 Glance Preview Mac 版：免费 DMG，支持 Apple 芯片',
+                  'Download Glance Preview for Mac: Free DMG for Apple Silicon'),
     '/pricing/': ('Glance Preview 免费吗？价格：免费看图、Pro 一次买断、AI 按点数',
                   'Is Glance Preview Free? Pricing: Free Viewer, Pro One-Time, AI Credits'),
     '/compare-images-mac/': ('Mac 上对比两张图片：并排与滑杆检查 · Glance Preview',
@@ -162,23 +164,34 @@ def pricing_cards(lang: str, kind: str) -> str:
         message = (("In-app purchases are not open during this beta." if PRERELEASE else "In-app purchases are not open yet.")
                    if lang == "en" else ("内测期间应用内购买尚未开放。" if PRERELEASE else "应用内购买暂未开放。"))
         return f'<p class="notice">{message}</p>'
-    currency = "USD" if lang == "en" else "CNY"
+    currency = {"en": "USD", "ja": "JPY", "de": "EUR"}.get(lang, "CNY")
+    english = lang != "zh"  # ja/de keep the API's English plan names, exactly like site.js
     rows = []
     items = pricing.get("proTiers" if kind == "tiers" else "packs") or []
     for item in items:
         amount = (item.get(currency) or {}).get("amount")
         if not item.get("enabled") or amount is None:
             continue
-        money = ("$" if currency == "USD" else "¥") + f"{amount / 100:g}"
+        if currency in ("JPY", "EUR"):  # same text as site.js money(): JP¥1480, €9.99
+            value = amount if currency == "JPY" else amount / 100
+            money = {"JPY": "JP¥", "EUR": "€"}[currency] + (str(int(value)) if value == int(value) else f"{value:.2f}")
+        else:
+            money = ("$" if currency == "USD" else "¥") + f"{amount / 100:g}"
         if kind == "tiers":
-            name = item["name"] if lang == "en" else {"Personal": "个人版", "Duo": "双机版", "Team (5 people)": "多人版"}.get(item["name"], item["name"])
-            macs = ('5 people · 1 Mac each' if lang=='en' else '5 人 · 每人 1 台 Mac') if item['id']=='team' else (f'{item["deviceLimit"]} Macs' if lang == "en" else f'{item["deviceLimit"]} 台 Mac')
+            name = item["name"] if english else {"Personal": "个人版", "Duo": "双机版", "Team (5 people)": "多人版"}.get(item["name"], item["name"])
+            if item['id'] == 'team':
+                macs = '5 people · 1 Mac each' if english else '5 人 · 每人 1 台 Mac'
+            elif english:  # same wording as site.js
+                macs = f'{item["deviceLimit"]} Mac' + ('' if item["deviceLimit"] == 1 else 's')
+            else:
+                macs = f'{item["deviceLimit"]} 台 Mac'
             rows.append(f'<div class="tier"><div class="tier-head"><b>{escape(name)}</b><span class="tier-macs">{macs}</span></div><div class="tier-price">{money}</div></div>')
         else:
             points = (item.get(currency) or {}).get("points", 0)
-            unit = "credits" if lang == "en" else "点"
-            rows.append(f'<div class="pack"><b>{points}</b><span>{unit} · {money}</span></div>')
-    return "".join(rows) or ('<p class="notice">Prices are not published yet.</p>' if lang == 'en' else '<p class="notice">价格尚未公布。</p>')
+            unit = "credits" if english else "点"
+            shown = f"{points:,}" if lang in EXTRA_LANGUAGES else points  # site.js prints 1,500
+            rows.append(f'<div class="pack"><b>{shown}</b><span>{unit} · {money}</span></div>')
+    return "".join(rows) or ('<p class="notice">Prices are not published yet.</p>' if english else '<p class="notice">价格尚未公布。</p>')
 
 
 def bi(zh: str, en: str, tag: str = "span", ja: str | None = None, de: str | None = None) -> str:

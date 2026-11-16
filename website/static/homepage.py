@@ -47,7 +47,11 @@ def render_home(lang, snapshot, dmg, version, size, checksum):
     def label(rows):
         return f'<p class="home-label">{get(rows, "Section label")}</p>'
     def download(rows):
-        button = next(v for k, v in rows if k in ('Download for Mac', '下载 Mac 版', '下载 Mac 版 →') or k.startswith('Download'))
+        keys = [k for k, _ in rows]
+        # The download section also has "Download headline/description" rows; never use those as the button label.
+        key = next((k for k in ('Download for Mac', '下载 Mac 版', '下载 Mac 版 →') if k in keys), None) or next(
+            k for k in keys if k.startswith('Download') and k not in ('Download headline', 'Download description', 'Download system requirements'))
+        button = value(rows, key)
         return f'<a class="btn btn-primary" href="{dmg}" download data-download-cta="home" data-app-version="{escape(version)}">{text(button)} <span aria-hidden="true">↓</span></a>'
     play, pause = {'zh': ('播放演示', '暂停演示'), 'en': ('Play demo', 'Pause demo'), 'ja': ('デモを再生', 'デモを一時停止'), 'de': ('Demo abspielen', 'Demo pausieren')}[lang]
     def media(key):
