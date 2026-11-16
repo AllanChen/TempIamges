@@ -14,7 +14,9 @@ extension AppDelegate {
         let appItem = NSMenuItem()
         let appMenu = NSMenu(title: "Glance")
         appMenu.addItem(menuItem("About Glance", #selector(showAboutFromMenu(_:)), target: self))
+        #if !MAS
         appMenu.addItem(menuItem("Check for Updates…", #selector(AppUpdater.checkForUpdates(_:)), target: AppUpdater.shared))
+        #endif
         appMenu.addItem(menuItem("Buy Glance Pro…", #selector(openProFromMenu(_:)), target: self))
         appMenu.addItem(.separator())
         appMenu.addItem(menuItem("Preferences...", #selector(openPreferencesFromMenu(_:)), key: ",", target: self))

@@ -59,7 +59,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         applyLanguage()
         applyTheme()
         setupMainMenu()
+        #if !MAS
         AppUpdater.shared.start()
+        #endif
         setupComponents()
         UNUserNotificationCenter.current().delegate = self
         setupNotifications()

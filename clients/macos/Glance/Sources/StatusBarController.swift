@@ -108,8 +108,10 @@ class StatusBarController: NSObject, NSMenuDelegate {
         home.target = self; fallback.addItem(home)
         let prefs = NSMenuItem(title: "Preferences...".localized, action: #selector(openPreferences), keyEquivalent: "")
         prefs.target = self; fallback.addItem(prefs)
+        #if !MAS
         let updates = NSMenuItem(title: "Check for Updates…".localized, action: #selector(AppUpdater.checkForUpdates(_:)), keyEquivalent: "")
         updates.target = AppUpdater.shared; fallback.addItem(updates)
+        #endif
         fallback.addItem(.separator())
         let quit = NSMenuItem(title: "Quit Glance".localized, action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self; fallback.addItem(quit)

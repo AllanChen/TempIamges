@@ -59,3 +59,46 @@ targets:
           CODE_SIGN_ENTITLEMENTS: Glance.Debug.entitlements
         Release:
           CODE_SIGN_ENTITLEMENTS: Glance.entitlements
+
+  # Mac App Store build: sandboxed, no Sparkle. Store-only code paths are
+  # gated with `#if MAS`; the DMG target above is unchanged.
+  Glance-MAS:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+        excludes:
+          - "*.bak"
+          - "AppUpdater.swift"
+      - path: Resources
+        buildPhase: resources
+      - path: LoadFailed.gif
+        buildPhase: resources
+    dependencies:
+      - package: Highlightr
+      - package: libwebp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.glance.app
+        INFOPLIST_FILE: Info.plist
+        PRODUCT_NAME: Glance
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path/../Frameworks"
+        SWIFT_EMIT_LOC_STRINGS: YES
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) MAS"
+        CODE_SIGN_ENTITLEMENTS: Glance.MAS.entitlements
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postBuildScripts:
+      # Share Info.plist with the DMG build, then strip what the store forbids
+      # and add what it requires. Runs before code signing.
+      - name: Adapt Info.plist for Mac App Store
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          PLIST="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+          for key in SUAutomaticallyUpdate SUEnableAutomaticChecks SUFeedURL SUPublicEDKey SURequireSignedFeed SUVerifyUpdateBeforeExtraction NSAppleEventsUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Delete :$key" "$PLIST" 2>/dev/null || true
+          done
+          /usr/libexec/PlistBuddy -c "Delete :LSApplicationCategoryType" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :LSApplicationCategoryType string public.app-category.photography" "$PLIST"
