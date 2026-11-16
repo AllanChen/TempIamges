@@ -458,6 +458,14 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             runningVideoChip.isHidden = true
         }
         captureFeedback.frame = activeVideoFrame.isEmpty ? stage : activeVideoFrame
+        // A Widget result's "Copy URL" sits 12 pt inside the video's top-right corner.
+        if !copyResultURLButton.isHidden {
+            let video = activeVideoFrame.isEmpty ? stage : activeVideoFrame
+            let pill = copyResultURLButton.preferredSize
+            copyResultURLButton.frame = NSRect(x: (video.maxX - 12 - pill.width).rounded(),
+                                               y: (video.maxY - 12 - pill.height).rounded(),
+                                               width: pill.width, height: pill.height)
+        }
         captureThumbnail.contentWidth = 220
         if !captureThumbnail.isHidden, pendingCaptureURL != nil {
             captureThumbnail.frame = geometry.capture
@@ -482,11 +490,6 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
         var right = width - 20
         for button in [infoButton, moreButton].reversed() {
             button.frame = NSRect(x: right - size, y: y, width: size, height: size)
-            right -= size + 4
-        }
-        if !copyResultURLButton.isHidden {
-            copyResultURLButton.frame = NSRect(x: right - size, y: canvas.bounds.height - titleHeight + y,
-                                               width: size, height: size)
             right -= size + 4
         }
         right += 4

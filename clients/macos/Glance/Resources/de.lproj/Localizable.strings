@@ -1019,3 +1019,6 @@
 "Base" = "Basis";
 "Add image" = "Bild hinzufügen";
 "Brush size" = "Pinselgröße";
+
+/* Activation hotkey presets */
+"⌥ Space" = "⌥ Leertaste";

@@ -3,6 +3,7 @@ import AVFoundation
 import CryptoKit
 import ImageIO
 import QuickLookThumbnailing
+import UniformTypeIdentifiers
 
 /// A successful HTTP status may still contain a login or error page.
 enum RemoteImageResponse {
@@ -26,6 +27,58 @@ enum RemoteImageResponse {
         defer { try? file.close() }
         guard let prefix = try? file.read(upToCount: 1024) else { return false }
         return isHTML(prefix)
+    }
+}
+
+/// Saves a pasted or typed image link into ~/Downloads/Glance, next to Widget
+/// results, so the image can be found in Finder. Work runs off the main thread;
+/// the completion is called on main with the saved file, or nil.
+enum PastedImageDownloader {
+    static var folder: URL {
+        (FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Downloads"))
+            .appendingPathComponent("Glance", isDirectory: true)
+    }
+
+    static func save(_ remoteURL: URL, completion: @escaping (URL?) -> Void) {
+        var request = URLRequest(url: remoteURL)
+        request.setValue("Glance/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("image/avif,image/webp,image/apng,image/png,image/*;q=0.8,*/*;q=0.5", forHTTPHeaderField: "Accept")
+        URLSession.shared.downloadTask(with: request) { temporary, response, error in
+            let finish = { (url: URL?) in DispatchQueue.main.async { completion(url) } }
+            guard let temporary, error == nil,
+                  (response as? HTTPURLResponse).map({ $0.statusCode < 400 }) ?? true,
+                  !RemoteImageResponse.isHTMLFile(temporary) else {
+                Logger.warning("PastedImageDownloader: could not download \(remoteURL.host ?? "link")")
+                finish(nil); return
+            }
+            do {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let destination = uniqueDestination(for: remoteURL, response: response)
+                try FileManager.default.moveItem(at: temporary, to: destination)
+                finish(destination)
+            } catch {
+                Logger.warning("PastedImageDownloader: save failed: \(error.localizedDescription)")
+                finish(nil)
+            }
+        }.resume()
+    }
+
+    private static func uniqueDestination(for url: URL, response: URLResponse?) -> URL {
+        let suggested = response?.suggestedFilename.map { ($0 as NSString).deletingPathExtension } ?? ""
+        let stem = url.deletingPathExtension().lastPathComponent
+        var base = (stem.isEmpty || stem == "/" ? suggested : stem)
+            .replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
+        if base.isEmpty { base = "image" }
+        let mimeExtension = response?.mimeType.flatMap { UTType(mimeType: $0)?.preferredFilenameExtension }
+        let ext = url.pathExtension.isEmpty ? (mimeExtension ?? "jpg") : url.pathExtension.lowercased()
+        var destination = folder.appendingPathComponent("\(base).\(ext)")
+        var suffix = 2
+        while FileManager.default.fileExists(atPath: destination.path) {
+            destination = folder.appendingPathComponent("\(base) \(suffix).\(ext)")
+            suffix += 1
+        }
+        return destination
     }
 }
 

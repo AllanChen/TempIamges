@@ -1019,3 +1019,6 @@
 "Base" = "ベース";
 "Add image" = "画像を追加";
 "Brush size" = "ブラシサイズ";
+
+/* Activation hotkey presets */
+"⌥ Space" = "⌥ スペース";

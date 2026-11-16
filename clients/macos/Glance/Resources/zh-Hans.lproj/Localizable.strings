@@ -1135,3 +1135,6 @@
 "Base" = "基准";
 "Add image" = "添加图片";
 "Brush size" = "笔刷大小";
+
+/* Activation hotkey presets */
+"⌥ Space" = "⌥ 空格";

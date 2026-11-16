@@ -959,7 +959,11 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
         guard !text.isEmpty else { return false }
         if let remote = URL(string: text), ["http", "https"].contains(remote.scheme?.lowercased() ?? ""),
            remote.host != nil {
-            onOpenImages?([remote])
+            // Save the image to ~/Downloads/Glance first so it can be found in
+            // Finder; open the link directly if it can't be saved.
+            PastedImageDownloader.save(remote) { [weak self] local in
+                self?.onOpenImages?([local ?? remote])
+            }
             return true
         }
         let expanded = (text as NSString).expandingTildeInPath

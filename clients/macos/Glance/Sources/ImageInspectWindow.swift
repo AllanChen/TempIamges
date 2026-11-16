@@ -699,6 +699,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             self?.updateZoomLabel()
             self?.layoutRunningOverlay()
             self?.layoutCompareTags()
+            self?.layoutResultURLButton()
         }
         secondaryViewport.onViewportChange = { [weak self] state in
             self?.syncViewport(state, source: self?.secondaryViewport)
@@ -972,6 +973,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         taskToast.isHidden = true
         layoutRunningOverlay()
         layoutCompareTags()
+        layoutResultURLButton()
     }
 
     /// The image stage between the titlebar and the bottom bar: Figma's 44 pt
@@ -1048,13 +1050,6 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             button.frame = NSRect(x: right - size, y: y, width: size, height: size)
             right -= size + 4
         }
-        // A Widget result's URL action joins the row. It lives on the canvas so
-        // it does not fade with the other titlebar controls.
-        if !copyResultURLButton.isHidden {
-            copyResultURLButton.frame = NSRect(x: right - size, y: canvasContainer.bounds.height - titleHeight + y,
-                                               width: size, height: size)
-            right -= size + 4
-        }
         right += 4
         if !taskChip.isHidden {
             let chip = taskChip.preferredSize
@@ -1100,6 +1095,25 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
                                    width: pillWidth, height: pill.height)
         runningHint.frame = NSRect(x: stage.minX, y: max(InspectLayout.bottomBarHeight, rect.minY - 14 - 15),
                                    width: stage.width, height: 15)
+    }
+
+    /// A Widget result's "Copy URL" sits 12 pt inside the result image's top-right
+    /// corner, where the user is already looking, and follows zoom and pan.
+    private func layoutResultURLButton() {
+        guard !copyResultURLButton.isHidden else { return }
+        let stage = stageRect
+        var rect = stage
+        if let shown = primaryViewport.captureDisplayRect(in: canvasContainer), shown.width > 0, shown.height > 0 {
+            // `captureDisplayRect` answers in top-left coordinates; the canvas is bottom-left.
+            let height = canvasContainer.bounds.height
+            let image = CGRect(x: shown.minX, y: height - shown.maxY, width: shown.width, height: shown.height)
+            let visible = image.intersection(stage)
+            if !visible.isNull, !visible.isEmpty { rect = visible }
+        }
+        let size = copyResultURLButton.preferredSize
+        copyResultURLButton.frame = NSRect(x: (rect.maxX - 12 - size.width).rounded(),
+                                           y: (rect.maxY - 12 - size.height).rounded(),
+                                           width: size.width, height: size.height)
     }
 
     /// Figma compare `label`s, 12 pt inside the top corners of the images. In
@@ -1184,6 +1198,7 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         updateRunningImageIndicator(for: session)
         copyResultURLButton.isHidden = session.mode == .compare || currentWidgetResultURLString == nil
             || !runningVeil.isHidden
+        layoutResultURLButton()
 
         primaryViewport.isHidden = true
         secondaryViewport.isHidden = true
@@ -3294,7 +3309,28 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
         session.focusedIndex = index
         renderSession()
         loadDroppedItem(at: index, generation: loadGeneration)
-        if !info.isLocal { Logger.info("ImageInspectWindow: pasted remote image") }
+        if !info.isLocal {
+            Logger.info("ImageInspectWindow: pasted remote image")
+            savePastedRemoteImage(info)
+        }
+    }
+
+    /// A pasted, typed or dropped image link is shown at once from the network,
+    /// and saved to ~/Downloads/Glance in the background. When the file lands the
+    /// filmstrip entry switches to it, so Reveal in Finder works.
+    private func savePastedRemoteImage(_ info: MediaInfo) {
+        guard info.kind == .image else { return }
+        let remote = info.url
+        PastedImageDownloader.save(remote) { [weak self] local in
+            guard let self, let local, let session = self.session,
+                  let index = session.infos.firstIndex(where: { $0.url == remote }) else { return }
+            var saved = MediaInfo(url: local, isLocal: true, kind: .image)
+            saved.dimensions = session.infos[index].dimensions
+            session.infos[index] = saved
+            self.renderSession()
+            // Fill in the local file's size and metadata; a still-missing image loads from disk.
+            self.loadDroppedItem(at: index, generation: self.loadGeneration)
+        }
     }
 
     private func handleDroppedResource(url: URL, at point: NSPoint) {

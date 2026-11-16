@@ -1133,3 +1133,6 @@
 "Base" = "Base";
 "Add image" = "Add image";
 "Brush size" = "Brush size";
+
+/* Activation hotkey presets */
+"⌥ Space" = "⌥ Space";

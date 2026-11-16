@@ -47,13 +47,16 @@ class Preferences {
     }
 
     enum ActivationMode: String, CaseIterable {
+        /// Default. ⌥Space collides with the ChatGPT desktop app's shortcut.
+        case optionK = "optionK"
         case optionSpace = "optionSpace"
         case option = "option"
         case custom = "custom"
 
         var displayName: String {
             switch self {
-            case .optionSpace: return "Option + Space (⌥␣)".localized
+            case .optionK: return "⌥ K"
+            case .optionSpace: return "⌥ Space".localized
             case .option: return "Option (⌥)".localized
             case .custom: return "Custom".localized
             }
@@ -149,9 +152,9 @@ class Preferences {
             if raw.isEmpty {
                 let hadControl = defaults.bool(forKey: "\(suiteName).hotkeyRequiresControl")
                 let hadOption  = defaults.bool(forKey: "\(suiteName).hotkeyRequiresOption")
-                return (hadControl || hadOption) ? .option : .optionSpace
+                return (hadControl || hadOption) ? .option : .optionK
             }
-            return ActivationMode(rawValue: raw) ?? .optionSpace
+            return ActivationMode(rawValue: raw) ?? .optionK
         }
         set { defaults.set(newValue.rawValue, forKey: "\(suiteName).activationMode") }
     }
@@ -176,13 +179,14 @@ class Preferences {
 
     var effectiveModifiers: NSEvent.ModifierFlags {
         switch activationMode {
-        case .optionSpace, .option: return .option
+        case .optionK, .optionSpace, .option: return .option
         case .custom: return customHotkeyModifiers
         }
     }
 
     var effectiveKeyCode: UInt16? {
         switch activationMode {
+        case .optionK: return 40   // kVK_ANSI_K
         case .optionSpace: return 49
         case .option: return nil
         case .custom: return customHotkeyKeyCode
@@ -204,7 +208,7 @@ class Preferences {
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
             "\(suiteName).theme": Theme.dark.rawValue,
-            "\(suiteName).activationMode": ActivationMode.optionSpace.rawValue,
+            "\(suiteName).activationMode": ActivationMode.optionK.rawValue,
             "\(suiteName).customHotkeyModifiers": 0,
             "\(suiteName).customHotkeyKeyCode": 0
         ]
@@ -218,7 +222,7 @@ class Preferences {
         readClipboard = true
         loginURL = nil
         theme = .dark
-        activationMode = .optionSpace
+        activationMode = .optionK
         customHotkeyModifiers = []
         customHotkeyKeyCode = nil
         appLanguage = AppLanguage.systemDefault
