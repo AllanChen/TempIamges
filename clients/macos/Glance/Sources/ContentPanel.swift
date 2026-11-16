@@ -1218,6 +1218,11 @@ private enum GitDiffService {
     }
 
     private static func runGit(_ arguments: [String], cwd: URL, timeout: TimeInterval = 5.0) -> CommandResult? {
+        #if MAS
+        // Sandboxed apps can't run the developer tools; Git history is not
+        // shown in the App Store build.
+        return nil
+        #else
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = arguments
@@ -1266,6 +1271,7 @@ private enum GitDiffService {
             output: String(decoding: outData, as: UTF8.self),
             error: String(decoding: errData, as: UTF8.self)
         )
+        #endif
     }
 }
 

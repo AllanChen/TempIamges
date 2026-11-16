@@ -244,6 +244,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             name: KeyboardMonitor.previewModeDidActivate,
             object: nil
         )
+        #if MAS
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(hotkeyUnavailable),
+            name: KeyboardMonitor.hotkeyUnavailable,
+            object: nil
+        )
+        #endif
 
         NotificationCenter.default.addObserver(
             self,
@@ -352,8 +360,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             Logger.info("AppDelegate: Keyboard monitoring started")
         } else {
             Logger.info("AppDelegate: Failed to start keyboard monitoring")
+            #if MAS
+            hotkeyUnavailable()
+            #endif
         }
     }
+
+    #if MAS
+    /// macOS refused the Peek shortcut. Say why and where to pick another one.
+    @objc private func hotkeyUnavailable() {
+        let alert = NSAlert()
+        alert.messageText = "Glance couldn't turn on the Peek shortcut".localized
+        alert.informativeText = "macOS didn't allow this shortcut. Recent macOS versions block shortcuts that use only Option (⌥) or Shift. Choose a shortcut that includes Command (⌘) or Control (⌃) in Preferences, then Peek will work right away.".localized
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open Preferences".localized)
+        alert.addButton(withTitle: "Not Now".localized)
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            openPreferences()
+        }
+    }
+    #endif
 
     @objc private func previewModeActivated() {
         let previewVisible = previewPanel?.isVisible ?? false
@@ -785,7 +812,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                         return self.isUnderProtectedDirectory(url)
                     }
                     if needsFDA && !PermissionManager.shared.isFullDiskAccessGranted {
-                        self.promptForFullDiskAccessIfNeeded()
+                        let blocked = paths.lazy.compactMap { $0.url }
+                            .first { $0.isFileURL && self.isUnderProtectedDirectory($0) }
+                        self.promptForFullDiskAccessIfNeeded(for: blocked)
                     }
                     return
                 }
@@ -810,10 +839,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
     private func isUnderProtectedDirectory(_ url: URL) -> Bool {
         guard url.isFileURL else { return false }
+        #if MAS
+        // In the sandbox every folder the user hasn't granted is protected.
+        return !FolderAccess.shared.covers(url.path)
+            && !FileManager.default.isReadableFile(atPath: url.path)
+        #else
         let path = url.path
         let home = UserHome.path
         let protected = ["/Desktop", "/Documents", "/Downloads", "/Library"]
         return protected.contains { path.hasPrefix(home + $0) }
+        #endif
     }
 
     /// One-hit shortcut: when path detection settles on exactly one file,
@@ -824,7 +859,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
         if info.isLocal && isUnderProtectedDirectory(info.url)
             && !PermissionManager.shared.isFullDiskAccessGranted {
-            promptForFullDiskAccessIfNeeded()
+            promptForFullDiskAccessIfNeeded(for: info.url)
             return
         }
 
@@ -1114,6 +1149,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
     /// Quit and reopen this bundle once the current process has exited.
     static func relaunch() {
+        #if MAS
+        // The sandbox can't run a shell; ask Launch Services for a fresh copy.
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
+            DispatchQueue.main.async {
+                if let error {
+                    Logger.error("AppDelegate: Could not relaunch: \(error.localizedDescription)")
+                    return
+                }
+                NSApp.terminate(nil)
+            }
+        }
+        #else
         let pid = ProcessInfo.processInfo.processIdentifier
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -1126,6 +1175,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             return
         }
         NSApp.terminate(nil)
+        #endif
     }
 
     func openPreferences() {
@@ -1338,7 +1388,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     }
 
 
-    private func promptForFullDiskAccessIfNeeded() {
+    private func promptForFullDiskAccessIfNeeded(for url: URL? = nil) {
+        #if MAS
+        // The sandbox has no Full Disk Access: ask for the file's folder, or
+        // for any folder when a name search had nothing it could read.
+        guard url != nil || !FolderAccess.shared.hasAnyGrant,
+              !hasShownFDAAlertThisSession else { return }
+        hasShownFDAAlertThisSession = true
+        FolderAccess.shared.requestAccess(suggesting: url.map { FolderAccess.suggestedFolder(for: $0.path) })
+        #else
         guard !hasShownFDAAlertThisSession,
               !PermissionManager.shared.isFullDiskAccessGranted else { return }
         hasShownFDAAlertThisSession = true
@@ -1354,6 +1412,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         if response == .alertFirstButtonReturn {
             PermissionManager.shared.openFullDiskAccessSettings()
         }
+        #endif
     }
 }
 

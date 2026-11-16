@@ -20,8 +20,12 @@ class PermissionManager: NSObject {
     /// Full Disk Access can't be queried directly via a clean API.
     /// We probe a protected path (Safari bookmarks DB) as a proxy.
     var isFullDiskAccessGranted: Bool {
+        #if MAS
+        return false   // Not available to sandboxed apps; FolderAccess grants folders.
+        #else
         let protectedPath = ("~/Library/Safari/Bookmarks.plist" as NSString).expandingTildeInPath
         return FileManager.default.isReadableFile(atPath: protectedPath)
+        #endif
     }
     
     func requestInputMonitoring() {

@@ -1145,3 +1145,11 @@
 "Choose a folder Glance can preview files from. Choosing your home folder lets Peek open files anywhere inside it." = "选择 Glance 可以预览文件的文件夹。选择你的个人文件夹后，Peek 可以打开其中任何位置的文件。";
 "Glance needs your permission to read files in “%@”. Grant access to preview this file now. Files inside this folder won't ask again." = "Glance 需要你的许可才能读取“%@”中的文件。授予访问权限即可立即预览此文件，之后此文件夹中的文件不会再询问。";
 "Glance can't read files in this folder. To allow it, choose Glance > Grant Folder Access…" = "Glance 无法读取此文件夹中的文件。如需允许，请选择“Glance > 授予文件夹访问权限…”。";
+
+/* Mac App Store onboarding and hotkey */
+"Folder Access" = "文件夹访问";
+"Optional: choose folders Peek can open" = "可选：选择 Peek 可以打开的文件夹";
+"Choose Folder" = "选择文件夹";
+"Glance couldn't turn on the Peek shortcut" = "Glance 无法启用 Peek 快捷键";
+"macOS didn't allow this shortcut. Recent macOS versions block shortcuts that use only Option (⌥) or Shift. Choose a shortcut that includes Command (⌘) or Control (⌃) in Preferences, then Peek will work right away." = "macOS 不允许使用这个快捷键。较新的 macOS 会阻止只用 Option (⌥) 或 Shift 的快捷键。请在偏好设置中选择包含 Command (⌘) 或 Control (⌃) 的快捷键，Peek 会立即生效。";
+"Open Preferences" = "打开偏好设置";

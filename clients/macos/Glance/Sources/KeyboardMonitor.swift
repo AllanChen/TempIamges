@@ -1,5 +1,8 @@
 import AppKit
 import CoreGraphics
+#if MAS
+import Carbon.HIToolbox
+#endif
 
 /// Watches the global keyboard for the activation hotkey via a `CGEventTap`.
 ///
@@ -15,6 +18,8 @@ import CoreGraphics
 final class KeyboardMonitor: NSObject {
     static let previewModeDidActivate = Notification.Name("KeyboardMonitor.previewModeDidActivate")
     static let previewModeDidDeactivate = Notification.Name("KeyboardMonitor.previewModeDidDeactivate")
+    /// Posted when macOS refuses the chosen hotkey after a preference change.
+    static let hotkeyUnavailable = Notification.Name("KeyboardMonitor.hotkeyUnavailable")
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -36,6 +41,15 @@ final class KeyboardMonitor: NSObject {
     private var consumedComboKeyCode: UInt16?
     private var requiredModifiers: NSEvent.ModifierFlags
     private var requiredKeyCode: UInt16?
+
+    #if MAS
+    // The sandbox may refuse the active tap. Combo hotkeys then fall back to a
+    // system hotkey (no permission needed, swallows the key, reports press
+    // and release); modifier-only hotkeys fall back to a listen-only tap.
+    private var hotKeyRef: EventHotKeyRef?
+    private var hotKeyHandler: EventHandlerRef?
+    private var hotKeyHeld = false
+    #endif
 
     override init() {
         let prefs = Preferences.shared
@@ -61,11 +75,19 @@ final class KeyboardMonitor: NSObject {
         let modifiers = Preferences.shared.effectiveModifiers
         let keyCode = Preferences.shared.effectiveKeyCode
         stateLock.lock()
+        let hotkeyChanged = modifiers != requiredModifiers || keyCode != requiredKeyCode
         requiredModifiers = modifiers
         requiredKeyCode = keyCode
         let change = stateChangeLocked()
         stateLock.unlock()
         postIfChanged(change)
+        #if MAS
+        // A system hotkey or listen-only tap is bound to the old combination.
+        if hotkeyChanged, eventTap != nil || hotKeyRef != nil, !usesActiveTap {
+            stopMonitoring()
+            if !startMonitoring() { postOnMain(KeyboardMonitor.hotkeyUnavailable) }
+        }
+        #endif
     }
 
     @objc private func systemDidWake() {
@@ -94,6 +116,9 @@ final class KeyboardMonitor: NSObject {
 
     /// `stateLock` must be held by the caller.
     private func previewModeActiveLocked() -> Bool {
+        #if MAS
+        if hotKeyRef != nil { return hotKeyHeld }
+        #endif
         let required = requiredModifiers
         guard !required.isEmpty else { return false }
         if required.contains(.option)  && !optionHeld  { return false }
@@ -108,8 +133,76 @@ final class KeyboardMonitor: NSObject {
     }
 
     func startMonitoring() -> Bool {
+        #if MAS
+        guard eventTap == nil, hotKeyRef == nil else { return true }
+        if startEventTap(options: .defaultTap) {
+            usesActiveTap = true
+            return true
+        }
+        usesActiveTap = false
+        stateLock.lock()
+        let keyCode = requiredKeyCode
+        let modifiers = requiredModifiers
+        stateLock.unlock()
+        if let keyCode {
+            return registerSystemHotKey(keyCode: keyCode, modifiers: modifiers)
+        }
+        return startEventTap(options: .listenOnly)
+        #else
         guard eventTap == nil else { return true }
+        return startEventTap(options: .defaultTap)
+        #endif
+    }
 
+    #if MAS
+    private var usesActiveTap = false
+
+    private func registerSystemHotKey(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
+        var types = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+                     EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))]
+        let handlerStatus = InstallEventHandler(GetApplicationEventTarget(), { _, event, userData in
+            guard let event, let userData else { return noErr }
+            let monitor = Unmanaged<KeyboardMonitor>.fromOpaque(userData).takeUnretainedValue()
+            monitor.systemHotKeyChanged(pressed: GetEventKind(event) == UInt32(kEventHotKeyPressed))
+            return noErr
+        }, types.count, &types, Unmanaged.passUnretained(self).toOpaque(), &hotKeyHandler)
+        guard handlerStatus == noErr else {
+            Logger.info("KeyboardMonitor: Could not install hotkey handler (\(handlerStatus))")
+            return false
+        }
+
+        var carbonModifiers: UInt32 = 0
+        if modifiers.contains(.command) { carbonModifiers |= UInt32(cmdKey) }
+        if modifiers.contains(.option)  { carbonModifiers |= UInt32(optionKey) }
+        if modifiers.contains(.control) { carbonModifiers |= UInt32(controlKey) }
+        if modifiers.contains(.shift)   { carbonModifiers |= UInt32(shiftKey) }
+        let id = EventHotKeyID(signature: OSType(0x474C_4E43), id: 1)   // 'GLNC'
+        let status = RegisterEventHotKey(UInt32(keyCode), carbonModifiers, id,
+                                         GetApplicationEventTarget(), 0, &hotKeyRef)
+        guard status == noErr, hotKeyRef != nil else {
+            // macOS 15 and later refuse hotkeys whose only modifiers are
+            // Option and/or Shift, e.g. ⌥K.
+            Logger.info("KeyboardMonitor: System refused the hotkey (\(status))")
+            if let handler = hotKeyHandler { RemoveEventHandler(handler) }
+            hotKeyHandler = nil
+            hotKeyRef = nil
+            return false
+        }
+        Logger.info("KeyboardMonitor: Registered system hotkey")
+        return true
+    }
+
+    /// Runs on the main thread (Carbon application event target).
+    private func systemHotKeyChanged(pressed: Bool) {
+        stateLock.lock()
+        hotKeyHeld = pressed
+        let change = stateChangeLocked()
+        stateLock.unlock()
+        postIfChanged(change)
+    }
+    #endif
+
+    private func startEventTap(options: CGEventTapOptions) -> Bool {
         let eventMask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
                                      | (1 << CGEventType.keyDown.rawValue)
                                      | (1 << CGEventType.keyUp.rawValue)
@@ -135,7 +228,7 @@ final class KeyboardMonitor: NSObject {
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
-            options: .defaultTap,
+            options: options,
             eventsOfInterest: eventMask,
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
@@ -185,6 +278,17 @@ final class KeyboardMonitor: NSObject {
     }
 
     func stopMonitoring() {
+        #if MAS
+        if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
+        if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }
+        hotKeyRef = nil
+        hotKeyHandler = nil
+        stateLock.lock()
+        hotKeyHeld = false
+        let change = stateChangeLocked()
+        stateLock.unlock()
+        postIfChanged(change)
+        #endif
         if let eventTap = eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
         }

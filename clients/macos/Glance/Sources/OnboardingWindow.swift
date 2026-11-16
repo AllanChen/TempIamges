@@ -16,9 +16,17 @@ final class OnboardingWindow: NSWindow {
     private let accessibilityRow = PermissionStatusView(
         number: "01", title: "Accessibility".localized,
         description: "Read selection and recognize shortcuts".localized)
+    #if MAS
+    // The sandbox has no Full Disk Access; the same row grants folders instead.
+    private let fullDiskAccessRow = PermissionStatusView(
+        number: "02", title: "Folder Access".localized,
+        description: "Optional: choose folders Peek can open".localized, optional: true,
+        actionTitle: "Choose Folder".localized)
+    #else
     private let fullDiskAccessRow = PermissionStatusView(
         number: "02", title: "Full Disk Access".localized,
         description: "Optional: access protected files".localized, optional: true)
+    #endif
     private let permissionHelpButton = PanelStyle.makeQuietButton(title: "Glance not listed?".localized, target: nil, action: nil)
     private let blockingDot = NSView()
     private let blockingLabel = PanelCenteredTextView()
@@ -83,7 +91,13 @@ final class OnboardingWindow: NSWindow {
         root.addSubview(explanation)
 
         accessibilityRow.onOpenSettings = { PermissionManager.shared.openAccessibilitySettings() }
+        #if MAS
+        fullDiskAccessRow.onOpenSettings = { [weak self] in
+            FolderAccess.shared.requestAccess { _ in self?.updatePermissionStatus() }
+        }
+        #else
         fullDiskAccessRow.onOpenSettings = { PermissionManager.shared.openFullDiskAccessSettings() }
+        #endif
         [accessibilityRow, fullDiskAccessRow].forEach(root.addSubview)
 
         permissionHelpButton.target = self
@@ -190,6 +204,9 @@ final class OnboardingWindow: NSWindow {
         blockingDot.isHidden = accessibility
         blockingLabel.isHidden = accessibility
 
+        #if MAS
+        fullDiskAccessRow.updateStatus(granted: FolderAccess.shared.hasAnyGrant)
+        #else
         let generation = UUID()
         permissionCheckGeneration = generation
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -199,6 +216,7 @@ final class OnboardingWindow: NSWindow {
                 self.fullDiskAccessRow.updateStatus(granted: granted)
             }
         }
+        #endif
     }
 
     override func makeKeyAndOrderFront(_ sender: Any?) {
@@ -254,13 +272,15 @@ final class PermissionStatusView: NSView {
     private let detailLabel = PanelCenteredTextView()
     private let allowedIcon = NSImageView()
     private let allowedLabel = PanelCenteredTextView()
-    private let statusButton = PanelStyle.makeQuietButton(title: "Open Settings".localized, target: nil, action: nil)
+    private let statusButton: PanelButton
     private let separator = NSView()
     private let isOptional: Bool
     private var granted = false
 
-    init(number: String, title: String, description: String, optional: Bool = false) {
+    init(number: String, title: String, description: String, optional: Bool = false,
+         actionTitle: String = "Open Settings".localized) {
         isOptional = optional
+        statusButton = PanelStyle.makeQuietButton(title: actionTitle, target: nil, action: nil)
         super.init(frame: .zero)
         numberLabel.string = number
         numberLabel.textColor = PanelStyle.textTertiary
@@ -294,8 +314,8 @@ final class PermissionStatusView: NSView {
         statusButton.hoverBackground = optional ? PanelStyle.controlFill : PanelStyle.hoverTinted(PanelStyle.controlFillHi)
         statusButton.layer?.borderWidth = optional ? 1 : 0
         statusButton.layer?.borderColor = PanelStyle.resolvedCG(PanelStyle.inspectLine)
-        statusButton.toolTip = "Open Settings".localized
-        statusButton.setAccessibilityLabel("\(title), \("Open Settings".localized)")
+        statusButton.toolTip = actionTitle
+        statusButton.setAccessibilityLabel("\(title), \(actionTitle)")
         addSubview(statusButton)
 
         separator.wantsLayer = true

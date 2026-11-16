@@ -108,9 +108,14 @@ struct WidgetVideoEvidence: Codable, Equatable {
         return Self(durationSeconds: seconds, byteSize: size, sha256: hash.finalize().map { String(format: "%02x", $0) }.joined())
     }
     private static func probeDuration(_ url: URL) -> Double {
+        #if MAS
+        // Only bundled tools may run in the App Store build.
+        let candidates = [Bundle.main.url(forResource: "ffprobe", withExtension: nil)].compactMap { $0 }
+        #else
         let candidates = [Bundle.main.url(forResource: "ffprobe", withExtension: nil),
                           URL(fileURLWithPath: "/opt/homebrew/bin/ffprobe"),
                           URL(fileURLWithPath: "/usr/local/bin/ffprobe")].compactMap { $0 }
+        #endif
         guard let binary = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }) else { return 0 }
         let process = Process(), pipe = Pipe()
         process.executableURL = binary
@@ -442,6 +447,10 @@ final class WidgetTaskClient {
                             self.uploadToService(data: data, mime: mime, filename: localURL.lastPathComponent,
                                                  completion: completion)
                         }
+                        #if MAS
+                        // The App Store build uploads only to Glance's own service.
+                        uploadToR2()
+                        #else
                         let china = ["CN", "CHINA"].contains(country.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
                         let key = config.freeimageKey?
                             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -471,6 +480,7 @@ final class WidgetTaskClient {
                                 uploadToR2()
                             }
                         }
+                        #endif
                     } catch { completion(.failure(error)) }
                 }
             }
@@ -631,6 +641,11 @@ final class WidgetTaskClient {
     }
 
     private func fetchIPAPICountry(completion: @escaping (String) -> Void) {
+        #if MAS
+        // No third-party lookups in the App Store build; the service then
+        // uses the request's own country.
+        completion("Unknown")
+        #else
         var request = URLRequest(url: URL(string: "https://ipapi.co/country/")!)
         request.timeoutInterval = 5
         session.dataTask(with: request) { data, response, error in
@@ -644,6 +659,7 @@ final class WidgetTaskClient {
                 completion("Unknown")
             }
         }.resume()
+        #endif
     }
 
     private func submit(widgetID: String, commandID: String, mediaURLs: [String],

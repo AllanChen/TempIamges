@@ -202,6 +202,11 @@ final class WebMVideoView: WKWebView {
         if !startStreamingFallback() { loadSource(url) }
     }
     static func ffmpegURL() -> URL? {
+        #if MAS
+        // The App Store build may not run tools from outside its bundle, so
+        // WebM behaves as on a Mac without ffmpeg.
+        return nil
+        #else
         let pathEntries = (ProcessInfo.processInfo.environment["PATH"] ?? "")
             .split(separator: ":").map(String.init)
         let searchDirectories = pathEntries + [
@@ -211,6 +216,7 @@ final class WebMVideoView: WKWebView {
         return searchDirectories.lazy
             .map { URL(fileURLWithPath: $0).appendingPathComponent("ffmpeg") }
             .first { FileManager.default.isExecutableFile(atPath: $0.path) }
+        #endif
     }
     static func generatePoster(from url: URL, completion: @escaping (NSImage?) -> Void) {
         generateFrame(from: url, at: 0, maxSize: NSSize(width: 1280, height: 720),

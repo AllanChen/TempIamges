@@ -178,18 +178,68 @@ final class FileNameResolver {
     private func mdfindExact(basename: String, limit: Int) -> [Match] {
         guard !basename.isEmpty else { return [] }
         let home = UserHome.path
+        #if MAS
+        let output = runSpotlight("kMDItemFSName == \"*\(Self.spotlightEscaped(basename))*\"cd",
+                                  in: home, limit: limit)
+        #else
         let output = runMdfind(arguments: ["-name", basename, "-onlyin", home])
+        #endif
         return parseMdfindOutput(output, limit: limit)
     }
 
     private func mdfindFuzzy(basename: String, limit: Int) -> [Match] {
         guard !basename.isEmpty else { return [] }
         let home = UserHome.path
+        #if MAS
+        let output = runSpotlight("kMDItemFSName == \"\(Self.spotlightEscaped(basename))\"cd",
+                                  in: home, limit: limit)
+        #else
         let escaped = basename.replacingOccurrences(of: "\"", with: "\\\"")
         let predicate = "kMDItemFSName == \"\(escaped)\"cd"
         let output = runMdfind(arguments: [predicate, "-onlyin", home])
+        #endif
         return parseMdfindOutput(output, limit: limit)
     }
+
+    #if MAS
+    /// Escapes a file name for a Spotlight query string literal.
+    private static func spotlightEscaped(_ name: String) -> String {
+        name.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "*", with: "\\*")
+    }
+
+    /// The sandbox can't launch `/usr/bin/mdfind`, so run the same Spotlight
+    /// query in-process. Returns one path per line, like mdfind.
+    private func runSpotlight(_ queryString: String, in scope: String, limit: Int) -> String? {
+        guard let query = MDQueryCreate(kCFAllocatorDefault, queryString as CFString, nil, nil) else {
+            Logger.info("FileNameResolver: Spotlight rejected the query")
+            return nil
+        }
+        MDQuerySetSearchScope(query, [scope] as CFArray, 0)
+        // Later filters (trash, caches) drop some hits, so gather extra.
+        MDQuerySetMaxCount(query, limit * 4)
+
+        let finished = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .userInitiated).async {
+            MDQueryExecute(query, CFOptionFlags(kMDQuerySynchronous.rawValue))
+            finished.signal()
+        }
+        if finished.wait(timeout: .now() + mdfindTimeout) == .timedOut {
+            MDQueryStop(query)
+            Logger.info("FileNameResolver: Spotlight timed out after \(mdfindTimeout)s")
+            return nil
+        }
+
+        var paths: [String] = []
+        for index in 0..<MDQueryGetResultCount(query) {
+            guard let raw = MDQueryGetResultAtIndex(query, index) else { continue }
+            let item = Unmanaged<MDItem>.fromOpaque(raw).takeUnretainedValue()
+            if let path = MDItemCopyAttribute(item, kMDItemPath) as? String { paths.append(path) }
+        }
+        return paths.joined(separator: "\n")
+    }
+    #endif
 
     private func runMdfind(arguments: [String]) -> String? {
         let task = Process()
