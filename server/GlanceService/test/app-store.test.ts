@@ -114,6 +114,20 @@ describe('App Store purchases', () => {
     expect(await credits()).toBe(100);
   });
 
+  it('records an Apple refund even after the credits were spent', async () => {
+    await purchase('1011', 'com.glance.app.credits.small');
+    await call('/api/v2/app-store/transactions', { transactionID: '1011' });
+    await env.DB.prepare("INSERT INTO user_credit_ledger(id,user_id,amount,reason,actor_id,created_at) VALUES('spend-1',1,-650,'widget_task','system',?)")
+      .bind(new Date().toISOString()).run();
+    transactions['1011'].transaction.revocationDate = Date.now();
+    const notification = { signedPayload: fakeJWS({ notificationType: 'REFUND', notificationUUID: 'n-3',
+      data: { bundleId: 'com.glance.app', environment: 'Production', signedTransactionInfo: fakeJWS({ transactionId: '1011' }) } }) };
+    expect((await call('/api/v2/app-store/notifications', notification)).status).toBe(200);
+    expect(await env.DB.prepare("SELECT status FROM orders WHERE provider_order_id='apple:1011'").first('status')).toBe('refunded');
+    // Like web refunds, spent credits are recovered as a negative balance.
+    expect(await credits()).toBe(-550);
+  });
+
   it('ignores a forged refund notification for a purchase Apple has not revoked', async () => {
     await purchase('1008', 'com.glance.app.credits.small');
     await call('/api/v2/app-store/transactions', { transactionID: '1008' });
