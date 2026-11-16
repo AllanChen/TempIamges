@@ -1186,3 +1186,13 @@
 "Glance does not recognize this App Store product. Contact support with your Apple receipt." = "Glance 无法识别此 App Store 商品。请携带 Apple 收据联系客服。";
 "This credit package has no credits configured." = "此积分包未配置积分数量。";
 "Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it." = "App Store 购买的退款由 Apple 处理。请在 reportaproblem.apple.com 申请；Apple 批准后，Glance 会自动移除这笔购买。";
+
+/* Sign in with Apple */
+"Continue with Apple" = "通过 Apple 继续";
+"Apple didn't return a sign-in token. Please try again." = "Apple 没有返回登录凭证，请重试。";
+"Sign in with Apple was cancelled." = "已取消通过 Apple 登录。";
+"Sign in with Apple didn't finish. Check that you're signed in to your Apple ID in System Settings, then try again." = "通过 Apple 登录未完成。请确认已在“系统设置”中登录 Apple ID，然后重试。";
+"Invalid Sign in with Apple request. Please try again." = "通过 Apple 登录的请求无效，请重试。";
+"Could not reach Apple to verify your sign-in. Check your connection and try again." = "无法连接 Apple 验证登录。请检查网络连接后重试。";
+"Apple could not confirm this sign-in. Please try again." = "Apple 无法确认此次登录，请重试。";
+"Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method." = "Apple 未提供已验证的邮箱地址。请再次通过 Apple 登录并允许共享或隐藏邮箱，或改用其他登录方式。";

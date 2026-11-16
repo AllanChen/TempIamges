@@ -190,6 +190,17 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
         }
 
         switch type {
+        #if MAS
+        case "apple":
+            AppleSignIn.shared.start(from: self) { [weak self] result in
+                guard let self else { return }
+                switch result {
+                case .success: self.orderOut(nil)
+                case .failure(let error):
+                    self.evaluate("window.GlanceAuth.setStatus(\(Self.jsString(error.localizedDescription)), 'error')")
+                }
+            }
+        #endif
         case "google":
             evaluate("window.GlanceAuth.setStatus(\(Self.jsString("Continue in your browser to finish Google sign-in.".localized)), 'info')")
             AuthManager.shared.openGoogleSignIn()
@@ -463,7 +474,7 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
                 <h1>\(htmlEscape("Sign in to Glance".localized))</h1>
                 <p class="sub">\(htmlEscape("Connect this Mac.".localized))</p>
 
-                <button class="btn btn-primary btn-block" onclick="GlanceAuth.google()">\(htmlEscape("Continue with Google".localized))</button>
+                \(appleButtonHTML)<button class="btn btn-primary btn-block" onclick="GlanceAuth.google()">\(htmlEscape("Continue with Google".localized))</button>
 
                 <div class="divider"><span>\(htmlEscape("Or use an email code".localized))</span></div>
 
@@ -490,6 +501,10 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
                 window.GlanceAuth = {
                     post(payload) {
                         window.webkit.messageHandlers.loginHandler.postMessage(payload);
+                    },
+                    apple() {
+                        this.setStatus('', 'info');
+                        this.post({ type: 'apple' });
                     },
                     google() {
                         this.setStatus(\(Self.jsString("Opening Google sign-in in your browser.".localized)), 'info');
@@ -719,6 +734,19 @@ final class LoginPanel: NSPanel, WKScriptMessageHandler, WKNavigationDelegate {
 
     private func jsString(_ value: String) -> String {
         Self.jsString(value)
+    }
+
+    /// App Store build: Sign in with Apple above Google, at the same size
+    /// (guideline 4.8), in Apple's black-or-white style with the Apple logo.
+    private var appleButtonHTML: String {
+        #if MAS
+        let dark = AppleSignIn.buttonStyle == .white
+        return """
+        <button class="btn btn-block" style="margin-bottom: 8px; background: \(dark ? "#fff" : "#000"); color: \(dark ? "#000" : "#fff");" onclick="GlanceAuth.apple()">\u{F8FF} \(htmlEscape("Continue with Apple".localized))</button>
+        """
+        #else
+        return ""
+        #endif
     }
 
     private func htmlEscape(_ value: String) -> String {

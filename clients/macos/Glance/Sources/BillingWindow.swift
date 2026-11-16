@@ -1,4 +1,7 @@
 import AppKit
+#if MAS
+import AuthenticationServices
+#endif
 import CoreText
 
 /// Hairline between rows (Figma `Sen · line`); borders and controls use `inspectLine` (line/strong).
@@ -416,8 +419,22 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
         : String(
           format: "New accounts receive %d credits.".localized,
           BillingManager.shared.pricing?.signupCredits ?? 100), narrow: true)
+    #if MAS
+    // App Store guideline 4.8: Sign in with Apple sits above Google, at the
+    // same size; everything below moves down by one button row.
+    let shift: CGFloat = 44
+    let apple = ASAuthorizationAppleIDButton(
+      authorizationButtonType: .continue, authorizationButtonStyle: AppleSignIn.buttonStyle)
+    apple.frame = NSRect(x: 104, y: 191, width: 432, height: 36)
+    apple.cornerRadius = PanelStyle.Radius.control
+    apple.target = self
+    apple.action = #selector(signInWithApple)
+    root.addSubview(apple)
+    #else
+    let shift: CGFloat = 0
+    #endif
     button(
-      "Continue with Google".localized, frame: NSRect(x: 104, y: 191, width: 432, height: 36),
+      "Continue with Google".localized, frame: NSRect(x: 104, y: 191 + shift, width: 432, height: 36),
       kind: .quiet
     ) {
       AuthManager.shared.openGoogleSignIn()
@@ -426,25 +443,25 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
     let dividerWidth = min(
       360, textWidth(divider, PanelStyle.inspectFont(ofSize: 11)) + 4)
     label(
-      divider, x: 320 - dividerWidth / 2, y: 239, width: dividerWidth, size: 11, align: .center,
+      divider, x: 320 - dividerWidth / 2, y: 239 + shift, width: dividerWidth, size: 11, align: .center,
       color: PanelStyle.textTertiary, height: 16, singleLine: true)
-    hairline(x: 104, y: 247, width: max(0, 216 - dividerWidth / 2 - 12))
+    hairline(x: 104, y: 247 + shift, width: max(0, 216 - dividerWidth / 2 - 12))
     hairline(
-      x: 320 + dividerWidth / 2 + 12, y: 247, width: max(0, 216 - dividerWidth / 2 - 12))
+      x: 320 + dividerWidth / 2 + 12, y: 247 + shift, width: max(0, 216 - dividerWidth / 2 - 12))
     label(
-      "Email address".localized, x: 104, y: 263, width: 432, weight: .medium,
+      "Email address".localized, x: 104, y: 263 + shift, width: 432, weight: .medium,
       color: PanelStyle.textSecondary)
-    let field = NSTextField(frame: NSRect(x: 104, y: 285, width: 432, height: 44))
+    let field = NSTextField(frame: NSRect(x: 104, y: 285 + shift, width: 432, height: 44))
     styleInput(field)
     placeholder(field, "you@example.com")
     field.stringValue = email
     root.addSubview(field)
     emailField = field
-    button("Send code".localized, frame: NSRect(x: 104, y: 341, width: 432, height: 36)) {
+    button("Send code".localized, frame: NSRect(x: 104, y: 341 + shift, width: 432, height: 36)) {
       [weak self] in self?.sendCode()
     }
     label(
-      "Your image and Widget inputs are kept while you sign in.".localized, x: 104, y: 393,
+      "Your image and Widget inputs are kept while you sign in.".localized, x: 104, y: 393 + shift,
       width: 432, color: PanelStyle.textTertiary, height: 36)
     let terms = link(
       "Terms of service".localized, x: 104, y: 560, color: PanelStyle.textTertiary
@@ -454,6 +471,18 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       color: PanelStyle.textTertiary
     ) { [weak self] in self?.openPolicy("privacy") }
   }
+  #if MAS
+  @objc private func signInWithApple() {
+    guard !inFlight else { return }
+    inFlight = true
+    AppleSignIn.shared.start(from: self) { [weak self] result in
+      guard let self else { return }
+      self.inFlight = false
+      // Success resumes through `.authDidChange`, like the other sign-in methods.
+      if case .failure(let error) = result { self.inlineError(error.localizedDescription) }
+    }
+  }
+  #endif
   private func sendCode() {
     guard !inFlight else { return }
     email = emailField?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) ?? email

@@ -122,6 +122,7 @@
 		952C5E9281519A7B08197C1F /* Inter-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 0E09672CB631A5A45A61A047 /* Inter-Regular.otf */; };
 		97A7BA68F1D07BEB8F70615D /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D1444931654A6366A56B7972 /* Info.plist */; };
 		98C79D753D1ABBC823E08270 /* PeekDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C2064EDFFD2CC7D536C6DDA /* PeekDiagnostics.swift */; };
+		9E7D0500462310358E61C50B /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC5E9DAF9AC91EB96CAD29B0 /* AppleSignIn.swift */; };
 		9F15151C8AEF0FF3231B2B37 /* PreferencesWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2E2F8F90A0A7276E70FA93C /* PreferencesWindow.swift */; };
 		A0611A1C2AC705FD7263DE89 /* AnimatedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E73351219F33A10C85BF84C /* AnimatedImage.swift */; };
 		A1AA73AD1B300B3041A6305C /* WidgetTaskClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0B876EC3A74C500D1246A6 /* WidgetTaskClient.swift */; };
@@ -186,6 +187,7 @@
 		F0699577BDE92F2B2E24509E /* ImageExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51BEB3CDB085FBBC275FED72 /* ImageExporter.swift */; };
 		F55E55223D0E070F9E2C89A0 /* ImageFilmstrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F694E38E928E4458F0C675C7 /* ImageFilmstrip.swift */; };
 		F72AC3A9B1E7A8985AEBC622 /* LoadFailed.gif in Resources */ = {isa = PBXBuildFile; fileRef = 790B6D57380E5760E9CEA752 /* LoadFailed.gif */; };
+		FA3726F811D7D2CBCEF5EB20 /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC5E9DAF9AC91EB96CAD29B0 /* AppleSignIn.swift */; };
 		FA5D03651041BF661E114D83 /* VideoFilmstrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39E1362C96079DAAC04C9EC2 /* VideoFilmstrip.swift */; };
 		FD2ABD310A3586D1F4B9096F /* ImageInspectWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420C3ADE27D193C5A08BBD67 /* ImageInspectWindow.swift */; };
 		FFF5D1228AA1650743EDF0F4 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3520FACC62177E559702CE /* ImageLoader.swift */; };
@@ -267,6 +269,7 @@
 		C2D2AD5C474EE6E65678F682 /* ImageCompressionDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCompressionDialog.swift; sourceTree = "<group>"; };
 		C94DBC9997333D10A429AA36 /* PathDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathDetector.swift; sourceTree = "<group>"; };
 		CB3CBF26E62B43403512BF81 /* BillingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingCoordinator.swift; sourceTree = "<group>"; };
+		CC5E9DAF9AC91EB96CAD29B0 /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
 		CCE03B0D47694EA64670432E /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		CE094D8C91B76410621B788E /* ContentViewerWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewerWindow.swift; sourceTree = "<group>"; };
 		CF1568AF2F359C244E2ADB7F /* WebMStreamingFallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebMStreamingFallback.swift; sourceTree = "<group>"; };
@@ -317,6 +320,7 @@
 				F7A693FCD0923E1D950172E7 /* AccountActions.swift */,
 				4E73351219F33A10C85BF84C /* AnimatedImage.swift */,
 				39E9F1A079DAD3F9EB65919E /* AppDelegate.swift */,
+				CC5E9DAF9AC91EB96CAD29B0 /* AppleSignIn.swift */,
 				FC29D5C8E74F61B1BDC50890 /* AppMenu.swift */,
 				B05F33B82CB1FA3D79812DFC /* AppStorePurchases.swift */,
 				0ED01A590576410051478511 /* AppUpdater.swift */,
@@ -524,6 +528,7 @@
 						ProvisioningStyle = Automatic;
 					};
 					AC88297CEC8482F9B8E672C9 = {
+						DevelopmentTeam = 4C8WK3Z8YZ;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -622,6 +627,7 @@
 				6AA6E79EA84BC2DE56B76348 /* AppDelegate.swift in Sources */,
 				917F9D2E13BBC5AF55041B27 /* AppMenu.swift in Sources */,
 				D4CA55E240EFFBAF309F2E7A /* AppStorePurchases.swift in Sources */,
+				9E7D0500462310358E61C50B /* AppleSignIn.swift in Sources */,
 				22B0F0EEA023FC4B0335CD17 /* ArrayExtensions.swift in Sources */,
 				C8676607E22F7976CCD131AE /* AuthManager.swift in Sources */,
 				7291004A9B4A305CEEDC8336 /* BillingCoordinator.swift in Sources */,
@@ -710,6 +716,7 @@
 				32697069589E95C992054805 /* AppMenu.swift in Sources */,
 				8528341738252CFC84561CA1 /* AppStorePurchases.swift in Sources */,
 				4664BA91A338556415732DD9 /* AppUpdater.swift in Sources */,
+				FA3726F811D7D2CBCEF5EB20 /* AppleSignIn.swift in Sources */,
 				EBFE326842DBD416C96BA876 /* ArrayExtensions.swift in Sources */,
 				BC7B4C576CE9D7E62A343E9D /* AuthManager.swift in Sources */,
 				414995C4A8C3B05C1533DD24 /* BillingCoordinator.swift in Sources */,
@@ -809,7 +816,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Glance.MAS.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 4C8WK3Z8YZ;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -845,7 +854,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Glance.MAS.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 4C8WK3Z8YZ;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

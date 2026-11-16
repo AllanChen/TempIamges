@@ -197,6 +197,22 @@ final class AuthManager {
         }.resume()
     }
 
+    #if MAS
+    /// Exchanges a Sign in with Apple identity token for a Glance session.
+    func signInWithApple(identityToken: String, nonce: String,
+                         completion: @escaping (Result<AuthSession, AuthError>) -> Void) {
+        post(path: "/auth/apple",
+             body: ["identityToken": identityToken, "nonce": nonce, "deviceID": BillingIdentity.deviceID]) {
+            [weak self] (result: Result<AuthSession, AuthError>) in
+            if case .success(let session) = result {
+                self?.pendingOAuth = nil
+                self?.save(session: session)
+            }
+            completion(result)
+        }
+    }
+    #endif
+
     private struct AccountResponse: Decodable { let user: AuthUser }
 
     private func post<Response: Decodable>(

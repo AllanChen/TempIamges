@@ -1184,3 +1184,13 @@
 "Glance does not recognize this App Store product. Contact support with your Apple receipt." = "Glance does not recognize this App Store product. Contact support with your Apple receipt.";
 "This credit package has no credits configured." = "This credit package has no credits configured.";
 "Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it." = "Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it.";
+
+/* Sign in with Apple */
+"Continue with Apple" = "Continue with Apple";
+"Apple didn't return a sign-in token. Please try again." = "Apple didn't return a sign-in token. Please try again.";
+"Sign in with Apple was cancelled." = "Sign in with Apple was cancelled.";
+"Sign in with Apple didn't finish. Check that you're signed in to your Apple ID in System Settings, then try again." = "Sign in with Apple didn't finish. Check that you're signed in to your Apple ID in System Settings, then try again.";
+"Invalid Sign in with Apple request. Please try again." = "Invalid Sign in with Apple request. Please try again.";
+"Could not reach Apple to verify your sign-in. Check your connection and try again." = "Could not reach Apple to verify your sign-in. Check your connection and try again.";
+"Apple could not confirm this sign-in. Please try again." = "Apple could not confirm this sign-in. Please try again.";
+"Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method." = "Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method.";

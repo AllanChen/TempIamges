@@ -1070,3 +1070,13 @@
 "Glance does not recognize this App Store product. Contact support with your Apple receipt." = "Glance erkennt dieses App-Store-Produkt nicht. Wende dich mit deinem Apple-Beleg an den Support.";
 "This credit package has no credits configured." = "Für dieses Credit-Paket sind keine Credits eingerichtet.";
 "Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it." = "Erstattungen für App-Store-Käufe erfolgen über Apple. Beantrage sie unter reportaproblem.apple.com; Glance entfernt den Kauf automatisch, sobald Apple sie genehmigt.";
+
+/* Sign in with Apple */
+"Continue with Apple" = "Mit Apple fortfahren";
+"Apple didn't return a sign-in token. Please try again." = "Apple hat kein Anmelde-Token zurückgegeben. Bitte versuche es erneut.";
+"Sign in with Apple was cancelled." = "Die Anmeldung mit Apple wurde abgebrochen.";
+"Sign in with Apple didn't finish. Check that you're signed in to your Apple ID in System Settings, then try again." = "Die Anmeldung mit Apple wurde nicht abgeschlossen. Prüfe, ob du in den Systemeinstellungen mit deiner Apple-ID angemeldet bist, und versuche es erneut.";
+"Invalid Sign in with Apple request. Please try again." = "Ungültige Anfrage für die Anmeldung mit Apple. Bitte versuche es erneut.";
+"Could not reach Apple to verify your sign-in. Check your connection and try again." = "Apple war zur Bestätigung der Anmeldung nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.";
+"Apple could not confirm this sign-in. Please try again." = "Apple konnte diese Anmeldung nicht bestätigen. Bitte versuche es erneut.";
+"Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method." = "Apple hat keine bestätigte E-Mail-Adresse geteilt. Melde dich erneut mit Apple an und erlaube das Teilen oder Verbergen deiner E-Mail, oder nutze eine andere Anmeldemethode.";
