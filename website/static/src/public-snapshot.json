@@ -1,6 +1,16 @@
 {
-  "fetchedAt": "2026-11-16T02:42:30+00:00",
+  "fetchedAt": "2026-11-16T06:14:25+00:00",
   "widgets": [
+    {
+      "id": "23e53c68-efc0-444c-bfb5-908f4ec55725",
+      "name": "AI 换脸",
+      "summary": "把第一张图人物的脸换成第二张图里的人脸，其余内容保持不变。",
+      "enName": "Face Swap",
+      "enSummary": "Replace the face in the first photo with the face from the second image; everything else stays the same.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
     {
       "id": "910f3243-aeb2-4839-8f26-44d8f3746bde",
       "name": "局部编辑",

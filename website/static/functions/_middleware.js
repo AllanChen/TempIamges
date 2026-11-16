@@ -53,8 +53,8 @@ export async function onRequest({ request, next }) {
   }
   // Pages can retain static assets from older deployments, ahead of _redirects.
   // Handle retired installers here so those URLs cannot keep serving old builds.
-  if (/^\/(download|updates)\/Glance-1\.0\.[234]\.dmg$/.test(url.pathname)) {
-    url.pathname = '/download/Glance-1.1.0.dmg';
+  if (/^\/(download|updates)\/Glance-1\.(?:0\.[234]|1\.0)\.dmg$/.test(url.pathname)) {
+    url.pathname = '/download/Glance-1.1.1.dmg';
     return Response.redirect(url.toString(), 302);
   }
   // Only the language-neutral entry point is negotiated. Explicit language

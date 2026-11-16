@@ -4,16 +4,16 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>Glance</title>
         <item>
-            <title>1.1.0</title>
-            <pubDate>Sun, 15 Nov 2026 11:34:24 +0800</pubDate>
-            <sparkle:version>11</sparkle:version>
-            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <title>1.1.1</title>
+            <pubDate>Mon, 16 Nov 2026 11:48:42 +0800</pubDate>
+            <sparkle:version>12</sparkle:version>
+            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>12.3</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://glancepreview.com/updates/Glance-1.1.0.dmg" length="7538860" type="application/octet-stream" sparkle:edSignature="SOqpXjIIwfP3rUUjhPyXYjDDtmVZkaSMxpMMcajYzguxtnISUR3QlUPZ6EL7jKn9j60qg3t53f0AUjAGHrd2CA=="></enclosure>
+            <enclosure url="https://glancepreview.com/updates/Glance-1.1.1.dmg" length="7543584" type="application/octet-stream" sparkle:edSignature="NmWFx4CfJwBEjMmqUHjPlBfJYkh4KgLoY8oGfdTHcQ12pAq/DJRSb76I/NEBm2nsfc2TFij3PN+h93VXB3sUAQ=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: FsFHqjCyDW3G+Vd7/GDNMmBjF7XiyeUgg5sLJq/7DN7vrW8ryp+pOeawKyJAcfqN3GCTIcW22sfcT39wqtQzBw==
+edSignature: iLbwuPyHULlkzxXN7zdBr0a1qEfg8N4CXjzISWbfQQ6awQnv8Zo/LnAO46jUM4JCDMLKDpi53sYxKnPz7WJdAg==
 length: 1089
 -->

@@ -48,7 +48,7 @@ test('manual language preference takes precedence and invalid cookies are ignore
   }
 });
 test('only the homepage entry is negotiated; language URLs, assets and payment routes retain their path',async()=>{
-  for (const path of ['/en/','/ja/','/de/','/pricing/','/en/widgets/','/assets/site.js','/download/Glance-1.1.0.dmg','/pay/return/?order=example','/robots.txt','/sitemap.xml']) {
+  for (const path of ['/en/','/ja/','/de/','/pricing/','/en/widgets/','/assets/site.js','/download/Glance-1.1.1.dmg','/pay/return/?order=example','/robots.txt','/sitemap.xml']) {
     const {response,passed} = await visit(path,{country:'JP',cookie:'glance.language=de'});
     assert.equal(passed,true,path);assert.equal(response.status,200,path);
   }
@@ -100,11 +100,11 @@ test('browser language comes before the IP country; Chinese browsers stay on the
 });
 
 test('retired installers always redirect to the latest complete package',async()=>{
-  for (const version of ['1.0.2','1.0.3','1.0.4']) {
+  for (const version of ['1.0.2','1.0.3','1.0.4','1.1.0']) {
     for (const directory of ['download','updates']) {
       const {response,passed} = await visit(`/${directory}/Glance-${version}.dmg`);
       assert.equal(response.status,302); assert.equal(passed,false);
-      assert.equal(response.headers.get('Location'),'https://glancepreview.com/download/Glance-1.1.0.dmg');
+      assert.equal(response.headers.get('Location'),'https://glancepreview.com/download/Glance-1.1.1.dmg');
     }
   }
 });
