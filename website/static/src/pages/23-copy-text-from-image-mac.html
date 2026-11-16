@@ -36,4 +36,34 @@
   <p class="guide-note" lang="en">Glance currently prefers Simplified Chinese and English when supported by macOS Vision. Available languages depend on the system, and recognition can make mistakes. Verify important text against the image.</p>
 </div></section>
 
+<section class="guide-section guide-faq">
+  <div class="narrow">
+    <h2 lang="zh">常见问题</h2><h2 lang="en">FAQ</h2>
+    <div lang="zh">
+      <h3>在 Mac 的「预览」里怎么复制图片中的文字？</h3>
+      <p>用「预览」打开图片，把指针移到文字上，等它变成文本光标后拖动选中，再按 ⌘C。这是 Apple 的「实况文本」，需要 macOS 12 Monterey 或更高版本。</p>
+      <h3>「照片」App 里的图片也能复制文字吗？</h3>
+      <p>可以。「实况文本」在「照片」和「快速查看」里同样可用：打开照片，拖动选中文字后按 ⌘C。</p>
+      <h3>Glance Preview 识别文字时会上传图片吗？</h3>
+      <p>不会。文字识别使用 macOS 的 Vision 框架在本机完成。只有你主动运行云端 AI Widget 时，所选图片才会上传。</p>
+      <h3>在 Glance Preview 里复制图片文字要付费吗？</h3>
+      <p>不用。这项功能免费，不需要 Pro、账户或点数。</p>
+      <h3>为什么图片里的文字选不中？</h3>
+      <p>可能是识别还没完成，或者文字模糊、太小、倾斜、对比度低导致识别失败。在 Glance Preview 里选择 Tools → Recognize Text 可以查看完整结果或重新识别；换一张更清晰的原图通常有帮助。</p>
+    </div>
+    <div lang="en">
+      <h3>How do I copy text from an image in Preview on Mac?</h3>
+      <p>Open the image in Preview, move the pointer over the text until it becomes a text cursor, drag to select, then press ⌘C. This is Apple's Live Text, available on macOS 12 Monterey or later.</p>
+      <h3>Can I copy text from a photo in the Photos app on Mac?</h3>
+      <p>Yes. Live Text also works in Photos and Quick Look: open the photo, drag across the text and press ⌘C.</p>
+      <h3>Does Glance Preview upload my image to recognize text?</h3>
+      <p>No. Text recognition runs on your Mac with the macOS Vision framework. An image is uploaded only when you run a cloud AI Widget.</p>
+      <h3>Is copying text from images free in Glance Preview?</h3>
+      <p>Yes. It needs no Pro license, no account and no credits.</p>
+      <h3>Why can't I select the text in my image?</h3>
+      <p>Recognition may still be running, or it may have failed on blurry, tiny, skewed or low-contrast text. In Glance Preview, choose Tools → Recognize Text to see the full result or retry the scan; a clearer original usually helps.</p>
+    </div>
+  </div>
+</section>
+
 <section class="guide-section guide-end"><div class="narrow"><h2 lang="zh">本地识别与云端工具</h2><h2 lang="en">Local recognition and cloud tools</h2><p lang="zh">图片文字识别在 Mac 本机完成，不会为此上传图片。只有你主动运行<a href="/widgets/">云端 AI Widget</a>，所选媒体才会上传处理。查看<a href="/privacy/">隐私政策</a>了解详情。</p><p lang="en">Image text recognition runs on your Mac and does not upload the image for OCR. Selected media is uploaded only when you run a <a href="/widgets/">cloud AI Widget</a>. Read the <a href="/privacy/">privacy policy</a> for details.</p><p><a class="btn btn-primary" href="/install/"><span lang="zh">下载 Glance Preview<!--if:beta--> 内测版<!--endif--></span><span lang="en">Download <!--if:beta-->the Glance Preview beta<!--endif--><!--if:!beta-->Glance Preview<!--endif--></span></a></p></div></section>

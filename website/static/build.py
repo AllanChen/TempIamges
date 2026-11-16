@@ -112,9 +112,9 @@ DESCRIPTIONS = {
     '/acceptable-use/': ('阅读 Glance Preview AI Widget 的可接受使用政策、素材授权要求和违规内容举报方式。',
                         'Read the acceptable use policy for Glance Preview AI Widgets, media permissions, and how to report prohibited content.'),
     '/compare-images-mac/': ('在 Mac 上用 Glance Preview 并排或滑杆对比两张图片，检查原图和处理结果的细节。',
-                            'Compare two images on Mac with Glance Preview side by side or with a reveal slider. Inspect the original and result before using it.'),
+                            'Compare two images on Mac side by side or with a reveal slider: what Preview and Quick Look can do, and the free comparison view in Glance Preview.'),
     '/copy-text-from-image-mac/': ('在 Mac 上从图片选取并复制文字。了解系统自带方法和 Glance Preview 的本地文字识别步骤及限制。',
-                                  'Copy text from an image on Mac with built-in Live Text or Glance. Follow the local OCR steps and learn what affects recognition.'),
+                                  'Copy text from an image on Mac: use Live Text in Preview or Photos, or select text right in the image with free on-device OCR in Glance Preview.'),
 }
 
 PAGE_TITLES = {
@@ -123,7 +123,7 @@ PAGE_TITLES = {
     '/compare-images-mac/': ('Mac 上对比两张图片：并排与滑杆检查 · Glance Preview',
                             'Compare Two Images on Mac, Side by Side — Glance Preview'),
     '/copy-text-from-image-mac/': ('Mac 图片文字识别与复制教程 · Glance Preview',
-                                  'Copy Text from an Image on Mac — Glance Preview Guide'),
+                                  'Copy Text from an Image on Mac: Live Text and OCR · Glance Preview'),
 }
 
 
@@ -268,6 +268,27 @@ def homepage_schema(lang: str, description: str) -> str:
     return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('<', '\\u003c') + '</script>'
 
 
+def page_schema(meta: dict, lang: str, base_path: str, title: str, main_html: str) -> str:
+    """BreadcrumbList for indexable pages, plus FAQPage built from the visible guide-faq section."""
+    if meta.get('noindex') or base_path == '/404':
+        return ''
+    from html import unescape
+    home = {'zh': '首页', 'en': 'Home', 'ja': 'ホーム', 'de': 'Start'}[lang]
+    name = meta.get(lang) or re.split(r'\s[·—|]\s', title)[0]
+    graph = [{"@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": home, "item": SITE + (prefix(lang) or '') + '/'},
+        {"@type": "ListItem", "position": 2, "name": name, "item": SITE + prefix(lang) + base_path}]}]
+    section = re.search(r'<section class="guide-section guide-faq".*?</section>', main_html, re.S)
+    if section:
+        text = lambda s: re.sub(r'\s+', ' ', unescape(re.sub(r'<[^>]+>', '', s))).strip()
+        pairs = [(text(q), text(a)) for q, a in re.findall(r'<h3[^>]*>(.*?)</h3>\s*<p[^>]*>(.*?)</p>', section.group(0), re.S)]
+        if pairs:
+            graph.append({"@type": "FAQPage", "inLanguage": HTML_LANG[lang], "mainEntity": [
+                {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in pairs]})
+    data = {"@context": "https://schema.org", "@graph": graph}
+    return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace('<', '\\u003c') + '</script>'
+
+
 def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
     if '{{HOME_CONTENT}}' in body:
         body = body.replace('{{HOME_CONTENT}}', render_home(lang, SNAPSHOT, DMG, VERSION, DMG_SIZE, DMG_SHA256))
@@ -286,7 +307,8 @@ def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
     if lang in EXTRA_LANGUAGES and base_path != '/':
         tmeta, body = TRANSLATIONS[lang][base_path]
         title, desc = tmeta['title'], tmeta['desc']
-    schema = homepage_schema(lang, desc) if base_path == '/' else ''
+    main_html = localize(body, lang, page_paths, translated)
+    schema = homepage_schema(lang, desc) if base_path == '/' else page_schema(meta, lang, base_path, title, main_html)
     title, desc = escape(title, quote=True), escape(desc, quote=True)
     canonical = SITE + path
     languages = page_languages(base_path, page_paths)
@@ -331,7 +353,7 @@ def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
 <body>
 {localize(header(meta.get('nav', ''), lang, options), lang, page_paths, translated)}
 <main id="main">
-{localize(body, lang, page_paths, translated)}
+{main_html}
 </main>
 {localize(footer(), lang, page_paths, translated)}
 <script src="/assets/site.js?v={ASSET_VERSION}" defer></script>
@@ -472,6 +494,43 @@ def load_translations() -> dict[str, dict[str, tuple[dict, str]]]:
 TRANSLATIONS = load_translations()
 
 
+def git_date(*sources: Path) -> str:
+    """Last commit date (YYYY-MM-DD) touching any of the files; '' when git has no answer."""
+    import subprocess
+    try:
+        run = lambda *args: subprocess.run(['git', *args, '--', *map(str, sources)], cwd=ROOT,
+                                           capture_output=True, text=True, timeout=20).stdout.strip()
+        if run('status', '--porcelain'):  # edited in this deploy, committed right after the build
+            from datetime import date
+            return date.today().isoformat()
+        out = run('log', '-1', '--format=%cs')
+    except Exception:
+        return ''
+    return out if re.fullmatch(r'\d{4}-\d{2}-\d{2}', out) else ''
+
+
+def page_lastmod(pages) -> dict[str, str]:
+    names = {}
+    for folder in [SRC / 'pages'] + [SRC / 'i18n' / code for code in EXTRA_LANGUAGES]:
+        for source in sorted(folder.glob('*.html')):
+            match = re.search(r'path:\s*(\S+)', source.read_text(encoding='utf-8')[:400])
+            if match:
+                names[(folder.name if folder.name in EXTRA_LANGUAGES else '', match.group(1))] = source
+    home_sources = [ROOT / 'homepage.py', SRC / 'homepage.json']
+    result = {}
+    for meta, _ in pages:
+        base = meta['path']
+        shared = names.get(('', base))
+        for lang in ('zh', 'en', *EXTRA_LANGUAGES):
+            source = names.get((lang, base), shared) if lang in EXTRA_LANGUAGES else shared
+            if not source:
+                continue
+            date = git_date(source, *(home_sources if base == '/' else []))
+            if date:
+                result[prefix(lang) + base] = date
+    return result
+
+
 def main() -> None:
     import xml.etree.ElementTree as ET
     feed = ET.parse(SRC / 'updates/appcast.xml')
@@ -559,8 +618,11 @@ def main() -> None:
     (OUT / "llms-full.txt").write_text(llms_text(sys.modules[__name__], full=True), encoding="utf-8")
     (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /pay/return/\nDisallow: /pay/\nAllow: /\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
     (OUT / f"{INDEXNOW_KEY}.txt").write_text(INDEXNOW_KEY, encoding="utf-8")
-    # Omit optional lastmod until per-page content dates are maintained.
-    urls = "".join(f"<url><loc>{SITE}{p}</loc></url>" for p in paths)
+    # lastmod: posts use their updated/date metadata; pages use the last commit date of their source file.
+    from content import lastmod_map
+    lastmod = {**page_lastmod(pages), **lastmod_map(sys.modules[__name__])}
+    urls = "".join(f"<url><loc>{SITE}{p}</loc>" + (f"<lastmod>{lastmod[p]}</lastmod>" if lastmod.get(p) else "") + "</url>"
+                   for p in paths)
     (OUT / "sitemap.xml").write_text(
         f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n',
         encoding="utf-8")

@@ -267,6 +267,21 @@ def render_content(b, page_paths) -> list[tuple[str, bool, str]]:
     return out
 
 
+def lastmod_map(b) -> dict[str, str]:
+    """Sitemap lastmod for published posts (updated or date) and their index pages (newest post)."""
+    result = {}
+    for lang, items in load_all(b).items():
+        for p in items:
+            if p["status"] != "published":
+                continue
+            day = p.get("updated") or p["date"]
+            day = day if re.fullmatch(r"\d{4}-\d{2}-\d{2}", day) else p["date"]
+            result[p["path"]] = day
+            index = base_for(lang, p["kind"])
+            result[index] = max(result.get(index, ""), day)
+    return result
+
+
 LLMS_PAGES = [  # (path, one-line summary) for the English guide pages listed in llms.txt
     ("/en/", "Home: what Glance Preview is, the view-fix-compare loop, Widgets, pricing summary, download."),
     ("/en/install/", "Download and install Glance Preview 1.1.1 for Apple silicon Macs; requirements, first launch, SHA-256."),

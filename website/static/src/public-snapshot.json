@@ -1,6 +1,16 @@
 {
-  "fetchedAt": "2026-11-16T06:14:25+00:00",
+  "fetchedAt": "2026-11-16T12:08:20+00:00",
   "widgets": [
+    {
+      "id": "004d51ec-9051-47f8-9672-5321037d8b3f",
+      "name": "图中文字翻译",
+      "summary": "翻译或替换图片里的文字，例如把英文改成中文，排版风格保持不变。",
+      "enName": "Translate Text",
+      "enSummary": "Translate or replace the text in an image, e.g. from English to Chinese, keeping the layout and style.",
+      "creditCost": 1,
+      "billing": {},
+      "uploadsMedia": true
+    },
     {
       "id": "23e53c68-efc0-444c-bfb5-908f4ec55725",
       "name": "AI 换脸",
