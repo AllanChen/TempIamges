@@ -966,7 +966,7 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
             }
             return true
         }
-        let expanded = (text as NSString).expandingTildeInPath
+        let expanded = UserHome.expandingTilde(text)
         let fileURL = URL(fileURLWithPath: expanded)
         if case .localImage = pathDetector.localKind(for: fileURL.path) {
             onOpenImages?([fileURL])

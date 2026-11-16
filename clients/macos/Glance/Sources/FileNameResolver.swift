@@ -26,9 +26,9 @@ final class FileNameResolver {
     ]
 
     private let preferredAncestors: [String] = [
-        NSHomeDirectory() + "/Desktop",
-        NSHomeDirectory() + "/Downloads",
-        NSHomeDirectory() + "/Documents",
+        UserHome.path + "/Desktop",
+        UserHome.path + "/Downloads",
+        UserHome.path + "/Documents",
     ]
 
     private let quickSearchBaseNames = ["Desktop", "Documents", "Downloads"]
@@ -61,7 +61,7 @@ final class FileNameResolver {
         if let cachedURL = FilenameCache.shared.lookup(token: normalizedToken) {
             Logger.info("FileNameResolver: cache hit for '\(Logger.redact(token))'")
             completion([Match(url: cachedURL, lastModified: nil,
-                              isInUserHome: cachedURL.path.hasPrefix(NSHomeDirectory()))])
+                              isInUserHome: cachedURL.path.hasPrefix(UserHome.path))])
             return
         }
 
@@ -177,14 +177,14 @@ final class FileNameResolver {
 
     private func mdfindExact(basename: String, limit: Int) -> [Match] {
         guard !basename.isEmpty else { return [] }
-        let home = NSHomeDirectory()
+        let home = UserHome.path
         let output = runMdfind(arguments: ["-name", basename, "-onlyin", home])
         return parseMdfindOutput(output, limit: limit)
     }
 
     private func mdfindFuzzy(basename: String, limit: Int) -> [Match] {
         guard !basename.isEmpty else { return [] }
-        let home = NSHomeDirectory()
+        let home = UserHome.path
         let escaped = basename.replacingOccurrences(of: "\"", with: "\\\"")
         let predicate = "kMDItemFSName == \"\(escaped)\"cd"
         let output = runMdfind(arguments: [predicate, "-onlyin", home])
@@ -235,7 +235,7 @@ final class FileNameResolver {
 
     private func parseMdfindOutput(_ output: String?, limit: Int) -> [Match] {
         guard let output = output, !output.isEmpty else { return [] }
-        let home = NSHomeDirectory()
+        let home = UserHome.path
         let paths = output.components(separatedBy: .newlines).filter { !$0.isEmpty }.prefix(limit)
 
         var matches: [Match] = []
@@ -311,7 +311,7 @@ final class FileNameResolver {
     }
 
     private func quickSearchRoots() -> [URL] {
-        let homePath = NSHomeDirectory()
+        let homePath = UserHome.path
         var roots: [URL] = []
         roots.append(contentsOf: commonRoots().filter { $0.path != homePath })
         for root in commonRoots() where quickSearchBaseNames.contains(root.lastPathComponent) {
@@ -322,7 +322,7 @@ final class FileNameResolver {
     }
 
     private func deepSearchRoots() -> [URL] {
-        let homePath = NSHomeDirectory()
+        let homePath = UserHome.path
         var roots: [URL] = []
 
         let projectDirs = ["Projects", "Workspace", "Code", "Dev", "work"]
@@ -337,7 +337,7 @@ final class FileNameResolver {
 
     private func commonRoots() -> [URL] {
         let fm = FileManager.default
-        let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        let home = URL(fileURLWithPath: UserHome.path, isDirectory: true)
         var roots: [URL] = []
 
         let cwd = URL(fileURLWithPath: fm.currentDirectoryPath, isDirectory: true).standardizedFileURL
@@ -374,7 +374,7 @@ final class FileNameResolver {
         if token.lowercased().hasPrefix("file://"), let url = parseFileURL(token) {
             candidates.append(url)
         } else if token.hasPrefix("~/") {
-            candidates.append(URL(fileURLWithPath: (token as NSString).expandingTildeInPath))
+            candidates.append(URL(fileURLWithPath: UserHome.expandingTilde(token)))
         } else if token.hasPrefix("/") {
             candidates.append(URL(fileURLWithPath: token))
         } else {
@@ -474,7 +474,7 @@ final class FileNameResolver {
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
               !isDirectory.boolValue else { return nil }
         let values = try? canonical.resourceValues(forKeys: [.contentModificationDateKey])
-        let home = NSHomeDirectory()
+        let home = UserHome.path
         return Match(url: canonical,
                      lastModified: values?.contentModificationDate,
                      isInUserHome: path.hasPrefix(home + "/") || path == home)

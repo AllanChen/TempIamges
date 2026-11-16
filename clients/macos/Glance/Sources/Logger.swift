@@ -213,7 +213,7 @@ enum SupportDiagnostics {
         """
     }
     static func redact(_ input: String) -> String {
-        var text = input.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "<home>")
+        var text = input.replacingOccurrences(of: UserHome.path, with: "<home>")
         let rules = [
             (#"(?i)\b(?:https?|file)://[^\s<>\"']+"#, "<url>"),
             (#"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#, "<email>"),

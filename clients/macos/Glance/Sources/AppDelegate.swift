@@ -59,7 +59,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         applyLanguage()
         applyTheme()
         setupMainMenu()
-        #if !MAS
+        #if MAS
+        FolderAccess.shared.restore()
+        #else
         AppUpdater.shared.start()
         #endif
         setupComponents()
@@ -486,6 +488,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         if resolved.isEmpty && unresolvedTokens.isEmpty {
             Logger.info("AppDelegate: No media path in selected text")
             isLoadingImage = false
+            #if MAS
+            if let blocked = FolderAccess.shared.firstUncoveredPath(in: selected) {
+                requestFolderAccess(for: blocked, retrying: selected, anchor: anchor,
+                                    requestID: requestID, contextDirectories: contextDirectories)
+                return
+            }
+            #endif
             PeekDiagnostics.recordUnrecognizedSelection()
             currentPath = selected
             showErrorTooltip(message: "No image or video found in selection".localized, at: anchor)
@@ -504,10 +513,42 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             return
         }
 
+        #if MAS
+        // Searching by name needs at least one readable folder.
+        if !FolderAccess.shared.hasAnyGrant {
+            isLoadingImage = false
+            requestFolderAccess(for: UserHome.path, retrying: selected, anchor: anchor,
+                                requestID: requestID, contextDirectories: contextDirectories)
+            return
+        }
+        #endif
         currentPath = (resolved.compactMap { $0.url?.absoluteString } + unresolvedTokens).joined(separator: "|")
         resolveAndShow(selectedText: selected, resolved: resolved, tokens: unresolvedTokens,
                        contextDirectories: contextDirectories, at: anchor, requestID: requestID)
     }
+
+    #if MAS
+    /// Peek found a path the sandbox can't read yet: ask for its folder, then
+    /// rerun the same selection so the user doesn't have to select it again.
+    private func requestFolderAccess(for path: String, retrying text: String, anchor: CGPoint,
+                                     requestID: UInt64, contextDirectories: [URL]) {
+        previewPanel?.hidePanel()
+        let folder = FolderAccess.suggestedFolder(for: path)
+        let reason = String(format: "Glance needs your permission to read files in “%@”. Grant access to preview this file now. Files inside this folder won't ask again.".localized,
+                            folder.path)
+        FolderAccess.shared.requestAccess(suggesting: folder, reason: reason) { [weak self] granted in
+            guard let self, requestID == self.activeRequestID else { return }
+            guard granted else {
+                self.showErrorTooltip(message: "Glance can't read files in this folder. To allow it, choose Glance > Grant Folder Access…".localized,
+                                      at: anchor)
+                return
+            }
+            self.isLoadingImage = true
+            self.proceedWithPreview(text: text, anchor: anchor, requestID: requestID,
+                                    contextDirectories: contextDirectories)
+        }
+    }
+    #endif
 
     /// `token` (a bare name or relative path) as an existing media file inside `directory`.
     private func mediaPath(named token: String, in directory: URL) -> DetectedPath? {
@@ -632,7 +673,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     /// Truncates to the last 2 components if the tildified path is long.
     private static func disambiguationHint(for url: URL) -> String {
         let parent = url.deletingLastPathComponent().path
-        let home = NSHomeDirectory()
+        let home = UserHome.path
         var tildified = parent
         if parent == home {
             tildified = "~"
@@ -770,7 +811,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     private func isUnderProtectedDirectory(_ url: URL) -> Bool {
         guard url.isFileURL else { return false }
         let path = url.path
-        let home = NSHomeDirectory()
+        let home = UserHome.path
         let protected = ["/Desktop", "/Documents", "/Downloads", "/Library"]
         return protected.contains { path.hasPrefix(home + $0) }
     }
@@ -1014,6 +1055,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         adoptPeekIfGrantedFromFirstRunGuide()
         firstRunGuideActive = false
         surfaceHomeIfIdle()
+        #if MAS
+        FolderAccess.shared.requestOnceIfNeeded()
+        #endif
         guard Preferences.shared.peekEnabled, PermissionManager.shared.canUsePeek else { return }
         startKeyboardMonitoring()
     }

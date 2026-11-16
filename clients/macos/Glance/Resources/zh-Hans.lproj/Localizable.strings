@@ -1138,3 +1138,10 @@
 
 /* Activation hotkey presets */
 "⌥ Space" = "⌥ 空格";
+
+/* Mac App Store folder access */
+"Grant Folder Access…" = "授予文件夹访问权限…";
+"Grant Access" = "授予访问权限";
+"Choose a folder Glance can preview files from. Choosing your home folder lets Peek open files anywhere inside it." = "选择 Glance 可以预览文件的文件夹。选择你的个人文件夹后，Peek 可以打开其中任何位置的文件。";
+"Glance needs your permission to read files in “%@”. Grant access to preview this file now. Files inside this folder won't ask again." = "Glance 需要你的许可才能读取“%@”中的文件。授予访问权限即可立即预览此文件，之后此文件夹中的文件不会再询问。";
+"Glance can't read files in this folder. To allow it, choose Glance > Grant Folder Access…" = "Glance 无法读取此文件夹中的文件。如需允许，请选择“Glance > 授予文件夹访问权限…”。";

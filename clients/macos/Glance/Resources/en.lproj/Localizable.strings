@@ -1136,3 +1136,10 @@
 
 /* Activation hotkey presets */
 "⌥ Space" = "⌥ Space";
+
+/* Mac App Store folder access */
+"Grant Folder Access…" = "Grant Folder Access…";
+"Grant Access" = "Grant Access";
+"Choose a folder Glance can preview files from. Choosing your home folder lets Peek open files anywhere inside it." = "Choose a folder Glance can preview files from. Choosing your home folder lets Peek open files anywhere inside it.";
+"Glance needs your permission to read files in “%@”. Grant access to preview this file now. Files inside this folder won't ask again." = "Glance needs your permission to read files in “%@”. Grant access to preview this file now. Files inside this folder won't ask again.";
+"Glance can't read files in this folder. To allow it, choose Glance > Grant Folder Access…" = "Glance can't read files in this folder. To allow it, choose Glance > Grant Folder Access…";

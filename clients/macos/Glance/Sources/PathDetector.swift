@@ -523,7 +523,7 @@ class PathDetector {
             return nil
         }
         if candidate.hasPrefix("~/") {
-            let expanded = (candidate as NSString).expandingTildeInPath
+            let expanded = UserHome.expandingTilde(candidate)
             if isValidLocalMedia(path: expanded) {
                 return localKind(for: expanded)
             }
@@ -543,7 +543,7 @@ class PathDetector {
             // the leading `~/`, e.g. "Desktop/work/Foo.pdf". Try expanding
             // against $HOME first; if that's a real file, surface it as a
             // concrete local hit so the user skips the Spotlight round-trip.
-            let homeExpanded = (NSHomeDirectory() as NSString)
+            let homeExpanded = (UserHome.path as NSString)
                 .appendingPathComponent(candidate)
             if isValidLocalMedia(path: homeExpanded) {
                 return localKind(for: homeExpanded)
@@ -708,7 +708,7 @@ class PathDetector {
             guard let url = parseLenientURL(candidate) else { return nil }
             path = url.path
         } else if candidate.hasPrefix("~/") {
-            path = (candidate as NSString).expandingTildeInPath
+            path = UserHome.expandingTilde(candidate)
         } else if candidate.hasPrefix("/") {
             path = candidate
         } else {

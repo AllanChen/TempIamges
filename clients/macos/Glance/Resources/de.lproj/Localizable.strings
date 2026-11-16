@@ -1022,3 +1022,10 @@
 
 /* Activation hotkey presets */
 "⌥ Space" = "⌥ Leertaste";
+
+/* Mac App Store folder access */
+"Grant Folder Access…" = "Ordnerzugriff erlauben…";
+"Grant Access" = "Zugriff erlauben";
+"Choose a folder Glance can preview files from. Choosing your home folder lets Peek open files anywhere inside it." = "Wähle einen Ordner, aus dem Glance Dateien in der Vorschau anzeigen darf. Wählst du deinen Benutzerordner, kann Peek jede Datei darin öffnen.";
+"Glance needs your permission to read files in “%@”. Grant access to preview this file now. Files inside this folder won't ask again." = "Glance benötigt deine Erlaubnis, um Dateien in „%@“ zu lesen. Erlaube den Zugriff, um diese Datei jetzt anzuzeigen. Für Dateien in diesem Ordner wirst du nicht erneut gefragt.";
+"Glance can't read files in this folder. To allow it, choose Glance > Grant Folder Access…" = "Glance kann Dateien in diesem Ordner nicht lesen. Wähle dazu „Glance > Ordnerzugriff erlauben…“.";

@@ -20,6 +20,9 @@ extension AppDelegate {
         appMenu.addItem(menuItem("Buy Glance Pro…", #selector(openProFromMenu(_:)), target: self))
         appMenu.addItem(.separator())
         appMenu.addItem(menuItem("Preferences...", #selector(openPreferencesFromMenu(_:)), key: ",", target: self))
+        #if MAS
+        appMenu.addItem(menuItem("Grant Folder Access…", #selector(grantFolderAccessFromMenu(_:)), target: self))
+        #endif
         appMenu.addItem(menuItem("Team account", #selector(AccountActions.manageTeam(_:)), target: AccountActions.shared))
         appMenu.addItem(menuItem("Delete account", #selector(AccountActions.deleteAccount(_:)), target: AccountActions.shared))
         appMenu.addItem(menuItem("Set as Default Viewer…", #selector(setAsDefaultViewer(_:)), target: self))
@@ -127,6 +130,9 @@ extension AppDelegate {
         }
     }
     @objc private func openPreferencesFromMenu(_ sender: Any?) { openPreferences() }
+    #if MAS
+    @objc private func grantFolderAccessFromMenu(_ sender: Any?) { FolderAccess.shared.requestAccess() }
+    #endif
     @objc private func openProFromMenu(_ sender: Any?) {
         NSApp.activate(ignoringOtherApps: true)
         BillingCoordinator.shared.showProEntry(over: NSApp.keyWindow ?? NSApp.mainWindow)

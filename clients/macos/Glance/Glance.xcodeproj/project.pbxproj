@@ -36,6 +36,7 @@
 		33044AFB38C10A375B39B423 /* Inter-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = 0FE438770872A37E845AF821 /* Inter-Medium.otf */; };
 		36190ACF12F79CE1E8E5926E /* TrafficLightButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD5EC8FEB4C74E4FD2B1F95 /* TrafficLightButton.swift */; };
 		369FA63A7E8433810CEFC6FB /* CaptureGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0AC229A392A01D463A484B /* CaptureGeometry.swift */; };
+		38280FC494CAC1483B9F12DD /* FolderAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB6D12E19581DCA0C62094C0 /* FolderAccess.swift */; };
 		3999291816C60724A9596385 /* LoginPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62246959374FE67D5FD83B9D /* LoginPanel.swift */; };
 		3BA1B5BEDBB22E3357179E1B /* ContentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A17C936FB9F57D95925D960 /* ContentPanel.swift */; };
 		3CAFDEFA126A3CC1A722EAB4 /* PathDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94DBC9997333D10A429AA36 /* PathDetector.swift */; };
@@ -105,6 +106,7 @@
 		82A7F179B75F106FB07A70C4 /* ImageRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FFEAC69B55A30C73AB397E9 /* ImageRevealView.swift */; };
 		834F717000AF949E4C075248 /* PreviewPanelPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A683F6DB94CE572022B5AA0 /* PreviewPanelPreview.swift */; };
 		839B8843949BBC886425EA94 /* VideoInspectViewport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E751B36A2BF0A8C393AA72 /* VideoInspectViewport.swift */; };
+		83F3807DA2C51384CBA23BE7 /* FolderAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB6D12E19581DCA0C62094C0 /* FolderAccess.swift */; };
 		860DD2F54F60A1504CB60E50 /* PreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1433E6467F5201FE5A730FEC /* PreviewPanel.swift */; };
 		8679C96061383FFC86D6A84B /* VideoPlaybackViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B8498AE2EA03E7E6B34EE3 /* VideoPlaybackViews.swift */; };
 		867A48659D53F502F7AF234E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1338215DA649C2E61029E245 /* Assets.xcassets */; };
@@ -255,6 +257,7 @@
 		9E0AC229A392A01D463A484B /* CaptureGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGeometry.swift; sourceTree = "<group>"; };
 		9E3752BB582E3A80CC0F50EB /* SelectedTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedTextExtractor.swift; sourceTree = "<group>"; };
 		A0B82D153A70DA5590B431D5 /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
+		AB6D12E19581DCA0C62094C0 /* FolderAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderAccess.swift; sourceTree = "<group>"; };
 		B1E813F3BF8D143A8E86D138 /* HomeWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWindow.swift; sourceTree = "<group>"; };
 		BD95F30FC69AA12EDEE59F28 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		C13155D15A2DBA8ED50704C8 /* PanelStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelStyle.swift; sourceTree = "<group>"; };
@@ -325,6 +328,7 @@
 				82487A06B07A2503B6D2FAC1 /* FilenameCache.swift */,
 				945E891D8DC06977A9604F98 /* FileNameResolver.swift */,
 				6B64B424505C01A08B5DFF29 /* FileTypeIcon.swift */,
+				AB6D12E19581DCA0C62094C0 /* FolderAccess.swift */,
 				0C5179624322D2F186F271A1 /* HistoryManager.swift */,
 				E898CA6575E4B31B1E1DF2F1 /* HistoryViews.swift */,
 				1D1FEF81F349C3468DF46A45 /* HistoryWindow.swift */,
@@ -629,6 +633,7 @@
 				BA6698012E0C6C886954F25B /* FileNameResolver.swift in Sources */,
 				7784B2D858F5418F5F32A7DD /* FileTypeIcon.swift in Sources */,
 				1046576F0644EB1060E54FD0 /* FilenameCache.swift in Sources */,
+				38280FC494CAC1483B9F12DD /* FolderAccess.swift in Sources */,
 				C264CC43826EDC517B6EF72E /* HistoryManager.swift in Sources */,
 				8DEE0147770E015748701F1C /* HistoryViews.swift in Sources */,
 				CFAF22798258EE90D4250A0E /* HistoryWindow.swift in Sources */,
@@ -715,6 +720,7 @@
 				5C57991C681CC89FE3AA2E07 /* FileNameResolver.swift in Sources */,
 				548FD6C261DF875B6EB41135 /* FileTypeIcon.swift in Sources */,
 				E8A68919EBCFE158D8918BDB /* FilenameCache.swift in Sources */,
+				83F3807DA2C51384CBA23BE7 /* FolderAccess.swift in Sources */,
 				27A210A20912C7689F9B58B7 /* HistoryManager.swift in Sources */,
 				AE43140C4CD9DE0DD9F7B80F /* HistoryViews.swift in Sources */,
 				81B07FCD73C2A6AE26314B90 /* HistoryWindow.swift in Sources */,
