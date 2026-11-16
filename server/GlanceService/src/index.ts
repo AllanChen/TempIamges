@@ -7,6 +7,7 @@ import { authenticatedUser, userRoutes, adminUsers, adminGrantPro, adminRevokePr
 import { BillingError, expireTasks, publicPricing, readPricing, savePricing } from './pricing';
 import { adminOrders, billingWebhook, createOrder, orders, requestRefund, wallet,resumeOrder,denyRefund,abandonOrder } from './billing';
 import { activateDevice, entitlements, releaseDevice, synchronizeTrial } from './entitlements';
+import { appStoreNotification, recordAppStoreTransaction } from './app-store';
 import { teamInfo, inviteMember, acceptInvite, removeMember, leaveTeam, revokeInvite, expireRedemptionLicenses } from './teams';
 import { createRedemptionBatch, listRedemptionBatches, redeemProCode, revokeRedemptionBatch } from './redemption-codes';
 
@@ -42,6 +43,10 @@ export interface Env {
   WAFFO_WEBHOOK_PUBLIC_KEY_PROD?: string;
   MOCK_CHECKOUT_USER_ID?: string;
   TEST_CHECKOUT_USER_ID?: string;
+  APP_STORE_BUNDLE_ID?: string;
+  APP_STORE_ISSUER_ID?: string;
+  APP_STORE_KEY_ID?: string;
+  APP_STORE_PRIVATE_KEY?: string;
 }
 
 type Manifest = {
@@ -1478,6 +1483,8 @@ export default {
       const adminRefund=/^\/api\/admin\/v2\/orders\/([^/]+)\/refund$/.exec(url.pathname);
       if (adminRefund && request.method === 'POST') { await requireAdmin(env,request); return await requestRefund(env,request,adminRefund[1],true); }
       if (url.pathname === '/api/v2/payments/waffo/webhook' && request.method === 'POST') return await billingWebhook(env,request);
+      if (url.pathname === '/api/v2/app-store/transactions' && request.method === 'POST') return await recordAppStoreTransaction(env,request);
+      if (url.pathname === '/api/v2/app-store/notifications' && request.method === 'POST') return await appStoreNotification(env,request);
       if (url.pathname === '/api/v2/account/credits' && request.method === 'GET') return await wallet(env,request);
       if (url.pathname === '/api/v2/orders' && request.method === 'POST') return await createOrder(env,request);
       if (url.pathname === '/api/v2/orders' && request.method === 'GET') return await orders(env,request);

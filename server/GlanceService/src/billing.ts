@@ -60,15 +60,16 @@ async function checkoutCipher(env:Env,value:string,decrypt=false) {
   const encrypted = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(value)));
   return btoa(String.fromCharCode(...iv,...encrypted));
 }
-function orderPublic(order:Order) {
+export function orderPublic(order:Order) {
   // pack_id holds the credit pack for credit orders and the Pro tier for Pro orders.
   return { id:order.id,billingMode:order.billing_mode,product:order.product,packID:order.product==='credits'?order.pack_id:null,
     tierID:order.product==='pro'?order.pack_id:null,deviceLimit:order.product==='pro'?order.device_limit:null,currency:order.currency,
     amount:order.payment_method==='mock'?0:order.amount,mock:order.payment_method==='mock',credits:order.credits,
     bonusCredits:order.bonus_credits,status:order.status,createdAt:order.created_at,paidAt:order.paid_at,refundedAt:order.refunded_at,
-    expiresAt:order.checkout_expires_at,refundStatus:order.refund_status,refundReason:order.refund_reason,intentID:order.billing_intent_id };
+    expiresAt:order.checkout_expires_at,refundStatus:order.refund_status,refundReason:order.refund_reason,intentID:order.billing_intent_id,
+    store:order.payment_method==='app_store'?'app_store':null };
 }
-async function readOrder(env:Env,id:string,userID?:number) {
+export async function readOrder(env:Env,id:string,userID?:number) {
   return env.DB.prepare(`SELECT * FROM orders WHERE id=?${userID===undefined?'':' AND user_id=?'}`)
     .bind(id,...(userID===undefined?[]:[userID])).first<Order>();
 }
@@ -242,6 +243,7 @@ export async function requestRefund(env:Env,request:Request,id:string,admin=fals
   const order=await readOrder(env,id,user?.id);
   if (!order) throw new BillingError('order_not_found','Order not found.',404);
   if (order.payment_method==='mock') throw new BillingError('mock_order','No payment was collected for this mock order.',409);
+  if (order.payment_method==='app_store') throw new BillingError('app_store_refund','Apple handles refunds for App Store purchases. Request one at reportaproblem.apple.com; Glance removes the purchase automatically once Apple approves it.',409);
   if (!['paid','refund_failed'].includes(order.status)) throw new BillingError('not_refundable','This order cannot be refunded.',409);
   if (typeof body.reason!=='string' || !body.reason.trim() || body.reason.length>1000) throw new BillingError('invalid_reason','Enter a refund reason.');
   const balance=await env.DB.prepare('SELECT credits FROM users WHERE id=?').bind(order.user_id).first<{credits:number}>();

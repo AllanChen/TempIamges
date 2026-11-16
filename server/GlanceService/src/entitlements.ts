@@ -2,6 +2,7 @@ import type { Env } from './index';
 import { authenticatedUser } from './users';
 import { BillingError, billingBody, billingReply, isoNow, readPricing, sha256, paymentReady } from './pricing';
 import { effectiveLicense } from './teams';
+import { appStoreAccountToken } from './app-store';
 
 export async function requestDevice(request:Request,data?:Record<string,unknown>) {
   const raw=typeof data?.deviceID==='string'?data.deviceID:request.headers.get('X-Glance-Device')||'';
@@ -45,7 +46,7 @@ export async function entitlements(env:Env,request:Request) {
     deviceLimit,releasesRemaining:Math.max(0,config.releaseLimit-(releases?.n??0)),
     trialStartedAt:user.trial_started_at??null,trialEndsAt:trialEnd,trialVoided:!!user.trial_voided,paidWidgetNoticeSeen:!!user.widget_notice_seen,
     trialActive:!user.trial_voided && !!trialEnd && trialEnd>serverTime,credential,serverTime,
-    enforcementEnabled:config.enabled && paymentReady(env)});
+    enforcementEnabled:config.enabled && paymentReady(env),appStoreAccountToken:await appStoreAccountToken(env,user.id)});
 }
 export async function synchronizeTrial(env:Env,request:Request) {
   const user=await authenticatedUser(env,request), data=await billingBody(request);
