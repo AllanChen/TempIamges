@@ -32,7 +32,16 @@ final class BillingManager {
       forName: .authDidChange, object: nil, queue: .main
     ) { [weak self] _ in self?.accountChanged(allowActivation: true) }
   }
-  var remainingTrialDays: Int { trial.remainingDays(pricing?.trialDays ?? 14) }
+  var remainingTrialDays: Int {
+    #if MAS
+    // The first App Store release has no time-based trial (guideline 3.1.1
+    // allows one only as a free "14-day Trial" in-app purchase). Free features
+    // stay free; Pro is bought through the App Store.
+    return 0
+    #else
+    return trial.remainingDays(pricing?.trialDays ?? 14)
+    #endif
+  }
   var trialBadge: String? {
     guard !hasPro, !trial.voided, remainingTrialDays <= 3, remainingTrialDays > 0 else {
       return nil
@@ -166,6 +175,9 @@ final class BillingManager {
   func observeForUse() { trial.observe(Date()) }
   private var launchNoticeShown = false
   func presentLaunchNotice(over parent: NSWindow) {
+    #if MAS
+    return  // Trial start/end notices don't apply without a trial.
+    #endif
     guard !launchNoticeShown else { return }
     launchNoticeShown = true
     let storeKey = "trial-notice"

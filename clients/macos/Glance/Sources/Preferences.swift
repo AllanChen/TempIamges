@@ -202,15 +202,27 @@ class Preferences {
         registerDefaults()
     }
 
+    #if MAS
+    private static let defaultActivationMode = ActivationMode.custom
+    private static let defaultCustomModifiers = Int(NSEvent.ModifierFlags([.control, .option]).rawValue)
+    private static let defaultCustomKeyCode = 40   // kVK_ANSI_K
+    #else
+    private static let defaultActivationMode = ActivationMode.optionK
+    private static let defaultCustomModifiers = 0
+    private static let defaultCustomKeyCode = 0
+    #endif
+
     private func registerDefaults() {
         let defaultValues: [String: Any] = [
             "\(suiteName).enabled": false,
             "\(suiteName).launchAtLogin": false,
             "\(suiteName).readClipboard": true,
             "\(suiteName).theme": Theme.dark.rawValue,
-            "\(suiteName).activationMode": ActivationMode.optionK.rawValue,
-            "\(suiteName).customHotkeyModifiers": 0,
-            "\(suiteName).customHotkeyKeyCode": 0
+            // The App Store build defaults to ⌃⌥K: macOS 15 refuses system
+            // hotkeys that use only ⌥, which the sandbox may fall back to.
+            "\(suiteName).activationMode": Self.defaultActivationMode.rawValue,
+            "\(suiteName).customHotkeyModifiers": Self.defaultCustomModifiers,
+            "\(suiteName).customHotkeyKeyCode": Self.defaultCustomKeyCode
         ]
         defaults.register(defaults: defaultValues)
     }

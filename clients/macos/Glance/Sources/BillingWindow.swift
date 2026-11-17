@@ -1092,9 +1092,12 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       let node = link(item.0, x: linkX, y: 368, color: PanelStyle.textPrimary, action: item.1)
       linkX = node.frame.maxX + PanelStyle.Space.xl
     }
+    #if !MAS
+    // Guideline 3.1.1: App Store apps may not unlock features with codes.
     if !manager.hasPro {
       quiet("Redeem a code".localized, y: 400) { [weak self] in self?.showRedeemCode() }
     }
+    #endif
     footerButton("Devices".localized, kind: .primary) { [weak self] in self?.showDevices() }
     footerButton("Credits wallet".localized, kind: .quiet) { [weak self] in
       self?.showWallet()
