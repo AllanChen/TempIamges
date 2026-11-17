@@ -1,22 +1,22 @@
 {
-  "fetchedAt": "2026-11-17T03:04:40+00:00",
+  "fetchedAt": "2026-11-17T12:20:00+00:00",
   "widgets": [
     {
-      "id": "004d51ec-9051-47f8-9672-5321037d8b3f",
-      "name": "图中文字翻译",
-      "summary": "翻译或替换图片里的文字，例如把英文改成中文，排版风格保持不变。",
-      "enName": "Translate Text",
-      "enSummary": "Translate or replace the text in an image, e.g. from English to Chinese, keeping the layout and style.",
-      "creditCost": 1,
+      "id": "7f8e8c9e-d1f7-4300-94fd-12219ca2e2a6",
+      "name": "X 媒体下载",
+      "summary": "输入 X 帖子链接，下载其中的全部图片和 MP4 视频。",
+      "enName": "X Media Download",
+      "enSummary": "Paste an X post URL to download all its images and MP4 videos.",
+      "creditCost": 5,
       "billing": {},
-      "uploadsMedia": true
+      "uploadsMedia": false
     },
     {
-      "id": "23e53c68-efc0-444c-bfb5-908f4ec55725",
-      "name": "AI 换脸",
-      "summary": "把第一张图人物的脸换成第二张图里的人脸，其余内容保持不变。",
-      "enName": "Face Swap",
-      "enSummary": "Replace the face in the first photo with the face from the second image; everything else stays the same.",
+      "id": "d13ef3be-9d60-4283-a8f5-d75d4e550944",
+      "name": "智能扩图",
+      "summary": "向四周延展画面，自动补全图片之外的内容。",
+      "enName": "Expand Image",
+      "enSummary": "Extend the canvas beyond the edges with matching content.",
       "creditCost": 30,
       "billing": {},
       "uploadsMedia": true
@@ -27,7 +27,77 @@
       "summary": "在图片上涂抹要修改的区域，再用文字描述想要的效果，区域外保持不变。",
       "enName": "Edit Area",
       "enSummary": "Paint the area to change, describe the result in text, and everything outside it stays as is.",
-      "creditCost": 1,
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "754acd48-5029-4f8f-b4a4-b750903767bb",
+      "name": "AI 换装",
+      "summary": "把第二张图里的服装穿到第一张图的人物身上。",
+      "enName": "Outfit Swap",
+      "enSummary": "Dress the person in the first image in the outfit from the second.",
+      "creditCost": 10,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "55e64c7e-f079-448a-b5bd-7315b2589019",
+      "name": "免费图床",
+      "summary": "上传图片或视频，获得可分享的链接。",
+      "enName": "Free Image Host",
+      "enSummary": "Upload an image or video and get a shareable link.",
+      "creditCost": 5,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f",
+      "name": "图片去水印",
+      "summary": "去除图片上的水印、文字和标记。",
+      "enName": "Watermark Remover",
+      "enSummary": "Remove watermarks, text and marks from an image.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "0d7a1de4-af33-4df1-9607-a47323c07a52",
+      "name": "图生图",
+      "summary": "重新生成图片，并按指定画幅比例输出。",
+      "enName": "Redraw & Reframe",
+      "enSummary": "Regenerate the image at the aspect ratio you choose.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "004d51ec-9051-47f8-9672-5321037d8b3f",
+      "name": "图中文字翻译",
+      "summary": "翻译或替换图片里的文字，例如把英文改成中文，排版风格保持不变。",
+      "enName": "Translate Text",
+      "enSummary": "Translate or replace the text in an image, e.g. from English to Chinese, keeping the layout and style.",
+      "creditCost": 30,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
+      "name": "图片转提示词",
+      "summary": "分析图片内容，生成可直接复用的文字描述。",
+      "enName": "Image to Prompt",
+      "enSummary": "Describe an image in words you can reuse as a prompt.",
+      "creditCost": 10,
+      "billing": {},
+      "uploadsMedia": true
+    },
+    {
+      "id": "23e53c68-efc0-444c-bfb5-908f4ec55725",
+      "name": "AI 换脸",
+      "summary": "把第一张图人物的脸换成第二张图里的人脸，其余内容保持不变。",
+      "enName": "Face Swap",
+      "enSummary": "Replace the face in the first photo with the face from the second image; everything else stays the same.",
+      "creditCost": 30,
       "billing": {},
       "uploadsMedia": true
     },
@@ -73,66 +143,6 @@
         "unitSeconds": 10
       },
       "uploadsMedia": true
-    },
-    {
-      "id": "55e64c7e-f079-448a-b5bd-7315b2589019",
-      "name": "免费图床",
-      "summary": "上传图片或视频，获得可分享的链接。",
-      "enName": "Free Image Host",
-      "enSummary": "Upload an image or video and get a shareable link.",
-      "creditCost": 29,
-      "billing": {},
-      "uploadsMedia": true
-    },
-    {
-      "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
-      "name": "图片转提示词",
-      "summary": "分析图片内容，生成可直接复用的文字描述。",
-      "enName": "Image to Prompt",
-      "enSummary": "Describe an image in words you can reuse as a prompt.",
-      "creditCost": 20,
-      "billing": {},
-      "uploadsMedia": true
-    },
-    {
-      "id": "1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f",
-      "name": "图片去水印",
-      "summary": "去除图片上的水印、文字和标记。",
-      "enName": "Watermark Remover",
-      "enSummary": "Remove watermarks, text and marks from an image.",
-      "creditCost": 30,
-      "billing": {},
-      "uploadsMedia": true
-    },
-    {
-      "id": "d13ef3be-9d60-4283-a8f5-d75d4e550944",
-      "name": "智能扩图",
-      "summary": "向四周延展画面，自动补全图片之外的内容。",
-      "enName": "Expand Image",
-      "enSummary": "Extend the canvas beyond the edges with matching content.",
-      "creditCost": 30,
-      "billing": {},
-      "uploadsMedia": true
-    },
-    {
-      "id": "754acd48-5029-4f8f-b4a4-b750903767bb",
-      "name": "AI 换装",
-      "summary": "把第二张图里的服装穿到第一张图的人物身上。",
-      "enName": "Outfit Swap",
-      "enSummary": "Dress the person in the first image in the outfit from the second.",
-      "creditCost": 30,
-      "billing": {},
-      "uploadsMedia": true
-    },
-    {
-      "id": "0d7a1de4-af33-4df1-9607-a47323c07a52",
-      "name": "图生图",
-      "summary": "重新生成图片，并按指定画幅比例输出。",
-      "enName": "Redraw & Reframe",
-      "enSummary": "Regenerate the image at the aspect ratio you choose.",
-      "creditCost": 30,
-      "billing": {},
-      "uploadsMedia": true
     }
   ],
   "pricing": {
@@ -142,7 +152,7 @@
     "signupCredits": 100,
     "proBonusCredits": 100,
     "launchUntil": null,
-    "defaultCurrency": "USD",
+    "defaultCurrency": "CNY",
     "proTiers": [
       {
         "id": "personal",
