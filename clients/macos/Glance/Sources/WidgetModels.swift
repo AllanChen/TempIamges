@@ -14,6 +14,16 @@ struct WidgetCommand: Codable, Hashable {
     let requiresUpload: Bool
     let parameterSchema: [String: JSONValue]
 
+    /// Takes only text (for example a link) and no image or video, so it runs
+    /// from the text Widget panel instead of an image or video window.
+    var isTextOnly: Bool {
+        let media: Set<String> = ["image", "video", "multiple_images", "multi_image", "multiple-images", "multi-image",
+                                  "multiple_videos", "multi_video", "multiple-videos", "multi-video", "mask"]
+        let textual: Set<String> = ["text", "txt", "prompt"]
+        return !inputTypes.isEmpty && inputTypes.allSatisfy { textual.contains($0) }
+            && !inputTypes.contains(where: media.contains)
+    }
+
     var inputCapabilities: WidgetInputCapabilities {
         let properties: [String: JSONValue]
         if case .object(let value)? = parameterSchema["properties"] {
@@ -135,6 +145,9 @@ struct WidgetManifest: Codable, Hashable {
         if usesDurationBilling { return String(format: "%d credits / 10 seconds".localized, taskCreditCost) }
         return String(format: (taskCreditCost == 1 ? "%d credit / task" : "%d credits / task").localized, taskCreditCost)
     }
+
+    /// True when at least one command runs on text alone.
+    var hasTextOnlyCommand: Bool { commands.contains(where: \.isTextOnly) }
 
     func isCompatible(with inputType: String) -> Bool {
         commands.contains { $0.inputTypes.contains(inputType) }

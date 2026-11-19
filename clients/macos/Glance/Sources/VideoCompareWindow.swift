@@ -1147,6 +1147,11 @@ final class VideoCompareWindow: NSWindow, NSWindowDelegate {
             if commands.count == 1 { return entry(commands[0]) }
             return ActionMenuEntry(title: widget.displayName, creditCost: widget.taskCreditCost, submenu: commands.map(entry))
         }
+        let textEntries = TextWidgetPanel.menuEntries()
+        if !textEntries.isEmpty {
+            if !widgetEntries.isEmpty { widgetEntries.append(.separator()) }
+            widgetEntries.append(contentsOf: textEntries)
+        }
         entries.append(.separator())
         if widgetEntries.isEmpty {
             // Nothing installed (or nothing fits this video): keep the Market one click away.

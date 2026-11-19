@@ -555,9 +555,13 @@ final class FileNameResolver {
         return sortedMatches(unique, limit: limit)
     }
 
+    /// `suffix` is "/" + the selected fragment. A selection that started
+    /// mid-way through a folder name ("loads/Glance/x.png") still has to end
+    /// the real path, just not at a slash.
     private func matchesSuffix(_ path: String, suffix: String?) -> Bool {
         guard let suffix else { return true }
-        return path.lowercased().hasSuffix(suffix)
+        let lower = path.lowercased()
+        return lower.hasSuffix(suffix) || lower.hasSuffix(String(suffix.dropFirst()))
     }
 
     private func appendingRelativePath(_ token: String, to root: URL) -> URL {

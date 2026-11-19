@@ -9,6 +9,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     private var pathDetector: PathDetector?
     private var imageLoader: ImageLoader?
     private var previewPanel: PreviewPanel?
+    /// Hotkey Peeks of images and videos open this card beside the selection;
+    /// ↵ hands off to the full Inspect.
+    private var peekMini: PeekMiniPanel?
+    /// Set for hotkey requests, which show Peek Mini; nil for Finder opens.
+    private var activeAnchor: PeekMiniAnchor?
+    /// The last hotkey selection, so a failure card can search again.
+    private var lastPeekSelection: (text: String, contextDirectories: [URL], bounds: CGRect?)?
     private var errorTooltip: ErrorTooltip?
     private var onboardingWindow: OnboardingWindow?
     private var preferencesWindow: PreferencesWindow?
@@ -204,6 +211,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         activeRequestID &+= 1
         activeRequestStartedAt = Date()
         activeSourceAppName = nil
+        activeAnchor = nil
         loadAndShowMedia(paths: paths, at: NSEvent.mouseLocation, requestID: activeRequestID)
         offerDefaultViewerIfNeeded()
     }
@@ -225,6 +233,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             self?.openVideoCompare(infos: infos, focusedIndex: focusedIndex)
         }
         previewPanel?.onDismiss = { [weak self] in self?.invalidateActiveRequest() }
+        let mini = PeekMiniPanel(imageLoader: imageLoader!)
+        mini.onInspect = { [weak self] infos, focusedIndex in
+            self?.openPeekInspect(infos: infos, focusedIndex: focusedIndex)
+        }
+        mini.onDismiss = { [weak self] in self?.invalidateActiveRequest() }
+        mini.onRetry = { [weak self] in
+            guard let self, let last = self.lastPeekSelection else { return }
+            self.activatePreview(injectedText: last.text, contextDirectories: last.contextDirectories,
+                                 selectionBounds: last.bounds)
+        }
+        mini.onLoadFinished = { [weak self] succeeded, paths in
+            self?.peekMiniDidLoad(succeeded: succeeded, paths: paths)
+        }
+        mini.failureMessage = { [weak self] url in self?.unreadableFileMessage(for: url) ?? "" }
+        peekMini = mini
         errorTooltip = ErrorTooltip()
         fileNameResolver = FileNameResolver()
 
@@ -383,36 +406,45 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     }
     #endif
 
+    private var isPeekVisible: Bool {
+        (previewPanel?.isVisible ?? false) || (peekMini?.isVisible ?? false)
+    }
+
+    private func closePeekSurfaces() {
+        previewPanel?.closePanel()
+        peekMini?.dismiss()
+    }
+
     @objc private func previewModeActivated() {
-        let previewVisible = previewPanel?.isVisible ?? false
-        if previewVisible {
+        if isPeekVisible {
             if isCheckingVisibleSelection {
                 isCheckingVisibleSelection = false
                 invalidateActiveRequest()
-                previewPanel?.closePanel()
+                closePeekSurfaces()
                 return
             }
             if isLoadingImage {
                 invalidateActiveRequest()
-                previewPanel?.closePanel()
+                closePeekSurfaces()
                 return
             }
             isCheckingVisibleSelection = true
             selectedTextExtractor?.extractSelectionFast { [weak self] result in
                 guard let self = self, self.isCheckingVisibleSelection else { return }
                 self.isCheckingVisibleSelection = false
-                guard self.previewPanel?.isVisible == true else { return }
+                guard self.isPeekVisible else { return }
                 guard let text = result?.text, !text.isEmpty else {
                     self.invalidateActiveRequest()
-                    self.previewPanel?.closePanel()
+                    self.closePeekSurfaces()
                     return
                 }
                 let normalized = self.normalizedSelection(text)
                 if normalized == self.activeSelectionText {
                     self.invalidateActiveRequest()
-                    self.previewPanel?.closePanel()
+                    self.closePeekSurfaces()
                 } else {
-                    self.activatePreview(injectedText: text, contextDirectories: result?.contextDirectories ?? [])
+                    self.activatePreview(injectedText: text, contextDirectories: result?.contextDirectories ?? [],
+                                         selectionBounds: result?.bounds)
                 }
             }
             return
@@ -427,7 +459,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
     /// Core preview pipeline. When `injectedText` is non-nil, skips AX
     /// selection extraction and reuses text already read during a hotkey refresh.
-    private func activatePreview(injectedText: String?, contextDirectories: [URL] = []) {
+    private func activatePreview(injectedText: String?, contextDirectories: [URL] = [],
+                                 selectionBounds: CGRect? = nil) {
         Logger.info("AppDelegate: Preview mode activated\(injectedText != nil ? " (selection refresh)" : "")")
         guard Preferences.shared.peekEnabled else {
             Logger.info("AppDelegate: Preview disabled in preferences")
@@ -444,6 +477,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         isLoadingImage = true
 
         if let text = injectedText {
+            activeAnchor = PeekMiniAnchor(axSelection: selectionBounds, pointer: mousePos)
+            lastPeekSelection = (text, contextDirectories, selectionBounds)
             let anchor: CGPoint
             if let screen = NSScreen.main {
                 let f = screen.frame
@@ -470,9 +505,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             let anchor = mousePos
             var contextDirectories: [URL] = []
 
+            var bounds: CGRect?
             if let result = result, !result.text.isEmpty {
                 selected = result.text
                 contextDirectories = result.contextDirectories
+                bounds = result.bounds
             } else if Preferences.shared.readClipboard,
                       let clipboardResult = self.selectedTextExtractor?.readClipboardDirectly() {
                 Logger.info("AppDelegate: AX empty — falling back to clipboard content")
@@ -485,6 +522,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                 return
             }
 
+            self.activeAnchor = PeekMiniAnchor(axSelection: bounds, pointer: mousePos)
+            self.lastPeekSelection = (selected, contextDirectories, bounds)
             self.proceedWithPreview(text: selected, anchor: anchor, requestID: requestID,
                                     contextDirectories: contextDirectories)
         }
@@ -494,10 +533,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                                     contextDirectories: [URL] = []) {
         guard requestID == activeRequestID else { return }
         activeSelectionText = normalizedSelection(selected)
-        let allHits = pathDetector?.detectAll(selected) ?? []
+        let detector = pathDetector ?? PathDetector()
+        let hits = detector.detectAll(selected, contextDirectories: contextDirectories)
+        detector.classifyRemoteLinks(hits) { [weak self] classified in
+            self?.previewDetectedPaths(classified, selected: selected, anchor: anchor,
+                                       requestID: requestID, contextDirectories: contextDirectories)
+        }
+    }
+
+    private func previewDetectedPaths(_ allHits: [DetectedPath], selected: String, anchor: CGPoint,
+                                      requestID: UInt64, contextDirectories: [URL]) {
+        guard requestID == activeRequestID else { return }
         // A bare name selected in a terminal names a file in its working
         // directory (`ls` output): resolve it in the closest folder that has it
-        // before searching the disk.
+        // before searching the disk. A name cut off before its end is
+        // completed there too, like Tab in the shell.
         var resolved: [DetectedPath] = []
         var unresolvedTokens: [String] = []
         for hit in allHits {
@@ -506,6 +556,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             } else if let token = hit.unresolvedToken {
                 if let local = contextDirectories.lazy.compactMap({ self.mediaPath(named: token, in: $0) }).first {
                     resolved.append(local)
+                } else if !token.contains("/"),
+                          let completed = pathDetector?.completeName(token, in: contextDirectories), !completed.isEmpty {
+                    resolved.append(contentsOf: completed.filter { path in
+                        guard let info = MediaInfo.from(path) else { return false }
+                        return info.kind == .image || info.kind == .video
+                    })
+                    if resolved.isEmpty { unresolvedTokens.append(token) }
                 } else {
                     unresolvedTokens.append(token)
                 }
@@ -534,6 +591,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             HistoryManager.shared.record(selectedText: selected, detectedPaths: resolved)
             if resolved.count == 1, shouldDirectOpen(resolved[0]) {
                 previewPanel?.closeWithoutAffectingContent()
+                dismissPeekMiniKeepingRequest()
                 directOpen(resolved[0])
                 return
             }
@@ -609,9 +667,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         let uniqueTokens = NSOrderedSet(array: tokens).array as? [String] ?? tokens
         
         // 先显示 loading 面板，让用户知道搜索正在进行
-        var loadingInfo = MediaInfo(url: URL(fileURLWithPath: "/dev/null"), isLocal: true, kind: .other)
-        loadingInfo.searchToken = uniqueTokens.first ?? ""
-        self.previewPanel?.showLoading(infos: [loadingInfo], at: anchor)
+        if let miniAnchor = activeAnchor {
+            peekMini?.showLoading(name: uniqueTokens.first ?? "", meta: activeSourceAppName ?? "",
+                                  anchor: miniAnchor)
+        } else {
+            var loadingInfo = MediaInfo(url: URL(fileURLWithPath: "/dev/null"), isLocal: true, kind: .other)
+            loadingInfo.searchToken = uniqueTokens.first ?? ""
+            self.previewPanel?.showLoading(infos: [loadingInfo], at: anchor)
+        }
 
         // 延迟一帧开始搜索，确保 loading UI 有机会先渲染出来。
         // FileNameResolver.resolve 内部的 quickFilesystemMatches 是同步执行的，
@@ -668,9 +731,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
 
                 guard !combined.isEmpty else {
                     let label = uniqueTokens.first ?? ""
+                    self.isLoadingImage = false
+                    if self.peekMini?.isVisible == true {
+                        self.peekMini?.showFailure(name: label, meta: self.activeSourceAppName ?? "",
+                                                   title: "File not found".localized,
+                                                   message: self.missingFileMessage(),
+                                                   retryTitle: "Search again".localized)
+                        PeekDiagnostics.recordMissingFile()
+                        return
+                    }
                     let failMessage = String(format: "No file found matching '%@'".localized, label)
                     self.previewPanel?.updateTile(at: 0, with: nil, failedMessage: failMessage)
-                    self.isLoadingImage = false
                     PeekDiagnostics.recordMissingFile()
                     self.promptForFullDiskAccessIfNeeded()
                     return
@@ -681,10 +752,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                     // Same single-hit shortcut as the fast path — close PreviewPanel
                     // so the user only sees ContentPanel.
                     self.previewPanel?.closeWithoutAffectingContent()
+                    self.dismissPeekMiniKeepingRequest()
                     self.directOpen(combined[0])
                     return
                 }
-                self.loadAndShowMedia(paths: combined, at: anchor, requestID: requestID)
+                let hinted: [String: String] = Dictionary(
+                    spotlight.map { ($0.url.absoluteString, Self.disambiguationHint(for: $0.url)) },
+                    uniquingKeysWith: { first, _ in first })
+                self.loadAndShowMedia(paths: combined, at: anchor, requestID: requestID, hints: hinted)
                 // Apply per-tile hints for Spotlight matches — they sit AFTER the
                 // pre-resolved ones in the combined list.
                 for (offset, match) in spotlight.enumerated() {
@@ -734,7 +809,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         previewModeDeactivated()
     }
 
-    private func loadAndShowMedia(paths: [DetectedPath], at position: CGPoint, requestID: UInt64) {
+    private func loadAndShowMedia(paths: [DetectedPath], at position: CGPoint, requestID: UInt64,
+                                  hints: [String: String] = [:]) {
         guard requestID == activeRequestID else { return }
         isLoadingImage = true
 
@@ -743,11 +819,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         let infos = paths.compactMap { path -> MediaInfo? in
             guard var info = MediaInfo.from(path) else { return nil }
             info.sourceAppName = activeSourceAppName
+            info.disambiguationHint = hints[info.url.absoluteString]
             return info
         }
         guard !infos.isEmpty else {
             isLoadingImage = false
             showErrorTooltip(message: "No media to preview".localized, at: position)
+            return
+        }
+
+        // A hotkey Peek of images or videos opens the small card beside the
+        // selection; ↵ there opens the same Inspect the branches below would.
+        if let miniAnchor = activeAnchor,
+           infos.allSatisfy({ $0.kind == .image || $0.kind == .video }) {
+            let mediaPaths = paths.filter {
+                guard let kind = MediaInfo.from($0)?.kind else { return false }
+                return kind == .image || kind == .video
+            }
+            previewPanel?.closeWithoutAffectingContent()
+            peekMini?.show(paths: mediaPaths, infos: infos, anchor: miniAnchor)
             return
         }
 
@@ -1012,6 +1102,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         activeSelectionText = nil
         activeSourceAppName = nil
         isCheckingVisibleSelection = false
+        activeAnchor = nil
         // Keep the source app so we can re-read its current selection. Never
         // retain old selection text: failed reads must not reopen stale files.
     }
@@ -1053,8 +1144,80 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
         window.makeKeyAndOrderFront(nil)
     }
 
+    // MARK: - Peek Mini
+
+    /// ↵ / click in Peek Mini: the same Inspect a Finder open of these files gets.
+    private func openPeekInspect(infos: [MediaInfo], focusedIndex: Int) {
+        guard !infos.isEmpty else { return }
+        if infos.allSatisfy({ $0.kind == .video }) {
+            openVideoCompare(infos: infos, focusedIndex: focusedIndex)
+            return
+        }
+        let mode: ImageInspectSession.Mode = infos.allSatisfy({ $0.kind == .image })
+            ? (infos.count == 2 ? .compare : .focus)
+            : (infos.count > 1 ? .browse : .focus)
+        openImageInspect(infos: infos, loaded: Array(repeating: nil, count: infos.count),
+                         focusedIndex: focusedIndex, preferredMode: mode)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func peekMiniDidLoad(succeeded: Bool, paths: [DetectedPath]) {
+        isLoadingImage = false
+        if succeeded {
+            successfulRequestID = activeRequestID
+            PeekDiagnostics.recordSuccess(latency: Date().timeIntervalSince(activeRequestStartedAt))
+            return
+        }
+        PeekDiagnostics.recordLoadFailure()
+        let blocked = paths.lazy.compactMap { $0.url }.first { $0.isFileURL && self.isUnderProtectedDirectory($0) }
+        if let blocked, !PermissionManager.shared.isFullDiskAccessGranted {
+            promptForFullDiskAccessIfNeeded(for: blocked)
+        }
+    }
+
+    /// Closes the card without ending the request that is about to hand off.
+    private func dismissPeekMiniKeepingRequest() {
+        guard peekMini?.isVisible == true else { return }
+        let handler = peekMini?.onDismiss
+        peekMini?.onDismiss = nil
+        peekMini?.dismiss()
+        peekMini?.onDismiss = handler
+    }
+
+    /// Body of the "File not found" card: what would let Glance find it.
+    private func missingFileMessage() -> String {
+        #if MAS
+        if !FolderAccess.shared.hasAnyGrant {
+            return "Grant Glance access to the folder that contains this file.".localized
+        }
+        #else
+        if !PermissionManager.shared.isFullDiskAccessGranted {
+            return "Allow Full Disk Access so Glance can look in Desktop and Documents.".localized
+        }
+        #endif
+        return "Nothing on this Mac has this name. Check the spelling, or select the full path.".localized
+    }
+
+    /// Body of the "Can't open this file" card.
+    private func unreadableFileMessage(for url: URL?) -> String {
+        if let url, url.isFileURL, isUnderProtectedDirectory(url) {
+            #if MAS
+            return "Grant Glance access to the folder that contains this file.".localized
+            #else
+            if !PermissionManager.shared.isFullDiskAccessGranted {
+                return "Allow Full Disk Access so Glance can look in Desktop and Documents.".localized
+            }
+            #endif
+        }
+        if let url, !url.isFileURL {
+            return "The download failed. Check your connection, then try again.".localized
+        }
+        return "The file may have moved, or its format can't be read.".localized
+    }
+
     private func showErrorTooltip(message: String, at position: CGPoint) {
         previewPanel?.hidePanel()
+        dismissPeekMiniKeepingRequest()
         errorTooltip?.show(message: message, at: position)
     }
 

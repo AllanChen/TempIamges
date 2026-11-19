@@ -1080,3 +1080,28 @@
 "Could not reach Apple to verify your sign-in. Check your connection and try again." = "サインインを確認するために Apple に接続できませんでした。接続を確認して、もう一度お試しください。";
 "Apple could not confirm this sign-in. Please try again." = "Apple はこのサインインを確認できませんでした。もう一度お試しください。";
 "Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method." = "Apple から確認済みのメールアドレスが共有されませんでした。もう一度 Apple でサインインしてメールの共有または非公開を許可するか、別の方法でサインインしてください。";
+
+/* Text Widget panel */
+"Text" = "テキスト";
+"You can close this window. The task keeps running in Task Center." = "このウィンドウを閉じても、タスクはタスクセンターで続行されます。";
+"Saved to %@" = "%@ に保存しました";
+
+/* Peek Mini */
+"Inspect all" = "すべてをInspect";
+"Choose" = "選択";
+"Search again" = "再検索";
+"Can't open this file" = "このファイルを開けません";
+"%d files named %@" = "同名のファイル %d 件：%@";
+"%1$d of %2$d" = "%1$d / %2$d";
+"Allow Full Disk Access so Glance can look in Desktop and Documents." = "Glance がデスクトップと書類を検索できるよう、フルディスクアクセスを許可してください。";
+"Grant Glance access to the folder that contains this file." = "このファイルを含むフォルダへのアクセスを Glance に許可してください。";
+"Nothing on this Mac has this name. Check the spelling, or select the full path." = "この Mac にこの名前のファイルはありません。綴りを確認するか、フルパスを選択してください。";
+"The download failed. Check your connection, then try again." = "ダウンロードに失敗しました。接続を確認してから、もう一度お試しください。";
+"The file may have moved, or its format can't be read." = "ファイルが移動されたか、形式を読み取れない可能性があります。";
+"Runs on Glance’s servers. Results are saved to ~/Downloads/Glance and listed in Task Center." = "Glance のサーバーで実行されます。結果は ~/Downloads/Glance に保存され、タスクセンターに表示されます。";
+"Text input" = "テキスト入力";
+
+"Open an image to use this Widget." = "このウィジェットを使うには、画像を開いてください。";
+"Open a video to use this Widget." = "このウィジェットを使うには、動画を開いてください。";
+"Open an image or video to use this Widget." = "このウィジェットを使うには、画像または動画を開いてください。";
+"Open a compatible file to use this Widget." = "このウィジェットを使うには、対応するファイルを開いてください。";

@@ -12,6 +12,7 @@
 		0671565D6790C1DBF89A9ADB /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE55BDC72E73C79AA2510706 /* Logger.swift */; };
 		08E7F8E0C92103839501703C /* WidgetTextResultWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 683FA1330AE6960F66402CEE /* WidgetTextResultWindow.swift */; };
 		0BBFF082F2C525465E24CD9C /* TrafficLightButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD5EC8FEB4C74E4FD2B1F95 /* TrafficLightButton.swift */; };
+		0CB2CF99D8FBF939F25E0842 /* PathCompleter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A73CF4E057EFEA70B14223 /* PathCompleter.swift */; };
 		0DB381F28D46F0E9FEC52B75 /* MenuBarCharacterIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7778FC0E93BFD21AD21375E4 /* MenuBarCharacterIcon.swift */; };
 		1046576F0644EB1060E54FD0 /* FilenameCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82487A06B07A2503B6D2FAC1 /* FilenameCache.swift */; };
 		111E01C8F60025EB84F8069F /* ActionMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5E859FF1BD25FBF7B257D3 /* ActionMenu.swift */; };
@@ -30,6 +31,7 @@
 		2C6ED2B68D4E7C2BDC9E9788 /* ContentViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE094D8C91B76410621B788E /* ContentViewerWindow.swift */; };
 		2CFC08E6156FD8C437A95792 /* SystemLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D1849541A8099E0CE3D930 /* SystemLanguage.swift */; };
 		2F5E4D8D94A8616561B956D9 /* Inter-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 47C6E64D2379C95E1D6A4AF4 /* Inter-SemiBold.otf */; };
+		2FCB2AC64BCC5B7B93CF54F0 /* PeekMiniPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E028B8E642BFC972B1210C16 /* PeekMiniPanel.swift */; };
 		3150644BA492DAA8A3FA92CE /* ImageInfoPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A93F29C4F35BF5FC95B9EE /* ImageInfoPanels.swift */; };
 		32697069589E95C992054805 /* AppMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC29D5C8E74F61B1BDC50890 /* AppMenu.swift */; };
 		32E1B978A39515A3B39C158D /* WidgetVideoInputPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F82E165251F706C727584FA7 /* WidgetVideoInputPanel.swift */; };
@@ -72,6 +74,7 @@
 		5E3532E3A1531B8024CA1FA8 /* ImageCompressionDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D2AD5C474EE6E65678F682 /* ImageCompressionDialog.swift */; };
 		5E4E045334F7FC25E0122DDC /* TaskRunningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9506424730AC6E5EE7E50BED /* TaskRunningViews.swift */; };
 		5E586753798EE15EFF1B15C6 /* AnimatedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E73351219F33A10C85BF84C /* AnimatedImage.swift */; };
+		5EC1EAC9C94678C363A7E711 /* TextWidgetPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B49B2415A3C2054C86DC3F8 /* TextWidgetPanel.swift */; };
 		5F444FD84EF50057B8857C3B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1338215DA649C2E61029E245 /* Assets.xcassets */; };
 		605122072CEA432F66242223 /* WidgetTaskCenterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 332A43C95D49B704CAD48FCC /* WidgetTaskCenterWindow.swift */; };
 		61A42E8BE6754C641FD1577A /* ImageFilmstrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F694E38E928E4458F0C675C7 /* ImageFilmstrip.swift */; };
@@ -158,6 +161,7 @@
 		C6FFA737BBDED8CDD78F10F4 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59D8600C79EDF16169AAED1B /* main.swift */; };
 		C8676607E22F7976CCD131AE /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E389BCB266C4E57B04B570 /* AuthManager.swift */; };
 		C9FB0098BE4DF63EE85E0BDF /* TaskRunningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9506424730AC6E5EE7E50BED /* TaskRunningViews.swift */; };
+		CA819FE6BCEA5A5030EB6037 /* PeekMiniPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E028B8E642BFC972B1210C16 /* PeekMiniPanel.swift */; };
 		CB003B71F45E56D441117B42 /* SystemLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40D1849541A8099E0CE3D930 /* SystemLanguage.swift */; };
 		CD5C510EA7F7E836219A354C /* ProPillButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682CE65B8CDCEC0C81B22E50 /* ProPillButton.swift */; };
 		CFAF22798258EE90D4250A0E /* HistoryWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1FEF81F349C3468DF46A45 /* HistoryWindow.swift */; };
@@ -178,6 +182,7 @@
 		E350AC29B350F0DF17BB98FE /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD95F30FC69AA12EDEE59F28 /* PermissionManager.swift */; };
 		E3E2AD8D7041D3D756D6A7CD /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD95F30FC69AA12EDEE59F28 /* PermissionManager.swift */; };
 		E3FEDA131AE21BB1B6560AF4 /* BillingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94B4543009DB84F13E43D528 /* BillingManager.swift */; };
+		E658E92072E477FE833368C4 /* TextWidgetPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B49B2415A3C2054C86DC3F8 /* TextWidgetPanel.swift */; };
 		E70DD0EF7FD2C6194D23FA99 /* OCRResultWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E856A36615679744D2E55D02 /* OCRResultWindow.swift */; };
 		E8A68919EBCFE158D8918BDB /* FilenameCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82487A06B07A2503B6D2FAC1 /* FilenameCache.swift */; };
 		EAD905974F1492E30FA45D8E /* InspectToastWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F782B64022CF60CCC6E4FC2 /* InspectToastWindow.swift */; };
@@ -185,6 +190,7 @@
 		ECD7AB0414E530E0A3F85451 /* VideoInspectPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF7A83906D5A6AB69061F73 /* VideoInspectPanels.swift */; };
 		EEDBCB39C263989AF783FAE6 /* String+Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1226FC2E8B5B461B9BE59026 /* String+Localization.swift */; };
 		F0699577BDE92F2B2E24509E /* ImageExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51BEB3CDB085FBBC275FED72 /* ImageExporter.swift */; };
+		F128D6156B05B4A3FF713A51 /* PathCompleter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A73CF4E057EFEA70B14223 /* PathCompleter.swift */; };
 		F55E55223D0E070F9E2C89A0 /* ImageFilmstrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F694E38E928E4458F0C675C7 /* ImageFilmstrip.swift */; };
 		F72AC3A9B1E7A8985AEBC622 /* LoadFailed.gif in Resources */ = {isa = PBXBuildFile; fileRef = 790B6D57380E5760E9CEA752 /* LoadFailed.gif */; };
 		FA3726F811D7D2CBCEF5EB20 /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC5E9DAF9AC91EB96CAD29B0 /* AppleSignIn.swift */; };
@@ -224,6 +230,7 @@
 		44B8498AE2EA03E7E6B34EE3 /* VideoPlaybackViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlaybackViews.swift; sourceTree = "<group>"; };
 		47C6E64D2379C95E1D6A4AF4 /* Inter-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-SemiBold.otf"; sourceTree = "<group>"; };
 		47E751B36A2BF0A8C393AA72 /* VideoInspectViewport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoInspectViewport.swift; sourceTree = "<group>"; };
+		4B49B2415A3C2054C86DC3F8 /* TextWidgetPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextWidgetPanel.swift; sourceTree = "<group>"; };
 		4DF7A83906D5A6AB69061F73 /* VideoInspectPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoInspectPanels.swift; sourceTree = "<group>"; };
 		4E73351219F33A10C85BF84C /* AnimatedImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedImage.swift; sourceTree = "<group>"; };
 		4F3520FACC62177E559702CE /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
@@ -275,8 +282,10 @@
 		CF1568AF2F359C244E2ADB7F /* WebMStreamingFallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebMStreamingFallback.swift; sourceTree = "<group>"; };
 		D1444931654A6366A56B7972 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D3C65FA46CE8D301D1320A74 /* InspectFileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectFileViews.swift; sourceTree = "<group>"; };
+		D5A73CF4E057EFEA70B14223 /* PathCompleter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathCompleter.swift; sourceTree = "<group>"; };
 		D7E389BCB266C4E57B04B570 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		D9416C486847F99F54B9ACC6 /* WidgetMarketPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetMarketPanel.swift; sourceTree = "<group>"; };
+		E028B8E642BFC972B1210C16 /* PeekMiniPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeekMiniPanel.swift; sourceTree = "<group>"; };
 		E2E2F8F90A0A7276E70FA93C /* PreferencesWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindow.swift; sourceTree = "<group>"; };
 		E45B63508B9704484EB0E9B2 /* CaptureEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEditorView.swift; sourceTree = "<group>"; };
 		E6681C13BACBBD0D74A80EB4 /* Glance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Glance.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -351,8 +360,10 @@
 				7778FC0E93BFD21AD21375E4 /* MenuBarCharacterIcon.swift */,
 				A0B82D153A70DA5590B431D5 /* OnboardingWindow.swift */,
 				C13155D15A2DBA8ED50704C8 /* PanelStyle.swift */,
+				D5A73CF4E057EFEA70B14223 /* PathCompleter.swift */,
 				C94DBC9997333D10A429AA36 /* PathDetector.swift */,
 				3C2064EDFFD2CC7D536C6DDA /* PeekDiagnostics.swift */,
+				E028B8E642BFC972B1210C16 /* PeekMiniPanel.swift */,
 				BD95F30FC69AA12EDEE59F28 /* PermissionManager.swift */,
 				5DC10A80E0682249D4C76FAD /* Preferences.swift */,
 				E2E2F8F90A0A7276E70FA93C /* PreferencesWindow.swift */,
@@ -364,6 +375,7 @@
 				CCE03B0D47694EA64670432E /* StatusBarController.swift */,
 				1226FC2E8B5B461B9BE59026 /* String+Localization.swift */,
 				40D1849541A8099E0CE3D930 /* SystemLanguage.swift */,
+				4B49B2415A3C2054C86DC3F8 /* TextWidgetPanel.swift */,
 				2DD5EC8FEB4C74E4FD2B1F95 /* TrafficLightButton.swift */,
 				207B6A5A2D3E895CC2A33A4D /* TrayPopoverPanel.swift */,
 				43C26EE249858E0FF034FEFB /* VideoCompareWindow.swift */,
@@ -669,8 +681,10 @@
 				E70DD0EF7FD2C6194D23FA99 /* OCRResultWindow.swift in Sources */,
 				6F94A95704D47C99DA429894 /* OnboardingWindow.swift in Sources */,
 				C0AC32D9D0A547CA18139960 /* PanelStyle.swift in Sources */,
+				F128D6156B05B4A3FF713A51 /* PathCompleter.swift in Sources */,
 				3CAFDEFA126A3CC1A722EAB4 /* PathDetector.swift in Sources */,
 				98C79D753D1ABBC823E08270 /* PeekDiagnostics.swift in Sources */,
+				CA819FE6BCEA5A5030EB6037 /* PeekMiniPanel.swift in Sources */,
 				E350AC29B350F0DF17BB98FE /* PermissionManager.swift in Sources */,
 				BEB40E38534353ADCDEE7BFF /* Preferences.swift in Sources */,
 				9F15151C8AEF0FF3231B2B37 /* PreferencesWindow.swift in Sources */,
@@ -683,6 +697,7 @@
 				6BCCA9F02C1BD00F5E90E767 /* String+Localization.swift in Sources */,
 				CB003B71F45E56D441117B42 /* SystemLanguage.swift in Sources */,
 				C9FB0098BE4DF63EE85E0BDF /* TaskRunningViews.swift in Sources */,
+				E658E92072E477FE833368C4 /* TextWidgetPanel.swift in Sources */,
 				0BBFF082F2C525465E24CD9C /* TrafficLightButton.swift in Sources */,
 				BA767D33BB12EEDABB7AE376 /* TrayPopoverPanel.swift in Sources */,
 				D1BCC444B433A39CD097B9D1 /* VideoCompareWindow.swift in Sources */,
@@ -758,8 +773,10 @@
 				3D84D54A272C34328055F7F6 /* OCRResultWindow.swift in Sources */,
 				51FFD25FB60810929EC2166E /* OnboardingWindow.swift in Sources */,
 				23351DDC3268AF8896BC75B2 /* PanelStyle.swift in Sources */,
+				0CB2CF99D8FBF939F25E0842 /* PathCompleter.swift in Sources */,
 				6517E9498999A7FDDDDD7727 /* PathDetector.swift in Sources */,
 				6CDFBE0A9C72E5FF9D433488 /* PeekDiagnostics.swift in Sources */,
+				2FCB2AC64BCC5B7B93CF54F0 /* PeekMiniPanel.swift in Sources */,
 				E3E2AD8D7041D3D756D6A7CD /* PermissionManager.swift in Sources */,
 				B0D706856EF690BF636AC184 /* Preferences.swift in Sources */,
 				4C6BAE97FDAAFBADB096007E /* PreferencesWindow.swift in Sources */,
@@ -772,6 +789,7 @@
 				EEDBCB39C263989AF783FAE6 /* String+Localization.swift in Sources */,
 				2CFC08E6156FD8C437A95792 /* SystemLanguage.swift in Sources */,
 				5E4E045334F7FC25E0122DDC /* TaskRunningViews.swift in Sources */,
+				5EC1EAC9C94678C363A7E711 /* TextWidgetPanel.swift in Sources */,
 				36190ACF12F79CE1E8E5926E /* TrafficLightButton.swift in Sources */,
 				71331F7B62DF6B17CACBD94B /* TrayPopoverPanel.swift in Sources */,
 				DA16731AF957758F1AB545E7 /* VideoCompareWindow.swift in Sources */,

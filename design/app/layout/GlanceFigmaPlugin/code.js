@@ -6033,6 +6033,138 @@ async function generateWidgetFlow(bytes) {
   figma.notify('Revised Widget input and output pages created');
 }
 
+// Mask input, draw only. A Widget that declares `mask` shows only "Draw mask" (no upload), a Widget without `prompt`
+// shows no prompt field at all, and the editor has a single brush (selected by default, no eraser) in Glance's
+// accent color; the pointer over the canvas is a circle the size of the brush, not a crosshair.
+const MASK_DRAW_ONLY_NAMES = [
+  'Widget Input / 03 / Image + Text + Mask / Draw Only',
+  'Widget Input / 03B / Image + Mask Only / Draw Only',
+  'Widget Input / Draw Mask / Brush Only'
+];
+
+// What the mask field shows once an area is drawn: a dark tile with the accent over the selected area.
+function maskDrawnPreview(parent, x, y, width, height) {
+  rect('Mask Preview', parent, x, y, width, height, '#24252A', 8, COLORS.line);
+  const size = Math.round(Math.min(width, height) * .52);
+  const blob = ellipse('Mask Preview / selected area', parent, x + Math.round(width * .30), y + Math.round(height * .2), size, COLORS.accent);
+  blob.opacity = .55;
+}
+
+function widgetPageImageMaskDrawOnly(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(MASK_DRAW_ONLY_NAMES[0], x, y,
+    'Input  ·  Image + text + mask', 'Draw the area to change');
+  const card = widgetPagePanel(body, 'Image, prompt and mask',
+    'Choose the image, describe the edit, then draw the mask.', 250, 1054);
+  simpleWidgetArt(card, 'Selected Image', 32, 113, 470, 488, imageHash, ['#25323A', '#A47761', '#293B33']);
+  text('Image Filename', card, 'portrait.jpg  ·  6.8 MB', 32, 616, 12, COLORS.secondary);
+  widgetPromptField(card, 526, 113, 496, 145, 'Replace the background with a garden');
+  text('Mask Label', card, 'MASK', 526, 318, 11, COLORS.muted, 'semibold');
+  const mask = panel(card, 'Mask Field', 526, 342, 496, 223, '#101115', 9);
+  maskDrawnPreview(mask, 17, 17, 169, 145);
+  text('Mask Help', mask, 'Select the area to change', 204, 31, 12, COLORS.text, 'medium');
+  text('Mask Hint', mask, 'Paint it on the image.', 204, 57, 11, COLORS.muted);
+  simpleWidgetAction(mask, 'Draw mask', 17, 178, 462);
+  simpleWidgetAction(card, 'Change image', 32, 671, 150);
+  simpleWidgetAction(card, 'Run Widget', 816, 671, 206, true);
+  createStatusbar(root, 'Input  ·  image + text + mask', 'The mask is drawn on the image');
+  return screen;
+}
+
+function widgetPageMaskOnlyDrawOnly(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(MASK_DRAW_ONLY_NAMES[1], x, y,
+    'Input  ·  Image + mask', 'This Widget has no prompt');
+  const card = widgetPagePanel(body, 'Image and mask',
+    'Choose an image, then draw the area to change.', 250, 1054);
+  simpleWidgetArt(card, 'Selected Image', 32, 113, 470, 488, imageHash, ['#25323A', '#A47761', '#293B33']);
+  text('Image Filename', card, 'portrait.jpg  ·  6.8 MB', 32, 616, 12, COLORS.secondary);
+  // No prompt field at all: the mask takes the whole right column.
+  text('Mask Label', card, 'MASK', 526, 113, 11, COLORS.muted, 'semibold');
+  const mask = panel(card, 'Mask Field', 526, 137, 496, 428, '#101115', 9);
+  maskDrawnPreview(mask, 17, 17, 462, 300);
+  text('Mask Help', mask, 'Select the area to change', 17, 333, 12, COLORS.text, 'medium');
+  text('Mask Hint', mask, 'Paint it on the image.', 17, 355, 11, COLORS.muted);
+  simpleWidgetAction(mask, 'Draw mask', 17, 378, 462);
+  simpleWidgetAction(card, 'Change image', 32, 671, 150);
+  simpleWidgetAction(card, 'Run Widget', 816, 671, 206, true);
+  createStatusbar(root, 'Input  ·  image + mask', 'No prompt field: the Widget does not accept one');
+  return screen;
+}
+
+function widgetPageDrawMaskBrushOnly(x, y, imageHash) {
+  const { screen, root, body } = widgetPageShell(MASK_DRAW_ONLY_NAMES[2], x, y,
+    'Input  ·  Draw mask', 'Paint the area the Widget should change');
+  const editor = panel(body, '04 / Mask Editor', 172, 42, 1210, 740, COLORS.surface, 14);
+  text('Title', editor, 'Draw mask', 32, 26, 24, COLORS.text, 'semibold');
+  text('Subtitle', editor, 'Paint over the area you want to change.', 32, 63, 12, COLORS.secondary);
+  rect('Header Divider', editor, 32, 94, 1146, 1, COLORS.line);
+  const canvas = panel(editor, 'Image Canvas', 32, 113, 821, 537, '#101115', 9);
+  simpleWidgetArt(canvas, 'Source Image', 10, 10, 801, 517, imageHash, ['#25323A', '#A47761', '#293B33']);
+  const painted = frame('Painted Mask Overlay', 296, 113, 306, 274, null, 0);
+  painted.fills = [];
+  canvas.appendChild(painted);
+  for (let i = 0; i < 7; i++) {
+    // The brush paints in Glance's accent color.
+    const stroke = ellipse('Mask Brush Stroke', painted, 24 + (i % 3) * 72, 12 + i * 30, 76, COLORS.accent);
+    stroke.opacity = .42;
+  }
+  // The pointer over the canvas is a circle the size of the brush (here 32 px), not a crosshair.
+  const cursor = ellipse('Brush Cursor (circle, replaces the crosshair)', canvas, 624, 300, 32, '#FFFFFF');
+  cursor.fills = [];
+  cursor.strokes = [fill('#FFFFFF', .95)];
+  cursor.strokeWeight = 1.5;
+  cursor.effects = [{ type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .55 }, offset: { x: 0, y: 0 },
+                      radius: 2, spread: 0, visible: true, blendMode: 'NORMAL' }];
+  const controls = panel(editor, 'Mask Tools', 877, 113, 301, 537, '#101115', 9);
+  text('Tools Label', controls, 'TOOLS', 20, 22, 11, COLORS.muted, 'semibold');
+  // One tool: the brush, selected by default. There is no eraser (Undo and Clear mask cover mistakes).
+  simpleWidgetAction(controls, 'Brush', 20, 55, 261, true);
+  text('Brush Size Label', controls, 'BRUSH SIZE', 20, 119, 11, COLORS.muted, 'semibold');
+  rect('Brush Size Track', controls, 20, 152, 261, 5, COLORS.line, 3);
+  rect('Brush Size Fill', controls, 20, 152, 113, 5, COLORS.accent, 3);
+  ellipse('Brush Size Knob', controls, 126, 146, 17, '#F3EEE8');
+  text('Brush Size Value', controls, '32 px', 20, 173, 11, COLORS.secondary);
+  rect('Tools Divider', controls, 20, 210, 261, 1, COLORS.line);
+  simpleWidgetAction(controls, 'Undo', 20, 232, 124);
+  simpleWidgetAction(controls, 'Clear mask', 157, 232, 124);
+  text('Mask Guide', controls, 'The highlighted area will be changed.', 20, 291, 12, COLORS.secondary);
+  text('Source Guide', controls, 'The source image stays visible while you draw.', 20, 318, 11, COLORS.muted, 'regular', 260);
+  simpleWidgetAction(editor, 'Cancel', 902, 671, 124);
+  simpleWidgetAction(editor, 'Use mask', 1038, 671, 140, true);
+  text('Canvas Filename', editor, 'portrait.jpg  ·  mask preview', 32, 681, 12, COLORS.secondary);
+  createStatusbar(root, 'Input  ·  draw mask', 'Brush · Undo · Clear');
+  return screen;
+}
+
+async function generateMaskDrawOnlyPages(bytes) {
+  await loadFonts();
+  await createStyles();
+  const page = figma.currentPage;
+  const present = MASK_DRAW_ONLY_NAMES.map(name => page.children.find(node => node.name === name));
+  if (present.every(Boolean)) {
+    page.selection = present;
+    figma.viewport.scrollAndZoomIntoView(present);
+    figma.ui.postMessage({ message: 'The draw-only mask pages already exist. Showing them without changing your edits.' });
+    return;
+  }
+  const imageHash = bytes && bytes.length ? figma.createImage(new Uint8Array(bytes)).hash : null;
+  const firstIndex = present.findIndex(Boolean);
+  let startX;
+  if (firstIndex >= 0) {
+    startX = present[firstIndex].x - firstIndex * 1750;
+  } else {
+    let maxX = 0;
+    for (const child of page.children) maxX = Math.max(maxX, child.x + child.width);
+    startX = maxX + 196;
+  }
+  const creators = [widgetPageImageMaskDrawOnly, widgetPageMaskOnlyDrawOnly, widgetPageDrawMaskBrushOnly];
+  creators.forEach((create, index) => { if (!present[index]) create(startX + index * 1750, 0, imageHash); });
+  const created = MASK_DRAW_ONLY_NAMES.map(name => page.children.find(node => node.name === name));
+  page.selection = created;
+  figma.viewport.scrollAndZoomIntoView(created);
+  figma.ui.postMessage({ message: 'Created the draw-only mask pages: image + text + mask, image + mask without a prompt field, and the brush-only editor.' });
+  figma.notify('Draw-only mask pages created');
+}
+
 const WIDGET_OSS_RESULT_SOURCE_NAME = 'Widget Output / Image URL / OSS Result';
 const WIDGET_OSS_RESULT_NAME = 'Widget Output / Image URL / OSS Result / Refined';
 
@@ -7371,6 +7503,768 @@ async function generateWidgetTaskRunningStudy(bytes) {
   figma.notify('Widget Task Running study created');
 }
 
+// Window placement study. The Image and Video Inspect windows used to grow to 96% of the usable
+// screen (`visibleFrame`), so a large or tall image left only ~2% below the menu bar. This study
+// proposes a ceiling of 88% of the usable width and height, with the window centered in the usable
+// area, so it never touches the menu bar or the Dock. Four scenes: image and video, landscape and
+// portrait, each with a real photo. The landscape image window is a clone of the user's Focus frame.
+const WINDOW_PLACEMENT_NAMES = {
+  imageLandscape: 'Window Placement / Image Inspect / Landscape',
+  imagePortrait: 'Window Placement / Image Inspect / Portrait',
+  videoLandscape: 'Window Placement / Video Inspect / Landscape',
+  videoPortrait: 'Window Placement / Video Inspect / Portrait',
+  imageLandscapeBar: 'Window Placement / Image Inspect / Landscape / Top Bar',
+  imagePortraitBar: 'Window Placement / Image Inspect / Portrait / Top Bar',
+  videoLandscapeBar: 'Window Placement / Video Inspect / Landscape / Top Bar',
+  videoPortraitBar: 'Window Placement / Video Inspect / Portrait / Top Bar',
+  imageLandscapeBarHidden: 'Window Placement / Image Inspect / Landscape / Top Bar / Toolbar hidden',
+  imagePortraitBarHidden: 'Window Placement / Image Inspect / Portrait / Top Bar / Toolbar hidden',
+  imageLandscapeBarRunning: 'Window Placement / Image Inspect / Landscape / Top Bar / Task running',
+  imagePortraitBarRunning: 'Window Placement / Image Inspect / Portrait / Top Bar / Task running'
+};
+const WINDOW_TOP_BAR = 28;      // the solid top bar (the chosen height: the standard macOS title bar); the media starts directly beneath it
+const WINDOW_BAR_HEIGHT = 54;   // the toolbar's height
+const WINDOW_PLACEMENT_SPEC = 'Window Placement / Spec';
+const WINDOW_PLACEMENT_RATIO = 0.88;
+const WINDOW_CURRENT_RATIO = 0.96;
+const DESKTOP_MENU_BAR = 44;
+const DESKTOP_DOCK = 84;
+const WINDOW_DESIGN = { landscape: [1554, 1012], portrait: [570, 1012] };
+
+function placementMeasure(parent, name, x, y1, y2, label, color, side) {
+  rect(name + ' / line', parent, x, y1, 2, y2 - y1, color);
+  rect(name + ' / cap top', parent, x - 8, y1, 18, 2, color);
+  rect(name + ' / cap bottom', parent, x - 8, y2 - 2, 18, 2, color);
+  const chipW = 176;
+  const chip = frame(name + ' / label', side === 'right' ? x + 16 : x - 16 - chipW,
+                     Math.round((y1 + y2) / 2) - 13, chipW, 26, null, 6);
+  chip.fills = [fill('#0B0C0F', .88)];
+  chip.strokes = [fill(color)];
+  chip.strokeWeight = 1;
+  parent.appendChild(chip);
+  text('Label', chip, label, 0, 6, 12, color, 'semibold', chipW, 'CENTER');
+}
+
+// An Inspect window with a real photo: the same floating window controls and toolbar as the production
+// frames; a video also gets its floating playback bar (the timeline is the only part that flexes).
+// The toolbar's material, shared by every floating pill so the top bar looks exactly like the toolbar.
+function floatingPill(parent, name, x, y, width, height = WINDOW_BAR_HEIGHT) {
+  const pill = frame(name, x, y, width, height, null, 15);
+  pill.fills = [fill('#161719', .90)];
+  pill.strokes = [fill('#FFFFFF', .12)];
+  pill.strokeWeight = 1;
+  pill.effects = [
+    { type: 'BACKGROUND_BLUR', radius: 18, visible: true },
+    { type: 'DROP_SHADOW', color: { r: .08, g: .09, b: .10, a: .24 }, offset: { x: 0, y: 8 },
+      radius: 24, spread: 0, visible: true, blendMode: 'NORMAL' }
+  ];
+  parent.appendChild(pill);
+  return pill;
+}
+
+// An Inspect window with a real photo. `options.topBar` adds the solid 56 pt top bar (otherwise only the three
+// window controls float over the photo); `options.state` is 'visible', 'hidden' (chrome auto-hidden) or 'running'.
+// A video also gets its floating playback bar (the timeline is the only part that flexes).
+function createInspectWindowMock(kind, width, height, imageHash, options = {}) {
+  const isVideo = kind === 'video';
+  const topBar = !!options.topBar;
+  const state = options.state || 'visible';
+  const portrait = width < height;
+  const barH = topBar ? WINDOW_TOP_BAR : 0;
+  const board = frame('Inspect Window / ' + kind, 0, 0, width, height, '#0B0C0F', 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+  // Without a top bar the photo is the window's own fill and the window controls float over it. With a top bar
+  // the photo sits directly below a solid title bar (controls, centered title and filename, hairline).
+  const photo = topBar ? rect('Photo', board, 0, barH, width, height - barH, null, 0) : board;
+  if (imageHash) photo.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  else artworkFill(photo, ['#121C27', '#715041', '#1C2E28']);
+
+  let bar = null;
+  if (topBar) {
+    bar = frame('00 / Titlebar', 0, 0, width, barH, COLORS.chrome, 0);
+    board.appendChild(bar);
+    drawTopBarContent(bar, width, TOP_BAR_VARIANTS.find(variant => variant.height === barH),
+      isVideo ? 'clip.mov' : (portrait ? 'portrait.jpg' : 'alpine-lake.jpg'));
+  } else {
+    createFloatingSystemControls(board);
+  }
+  // The toolbar floats 24 pt below the top bar (24 pt from the top without one).
+  const toolbar = createFloatingInspectToolbar(board, width, 'Focus', isVideo ? 'videoFocus' : 'focus');
+  toolbar.y = barH + 24;
+
+  if (state === 'hidden') {
+    // The toolbar fades out (0.2 s) when the pointer leaves the window and returns on mouse move. The top bar is always
+    // shown: it does not follow the toolbar, and the photo stays full-bleed under it.
+    toolbar.opacity = 0;
+    const note = floatingPill(board, 'Auto-hide note', Math.round((width - Math.min(width - 48, 470)) / 2), barH + 24,
+                              Math.min(width - 48, 470), 44);
+    note.fills = [fill('#0B0C0F', .62)];
+    note.effects = [];
+    text('Auto-hide message', note, 'Pointer away  →  the toolbar fades out, the top bar stays',
+         0, 14, 12, COLORS.secondary, 'medium', Math.min(width - 48, 470), 'CENTER');
+  }
+
+  if (state === 'running') {
+    // The running indicator takes the toolbar row's right end; a wide toolbar slides left to make room.
+    const indicatorX = width - 24 - 34;
+    const indicator = frame('Task running indicator', indicatorX, barH + 24 + (WINDOW_BAR_HEIGHT - 34) / 2, 34, 34, null, 17);
+    indicator.fills = [fill('#161719', .90)];
+    indicator.strokes = [fill('#FFFFFF', .12)];
+    indicator.strokeWeight = 1;
+    indicator.effects = [{ type: 'DROP_SHADOW', color: { r: .91, g: .66, b: .49, a: .35 }, offset: { x: 0, y: 0 },
+                           radius: 10, spread: 0, visible: true, blendMode: 'NORMAL' }];
+    board.appendChild(indicator);
+    ellipse('Peeker', indicator, 9, 9, 16, COLORS.accent);
+    toolbar.x = Math.min(toolbar.x, indicatorX - 12 - 274);
+    const ring = rect('Main Image / breathing border', board, 4, barH + 4, width - 8, height - barH - 8, null, 12, COLORS.accent);
+    ring.strokeWeight = 2;
+    ring.strokes = [fill(COLORS.accent, .8)];
+    const chipW = Math.min(width - 48, 320);
+    const chip = floatingPill(board, 'Task running chip', Math.round((width - chipW) / 2), height - 96, chipW, 48);
+    text('Task running text', chip, 'Remove Background  ·  Task running', 0, 15, 13, COLORS.text, 'medium', chipW, 'CENTER');
+  }
+
+  if (isVideo) {
+    const playW = Math.min(800, width - 48);
+    const trackW = playW - 190;
+    const progressW = Math.round(trackW * .39);
+    const playback = frame('02 / Floating Playback Controls', Math.round((width - playW) / 2), height - 80, playW, 56, null, 15);
+    playback.fills = [fill('#161719', .90)];
+    playback.strokes = [fill('#FFFFFF', .12)];
+    playback.strokeWeight = 1;
+    playback.effects = [
+      { type: 'BACKGROUND_BLUR', radius: 18, visible: true },
+      { type: 'DROP_SHADOW', color: { r: .08, g: .09, b: .10, a: .28 },
+        offset: { x: 0, y: 8 }, radius: 24, spread: 0, visible: true, blendMode: 'NORMAL' }
+    ];
+    board.appendChild(playback);
+    lightIconButton(playback, 'Play', 'play', 8, true);
+    rect('Timeline Track', playback, 62, 26, trackW, 4, '#4A4B50', 2);
+    rect('Timeline Progress', playback, 62, 26, progressW, 4, COLORS.accent, 2);
+    ellipse('Timeline Knob', playback, 62 + progressW - 6, 21, 14, COLORS.accent);
+    text('Time', playback, '00:37 / 01:42', playW - 112, 20, 11, '#F3F3F3', 'medium', 92, 'RIGHT');
+  }
+  return board;
+}
+
+function createWindowPlacementDesktop(x, y, name, windowNode, windowName, styleLabel) {
+  const winW = Math.round(windowNode.width);
+  const winH = Math.round(windowNode.height);
+  const visibleH = Math.round(winH / WINDOW_PLACEMENT_RATIO);
+  const height = DESKTOP_MENU_BAR + visibleH + DESKTOP_DOCK;
+  // An even width keeps the window exactly centered (window widths are even).
+  const width = Math.round(Math.max(height * 1.6, winW / .72) / 2) * 2;
+  const desktop = frame(name, x, y, width, height, null, 16);
+  artworkFill(desktop, ['#0E141B', '#2B2330', '#102019']);
+  desktop.strokes = [fill(COLORS.line)];
+  desktop.strokeWeight = 1;
+  figma.currentPage.appendChild(desktop);
+
+  const bar = frame('Menu Bar', 0, 0, width, DESKTOP_MENU_BAR, null, 0);
+  bar.fills = [fill('#0B0C0F', .78)];
+  desktop.appendChild(bar);
+  text('Menu / App', bar, 'Glance', 28, 13, 15, COLORS.text, 'semibold');
+  text('Menu / Items', bar, 'File     Edit     View     Window     Help', 104, 14, 14, COLORS.secondary);
+  text('Menu / Clock', bar, 'Fri 13 Nov   14:20', width - 214, 14, 14, COLORS.text, 'medium', 190, 'RIGHT');
+
+  const dockW = 760;
+  const dock = frame('Dock', Math.round((width - dockW) / 2), height - DESKTOP_DOCK + 12, dockW, 68, null, 22);
+  dock.fills = [fill('#FFFFFF', .14)];
+  dock.strokes = [fill('#FFFFFF', .18)];
+  dock.strokeWeight = 1;
+  desktop.appendChild(dock);
+  ['#5B8DEF', '#E8A87C', '#61C554', '#F4BF4F', '#C879E8', '#ED6A5E', '#58C7C7', '#9AA0A6', '#7A86FF']
+    .forEach((color, index) => rect('Dock Icon ' + (index + 1), dock, 22 + index * 80, 10, 48, 48, color, 11));
+
+  const usableTop = DESKTOP_MENU_BAR;
+  const usable = rect('Usable screen area (visibleFrame)', desktop, 0, usableTop, width, visibleH, null, 0, COLORS.accent);
+  usable.dashPattern = [10, 8];
+  text('Usable Label', desktop, 'Usable screen area  ·  below the menu bar, above the Dock', 18, usableTop + 10, 11, COLORS.accent, 'medium');
+  text('Style Label', desktop, styleLabel, width - 458, usableTop + 10, 12, COLORS.text, 'semibold', 440, 'RIGHT');
+
+  const winX = Math.round((width - winW) / 2);
+  const gap = Math.round((visibleH - winH) / 2);
+  const winY = usableTop + gap;
+
+  const ghostH = Math.round(visibleH * WINDOW_CURRENT_RATIO);
+  const ghostGap = Math.round((visibleH - ghostH) / 2);
+  const ghost = rect('Current window ceiling (96%)', desktop, winX, usableTop + ghostGap, winW, ghostH, null, 16, '#E5675A');
+  ghost.dashPattern = [8, 6];
+
+  windowNode.name = windowName;
+  desktop.appendChild(windowNode);
+  windowNode.x = winX;
+  windowNode.y = winY;
+  windowNode.effects = [{
+    type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: .45 }, offset: { x: 0, y: 24 },
+    radius: 60, spread: 0, visible: true, blendMode: 'NORMAL'
+  }];
+
+  const pct = value => Math.round(value / visibleH * 100) + '%';
+  placementMeasure(desktop, 'Current top gap', winX - 40, usableTop, usableTop + ghostGap,
+                   'Now  ' + ghostGap + ' pt  ·  ' + pct(ghostGap), '#E5675A', 'left');
+  placementMeasure(desktop, 'Proposed top gap', winX + winW + 40, usableTop, winY,
+                   'Top gap  ' + gap + ' pt  ·  ' + pct(gap), COLORS.accent, 'right');
+  placementMeasure(desktop, 'Proposed bottom gap', winX + winW + 40, winY + winH, usableTop + visibleH,
+                   'Bottom gap  ' + gap + ' pt  ·  ' + pct(gap), COLORS.accent, 'right');
+  return desktop;
+}
+
+function createWindowPlacementSpec(x, y, width) {
+  const card = frame(WINDOW_PLACEMENT_SPEC, x, y, width, 560, COLORS.surface, 14);
+  card.strokes = [fill(COLORS.line)];
+  card.strokeWeight = 1;
+  figma.currentPage.appendChild(card);
+  text('Title', card, 'Image & Video Inspect  ·  window placement', 32, 28, 22, COLORS.text, 'semibold');
+  text('Subtitle', card, 'Proposal: leave a margin around the window instead of filling the screen up to the menu bar.', 32, 62, 12, COLORS.secondary);
+  rect('Divider', card, 32, 92, width - 64, 1, COLORS.line);
+  const lines = [
+    ['Size ceiling', 'Window width and height are at most 88% of the usable screen (visibleFrame). Today the ceiling is 96%, which leaves about 2% under the menu bar.'],
+    ['Position', 'The window is centered in the usable area, so the top and bottom gaps are equal (about 6%, shown in the scenes above) and it never touches the menu bar or the Dock.'],
+    ['Portrait', 'A portrait photo or video is limited by height, so its window stays narrow (here 570 pt) with the same top and bottom gaps; the floating toolbar and playback bar keep their size.'],
+    ['Top bar', 'Scenes marked “Top Bar” add a solid 28 pt title bar (the standard macOS height): window controls on the left and just the filename centered (no “Image Inspect” / “Video Inspect” prefix), a hairline below. The photo starts directly under it and the toolbar floats 24 pt below the bar. In the app the window grows by 28 pt so the media keeps its aspect ratio.'],
+    ['Display states', 'The top bar is always shown: it does not follow the toolbar. Toolbar hidden: when the pointer leaves the window (or after 3 s without movement) only the toolbar fades out (0.2 s) and returns on mouse move; the bar stays and the photo stays full-bleed under it, edge to edge on the left, right and bottom. Task running: the running indicator takes the toolbar row\'s right end, the toolbar slides left, and the breathing border and the task chip appear.'],
+    ['Unchanged', 'The window keeps the media aspect ratio and the 560 × 360 minimum. Only the ceiling changes, and it applies when a window opens or is fitted to a new image.'],
+    ['Reading the scenes', 'Orange dashes: usable area. Red dashes: the current 96% ceiling. Orange measures: the proposed gaps. The landscape image window is a clone of your Focus frame; the others use the same window controls and toolbar.']
+  ];
+  lines.forEach(([label, value], index) => {
+    const lineY = 112 + index * 62;
+    text('Label ' + (index + 1), card, label.toUpperCase(), 32, lineY + 2, 11, COLORS.muted, 'semibold');
+    paragraph('Text ' + (index + 1), card, value, 220, lineY, width - 252, 13, COLORS.text);
+  });
+  return card;
+}
+
+async function generateWindowPlacementStudy(message) {
+  await loadFonts();
+  await createStyles();
+  // Order: the floating-controls scenes first (rows 1-2, the original study), then the top bar scenes (rows 3-4).
+  // Order: the floating-controls scenes first (rows 1-2), then the top bar scenes (rows 3-4), then the
+  // top bar's auto-hidden and running states for the image window (rows 5-6).
+  const keys = Object.keys(WINDOW_PLACEMENT_NAMES);
+  const existing = keys.map(key => figma.currentPage.children.find(child => child.name === WINDOW_PLACEMENT_NAMES[key]));
+  if (existing.every(Boolean)) {
+    figma.currentPage.selection = existing;
+    figma.viewport.scrollAndZoomIntoView(existing);
+    figma.ui.postMessage({ message: 'Window placement frames already exist. Showing them without changing your edits.' });
+    return;
+  }
+  const input = message || {};
+  const photo = bytes => bytes && bytes.length ? figma.createImage(new Uint8Array(bytes)).hash : null;
+  const landscapeHash = photo(input.landscape || input.bytes);
+  const portraitHash = photo(input.portrait || input.bytes);
+  const [landscapeW, landscapeH] = WINDOW_DESIGN.landscape;
+  const [portraitW, portraitH] = WINDOW_DESIGN.portrait;
+
+  const makeWindow = {
+    imageLandscape: () => {
+      const source = findFrameByNames(FOCUS_FRAME_NAMES);
+      if (source && landscapeHash) {
+        const clone = source.clone();
+        clone.fills = [{ type: 'IMAGE', imageHash: landscapeHash, scaleMode: 'FILL' }];
+        return clone;
+      }
+      return source ? source.clone() : createInspectWindowMock('image', landscapeW, landscapeH, landscapeHash);
+    },
+    imagePortrait: () => createInspectWindowMock('image', portraitW, portraitH, portraitHash),
+    videoLandscape: () => createInspectWindowMock('video', landscapeW, landscapeH, landscapeHash),
+    videoPortrait: () => createInspectWindowMock('video', portraitW, portraitH, portraitHash),
+    imageLandscapeBar: () => createInspectWindowMock('image', landscapeW, landscapeH, landscapeHash, { topBar: true }),
+    imagePortraitBar: () => createInspectWindowMock('image', portraitW, portraitH, portraitHash, { topBar: true }),
+    videoLandscapeBar: () => createInspectWindowMock('video', landscapeW, landscapeH, landscapeHash, { topBar: true }),
+    videoPortraitBar: () => createInspectWindowMock('video', portraitW, portraitH, portraitHash, { topBar: true }),
+    imageLandscapeBarHidden: () => createInspectWindowMock('image', landscapeW, landscapeH, landscapeHash, { topBar: true, state: 'hidden' }),
+    imagePortraitBarHidden: () => createInspectWindowMock('image', portraitW, portraitH, portraitHash, { topBar: true, state: 'hidden' }),
+    imageLandscapeBarRunning: () => createInspectWindowMock('image', landscapeW, landscapeH, landscapeHash, { topBar: true, state: 'running' }),
+    imagePortraitBarRunning: () => createInspectWindowMock('image', portraitW, portraitH, portraitHash, { topBar: true, state: 'running' })
+  };
+  const windowNames = {};
+  for (const key of keys) {
+    const kind = key.startsWith('video') ? 'Video' : 'Image';
+    const orientation = key.includes('Portrait') ? 'Portrait' : 'Landscape';
+    const suffix = key.endsWith('BarHidden') ? ' · Top Bar · Toolbar hidden'
+      : key.endsWith('BarRunning') ? ' · Top Bar · Task running'
+      : key.endsWith('Bar') ? ' · Top Bar' : '';
+    windowNames[key] = 'Window / ' + kind + ' Inspect · ' + orientation + suffix;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const firstExisting = existing.find(Boolean);
+  const originX = firstExisting ? firstExisting.x : maxX + 240;
+  const originY = firstExisting ? existing.filter(Boolean).reduce((top, node) => Math.min(top, node.y), Infinity) : 0;
+  const columnStep = Math.round(landscapeW / .72) + 200;
+  const rowStep = Math.round(landscapeH / WINDOW_PLACEMENT_RATIO) + DESKTOP_MENU_BAR + DESKTOP_DOCK + 200;
+  const desktops = [];
+  const spec = figma.currentPage.children.find(child => child.name === WINDOW_PLACEMENT_SPEC);
+  // New rows never overlap what is already there (including an earlier spec card).
+  let belowExisting = originY;
+  for (const node of [...existing.filter(Boolean), spec].filter(Boolean)) belowExisting = Math.max(belowExisting, node.y + node.height + 200);
+  keys.forEach((key, index) => {
+    if (existing[index]) { desktops.push(existing[index]); return; }
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const rowY = row < 2 ? originY + row * rowStep
+      : (spec ? belowExisting + (row - 2) * rowStep : originY + row * rowStep);
+    const styleLabel = key.endsWith('BarHidden') ? 'B  ·  Top bar  ·  toolbar hidden'
+      : key.endsWith('BarRunning') ? 'B  ·  Top bar  ·  task running'
+      : key.endsWith('Bar') ? 'B  ·  With top bar (always shown)' : 'A  ·  Floating window controls (current)';
+    const desktop = createWindowPlacementDesktop(Math.round(originX + column * columnStep), Math.round(rowY),
+      WINDOW_PLACEMENT_NAMES[key], makeWindow[key](), windowNames[key], styleLabel);
+    desktops.push(desktop);
+  });
+  const rowBottom = Math.max(...desktops.map(desktop => desktop.y + desktop.height));
+  if (!spec) createWindowPlacementSpec(desktops[0].x, rowBottom + 160, Math.min(1240, desktops[0].width));
+  figma.currentPage.selection = desktops;
+  figma.viewport.scrollAndZoomIntoView(desktops);
+  figma.ui.postMessage({ message: 'Created the window placement scenes: image and video, landscape and portrait, with floating controls (A) and a solid, always-shown top bar (B), plus the toolbar-hidden and task-running states. Existing scenes were left unchanged.' });
+  figma.notify('Window placement study created');
+}
+
+// Top bar height study: the same window with four bar heights side by side. The media area is identical, so the
+// window is exactly the bar's height taller (as in the app); only the bar changes. Tall bars keep the title and the
+// filename on two lines; short ones put them on one line.
+const TOP_BAR_HEIGHT_STUDY = 'Window Placement / Top Bar Height Study';
+const TOP_BAR_VARIANTS = [
+  { height: 56, label: '56 pt', note: 'Filename only, centered.' },
+  { height: 44, label: '44 pt', note: 'Filename only, centered.' },
+  { height: 36, label: '36 pt', note: 'Filename only, centered.' },
+  { height: 28, label: '28 pt  ·  chosen (standard macOS title bar height)', note: 'Filename only, centered. No "Image Inspect" prefix.' }
+];
+
+// The content of a solid top bar of any height: the three window controls, the filename centered (just the name,
+// no "Image Inspect" / "Video Inspect" prefix), and a hairline.
+function drawTopBarContent(bar, width, variant, fileText) {
+  const barH = variant.height;
+  const dotY = Math.round((barH - 12) / 2);
+  ellipse('Close', bar, 24, dotY, 12, '#ED6A5E');
+  ellipse('Minimize', bar, 44, dotY, 12, '#F4BF4F');
+  ellipse('Zoom', bar, 64, dotY, 12, '#61C554');
+  text('Filename', bar, fileText, 0, Math.floor((barH - 15) / 2), 12, COLORS.text, 'medium', width, 'CENTER');
+  rect('Titlebar Divider', bar, 0, barH - 1, width, 1, COLORS.line);
+}
+
+function createTopBarVariantWindow(variant, width, mediaHeight, imageHash) {
+  const barH = variant.height;
+  const board = frame('Window / Top Bar ' + barH + ' pt', 0, 0, width, mediaHeight + barH, '#0B0C0F', 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  const photo = rect('Photo', board, 0, barH, width, mediaHeight, null, 0);
+  if (imageHash) photo.fills = [{ type: 'IMAGE', imageHash, scaleMode: 'FILL' }];
+  else artworkFill(photo, ['#121C27', '#715041', '#1C2E28']);
+  const bar = frame('00 / Titlebar', 0, 0, width, barH, COLORS.chrome, 0);
+  board.appendChild(bar);
+  drawTopBarContent(bar, width, variant, 'alpine-lake.jpg');
+  const toolbar = createFloatingInspectToolbar(board, width, 'Focus', 'focus');
+  toolbar.y = barH + 24;
+  return board;
+}
+
+async function generateTopBarHeightStudy(message) {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === TOP_BAR_HEIGHT_STUDY);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'The top bar height study already exists. Showing it without changing your edits.' });
+    return;
+  }
+  const input = message || {};
+  const bytes = input.landscape || input.bytes;
+  const imageHash = bytes && bytes.length ? figma.createImage(new Uint8Array(bytes)).hash : null;
+  const windowW = 760;
+  const mediaH = 384;
+  const margin = 60;
+  const boardW = TOP_BAR_VARIANTS.length * windowW + (TOP_BAR_VARIANTS.length + 1) * margin;
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = frame(TOP_BAR_HEIGHT_STUDY, maxX + 240, 0, boardW, 760, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+  text('Title', board, 'Top bar height  ·  same window, only the bar changes', margin, 32, 22, COLORS.text, 'semibold');
+  text('Subtitle', board, 'The media area is identical (' + windowW + ' × ' + mediaH + '); the window is exactly the bar\'s height taller. The toolbar floats 24 pt below the bar and shows and hides with it.',
+       margin, 66, 12, COLORS.secondary);
+  TOP_BAR_VARIANTS.forEach((variant, index) => {
+    const x = margin + index * (windowW + margin);
+    text('Label ' + variant.height, board, variant.label, x, 118, 14, variant.label.includes('chosen') ? COLORS.accent : COLORS.text, 'semibold');
+    const win = createTopBarVariantWindow(variant, windowW, mediaH, imageHash);
+    board.appendChild(win);
+    win.x = x;
+    win.y = 150;
+    const delta = variant.height - TOP_BAR_VARIANTS[0].height;
+    text('Note ' + variant.height, board, variant.note, x, 150 + win.height + 24, 12, COLORS.secondary, 'regular', windowW);
+    text('Size ' + variant.height, board, 'Window ' + windowW + ' × ' + win.height + (delta ? '  ·  ' + delta + ' pt vs 56' : ''),
+         x, 150 + win.height + 48, 12, COLORS.muted, 'regular', windowW);
+  });
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created the top bar height study: 56, 44, 36 and 28 pt side by side.' });
+  figma.notify('Top bar height study created');
+}
+
+// Home window "Upgrade to Pro" entry, redesigned. It was a left-aligned 36 pt button (13 pt label) with a gray hint to
+// its right that vanished in narrow windows. Now: one centered block with a 44 pt button whose label reads clearly
+// (15 pt semibold, dark ink on the accent: 8.9:1) and a centered caption that is always visible. States are shown
+// separately: hover, pressed (scale .97) and a keyboard focus ring.
+const PRO_ENTRY_NAME = 'Home / Pro Upgrade Entry / Redesign';
+const PRO_ACCENT_HOVER = '#F0B58E';
+const PRO_ACCENT_PRESSED = '#D7986B';
+const PRO_INK = '#21130D';
+
+const PRO_FLAME = '#FF8A4C';
+
+// A flame drawn as a vector, so it looks the same on every system.
+function proFlame(parent, x, y, width, height) {
+  const flame = figma.createVector();
+  flame.name = 'Flame';
+  flame.vectorPaths = [{ windingRule: 'NONZERO',
+    data: 'M6 0 C6 0 1 4.2 1 8.6 C1 11.6 3.2 14 6 14 C8.8 14 11 11.6 11 8.6 C11 6.8 10 5.4 9 4.4 C8.8 5.9 7.9 6.7 7.1 6.7 C7.1 4 6.4 1.8 6 0 Z' }];
+  flame.fills = [fill(PRO_FLAME)];
+  parent.appendChild(flame);
+  flame.resize(width, height);
+  flame.x = x;
+  flame.y = y;
+  return flame;
+}
+
+// The button: "Upgrade to Pro" and, in a dark price pill, a flame, "from" and the price (large, in the accent), so the
+// price is the first thing the eye finds. `emoji` swaps the vector flame for the system emoji 🔥 and adds ✨ to the label.
+function proUpgradeButton(parent, name, x, y, width, state, emoji = false) {
+  const pressed = state === 'pressed';
+  const k = pressed ? .97 : 1;
+  const w = Math.round(width * k);
+  const h = pressed ? 43 : 44;
+  const left = x + (width - w) / 2;
+  const top = y + (44 - h) / 2;
+  if (state === 'focus') {
+    const ring = rect(name + ' / focus ring', parent, left - 3, top - 3, w + 6, h + 6, null, 15, COLORS.accent);
+    ring.strokes = [fill(COLORS.accent, .65)];
+    ring.strokeWeight = 2;
+  }
+  const button = frame(name, left, top, w, h, state === 'hover' ? PRO_ACCENT_HOVER : state === 'pressed' ? PRO_ACCENT_PRESSED : COLORS.accent, 12);
+  if (state !== 'pressed') {
+    button.effects = [{ type: 'DROP_SHADOW', color: { r: .91, g: .66, b: .49, a: state === 'hover' ? .34 : .22 },
+                        offset: { x: 0, y: 4 }, radius: state === 'hover' ? 20 : 16, spread: 0, visible: true, blendMode: 'NORMAL' }];
+  }
+  parent.appendChild(button);
+  const title = text('Label', button, emoji ? '✨ Upgrade to Pro' : 'Upgrade to Pro', 0, Math.round((h - 18) / 2), 15 * k, PRO_INK, 'semibold');
+  const pillH = Math.round(30 * k);
+  const pill = frame('Price Pill', 0, Math.round((h - pillH) / 2), 10, pillH, PRO_INK, 9);
+  button.appendChild(pill);
+  let cursor = 10;
+  if (emoji) {
+    const glyph = text('Flame Emoji', pill, '🔥', cursor, Math.round(pillH / 2) - 9, 14, PRO_FLAME, 'regular');
+    cursor += glyph.width + 4;
+  } else {
+    proFlame(pill, cursor, Math.round((pillH - 14) / 2), 11, 14);
+    cursor += 11 + 5;
+  }
+  const prefix = text('Price Prefix', pill, 'from', cursor, Math.round(pillH / 2) - 6, 11, '#D9A47E', 'medium');
+  cursor += prefix.width + 5;
+  const price = text('Price', pill, '$9.99', cursor, Math.round((pillH - 21) / 2), 17 * k, COLORS.accent, 'semibold');
+  const pillW = Math.round(cursor + price.width + 11);
+  pill.resize(Math.max(pillW, 20), pillH);
+  const gap = 14;
+  const startX = Math.round((w - (title.width + gap + pillW)) / 2);
+  title.x = startX;
+  pill.x = startX + title.width + gap;
+  return button;
+}
+
+// The "Launch price" tag with a flame. It is shown only while a launch price is active.
+function proLaunchTag(parent, x, y) {
+  const tag = frame('Launch Tag', x, y, 128, 24, null, 12);
+  tag.fills = [fill(COLORS.accent, .14)];
+  tag.strokes = [fill(COLORS.accent, .55)];
+  tag.strokeWeight = 1;
+  parent.appendChild(tag);
+  proFlame(tag, 11, 5, 11, 14);
+  text('Launch Text', tag, 'Launch price', 28, 5, 11, COLORS.accent, 'semibold');
+  return tag;
+}
+
+// The block: the button and a centered caption under it.
+function proUpgradeBlock(parent, centerX, y, state, buttonWidth = 288, emoji = false) {
+  proUpgradeButton(parent, 'Upgrade to Pro Button', Math.round(centerX - buttonWidth / 2), y, buttonWidth, state, emoji);
+  const captionWidth = 360;
+  text('Caption', parent, 'One-time purchase · Lifetime updates', Math.round(centerX - captionWidth / 2), y + 44 + 12, 12,
+       COLORS.secondary, 'regular', captionWidth, 'CENTER');
+}
+
+// A cut of the Home open surface: the drop zone and the two open actions, as in the app.
+function proEntryHomeCut(parent, name, x, y, width, height, label) {
+  const panelNode = panel(parent, name, x, y, width, height, COLORS.surface, 14);
+  text('Panel Label', parent, label, x, y - 28, 13, COLORS.text, 'semibold');
+  const drop = rect('Drop Zone', panelNode, 40, 32, width - 80, 104, null, 12, COLORS.line);
+  drop.dashPattern = [8, 6];
+  text('Drop Title', panelNode, 'Drop images here', 40, 70, 14, COLORS.text, 'medium', width - 80, 'CENTER');
+  text('Drop Hint', panelNode, 'or open files and folders', 40, 94, 12, COLORS.secondary, 'regular', width - 80, 'CENTER');
+  simpleWidgetAction(panelNode, 'Open Files…', 40, 156, 150, true);
+  simpleWidgetAction(panelNode, 'Open Folder…', 202, 156, 150);
+  return panelNode;
+}
+
+function createProUpgradeEntryBoard(x) {
+  const board = frame(PRO_ENTRY_NAME, x, 0, 1700, 1520, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+  text('Title', board, 'Home  ·  Upgrade to Pro entry', 60, 44, 26, COLORS.text, 'semibold');
+  text('Subtitle', board, 'Centered block: a larger button, the price in a pill so it is seen at once, and a centered caption that is always visible.', 60, 84, 13, COLORS.secondary);
+
+  // Before: today's entry.
+  const before = proEntryHomeCut(board, 'Before / Home cut', 60, 160, 760, 300, 'Before  ·  current');
+  const oldButton = frame('Upgrade to Pro Button (current)', 40, 224, 260, 36, COLORS.accent, 9);
+  before.appendChild(oldButton);
+  text('Label', oldButton, 'Upgrade to Pro · from $9.99', 0, 9, 13, PRO_INK, 'semibold', 260, 'CENTER');
+  text('Hint', before, 'One-time purchase · Lifetime updates', 320, 234, 12, COLORS.secondary);
+  text('Before Note', board, 'Left-aligned, 36 pt high, 13 pt label; the hint sits far to the right and disappears below 460 pt.', 60, 478, 12, COLORS.muted, 'regular', 760);
+
+  // After: the proposal.
+  const after = proEntryHomeCut(board, 'After / Home cut', 880, 160, 760, 300, 'After  ·  proposed');
+  proUpgradeBlock(after, 380, 204, 'default');
+  text('After Note', board, 'Centered under the actions, 44 pt high, the price in its own pill at 17 pt, caption always shown.', 880, 478, 12, COLORS.muted, 'regular', 760);
+
+  // States.
+  text('States Title', board, 'States', 60, 540, 18, COLORS.text, 'semibold');
+  const states = [['Default', 'default', 'Accent fill, soft glow.'], ['Hover', 'hover', 'Lighter fill #F0B58E, 120 ms ease-out.'],
+                  ['Pressed', 'pressed', 'Darker fill #D7986B, scale 0.97, 160 ms ease-out.'], ['Keyboard focus', 'focus', '2 pt accent ring, 3 pt outside; always visible.']];
+  states.forEach(([label, state, note], index) => {
+    const cx = 60 + index * 400;
+    const card = panel(board, 'State / ' + label, cx, 580, 380, 190, COLORS.surface, 14);
+    text('State Label', card, label.toUpperCase(), 24, 22, 11, COLORS.muted, 'semibold');
+    proUpgradeBlock(card, 190, 60, state);
+    text('State Note', board, note, cx, 784, 12, COLORS.secondary, 'regular', 380);
+  });
+
+  // Narrow window: the caption stays.
+  text('Compact Title', board, 'Narrow window (420 pt)', 60, 850, 18, COLORS.text, 'semibold');
+  const compact = panel(board, 'Compact / Home cut', 60, 890, 420, 220, COLORS.surface, 14);
+  proUpgradeBlock(compact, 210, 70, 'default', 288);
+  text('Compact Note', board, 'Before, the hint was hidden below 460 pt. The caption now stays under the button.', 60, 1122, 12, COLORS.secondary, 'regular', 420);
+  // With a launch price: a flame tag over the button. Only while a launch price is active.
+  text('Launch Title', board, 'With a launch price', 500, 850, 18, COLORS.text, 'semibold');
+  const launch = panel(board, 'Launch / Home cut', 500, 890, 420, 220, COLORS.surface, 14);
+  proLaunchTag(launch, 146, 28);
+  proUpgradeBlock(launch, 210, 70, 'default', 288);
+  text('Launch Note', board, 'The flame tag appears only while a launch price is active; otherwise the block is as above.', 500, 1122, 12, COLORS.secondary, 'regular', 420);
+
+  // Vector flame or system emoji: the same button both ways, to compare.
+  text('Emoji Title', board, 'Flame: vector or system emoji', 60, 1190, 18, COLORS.text, 'semibold');
+  const vectorCard = panel(board, 'Flame / Vector', 60, 1230, 420, 220, COLORS.surface, 14);
+  text('Vector Label', vectorCard, 'VECTOR FLAME  ·  same on every system', 24, 22, 11, COLORS.muted, 'semibold');
+  proUpgradeBlock(vectorCard, 210, 70, 'default', 288);
+  const emojiCard = panel(board, 'Flame / Emoji', 500, 1230, 420, 220, COLORS.surface, 14);
+  text('Emoji Label', emojiCard, 'SYSTEM EMOJI  ·  🔥 and ✨, drawn by macOS', 24, 22, 11, COLORS.muted, 'semibold');
+  proUpgradeBlock(emojiCard, 210, 70, 'default', 288, true);
+  text('Emoji Note', board, 'The emoji version is more playful and needs no drawing, but it looks different on each macOS version and cannot take the accent color.', 960, 1230, 12, COLORS.secondary, 'regular', 680);
+
+  // Spec.
+  const spec = panel(board, 'Spec', 960, 850, 680, 310, COLORS.surface, 14);
+  text('Spec Title', spec, 'Spec', 24, 20, 14, COLORS.text, 'semibold');
+  const rows = [
+    ['Button', '44 pt high (was 36), 288 pt wide, radius 12, fill #E8A87C. Label 15 pt semibold, ink #21130D (8.9:1).'],
+    ['Price', 'A dark price pill (#21130D, radius 9, 30 pt) inside the button: a flame, "from" at 11 pt and the price at 17 pt semibold in the accent (8.9:1). The flame is a vector (#FF8A4C); a system-emoji version (🔥 ✨) is shown to compare.'],
+    ['Caption', '12 pt #AAA4A0, centered, 12 pt under the button, always visible.'],
+    ['Placement', 'Centered horizontally in the open surface, 24 pt above the bottom edge.'],
+    ['States', 'Hover fill 10.4:1, pressed 7.4:1; press scales to 0.97. Focus ring never removed. Reduced motion: no scale.']
+  ];
+  rows.forEach(([label, value], index) => {
+    text('Spec Label ' + (index + 1), spec, label.toUpperCase(), 24, 60 + index * 48, 11, COLORS.muted, 'semibold');
+    paragraph('Spec Text ' + (index + 1), spec, value, 130, 58 + index * 48, 526, 12, COLORS.text);
+  });
+  return board;
+}
+
+async function generateProUpgradeEntry() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === PRO_ENTRY_NAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'The Pro upgrade entry board already exists. Showing it without changing your edits.' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = createProUpgradeEntryBoard(maxX + 240);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created the Pro upgrade entry board: before and after, the four button states, the narrow window and the spec.' });
+  figma.notify('Pro upgrade entry created');
+}
+
+// Pro entry layout options. The centered block under the actions did not line up with anything: the actions are
+// left-aligned and the Recent column sits to the right. Five placements in the same Home window, to choose from.
+const PRO_OPTIONS_NAME = 'Home / Pro Entry / Layout Options';
+const PRO_OPTION_NAMES = [
+  'Option A · Card in the content column', 'Option B · In the action row', 'Option C · Pill in the titlebar',
+  'Option D · Card in the Recent column', 'Option E · Footer bar'
+];
+
+// The Home window, drawn once and shared by every option. Top-origin coordinates, 1080 × 720.
+function proHomeWindow(parent, name, x, y) {
+  const win = frame(name, x, y, 1080, 720, '#0E0F12', 14);
+  win.strokes = [fill(COLORS.line)];
+  win.strokeWeight = 1;
+  parent.appendChild(win);
+  const titlebar = frame('Titlebar', 0, 0, 1080, 52, COLORS.chrome, 0);
+  win.appendChild(titlebar);
+  ellipse('Close', titlebar, 24, 20, 12, '#ED6A5E');
+  ellipse('Minimize', titlebar, 44, 20, 12, '#F4BF4F');
+  ellipse('Zoom', titlebar, 64, 20, 12, '#61C554');
+  text('Window Title', titlebar, 'Glance', 0, 9, 14, COLORS.text, 'semibold', 1080, 'CENTER');
+  text('Subtitle', titlebar, 'Image Inspect', 0, 29, 11, COLORS.muted, 'regular', 1080, 'CENTER');
+  // Open surface (left, 700 wide).
+  text('Welcome', win, 'Welcome to Glance', 40, 84, 26, COLORS.text, 'semibold');
+  text('Welcome Sub', win, 'Drop images anywhere, or open files to begin.', 40, 124, 13, COLORS.secondary);
+  const drop = rect('Drop Zone', win, 40, 164, 620, 250, null, 12, COLORS.line);
+  drop.dashPattern = [8, 6];
+  text('Drop Title', win, 'Drop images here', 40, 268, 15, COLORS.text, 'medium', 620, 'CENTER');
+  text('Drop Hint', win, 'or use the buttons below', 40, 294, 12, COLORS.secondary, 'regular', 620, 'CENTER');
+  simpleWidgetAction(win, 'Open Files…', 40, 434, 150, true);
+  simpleWidgetAction(win, 'Open Folder…', 202, 434, 150);
+  // Recent column (right, 380 wide).
+  rect('Column Divider', win, 700, 52, 1, 638, COLORS.line);
+  text('Recent Title', win, 'Recent', 724, 76, 16, COLORS.text, 'semibold');
+  text('Recent Sub', win, 'Reopen what you inspected before.', 724, 100, 12, COLORS.secondary);
+  const palettes = [['#25323A', '#A47761', '#293B33'], ['#2E323D', '#A77B72', '#1A2633'], ['#21302B', '#6B826F', '#2D3B3E'], ['#33293A', '#B58B6B', '#26323A']];
+  palettes.forEach((colors, index) => {
+    const tile = rect('Recent Tile ' + (index + 1), win, 724 + (index % 2) * 184, 136 + Math.floor(index / 2) * 164, 168, 148, null, 10, COLORS.line);
+    artworkFill(tile, colors);
+  });
+  const status = frame('Statusbar', 0, 690, 1080, 30, '#1A1B20', 0);
+  win.appendChild(status);
+  text('Status', status, 'No file open  •  Open images to begin', 20, 8, 12, COLORS.secondary);
+  text('Status Hint', status, 'Drop files anywhere  •  ⌘O to open  •  ⌘⇧O for a folder', 0, 8, 12, COLORS.muted, 'regular', 1080, 'CENTER');
+  return win;
+}
+
+function proPrice(parent, x, y, size) {
+  const group = frame('Price', x, y, 10, size + 6, null, 0);
+  group.fills = [];
+  parent.appendChild(group);
+  proFlame(group, 0, Math.round(size * .12), Math.round(size * .6), Math.round(size * .72));
+  const prefix = text('Price Prefix', group, 'from', Math.round(size * .6) + 6, Math.round(size * .42), 11, COLORS.secondary, 'medium');
+  const price = text('Price', group, '$9.99', Math.round(size * .6) + 6 + prefix.width + 5, 0, size, COLORS.accent, 'semibold');
+  group.resize(Math.round(size * .6) + 6 + prefix.width + 5 + price.width, size + 6);
+  return group;
+}
+
+function proOptionCaption(board, x, y, title, note, suggested) {
+  text('Option Title', board, title, x, y, 16, suggested ? COLORS.accent : COLORS.text, 'semibold');
+  text('Option Note', board, note, x, y + 26, 12, COLORS.secondary, 'regular', 1080);
+}
+
+function createProOptionsBoard(x) {
+  const board = frame(PRO_OPTIONS_NAME, x, 0, 2400, 3040, COLORS.bg, 16);
+  board.strokes = [fill(COLORS.line)];
+  board.strokeWeight = 1;
+  figma.currentPage.appendChild(board);
+  text('Title', board, 'Home  ·  Where the Pro entry goes', 60, 44, 28, COLORS.text, 'semibold');
+  text('Subtitle', board, 'The centered block under the actions lined up with nothing. Five placements in the same window; each one lines up with something that is already there.', 60, 88, 13, COLORS.secondary, 'regular', 1800);
+  const columns = [60, 1260];
+  const rowY = [190, 1090, 1990];
+  const options = [
+    ['Lines up with the content edges (40 pt) and the drop zone above it. Reads as an offer, not a button. Uses the most height.', true],
+    ['Same row as Open Files and Open Folder, right-aligned to the drop zone. The most compact; the caption sits under the button.', false],
+    ['A small pill at the right of the titlebar, always visible. Nothing is added to the body, so the window stays calm.', false],
+    ['A card at the bottom of the Recent column, at the same width as the tiles. Keeps the left column for opening files.', false],
+    ['A slim bar above the status bar, full width of the open surface. Quiet, but it is the easiest to overlook.', false]
+  ];
+  const wins = PRO_OPTION_NAMES.map((name, index) => {
+    const x0 = columns[index % 2];
+    const y0 = rowY[Math.floor(index / 2)];
+    proOptionCaption(board, x0, y0, name, options[index][0], options[index][1]);
+    return proHomeWindow(board, 'Home / ' + name, x0, y0 + 64);
+  });
+
+  // A · a card in the content column, aligned to the 40 pt edges.
+  const cardA = frame('Pro Card', 40, 510, 620, 92, '#16171B', 14);
+  cardA.strokes = [fill(COLORS.accent, .38)];
+  cardA.strokeWeight = 1;
+  wins[0].appendChild(cardA);
+  const badge = frame('Pro Badge', 20, 20, 38, 20, COLORS.accent, 6);
+  cardA.appendChild(badge);
+  text('Badge Label', badge, 'PRO', 0, 4, 10, PRO_INK, 'semibold', 38, 'CENTER');
+  text('Card Title', cardA, 'Upgrade to Pro', 70, 18, 16, COLORS.text, 'semibold');
+  text('Card Caption', cardA, 'One-time purchase · Lifetime updates', 20, 52, 12, COLORS.secondary);
+  proPrice(cardA, 360, 30, 24);
+  const upgradeA = simpleWidgetAction(cardA, 'Upgrade', 500, 26, 100, true);
+
+  // B · in the action row, right-aligned to the drop zone's right edge.
+  proUpgradeButton(wins[1], 'Upgrade to Pro Button', 660 - 288, 430, 288, 'default');
+  text('Caption', wins[1], 'One-time purchase · Lifetime updates', 660 - 288, 430 + 44 + 10, 12, COLORS.secondary, 'regular', 288, 'CENTER');
+
+  // C · a pill in the titlebar.
+  const pill = frame('Pro Pill', 1080 - 24 - 176, 12, 176, 28, null, 14);
+  pill.fills = [fill(COLORS.accent, .14)];
+  pill.strokes = [fill(COLORS.accent, .55)];
+  pill.strokeWeight = 1;
+  wins[2].appendChild(pill);
+  proFlame(pill, 12, 7, 11, 14);
+  text('Pill Label', pill, 'Pro', 30, 6, 12, COLORS.text, 'semibold');
+  const pillPrice = text('Pill Price', pill, 'from $9.99', 56, 6, 12, COLORS.accent, 'semibold');
+
+  // D · a card at the bottom of the Recent column.
+  const cardD = frame('Pro Card', 724, 500, 332, 150, '#16171B', 14);
+  cardD.strokes = [fill(COLORS.accent, .38)];
+  cardD.strokeWeight = 1;
+  wins[3].appendChild(cardD);
+  text('Card Title', cardD, 'Upgrade to Pro', 20, 18, 16, COLORS.text, 'semibold');
+  text('Card Caption', cardD, 'One-time purchase · Lifetime updates', 20, 44, 12, COLORS.secondary);
+  proUpgradeButton(cardD, 'Upgrade to Pro Button', 22, 80, 288, 'default');
+
+  // E · a slim footer bar above the status bar.
+  const bar = frame('Pro Footer Bar', 0, 638, 700, 52, '#14151A', 0);
+  wins[4].appendChild(bar);
+  rect('Hairline', bar, 0, 0, 700, 1, COLORS.line);
+  proFlame(bar, 40, 18, 11, 14);
+  text('Bar Title', bar, 'Glance Pro', 60, 17, 13, COLORS.text, 'semibold');
+  text('Bar Caption', bar, 'One-time purchase · Lifetime updates', 144, 18, 12, COLORS.secondary);
+  proPrice(bar, 470, 12, 20);
+  simpleWidgetAction(bar, 'Upgrade', 570, 8, 90, true);
+
+  // Spec: how to choose.
+  const spec = panel(board, 'Spec', 1260, 1990 + 64 + 740, 1080, 260, COLORS.surface, 14);
+  text('Spec Title', spec, 'How the options compare', 24, 20, 14, COLORS.text, 'semibold');
+  const rows = [
+    ['A', 'Card in the content column. Aligned with the drop zone; the clearest offer, and it keeps the price pill, caption and a button.'],
+    ['B', 'In the action row. The least height and the least noise; the caption is small under the button.'],
+    ['C', 'Pill in the titlebar. Always visible and takes no space from the content; it is small, so the benefits are not stated.'],
+    ['D', 'Card in the Recent column. Separates "open files" from "buy"; it competes with the recent tiles for attention.'],
+    ['E', 'Footer bar. Quiet and aligned to the status bar; the easiest to miss.']
+  ];
+  rows.forEach(([key, value], index) => {
+    text('Spec Key ' + key, spec, key, 24, 62 + index * 38, 13, COLORS.accent, 'semibold');
+    paragraph('Spec Text ' + key, spec, value, 56, 62 + index * 38, 980, 12, COLORS.text);
+  });
+  return board;
+}
+
+async function generateProOptions() {
+  await loadFonts();
+  await createStyles();
+  const existing = figma.currentPage.children.find(child => child.name === PRO_OPTIONS_NAME);
+  if (existing) {
+    figma.currentPage.selection = [existing];
+    figma.viewport.scrollAndZoomIntoView([existing]);
+    figma.ui.postMessage({ message: 'The Pro entry layout options already exist. Showing them without changing your edits.' });
+    return;
+  }
+  let maxX = 0;
+  for (const child of figma.currentPage.children) maxX = Math.max(maxX, child.x + child.width);
+  const board = createProOptionsBoard(maxX + 240);
+  figma.currentPage.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: 'Created five layout options for the Pro entry in the same Home window.' });
+  figma.notify('Pro entry layout options created');
+}
+
 function ensureWidgetTextResultInputPreview(result, imageHash) {
   let preview = result.findOne(node => node.name === 'Input Image Preview');
   const added = !preview;
@@ -7501,6 +8395,225 @@ async function generateWidgetTextResultWindow(bytes) {
   figma.notify('Widget text result side window created');
 }
 
+async function openPeekOverflow(photos) {
+  const page = await figma.getNodeByIdAsync('71:1148');
+  if (!page || page.type !== 'PAGE') throw new Error('请在 Glance · 静 Shizuka 原设计文件中运行。');
+  await figma.setCurrentPageAsync(page);
+  const name = 'Peek Mini · Six images';
+  let board = page.children.find(n => n.name === name);
+  if (!board) {
+    await loadFonts();
+    const sources = await Promise.all(['72:1244', '73:1285'].map(id => figma.getNodeByIdAsync(id)));
+    if (sources.some(row => !row || row.name !== 'items' || row.children.length !== 3)) {
+      throw new Error('未找到原稿中的三张缩略图。');
+    }
+    const y = Math.max(0, ...page.children.map(n => n.y + n.height)) + 120;
+    const images = photos.map(bytes => figma.createImage(bytes).hash);
+    board = frame(name, 0, y, 768, 740, null);
+    try {
+      for (const [index, source] of sources.entries()) {
+        const light = index === 1;
+        const panel = frame(light ? 'Washi · Light' : 'Sumi · Dark', index * 384, 0, 384, 740,
+                            light ? '#EDEAE4' : '#222225');
+        board.appendChild(panel);
+        text('Appearance', panel, panel.name, 40, 28, 14, light ? '#504B44' : '#D1CEC8', 'medium');
+        const card = source.parent.clone();
+        panel.appendChild(card);
+        card.x = 40;
+        card.y = 70;
+        const labels = card.findOne(n => n.name === 'info').findAll(n => n.type === 'TEXT');
+        for (const [i, value] of ['alpine-after.jpg', '1 of 6  ·  ~/Pictures'].entries()) {
+          await figma.loadFontAsync(labels[i].fontName);
+          labels[i].characters = value;
+        }
+        const grid = card.clone();
+        panel.appendChild(grid);
+        grid.name = 'Six visible images';
+        grid.x = 40;
+        grid.y = 70;
+        const row = grid.findOne(n => n.name === 'items');
+        const gap = 4;
+        const secondY = row.y + row.height + gap;
+        const extraHeight = row.height + gap;
+        grid.layoutMode = 'NONE';
+        grid.resize(grid.width, grid.height + extraHeight);
+        for (const child of grid.children) {
+          if (child !== row && child.y >= row.y + row.height - 1) child.y += extraHeight;
+        }
+        const second = frame('Images 4–6', row.x, secondY, row.width, row.height, null);
+        grid.appendChild(second);
+        images.forEach((hash, i) => {
+          const tile = row.children[i];
+          const photo = rect('Image ' + (4 + i), second, tile.x, 0, tile.width, tile.height, null, 6);
+          photo.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
+        });
+        card.y = 482;
+        text('Compact comparison', panel, 'Compact · 3 + 3 more', 40, 448, 14,
+             light ? '#504B44' : '#D1CEC8', 'medium');
+        const tile = card.findOne(n => n.name === 'items').children[2];
+        const badge = frame('More images · 3 remaining', 0, 0, 30, 20, '#201F1E', 10);
+        tile.appendChild(badge);
+        if (tile.layoutMode !== 'NONE') badge.layoutPositioning = 'ABSOLUTE';
+        badge.x = Math.round(tile.width - badge.width - 5);
+        badge.y = Math.round(tile.height - badge.height - 5);
+        badge.fills = [fill('#171615', 0.84)];
+        const count = text('Remaining count', badge, '+3', 0, 0, 12, '#FFFFFF', 'semibold', 30, 'CENTER');
+        count.y = Math.round((badge.height - count.height) / 2);
+      }
+    } catch (error) {
+      board.remove();
+      throw error;
+    }
+  }
+  page.selection = [board];
+  figma.viewport.scrollAndZoomIntoView([board]);
+  figma.ui.postMessage({ message: '已打开深浅两版 Peek Mini 多图预览。' });
+}
+
+async function openShizukaGuide() {
+  const page = await figma.getNodeByIdAsync('30:2346');
+  const peek = await figma.getNodeByIdAsync('71:1148');
+  if (!page || page.name !== 'Washi · Light' || !peek || peek.name !== 'Peek · Mini') {
+    throw new Error('请在 Glance · 静 Shizuka 原设计文件中运行。');
+  }
+  await figma.setCurrentPageAsync(page);
+  const title = 'Shizuka · macOS 新功能设计规范';
+  let guide = page.children.find(n => n.type === 'SPEC_BLOCK' && n.name === title);
+  const ref = 'https://www.figma.com/design/3oIkv5jBJpRUORxliJZdHl/?node-id=';
+  const original = `# Shizuka · macOS 新功能设计规范
+
+用户打开 Glance，是为了看清一份内容。设计新功能时，先写下用户正在看什么、接下来需要做什么，再决定哪些控件值得占据画面。Home 给「打开」留出空间，Inspect 把中央区域交给图像，Peek 让用户看一眼文件后继续读原文。
+
+## 从哪张画板开始
+
+| 用户意图 | 起点 | 新功能放在哪里 |
+| --- | --- | --- |
+| 从其他应用确认选中的文件 | [Peek Mini · Terminal](${ref}71-1149) | 选区旁的小浮层。继续细看时进入 Inspect。 |
+| 打开文件或回到最近项目 | [Home](${ref}30-2347) | 主区承接打开和拖入，最近项目留在右栏。 |
+| 查看、比较或检查媒体 | [Focus](${ref}30-2603) · [Compare](${ref}30-3183) | 保留中央媒体区。视图切换进顶栏，文件信息和缩略图沿底部排列。 |
+| 输入参数并执行处理 | [Widget Input](${ref}30-3630) · [Task states](${ref}30-6206) | 在输入面呈现必要参数和执行动作，长任务可回到任务中心查看。 |
+| 修改持久偏好 | [Preferences](${ref}30-2887) | 找到相应设置组，沿用相邻行的标签、控件和说明位置。 |
+
+## 间、墨、线、朱如何落到界面
+
+**间 · 用距离表达关系。** 先把文件名和属性排成一组，再把这一组与下一项任务拉开。Home 中，标题与说明之间留 10 pt，说明至拖放区留 40 pt，拖放区至文件夹区域留 56 pt。连续文件沿同一列对齐，共享背景。
+
+**墨 · 用明度分配注意力。** Washi 的窗口像暖白纸面，主文字和主操作使用深墨色。照片保留自己的色彩。先用字重、色阶和留白区分层次；打开文件这类主动作采用深色实底，同排次动作使用轻描边。
+
+**线 · 在关系改变处划界。** Home 的工作区与 Recent 之间只有一条 1 pt 竖线。相邻区域共用一条边界。文件列表用对齐和行距维持节奏，选择时只改变当前行底色。
+
+**朱 · 把强调留给一个小位置。** Peek 的缺失态以小圆点搭配「File not found」；文字说明具体情况，颜色只帮助定位。状态色的面积应小到不会与缩略图争夺第一眼。
+
+## Washi 基础值
+
+| 用途 | 原稿值 |
+| --- | --- |
+| 暖色表面 ink/0 → ink/4 | #EFEDE6 · #FAF9F5 · #F3F1EB · #EAE7DF · #DDD9CF |
+| 主文至弱文 text/1 → text/4 | #1C1B19 · #5C5952 · #8D897F · #B6B2A8 |
+| 边界与语义色 | line/strong #D5D1C6 · ai #476780 · moss #5D7046 · shu #B5462E |
+| 标题 | Shippori Mincho 28–34，仅用于页面标题 |
+| 操作与说明 | Inter Medium 13–15 用于控件，Inter Regular 12 用于辅助说明 |
+| 文件属性与快捷键提示 | 元数据使用 Geist Mono 11；按键与动作的组合排法沿用对应参考帧 |
+| 间距与圆角 | 间距阶梯 4 / 8 / 12 / 16 / 24 / 32 / 56 pt；缩略图 3、控件 6、窗口与浮层 12 pt |
+
+基础值用于创建同族界面。已有组件按实例的实际尺寸和状态复用。深色 Peek 从同状态的深色原稿取值，两种外观共享信息顺序。[Foundations](${ref}30-3049) · [深色 Peek](${ref}72-1156) · [Washi Peek](${ref}73-1231)
+
+## 尺寸跟着任务走
+
+**Home。** 1440 × 900 参考帧中，标题栏操作使用 28 × 28 pt 的 IconButton，间隔 4 pt；拖放区按钮高 32 pt，间隔 8 pt。最近文件复用 56 pt 高的 FileRow。首页文件夹缩略图为 72 × 72 pt，间隔 8 pt。进入 Inspect 后改用该视图的 filmstrip；选中和新结果标记叠在原缩略图上，保持排列稳定。
+
+**Peek Mini。** 宽 304 pt，高度随内容变化。上方显示媒体或状态，中段放文件名、属性和适用操作，底部放键盘提示。图片支持回车进入 Inspect、⌘C 复制、Esc 关闭；视频增加空格播放，多匹配切换成候选文件，加载显示正在准备，缺失显示文件名和恢复动作。每个状态只列出当下有效的按键。[五种状态](${ref}72-1156)
+
+**选区定位。** ⌥K 唤起 Peek。优先在选区下方左对齐，间隔 8 pt；下方不足时翻到上方，右侧不足时向左收，距屏幕边缘留 12 pt。取不到选区边界时才使用指针附近的位置。同一时间保留一个浮层，Esc、点外部或选区改变即收起。此定位规则专用于选区预览。[Placement](${ref}72-1319)
+
+## 新功能示例 · 在 Inspect 增加「提取色板」
+
+这是用于推演的例子。用户已经在看一张图，从 Inspect 的更多菜单启动「提取色板」。处理期间保留原图与当前缩略图，在既有任务位置显示「正在提取色板」。完成后，结果侧窗显示色样和等宽色值，主要动作是「复制色值」。色样属于用户内容，可以有饱和色；窗口、按钮和文件信息沿用 Washi 色阶。失败时保留原图，给出已知原因和可行的下一步；涉及积分时显示服务端已确认的退还状态。[更多菜单](${ref}30-4776) · [运行中](${ref}30-6022) · [结果侧窗](${ref}30-6177) · [失败](${ref}30-3906)
+
+## 交稿时让下一位 agent 能复核
+
+- 在新画板描述里写下用户任务、沿用的参考帧链接、复用的组件，以及因新任务而改变的部分。
+- 按实际流程给出空、就绪、进行中、成功、失败及恢复状态。标出主动作、能用的快捷键、退出后的去向。成功态应能打开或使用结果。
+- 对交互控件标注实际用到的默认、悬停、选中、禁用和焦点状态。核对长文件名、窗口边缘和连续列表下的截断与对齐。
+- 对照目标外观逐项检查文字框、行高、对齐、间距、圆角与分隔线。AppKit 实现时按原稿文本框换算坐标，复用项目 PanelStyle 和对应滚动条组件。`;
+  const revisions = [
+    { oldText: `用户打开 Glance，是为了看清一份内容。`, newText: `Sumi · Dark 与 Washi · Light 共享任务流程、组件、字号、间距和键盘行为。每个新功能一起交付两种外观；颜色按同名语义角色切换，照片、视频和结果色样保留原色。
+
+用户打开 Glance，是为了看清一份内容。` },
+    { oldText: `Washi 的窗口像暖白纸面，主文字和主操作使用深墨色。照片保留自己的色彩。先用字重、色阶和留白区分层次；打开文件这类主动作采用深色实底，同排次动作使用轻描边。`, newText: `Washi 在暖白纸面上用深墨实底承载「打开文件」；Sumi 在暖黑窗口上用浅墨白实底和深字承载同一个动作。两者的次按钮都使用轻描边，Recent 的选中行都用底色区分。切换外观时，最先被看到的仍应是同一项内容或操作。` },
+    { oldText: `## Washi 基础值
+
+| 用途 | 原稿值 |
+| --- | --- |
+| 暖色表面 ink/0 → ink/4 | #EFEDE6 · #FAF9F5 · #F3F1EB · #EAE7DF · #DDD9CF |
+| 主文至弱文 text/1 → text/4 | #1C1B19 · #5C5952 · #8D897F · #B6B2A8 |
+| 边界与语义色 | line/strong #D5D1C6 · ai #476780 · moss #5D7046 · shu #B5462E |
+`, newText: `## 明暗色值对照
+
+| 角色 | Sumi · Dark | Washi · Light |
+| --- | --- | --- |
+| ink/0 | #0F0F0E | #EFEDE6 |
+| ink/1 | #151514 | #FAF9F5 |
+| ink/2 | #1B1B1A | #F3F1EB |
+| ink/3 | #242422 | #EAE7DF |
+| ink/4 | #2E2E2B | #DDD9CF |
+| line/strong | #34342F | #D5D1C6 |
+| text/1 | #EAE7E0 | #1C1B19 |
+| text/2 | #A19D94 | #5C5952 |
+| text/3 | #6B6862 | #8D897F |
+| text/4 | #47453F | #B6B2A8 |
+| accent/ai | #6F8AA0 | #476780 |
+| accent/moss | #8C9C72 | #5D7046 |
+| accent/shu | #C65A40 | #B5462E |
+
+从同名组件当前状态读取填充、描边、文字与透明度，再使用该外观下对应的值。深色窗口靠相邻暖黑层次区分画布、控件和选中行。浅色窗口靠暖白与浅灰区分这些层次。两种外观的失败标记都使用少量朱色，旁边保留可读的原因与动作。
+
+## 共享的排版与几何
+
+| 用途 | 两种外观共用 |
+| --- | --- |
+` },
+    { oldText: `[Peek Mini · Terminal](${ref}71-1149)`, newText: `Peek Mini · Terminal（[深](${ref}71-1149) / [浅](${ref}73-1184)）` },
+    { oldText: `[Home](${ref}30-2347)`, newText: `Home（[深](${ref}4-16) / [浅](${ref}30-2347)）` },
+    { oldText: `[Focus](${ref}30-2603)`, newText: `Focus（[深](${ref}5-207) / [浅](${ref}30-2603)）` },
+    { oldText: `[Compare](${ref}30-3183)`, newText: `Compare（[深](${ref}10-386) / [浅](${ref}30-3183)）` },
+    { oldText: `[Widget Input](${ref}30-3630)`, newText: `Widget Input（[深](${ref}12-575) / [浅](${ref}30-3630)）` },
+    { oldText: `[Task states](${ref}30-6206)`, newText: `Task states（[深](${ref}26-1619) / [浅](${ref}30-6206)）` },
+    { oldText: `[Preferences](${ref}30-2887)`, newText: `Preferences（[深](${ref}7-345) / [浅](${ref}30-2887)）` },
+    { oldText: `[Foundations](${ref}30-3049)`, newText: `Foundations（[深](${ref}8-386) / [浅](${ref}30-3049)）` },
+    { oldText: `[更多菜单](${ref}30-4776)`, newText: `更多菜单（[深](${ref}23-1072) / [浅](${ref}30-4776)）` },
+    { oldText: `[运行中](${ref}30-6022)`, newText: `运行中（[深](${ref}26-1435) / [浅](${ref}30-6022)）` },
+    { oldText: `[结果侧窗](${ref}30-6177)`, newText: `结果侧窗（[深](${ref}26-1536) / [浅](${ref}30-6177)）` },
+    { oldText: `[失败](${ref}30-3906)`, newText: `失败（[深](${ref}13-652) / [浅](${ref}30-3906)）` },
+    { oldText: `[Placement](${ref}72-1319)`, newText: `Placement（[深](${ref}72-1319) / [浅](${ref}73-1370)）` },
+    { oldText: `[五种状态](${ref}72-1156)`, newText: `五种状态（[深](${ref}72-1156) / [浅](${ref}73-1231)）` },
+    { oldText: `窗口、按钮和文件信息沿用 Washi 色阶`, newText: `窗口、按钮和文件信息跟随 Sumi 或 Washi 的同名色阶，复制出的色值在两种外观下相同` },
+    { oldText: `对照目标外观逐项检查`, newText: `并排交付同一内容、同一状态的 Sumi 与 Washi 帧，逐项检查主次动作的辨识度、选中行、焦点、错误提示及图像原色。对照各自参考帧检查` }
+  ];
+  if (!figma.spec || !figma.spec.createOnCanvasAsync) {
+    throw new Error('当前 Figma 插件环境未提供原生规范文档 API。');
+  }
+  if (guide) {
+    const { markdown } = await figma.spec.getContent({ specNodeId: guide.id });
+    const edits = revisions.filter(edit => !markdown.includes(edit.newText) && markdown.includes(edit.oldText));
+    if (edits.length) await figma.spec.editContent({ specNodeId: guide.id, edits });
+  } else {
+    const left = Math.min(0, ...page.children.map(n => n.x));
+    const content = revisions.reduce((draft, edit) => draft.replace(edit.oldText, edit.newText), original);
+    const result = await figma.spec.createOnCanvasAsync({ title, content });
+    guide = await figma.getNodeByIdAsync(result.specNodeId);
+    guide.x = left - guide.width - 120;
+    guide.y = 0;
+  }
+  const verified = await figma.spec.getContent({ specNodeId: guide.id });
+  if (!verified.markdown.includes('明暗色值对照') || !verified.markdown.includes('#0F0F0E')) {
+    throw new Error('现有规范的色表已被编辑，请核对明暗色值章节。');
+  }
+  page.selection = [guide];
+  figma.viewport.scrollAndZoomIntoView([guide]);
+  figma.ui.postMessage({ message: title });
+}
+
 figma.ui.onmessage = async message => {
   if (message.type === 'close') {
     figma.closePlugin();
@@ -7512,6 +8625,19 @@ figma.ui.onmessage = async message => {
   }
   if (figma.editorType === 'dev') {
     figma.ui.postMessage({ message: 'Plugin imported. Switch to Design Mode before generating editable screens.' });
+    return;
+  }
+  if (message.type === 'open-peek-overflow') {
+    try { await openPeekOverflow(message.photos); }
+    catch (error) { figma.ui.postMessage({ message: String(error) }); }
+    return;
+  }
+  if (message.type === 'open-shizuka-guide') {
+    try {
+      await openShizukaGuide();
+    } catch (error) {
+      figma.ui.postMessage({ message: String(error) });
+    }
     return;
   }
   if (message.type === 'generate') {
@@ -7878,6 +9004,56 @@ figma.ui.onmessage = async message => {
       figma.ui.postMessage({ message: 'Widget Task Running study failed: ' +
         (error && error.message ? error.message : String(error)) });
       figma.notify('Widget Task Running study failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-pro-options') {
+    try {
+      await generateProOptions();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Pro entry layout options failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Pro entry layout options failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-pro-upgrade-entry') {
+    try {
+      await generateProUpgradeEntry();
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Pro upgrade entry failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Pro upgrade entry failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-mask-draw-only') {
+    try {
+      await generateMaskDrawOnlyPages(message.bytes);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Draw-only mask pages failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Draw-only mask pages failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-top-bar-height-study') {
+    try {
+      await generateTopBarHeightStudy(message);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Top bar height study failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Top bar height study failed', { error: true });
+    }
+  }
+  if (message.type === 'generate-window-placement-study') {
+    try {
+      await generateWindowPlacementStudy(message);
+    } catch (error) {
+      console.error(error);
+      figma.ui.postMessage({ message: 'Window placement study failed: ' +
+        (error && error.message ? error.message : String(error)) });
+      figma.notify('Window placement study failed', { error: true });
     }
   }
   if (message.type === 'generate-widget-text-result-window') {

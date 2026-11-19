@@ -105,6 +105,16 @@ assert.ok(uiSource.indexOf('<button id="generate-widget-task-running-study"') < 
   'Widget task running study action must be visible near the top of the plugin');
 assert.ok(uiSource.indexOf('<button id="generate-widget-text-result-window"') < uiSource.indexOf('<label for="reference">'),
   'Widget text result side-window action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-pro-options"') < uiSource.indexOf('<label for="reference">'),
+  'Pro entry layout options action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-pro-upgrade-entry"') < uiSource.indexOf('<label for="reference">'),
+  'Pro upgrade entry action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-mask-draw-only"') < uiSource.indexOf('<label for="reference">'),
+  'Draw-only mask pages action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-top-bar-height-study"') < uiSource.indexOf('<label for="reference">'),
+  'Top bar height study action must be visible near the top of the plugin');
+assert.ok(uiSource.indexOf('<button id="generate-window-placement-study"') < uiSource.indexOf('<label for="reference">'),
+  'Window placement study action must be visible near the top of the plugin');
 assert.ok(uiSource.indexOf('<button id="generate-widget-multi-image-input"') < uiSource.indexOf('<label for="reference">'),
   'Multi-image Widget input action must be visible near the top of the plugin');
 assert.ok(uiSource.indexOf('<button id="generate-home-folder-scroll-study"') < uiSource.indexOf('<label for="reference">'),
@@ -244,6 +254,306 @@ const names = [
     'rerun must preserve manual Figma edits');
   focusedRunning.remove();
   browsingRunning.remove();
+
+  await figma.ui.onmessage({ type: 'generate-pro-options' });
+  const optionsBoard = page.children.find(child => child.name === 'Home / Pro Entry / Layout Options');
+  assert.ok(optionsBoard, 'the layout options board must be created');
+  const optionWindows = ['A · Card in the content column', 'B · In the action row', 'C · Pill in the titlebar',
+    'D · Card in the Recent column', 'E · Footer bar'].map(name => optionsBoard.findOne(child => child.name === 'Home / Option ' + name));
+  assert.ok(optionWindows.every(Boolean), 'all five options are drawn');
+  for (const win of optionWindows) {
+    assert.equal(win.width, 1080);
+    assert.equal(win.height, 720);
+    assert.ok(win.findOne(child => child.name === 'Drop Zone') && win.findOne(child => child.name === 'Recent Title'), win.name + ': the same Home window');
+    assert.ok(win.findOne(child => child.name === 'Open Files… Action'), win.name + ': the open actions stay');
+  }
+  const actionsBottom = optionWindows[0].findOne(child => child.name === 'Open Files… Action').y + 36;
+  const [windowA, windowB, windowC, windowD, windowE] = optionWindows;
+  const cardA = windowA.findOne(child => child.name === 'Pro Card');
+  assert.equal(cardA.x, 40, 'A lines up with the 40 pt content edge');
+  assert.equal(cardA.x + cardA.width, 660, 'A ends at the drop zone right edge');
+  assert.ok(cardA.y >= actionsBottom + 16, 'A sits below the actions with room');
+  assert.ok(cardA.y + cardA.height <= 690 - 16, 'A stays above the status bar');
+  assert.ok(cardA.findOne(child => child.name === 'Price').findOne(child => child.name === 'Price').characters === '$9.99');
+  const buttonB = windowB.findOne(child => child.name === 'Upgrade to Pro Button');
+  assert.equal(buttonB.x + buttonB.width, 660, 'B is right-aligned to the drop zone');
+  assert.ok(buttonB.x >= windowB.findOne(child => child.name === 'Open Folder… Action').x + 150 + 12, 'B does not touch Open Folder');
+  assert.ok(windowC.findOne(child => child.name === 'Pro Pill'), 'C has the titlebar pill');
+  assert.equal(windowC.findOne(child => child.name === 'Pro Card'), null, 'C adds nothing to the body');
+  assert.equal(windowC.findOne(child => child.name === 'Pro Pill').parent, windowC);
+  const cardD = windowD.findOne(child => child.name === 'Pro Card');
+  assert.ok(cardD.x >= 700, 'D is in the Recent column');
+  const tilesBottom = Math.max(...windowD.findAll(child => child.name.startsWith('Recent Tile ')).map(tile => tile.y + tile.height));
+  assert.ok(cardD.y >= tilesBottom + 16 || cardD.y >= 136 + 164 + 148 + 16, 'D does not cover the recent tiles');
+  assert.ok(cardD.x + cardD.width <= 1080 - 24);
+  const barE = windowE.findOne(child => child.name === 'Pro Footer Bar');
+  assert.equal(barE.y + barE.height, 690, 'E sits right above the status bar');
+  assert.equal(barE.width, 700, 'E spans the open surface');
+  const optionsCount = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-pro-options' });
+  assert.equal(page.children.length, optionsCount, 'rerun must not duplicate the layout options');
+  optionsBoard.remove();
+
+  await figma.ui.onmessage({ type: 'generate-pro-upgrade-entry' });
+  const proBoard = page.children.find(child => child.name === 'Home / Pro Upgrade Entry / Redesign');
+  assert.ok(proBoard, 'the Pro upgrade entry board must be created');
+  const oldPro = proBoard.findOne(child => child.name === 'Upgrade to Pro Button (current)');
+  assert.equal(oldPro.height, 36);
+  const proButtons = proBoard.findAll(child => child.name === 'Upgrade to Pro Button');
+  assert.equal(proButtons.length, 9, 'the proposal, the four states, the narrow window, the launch price and the two flame versions');
+  const defaultPro = proButtons.find(button => button.parent.name === 'After / Home cut');
+  assert.ok(defaultPro, 'the proposed block is in the Home cut');
+  assert.equal(defaultPro.height, 44, 'the button is 44 pt high');
+  assert.equal(defaultPro.width, 288);
+  assert.equal(defaultPro.cornerRadius, 12);
+  assert.equal(Math.round(defaultPro.fills[0].color.r * 255), 0xE8, 'accent fill');
+  const caption = defaultPro.parent.findOne(child => child.name === 'Caption');
+  assert.equal(caption.textAlignHorizontal, 'CENTER', 'the caption is centered');
+  assert.equal(caption.x + caption.width / 2, defaultPro.x + defaultPro.width / 2, 'the caption is centered on the button');
+  assert.equal(defaultPro.parent.width / 2, defaultPro.x + defaultPro.width / 2, 'the block is centered in the Home cut');
+  const labelNode = defaultPro.findOne(child => child.name === 'Label');
+  assert.equal(labelNode.fontSize, 15, 'the label is 15 pt');
+  assert.equal(labelNode.fontName.style, 'Semi Bold', 'the label is semibold');
+  const pricePill = defaultPro.findOne(child => child.name === 'Price Pill');
+  assert.ok(pricePill, 'the price sits in its own pill');
+  assert.equal(pricePill.findOne(child => child.name === 'Price').characters, '$9.99');
+  assert.equal(pricePill.findOne(child => child.name === 'Price').fontSize, 17, 'the price is 17 pt, larger than the label');
+  assert.equal(pricePill.findOne(child => child.name === 'Price Prefix').characters, 'from');
+  assert.equal(Math.round(pricePill.fills[0].color.r * 255), 0x21, 'the pill is dark ink so the accent price pops');
+  assert.ok(pricePill.height >= 28 && pricePill.height < defaultPro.height, 'the pill sits inside the button');
+  const launchCard = proBoard.findOne(child => child.name === 'Launch / Home cut');
+  const launchTag = launchCard.findOne(child => child.name === 'Launch Tag');
+  assert.ok(launchTag && launchTag.findOne(child => child.name === 'Flame').type === 'VECTOR', 'the launch tag has a vector flame');
+  assert.equal(launchTag.findOne(child => child.name === 'Launch Text').characters, 'Launch price');
+  assert.ok(pricePill.findOne(child => child.name === 'Flame').type === 'VECTOR', 'the main button shows a vector flame next to the price');
+  const emojiButton = proBoard.findOne(child => child.name === 'Flame / Emoji').findOne(child => child.name === 'Upgrade to Pro Button');
+  assert.equal(emojiButton.findOne(child => child.name === 'Flame Emoji').characters, '🔥', 'the emoji version uses the system fire emoji');
+  assert.equal(emojiButton.findOne(child => child.name === 'Label').characters, '✨ Upgrade to Pro');
+  assert.equal(emojiButton.findOne(child => child.name === 'Flame'), null, 'the emoji version has no vector flame');
+  const vectorButton = proBoard.findOne(child => child.name === 'Flame / Vector').findOne(child => child.name === 'Upgrade to Pro Button');
+  assert.ok(vectorButton.findOne(child => child.name === 'Flame'), 'the vector version has the flame');
+  const fireTexts = proBoard.findAll(child => child.type === 'TEXT' && /\u{1F525}/u.test(child.characters)).map(child => child.name);
+  assert.ok(fireTexts.length > 0 && fireTexts.every(name => ['Flame Emoji', 'Emoji Label', 'Spec Text 2'].includes(name)),
+    'the fire emoji appears only in the emoji version and its labels, got ' + fireTexts.join(', '));
+  const byState = name => proBoard.findOne(child => child.name === 'State / ' + name);
+  assert.ok(byState('Keyboard focus').findOne(child => child.name === 'Upgrade to Pro Button / focus ring'), 'focus shows a ring');
+  const pressedButton = byState('Pressed').findOne(child => child.name === 'Upgrade to Pro Button');
+  assert.ok(pressedButton.width < 288 && pressedButton.height < 44, 'pressed scales the button down');
+  assert.equal((pressedButton.effects || []).length, 0, 'pressed has no glow');
+  assert.notEqual(Math.round(byState('Hover').findOne(child => child.name === 'Upgrade to Pro Button').fills[0].color.g * 255),
+    Math.round(defaultPro.fills[0].color.g * 255), 'hover has its own fill');
+  assert.ok(proBoard.findOne(child => child.name === 'Compact / Home cut').findOne(child => child.name === 'Caption'),
+    'the caption stays in a narrow window');
+  const proCount = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-pro-upgrade-entry' });
+  assert.equal(page.children.length, proCount, 'rerun must not duplicate the Pro upgrade entry board');
+  proBoard.remove();
+
+  await figma.ui.onmessage({ type: 'generate-mask-draw-only', bytes: [4, 4] });
+  const drawNames = ['Widget Input / 03 / Image + Text + Mask / Draw Only', 'Widget Input / 03B / Image + Mask Only / Draw Only',
+    'Widget Input / Draw Mask / Brush Only'];
+  const [drawWithText, drawMaskOnly, brushEditor] = drawNames.map(name => page.children.find(child => child.name === name));
+  assert.ok(drawWithText && drawMaskOnly && brushEditor, 'all three draw-only mask pages must be created');
+  const drawActionNames = frameNode => frameNode.findAll(child => child.name.endsWith(' Action')).map(child => child.name);
+  for (const input of [drawWithText, drawMaskOnly]) {
+    assert.ok(drawActionNames(input).includes('Draw mask Action'), input.name + ': Draw mask is offered');
+    assert.ok(!drawActionNames(input).includes('Upload mask Action'), input.name + ': no upload option');
+    assert.ok(!input.findOne(child => child.name === 'Mask File'), input.name + ': no uploaded-file line');
+    const preview = input.findOne(child => child.name === 'Selected Image');
+    assert.equal(preview.fills[0].imageHash, 'test-image-4-4', input.name + ': real photo');
+  }
+  assert.ok(drawWithText.findOne(child => child.name === 'Prompt Field'), 'a Widget with a prompt shows the prompt field');
+  assert.equal(drawMaskOnly.findOne(child => child.name === 'Prompt Field'), null, 'a Widget without a prompt shows no prompt field');
+  assert.equal(drawMaskOnly.findOne(child => child.name === 'Prompt Field / disabled'), null, 'not even a disabled one');
+  assert.equal(drawMaskOnly.findOne(child => child.name === 'Prompt Label'), null);
+  const maskFieldOnly = drawMaskOnly.findOne(child => child.name === 'Mask Field');
+  assert.equal(maskFieldOnly.y, 137, 'the mask moves up into the space the prompt would take');
+  assert.equal(brushEditor.findOne(child => child.name === 'Mask Tools').findAll(child => child.name.endsWith(' Action')
+    && ['Brush Action', 'Erase Action'].includes(child.name)).map(child => child.name).join(','), 'Brush Action',
+    'the tools panel has only the brush');
+  assert.equal(brushEditor.findOne(child => child.name === 'Erase Action'), null, 'no eraser');
+  const brushAction = brushEditor.findOne(child => child.name === 'Brush Action');
+  assert.equal(brushAction.width, 261, 'the single Brush button fills the tools panel');
+  assert.equal(Math.round(brushAction.fills[0].color.r * 255), 0xE8, 'the Brush tool is selected by default (accent fill)');
+  const strokes = brushEditor.findAll(child => child.name === 'Mask Brush Stroke');
+  assert.ok(strokes.length > 0);
+  for (const stroke of strokes) {
+    const color = stroke.fills[0].color;
+    assert.equal([color.r, color.g, color.b].map(value => Math.round(value * 255)).join(','), '232,168,124',
+      'brush strokes use the Glance accent color');
+  }
+  const cursorRing = brushEditor.findOne(child => child.name.startsWith('Brush Cursor'));
+  assert.ok(cursorRing && cursorRing.width === cursorRing.height, 'the pointer is a circle');
+  assert.equal(cursorRing.fills.length, 0, 'the circle is an outline, not a filled dot');
+  const drawCount = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-mask-draw-only', bytes: [4, 4] });
+  assert.equal(page.children.length, drawCount, 'rerun must not duplicate the draw-only pages');
+  drawWithText.remove(); drawMaskOnly.remove(); brushEditor.remove();
+
+  await figma.ui.onmessage({ type: 'generate-top-bar-height-study', landscape: [1, 1] });
+  const heightStudy = page.children.find(child => child.name === 'Window Placement / Top Bar Height Study');
+  assert.ok(heightStudy, 'the top bar height study must be created');
+  const heightWindows = heightStudy.findAll(child => child.name.startsWith('Window / Top Bar '));
+  assert.deepEqual(Array.from(heightWindows.map(win => win.name)),
+    ['Window / Top Bar 56 pt', 'Window / Top Bar 44 pt', 'Window / Top Bar 36 pt', 'Window / Top Bar 28 pt']);
+  for (const win of heightWindows) {
+    const barHeight = Number(win.name.match(/(\d+) pt/)[1]);
+    const bar = win.findOne(child => child.name === '00 / Titlebar');
+    assert.equal(bar.height, barHeight);
+    const photo = win.findOne(child => child.name === 'Photo');
+    assert.equal(photo.y, barHeight, win.name + ': the photo starts under the bar');
+    assert.equal(photo.height, 384, win.name + ': the media area is identical in every variant');
+    assert.equal(win.height, 384 + barHeight, win.name + ': the window grows by the bar height');
+    assert.equal(win.findOne(child => child.name === '01 / Floating Toolbar').y, barHeight + 24);
+    assert.equal(bar.findOne(child => child.name === 'Close').y, Math.round((barHeight - 12) / 2), win.name + ': controls centered');
+    assert.equal(photo.fills[0].type, 'IMAGE', win.name + ': real photo');
+    assert.equal(bar.findOne(child => child.name === 'Window Title'), null, win.name + ': no title prefix, just the filename');
+    assert.equal(bar.findOne(child => child.name === 'Separator'), null);
+    assert.equal(bar.findOne(child => child.name === 'Filename').characters, 'alpine-lake.jpg');
+  }
+  const heightCount = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-top-bar-height-study', landscape: [1, 1] });
+  assert.equal(page.children.length, heightCount, 'rerun must not duplicate the height study');
+  heightStudy.remove();
+
+  await figma.ui.onmessage({ type: 'generate-window-placement-study', landscape: [1, 1], portrait: [2, 2] });
+  const placementPrefix = 'Window Placement / ';
+  const placementNames = {
+    imageLandscape: 'Image Inspect / Landscape',
+    imagePortrait: 'Image Inspect / Portrait',
+    videoLandscape: 'Video Inspect / Landscape',
+    videoPortrait: 'Video Inspect / Portrait',
+    imageLandscapeBar: 'Image Inspect / Landscape / Top Bar',
+    imagePortraitBar: 'Image Inspect / Portrait / Top Bar',
+    videoLandscapeBar: 'Video Inspect / Landscape / Top Bar',
+    videoPortraitBar: 'Video Inspect / Portrait / Top Bar',
+    imageLandscapeBarHidden: 'Image Inspect / Landscape / Top Bar / Toolbar hidden',
+    imagePortraitBarHidden: 'Image Inspect / Portrait / Top Bar / Toolbar hidden',
+    imageLandscapeBarRunning: 'Image Inspect / Landscape / Top Bar / Task running',
+    imagePortraitBarRunning: 'Image Inspect / Portrait / Top Bar / Task running'
+  };
+  const placementDesktops = {};
+  for (const [key, name] of Object.entries(placementNames)) {
+    placementDesktops[key] = page.children.find(child => child.name === placementPrefix + name);
+    assert.ok(placementDesktops[key], name + ' must be created');
+  }
+  const placementSpec = page.children.find(child => child.name === 'Window Placement / Spec');
+  assert.ok(placementSpec, 'the spec card must be created');
+  for (const [key, desktop] of Object.entries(placementDesktops)) {
+    const hasBar = key.includes('Bar');
+    const isPortrait = key.includes('Portrait');
+    const win = desktop.findOne(child => child.name.startsWith('Window / '));
+    assert.ok(win, key + ' must contain its window');
+    assert.equal(win.parent, desktop);
+    const usable = desktop.findOne(child => child.name === 'Usable screen area (visibleFrame)');
+    const topGap = win.y - usable.y;
+    const bottomGap = usable.y + usable.height - (win.y + win.height);
+    assert.equal(topGap, bottomGap, key + ': top and bottom gaps must be equal');
+    assert.ok(win.height / usable.height <= 0.88 + 0.005, key + ': window height stays within 88% of the usable area');
+    assert.ok(topGap / usable.height >= 0.05, key + ': the window must leave a visible gap below the menu bar');
+    assert.equal(win.x * 2 + win.width, desktop.width, key + ': window is centered horizontally');
+    assert.equal(usable.y, desktop.findOne(child => child.name === 'Menu Bar').height, 'usable area starts below the menu bar');
+    const ghost = desktop.findOne(child => child.name === 'Current window ceiling (96%)');
+    assert.ok(ghost.y - usable.y < topGap, key + ': the current 96% ceiling leaves a smaller gap');
+    assert.ok(desktop.findOne(child => child.name === 'Proposed top gap / label'));
+    assert.ok(desktop.findOne(child => child.name === 'Dock'));
+    const photoNode = win.findOne(child => child.name === 'Photo') || win;
+    const photoFill = (photoNode.fills || []).find(paint => paint.type === 'IMAGE');
+    assert.ok(photoFill, key + ': the window must show a real photo');
+    assert.equal(photoFill.imageHash, isPortrait ? 'test-image-2-2' : 'test-image-1-1',
+      key + ': landscape scenes use the landscape photo, portrait scenes the portrait photo');
+    assert.equal(win.width < win.height, isPortrait, key + ': orientation');
+    assert.equal(!!win.findOne(child => child.name === '02 / Floating Playback Controls'), key.startsWith('video'),
+      key + ': only video windows carry the playback bar');
+    if (key.startsWith('video') && isPortrait) {
+      assert.ok(win.findOne(child => child.name === '02 / Floating Playback Controls').width <= 570 - 48,
+        'the playback bar fits inside the portrait window');
+    }
+    const expectedLabel = key.endsWith('BarHidden') ? 'B  ·  Top bar  ·  toolbar hidden'
+      : key.endsWith('BarRunning') ? 'B  ·  Top bar  ·  task running'
+      : hasBar ? 'B  ·  With top bar (always shown)' : 'A  ·  Floating window controls (current)';
+    assert.equal(desktop.findOne(child => child.name === 'Style Label').characters, expectedLabel);
+    const toolbar = win.findOne(child => child.name === '01 / Floating Toolbar');
+    assert.ok(toolbar, key + ': every window has the floating toolbar');
+    const bar = win.findOne(child => child.name === '00 / Titlebar');
+    if (!hasBar) {
+      if (key !== 'imageLandscape') assert.ok(win.findOne(child => child.name === 'System / Window Controls'), key + ': floating controls');
+      assert.equal(bar, null, key + ': no top bar in the A scenes');
+      continue;
+    }
+    assert.equal(win.findOne(child => child.name === 'System / Window Controls'), null, key + ': no floating controls pill');
+    assert.ok(bar, key + ': the B scenes have a top bar');
+    assert.equal(bar.height, 28, key + ': the top bar is 28 pt high (the standard macOS title bar)');
+    assert.equal(bar.width, win.width);
+    const chromeFill = bar.fills[0].color;
+    assert.equal(Math.round(chromeFill.r * 255), 0x17, key + ': solid chrome fill (red)');
+    assert.equal(Math.round(chromeFill.g * 255), 0x18, key + ': solid chrome fill (green)');
+    assert.equal(Math.round(chromeFill.b * 255), 0x1D, key + ': solid chrome fill (blue)');
+    assert.equal(['Close', 'Minimize', 'Zoom'].map(name => bar.findOne(child => child.name === name).x).join(','), '24,44,64');
+    assert.equal(bar.findOne(child => child.name === 'Close').y, 8, key + ': controls centered in 28 pt');
+    assert.equal(bar.findOne(child => child.name === 'Window Title'), null, key + ': no "Image Inspect" / "Video Inspect" prefix');
+    assert.equal(bar.findOne(child => child.name === 'Separator'), null);
+    const filename = bar.findOne(child => child.name === 'Filename');
+    assert.equal(filename.characters, key.startsWith('video') ? 'clip.mov' : (isPortrait ? 'portrait.jpg' : 'alpine-lake.jpg'));
+    assert.equal(filename.textAlignHorizontal, 'CENTER', key + ': the filename is centered');
+    assert.equal(filename.width, win.width);
+    assert.equal(filename.y, 6);
+    assert.equal(filename.fontSize, 12);
+    assert.equal(bar.findOne(child => child.name === 'Titlebar Divider').y, 27);
+    assert.equal(photoNode.y, 28, key + ': the photo starts directly below the title bar');
+    assert.equal(photoNode.height, win.height - 28);
+    assert.equal(toolbar.y, 28 + 24, key + ': the toolbar floats 24 pt below the top bar');
+    assert.notEqual(bar.opacity, 0, key + ': the top bar is always shown');
+    if (key.endsWith('BarHidden')) {
+      assert.equal(toolbar.opacity, 0, key + ': only the toolbar fades out');
+      assert.ok(win.findOne(child => child.name === 'Auto-hide message'));
+      assert.equal(win.height, 1012, key + ': the window keeps its size, the bar stays');
+    } else {
+      assert.notEqual(toolbar.opacity, 0);
+      assert.equal(win.findOne(child => child.name === 'Auto-hide message'), null);
+    }
+    if (key.endsWith('BarRunning')) {
+      const indicator = win.findOne(child => child.name === 'Task running indicator');
+      assert.ok(indicator, key + ': running indicator');
+      assert.equal(indicator.x + indicator.width + 24, win.width, key + ': indicator at the row\'s right end');
+      assert.equal(indicator.y, 28 + 24 + (54 - 34) / 2, key + ': indicator centered on the toolbar row');
+      if (!isPortrait) assert.ok(toolbar.x + toolbar.width + 12 <= indicator.x, key + ': toolbar leaves room for the indicator');
+      assert.ok(win.findOne(child => child.name === 'Main Image / breathing border'));
+      assert.equal(win.findOne(child => child.name === 'Task running text').characters, 'Remove Background  ·  Task running');
+    } else {
+      assert.equal(win.findOne(child => child.name === 'Task running indicator'), null);
+    }
+  }
+  assert.ok(placementDesktops.videoLandscape.y > placementDesktops.imageLandscape.y, 'video scenes sit on the second row');
+  assert.ok(placementDesktops.imageLandscapeBar.y > placementDesktops.videoLandscape.y + placementDesktops.videoLandscape.height,
+    'top bar scenes sit below the floating-controls scenes');
+  assert.ok(placementDesktops.imageLandscapeBarHidden.y > placementDesktops.videoLandscapeBar.y + placementDesktops.videoLandscapeBar.height,
+    'state scenes sit below the top bar scenes');
+  assert.ok(placementDesktops.imagePortrait.x > placementDesktops.imageLandscape.x + placementDesktops.imageLandscape.width,
+    'portrait scenes sit in the second column without overlapping');
+  assert.ok(placementSpec.y > placementDesktops.imagePortraitBarRunning.y + placementDesktops.imagePortraitBarRunning.height, 'spec card sits below all scenes');
+  const placementCount = page.children.length;
+  await figma.ui.onmessage({ type: 'generate-window-placement-study', landscape: [1, 1], portrait: [2, 2] });
+  assert.equal(page.children.length, placementCount, 'rerun must not duplicate the placement frames');
+
+  // A user who already generated the first four scenes (and the spec) gets only the new scenes added,
+  // below everything that exists, and the existing frames are untouched.
+  const newKeys = Object.keys(placementNames).filter(key => key.includes('Bar'));
+  newKeys.forEach(key => placementDesktops[key].remove());
+  placementSpec.y = placementDesktops.videoPortrait.y + placementDesktops.videoPortrait.height + 160;
+  const before = ['imageLandscape', 'videoPortrait'].map(key => [placementDesktops[key].x, placementDesktops[key].y]);
+  await figma.ui.onmessage({ type: 'generate-window-placement-study', landscape: [1, 1], portrait: [2, 2] });
+  const regeneratedBarScenes = newKeys.map(key => page.children.find(child => child.name === placementPrefix + placementNames[key]));
+  assert.ok(regeneratedBarScenes.every(Boolean), 'missing top bar scenes are created');
+  assert.deepEqual(['imageLandscape', 'videoPortrait'].map(key => [placementDesktops[key].x, placementDesktops[key].y]), before,
+    'existing scenes must not move');
+  for (const desktop of regeneratedBarScenes) {
+    assert.ok(desktop.y >= placementSpec.y + placementSpec.height, 'new scenes start below the existing spec card');
+  }
+  assert.equal(page.children.filter(child => child.name === 'Window Placement / Spec').length, 1, 'the spec card is not duplicated');
+  Object.values(placementDesktops).forEach(desktop => desktop.remove());
+  regeneratedBarScenes.forEach(desktop => desktop.remove());
+  placementSpec.remove();
 
   await figma.ui.onmessage({ type: 'generate-widget-text-result-window', bytes: [1, 2, 3] });
   const textResultMain = page.children.find(child => child.name === 'Image Inspect / Widget Text Result / Main Image');

@@ -201,6 +201,11 @@ class PathDetector {
     private let bareFilenameNoExtRegex: NSRegularExpression
     private let folderAbsolutePathRegex: NSRegularExpression
     private let folderHomePathRegex: NSRegularExpression
+    /// A path fragment with at least one slash and no requirement on the last
+    /// component: what a selection looks like when it stops mid-name.
+    private let partialPathRegex: NSRegularExpression
+    /// Shell-escaped characters (`My\ Photos`, `\(1\)`) as pasted from a terminal.
+    private let shellEscapeRegex: NSRegularExpression
     private let allRegexes: [NSRegularExpression]
 
     init() {
@@ -294,33 +299,120 @@ class PathDetector {
             options: []
         )
 
+        // First component strict (no spaces), later ones may contain single
+        // spaces between words. Completion trims trailing words that turn out
+        // to be prose.
+        self.partialPathRegex = try! NSRegularExpression(
+            pattern: "(?<![\\p{L}\\p{N}_./~\\-])(?:~/|/|\\./|\\.\\./)?[\\p{L}\\p{N}_.\\-]+(?:/[\\p{L}\\p{N}_.\\-]+(?: [\\p{L}\\p{N}_.\\-]+)*)+",
+            options: []
+        )
+        self.shellEscapeRegex = try! NSRegularExpression(pattern: "\\\\([ ()&'\"\\[\\]{}!$;])", options: [])
+
         self.allRegexes = [httpRegex, fileURLRegex, homePathRegex, absolutePathRegex]
+    }
+
+    /// Whether files with this extension are something Glance can open.
+    func supportsExtension(_ ext: String) -> Bool {
+        localSupportedExtensions.contains(ext.lowercased())
+    }
+
+    /// A bare name cut off before its end (`kyoto-da`, `hero.pn`), completed
+    /// against the folders the selection most likely refers to.
+    func completeName(_ prefix: String, in directories: [URL]) -> [DetectedPath] {
+        PathCompleter.completeName(prefix, in: directories, accepts: supportsExtension)
+            .map { localKind(for: $0.path) }
+    }
+
+    /// Terminals escape spaces and brackets with backslashes; drop the
+    /// backslashes so the regexes see the real path.
+    private func unescapingShell(_ text: String) -> String {
+        guard text.contains("\\") else { return text }
+        return shellEscapeRegex.stringByReplacingMatches(in: text, options: [],
+                                                         range: NSRange(location: 0, length: (text as NSString).length),
+                                                         withTemplate: "$1")
     }
 
     func detect(_ text: String) -> DetectedPath {
         return detectAll(text).first ?? .invalid
     }
 
-    func detectAll(_ text: String) -> [DetectedPath] {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// `contextDirectories` are the folders a relative fragment is tried in
+    /// (the terminal's working directory and the like), closest first.
+    func detectAll(_ text: String, contextDirectories: [URL] = []) -> [DetectedPath] {
+        let trimmed = unescapingShell(text.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !trimmed.isEmpty else { return [] }
 
         Logger.info("PathDetector: scanning text='\(Logger.redact(truncate(trimmed)))'")
 
-        var results = collectAll(in: trimmed)
-        if results.isEmpty {
+        func hasConcrete(_ paths: [DetectedPath]) -> Bool { paths.contains { $0.url != nil } }
+        var results = collectAll(in: joiningWrappedMediaURLs(trimmed))
+        if !hasConcrete(results) {
             // Editors with soft-wrap and multi-line OCR output frequently
             // break a long URL/path in the middle. Retry with line breaks and
-            // surrounding spaces removed.
+            // surrounding spaces removed; a real file found that way beats
+            // bare-name guesses from the broken halves.
             let unwrapped = unwrapLines(trimmed)
             if unwrapped != trimmed {
                 Logger.info("PathDetector: retrying unwrapped='\(Logger.redact(truncate(unwrapped)))'")
-                results = collectAll(in: unwrapped)
+                let joined = collectAll(in: unwrapped)
+                if hasConcrete(joined) || results.isEmpty { results = joined }
+            }
+        }
+        if !hasConcrete(results) {
+            // The selection may stop before the end of the path: finish it on disk.
+            let completed = completePartialPaths(in: trimmed, contextDirectories: contextDirectories)
+            if !completed.isEmpty {
+                Logger.info("PathDetector: completed \(completed.count) cut-off path(s)")
+                results = completed
             }
         }
 
         Logger.info("PathDetector: detected \(results.count) image candidate(s)")
         return results
+    }
+
+    /// Path fragments in `text` completed like a shell's Tab: `~/Desk/hero.pn`
+    /// → `~/Desktop/hero.png`. Relative fragments try the context folders, then
+    /// the usual places. Trailing words are dropped one at a time in case the
+    /// fragment ran into prose.
+    private func completePartialPaths(in text: String, contextDirectories: [URL]) -> [DetectedPath] {
+        let ns = text as NSString
+        var tokens: [String] = []
+        partialPathRegex.enumerateMatches(in: text, options: [], range: NSRange(location: 0, length: ns.length)) { m, _, stop in
+            guard let m else { return }
+            tokens.append(ns.substring(with: m.range))
+            if tokens.count >= 8 { stop.pointee = true }
+        }
+        guard !tokens.isEmpty else { return [] }
+
+        let home = URL(fileURLWithPath: UserHome.path, isDirectory: true)
+        let roots = Self.orderedUnique(contextDirectories + ["Desktop", "Downloads", "Documents", "Pictures"]
+            .map { home.appendingPathComponent($0, isDirectory: true) } + [home])
+
+        var results: [DetectedPath] = []
+        var seen = Set<String>()
+        for token in tokens {
+            var candidate = token
+            for _ in 0..<4 {
+                let urls = PathCompleter.complete(candidate, roots: roots, accepts: supportsExtension)
+                if !urls.isEmpty {
+                    for url in urls where seen.insert(url.standardizedFileURL.path).inserted {
+                        results.append(localKind(for: url.path))
+                    }
+                    break
+                }
+                // "Photos/kyo is here" → "Photos/kyo"
+                guard let space = candidate.lastIndex(of: " ") else { break }
+                candidate = String(candidate[..<space])
+            }
+            if results.count >= PathCompleter.limit { break }
+        }
+        return results
+    }
+
+    private static func orderedUnique(_ urls: [URL]) -> [URL] {
+        var seen = Set<String>()
+        return urls.filter { seen.insert($0.standardizedFileURL.path).inserted }
     }
 
     private func collectAll(in text: String) -> [DetectedPath] {
@@ -333,7 +425,7 @@ class PathDetector {
             (fileURLRegex, 1),
             (homePathRegex, 2),
             (absolutePathRegex, 3),
-            (bareDomainRegex, 5),
+            (bareDomainRegex, 1),
         ]
         var hits: [Hit] = []
         for (regex, prio) in prioritized {
@@ -360,6 +452,7 @@ class PathDetector {
 
         var results: [DetectedPath] = []
         var seen = Set<String>()
+        var consumed = IndexSet()
         var lastEnd = 0
         for hit in hits {
             if hit.range.location < lastEnd { continue }
@@ -401,6 +494,7 @@ class PathDetector {
             }
 
             guard let path = resolvedPath else { continue }
+            consumed.insert(integersIn: hit.range.location..<consumeEnd)
             lastEnd = consumeEnd
             // Dedup: concrete cases use URL string; unresolved cases use token.
             let key = path.url?.absoluteString ?? path.unresolvedToken ?? ""
@@ -430,6 +524,7 @@ class PathDetector {
         var bareCount = 0
         bareFilenameRegex.enumerateMatches(in: text, options: [], range: full) { m, _, stop in
             guard let m = m else { return }
+            guard !consumed.intersects(integersIn: m.range.location..<NSMaxRange(m.range)) else { return }
             let token = ns.substring(with: m.range)
             if seen.insert(token).inserted {
                 Logger.info("PathDetector: bare filename candidate '\(Logger.redact(token))'")
@@ -610,7 +705,7 @@ class PathDetector {
 
     private func mediaExtension(of candidate: String) -> String {
         // Prefer the path extension when present.
-        var withoutQuery = candidate.split(separator: "?", maxSplits: 1).first.map(String.init) ?? candidate
+        var withoutQuery = String(candidate.prefix { $0 != "?" && $0 != "#" })
         while withoutQuery.hasSuffix("\\") {
             withoutQuery.removeLast()
         }
@@ -650,6 +745,72 @@ class PathDetector {
             if tail.contains(token) { return token }
         }
         return ""
+    }
+
+    /// Extensionless media and ordinary pages can have identical URL shapes.
+    /// Ask for headers only, preserving the original URL and selection order.
+    func classifyRemoteLinks(_ paths: [DetectedPath], session: URLSession = .shared,
+                             completion: @escaping ([DetectedPath]) -> Void) {
+        let group = DispatchGroup()
+        var classified = paths
+        var needsHeaders = false
+        for (index, path) in paths.enumerated() {
+            guard case .webPage(let url) = path else { continue }
+            needsHeaders = true
+            var request = URLRequest(url: url)
+            request.httpMethod = "HEAD"
+            request.timeoutInterval = 5
+            group.enter()
+            session.dataTask(with: request) { _, response, _ in
+                DispatchQueue.main.async {
+                    defer { group.leave() }
+                    guard let http = response as? HTTPURLResponse,
+                          (200..<300).contains(http.statusCode), let mime = http.mimeType?.lowercased()
+                    else { return }
+                    if mime.hasPrefix("image/") { classified[index] = .remoteImage(url) }
+                    if mime.hasPrefix("video/") { classified[index] = .remoteVideo(url) }
+                }
+            }.resume()
+        }
+        if needsHeaders {
+            group.notify(queue: .main) { completion(classified) }
+        } else {
+            completion(paths)
+        }
+    }
+
+    /// Terminal selections can contain a physical newline inside a URL. A
+    /// truncated UUID still looks like a valid webpage, so the generic retry
+    /// for selections with no concrete hits cannot recover it.
+    private func joiningWrappedMediaURLs(_ text: String) -> String {
+        guard text.contains(where: \.isNewline) else { return text }
+        var lines = text.components(separatedBy: .newlines)
+        for index in lines.indices.dropFirst() {
+            let fragment = lines[index].trimmingCharacters(in: .whitespaces)
+            guard !fragment.isEmpty, !fragment.contains(where: \.isWhitespace),
+                  !fragment.contains("://"), !fragment.hasPrefix("/"), !fragment.hasPrefix("~"),
+                  let match = httpRegex.matches(in: lines[index - 1],
+                      range: NSRange(lines[index - 1].startIndex..., in: lines[index - 1])).last,
+                  let range = Range(match.range, in: lines[index - 1]) else { continue }
+            let line = lines[index - 1]
+            guard line[range.upperBound...].allSatisfy(\.isWhitespace) else { continue }
+            let prefix = String(line[range])
+            guard case .webPage(let partialURL)? = resolveCandidate(prefix),
+                  let joined = resolveCandidate(prefix + fragment), let url = joined.url else { continue }
+            // A page URL followed by a separate filename is also a valid
+            // selection. Join only a split extension or a split UUID basename.
+            let basename = url.deletingPathExtension().lastPathComponent
+            guard fragment.hasPrefix(".") ||
+                    (UUID(uuidString: basename) != nil && basename.hasPrefix(partialURL.lastPathComponent)
+                     && !partialURL.lastPathComponent.isEmpty) else { continue }
+            switch joined {
+            case .remoteImage, .remoteVideo:
+                lines[index] = String(line[..<range.upperBound]) + fragment
+                lines[index - 1] = ""
+            default: break
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 
     private func unwrapLines(_ text: String) -> String {

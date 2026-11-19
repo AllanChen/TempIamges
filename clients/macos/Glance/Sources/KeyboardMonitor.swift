@@ -38,6 +38,9 @@ final class KeyboardMonitor: NSObject {
     private var controlHeld: Bool = false
     private var activeKeyCodes: Set<UInt16> = []
     private var wasPreviewModeActive: Bool = false
+    private var optionHoldID: UInt64 = 0
+    private var pendingOptionHold: UInt64?
+    private var optionUsedInChord = false
     private var consumedComboKeyCode: UInt16?
     private var requiredModifiers: NSEvent.ModifierFlags
     private var requiredKeyCode: UInt16?
@@ -76,6 +79,7 @@ final class KeyboardMonitor: NSObject {
         let keyCode = Preferences.shared.effectiveKeyCode
         stateLock.lock()
         let hotkeyChanged = modifiers != requiredModifiers || keyCode != requiredKeyCode
+        if hotkeyChanged { pendingOptionHold = nil }
         requiredModifiers = modifiers
         requiredKeyCode = keyCode
         let change = stateChangeLocked()
@@ -90,8 +94,12 @@ final class KeyboardMonitor: NSObject {
         #endif
     }
 
-    @objc private func systemDidWake() {
+    @objc private func systemDidWake() { resetKeyState() }
+
+    private func resetKeyState() {
         stateLock.lock()
+        pendingOptionHold = nil
+        optionUsedInChord = false
         cmdHeld     = false
         shiftHeld   = false
         optionHeld  = false
@@ -103,7 +111,6 @@ final class KeyboardMonitor: NSObject {
         stateLock.unlock()
 
         if wasActive {
-            Logger.info("KeyboardMonitor: System woke — forcing preview mode DEACTIVATED")
             postOnMain(KeyboardMonitor.previewModeDidDeactivate)
         }
     }
@@ -111,7 +118,7 @@ final class KeyboardMonitor: NSObject {
     /// Current activation state. Locks because it reads the shared modifier set.
     var previewModeActive: Bool {
         stateLock.lock(); defer { stateLock.unlock() }
-        return previewModeActiveLocked()
+        return wasPreviewModeActive
     }
 
     /// `stateLock` must be held by the caller.
@@ -214,6 +221,7 @@ final class KeyboardMonitor: NSObject {
             // The system disables the tap if a callback runs too long or on
             // certain user input; re-enable it so the hotkey keeps working.
             if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                monitor.resetKeyState()
                 if let tap = monitor.eventTap {
                     CGEvent.tapEnable(tap: tap, enable: true)
                 }
@@ -285,9 +293,7 @@ final class KeyboardMonitor: NSObject {
         hotKeyHandler = nil
         stateLock.lock()
         hotKeyHeld = false
-        let change = stateChangeLocked()
         stateLock.unlock()
-        postIfChanged(change)
         #endif
         if let eventTap = eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
@@ -300,6 +306,7 @@ final class KeyboardMonitor: NSObject {
         runLoopSource = nil
         tapThread = nil
         tapRunLoop = nil
+        resetKeyState()
     }
 
     /// Runs on the dedicated tap thread. Keep this cheap: update state, post the
@@ -349,10 +356,37 @@ final class KeyboardMonitor: NSObject {
     /// `stateLock` must be held. Returns the new activation state if it changed
     /// since the last check (updating `wasPreviewModeActive`), otherwise nil.
     private func stateChangeLocked() -> Bool? {
-        let isActive = previewModeActiveLocked()
+        let optionOnly = requiredModifiers == .option && requiredKeyCode == nil
+        if !optionHeld {
+            optionUsedInChord = false
+        } else if cmdHeld || shiftHeld || controlHeld || !activeKeyCodes.isEmpty {
+            optionUsedInChord = true
+        }
+        let isActive = previewModeActiveLocked() && !(optionOnly && optionUsedInChord)
+        if optionOnly && isActive && !wasPreviewModeActive {
+            if pendingOptionHold == nil {
+                optionHoldID &+= 1
+                let id = optionHoldID
+                pendingOptionHold = id
+                DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + .milliseconds(500)) { [weak self] in
+                    self?.finishOptionHold(id)
+                }
+            }
+            return nil
+        }
+        pendingOptionHold = nil
         guard isActive != wasPreviewModeActive else { return nil }
         wasPreviewModeActive = isActive
         return isActive
+    }
+
+    private func finishOptionHold(_ id: UInt64) {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard pendingOptionHold == id else { return }
+        pendingOptionHold = nil
+        wasPreviewModeActive = true
+        postOnMain(KeyboardMonitor.previewModeDidActivate)
     }
 
     private func postIfChanged(_ change: Bool?) {

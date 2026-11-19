@@ -1080,3 +1080,28 @@
 "Could not reach Apple to verify your sign-in. Check your connection and try again." = "Apple war zur Bestätigung der Anmeldung nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.";
 "Apple could not confirm this sign-in. Please try again." = "Apple konnte diese Anmeldung nicht bestätigen. Bitte versuche es erneut.";
 "Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method." = "Apple hat keine bestätigte E-Mail-Adresse geteilt. Melde dich erneut mit Apple an und erlaube das Teilen oder Verbergen deiner E-Mail, oder nutze eine andere Anmeldemethode.";
+
+/* Text Widget panel */
+"Text" = "Text";
+"You can close this window. The task keeps running in Task Center." = "Du kannst dieses Fenster schließen. Die Aufgabe läuft im Aufgabencenter weiter.";
+"Saved to %@" = "Gesichert in %@";
+
+/* Peek Mini */
+"Inspect all" = "Alle prüfen";
+"Choose" = "Auswählen";
+"Search again" = "Erneut suchen";
+"Can't open this file" = "Diese Datei kann nicht geöffnet werden";
+"%d files named %@" = "%d Dateien namens %@";
+"%1$d of %2$d" = "%1$d von %2$d";
+"Allow Full Disk Access so Glance can look in Desktop and Documents." = "Erlaube den Festplattenvollzugriff, damit Glance in Schreibtisch und Dokumente suchen kann.";
+"Grant Glance access to the folder that contains this file." = "Gib Glance Zugriff auf den Ordner mit dieser Datei.";
+"Nothing on this Mac has this name. Check the spelling, or select the full path." = "Auf diesem Mac gibt es nichts mit diesem Namen. Prüfe die Schreibweise oder wähle den vollständigen Pfad aus.";
+"The download failed. Check your connection, then try again." = "Der Download ist fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut.";
+"The file may have moved, or its format can't be read." = "Die Datei wurde möglicherweise verschoben, oder ihr Format kann nicht gelesen werden.";
+"Runs on Glance’s servers. Results are saved to ~/Downloads/Glance and listed in Task Center." = "Läuft auf den Servern von Glance. Ergebnisse werden in ~/Downloads/Glance gespeichert und in der Aufgabenzentrale aufgeführt.";
+"Text input" = "Texteingabe";
+
+"Open an image to use this Widget." = "Öffne ein Bild, um dieses Widget zu verwenden.";
+"Open a video to use this Widget." = "Öffne ein Video, um dieses Widget zu verwenden.";
+"Open an image or video to use this Widget." = "Öffne ein Bild oder Video, um dieses Widget zu verwenden.";
+"Open a compatible file to use this Widget." = "Öffne eine passende Datei, um dieses Widget zu verwenden.";

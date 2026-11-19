@@ -58,6 +58,8 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
 
     private let imageLoader: ImageLoader
     private let pathDetector = PathDetector()
+    private var actionsPanel: ActionMenuPanel?
+    private lazy var widgetToast = InspectToastWindow()
 
     // MARK: Views
 
@@ -898,6 +900,66 @@ final class HomeWindow: NSWindow, NSWindowDelegate {
               !urls.isEmpty else { return false }
         handleDroppedURLs(urls)
         return true
+    }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .rightMouseDown ||
+            (event.type == .leftMouseDown && event.modifierFlags.contains(.control)) {
+            presentHomeMenu(at: convertPoint(toScreen: event.locationInWindow))
+            return
+        }
+        super.sendEvent(event)
+    }
+
+    private func presentHomeMenu(at point: NSPoint) {
+        var widgetEntries: [ActionMenuEntry] = WidgetRegistry.shared.available.compactMap { widget in
+            let commands = widget.localizedCommands.filter { !$0.isTextOnly }
+            guard let first = commands.first else { return nil }
+            func entry(_ command: WidgetCommand) -> ActionMenuEntry {
+                ActionMenuEntry(title: commands.count == 1 ? widget.displayName : command.name,
+                                creditCost: widget.taskCreditCost, action: { [weak self] in
+                    self?.showMissingWidgetInput(for: command)
+                })
+            }
+            return commands.count == 1 ? entry(first)
+                : ActionMenuEntry(title: widget.displayName, creditCost: widget.taskCreditCost, submenu: commands.map(entry))
+        }
+        let textEntries = TextWidgetPanel.menuEntries()
+        if !widgetEntries.isEmpty && !textEntries.isEmpty { widgetEntries.append(.separator()) }
+        widgetEntries.append(contentsOf: textEntries)
+
+        let market = ActionMenuEntry(title: "Widget Market…".localized, showsDisclosure: true, action: { [weak self] in
+            guard let self else { return }
+            WidgetMarketPanel.shared.toggle(from: self)
+        })
+        let widgetMenu: ActionMenuEntry
+        if widgetEntries.isEmpty {
+            widgetMenu = market
+        } else {
+            widgetEntries.append(.separator())
+            widgetEntries.append(market)
+            widgetMenu = ActionMenuEntry(title: "Widgets".localized, submenu: widgetEntries)
+        }
+        actionsPanel?.dismissChain()
+        let panel = ActionMenuPanel(entries: [
+            widgetMenu, .separator(),
+            ActionMenuEntry(title: "Open Files…".localized, action: { [weak self] in self?.openFilesTapped() }),
+            ActionMenuEntry(title: "Open Folder…".localized, action: { [weak self] in self?.openFolderTapped() })
+        ])
+        actionsPanel = panel
+        NSApp.activate(ignoringOtherApps: true)
+        panel.present(at: point)
+    }
+
+    private func showMissingWidgetInput(for command: WidgetCommand) {
+        let message: String
+        switch (command.inputTypes.contains("image"), command.inputTypes.contains("video")) {
+        case (true, false): message = "Open an image to use this Widget.".localized
+        case (false, true): message = "Open a video to use this Widget.".localized
+        case (true, true): message = "Open an image or video to use this Widget.".localized
+        case (false, false): message = "Open a compatible file to use this Widget.".localized
+        }
+        widgetToast.show(message: message, over: self)
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {

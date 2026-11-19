@@ -230,8 +230,11 @@ final class WidgetTaskClient {
             completion(.failure(WidgetTaskRequestError(statusCode: 401, message: nil)))
             return
         }
-        let mediaURLs = quote?.preparedVideoURL.map { [$0] } ?? input?.mediaURLs ?? [mediaURL]
-        guard (1...4).contains(mediaURLs.count) else {
+        // A text-only command sends just its text: no media, so nothing is uploaded.
+        let textOnly = mediaKind == .text
+        let mediaURLs = textOnly ? [] : quote?.preparedVideoURL.map { [$0] } ?? input?.mediaURLs ?? [mediaURL]
+        guard textOnly ? !(input?.prompt ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                       : (1...4).contains(mediaURLs.count) else {
             completion(.failure(WidgetTaskInputError.invalidImageCount))
             return
         }
@@ -280,7 +283,7 @@ final class WidgetTaskClient {
                                         maskURL: mask,
                                         usesMultipleImages: input?.usesMultipleImages == true,
                                         usesMultipleVideos: input?.usesMultipleVideos == true,
-                                        mediaType: mediaKind == .video ? "video" : "image",
+                                        mediaType: textOnly ? "text" : mediaKind == .video ? "video" : "image",
                                         location: country, requestKey: requestKey, quote: quote) { submission in
                                 switch submission {
                                 case .failure(let error): completion(.failure(error))
@@ -667,7 +670,8 @@ final class WidgetTaskClient {
                         usesMultipleVideos: Bool, mediaType: String,
                         location: String, requestKey: String, quote: WidgetTaskQuote?,
                         completion: @escaping (Result<AcceptedTask, Error>) -> Void) {
-        guard let primaryURL = mediaURLs.first else {
+        let primaryURL = mediaURLs.first
+        guard primaryURL != nil || mediaType == "text" else {
             completion(.failure(WidgetTaskInputError.invalidImageCount))
             return
         }
@@ -675,12 +679,17 @@ final class WidgetTaskClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(requestKey, forHTTPHeaderField: "Idempotency-Key")
         var taskParams: [String: Any] = [
-            "url": primaryURL,
             "prompt": prompt ?? "",
             "mask": maskURL.map { $0 as Any } ?? NSNull(),
             "location": location
         ]
-        var taskInput: [String: Any] = ["url": primaryURL, "type": mediaType]
+        var taskInput: [String: Any] = ["type": mediaType]
+        if let primaryURL {
+            taskParams["url"] = primaryURL
+            taskInput["url"] = primaryURL
+        } else {
+            taskInput["text"] = prompt ?? ""
+        }
         if usesMultipleVideos {
             taskParams["videos"] = mediaURLs
             taskInput["videos"] = mediaURLs

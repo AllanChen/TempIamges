@@ -407,7 +407,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         visibleRecords = query.isEmpty ? filtered : filtered.filter {
             $0.widgetName.localizedCaseInsensitiveContains(query) ||
             $0.commandName.localizedCaseInsensitiveContains(query) ||
-            ($0.source?.lastPathComponent.localizedCaseInsensitiveContains(query) ?? false)
+            ($0.inputSummary?.localizedCaseInsensitiveContains(query) ?? false)
         }
         filters.counts = [records.count,
                           records.filter { $0.phase.isActive }.count,
@@ -539,7 +539,7 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         statusDetail.string = "·  \(record.widgetName)"
         percentLabel.string = record.phase.isActive && record.progress > 0 ? "\(record.progress)%" : ""
         progressValue = record.phase.isActive ? CGFloat(min(100, max(0, record.progress))) / 100 : 0
-        sourceCaption.string = String(format: "Source · %@".localized, record.source?.lastPathComponent ?? "Media".localized)
+        sourceCaption.string = String(format: "Source · %@".localized, record.inputSummary ?? "Media".localized)
         sourcePreview.configure(url: record.source, waiting: false)
         let failureReason = record.errorMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
         let reasonText = (failureReason?.isEmpty == false ? failureReason : nil)
@@ -615,11 +615,11 @@ final class WidgetTaskCenterWindow: NSWindow, NSTableViewDataSource, NSTableView
         } else {
             var rows: [(String, String, NSColor)]
             if record.phase.isActive {
-                rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.source?.lastPathComponent ?? "Media", PanelStyle.textPrimary),
+                rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.inputSummary ?? "Media", PanelStyle.textPrimary),
                         credits, ("Progress", "\(record.progress)%", PanelStyle.textPrimary),
                         ("Polling", "2 seconds".localized, PanelStyle.textPrimary)]
             } else {
-                rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.source?.lastPathComponent ?? "Media", PanelStyle.textPrimary),
+                rows = [("Widget", record.widgetName, PanelStyle.textPrimary), ("Input", record.inputSummary ?? "Media", PanelStyle.textPrimary),
                         credits,
                         ("Duration", Self.durationText(record.updatedAt.timeIntervalSince(record.createdAt)), PanelStyle.textPrimary),
                         ("Result", record.output?.lastPathComponent ?? "—", PanelStyle.textPrimary)]
@@ -946,7 +946,7 @@ private final class TaskCenterCellView: NSTableCellView {
             loadThumbnail(candidates, token: token)
         }
         titleLabel.string = record.commandName
-        detailLabel.string = "\(record.billingStatusText ?? record.source?.lastPathComponent ?? "Media")  ·  \(relativeDate(record.createdAt))"
+        detailLabel.string = "\(record.billingStatusText ?? record.inputSummary ?? "Media")  ·  \(relativeDate(record.createdAt))"
         let color: NSColor = record.phase.isActive ? PanelStyle.info : (record.phase.isFailure ? PanelStyle.failure : (record.phase == .cancelled ? PanelStyle.textTertiary : PanelStyle.success))
         runningScrim.isHidden = !record.phase.isActive
         runningPeeker.isHidden = !record.phase.isActive

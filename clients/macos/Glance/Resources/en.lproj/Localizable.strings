@@ -1194,3 +1194,28 @@
 "Could not reach Apple to verify your sign-in. Check your connection and try again." = "Could not reach Apple to verify your sign-in. Check your connection and try again.";
 "Apple could not confirm this sign-in. Please try again." = "Apple could not confirm this sign-in. Please try again.";
 "Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method." = "Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method.";
+
+/* Text Widget panel */
+"Text" = "Text";
+"You can close this window. The task keeps running in Task Center." = "You can close this window. The task keeps running in Task Center.";
+"Saved to %@" = "Saved to %@";
+
+/* Peek Mini */
+"Inspect all" = "Inspect all";
+"Choose" = "Choose";
+"Search again" = "Search again";
+"Can't open this file" = "Can't open this file";
+"%d files named %@" = "%d files named %@";
+"%1$d of %2$d" = "%1$d of %2$d";
+"Allow Full Disk Access so Glance can look in Desktop and Documents." = "Allow Full Disk Access so Glance can look in Desktop and Documents.";
+"Grant Glance access to the folder that contains this file." = "Grant Glance access to the folder that contains this file.";
+"Nothing on this Mac has this name. Check the spelling, or select the full path." = "Nothing on this Mac has this name. Check the spelling, or select the full path.";
+"The download failed. Check your connection, then try again." = "The download failed. Check your connection, then try again.";
+"The file may have moved, or its format can't be read." = "The file may have moved, or its format can't be read.";
+"Runs on Glance’s servers. Results are saved to ~/Downloads/Glance and listed in Task Center." = "Runs on Glance’s servers. Results are saved to ~/Downloads/Glance and listed in Task Center.";
+"Text input" = "Text input";
+
+"Open an image to use this Widget." = "Open an image to use this Widget.";
+"Open a video to use this Widget." = "Open a video to use this Widget.";
+"Open an image or video to use this Widget." = "Open an image or video to use this Widget.";
+"Open a compatible file to use this Widget." = "Open a compatible file to use this Widget.";

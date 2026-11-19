@@ -412,6 +412,12 @@ final class WidgetMarketPanel: NSPanel {
             isAvailable: catalogIDs.contains(manifest.id))
         detail.onInstall = { [weak self] in self?.install(manifest) }
         detail.onRemove = { WidgetRegistry.shared.uninstall(id: manifest.id) }
+        detail.onRun = {
+            // Run the installed copy: it is the version the service will price.
+            let installed = WidgetRegistry.shared.available.first(where: { $0.id == manifest.id }) ?? manifest
+            guard let command = installed.commands.first(where: \.isTextOnly) else { return }
+            TextWidgetPanel.present(widget: installed, command: command)
+        }
         detailView = detail
         detailWidgetID = selectedWidgetID
         rootView.addSubview(detail, positioned: .below, relativeTo: loadingOverlay)
@@ -907,6 +913,8 @@ private final class WidgetMarketRowView: NSView {
 private final class WidgetMarketDetailView: NSView {
     var onInstall: (() -> Void)?
     var onRemove: (() -> Void)?
+    /// Opens the text Widget panel; shown for installed Widgets that run on text alone.
+    var onRun: (() -> Void)?
     private static let leading: CGFloat = 71    // board x 492 − column x 421
     private static let top: CGFloat = 40        // board y 84 − 44
     private static let trailing: CGFloat = 72
@@ -916,6 +924,7 @@ private final class WidgetMarketDetailView: NSView {
     private let titleLabel = WidgetMarketTextView(labelWithString: "")
     private let primaryAction = WidgetMarketActionButton()
     private let removeAction = WidgetMarketActionButton()
+    private let runAction = WidgetMarketActionButton()
     private let authorLabel = WidgetMarketTextView(labelWithString: "")
     private let versionLabel = WidgetMarketTextView(labelWithString: "")
     private let stateIcon = NSImageView()
@@ -948,6 +957,11 @@ private final class WidgetMarketDetailView: NSView {
         removeAction.action = #selector(removeTapped)
         removeAction.isHidden = !isInstalled
         document.addSubview(removeAction)
+        runAction.style = .run
+        runAction.target = self
+        runAction.action = #selector(runTapped)
+        runAction.isHidden = !(isInstalled && isAvailable && manifest.hasTextOnlyCommand)
+        document.addSubview(runAction)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
@@ -1034,7 +1048,7 @@ private final class WidgetMarketDetailView: NSView {
 
         // Actions sit on the title's baseline row (board y 30, 32 tall), primary rightmost.
         var actionX = right
-        for button in [primaryAction, removeAction] where !button.isHidden {
+        for button in [runAction, primaryAction, removeAction] where !button.isHidden {
             let w = button.preferredWidth
             actionX -= w
             button.frame = NSRect(x: actionX, y: Self.top + 30, width: w, height: 32)
@@ -1081,6 +1095,7 @@ private final class WidgetMarketDetailView: NSView {
 
     @objc private func installTapped() { onInstall?() }
     @objc private func removeTapped() { onRemove?() }
+    @objc private func runTapped() { onRun?() }
 
     func restoreScrollOffset(_ offset: NSPoint) {
         let maxY = max(0, document.bounds.height - scrollView.contentView.bounds.height)
@@ -1151,12 +1166,13 @@ private final class WidgetMarketIconTile: NSView {
 /// remove: quiet, a strong hairline with text/1.
 private final class WidgetMarketActionButton: NSButton {
     enum Style {
-        case install, update, remove
+        case install, update, remove, run
         var title: String {
             switch self {
             case .install: return "Install".localized
             case .update: return "Update".localized
             case .remove: return "Remove".localized
+            case .run: return "Run".localized
             }
         }
         var isPrimary: Bool { self != .remove }

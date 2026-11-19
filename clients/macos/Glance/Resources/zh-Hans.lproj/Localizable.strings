@@ -1196,3 +1196,28 @@
 "Could not reach Apple to verify your sign-in. Check your connection and try again." = "无法连接 Apple 验证登录。请检查网络连接后重试。";
 "Apple could not confirm this sign-in. Please try again." = "Apple 无法确认此次登录，请重试。";
 "Apple didn't share a verified email address. Sign in with Apple again and allow sharing or hiding your email, or use another sign-in method." = "Apple 未提供已验证的邮箱地址。请再次通过 Apple 登录并允许共享或隐藏邮箱，或改用其他登录方式。";
+
+/* Text Widget panel */
+"Text" = "文本";
+"You can close this window. The task keeps running in Task Center." = "可以关闭此窗口，任务会继续在任务中心运行。";
+"Saved to %@" = "已保存到 %@";
+
+/* Peek Mini */
+"Inspect all" = "全部检查";
+"Choose" = "选择";
+"Search again" = "重新搜索";
+"Can't open this file" = "无法打开此文件";
+"%d files named %@" = "%d 个名为 %@ 的文件";
+"%1$d of %2$d" = "第 %1$d 个，共 %2$d 个";
+"Allow Full Disk Access so Glance can look in Desktop and Documents." = "请允许“完全磁盘访问权限”，Glance 才能在桌面和文稿中查找。";
+"Grant Glance access to the folder that contains this file." = "请允许 Glance 访问此文件所在的文件夹。";
+"Nothing on this Mac has this name. Check the spelling, or select the full path." = "这台 Mac 上没有这个名称的文件。请检查拼写，或选中完整路径。";
+"The download failed. Check your connection, then try again." = "下载失败。请检查网络连接后重试。";
+"The file may have moved, or its format can't be read." = "文件可能已被移动，或其格式无法读取。";
+"Runs on Glance’s servers. Results are saved to ~/Downloads/Glance and listed in Task Center." = "在 Glance 服务器上运行。结果保存到 ~/Downloads/Glance，并显示在任务中心。";
+"Text input" = "文字输入";
+
+"Open an image to use this Widget." = "请先打开图片，再使用此 Widget。";
+"Open a video to use this Widget." = "请先打开视频，再使用此 Widget。";
+"Open an image or video to use this Widget." = "请先打开图片或视频，再使用此 Widget。";
+"Open a compatible file to use this Widget." = "请先打开兼容的文件，再使用此 Widget。";

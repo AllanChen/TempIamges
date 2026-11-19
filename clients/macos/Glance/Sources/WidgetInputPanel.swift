@@ -119,6 +119,22 @@ enum WidgetInputStyle {
         root.addSubview(value)
     }
 
+    /// The cost row for a top-origin (flipped) parent at any column.
+    static func addCostRowFlipped(to root: NSView, x: CGFloat, width: CGFloat, y: CGFloat, cost: String) {
+        for lineY in [y, y + 35] {
+            let rule = NSView(frame: NSRect(x: x, y: lineY, width: width, height: 1))
+            rule.wantsLayer = true
+            rule.layer?.backgroundColor = PanelStyle.resolvedCG(line)
+            root.addSubview(rule)
+        }
+        root.addSubview(text("Cost".localized, font: PanelStyle.inspectFont(ofSize: 13),
+                             color: PanelStyle.textTertiary, frame: NSRect(x: x, y: y + 10, width: 120, height: 16)))
+        let value = text(cost, font: PanelStyle.monoFont(ofSize: 13), color: PanelStyle.textPrimary,
+                         frame: NSRect(x: x + 120, y: y + 10, width: width - 120, height: 16))
+        value.alignment = .right
+        root.addSubview(value)
+    }
+
     /// Board "Button": 32 pt, radius 6, label 13 medium. Primary is the accent
     /// fill with accent ink; quiet is a strong hairline with text/1.
     static func button(_ title: String, primary: Bool, target: AnyObject?, action: Selector?) -> PanelButton {
@@ -281,6 +297,9 @@ final class WidgetPromptField: NSView {
     deinit { NotificationCenter.default.removeObserver(self) }
 
     @objc private func textChanged() { placeholder.isHidden = !textView.string.isEmpty }
+
+    /// Replaces the default prompt placeholder, e.g. with the Widget's own hint.
+    func setPlaceholder(_ value: String) { placeholder.string = value }
 }
 
 /// The three Figma Widget Input layouts share one data model and one submission path.

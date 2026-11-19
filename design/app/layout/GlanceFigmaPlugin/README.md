@@ -17,6 +17,106 @@ If the plugin reports `Switch to Design Mode`, use the toolbar mode toggle or
 
 ## Generate
 
+### Choose where the Pro entry goes on the Home window
+
+In Figma **Design Mode** (`Shift+D`), open **Glance UI Builder** and click
+**Generate Pro Entry Layout Options (A–E)**, the first button. It adds the board `Home / Pro Entry / Layout Options`
+with the same 1080 × 720 Home window five times, each with the Pro entry in a different place:
+
+- **A · Card in the content column**: aligned with the 40 pt content edges and the drop zone; PRO badge, caption,
+  price (flame, "from", "$9.99") and an Upgrade button.
+- **B · In the action row**: the button right-aligned to the drop zone, on the same row as Open Files and Open Folder.
+- **C · Pill in the titlebar**: a small "Pro · from $9.99" pill at the right; nothing is added to the body.
+- **D · Card in the Recent column**: at the bottom of the right column, as wide as the tiles.
+- **E · Footer bar**: a slim bar above the status bar across the open surface.
+
+The centered block under the actions lined up with nothing (the actions are left-aligned, the Recent column is on the
+right), which is why it looked odd. Each option lines up with something already there. A spec compares them. Design
+study only; the Glance client keeps the centered block until one is chosen.
+
+### Review the Pro upgrade entry on the Home window
+
+In Figma **Design Mode** (`Shift+D`), open **Glance UI Builder** and click
+**Generate Pro Upgrade Button (Home, centered)**, the first button. It adds the board
+`Home / Pro Upgrade Entry / Redesign`, to the right of the existing artwork:
+
+- **Before / After** cuts of the Home open surface. Before: a left-aligned 36 pt button with a 13 pt label and a gray
+  hint far to its right (hidden below 460 pt). After: one block centered horizontally: a 44 pt button
+  "Upgrade to Pro" (15 pt semibold, dark ink on the accent, 8.9:1) with the price in its own dark **price pill**
+  (a **flame**, "from" at 11 pt, "$9.99" at 17 pt semibold in the accent) so the price is seen at once, and the caption
+  "One-time purchase · Lifetime updates" centered under it.
+- The four button states: default, hover (lighter fill, 120 ms ease-out), pressed (darker fill, scale 0.97, 160 ms
+  ease-out) and keyboard focus (a 2 pt accent ring).
+- The narrow window (420 pt), where the caption now stays.
+- A variant **with a launch price**: a small "Launch price" tag with a flame over the button, shown only while a
+  launch price is active.
+- **Flame: vector or system emoji**: the same button both ways. The vector flame (#FF8A4C) looks the same on every
+  system; the emoji version (🔥 in the price pill, ✨ before the label) is drawn by macOS, so it differs between versions
+  and cannot take the accent color.
+- A short spec.
+
+This is a design study; the Glance client is unchanged until it is approved. Rerunning selects the existing board.
+
+### Review the draw-only mask input
+
+In Figma **Design Mode** (`Shift+D`), open **Glance UI Builder** and click
+**Generate Mask Input (Draw Only + Brush Only)**, the first button. It adds three pages, to the right of the
+existing artwork; your earlier mask pages are not changed:
+
+- `Widget Input / 03 / Image + Text + Mask / Draw Only`: a Widget with a prompt. The mask field offers only **Draw mask**
+  (no Upload mask).
+- `Widget Input / 03B / Image + Mask Only / Draw Only`: a Widget without a prompt. **No prompt field at all** (not even
+  a disabled one); the mask takes the right column and offers only Draw mask.
+- `Widget Input / Draw Mask / Brush Only`: the editor has a single **Brush** tool, selected by default and
+  filling the tools panel, no eraser (Undo and Clear mask remain), Glance's accent color (`#E8A87C`) for the brush
+  strokes, and a **circle** brush cursor the size of the brush instead of a crosshair.
+
+The image is a real photo. This is a design study; the Glance client is unchanged until it is approved.
+Rerunning selects the existing pages and preserves manual edits.
+
+### Compare top bar heights
+
+In Figma **Design Mode** (`Shift+D`), open **Glance UI Builder** and click
+**Generate Top Bar Height Study (56 / 44 / 36 / 28)**, the first button. It adds the board
+`Window Placement / Top Bar Height Study` with the same Image Inspect window four times, side by side:
+
+- 56, 44, 36 and 28 pt, each with just the filename centered. 28 pt was chosen (the standard macOS title bar height).
+
+The media area is identical in all four (760 × 384), so each window is exactly the bar's height taller, as in the
+app. The toolbar floats 24 pt below the bar. 28 pt was chosen and is what the Glance client uses.
+Rerunning selects the existing board and preserves manual edits.
+
+### Review the Image / Video Inspect window placement
+
+In Figma **Design Mode** (`Shift+D`), open **Glance UI Builder** and click
+**Generate Inspect Window Placement (Image + Video)**, the first button. It adds twelve
+editable desktop scenes plus a `Window Placement / Spec` card:
+
+- **A · Floating window controls (current)**: image and video, landscape and portrait.
+- **B · With top bar** (`... / Top Bar`): the same four with the chosen solid **28 pt** title bar (the standard macOS
+  height): window controls on the left (12 pt dots at x 24 / 44 / 64), just the filename, centered (12 pt, no "Image Inspect" prefix), a hairline below. The photo starts directly under it and the toolbar floats 24 pt below the bar.
+  In the app the window grows by 28 pt so the media keeps its aspect ratio.
+- **B states** for the image window, landscape and portrait: `... / Top Bar / Toolbar hidden` (when the pointer leaves
+  or after 3 s without movement only the toolbar fades out; the top bar is always shown and does not follow the
+  toolbar, and the photo stays full-bleed under it) and `... / Top Bar / Task running` (the running indicator takes the
+  toolbar row's right end, the toolbar slides left, and the breathing border and the task chip appear).
+
+Each scene is a macOS desktop with the menu bar and the Dock, and every window shows a real
+photo (a landscape lake and a portrait photo, built into the plugin from `design/marketing/brand-assets`;
+choosing a **Reference image** first uses that photo instead). The landscape image window in A is a
+clone of your current Image Focus frame with its fill replaced by the photo.
+
+- The proposal: the window is at most 88% of the usable screen (below the menu bar, above the
+  Dock) and centered, so the top and bottom gaps are equal (about 6%, 69 pt in the mock).
+  Portrait media is limited by height, so its window stays narrow (570 pt) with the same gaps.
+- Orange measures show those gaps; red dashes show today's 96% ceiling, which leaves about 2%.
+- This is a design study. The Glance client is unchanged until the numbers and the style are approved.
+
+Rerunning selects the existing frames and preserves manual edits. If earlier scenes exist, only the
+missing ones are added, below the existing ones; nothing is moved. An earlier run may have created
+`... / Floating Top Bar` scenes (a floating pill instead of a solid bar) or `... / Top Bar` scenes at 56 pt; they are
+superseded. Delete them and run the button again to get the 28 pt scenes.
+
 ### Review the permanent Pro purchase entry
 
 In Figma **Design Mode** (`Shift+D`), open **Glance UI Builder** and click

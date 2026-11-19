@@ -1757,6 +1757,11 @@ final class ImageInspectWindow: NSWindow, NSWindowDelegate {
             return commands.count == 1 ? commandEntries[0]
                 : ActionMenuEntry(title: widget.displayName, creditCost: widget.taskCreditCost, submenu: commandEntries)
         }
+        let textEntries = TextWidgetPanel.menuEntries()
+        if !textEntries.isEmpty {
+            if !widgetEntries.isEmpty { widgetEntries.append(.separator()) }
+            widgetEntries.append(contentsOf: textEntries)
+        }
         if widgetEntries.isEmpty {
             // Nothing installed (or nothing fits this image): keep the Market one click away.
             entries.insert(.separator(), at: 0)

@@ -63,7 +63,17 @@ struct WidgetTaskRecord: Codable, Identifiable {
     /// True from the click until the price check has answered: the running state is already shown, but nothing has
     /// been uploaded or submitted and nothing can be charged yet.
     var isPreparing: Bool { phase == .uploading && quote == nil && requestKey == nil && remoteTaskID == nil }
-    var source: URL? { URL(string: sourceURL) }
+    /// Text Widgets have no source file; their record stores an empty source.
+    var isTextInput: Bool { sourceKind == "text" }
+    var source: URL? { isTextInput ? nil : URL(string: sourceURL) }
+    /// What the task ran on, for lists and details: the source file name, or the text a text Widget received.
+    var inputSummary: String? {
+        if isTextInput {
+            let text = input?.prompt?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return text.isEmpty ? nil : text
+        }
+        return source?.lastPathComponent
+    }
     var output: URL? { outputPath.map { URL(fileURLWithPath: $0) } }
     /// "Queued · 3 ahead · ~2 min" while the service has not handed the task to
     /// a worker yet; nil otherwise. Shared by the Task Center list and detail pane.
@@ -135,6 +145,20 @@ final class WidgetTaskManager {
         records.filter { $0.phase == .completed && $0.source?.taskKey == source.taskKey }.compactMap { $0.output }
     }
     func isSameMedia(_ a: URL, _ b: URL) -> Bool { a.taskKey == b.taskKey }
+
+    /// Placeholder media for a text-only run. Each run gets its own address, so
+    /// two different links can run side by side; the record keeps no source.
+    static func textInputMedia() -> MediaInfo {
+        MediaInfo(url: URL(string: "glance-text:\(UUID().uuidString)")!, isLocal: false, kind: .text)
+    }
+
+    /// Runs a text-only Widget command on `text` (for example a post link).
+    @discardableResult
+    func startText(widget: WidgetManifest, command: WidgetCommand, text: String,
+                   over parent: NSWindow? = nil) -> UUID? {
+        start(widget: widget, command: command, media: Self.textInputMedia(),
+              input: WidgetTaskInput(mediaURLs: [], prompt: text, maskURL: nil), over: parent)
+    }
 
     @discardableResult
     func start(widget: WidgetManifest, command: WidgetCommand, media: MediaInfo,
@@ -228,7 +252,8 @@ final class WidgetTaskManager {
     }
 
     func retry(_ id: UUID, over parent: NSWindow? = nil) {
-        guard let record = records.first(where: { $0.id == id }), let source = record.source,
+        guard let record = records.first(where: { $0.id == id }),
+              record.isTextInput || record.source != nil,
               let widget = WidgetRegistry.shared.available.first(where: { $0.id == record.widgetID }),
               let command = widget.commands.first(where: { $0.id == record.commandID }) else { return }
         guard BillingCoordinator.shared.requireWidgetSignIn(over: parent ?? NSApp.keyWindow, freeWidget: widget.taskCreditCost == 0, completion: { [weak self, weak parent] in
@@ -246,6 +271,12 @@ final class WidgetTaskManager {
                 completion: { [weak self] result in self?.handleRemoteResult(id, result) })
             return
         }
+        if record.isTextInput {
+            _ = start(widget: widget, command: command, media: Self.textInputMedia(),
+                      input: record.input, over: parent)
+            return
+        }
+        guard let source = record.source else { return }
         let kind: MediaInfo.Kind = record.sourceKind == "video" ||
             (record.sourceKind == nil && UTType(filenameExtension: source.pathExtension)?.conforms(to: .movie) == true)
             ? .video : .image
@@ -533,8 +564,8 @@ final class WidgetTaskManager {
         return WidgetTaskRecord(id: id, widgetID: widget.id, widgetName: widget.displayName,
             commandID: command.id, commandName: shownCommand.name, outputTypes: command.outputs,
             showResultURL: command.showResultURL,
-            sourceURL: media.url.absoluteString,
-            sourceKind: media.kind == .video ? "video" : "image",
+            sourceURL: media.kind == .text ? "" : media.url.absoluteString,
+            sourceKind: media.kind == .video ? "video" : media.kind == .text ? "text" : "image",
             createdAt: Date(), updatedAt: Date(), remoteTaskID: nil, phase: .uploading,
             progress: 0, outputPath: nil, outputURLString: nil, errorMessage: nil,
             input: input, quote: quote, creditCost: quote?.totalCredits,
