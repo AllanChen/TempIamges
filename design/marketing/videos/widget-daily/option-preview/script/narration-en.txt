@@ -1,0 +1,15 @@
+Glance · Option Preview · 15s
+Voice: user's voice (local F5-TTS)
+Footage: user screen recording option-preview-2026-11-17.mov (cropped; folder names/path masked; grass thumbnails blurred)
+
+1. 00.20s – 03.60s  See an image filename in Terminal?
+2. 03.80s – 08.40s  Select it, tap Option, and the preview pops up.
+3. 08.60s – 12.00s  No Space bar. No folder to open.
+4. 12.20s – 15.00s  Right-click. Glance. Done.
+
+On-screen text:
+00.00s – 03.60s  An image filename in Terminal?
+03.60s – 08.40s  Select it. Press Option.  [Select filename  →  ⌥ Option]
+08.40s – 12.00s  No Space bar. No folder to open.  (Select several names, flip through them)
+12.00s – 15.00s  Glance · Right-click. Glance. Done. · Option Preview · select a filename, press Option · Mac app · Made for Mac
+Corner label: Screen recording

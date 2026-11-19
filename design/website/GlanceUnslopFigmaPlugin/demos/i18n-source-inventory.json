@@ -1,0 +1,2640 @@
+{
+  "texts": [
+    {
+      "text": "Glance",
+      "names": [
+        "Glance wordmark",
+        "Footer wordmark",
+        "Window title"
+      ],
+      "samples": [
+        {
+          "id": "15:7",
+          "width": 120,
+          "height": 40,
+          "size": 28,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:932",
+          "width": 160,
+          "height": 44,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Features",
+      "names": [
+        "Link / Features"
+      ],
+      "samples": [
+        {
+          "id": "15:11",
+          "width": 104,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "AI Widgets",
+      "names": [
+        "Link / AI Widgets"
+      ],
+      "samples": [
+        {
+          "id": "15:14",
+          "width": 104,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Pricing",
+      "names": [
+        "Link / Pricing",
+        "Section label"
+      ],
+      "samples": [
+        {
+          "id": "15:17",
+          "width": 104,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:764",
+          "width": 1248,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Install",
+      "names": [
+        "Link / Install"
+      ],
+      "samples": [
+        {
+          "id": "15:20",
+          "width": 104,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "中文",
+      "names": [
+        "Link / 中文"
+      ],
+      "samples": [
+        {
+          "id": "15:23",
+          "width": 44,
+          "height": 24,
+          "size": 14,
+          "font": "Noto Sans SC"
+        },
+        {
+          "id": "15:978",
+          "width": 44,
+          "height": 24,
+          "size": 14,
+          "font": "Noto Sans SC"
+        }
+      ]
+    },
+    {
+      "text": "Download",
+      "names": [
+        "Download for Mac",
+        "Section label"
+      ],
+      "samples": [
+        {
+          "id": "I15:25;13:105",
+          "width": 74,
+          "height": 20,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:837",
+          "width": 1248,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Glance · AI image Widgets for Mac",
+      "names": [
+        "Section label"
+      ],
+      "samples": [
+        {
+          "id": "15:33",
+          "width": 488,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "15:989",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "AI edits.\nVisible results.",
+      "names": [
+        "Hero headline"
+      ],
+      "samples": [
+        {
+          "id": "15:38",
+          "width": 472,
+          "height": 156,
+          "size": 60,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:992",
+          "width": 342,
+          "height": 100,
+          "size": 40,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Remove backgrounds. Erase objects.\nExpand a frame. Try a new outfit.",
+      "names": [
+        "Hero description"
+      ],
+      "samples": [
+        {
+          "id": "15:41",
+          "width": 448,
+          "height": 60,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:995",
+          "width": 342,
+          "height": 88,
+          "size": 17,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Download for Mac",
+      "names": [
+        "Download for Mac"
+      ],
+      "samples": [
+        {
+          "id": "I15:45;13:97",
+          "width": 160,
+          "height": 20,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "I15:847;13:97",
+          "width": 192,
+          "height": 20,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "See Widgets in action →",
+      "names": [
+        "Link / Widget demonstrations"
+      ],
+      "samples": [
+        {
+          "id": "15:49",
+          "width": 248,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1002",
+          "width": 342,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Portrait collection",
+      "names": [
+        "kyoto-dawn.heic"
+      ],
+      "samples": [
+        {
+          "id": "I62:6761;62:6477;12:234",
+          "width": 56,
+          "height": 8,
+          "size": 6.644444942474365,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "8 original photos",
+      "names": [
+        "4032 × 3024 HEIC 3.1 MB",
+        "Collection count"
+      ],
+      "samples": [
+        {
+          "id": "I62:6761;62:6477;12:235",
+          "width": 58,
+          "height": 7,
+          "size": 5.622222423553467,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "I62:7043;62:6609",
+          "width": 300,
+          "height": 16,
+          "size": 11,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "1 / 8",
+      "names": [
+        "3 / 12"
+      ],
+      "samples": [
+        {
+          "id": "I62:6761;62:6477;12:274",
+          "width": 17,
+          "height": 7,
+          "size": 5.622222423553467,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Start with a photo of your own.",
+      "names": [
+        "Product caption"
+      ],
+      "samples": [
+        {
+          "id": "15:167",
+          "width": 736,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1034",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "No account to start",
+      "names": [
+        "Free start fact 1"
+      ],
+      "samples": [
+        {
+          "id": "15:174",
+          "width": 312,
+          "height": 24,
+          "size": 13,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "14-day full trial, no card",
+      "names": [
+        "Free start fact 2"
+      ],
+      "samples": [
+        {
+          "id": "15:177",
+          "width": 336,
+          "height": 24,
+          "size": 13,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Viewing, compare, capture and OCR stay free",
+      "names": [
+        "Free start fact 3"
+      ],
+      "samples": [
+        {
+          "id": "15:180",
+          "width": 552,
+          "height": 24,
+          "size": 13,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Selected image Widgets",
+      "names": [
+        "Section label"
+      ],
+      "samples": [
+        {
+          "id": "15:184",
+          "width": 1248,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "15:1041",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Choose a tool.\nSee what changes.",
+      "names": [
+        "Workflow headline"
+      ],
+      "samples": [
+        {
+          "id": "15:188",
+          "width": 720,
+          "height": 108,
+          "size": 48,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:1044",
+          "width": 342,
+          "height": 112,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Choose a Widget, then check the result\nagainst your original.",
+      "names": [
+        "Workflow introduction"
+      ],
+      "samples": [
+        {
+          "id": "15:191",
+          "width": 400,
+          "height": 52,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1047",
+          "width": 342,
+          "height": 52,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "01 / Background removal · 20 credits / run",
+      "names": [
+        "Widget metadata"
+      ],
+      "samples": [
+        {
+          "id": "I62:6881;62:6754",
+          "width": 448,
+          "height": 20,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "I62:7063;62:6758",
+          "width": 342,
+          "height": 20,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Keep the person.\nSeparate the background.",
+      "names": [
+        "Widget headline"
+      ],
+      "samples": [
+        {
+          "id": "I62:6881;62:6755",
+          "width": 448,
+          "height": 80,
+          "size": 36,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "I62:7063;62:6759",
+          "width": 342,
+          "height": 120,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Separate the person from the background as a transparent PNG, ready for your next layout or composition.",
+      "names": [
+        "Widget explanation"
+      ],
+      "samples": [
+        {
+          "id": "I62:6881;62:6756",
+          "width": 448,
+          "height": 48,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "I62:7063;62:6760",
+          "width": 342,
+          "height": 72,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Compare images",
+      "names": [
+        "kyoto-dawn.heic"
+      ],
+      "samples": [
+        {
+          "id": "I62:6896;51:5564;12:234",
+          "width": 53,
+          "height": 8,
+          "size": 6.644444942474365,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "8s · Product demo",
+      "names": [
+        "4032 × 3024 HEIC 3.1 MB"
+      ],
+      "samples": [
+        {
+          "id": "I62:6896;51:5564;12:235",
+          "width": 58,
+          "height": 7,
+          "size": 5.622222423553467,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Play demo",
+      "names": [
+        "Playback label"
+      ],
+      "samples": [
+        {
+          "id": "I62:6896;51:5680",
+          "width": 102.22222900390625,
+          "height": 10.222223281860352,
+          "size": 11.244444847106934,
+          "font": "Inter"
+        },
+        {
+          "id": "I62:7078;51:5815",
+          "width": 60,
+          "height": 20,
+          "size": 11,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "02 / Remove objects · 30 credits / run",
+      "names": [
+        "Widget metadata"
+      ],
+      "samples": [
+        {
+          "id": "I62:6892;62:6754",
+          "width": 448,
+          "height": 20,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "I62:7074;62:6758",
+          "width": 342,
+          "height": 20,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Keep what matters.\nRemove the rest.",
+      "names": [
+        "Widget headline"
+      ],
+      "samples": [
+        {
+          "id": "I62:6892;62:6755",
+          "width": 448,
+          "height": 80,
+          "size": 36,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "I62:7074;62:6759",
+          "width": 342,
+          "height": 80,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Describe the unwanted object in English. Then drag the comparison divider to inspect the result against the original.",
+      "names": [
+        "Widget explanation"
+      ],
+      "samples": [
+        {
+          "id": "I62:6892;62:6756",
+          "width": 448,
+          "height": 72,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "I62:7074;62:6760",
+          "width": 342,
+          "height": 72,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "03 / Expand image · 30 credits / run",
+      "names": [
+        "Widget metadata"
+      ],
+      "samples": [
+        {
+          "id": "I62:7016;62:6754",
+          "width": 448,
+          "height": 20,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "I62:7094;62:6758",
+          "width": 342,
+          "height": 20,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Give your photo\nmore room.",
+      "names": [
+        "Widget headline"
+      ],
+      "samples": [
+        {
+          "id": "I62:7016;62:6755",
+          "width": 448,
+          "height": 80,
+          "size": 36,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "I62:7094;62:6759",
+          "width": 342,
+          "height": 80,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Extend beyond the edges of a portrait to create more room in the composition. See the original beside the expanded result.",
+      "names": [
+        "Widget explanation"
+      ],
+      "samples": [
+        {
+          "id": "I62:7016;62:6756",
+          "width": 448,
+          "height": 72,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "I62:7094;62:6760",
+          "width": 342,
+          "height": 72,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "04 / Outfit swap · 30 credits / run",
+      "names": [
+        "Widget metadata"
+      ],
+      "samples": [
+        {
+          "id": "I62:7027;62:6754",
+          "width": 448,
+          "height": 20,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "I62:7105;62:6758",
+          "width": 342,
+          "height": 20,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "Same person.\nA different outfit.",
+      "names": [
+        "Widget headline"
+      ],
+      "samples": [
+        {
+          "id": "I62:7027;62:6755",
+          "width": 448,
+          "height": 80,
+          "size": 36,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "I62:7105;62:6759",
+          "width": 342,
+          "height": 80,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Add a person image and an outfit reference to try a different look. Keep the original close while you review the clothing change.",
+      "names": [
+        "Widget explanation"
+      ],
+      "samples": [
+        {
+          "id": "I62:7027;62:6756",
+          "width": 448,
+          "height": 72,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "I62:7105;62:6760",
+          "width": 342,
+          "height": 72,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Also explore Edit Area, Upscale, image and video watermark removal, image hosting, Image to Prompt, and Redraw & Reframe.",
+      "names": [
+        "More Widget capabilities"
+      ],
+      "samples": [
+        {
+          "id": "62:7037",
+          "width": 1248,
+          "height": 24,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "62:7115",
+          "width": 342,
+          "height": 72,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Explore all Widgets →",
+      "names": [
+        "Browse all Widgets"
+      ],
+      "samples": [
+        {
+          "id": "62:7038",
+          "width": 1248,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "62:7116",
+          "width": 342,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Credits are shown before running. Cloud Widgets upload the media you submit; failed tasks refund credits in full.",
+      "names": [
+        "Cloud processing disclosure"
+      ],
+      "samples": [
+        {
+          "id": "62:7040",
+          "width": 1248,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "62:7118",
+          "width": 342,
+          "height": 72,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "And more",
+      "names": [
+        "Section label"
+      ],
+      "samples": [
+        {
+          "id": "15:559",
+          "width": 1248,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "15:1173",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "The small jobs, handled",
+      "names": [
+        "More tools headline"
+      ],
+      "samples": [
+        {
+          "id": "15:562",
+          "width": 1248,
+          "height": 56,
+          "size": 48,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Free forever",
+      "names": [
+        "Section label"
+      ],
+      "samples": [
+        {
+          "id": "15:571",
+          "width": 600,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "15:1184",
+          "width": 294,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "01",
+      "names": [
+        "OCR step 1"
+      ],
+      "samples": [
+        {
+          "id": "15:574",
+          "width": 32,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1194",
+          "width": 32,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Open an image",
+      "names": [
+        "OCR instruction 1"
+      ],
+      "samples": [
+        {
+          "id": "15:577",
+          "width": 248,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1197",
+          "width": 192,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Copy the text. Keep your image",
+      "names": [
+        "OCR headline"
+      ],
+      "samples": [
+        {
+          "id": "15:582",
+          "width": 640,
+          "height": 36,
+          "size": 28,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Recognize text on your Mac, select what you need, and copy it. No Pro,\ncredits, or upload needed.",
+      "names": [
+        "OCR description"
+      ],
+      "samples": [
+        {
+          "id": "15:585",
+          "width": 600,
+          "height": 52,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "02",
+      "names": [
+        "OCR step 2"
+      ],
+      "samples": [
+        {
+          "id": "15:589",
+          "width": 32,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1201",
+          "width": 32,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "03",
+      "names": [
+        "OCR step 3"
+      ],
+      "samples": [
+        {
+          "id": "15:592",
+          "width": 32,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1208",
+          "width": 32,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Select its text",
+      "names": [
+        "OCR instruction 2"
+      ],
+      "samples": [
+        {
+          "id": "15:596",
+          "width": 248,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1204",
+          "width": 192,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "⌘C",
+      "names": [
+        "Keycap label"
+      ],
+      "samples": [
+        {
+          "id": "15:601",
+          "width": 48,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1214",
+          "width": 48,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Copy with",
+      "names": [
+        "OCR instruction 3"
+      ],
+      "samples": [
+        {
+          "id": "15:602",
+          "width": 248,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1211",
+          "width": 192,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Video preview & capture",
+      "names": [
+        "Tool name / Video preview & capture"
+      ],
+      "samples": [
+        {
+          "id": "15:613",
+          "width": 592,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1220",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Cloud AI Widgets",
+      "names": [
+        "Tool name / Cloud AI Widgets"
+      ],
+      "samples": [
+        {
+          "id": "15:616",
+          "width": 592,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1229",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Play a video, capture any frame, crop it, then save or copy it.",
+      "names": [
+        "Tool description / Video preview & capture"
+      ],
+      "samples": [
+        {
+          "id": "15:620",
+          "width": 592,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "New accounts get 100 credits. Only cloud runs use credits.",
+      "names": [
+        "Tool description / Cloud AI Widgets"
+      ],
+      "samples": [
+        {
+          "id": "15:623",
+          "width": 592,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Local toolbox",
+      "names": [
+        "Tool name / Local toolbox"
+      ],
+      "samples": [
+        {
+          "id": "15:634",
+          "width": 592,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1238",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Peek, when you want it",
+      "names": [
+        "Tool name / Peek, when you want it"
+      ],
+      "samples": [
+        {
+          "id": "15:637",
+          "width": 592,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1247",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Convert, compress, export, rotate, crop, and use Base64 tools on your Mac.",
+      "names": [
+        "Tool description / Local toolbox"
+      ],
+      "samples": [
+        {
+          "id": "15:641",
+          "width": 592,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Select an image link or file path and press Option + Space. Optional, off by default.",
+      "names": [
+        "Tool description / Peek, when you want it"
+      ],
+      "samples": [
+        {
+          "id": "15:644",
+          "width": 592,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Task Center",
+      "names": [
+        "Tool name / Task Center"
+      ],
+      "samples": [
+        {
+          "id": "15:655",
+          "width": 592,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1256",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Start without permissions",
+      "names": [
+        "Tool name / Start without permissions"
+      ],
+      "samples": [
+        {
+          "id": "15:658",
+          "width": 592,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1265",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Follow queued, running, and finished tasks. Cancel a queued task and get its credits\nback.",
+      "names": [
+        "Tool description / Task Center"
+      ],
+      "samples": [
+        {
+          "id": "15:662",
+          "width": 592,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Open Glance and view a file. No account or system permissions needed to start.",
+      "names": [
+        "Tool description / Start without permissions"
+      ],
+      "samples": [
+        {
+          "id": "15:665",
+          "width": 592,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Free to view\nPro once. AI as you go",
+      "names": [
+        "Pricing headline"
+      ],
+      "samples": [
+        {
+          "id": "15:768",
+          "width": 848,
+          "height": 108,
+          "size": 48,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:1363",
+          "width": 342,
+          "height": 76,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "No subscription. No automatic renewals.",
+      "names": [
+        "Pricing introduction"
+      ],
+      "samples": [
+        {
+          "id": "15:770",
+          "width": 400,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1366",
+          "width": 342,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Free",
+      "names": [
+        "Plan name / Free"
+      ],
+      "samples": [
+        {
+          "id": "15:784",
+          "width": 384,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1372",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Glance Pro",
+      "names": [
+        "Plan name / Glance Pro"
+      ],
+      "samples": [
+        {
+          "id": "15:787",
+          "width": 384,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1390",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Credits",
+      "names": [
+        "Plan name / Credits"
+      ],
+      "samples": [
+        {
+          "id": "15:790",
+          "width": 384,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1408",
+          "width": 342,
+          "height": 28,
+          "size": 18,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "$0",
+      "names": [
+        "Plan price / 0"
+      ],
+      "samples": [
+        {
+          "id": "15:794",
+          "width": 384,
+          "height": 48,
+          "size": 40,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:1375",
+          "width": 342,
+          "height": 48,
+          "size": 40,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "$9.99",
+      "names": [
+        "Plan price / 1"
+      ],
+      "samples": [
+        {
+          "id": "15:797",
+          "width": 384,
+          "height": 48,
+          "size": 40,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:1393",
+          "width": 342,
+          "height": 48,
+          "size": 40,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "$2.99",
+      "names": [
+        "Plan price / 2"
+      ],
+      "samples": [
+        {
+          "id": "15:800",
+          "width": 384,
+          "height": 48,
+          "size": 40,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:1411",
+          "width": 342,
+          "height": 48,
+          "size": 40,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Forever",
+      "names": [
+        "Plan term / 0"
+      ],
+      "samples": [
+        {
+          "id": "15:804",
+          "width": 384,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1378",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "One-time · Personal · 1 Mac",
+      "names": [
+        "Plan term / 1"
+      ],
+      "samples": [
+        {
+          "id": "15:807",
+          "width": 384,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1396",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "600 credits · pay as you go",
+      "names": [
+        "Plan term / 2"
+      ],
+      "samples": [
+        {
+          "id": "15:810",
+          "width": 384,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1414",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "View images and video, compare, capture frames, and\ncopy text from images.",
+      "names": [
+        "Plan description / 0"
+      ],
+      "samples": [
+        {
+          "id": "15:814",
+          "width": 384,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "The full local toolbox, lifetime updates, and 100 bonus\ncredits. Team: $19.99 for 5 independent accounts.",
+      "names": [
+        "Plan description / 1"
+      ],
+      "samples": [
+        {
+          "id": "15:817",
+          "width": 384,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Only cloud Widgets use credits. Credits never expire.\nAvailable on Free and Pro.",
+      "names": [
+        "Plan description / 2"
+      ],
+      "samples": [
+        {
+          "id": "15:820",
+          "width": 384,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Download free →",
+      "names": [
+        "Link / Download free →"
+      ],
+      "samples": [
+        {
+          "id": "15:824",
+          "width": 384,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1384",
+          "width": 342,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "See Pro plans →",
+      "names": [
+        "Link / See Pro plans →"
+      ],
+      "samples": [
+        {
+          "id": "15:827",
+          "width": 384,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1402",
+          "width": 342,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "See credit packs →",
+      "names": [
+        "Link / See credit packs →"
+      ],
+      "samples": [
+        {
+          "id": "15:830",
+          "width": 384,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1420",
+          "width": 342,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "USD prices include tax · Cloud Widgets use separate credits · 14-day full trial starts on first launch",
+      "names": [
+        "Pricing disclosure"
+      ],
+      "samples": [
+        {
+          "id": "15:833",
+          "width": 1248,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Your next image\nhas a home",
+      "names": [
+        "Download headline"
+      ],
+      "samples": [
+        {
+          "id": "15:841",
+          "width": 720,
+          "height": 124,
+          "size": 56,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:1430",
+          "width": 342,
+          "height": 92,
+          "size": 40,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Start with the free viewer. Try the full local\ntoolbox for 14 days, with no account or payment\nmethod.",
+      "names": [
+        "Download description"
+      ],
+      "samples": [
+        {
+          "id": "15:844",
+          "width": 400,
+          "height": 76,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Install guide →",
+      "names": [
+        "Link / Install guide →"
+      ],
+      "samples": [
+        {
+          "id": "15:851",
+          "width": 400,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1440",
+          "width": 342,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Glance 1.0.4 · macOS 12.3+ · Apple silicon",
+      "names": [
+        "Download system requirements"
+      ],
+      "samples": [
+        {
+          "id": "15:854",
+          "width": 1248,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1443",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "FAQ",
+      "names": [
+        "Section label"
+      ],
+      "samples": [
+        {
+          "id": "15:858",
+          "width": 1248,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        },
+        {
+          "id": "15:1447",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Geist Mono"
+        }
+      ]
+    },
+    {
+      "text": "A few things to know",
+      "names": [
+        "FAQ headline"
+      ],
+      "samples": [
+        {
+          "id": "15:861",
+          "width": 1248,
+          "height": 56,
+          "size": 48,
+          "font": "Shippori Mincho"
+        },
+        {
+          "id": "15:1450",
+          "width": 342,
+          "height": 40,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Do I need an account?",
+      "names": [
+        "Question / Do I need an account?"
+      ],
+      "samples": [
+        {
+          "id": "15:872",
+          "width": 592,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1456",
+          "width": 342,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Are my files uploaded?",
+      "names": [
+        "Question / Are my files uploaded?"
+      ],
+      "samples": [
+        {
+          "id": "15:875",
+          "width": 592,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1465",
+          "width": 342,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "No account is needed for viewing, compare, capture, or OCR. Sign in for cloud Widgets\nor purchases.",
+      "names": [
+        "Answer / 0"
+      ],
+      "samples": [
+        {
+          "id": "15:879",
+          "width": 592,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Viewing and local tools run on your Mac. Only the media you submit to a cloud Widget is\nuploaded.",
+      "names": [
+        "Answer / 1"
+      ],
+      "samples": [
+        {
+          "id": "15:882",
+          "width": 592,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Is Pro a subscription?",
+      "names": [
+        "Question / Is Pro a subscription?"
+      ],
+      "samples": [
+        {
+          "id": "15:893",
+          "width": 592,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1474",
+          "width": 342,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "What if a task fails?",
+      "names": [
+        "Question / What if a task fails?"
+      ],
+      "samples": [
+        {
+          "id": "15:896",
+          "width": 592,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1483",
+          "width": 342,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "No. Pro is a one-time purchase with lifetime free updates and no automatic renewals.",
+      "names": [
+        "Answer / 2"
+      ],
+      "samples": [
+        {
+          "id": "15:900",
+          "width": 592,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "All failed Widget tasks refund credits in full automatically, including provider,\nnetwork, and invalid-input failures.",
+      "names": [
+        "Answer / 3"
+      ],
+      "samples": [
+        {
+          "id": "15:903",
+          "width": 592,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "What stays free after the trial?",
+      "names": [
+        "Question / What stays free after the trial?"
+      ],
+      "samples": [
+        {
+          "id": "15:914",
+          "width": 592,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1492",
+          "width": 342,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "How do I pay?",
+      "names": [
+        "Question / How do I pay?"
+      ],
+      "samples": [
+        {
+          "id": "15:917",
+          "width": 592,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1501",
+          "width": 342,
+          "height": 28,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Viewing, compare, capture, OCR, and credit-based cloud Widgets. The remaining local\ntools require Pro.",
+      "names": [
+        "Answer / 4"
+      ],
+      "samples": [
+        {
+          "id": "15:921",
+          "width": 592,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Choose a product in the app. The checkout shows available payment methods for your\ncurrency.",
+      "names": [
+        "Answer / 5"
+      ],
+      "samples": [
+        {
+          "id": "15:924",
+          "width": 592,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Privacy",
+      "names": [
+        "Link / Privacy"
+      ],
+      "samples": [
+        {
+          "id": "15:935",
+          "width": 112,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1518",
+          "width": 160,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Terms",
+      "names": [
+        "Link / Terms"
+      ],
+      "samples": [
+        {
+          "id": "15:938",
+          "width": 112,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1521",
+          "width": 160,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Refunds",
+      "names": [
+        "Link / Refunds"
+      ],
+      "samples": [
+        {
+          "id": "15:941",
+          "width": 112,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1525",
+          "width": 160,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Support",
+      "names": [
+        "Link / Support"
+      ],
+      "samples": [
+        {
+          "id": "15:944",
+          "width": 112,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1528",
+          "width": 160,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "An image and video viewer for Mac",
+      "names": [
+        "Footer description"
+      ],
+      "samples": [
+        {
+          "id": "15:947",
+          "width": 576,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1514",
+          "width": 342,
+          "height": 24,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "© 2026 Glance",
+      "names": [
+        "Copyright"
+      ],
+      "samples": [
+        {
+          "id": "15:950",
+          "width": 1248,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        },
+        {
+          "id": "15:1531",
+          "width": 342,
+          "height": 24,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "No account to start\n14-day full trial, no card\nViewing, compare, capture and OCR stay free",
+      "names": [
+        "Free start facts"
+      ],
+      "samples": [
+        {
+          "id": "15:1037",
+          "width": 342,
+          "height": 64,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Glance · Compare images",
+      "names": [
+        "Window title"
+      ],
+      "samples": [
+        {
+          "id": "I62:7078;51:5808",
+          "width": 252,
+          "height": 20,
+          "size": 11,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "0:08 · Product demo",
+      "names": [
+        "Duration"
+      ],
+      "samples": [
+        {
+          "id": "I62:7078;51:5811",
+          "width": 210,
+          "height": 20,
+          "size": 11,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "The small jobs,\nhandled",
+      "names": [
+        "More tools headline"
+      ],
+      "samples": [
+        {
+          "id": "15:1176",
+          "width": 342,
+          "height": 76,
+          "size": 32,
+          "font": "Shippori Mincho"
+        }
+      ]
+    },
+    {
+      "text": "Copy the text. Keep\nyour image",
+      "names": [
+        "OCR headline"
+      ],
+      "samples": [
+        {
+          "id": "15:1187",
+          "width": 294,
+          "height": 68,
+          "size": 24,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Recognize text on your Mac, select\nwhat you need, and copy it. No Pro,\ncredits, or upload needed.",
+      "names": [
+        "OCR description"
+      ],
+      "samples": [
+        {
+          "id": "15:1190",
+          "width": 294,
+          "height": 76,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Play a video, capture any frame, crop it, then\nsave or copy it.",
+      "names": [
+        "Tool description / Video preview & capture"
+      ],
+      "samples": [
+        {
+          "id": "15:1223",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "New accounts get 100 credits. Only cloud runs\nuse credits.",
+      "names": [
+        "Tool description / Cloud AI Widgets"
+      ],
+      "samples": [
+        {
+          "id": "15:1232",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Convert, compress, export, rotate, crop, and use\nBase64 tools on your Mac.",
+      "names": [
+        "Tool description / Local toolbox"
+      ],
+      "samples": [
+        {
+          "id": "15:1241",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Select an image link or file path and press Option\n+ Space. Optional, off by default.",
+      "names": [
+        "Tool description / Peek, when you want it"
+      ],
+      "samples": [
+        {
+          "id": "15:1250",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Follow queued, running, and finished tasks. Cancel\na queued task and get its credits back.",
+      "names": [
+        "Tool description / Task Center"
+      ],
+      "samples": [
+        {
+          "id": "15:1259",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Open Glance and view a file. No account or system\npermissions needed to start.",
+      "names": [
+        "Tool description / Start without permissions"
+      ],
+      "samples": [
+        {
+          "id": "15:1268",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "View images and video, compare, capture frames,\nand copy text from images.",
+      "names": [
+        "Plan description / 0"
+      ],
+      "samples": [
+        {
+          "id": "15:1381",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "The full local toolbox, lifetime updates, and 100\nbonus credits. Team: $19.99 for 5 independent\naccounts.",
+      "names": [
+        "Plan description / 1"
+      ],
+      "samples": [
+        {
+          "id": "15:1399",
+          "width": 342,
+          "height": 64,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Only cloud Widgets use credits. Credits never\nexpire. Available on Free and Pro.",
+      "names": [
+        "Plan description / 2"
+      ],
+      "samples": [
+        {
+          "id": "15:1417",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "USD prices include tax · Cloud Widgets use separate\ncredits · 14-day full trial starts on first launch",
+      "names": [
+        "Pricing disclosure"
+      ],
+      "samples": [
+        {
+          "id": "15:1423",
+          "width": 342,
+          "height": 44,
+          "size": 12,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Start with the free viewer. Try the full\nlocal toolbox for 14 days, with no account\nor payment method.",
+      "names": [
+        "Download description"
+      ],
+      "samples": [
+        {
+          "id": "15:1433",
+          "width": 342,
+          "height": 76,
+          "size": 16,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "No account is needed for viewing, compare,\ncapture, or OCR. Sign in for cloud Widgets or\npurchases.",
+      "names": [
+        "Answer / 0"
+      ],
+      "samples": [
+        {
+          "id": "15:1459",
+          "width": 342,
+          "height": 64,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Viewing and local tools run on your Mac. Only the\nmedia you submit to a cloud Widget is uploaded.",
+      "names": [
+        "Answer / 1"
+      ],
+      "samples": [
+        {
+          "id": "15:1468",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "No. Pro is a one-time purchase with lifetime free\nupdates and no automatic renewals.",
+      "names": [
+        "Answer / 2"
+      ],
+      "samples": [
+        {
+          "id": "15:1477",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "All failed Widget tasks refund credits in full\nautomatically, including provider, network, and\ninvalid-input failures.",
+      "names": [
+        "Answer / 3"
+      ],
+      "samples": [
+        {
+          "id": "15:1486",
+          "width": 342,
+          "height": 64,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Viewing, compare, capture, OCR, and credit-based\ncloud Widgets. The remaining local tools require\nPro.",
+      "names": [
+        "Answer / 4"
+      ],
+      "samples": [
+        {
+          "id": "15:1495",
+          "width": 342,
+          "height": 64,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    },
+    {
+      "text": "Choose a product in the app. The checkout shows\navailable payment methods for your currency.",
+      "names": [
+        "Answer / 5"
+      ],
+      "samples": [
+        {
+          "id": "15:1504",
+          "width": 342,
+          "height": 44,
+          "size": 14,
+          "font": "Inter"
+        }
+      ]
+    }
+  ],
+  "fonts": [
+    {
+      "family": "Geist Mono",
+      "style": "Medium"
+    },
+    {
+      "family": "Geist Mono",
+      "style": "Regular"
+    },
+    {
+      "family": "Inter",
+      "style": "Medium"
+    },
+    {
+      "family": "Inter",
+      "style": "Regular"
+    },
+    {
+      "family": "Noto Sans JP",
+      "style": "Medium"
+    },
+    {
+      "family": "Noto Sans JP",
+      "style": "Regular"
+    },
+    {
+      "family": "Shippori Mincho",
+      "style": "Medium"
+    },
+    {
+      "family": "Shippori Mincho",
+      "style": "Regular"
+    }
+  ],
+  "top": [
+    {
+      "id": "13:93",
+      "name": "Glance / Website foundations",
+      "x": 5800,
+      "y": 160,
+      "width": 1680,
+      "height": 657
+    },
+    {
+      "id": "13:129",
+      "name": "Product views / latest App reference",
+      "x": 7800,
+      "y": 160,
+      "width": 5000,
+      "height": 4600
+    },
+    {
+      "id": "15:2",
+      "name": "Sumi · Home / English / Desktop 1440",
+      "x": 160,
+      "y": 160,
+      "width": 1440,
+      "height": 6760
+    },
+    {
+      "id": "15:969",
+      "name": "Sumi · Home / English / Mobile 390",
+      "x": 1696,
+      "y": 160,
+      "width": 390,
+      "height": 8888
+    },
+    {
+      "id": "15:1545",
+      "name": "Sumi · Home / 中文 / Desktop 1440",
+      "x": 2240,
+      "y": 160,
+      "width": 1440,
+      "height": 6760
+    },
+    {
+      "id": "15:2512",
+      "name": "Sumi · Home / 中文 / Mobile 390",
+      "x": 3776,
+      "y": 160,
+      "width": 390,
+      "height": 8704
+    },
+    {
+      "id": "15:3088",
+      "name": "Sumi · Design notes / Unslop direction & states",
+      "x": 4320,
+      "y": 160,
+      "width": 1440,
+      "height": 1480
+    },
+    {
+      "id": "15:3216",
+      "name": "Washi · Home / English / Desktop 1440",
+      "x": 160,
+      "y": 9528,
+      "width": 1440,
+      "height": 6760
+    },
+    {
+      "id": "15:4183",
+      "name": "Washi · Home / English / Mobile 390",
+      "x": 1696,
+      "y": 9528,
+      "width": 390,
+      "height": 8888
+    },
+    {
+      "id": "15:4759",
+      "name": "Washi · Home / 中文 / Desktop 1440",
+      "x": 2240,
+      "y": 9528,
+      "width": 1440,
+      "height": 6760
+    },
+    {
+      "id": "15:5726",
+      "name": "Washi · Home / 中文 / Mobile 390",
+      "x": 3776,
+      "y": 9528,
+      "width": 390,
+      "height": 8704
+    },
+    {
+      "id": "15:6302",
+      "name": "Washi · Design notes / Unslop direction & states",
+      "x": 4320,
+      "y": 9528,
+      "width": 1440,
+      "height": 1480
+    },
+    {
+      "id": "32:1495",
+      "name": "Glance / Feature demo library",
+      "x": 13200,
+      "y": 160,
+      "width": 3360,
+      "height": 12800
+    },
+    {
+      "id": "32:2016",
+      "name": "Glance / Feature card components",
+      "x": 5800,
+      "y": 1200,
+      "width": 1440,
+      "height": 3941.33349609375
+    },
+    {
+      "id": "51:1782",
+      "name": "Glance / Upper feature films · 2026-11-14",
+      "x": 17200,
+      "y": 160,
+      "width": 4200,
+      "height": 16640
+    },
+    {
+      "id": "62:6475",
+      "name": "Glance / Widget promotion assets",
+      "x": 22000,
+      "y": 160,
+      "width": 3100,
+      "height": 1700
+    }
+  ]
+}

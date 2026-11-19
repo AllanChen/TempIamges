@@ -1,0 +1,46 @@
+{
+  "views": {
+    "landscape": {
+      "id": "3:23",
+      "name": "photo/alpine-before",
+      "w": 120,
+      "h": 90,
+      "svg": "<svg width=\"120\" height=\"90\" viewBox=\"0 0 120 90\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n<g id=\"photo/alpine-before\">\n<rect width=\"120\" height=\"90\" fill=\"url(#pattern0_3_23)\"/>\n</g>\n<defs>\n<pattern id=\"pattern0_3_23\" patternContentUnits=\"objectBoundingBox\" width=\"1\" height=\"1\">\n<use xlink:href=\"#image0_3_23\" transform=\"matrix(0.000833333 0 0 0.00111111 0 -0.388889)\"/>\n</pattern>\n<image id=\"image0_3_23\" width=\"1200\" height=\"1600\" preserveAspectRatio=\"none\" xlink:href=\"__GLANCE_IMAGE_0__\"/>\n</defs>\n</svg>\n",
+      "images": [
+        {
+          "length": 774711,
+          "prefix": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAA",
+          "suffix": "fJ3x58AXms2rweFX3KWLBF5B+vFem+EPGPgnxjHZ6PYYivJgABjADcdTXeeIvD7+AbT7dMPOL9Pasacm3ZrQ76kIqF47n//Z"
+        }
+      ]
+    },
+    "warm": {
+      "id": "3:16",
+      "name": "photo/alpine-after",
+      "w": 120,
+      "h": 90,
+      "svg": "<svg width=\"120\" height=\"90\" viewBox=\"0 0 120 90\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n<g id=\"photo/alpine-after\">\n<rect width=\"120\" height=\"90\" fill=\"url(#pattern0_3_16)\"/>\n</g>\n<defs>\n<pattern id=\"pattern0_3_16\" patternContentUnits=\"objectBoundingBox\" width=\"1\" height=\"1\">\n<use xlink:href=\"#image0_3_16\" transform=\"matrix(0.000833333 0 0 0.00111111 0 -0.388889)\"/>\n</pattern>\n<image id=\"image0_3_16\" width=\"1200\" height=\"1600\" preserveAspectRatio=\"none\" xlink:href=\"__GLANCE_IMAGE_0__\"/>\n</defs>\n</svg>\n",
+      "images": [
+        {
+          "length": 985519,
+          "prefix": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAA",
+          "suffix": "Ov6V8EftXeGdR1y0efwsmY8n5F6kflXv3wy+J/g74lTHToY1iu2GDkck8V1urfDW60e7+1XjiWGTtjgVwwbW57VWMG7wR//Z"
+        }
+      ]
+    },
+    "sakura": {
+      "id": "3:30",
+      "name": "photo/portrait",
+      "w": 120,
+      "h": 90,
+      "svg": "<svg width=\"120\" height=\"90\" viewBox=\"0 0 120 90\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n<g id=\"photo/portrait\">\n<rect width=\"120\" height=\"90\" fill=\"url(#pattern0_3_30)\"/>\n</g>\n<defs>\n<pattern id=\"pattern0_3_30\" patternContentUnits=\"objectBoundingBox\" width=\"1\" height=\"1\">\n<use xlink:href=\"#image0_3_30\" transform=\"scale(0.000625 0.000833333)\"/>\n</pattern>\n<image id=\"image0_3_30\" width=\"1600\" height=\"1200\" preserveAspectRatio=\"none\" xlink:href=\"__GLANCE_IMAGE_0__\"/>\n</defs>\n</svg>\n",
+      "images": [
+        {
+          "length": 601731,
+          "prefix": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAA",
+          "suffix": "kDj5R0rGGxMmrnvXwSktf7auLiU/dXivo+71izU5B5r5S+ElreXk1y9opI4B44r3VfD+qysNwP0r1MPKfJaKPHxThztyP//Z"
+        }
+      ]
+    }
+  }
+}

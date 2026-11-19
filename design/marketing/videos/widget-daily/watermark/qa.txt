@@ -1,0 +1,13 @@
+QA · 2026-11-17 图片去水印 Watermark Remover（配音版）
+== glance-widget-watermark-en-pc.mp4
+stream|codec_name=h264|codec_type=video|width=1920|height=1080
+stream|codec_name=aac|codec_type=audio
+format|duration=15.000000
+== glance-widget-watermark-zh-phone.mp4
+stream|codec_name=h264|codec_type=video|width=1080|height=1920
+stream|codec_name=aac|codec_type=audio
+format|duration=15.000000
+配音：voice/zh-1..4.wav、en-1..4.wav（每日发布交付，指定音色）；每句时段内人声层 RMS zh -15.6/-16.2/-15.8/-16.9 dB，en -17.1/-15.0/-17.3/-15.9 dB；成片音轨与配音混音相关系数 1.0
+抽帧 1.8/5.5/7.6/10.0/13.5s：qa-frames-zh-phone.png、qa-frames-en-pc.png
+示例图：samples/clean.png（生成的室内产品静物）→ make_samples.py 叠虚构水印 = before.png，原图 = after.png；示例效果，非 Widget 实测
+未出 novoice mp4

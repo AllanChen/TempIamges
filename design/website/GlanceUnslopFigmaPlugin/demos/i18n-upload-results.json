@@ -1,0 +1,506 @@
+[
+  {
+    "asset": {
+      "key": "background",
+      "lang": "ja",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/background-ja.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "0931836032141f446f5eb9f7073ff769100695f2",
+      "sizeBytes": 1186866,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5077"
+    }
+  },
+  {
+    "asset": {
+      "key": "background",
+      "lang": "ja",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/background-ja-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "b7a46d8c6b59dca5eb34e9ab7e348eec962484b2",
+      "sizeBytes": 57160,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5079"
+    }
+  },
+  {
+    "asset": {
+      "key": "background",
+      "lang": "de",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/background-de.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "b4b683d29475eaf48aacae15f1787467585d1fa2",
+      "sizeBytes": 1156829,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5078"
+    }
+  },
+  {
+    "asset": {
+      "key": "background",
+      "lang": "de",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/background-de-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "7c05757e468f2f115904dfb33713be55026b88b7",
+      "sizeBytes": 59953,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5076"
+    }
+  },
+  {
+    "asset": {
+      "key": "expand",
+      "lang": "ja",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/expand-ja.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "af47abd5ec416354f2b916193d8cd7ce322044f8",
+      "sizeBytes": 1591453,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5085"
+    }
+  },
+  {
+    "asset": {
+      "key": "expand",
+      "lang": "ja",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/expand-ja-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "df1f7f8bc1bd1086e1d8e7f8c8658a7ffde791c0",
+      "sizeBytes": 64351,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5080"
+    }
+  },
+  {
+    "asset": {
+      "key": "expand",
+      "lang": "de",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/expand-de.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "9a36cd9ede75df52d1a340924ee73c3d580fec6d",
+      "sizeBytes": 1568481,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5081"
+    }
+  },
+  {
+    "asset": {
+      "key": "expand",
+      "lang": "de",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/expand-de-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "4e35244bf96777ca82350a0af7923d30b7efb796",
+      "sizeBytes": 68288,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5082"
+    }
+  },
+  {
+    "asset": {
+      "key": "outfit",
+      "lang": "ja",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/outfit-ja.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "6fad5c1c894a5bd8e072aa710f84e17c64e42219",
+      "sizeBytes": 1621785,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5083"
+    }
+  },
+  {
+    "asset": {
+      "key": "outfit",
+      "lang": "ja",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/outfit-ja-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "45b86c67cf9107b9b5b9dfb6dfca7d7f64688fde",
+      "sizeBytes": 74698,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5084"
+    }
+  },
+  {
+    "asset": {
+      "key": "outfit",
+      "lang": "de",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/outfit-de.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "b9305d71a58e4a6afd23625302e4523b8bbcf4e5",
+      "sizeBytes": 1609864,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5087"
+    }
+  },
+  {
+    "asset": {
+      "key": "outfit",
+      "lang": "de",
+      "theme": "shared",
+      "kind": "widget"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/outfit-de-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "84607b7c9be50e1d2878a17704b4e3448016757e",
+      "sizeBytes": 77735,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5092"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-ja-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "83c6590e459dd345cfd2028172731c63af5ab24e",
+      "sizeBytes": 2614736,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5088"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-ja-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "14f2251f2f4dd7d10f3d0d0f6d6b6151a7d7f2b4",
+      "sizeBytes": 56915,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5086"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-ja-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "14cd250ecb5a2d176251d43f2b7f0a6f4b64522c",
+      "sizeBytes": 2701620,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5090"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-ja-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "32198ee00d297333996fdd90f6b9c7d030ef9164",
+      "sizeBytes": 58636,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5089"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-ja-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "abf96ca0df9d26c4b46bdcdb44568d7ad5e021e3",
+      "sizeBytes": 2619738,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5093"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-ja-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "3ef04e6dc95d1bcdd67f103334f2755d5c76ed37",
+      "sizeBytes": 56834,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5091"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-ja-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "c4cd64b68addfc4e98317005c8187723d699fdcb",
+      "sizeBytes": 2702051,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5098"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-ja-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "09b40dcb0d7207eac01f1823c93ccd89fabc652e",
+      "sizeBytes": 58815,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5094"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "de",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-de-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "c48b09ae4d2508d89ab10dc65b6d883c57ae89c1",
+      "sizeBytes": 2590832,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5096"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "de",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-de-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "d70ce89292838d6a6740e1884c58b213b53178bb",
+      "sizeBytes": 58802,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5095"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "de",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-de-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "f523090c3fa784ea261a206924af36c4e811c83a",
+      "sizeBytes": 2681827,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5097"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "de",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-de-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "37e52ca58251877821cd8952c2dadd7c019e037f",
+      "sizeBytes": 60007,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5099"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "de",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-de-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "039ae3bc2e76f55487dda11286b8cb04a8f38d8b",
+      "sizeBytes": 2604361,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5100"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "de",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-de-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "526ad4f5e15173ee17ba3adaa6bdf538b20768b3",
+      "sizeBytes": 58716,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5101"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "de",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-de-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "12913c53065b7d553bafe92afae9f405fbad6952",
+      "sizeBytes": 2677810,
+      "contentType": "image/gif",
+      "placedOnNodeId": "69:5103"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "de",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "/Users/allan/Desktop/TempImages/design/website/GlanceUnslopFigmaPlugin/demos/media-i18n/compare-de-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "973d0a4bea128069bc8fde50a001962254f51b7e",
+      "sizeBytes": 60165,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "69:5102"
+    }
+  }
+]

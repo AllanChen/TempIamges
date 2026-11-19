@@ -38,6 +38,11 @@ targets:
         excludes:
           - "*.bak"
       - path: Resources
+        excludes:
+          - WidgetDemos
+        buildPhase: resources
+      - path: Resources/WidgetDemos
+        type: folder
         buildPhase: resources
       - path: LoadFailed.gif
         buildPhase: resources
@@ -71,6 +76,11 @@ targets:
           - "*.bak"
           - "AppUpdater.swift"
       - path: Resources
+        excludes:
+          - WidgetDemos
+        buildPhase: resources
+      - path: Resources/WidgetDemos
+        type: folder
         buildPhase: resources
       - path: LoadFailed.gif
         buildPhase: resources

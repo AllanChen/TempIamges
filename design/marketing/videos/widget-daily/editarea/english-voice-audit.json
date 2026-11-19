@@ -1,0 +1,48 @@
+{
+  "final": "/Users/allan/Desktop/TempImages/design/marketing/videos/widget-daily/editarea/glance-widget-editarea-en-pc.mp4",
+  "audio_soundtrack_correlation": 0.9999304304828455,
+  "lines": [
+    {
+      "file": "/Users/allan/Desktop/TempImages/design/marketing/videos/widget-daily/editarea/voice/en-1.wav",
+      "sha256": "8c63534e066d525aec98d901c4c4a317142a9b0adc284d25be1aa9b7b22867de",
+      "duration": 3.161125,
+      "correlation": 0.9606480259461923
+    },
+    {
+      "file": "/Users/allan/Desktop/TempImages/design/marketing/videos/widget-daily/editarea/voice/en-2.wav",
+      "sha256": "312dbf8b9ebeb951138cbce54b7bf5eb98d65639c50effc820ab533e7cabeb10",
+      "duration": 5.248583333333333,
+      "correlation": 0.8859196133932796
+    },
+    {
+      "file": "/Users/allan/Desktop/TempImages/design/marketing/videos/widget-daily/editarea/voice/en-3.wav",
+      "sha256": "d73d2dcf2c927ea869a50e82eb720681952fb091679d6de6dde30a469acbd68b",
+      "duration": 2.5745833333333334,
+      "correlation": 0.8476494051403155
+    },
+    {
+      "file": "/Users/allan/Desktop/TempImages/design/marketing/videos/widget-daily/editarea/voice/en-4.wav",
+      "sha256": "22df0d92da397c971808adfb585340955ea6516230a59ad83ae816dc2bbfc8ee",
+      "duration": 2.2575,
+      "correlation": 0.9103229395217723
+    }
+  ],
+  "ffprobe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "codec_name": "aac"
+      }
+    ],
+    "format": {
+      "duration": "15.000000"
+    }
+  },
+  "video_modified": false
+}

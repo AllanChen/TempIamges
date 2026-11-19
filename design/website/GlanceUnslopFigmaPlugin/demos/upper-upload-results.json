@@ -1,0 +1,1274 @@
+[
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-zh-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "52675dfb40ea952ead2064886f04845dd72f581b",
+      "sizeBytes": 269546,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1783"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-zh-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "ffdc48c9959acd90442b7930cdc5f137a8b8ad80",
+      "sizeBytes": 57136,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1785"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-zh-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "0ba70ba827c619aea029906ea1bd45dc7be7ce41",
+      "sizeBytes": 161267,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1784"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-zh-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "dacf753a637c7abdc08d2f425f1284c61fea34fa",
+      "sizeBytes": 38970,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1782"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-zh-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "1655e6df041a5ea67a85a1f1a6c23e5d7e73b787",
+      "sizeBytes": 270117,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1786"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-zh-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "dd0890c3ad953e571c831cf046b93beb8173007e",
+      "sizeBytes": 57144,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1787"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-zh-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "f73cf12b72d29376ba40b03bff47950df706e7fe",
+      "sizeBytes": 164217,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1788"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-zh-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "7ac81daa5e413eff3d3d3d2dfc55e9901796cc49",
+      "sizeBytes": 39588,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1789"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-en-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "17ed6bb27ba409055cce29dc9fe1c45714fc244b",
+      "sizeBytes": 270046,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1790"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-en-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "f44d5099dce1af41d94ff2f533e7409b71bc7021",
+      "sizeBytes": 58472,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1791"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-en-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "a5642a28efd95bf8e2c89c53d0b229462c394539",
+      "sizeBytes": 161969,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1793"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-en-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "37dfeb679687cfb0b87a6e0d1a862564db23855a",
+      "sizeBytes": 39906,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1792"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-en-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "1e9579b394433f00399c3389db0d54713febb641",
+      "sizeBytes": 268645,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1794"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-en-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "a2da1b6301b8d7c46565e488ee43f9ef8654d6b0",
+      "sizeBytes": 58494,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1795"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-en-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "2633e08155a33564f0c33c2e746e2370ea004e58",
+      "sizeBytes": 163354,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1796"
+    }
+  },
+  {
+    "asset": {
+      "key": "hero",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/hero-en-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "d0d813db2275c858de20aabd1c559ea182ede47c",
+      "sizeBytes": 40527,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1797"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-zh-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "7ede7b4b51af892bcd55220913288b64e50962f6",
+      "sizeBytes": 2514257,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1798"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-zh-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "3a98f700557c6852f373e56ac63a1bd1c1f308eb",
+      "sizeBytes": 41002,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1803"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-zh-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "296de4df7e177c711cb789c6ce15959a1dcdde93",
+      "sizeBytes": 2628639,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1799"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-zh-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "aa05faa825fe0243fe7ee39bbabc4ec5329340b0",
+      "sizeBytes": 41293,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1800"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-zh-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "d911ef22ed5644cc7902f90db21020c25ab443f9",
+      "sizeBytes": 2555152,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1802"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-zh-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "a9909b6319b6b21da9931af77e6e2b9df386d976",
+      "sizeBytes": 41395,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1801"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-zh-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "1605eb9f68fb4255988010156008d60a6328957d",
+      "sizeBytes": 2630644,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1805"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-zh-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "4cdf4dac0b23f08b2f6847b37f0716e5047077f7",
+      "sizeBytes": 41738,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1804"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-en-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "1c7d389e6e6fb91b250fbd25f640bbd63e53c554",
+      "sizeBytes": 2511954,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1806"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-en-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "abddc89a08e372b05a0c297f4b35f25ba264663f",
+      "sizeBytes": 41959,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1807"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-en-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "830b7600bc0a519723eb8d51284aa51a5b42b3e9",
+      "sizeBytes": 2600686,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1809"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-en-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "b430cac88eaf6cbb8b3e83949dd73434a947f242",
+      "sizeBytes": 41988,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1808"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-en-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "960a79b18724d859f40eda44164cb40b8ee1575e",
+      "sizeBytes": 2557006,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1810"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-en-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "df34335af16713ec87f1b2df9b153c1bbdee513f",
+      "sizeBytes": 42349,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1811"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-en-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "66de3b39990166ec4dead6d92f33b11e0fa62d63",
+      "sizeBytes": 2613096,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1813"
+    }
+  },
+  {
+    "asset": {
+      "key": "view",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/view-en-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "75cd095438a36930fbc2dd20d36414e3363a889b",
+      "sizeBytes": 42424,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1812"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-zh-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "40a9a027e3150eb3a44e07c1c9fe128202e3290a",
+      "sizeBytes": 2047793,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1815"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-zh-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "e1d3080cb745078de52ec6ea0d6393af7cb08320",
+      "sizeBytes": 45304,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1814"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-zh-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "743c548fb7aec06a51b32e9361afcee7d7b995b0",
+      "sizeBytes": 1867372,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1816"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-zh-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "6eb9f77fd6c079620328861e30e75fca84cab4b5",
+      "sizeBytes": 40869,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1817"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-zh-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "1b68a5a34825e14ba9d7171e3e2a1b83515943d1",
+      "sizeBytes": 2034570,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1819"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-zh-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "d73772b60494ca43e9bdd565c696afbfd6cb58bc",
+      "sizeBytes": 46372,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1818"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-zh-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "9399df3b6a42929b61d7456b4506539a2785bae9",
+      "sizeBytes": 1890096,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1821"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-zh-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "815b60de28460d8467f1c21f0692543ed6e6cdf6",
+      "sizeBytes": 42272,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1820"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-en-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "03b181dd1ff1d02626c06b121c54995e4d8bb0f7",
+      "sizeBytes": 2064835,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1822"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-en-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "0748a5d102feb1f3973d7b1bc445e6d6f5757222",
+      "sizeBytes": 49470,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1825"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-en-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "cb9859c24a8ec11dd165429ac818d644f0c42044",
+      "sizeBytes": 1916659,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1824"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-en-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "c73d784a7f593eaceab797e7ca2d30d6a1d97fdb",
+      "sizeBytes": 44003,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1823"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-en-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "b3f6188b6247583a148f178367a9ddb0ee298579",
+      "sizeBytes": 2063006,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1826"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-en-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "a7a25cf619dfed842e33996c594df37ca19a2a67",
+      "sizeBytes": 50504,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1827"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-en-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "c9a68262e9585d446240208e8976f2d8c0127ab3",
+      "sizeBytes": 1934500,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1829"
+    }
+  },
+  {
+    "asset": {
+      "key": "edit",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/edit-en-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "77a0bed472b753356643a71212b29bbe573f618a",
+      "sizeBytes": 45306,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1828"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-zh-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "9d8772a815eb3c2511eb62c077012bee1f03a6b6",
+      "sizeBytes": 2599933,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1832"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-zh-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "c19d6304f26fd32f54e8b4f9545f8397fde5949a",
+      "sizeBytes": 55437,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1830"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-zh-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "1f0ddd966d5a8ec2c0c095c6c478739d3229b812",
+      "sizeBytes": 2668646,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1833"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "zh",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-zh-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "162b0798d031bfba874e33b29130ac05bd277df1",
+      "sizeBytes": 57111,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1831"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-zh-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "b73a8251e4346c7b62ffbb70e256cd9c78c33b60",
+      "sizeBytes": 2601593,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1835"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-zh-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "e20b47b0cb703ba1161762517265665d40741101",
+      "sizeBytes": 55337,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1834"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-zh-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "62c680b97f416f314f173ea1650d04a5cccad087",
+      "sizeBytes": 2679281,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1836"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "zh",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-zh-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "f7be23e528f7f4dccd7ae0b0c4c48d0cf25e70d9",
+      "sizeBytes": 57290,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1837"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-en-sumi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "b0506d278a744f2d23f7691e9237be0ab257e17c",
+      "sizeBytes": 2588757,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1839"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-en-sumi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "ce92c1dbe39fa7aa2ac2457d8692c4d3d3f5c69c",
+      "sizeBytes": 57933,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1838"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-en-sumi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "6f78c2adc3dde5579cac268ad98dfd707a6c8302",
+      "sizeBytes": 2670591,
+      "contentType": "image/gif",
+      "placedOnNodeId": "48:1840"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "en",
+      "theme": "sumi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-en-sumi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "febc46afa1a2aea207e721f74680da78b78952ff",
+      "sizeBytes": 59442,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "48:1841"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-en-washi-desktop.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "62bff3d3484e0d9260a04835d6718fb410a60a8c",
+      "sizeBytes": 2594350,
+      "contentType": "image/gif",
+      "placedOnNodeId": "50:1782"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "desktop"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-en-washi-desktop-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "190dc35d1d9229af15da05e9b09c12c18a2529ab",
+      "sizeBytes": 57833,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1784"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "gif",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-en-washi-mobile.gif",
+    "mime": "image/gif",
+    "response": {
+      "success": true,
+      "imageHash": "fabfc0141337d9a233cda5999e931bb9c4feadb1",
+      "sizeBytes": 2671817,
+      "contentType": "image/gif",
+      "placedOnNodeId": "50:1783"
+    }
+  },
+  {
+    "asset": {
+      "key": "compare",
+      "lang": "en",
+      "theme": "washi",
+      "kind": "mobile"
+    },
+    "role": "poster",
+    "path": "design/website/GlanceUnslopFigmaPlugin/demos/media-upper/compare-en-washi-mobile-poster.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "b73ac2d19c7ed0b90e92b7814ab17e27b0dfd186",
+      "sizeBytes": 59627,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1785"
+    }
+  },
+  {
+    "asset": {
+      "photo": "decoded_0c498e5bb681ebac48477de9adbff0e7aba4bc0e792d1-GeLLgL_fw240webp_result.jpg.jpg"
+    },
+    "role": "photo",
+    "path": "design/marketing/brand-assets/website-photos/decoded_0c498e5bb681ebac48477de9adbff0e7aba4bc0e792d1-GeLLgL_fw240webp_result.jpg.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "0fea62f510695810c71f5daf1c21903538137575",
+      "sizeBytes": 415318,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1786"
+    }
+  },
+  {
+    "asset": {
+      "photo": "decoded_1c115575c17cb602a01dfdaf4cdc5624ed6293_result.jpg.jpg"
+    },
+    "role": "photo",
+    "path": "design/marketing/brand-assets/website-photos/decoded_1c115575c17cb602a01dfdaf4cdc5624ed6293_result.jpg.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "39fc1288bfadc65346f0198f8b77d6743b0ec9a8",
+      "sizeBytes": 124822,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1788"
+    }
+  },
+  {
+    "asset": {
+      "photo": "decoded_292e8cabd038e3ab8edef95845a8a826238318_result.jpg.jpg"
+    },
+    "role": "photo",
+    "path": "design/marketing/brand-assets/website-photos/decoded_292e8cabd038e3ab8edef95845a8a826238318_result.jpg.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "c7ef4c0935f2a174a71cef6ecac4e77873155892",
+      "sizeBytes": 158654,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1787"
+    }
+  },
+  {
+    "asset": {
+      "photo": "decoded_3d46cd005662ebe527ed58da1f132101673be7ad18684-Dp6TSk_fw240webp_result.jpg.jpg"
+    },
+    "role": "photo",
+    "path": "design/marketing/brand-assets/website-photos/decoded_3d46cd005662ebe527ed58da1f132101673be7ad18684-Dp6TSk_fw240webp_result.jpg.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "ebad10ef8584a3c1e6bc677f9b2eb6259d4fec99",
+      "sizeBytes": 261535,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1790"
+    }
+  },
+  {
+    "asset": {
+      "photo": "decoded_4fac0d05b365b365fe4c11691f5835566a4be31615c29-uoIEyL_fw240webp_result.jpg.jpg"
+    },
+    "role": "photo",
+    "path": "design/marketing/brand-assets/website-photos/decoded_4fac0d05b365b365fe4c11691f5835566a4be31615c29-uoIEyL_fw240webp_result.jpg.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "63e27bfe2175e492180f2963c7041c8cf3a790d7",
+      "sizeBytes": 405902,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1789"
+    }
+  },
+  {
+    "asset": {
+      "photo": "decoded_67718e598bc014661509d98bbc85200bf6dab5_result.jpg.jpg"
+    },
+    "role": "photo",
+    "path": "design/marketing/brand-assets/website-photos/decoded_67718e598bc014661509d98bbc85200bf6dab5_result.jpg.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "5fa9c2dc9a10602baf38f2456d8fc9d8ba60c82e",
+      "sizeBytes": 162482,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1791"
+    }
+  },
+  {
+    "asset": {
+      "photo": "decoded_7afa9be65650ef0e7a1dc7a87c834bff1ddc62dc167bb-vHMoRM_fw240webp_result.jpg.jpg"
+    },
+    "role": "photo",
+    "path": "design/marketing/brand-assets/website-photos/decoded_7afa9be65650ef0e7a1dc7a87c834bff1ddc62dc167bb-vHMoRM_fw240webp_result.jpg.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "61498faaacea6390b95236f926c7b23c666e52f5",
+      "sizeBytes": 265526,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1793"
+    }
+  },
+  {
+    "asset": {
+      "photo": "decoded_d91fbf8c8f374d4195bef0cfc2d0363cf405e2_result.jpg.jpg"
+    },
+    "role": "photo",
+    "path": "design/marketing/brand-assets/website-photos/decoded_d91fbf8c8f374d4195bef0cfc2d0363cf405e2_result.jpg.jpg",
+    "mime": "image/jpeg",
+    "response": {
+      "success": true,
+      "imageHash": "5156a6bde886e388782b606692959157a06e727b",
+      "sizeBytes": 167823,
+      "contentType": "image/jpeg",
+      "placedOnNodeId": "50:1792"
+    }
+  }
+]

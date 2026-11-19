@@ -1,0 +1,988 @@
+{
+  "width": 720,
+  "height": 480,
+  "features": [
+    {
+      "key": "edit-area",
+      "group": "widget",
+      "title": {
+        "zh": "局部编辑",
+        "en": "Edit Area"
+      },
+      "description": {
+        "zh": "涂抹要修改的位置，用文字说明想要的结果。",
+        "en": "Paint a region and describe the change you want."
+      },
+      "steps": {
+        "zh": [
+          "选中人物照片",
+          "涂抹选区，输入修改要求",
+          "查看局部编辑结果"
+        ],
+        "en": [
+          "Open a portrait",
+          "Paint the area and describe the edit",
+          "Compare the edited region"
+        ]
+      },
+      "kind": "mask",
+      "before": "person.png",
+      "after": "edit-area.png",
+      "credits": 1,
+      "evidence": "existing-widget-result"
+    },
+    {
+      "key": "upscale",
+      "group": "widget",
+      "title": {
+        "zh": "高清放大",
+        "en": "Upscale"
+      },
+      "description": {
+        "zh": "提高分辨率，放大检查人物的发丝与面部细节。",
+        "en": "Increase resolution and inspect hair and facial detail."
+      },
+      "steps": {
+        "zh": [
+          "打开需要放大的照片",
+          "选择高清放大",
+          "放大检查细节"
+        ],
+        "en": [
+          "Open a small portrait",
+          "Choose Upscale",
+          "Inspect the larger image"
+        ]
+      },
+      "kind": "upscale",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": 30,
+      "evidence": "workflow"
+    },
+    {
+      "key": "background",
+      "group": "widget",
+      "title": {
+        "zh": "人物背景分离",
+        "en": "Background Remover Pro"
+      },
+      "description": {
+        "zh": "分离人物与背景，得到可用于设计的透明 PNG。",
+        "en": "Separate the person from the background as a transparent PNG."
+      },
+      "steps": {
+        "zh": [
+          "打开人物照片",
+          "选择人物背景分离",
+          "查看透明背景结果"
+        ],
+        "en": [
+          "Open a portrait",
+          "Remove the background",
+          "Use the transparent PNG"
+        ]
+      },
+      "kind": "pair",
+      "before": "person.png",
+      "after": "person-transparent.png",
+      "credits": 20,
+      "evidence": "existing-user-result"
+    },
+    {
+      "key": "remove-objects",
+      "group": "widget",
+      "title": {
+        "zh": "移除物体",
+        "en": "Remove Objects"
+      },
+      "description": {
+        "zh": "用英文描述不想保留的物体，检查移除前后的变化。",
+        "en": "Describe unwanted objects in English and compare the result."
+      },
+      "steps": {
+        "zh": [
+          "打开带手包的原图",
+          "输入：Remove the handbag",
+          "对比手包移除结果"
+        ],
+        "en": [
+          "Open the original portrait",
+          "Enter: Remove the handbag",
+          "Compare the result"
+        ]
+      },
+      "kind": "pair",
+      "before": "person.png",
+      "after": "person-clean.png",
+      "credits": 30,
+      "evidence": "exact-user-reference"
+    },
+    {
+      "key": "video-watermark",
+      "group": "widget",
+      "title": {
+        "zh": "视频去水印",
+        "en": "Video Watermark Remover"
+      },
+      "description": {
+        "zh": "清除视频中的水印，处理后合成为一个视频。",
+        "en": "Remove a watermark from a video and return one merged result."
+      },
+      "steps": {
+        "zh": [
+          "导入视频素材",
+          "选择视频去水印",
+          "播放处理后的视频"
+        ],
+        "en": [
+          "Import a video",
+          "Choose Video Watermark Remover",
+          "Play the cleaned result"
+        ]
+      },
+      "kind": "watermark-video",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": 100,
+      "evidence": "workflow"
+    },
+    {
+      "key": "image-host",
+      "group": "widget",
+      "title": {
+        "zh": "免费图床",
+        "en": "Free Image Host"
+      },
+      "description": {
+        "zh": "上传图片或视频，复制生成的链接进行分享。",
+        "en": "Upload an image or video and copy its shareable link."
+      },
+      "steps": {
+        "zh": [
+          "选择图片或视频",
+          "上传并生成链接",
+          "复制分享链接"
+        ],
+        "en": [
+          "Choose an image or video",
+          "Upload and generate a link",
+          "Copy the shareable link"
+        ]
+      },
+      "kind": "link",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": 29,
+      "evidence": "workflow"
+    },
+    {
+      "key": "image-prompt",
+      "group": "widget",
+      "title": {
+        "zh": "图片转提示词",
+        "en": "Image to Prompt"
+      },
+      "description": {
+        "zh": "把图片内容转换为可复用的文字描述。",
+        "en": "Turn an image into a reusable written description."
+      },
+      "steps": {
+        "zh": [
+          "选择一张人物照片",
+          "分析画面内容",
+          "复制文字描述"
+        ],
+        "en": [
+          "Choose a portrait",
+          "Describe its content",
+          "Copy the image description"
+        ]
+      },
+      "kind": "prompt",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": 20,
+      "evidence": "workflow"
+    },
+    {
+      "key": "image-watermark",
+      "group": "widget",
+      "title": {
+        "zh": "图片去水印",
+        "en": "Watermark Remover"
+      },
+      "description": {
+        "zh": "去除图片中的水印、文字与标记。",
+        "en": "Remove watermarks, text and marks from an image."
+      },
+      "steps": {
+        "zh": [
+          "打开带演示水印的图片",
+          "选择图片去水印",
+          "查看清理后的画面"
+        ],
+        "en": [
+          "Open a demo-watermarked image",
+          "Choose Watermark Remover",
+          "Inspect the cleaned image"
+        ]
+      },
+      "kind": "watermark",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": 30,
+      "evidence": "workflow"
+    },
+    {
+      "key": "expand",
+      "group": "widget",
+      "title": {
+        "zh": "智能扩图",
+        "en": "Expand Image"
+      },
+      "description": {
+        "zh": "向画面外延展，让人物照片获得更多构图空间。",
+        "en": "Extend the frame to give a portrait more room."
+      },
+      "steps": {
+        "zh": [
+          "打开原始构图",
+          "选择智能扩图",
+          "对比扩展后的画面"
+        ],
+        "en": [
+          "Open the original framing",
+          "Choose Expand Image",
+          "Compare the extended frame"
+        ]
+      },
+      "kind": "pair",
+      "before": "expand-before.png",
+      "after": "expand-after.png",
+      "credits": 30,
+      "evidence": "existing-widget-result"
+    },
+    {
+      "key": "outfit",
+      "group": "widget",
+      "title": {
+        "zh": "AI 换装",
+        "en": "Outfit Swap"
+      },
+      "description": {
+        "zh": "使用人物图和服装参考图，查看换装后的效果。",
+        "en": "Use a person image and an outfit reference to change clothing."
+      },
+      "steps": {
+        "zh": [
+          "添加人物与服装参考",
+          "选择 AI 换装",
+          "对比穿搭变化"
+        ],
+        "en": [
+          "Add a person and outfit reference",
+          "Choose Outfit Swap",
+          "Compare the clothing"
+        ]
+      },
+      "kind": "pair",
+      "before": "outfit-before.webp",
+      "after": "outfit-after.png",
+      "credits": 30,
+      "evidence": "existing-widget-result"
+    },
+    {
+      "key": "reframe",
+      "group": "widget",
+      "title": {
+        "zh": "图生图",
+        "en": "Redraw & Reframe"
+      },
+      "description": {
+        "zh": "重新生成画面，并按选择的画幅比例输出。",
+        "en": "Regenerate an image at the aspect ratio you choose."
+      },
+      "steps": {
+        "zh": [
+          "选择原图",
+          "选择画幅与生成要求",
+          "查看重新构图的结果"
+        ],
+        "en": [
+          "Choose the original",
+          "Select a ratio and instructions",
+          "Review the regenerated image"
+        ]
+      },
+      "kind": "pair",
+      "before": "person.png",
+      "after": "reframe.png",
+      "credits": 30,
+      "evidence": "existing-widget-result"
+    },
+    {
+      "key": "export-formats",
+      "group": "pro",
+      "title": {
+        "zh": "格式转换与另存为",
+        "en": "Convert & Save As"
+      },
+      "description": {
+        "zh": "导出 PNG、JPG 或 WebP，把结果保存成新文件。",
+        "en": "Export PNG, JPG or WebP and save a new file."
+      },
+      "steps": {
+        "zh": [
+          "打开原始图片",
+          "选择 PNG、JPG 或 WebP",
+          "另存为新的图片文件"
+        ],
+        "en": [
+          "Open the original",
+          "Choose PNG, JPG or WebP",
+          "Save a new image file"
+        ]
+      },
+      "kind": "formats",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    },
+    {
+      "key": "export-icon",
+      "group": "pro",
+      "title": {
+        "zh": "导出 Mac 图标",
+        "en": "Export a Mac Icon"
+      },
+      "description": {
+        "zh": "把图片导出为 ICNS，用作 Mac 图标素材。",
+        "en": "Export an image as an ICNS file for a Mac icon."
+      },
+      "steps": {
+        "zh": [
+          "打开图标素材",
+          "选择导出为 Icon",
+          "保存 ICNS 图标文件"
+        ],
+        "en": [
+          "Open your icon artwork",
+          "Choose Save as Icon",
+          "Save the ICNS file"
+        ]
+      },
+      "kind": "icon",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    },
+    {
+      "key": "compress",
+      "group": "pro",
+      "title": {
+        "zh": "图片压缩",
+        "en": "Compress Images"
+      },
+      "description": {
+        "zh": "调整质量与格式，保存体积更小的文件。",
+        "en": "Choose quality and format to save a smaller file."
+      },
+      "steps": {
+        "zh": [
+          "打开原图",
+          "调整压缩质量",
+          "保存更小的文件"
+        ],
+        "en": [
+          "Open the original",
+          "Adjust compression quality",
+          "Save the smaller file"
+        ]
+      },
+      "kind": "compress",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    },
+    {
+      "key": "resize",
+      "group": "pro",
+      "title": {
+        "zh": "调整图片尺寸",
+        "en": "Resize Images"
+      },
+      "description": {
+        "zh": "按比例调整像素尺寸，为分享或交付准备图片。",
+        "en": "Scale the pixel dimensions for sharing or delivery."
+      },
+      "steps": {
+        "zh": [
+          "查看原图尺寸",
+          "选择缩放比例",
+          "保存调整后的图片"
+        ],
+        "en": [
+          "Check the original size",
+          "Choose the scale",
+          "Save the resized image"
+        ]
+      },
+      "kind": "resize",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    },
+    {
+      "key": "copy-image",
+      "group": "pro",
+      "title": {
+        "zh": "复制图片",
+        "en": "Copy an Image"
+      },
+      "description": {
+        "zh": "把图片复制到剪贴板，再粘贴到其他应用。",
+        "en": "Copy an image to the clipboard and paste it into another app."
+      },
+      "steps": {
+        "zh": [
+          "打开原图",
+          "选择复制图片",
+          "粘贴到其他应用"
+        ],
+        "en": [
+          "Open the original",
+          "Choose Copy Image",
+          "Paste into another app"
+        ]
+      },
+      "kind": "copy",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    },
+    {
+      "key": "rotate-save",
+      "group": "pro",
+      "title": {
+        "zh": "旋转后导出",
+        "en": "Rotate & Export"
+      },
+      "description": {
+        "zh": "向左或向右旋转显示，再将当前方向导出。",
+        "en": "Rotate left or right and export the current orientation."
+      },
+      "steps": {
+        "zh": [
+          "查看原始方向",
+          "向左或向右旋转",
+          "导出旋转后的文件"
+        ],
+        "en": [
+          "View the original orientation",
+          "Rotate left or right",
+          "Export the rotated file"
+        ]
+      },
+      "kind": "rotate",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    },
+    {
+      "key": "flip-save",
+      "group": "pro",
+      "title": {
+        "zh": "翻转后导出",
+        "en": "Flip & Export"
+      },
+      "description": {
+        "zh": "水平或垂直翻转显示，再将当前画面导出。",
+        "en": "Flip horizontally or vertically, then export the image."
+      },
+      "steps": {
+        "zh": [
+          "查看原始画面",
+          "水平或垂直翻转",
+          "导出翻转后的文件"
+        ],
+        "en": [
+          "View the original",
+          "Flip horizontally or vertically",
+          "Export the flipped image"
+        ]
+      },
+      "kind": "flip",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    },
+    {
+      "key": "base64-encode",
+      "group": "pro",
+      "title": {
+        "zh": "图片转 Base64",
+        "en": "Image to Base64"
+      },
+      "description": {
+        "zh": "将图片转换为 Base64，直接复制编码内容。",
+        "en": "Convert an image to Base64 and copy its encoded data."
+      },
+      "steps": {
+        "zh": [
+          "打开人物图片",
+          "选择复制为 Base64",
+          "复制编码内容"
+        ],
+        "en": [
+          "Open a portrait",
+          "Choose Copy as Base64",
+          "Copy the encoded data"
+        ]
+      },
+      "kind": "encode",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    },
+    {
+      "key": "base64-decode",
+      "group": "pro",
+      "title": {
+        "zh": "Base64 转图片",
+        "en": "Base64 to Image"
+      },
+      "description": {
+        "zh": "粘贴 Base64 数据，恢复为可查看的图片。",
+        "en": "Paste Base64 data and recover a viewable image."
+      },
+      "steps": {
+        "zh": [
+          "粘贴 Base64 数据",
+          "选择转换为图片",
+          "查看解码后的图片"
+        ],
+        "en": [
+          "Paste Base64 data",
+          "Convert it to an image",
+          "View the decoded image"
+        ]
+      },
+      "kind": "decode",
+      "before": "person.png",
+      "after": "person.png",
+      "credits": null,
+      "evidence": "workflow"
+    }
+  ],
+  "assets": [
+    {
+      "key": "edit-area",
+      "lang": "zh",
+      "gif": "media/edit-area-zh.gif",
+      "mp4": "media/edit-area-zh.mp4",
+      "poster": "media/edit-area-zh-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1179428
+    },
+    {
+      "key": "edit-area",
+      "lang": "en",
+      "gif": "media/edit-area-en.gif",
+      "mp4": "media/edit-area-en.mp4",
+      "poster": "media/edit-area-en-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1147380
+    },
+    {
+      "key": "upscale",
+      "lang": "zh",
+      "gif": "media/upscale-zh.gif",
+      "mp4": "media/upscale-zh.mp4",
+      "poster": "media/upscale-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 413339
+    },
+    {
+      "key": "upscale",
+      "lang": "en",
+      "gif": "media/upscale-en.gif",
+      "mp4": "media/upscale-en.mp4",
+      "poster": "media/upscale-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 407485
+    },
+    {
+      "key": "background",
+      "lang": "zh",
+      "gif": "media/background-zh.gif",
+      "mp4": "media/background-zh.mp4",
+      "poster": "media/background-zh-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1173620
+    },
+    {
+      "key": "background",
+      "lang": "en",
+      "gif": "media/background-en.gif",
+      "mp4": "media/background-en.mp4",
+      "poster": "media/background-en-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1164260
+    },
+    {
+      "key": "remove-objects",
+      "lang": "zh",
+      "gif": "media/remove-objects-zh.gif",
+      "mp4": "media/remove-objects-zh.mp4",
+      "poster": "media/remove-objects-zh-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1231294
+    },
+    {
+      "key": "remove-objects",
+      "lang": "en",
+      "gif": "media/remove-objects-en.gif",
+      "mp4": "media/remove-objects-en.mp4",
+      "poster": "media/remove-objects-en-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1210110
+    },
+    {
+      "key": "video-watermark",
+      "lang": "zh",
+      "gif": "media/video-watermark-zh.gif",
+      "mp4": "media/video-watermark-zh.mp4",
+      "poster": "media/video-watermark-zh-poster.jpg",
+      "frames": 49,
+      "durationMs": 6260,
+      "bytes": 2161190
+    },
+    {
+      "key": "video-watermark",
+      "lang": "en",
+      "gif": "media/video-watermark-en.gif",
+      "mp4": "media/video-watermark-en.mp4",
+      "poster": "media/video-watermark-en-poster.jpg",
+      "frames": 49,
+      "durationMs": 6260,
+      "bytes": 2213927
+    },
+    {
+      "key": "image-host",
+      "lang": "zh",
+      "gif": "media/image-host-zh.gif",
+      "mp4": "media/image-host-zh.mp4",
+      "poster": "media/image-host-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 595959
+    },
+    {
+      "key": "image-host",
+      "lang": "en",
+      "gif": "media/image-host-en.gif",
+      "mp4": "media/image-host-en.mp4",
+      "poster": "media/image-host-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 594824
+    },
+    {
+      "key": "image-prompt",
+      "lang": "zh",
+      "gif": "media/image-prompt-zh.gif",
+      "mp4": "media/image-prompt-zh.mp4",
+      "poster": "media/image-prompt-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 611637
+    },
+    {
+      "key": "image-prompt",
+      "lang": "en",
+      "gif": "media/image-prompt-en.gif",
+      "mp4": "media/image-prompt-en.mp4",
+      "poster": "media/image-prompt-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 603212
+    },
+    {
+      "key": "image-watermark",
+      "lang": "zh",
+      "gif": "media/image-watermark-zh.gif",
+      "mp4": "media/image-watermark-zh.mp4",
+      "poster": "media/image-watermark-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 503216
+    },
+    {
+      "key": "image-watermark",
+      "lang": "en",
+      "gif": "media/image-watermark-en.gif",
+      "mp4": "media/image-watermark-en.mp4",
+      "poster": "media/image-watermark-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 516909
+    },
+    {
+      "key": "expand",
+      "lang": "zh",
+      "gif": "media/expand-zh.gif",
+      "mp4": "media/expand-zh.mp4",
+      "poster": "media/expand-zh-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1577811
+    },
+    {
+      "key": "expand",
+      "lang": "en",
+      "gif": "media/expand-en.gif",
+      "mp4": "media/expand-en.mp4",
+      "poster": "media/expand-en-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1569364
+    },
+    {
+      "key": "outfit",
+      "lang": "zh",
+      "gif": "media/outfit-zh.gif",
+      "mp4": "media/outfit-zh.mp4",
+      "poster": "media/outfit-zh-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1609592
+    },
+    {
+      "key": "outfit",
+      "lang": "en",
+      "gif": "media/outfit-en.gif",
+      "mp4": "media/outfit-en.mp4",
+      "poster": "media/outfit-en-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1603755
+    },
+    {
+      "key": "reframe",
+      "lang": "zh",
+      "gif": "media/reframe-zh.gif",
+      "mp4": "media/reframe-zh.mp4",
+      "poster": "media/reframe-zh-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1215667
+    },
+    {
+      "key": "reframe",
+      "lang": "en",
+      "gif": "media/reframe-en.gif",
+      "mp4": "media/reframe-en.mp4",
+      "poster": "media/reframe-en-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1227353
+    },
+    {
+      "key": "export-formats",
+      "lang": "zh",
+      "gif": "media/export-formats-zh.gif",
+      "mp4": "media/export-formats-zh.mp4",
+      "poster": "media/export-formats-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 615848
+    },
+    {
+      "key": "export-formats",
+      "lang": "en",
+      "gif": "media/export-formats-en.gif",
+      "mp4": "media/export-formats-en.mp4",
+      "poster": "media/export-formats-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 607152
+    },
+    {
+      "key": "export-icon",
+      "lang": "zh",
+      "gif": "media/export-icon-zh.gif",
+      "mp4": "media/export-icon-zh.mp4",
+      "poster": "media/export-icon-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 909484
+    },
+    {
+      "key": "export-icon",
+      "lang": "en",
+      "gif": "media/export-icon-en.gif",
+      "mp4": "media/export-icon-en.mp4",
+      "poster": "media/export-icon-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 905206
+    },
+    {
+      "key": "compress",
+      "lang": "zh",
+      "gif": "media/compress-zh.gif",
+      "mp4": "media/compress-zh.mp4",
+      "poster": "media/compress-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 612039
+    },
+    {
+      "key": "compress",
+      "lang": "en",
+      "gif": "media/compress-en.gif",
+      "mp4": "media/compress-en.mp4",
+      "poster": "media/compress-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 618560
+    },
+    {
+      "key": "resize",
+      "lang": "zh",
+      "gif": "media/resize-zh.gif",
+      "mp4": "media/resize-zh.mp4",
+      "poster": "media/resize-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 614591
+    },
+    {
+      "key": "resize",
+      "lang": "en",
+      "gif": "media/resize-en.gif",
+      "mp4": "media/resize-en.mp4",
+      "poster": "media/resize-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 607889
+    },
+    {
+      "key": "copy-image",
+      "lang": "zh",
+      "gif": "media/copy-image-zh.gif",
+      "mp4": "media/copy-image-zh.mp4",
+      "poster": "media/copy-image-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 579707
+    },
+    {
+      "key": "copy-image",
+      "lang": "en",
+      "gif": "media/copy-image-en.gif",
+      "mp4": "media/copy-image-en.mp4",
+      "poster": "media/copy-image-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 588720
+    },
+    {
+      "key": "rotate-save",
+      "lang": "zh",
+      "gif": "media/rotate-save-zh.gif",
+      "mp4": "media/rotate-save-zh.mp4",
+      "poster": "media/rotate-save-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 667940
+    },
+    {
+      "key": "rotate-save",
+      "lang": "en",
+      "gif": "media/rotate-save-en.gif",
+      "mp4": "media/rotate-save-en.mp4",
+      "poster": "media/rotate-save-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 668589
+    },
+    {
+      "key": "flip-save",
+      "lang": "zh",
+      "gif": "media/flip-save-zh.gif",
+      "mp4": "media/flip-save-zh.mp4",
+      "poster": "media/flip-save-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 616683
+    },
+    {
+      "key": "flip-save",
+      "lang": "en",
+      "gif": "media/flip-save-en.gif",
+      "mp4": "media/flip-save-en.mp4",
+      "poster": "media/flip-save-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 609401
+    },
+    {
+      "key": "base64-encode",
+      "lang": "zh",
+      "gif": "media/base64-encode-zh.gif",
+      "mp4": "media/base64-encode-zh.mp4",
+      "poster": "media/base64-encode-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 607896
+    },
+    {
+      "key": "base64-encode",
+      "lang": "en",
+      "gif": "media/base64-encode-en.gif",
+      "mp4": "media/base64-encode-en.mp4",
+      "poster": "media/base64-encode-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 609405
+    },
+    {
+      "key": "base64-decode",
+      "lang": "zh",
+      "gif": "media/base64-decode-zh.gif",
+      "mp4": "media/base64-decode-zh.mp4",
+      "poster": "media/base64-decode-zh-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 240183
+    },
+    {
+      "key": "base64-decode",
+      "lang": "en",
+      "gif": "media/base64-decode-en.gif",
+      "mp4": "media/base64-decode-en.mp4",
+      "poster": "media/base64-decode-en-poster.jpg",
+      "frames": 12,
+      "durationMs": 6460,
+      "bytes": 235957
+    }
+  ]
+}

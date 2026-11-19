@@ -1,0 +1,14 @@
+Glance Widget daily · Watermark Remover · 15s
+Original voice: user's voice (Higgsfield seed_audio)
+
+1. 00.20s – 03.90s  Your own photo, covered by a watermark?
+2. 04.10s – 08.60s  In Glance, right-click and choose Watermark Remover.
+3. 08.80s – 12.00s  Watermark gone, picture clean.
+4. 12.20s – 15.00s  Right-click. Glance. Done.
+
+On-screen text:
+00.00s – 03.90s  Your own photo, buried under a watermark?
+03.90s – 08.60s  Right-click. Remove the watermark.  [Right-click → Widget → Watermark Remover]
+08.60s – 12.00s  Watermark gone, picture clean.  (Only for images you have the rights to edit)
+12.00s – 15.00s  Glance · Right-click. Glance. Done. · Widget · Watermark Remover · Mac app · Made for Mac
+Corner label: Animated demo · Example effect

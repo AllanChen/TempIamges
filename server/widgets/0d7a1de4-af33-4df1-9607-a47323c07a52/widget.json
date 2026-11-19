@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "creditCost": 1,
+  "creditCost": 30,
   "id": "0d7a1de4-af33-4df1-9607-a47323c07a52",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "name": "图生图",
   "summary": "重新生成图片，并按指定画幅比例输出。",
   "author": "Allan",

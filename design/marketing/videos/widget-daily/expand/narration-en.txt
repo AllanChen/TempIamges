@@ -1,0 +1,14 @@
+Glance Widget daily · Expand Image · 15s
+Original voice: macOS Samantha, rate 185
+
+1. 00.20s – 03.90s  Photo framed too tight to crop?
+2. 04.10s – 08.60s  In Glance, right-click and choose Expand Image.
+3. 08.80s – 12.00s  AI fills in beyond the edges.
+4. 12.20s – 15.00s  Glance. Right-click, done.
+
+On-screen text:
+00.00s – 03.90s  Framed too tight? No need to reshoot.
+03.90s – 08.60s  Right-click. Expand the frame.  [Right-click → Widget → Expand Image]
+08.60s – 12.00s  Room to breathe, filled in by AI.  (Fits covers, posters and wallpapers)
+12.00s – 15.00s  Glance · See it. Right-click. Fixed. · Widget · Expand Image · Mac app · Made for Mac
+Corner label: Animated demo · Example effect

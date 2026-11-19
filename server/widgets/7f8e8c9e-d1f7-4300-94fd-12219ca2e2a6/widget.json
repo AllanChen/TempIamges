@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "creditCost": 5,
+  "id": "7f8e8c9e-d1f7-4300-94fd-12219ca2e2a6",
+  "version": "0.1.0",
+  "name": "X 媒体下载",
+  "summary": "输入 X 帖子链接，下载其中的全部图片和 MP4 视频。",
+  "author": "Glance",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "下载媒体",
+      "description": "输入一条 X（Twitter）帖子的链接，例如 https://x.com/用户名/status/123456，下载该帖子里的全部图片和 MP4 视频。仅支持公开帖子。",
+      "inputTypes": [
+        "text"
+      ],
+      "inputMimeTypes": [
+        "text/plain"
+      ],
+      "outputs": [
+        "image",
+        "video"
+      ],
+      "taskType": "widget.7f8e8c9e-d1f7-4300-94fd-12219ca2e2a6.run",
+      "requiresUpload": false,
+      "parameterSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "X 帖子链接或帖子 ID / X post URL or tweet ID."
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": false,
+    "notice": "帖子链接将发送至 X 公开接口（及其备用镜像 fxtwitter）用于解析媒体地址；不会上传你的任何文件。 / The post URL is sent to X's public API (and the fxtwitter mirror as fallback) to resolve media addresses; none of your files are uploaded."
+  },
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "X Media Download",
+      "summary": "Paste an X post URL to download all its images and MP4 videos.",
+      "commands": {
+        "run": {
+          "name": "Download Media",
+          "description": "Paste the URL of an X (Twitter) post, e.g. https://x.com/user/status/123456, to download every image and MP4 video it contains. Only public posts are supported."
+        }
+      }
+    },
+    "zh-Hans": {
+      "name": "X 媒体下载",
+      "summary": "输入 X 帖子链接，下载其中的全部图片和 MP4 视频。",
+      "commands": {
+        "run": {
+          "name": "下载媒体",
+          "description": "输入一条 X（Twitter）帖子的链接，例如 https://x.com/用户名/status/123456，下载该帖子里的全部图片和 MP4 视频。仅支持公开帖子。"
+        }
+      }
+    }
+  }
+}

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "creditCost": 1,
+  "creditCost": 10,
   "id": "754acd48-5029-4f8f-b4a4-b750903767bb",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "AI 换装",
   "summary": "把第二张图里的服装穿到第一张图的人物身上。",
   "author": "Allan",

@@ -17,7 +17,7 @@ Glance 是一个原生 macOS 菜单栏工具，用来从任意应用中选中的
 
 ## 主要能力
 
-- 全局热键触发：默认使用 `Option + Space` 显示或关闭 Peek，可在偏好设置中自定义。
+- 全局热键触发：默认使用 `Option + K` 显示或关闭 Peek，可在偏好设置中自定义。
 - 跨应用读取选中文本：优先使用 Accessibility API，失败时可通过剪贴板回退读取。
 - 多类型路径识别：支持 HTTP(S) URL、裸域名、本地绝对路径、`~/` 路径、`file://`、相对路径和裸文件名。
 - Spotlight 文件解析：当文本只有 `screenshot.png` 或 `docs/readme.md` 这类不完整路径时，会尝试通过 Spotlight 查找实际文件。
@@ -36,7 +36,7 @@ Glance 是一个原生 macOS 菜单栏工具，用来从任意应用中选中的
 1. 启动 `Glance.app`，它会作为菜单栏应用运行，不显示 Dock 图标。
 2. 按提示授予 Input Monitoring 和 Accessibility 权限。
 3. 在任意应用中选中一段包含 URL、路径、文件名或域名的文本。
-4. 按 `Option + Space` 触发 Peek；再次按相同快捷键可以关闭。
+4. 按 `Option + K` 触发 Peek；再次按相同快捷键可以关闭。
 5. 使用 Peek 快速确认内容；单击图片进入 Image Inspect 查看细节。
 6. 在 Finder 中用 Glance 打开两张图片可直接比较，打开三张以上则进入同组浏览。
 
@@ -128,7 +128,7 @@ tccutil reset All com.glance.app
 
 ## 核心流程
 
-1. `KeyboardMonitor` 通过 `CGEventTap` 在专用线程监听默认 `Option + Space` 或用户自定义快捷键。
+1. `KeyboardMonitor` 通过 `CGEventTap` 在专用线程监听默认 `Option + K` 或用户自定义快捷键。
 2. `AppDelegate` 收到热键激活通知，检查权限和偏好设置。
 3. `SelectedTextExtractor` 从当前焦点控件读取选中文本，必要时用剪贴板回退。
 4. `PathDetector` 从文本中提取 URL、本地路径、相对路径或裸文件名。

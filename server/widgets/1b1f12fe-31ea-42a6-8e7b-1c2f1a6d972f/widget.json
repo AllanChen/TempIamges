@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "creditCost": 1,
+  "creditCost": 30,
   "id": "1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "name": "图片去水印",
   "summary": "去除图片上的水印、文字和标记。",
   "author": "Glance",

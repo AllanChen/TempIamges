@@ -58,30 +58,32 @@ class SiteTests(unittest.TestCase):
                 self.assertEqual(options, {urlsplit(t).path for h, t in alternates.items() if h != 'x-default'})
                 self.assertEqual([a['href'] for a in doc.select('a', **{'class': 'lang-option', 'aria-current': 'true'})], [path])
 
-    def test_japanese_and_german_homepages(self):
-        for lang in ('ja', 'de'):
-            html = (build.OUT / lang / 'index.html').read_text()
-            doc = self.pages['/' + lang + '/']
-            with self.subTest(lang=lang):
-                self.assertEqual(doc.select('html')[0]['data-lang'], lang)
-                video = doc.select('video')[0]
-                self.assertEqual(video['src'], video['data-video-en'])
+    def test_four_localized_widget_demonstrations(self):
+        for lang, path in (('zh','/'),('en','/en/'),('ja','/ja/'),('de','/de/')):
+            doc = self.pages[path]
+            html = (build.OUT/path.strip('/')/'index.html').read_text()
+            videos = doc.select('video')
+            self.assertEqual(len(videos), 4)
+            self.assertEqual(len({v['src'] for v in videos}), 4)
+            for key, video in zip(('background','compare','expand','outfit'), videos):
+                self.assertIn('/widgets/'+key+'-'+lang, video['src'])
+                self.assertIn('muted', video)
+                self.assertIn('playsinline', video)
+                self.assertEqual(video['preload'], 'none')
+                self.assertIn('controls', video)  # Accessible without JavaScript.
+                self.assertTrue(video['poster'].endswith('-poster.jpg'))
+            self.assertFalse(doc.select('article', **{'class':'widget'}))
+            self.assertEqual(len(doc.select('button', **{'class':'theme-toggle'})), 1)
+            self.assertIn(build.DMG_SHA256, html)
+            self.assertTrue(doc.select('a', href=build.DMG))
+            self.assertNotIn('www.figma.com/api/mcp/asset', html)
+            self.assertIn('theme-init.js', html)
+            self.assertIn('presentation.js', html)
+            if lang in ('ja','de'):
                 for tag, attrs in doc.nodes:
-                    href = attrs.get('href', '') if tag == 'a' and attrs.get('class') != 'lang-option' else ''
-                    if href.startswith('/') and not href.startswith('/download/') and urlsplit(href).path not in ('/', '/' + lang + '/'):
+                    href = attrs.get('href','') if tag == 'a' and attrs.get('class') != 'lang-option' else ''
+                    if href.startswith('/') and not href.startswith(('/download/', '/assets/')) and urlsplit(href).path not in ('/', '/'+lang+'/'):
                         self.assertTrue(href.startswith('/en/'), href)
-                self.assertTrue(doc.select('a', href='/' + lang + '/#download'))
-                self.assertIn('mailto:' + build.SUPPORT_EMAIL, html)
-                self.assertIn(build.DMG_SHA256, html)
-                self.assertEqual(len(doc.select('article', **{'class': 'widget'})), min(6, len(build.SNAPSHOT['widgets'])))
-                self.assertNotIn('点 / ', html)
-        for path, peek in (('/', None), ('/en/', None), ('/ja/', 'peek-ja'), ('/de/', 'peek-de')):
-            sources = [a['src'] for a in self.pages[path].select('source')]
-            tracks = [a['srclang'] for a in self.pages[path].select('track')]
-            self.assertEqual([urlsplit(src).path for src in sources], [f'/assets/video/{peek}.mp4'] if peek else [])
-            self.assertEqual(tracks, [peek[-2:]] if peek else [])
-        self.assertIn('ダウンロード', (build.OUT / 'ja/index.html').read_text())
-        self.assertIn('herunterladen', (build.OUT / 'de/index.html').read_text())
 
     def test_support_uses_product_mailbox(self):
         for path in self.pages:
@@ -150,11 +152,6 @@ class SiteTests(unittest.TestCase):
         self.assertIn(script, result)
 
     def test_localized_media_and_download(self):
-        for path in ('/', '/en/'):
-            video = self.pages[path].select('video')[0]
-            lang = 'en' if path.startswith('/en/') else 'zh'
-            self.assertEqual(video['src'], video['data-video-'+lang])
-            self.assertEqual(video['poster'], video['data-poster-'+lang])
         for path in ('/install/', '/en/install/'):
             self.assertIn(build.DMG_SHA256, (build.OUT/path.strip('/')/'index.html').read_text())
             self.assertTrue(self.pages[path].select('a', href=build.DMG))

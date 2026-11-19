@@ -1,0 +1,777 @@
+{
+  "widgets": [
+    {
+      "schemaVersion": 1,
+      "creditCost": 1,
+      "id": "910f3243-aeb2-4839-8f26-44d8f3746bde",
+      "version": "0.1.0",
+      "name": "局部编辑",
+      "summary": "在图片上涂抹要修改的区域，再用文字描述想要的效果，区域外保持不变。",
+      "author": "Glance",
+      "official": false,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "run",
+          "name": "局部编辑",
+          "description": "输入一张图片，涂抹出要修改的区域，并用文字描述想要的效果，例如“移除这个人”或“换成一盆绿植”。涂抹区域以外的画面保持不变。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "image"
+          ],
+          "taskType": "widget.910f3243-aeb2-4839-8f26-44d8f3746bde.run",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {
+              "mask": {
+                "type": "string",
+                "format": "uri"
+              },
+              "prompt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "prompt",
+              "mask"
+            ]
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "图片、涂抹区域和文字描述将上传至 Glance 及 AI 图像服务处理。 / Your image, painted mask and description are uploaded to Glance and an AI image service for processing."
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Edit Area",
+          "summary": "Paint the area to change, describe the result in text, and everything outside it stays as is.",
+          "commands": {
+            "run": {
+              "name": "Edit Area",
+              "description": "Provide one image, paint the area to change and describe the result, for example “remove this person” or “replace it with a potted plant”. Everything outside the painted area stays unchanged."
+            }
+          }
+        },
+        "zh-Hans": {
+          "name": "局部编辑",
+          "summary": "在图片上涂抹要修改的区域，再用文字描述想要的效果，区域外保持不变。",
+          "commands": {
+            "run": {
+              "name": "局部编辑",
+              "description": "输入一张图片，涂抹出要修改的区域，并用文字描述想要的效果，例如“移除这个人”或“换成一盆绿植”。涂抹区域以外的画面保持不变。"
+            }
+          }
+        }
+      },
+      "updatedAt": "2026-11-13T05:33:45.733Z",
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-02",
+        "value": "X43qb5MvjXshDhx3o0Fusd4D4YzYUBLnnwZQ0Gkapnk6IYuSIiIODbEHJPLwPODlo6NrHYhCd3a_0Ex9fkr_CA"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "ddd803cf-e9f2-4bd7-ad2e-1e6887188f7f",
+      "version": "1.0.1",
+      "name": "高清放大",
+      "summary": "图生图超分辨率，提升图片清晰度与细节。",
+      "author": "Glance",
+      "official": true,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "upscale",
+          "name": "高清放大",
+          "description": "上传一张图片，生成更高分辨率的清晰版本。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "image"
+          ],
+          "taskType": "image.upscale.v1",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "The selected image will be uploaded to Glance for cloud processing."
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "updatedAt": "2026-11-05T01:13:21.341Z",
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-01",
+        "value": "JoR297ENCoPT9aBPYdZfJ4qeyVIfINofrRFf_qRFz_hPsdSPbnIl7pgvceECMQlyTiIm4ppZBrlHFFbvHpqfBQ"
+      },
+      "creditCost": 30,
+      "localizations": {
+        "en": {
+          "name": "Upscale",
+          "summary": "Upscale images to higher resolution with sharper detail.",
+          "commands": {
+            "upscale": {
+              "name": "Upscale",
+              "description": "Takes one image and returns a higher-resolution, sharper version."
+            }
+          }
+        }
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "7cc3967a-60ac-4677-9817-72f57f5ef5fa",
+      "version": "1.0.1",
+      "name": "人物背景分离",
+      "summary": "图生图高级背景移除，保留精细主体边缘。",
+      "author": "Glance",
+      "official": true,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "remove-bg-pro",
+          "name": "人物背景分离",
+          "description": "上传一张图片，高级移除背景并生成透明背景副本。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "image"
+          ],
+          "taskType": "image.remove-bg-pro.v1",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "The selected image will be uploaded to Glance for cloud processing."
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "updatedAt": "2026-11-05T01:13:04.043Z",
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-01",
+        "value": "6d8xIl0LbcrSYklhedefTLgl3PmSKSQyjScX5bCYl7IB7mGMIpBhbTDOt16Fut4ypiOOS7sQ8B8Gea9WlvvgBA"
+      },
+      "creditCost": 20,
+      "localizations": {
+        "en": {
+          "name": "Background Remover Pro",
+          "summary": "Precise background removal that keeps fine edges such as hair.",
+          "commands": {
+            "remove-bg-pro": {
+              "name": "Remove Background",
+              "description": "Takes one image and returns a copy with a transparent background."
+            }
+          }
+        }
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "creditCost": 30,
+      "id": "0b164640-9998-49c7-aa93-5ed5cb957c40",
+      "version": "0.1.0",
+      "name": "移除物体",
+      "summary": "用英文描述要移除的物体，智能补全背景。每次 30 积分。",
+      "author": "Glance",
+      "official": false,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "run",
+          "name": "移除物体",
+          "description": "输入一张图片，用英文描述要移除的物体及位置，例如 Remove the red ball. 尽量保持其余内容不变。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "image"
+          ],
+          "taskType": "widget.0b164640-9998-49c7-aa93-5ed5cb957c40.run",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {
+              "prompt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "prompt"
+            ]
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "图片和文字描述将上传至 Glance 及 RunningHub 处理。 / Your image and description are uploaded to Glance and RunningHub for processing."
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Remove Objects",
+          "summary": "Describe unwanted objects in English and fill the background. 30 credits per run.",
+          "commands": {
+            "run": {
+              "name": "Remove Objects",
+              "description": "Provide one image and describe the objects to remove in English, e.g. Remove the red ball. Other content is preserved where possible."
+            }
+          }
+        }
+      },
+      "updatedAt": "2026-11-03T02:52:52.105Z",
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-02",
+        "value": "3nKnOo6zP4v5byZAUcvMUOnbRqePeY3JvZJv4xf7akqZV8CTd6ygxaGIB5wwlaaQ1ufvLUXpCLYlrLDaMVOmCg"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "creditCost": 100,
+      "id": "783745bf-501d-4cfd-b2b8-69d32a8d90a8",
+      "version": "0.3.0",
+      "name": "视频去水印",
+      "summary": "每 10 秒 100 点，不足 10 秒按一份计费；分段去水印后合成为一个视频。",
+      "author": "Allan",
+      "official": false,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "run",
+          "name": "去水印",
+          "description": "输入一个视频；每段最长 8 秒，经 RunningHub 去水印后按顺序合并。",
+          "inputTypes": [
+            "video"
+          ],
+          "inputMimeTypes": [
+            "video/mp4",
+            "video/quicktime",
+            "video/webm",
+            "video/x-matroska"
+          ],
+          "outputs": [
+            "video"
+          ],
+          "taskType": "widget.783745bf-501d-4cfd-b2b8-69d32a8d90a8.run",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "所选视频将上传到 Glance，并按最长 8 秒分段上传至 RunningHub 去水印；结果会合并并上传回 Glance。"
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Video Watermark Remover",
+          "summary": "100 credits per 10 seconds, rounded up. Clean segments and merge them into one video.",
+          "commands": {
+            "run": {
+              "name": "Remove Watermark",
+              "description": "Takes one video; segments of up to 8 s are cleaned on RunningHub and merged in order."
+            }
+          }
+        }
+      },
+      "billing": {
+        "mode": "duration",
+        "unitSeconds": 10
+      },
+      "updatedAt": "2026-10-27T14:50:44.519Z",
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-02",
+        "value": "Qe76YqF3b6XS5_broYfZ7qYUn9MlpzbbCuUFt7I71gLOi84pjxduSfXvnPqHDxBk3A-uIM4u2i2Sk8wwpZnuDQ"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "55e64c7e-f079-448a-b5bd-7315b2589019",
+      "version": "1.0.2",
+      "name": "免费图床",
+      "summary": "上传图片或视频，获得可分享的链接。",
+      "author": "Glance",
+      "official": true,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "c8446b13-f54b-4a1f-aaba-156996118d60",
+          "name": "上传获取链接",
+          "description": "上传图片或视频，获取结果文件的链接。",
+          "inputTypes": [
+            "image",
+            "video"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif",
+            "video/mp4",
+            "video/quicktime",
+            "video/webm"
+          ],
+          "outputs": [
+            "image",
+            "video"
+          ],
+          "showResultURL": true,
+          "taskType": "widget.55e64c7e-f079-448a-b5bd-7315b2589019.c8446b13-f54b-4a1f-aaba-156996118d60",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          }
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "图片会上传至 Freeimage 或 Glance R2；视频会上传至 Glance R2。"
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Free Image Host",
+          "summary": "Upload an image or video and get a shareable link.",
+          "commands": {
+            "c8446b13-f54b-4a1f-aaba-156996118d60": {
+              "name": "Upload & Get Link",
+              "description": "Uploads the image or video and returns a link to the hosted file."
+            }
+          }
+        }
+      },
+      "updatedAt": "2026-10-15T09:40:42.442Z",
+      "creditCost": 29,
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "admin-console",
+        "value": "admin-created"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
+      "version": "0.1.2",
+      "name": "图片转提示词",
+      "summary": "分析图片内容，生成可直接复用的文字描述。",
+      "author": "Allan",
+      "official": false,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "run",
+          "name": "生成描述",
+          "description": "分析所选图片并返回文字描述。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "text"
+          ],
+          "taskType": "widget.e6f71f1d-2897-4e26-9512-f72ad2e08d2a.run",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "所选图片将上传到 Glance 和 RunningHub 进行分析。"
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Image to Prompt",
+          "summary": "Describe an image in words you can reuse as a prompt.",
+          "commands": {
+            "run": {
+              "name": "Describe Image",
+              "description": "Analyzes the selected image and returns a text description."
+            }
+          }
+        }
+      },
+      "updatedAt": "2026-10-15T09:40:33.139Z",
+      "creditCost": 20,
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-02",
+        "value": "AF3ecZSXrH1g2kAEaJ5pUaEeWH6Oxi8HeNBw1I5xaKmQSs_3G54Jld-IiHA2R9CoskvL0guQ92p-qs3s8vK7CQ"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f",
+      "version": "0.1.3",
+      "name": "图片去水印",
+      "summary": "去除图片上的水印、文字和标记。",
+      "author": "Glance",
+      "official": false,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "run",
+          "name": "去水印",
+          "description": "输入一张图片，返回去除水印后的图片。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "image"
+          ],
+          "taskType": "widget.1b1f12fe-31ea-42a6-8e7b-1c2f1a6d972f.run",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "The selected media is uploaded to Glance for processing."
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Watermark Remover",
+          "summary": "Remove watermarks, text and marks from an image.",
+          "commands": {
+            "run": {
+              "name": "Remove Watermark",
+              "description": "Takes one image and returns it with the watermark removed."
+            }
+          }
+        }
+      },
+      "updatedAt": "2026-10-15T09:40:22.436Z",
+      "creditCost": 30,
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-02",
+        "value": "lWf1KafkH9Tl54er_JM_3rFTG--kMz_tM1y4GVOvvoN2CMzQdmgrQbA33kPgB2KuQoyTpCaUCzuwjm1UdDMoDg"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "d13ef3be-9d60-4283-a8f5-d75d4e550944",
+      "version": "0.1.1",
+      "name": "智能扩图",
+      "summary": "向四周延展画面，自动补全图片之外的内容。",
+      "author": "Allan",
+      "official": false,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "run",
+          "name": "扩图",
+          "description": "输入一张图片，扩展画面并返回一张新图片。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "image"
+          ],
+          "taskType": "widget.d13ef3be-9d60-4283-a8f5-d75d4e550944.run",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "The selected image is uploaded to Glance and RunningHub for processing."
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Expand Image",
+          "summary": "Extend the canvas beyond the edges with matching content.",
+          "commands": {
+            "run": {
+              "name": "Expand",
+              "description": "Takes one image and returns an expanded version of the scene."
+            }
+          }
+        }
+      },
+      "updatedAt": "2026-10-15T09:40:11.523Z",
+      "creditCost": 30,
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-02",
+        "value": "0tF3ZfRHxO1u7a0F3pjSuyumwHKCK_83KIMCnzfCoh4cEUk6-ZrdUeUh4br_JpcF4DAkRTTpLxs8Y4OTTUQTCA"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "754acd48-5029-4f8f-b4a4-b750903767bb",
+      "version": "0.1.1",
+      "name": "AI 换装",
+      "summary": "把第二张图里的服装穿到第一张图的人物身上。",
+      "author": "Allan",
+      "official": false,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "run",
+          "name": "换装",
+          "description": "输入两张图片：第一张是人物，第二张是服装，生成换装后的图片。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "image"
+          ],
+          "taskType": "widget.754acd48-5029-4f8f-b4a4-b750903767bb.run",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {
+              "images": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "minItems": 1,
+                "maxItems": 4
+              }
+            }
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "The selected media is uploaded to Glance for processing."
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Outfit Swap",
+          "summary": "Dress the person in the first image in the outfit from the second.",
+          "commands": {
+            "run": {
+              "name": "Swap Outfit",
+              "description": "Takes two images, a person and an outfit, and returns the person wearing it."
+            }
+          }
+        }
+      },
+      "updatedAt": "2026-10-15T09:40:00.738Z",
+      "creditCost": 30,
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-02",
+        "value": "93LngsPdu1gDEY0tt6P5h10V4T8-PqTlWmSU5HEVX5L_4nSAbS_j807QFqB0-5-VIUQUuwEY46iQWZOVaZMWCA"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "0d7a1de4-af33-4df1-9607-a47323c07a52",
+      "version": "0.1.2",
+      "name": "图生图",
+      "summary": "重新生成图片，并按指定画幅比例输出。",
+      "author": "Allan",
+      "official": false,
+      "execution": {
+        "mode": "cloud"
+      },
+      "commands": [
+        {
+          "id": "run",
+          "name": "图生图",
+          "description": "输入一张图片，按所选比例生成一张新图片。",
+          "inputTypes": [
+            "image"
+          ],
+          "inputMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+          ],
+          "outputs": [
+            "image"
+          ],
+          "taskType": "widget.0d7a1de4-af33-4df1-9607-a47323c07a52.run",
+          "requiresUpload": true,
+          "parameterSchema": {
+            "type": "object",
+            "properties": {
+              "aspectRatio": {
+                "type": "string",
+                "enum": [
+                  "empty",
+                  "1:1",
+                  "2:3",
+                  "3:2",
+                  "4:5",
+                  "5:4",
+                  "4:3",
+                  "3:4",
+                  "16:9",
+                  "9:16",
+                  "21:9",
+                  "9:21",
+                  "2:1",
+                  "1:2",
+                  "3:1",
+                  "1:3"
+                ],
+                "default": "3:4"
+              }
+            }
+          },
+          "showResultURL": false
+        }
+      ],
+      "privacy": {
+        "uploadsMedia": true,
+        "notice": "The selected image is uploaded to Glance and RunningHub for processing."
+      },
+      "minimumGlanceVersion": "2.0.0",
+      "localizations": {
+        "en": {
+          "name": "Redraw & Reframe",
+          "summary": "Regenerate the image at the aspect ratio you choose.",
+          "commands": {
+            "run": {
+              "name": "Redraw & Reframe",
+              "description": "Takes one image and generates a new one at the selected aspect ratio."
+            }
+          }
+        }
+      },
+      "updatedAt": "2026-10-15T09:39:28.299Z",
+      "creditCost": 30,
+      "signature": {
+        "algorithm": "Ed25519",
+        "keyID": "glance-market-2026-02",
+        "value": "NO1Gwd5DzCJq4HDwoLzw_Q2AvIquWegnFnW_lISW_lOs8t6ZzOgLPErAUVkIIS_Lz_tzqM8wo548lzHS0osVBw"
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 11,
+    "total": 11,
+    "totalPages": 1
+  }
+}

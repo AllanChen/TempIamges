@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E160676B41724B038824FBF1 /* WidgetDemos in Resources */ = {isa = PBXBuildFile; fileRef = 3DFD0C5754174D398EA0E250 /* WidgetDemos */; };
+		E160676B41724B038824FBF0 /* WidgetDemos in Resources */ = {isa = PBXBuildFile; fileRef = 3DFD0C5754174D398EA0E250 /* WidgetDemos */; };
 		018AC02F020F54C449DE19A9 /* KeyboardMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F16EAB787F6102D7451E27 /* KeyboardMonitor.swift */; };
 		04670ED7675693812FE0FFFE /* ContentViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE094D8C91B76410621B788E /* ContentViewerWindow.swift */; };
 		0671565D6790C1DBF89A9ADB /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE55BDC72E73C79AA2510706 /* Logger.swift */; };
@@ -200,6 +202,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3DFD0C5754174D398EA0E250 /* WidgetDemos */ = {isa = PBXFileReference; lastKnownFileType = folder; path = WidgetDemos; sourceTree = "<group>"; };
 		0C5179624322D2F186F271A1 /* HistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryManager.swift; sourceTree = "<group>"; };
 		0E09672CB631A5A45A61A047 /* Inter-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Regular.otf"; sourceTree = "<group>"; };
 		0EA0100256355CD9DC01D8AB /* BillingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingModels.swift; sourceTree = "<group>"; };
@@ -417,6 +420,7 @@
 		2D861CD9F9E261E86BDF43DB /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				3DFD0C5754174D398EA0E250 /* WidgetDemos */,
 				1338215DA649C2E61029E245 /* Assets.xcassets */,
 				D1444931654A6366A56B7972 /* Info.plist */,
 				AA4B6E6699F8CFDA864D2F8A /* Localizable.strings */,
@@ -578,6 +582,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E160676B41724B038824FBF0 /* WidgetDemos in Resources */,
 				5F444FD84EF50057B8857C3B /* Assets.xcassets in Resources */,
 				BD940083230BD8377FD2E6B4 /* Info.plist in Resources */,
 				33044AFB38C10A375B39B423 /* Inter-Medium.otf in Resources */,
@@ -593,6 +598,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E160676B41724B038824FBF1 /* WidgetDemos in Resources */,
 				867A48659D53F502F7AF234E /* Assets.xcassets in Resources */,
 				97A7BA68F1D07BEB8F70615D /* Info.plist in Resources */,
 				D12206470892182751E6C498 /* Inter-Medium.otf in Resources */,

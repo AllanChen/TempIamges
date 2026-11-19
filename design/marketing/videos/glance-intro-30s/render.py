@@ -22,6 +22,7 @@ g = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(g)
 LANG = sys.argv[sys.argv.index('--lang') + 1] if '--lang' in sys.argv else 'zh'
 TAG = f'-{LANG}'
+NO_URL = '--no-url' in sys.argv  # 小红书 etc. throttle videos that show a website
 g.LANG = LANG
 g.rebuild_localized()
 ui = g.ui
@@ -348,10 +349,10 @@ def ending(t):
     c = ease((t - 1.0) / .35)
     if c > 0:
         cta = Image.new('RGBA', (W, 100))
-        s = 'glancepreview.com'
-        w = tw(s, 34, 's', 'en') + 90
+        s = L('Made for Mac', '为 Mac 打造') if NO_URL else 'glancepreview.com'
+        w = tw(s, 34, 's', None if NO_URL else 'en') + 90
         rr(cta, (960 - w / 2, 10, 960 + w / 2, 84), 37, fill=WARM)
-        txt(cta, (960, 47), s, 34, INK, 's', 'mm', 'en')
+        txt(cta, (960, 47), s, 34, INK, 's', 'mm', None if NO_URL else 'en')
         put(im, cta, (0, 830 + 10 * (1 - c)), c)
     return im
 

@@ -14,6 +14,7 @@ import shutil
 from html import escape
 from pathlib import Path
 from localize import localize
+from homepage import render_home
 
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
@@ -25,7 +26,7 @@ SUPPORT = f'<a href="mailto:{SUPPORT_EMAIL}">{SUPPORT_EMAIL}</a>'
 SUPPORT_X_URL = "https://x.com/Sir03834855"
 SUPPORT_X_HANDLE = "@Sir03834855"
 SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_X_HANDLE}</a>'
-VERSION = "1.0.2"
+VERSION = "1.0.4"
 DMG = f"/download/Glance-{VERSION}.dmg"
 # A pre-release version keeps beta positioning; a final version must ship a notarized DMG.
 PRERELEASE = "-" in VERSION
@@ -174,10 +175,12 @@ def header(active: str, lang: str, options: list[tuple[str, str]]) -> str:
                f'<div class="lang-menu-list">{items}</div></details>')
     return f"""<a class="skip" href="#main">{bi("跳到正文", "Skip to content", ja="本文へ移動", de="Zum Inhalt springen")}</a>
 <header class="site-header"><div class="wrap">
-  <a class="brand" href="/"><img src="/assets/img/logo-256.png" alt="" width="30" height="30">Glance</a>
+  <a class="brand" href="/">Glance<span class="brand-dot" aria-hidden="true"></span></a>
   <nav class="nav" aria-label="Main">{links}
     {toggles}
-    <a class="btn btn-primary" href="/#download">{bi("下载", "Download", ja="ダウンロード")}</a>
+    <button class="theme-toggle" type="button" aria-label="{ {'zh':'切换浅色','en':'Switch to light','ja':'ライトに切り替え','de':'Helles Design'}[lang] }" aria-pressed="false"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"></path></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14a9 9 0 0 1-10.5-10.5A9 9 0 1 0 20.5 14Z"></path></svg></button>
+    <details class="mobile-nav"><summary aria-label="{ {'zh':'菜单','en':'Menu','ja':'メニュー','de':'Menü'}[lang] }">☰</summary><div>{links.replace('class="hide-sm"', '')}</div></details>
+    <a class="btn btn-primary" href="/#download">{bi("下载", "Download", ja="入手")}</a>
   </nav>
 </div></header>"""
 
@@ -238,6 +241,8 @@ def homepage_schema(lang: str, description: str) -> str:
 
 
 def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
+    if '{{HOME_CONTENT}}' in body:
+        body = body.replace('{{HOME_CONTENT}}', render_home(lang, SNAPSHOT, DMG, VERSION, DMG_SIZE, DMG_SHA256))
     base_path = meta['path']
     path = prefix(lang) + base_path
     if lang in HOME_META:
@@ -281,12 +286,15 @@ def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
 <meta property="og:url" content="{canonical}">
 <meta name="twitter:card" content="summary_large_image">
 {schema}
-<meta name="theme-color" content="#08090c">
+<meta name="theme-color" content="#151514">
+<script src="/assets/theme-init.js?v={ASSET_VERSION}"></script>
 {robots}
 {verify}
 <link rel="icon" type="image/png" href="/assets/img/favicon-64.png">
 <link rel="apple-touch-icon" href="/assets/img/logo-256.png">
 <link rel="stylesheet" href="/assets/site.css?v={ASSET_VERSION}">
+<link rel="stylesheet" href="/assets/fonts.css?v={ASSET_VERSION}">
+<link rel="stylesheet" href="/assets/shizuka.css?v={ASSET_VERSION}">
 </head>
 <body>
 {localize(header(meta.get('nav', ''), lang, options), lang, page_paths)}
@@ -295,6 +303,7 @@ def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
 </main>
 {localize(footer(), lang, page_paths)}
 <script src="/assets/site.js?v={ASSET_VERSION}" defer></script>
+<script src="/assets/presentation.js?v={ASSET_VERSION}" defer></script>
 </body>
 </html>
 """
@@ -324,7 +333,7 @@ def asset_version() -> str:
     and no browser or edge cache can serve a stale script."""
     import hashlib
     digest = hashlib.sha256()
-    for name in ("site.css", "site.js"):
+    for name in ("site.css", "site.js", "shizuka.css", "theme-init.js", "presentation.js", "fonts.css"):
         digest.update((SRC / "assets" / name).read_bytes())
     return digest.hexdigest()[:10]
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "creditCost": 1,
+  "creditCost": 30,
   "id": "d13ef3be-9d60-4283-a8f5-d75d4e550944",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "智能扩图",
   "summary": "向四周延展画面，自动补全图片之外的内容。",
   "author": "Allan",

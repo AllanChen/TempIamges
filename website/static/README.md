@@ -10,12 +10,13 @@ python3 website/static/build.py
 python3 -m unittest discover -s website/static -p 'test_*.py'
 node --check website/static/src/assets/site.js
 node --check website/static/functions/_middleware.js
+node --test website/static/test_middleware.cjs website/static/test_presentation.cjs website/static/test_analytics.cjs
 git diff --check
 ```
 
 这是官网的静态生成流程，不构建或启动 macOS App。使用 Python 3.12 或更新版本。
 
-`build.py` 要求现有发行包位于 `src/download/Glance-1.0.1.dmg`。DMG 由 Git 忽略；在新工作区中准备发行包时，应核对正式安装页公布的 SHA-256，不能用空文件代替。正式版本还必须出现在签名 appcast 中，且引用的安装包及差分包必须存在、大小匹配；不要直接上传其他工作区的旧 public 目录。
+`build.py` 要求现有发行包位于 `src/download/Glance-1.0.4.dmg`。DMG 由 Git 忽略；在新工作区中准备发行包时，应核对正式安装页公布的 SHA-256，不能用空文件代替。正式版本还必须出现在签名 appcast 中，且引用的安装包及差分包必须存在、大小匹配；不要直接上传其他工作区的旧 public 目录。
 
 `refresh_public_snapshot.py` 从公开 API 更新 `src/public-snapshot.json`。每次发布前运行，确认 Widget 名称、计费单位和销售状态与服务端一致。构建器用它生成无需 JavaScript 即可阅读的 Widget 列表和当前定价状态；浏览器加载后仍向 API 获取实时数据。刷新失败时不要沿用旧快照发布价格变化。
 
@@ -23,8 +24,14 @@ git diff --check
 
 - 编辑 `src/pages/*.html`，文件首行声明路径、中文名、英文名和可选 `noindex`。
 - 同一源文件中的 `lang="zh"` / `lang="en"` 内容在构建时拆分，原路径提供中文，`/en/` 下提供英文。
-- 首页另有日文 `/ja/` 和德文 `/de/`：`00-home.html` 中每个中英文元素都需要对应的 `lang="ja"` / `lang="de"` 元素。日、德页面链接到其他页面时指向英文版，图片和视频没有日、德版本时使用英文版。页头、页脚通过 `bi(..., ja=, de=)` 提供日、德文案，未提供时回退英文。其他页面只有中英文。
-- 支持渠道为 X 私信（`build.py` 中的 `SUPPORT_X_URL`），页面中使用 `{{SUPPORT_X}}`；网站不再提供支持邮箱。
+- 首页文案来自 `src/homepage.json`，由 `homepage.py` 生成中、英、日、德四个版本；其他页面继续提供中英文。日、德首页的子页面链接指向英文版。
+- 首页原生窗口结构位于 `src/artwork/`；当前 Figma 上下文保存在 `design/website/GlanceUnslopFigmaPlugin/web-context.json`。`prepare_figma_assets.cjs` 是构建素材的辅助工具，不是浏览器运行时。
+- 四段宣传视频及本地化封面在 `src/assets/video/widgets/`。对比演示另有 Sumi/Washi 和桌面/移动版本。浏览器按主题、尺寸和视口选择视频；减少动态效果时由用户手动播放。
+- `theme-init.js` 在样式加载前读取 `glance.theme`；没有手动选择时跟随系统。`presentation.js` 管理页头主题按钮、移动菜单和演示播放。
+- 首页入口 `/` 由 `functions/_middleware.js` 按 Cloudflare `request.cf.country`（访客 IP 所属地区）自动选择语言：CN/HK/MO/TW → 中文，JP → 日语，DE/AT/CH/LI → 德语，其余及未知地区 → English。不调用外部 IP 服务，也不保存原始 IP。
+- 页头手动选择语言后，通过 `glance.language` Cookie 记住一年，优先于 IP 判断；已有 `/en/`、`/ja/`、`/de/` 地址及其他页面路径不会被自动重定向。搜索引擎爬虫保留原始入口，自动判断使用不缓存的 302，防止地区结果串到其他访客。
+- `shizuka.css` 提供 Sumi/Washi 配色，`fonts.css` 使用本地字体子集。Unslop 方向及工具署名：Damir Sokolovsky，CC BY 4.0。
+- 当前支持邮箱为 `support@glancepreview.com`，在共享页脚保留。外部 X 链接仍由 `SUPPORT_X_URL` 配置。
 - `localize.py` 会转换内部页面链接，选择对应语言媒体，并保留脚本内容。
 - `build.py` 的 `DESCRIPTIONS` 保存各页的中英文描述；首页 title 也在生成器内。
 - 可索引页面生成 self-canonical 和双向 hreflang。语言切换使用真实链接，不依赖本地存储或浏览器语言。

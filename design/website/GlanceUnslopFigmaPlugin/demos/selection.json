@@ -1,0 +1,6 @@
+{
+  "featureKeys": ["remove-objects", "background", "expand", "outfit"],
+  "includePro": false,
+  "desktopLayout": "One featured demonstration plus three compact films",
+  "mobileLayout": "Four stacked demonstrations"
+}

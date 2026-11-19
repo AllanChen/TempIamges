@@ -1,0 +1,2353 @@
+{
+  "date": "2026-11-14",
+  "fileKey": "kWvE51F9IfI3oSN6ZoxeKw",
+  "pageId": "0:1",
+  "scope": "Four upper-homepage static product illustrations replaced with captioned animated demonstrations",
+  "createdNodeIdRangesByPrefix": {
+    "51:": "1782-1784,1896-1902,2014-2019,2022-2050,2053-2054,2166-2172,2284-2289,2292-2320,2323-2324,2436-2442,2554-2559,2562-2590,2593-2594,2706-2712,2824-2829,2832-2860,2863-2864,2976-2982,3094-3099,3102-3130,3133-3134,3246-3252,3364-3369,3372-3400,3403-3404,3516-3522,3634-3639,3642-3670,3673-3674,3786-3792,3904-3909,3912-3940,3943-3944,4056-4062,4174-4179,4182-4210,4213-4214,4326-4332,4444-4449,4452-4480,4483-4484,4596-4602,4714-4719,4722-4750,4753-4754,4866-4872,4984-4989,4992-5020,5023-5024,5136-5142,5254-5259,5262-5290,5293-5294,5406-5412,5524-5529,5532-5560,5563-5564,5676-5682,5794-5799,5802-5830,5833-5834,5946-5952,6064-6069,6072-6100,6103,6221,6339,6457,6575,6589,6603,6617,6631,6749,6867,6985,7103,7117,7131,7145,7159,7277,7395,7513,7631,7645,7659,7673,7687,7805,7923,8041,8159,8173,8187,8201",
+    "I51:1784;12:": "167-277",
+    "I51:1902;12:": "167-277",
+    "I51:2054;12:": "279-389",
+    "I51:2172;12:": "279-389",
+    "I51:2324;12:": "167-277",
+    "I51:2442;12:": "167-277",
+    "I51:2594;12:": "279-389",
+    "I51:2712;12:": "279-389",
+    "I51:2864;12:": "167-277",
+    "I51:2982;12:": "167-277",
+    "I51:3134;12:": "279-389",
+    "I51:3252;12:": "279-389",
+    "I51:3404;12:": "167-277",
+    "I51:3522;12:": "167-277",
+    "I51:3674;12:": "279-389",
+    "I51:3792;12:": "279-389",
+    "I51:3944;12:": "167-277",
+    "I51:4062;12:": "167-277",
+    "I51:4214;12:": "279-389",
+    "I51:4332;12:": "279-389",
+    "I51:4484;12:": "167-277",
+    "I51:4602;12:": "167-277",
+    "I51:4754;12:": "279-389",
+    "I51:4872;12:": "279-389",
+    "I51:5024;12:": "167-277",
+    "I51:5142;12:": "167-277",
+    "I51:5294;12:": "279-389",
+    "I51:5412;12:": "279-389",
+    "I51:5564;12:": "167-277",
+    "I51:5682;12:": "167-277",
+    "I51:5834;12:": "279-389",
+    "I51:5952;12:": "279-389",
+    "I51:6103;51:": "2324,2436-2440",
+    "I51:6103;51:2324;12:": "167-230,232-277",
+    "I51:6221;51:": "3404,3516-3520",
+    "I51:6221;51:3404;12:": "167-230,232-277",
+    "I51:6339;51:": "4484,4596-4600",
+    "I51:6339;51:4484;12:": "167-230,232-277",
+    "I51:6457;51:": "5564,5676-5680",
+    "I51:6457;51:5564;12:": "167-230,232-277",
+    "I51:6575;51:": "2563-2575",
+    "I51:6589;51:": "3643-3655",
+    "I51:6603;51:": "4723-4735",
+    "I51:6617;51:": "5803-5815",
+    "I51:6631;51:": "1784,1896-1900",
+    "I51:6631;51:1784;12:": "167-230,232-277",
+    "I51:6749;51:": "2864,2976-2980",
+    "I51:6749;51:2864;12:": "167-230,232-277",
+    "I51:6867;51:": "3944,4056-4060",
+    "I51:6867;51:3944;12:": "167-230,232-277",
+    "I51:6985;51:": "5024,5136-5140",
+    "I51:6985;51:5024;12:": "167-230,232-277",
+    "I51:7103;51:": "2023-2035",
+    "I51:7117;51:": "3103-3115",
+    "I51:7131;51:": "4183-4195",
+    "I51:7145;51:": "5263-5275",
+    "I51:7159;51:": "2594,2706-2710",
+    "I51:7159;51:2594;12:": "279-342,344-389",
+    "I51:7277;51:": "3674,3786-3790",
+    "I51:7277;51:3674;12:": "279-342,344-389",
+    "I51:7395;51:": "4754,4866-4870",
+    "I51:7395;51:4754;12:": "279-342,344-389",
+    "I51:7513;51:": "5834,5946-5950",
+    "I51:7513;51:5834;12:": "279-342,344-389",
+    "I51:7631;51:": "2833-2845",
+    "I51:7645;51:": "3913-3925",
+    "I51:7659;51:": "4993-5005",
+    "I51:7673;51:": "6073-6085",
+    "I51:7687;51:": "2054,2166-2170",
+    "I51:7687;51:2054;12:": "279-342,344-389",
+    "I51:7805;51:": "3134,3246-3250",
+    "I51:7805;51:3134;12:": "279-342,344-389",
+    "I51:7923;51:": "4214,4326-4330",
+    "I51:7923;51:4214;12:": "279-342,344-389",
+    "I51:8041;51:": "5294,5406-5410",
+    "I51:8041;51:5294;12:": "279-342,344-389",
+    "I51:8159;51:": "2293-2305",
+    "I51:8173;51:": "3373-3385",
+    "I51:8187;51:": "4453-4465",
+    "I51:8201;51:": "5533-5545"
+  },
+  "mutatedNodeIds": [
+    "15:52",
+    "15:167",
+    "15:212",
+    "15:332",
+    "15:400",
+    "15:2",
+    "15:1005",
+    "15:1034",
+    "15:1066",
+    "15:1065",
+    "15:1049",
+    "15:1048",
+    "15:1072",
+    "15:1091",
+    "15:1090",
+    "15:1074",
+    "15:1073",
+    "15:1124",
+    "15:1143",
+    "15:969",
+    "15:1595",
+    "15:1710",
+    "15:1755",
+    "15:1875",
+    "15:1943",
+    "15:1545",
+    "15:2548",
+    "15:2577",
+    "15:2609",
+    "15:2608",
+    "15:2592",
+    "15:2591",
+    "15:2615",
+    "15:2634",
+    "15:2633",
+    "15:2617",
+    "15:2616",
+    "15:2667",
+    "15:2686",
+    "15:2512",
+    "15:3266",
+    "15:3381",
+    "15:3426",
+    "15:3546",
+    "15:3614",
+    "15:3216",
+    "15:4219",
+    "15:4248",
+    "15:4280",
+    "15:4279",
+    "15:4263",
+    "15:4262",
+    "15:4286",
+    "15:4305",
+    "15:4304",
+    "15:4288",
+    "15:4287",
+    "15:4338",
+    "15:4357",
+    "15:4183",
+    "15:4809",
+    "15:4924",
+    "15:4969",
+    "15:5089",
+    "15:5157",
+    "15:4759",
+    "15:5762",
+    "15:5791",
+    "15:5823",
+    "15:5822",
+    "15:5806",
+    "15:5805",
+    "15:5829",
+    "15:5848",
+    "15:5847",
+    "15:5831",
+    "15:5830",
+    "15:5881",
+    "15:5900",
+    "15:5726",
+    "15:6302"
+  ],
+  "removedNodeIdRangesByPrefix": {
+    "21:": "1644,1769,1894,2019,2144-2159",
+    "I21:1644;12:": "391-453,493-544",
+    "I21:1644;21:": "1590-1598",
+    "15:": "213,333-335,338-366,401,1006-1009,1025-1031,1067,1092-1093,1096-1121,1144-1147,1163-1169,1756,1876-1878,1881-1909,1944,2549-2552,2568-2574,2610,2635-2636,2639-2664,2687-2690,2706-2712,3427,3547-3549,3552-3580,3615,4220-4223,4239-4245,4281,4306-4307,4310-4335,4358-4361,4377-4383,4970,5090-5092,5095-5123,5158,5763-5766,5782-5788,5824,5849-5850,5853-5878,5901-5904,5920-5926",
+    "I15:213;12:": "167-277",
+    "I15:335;12:": "164-165",
+    "I15:401;12:": "391-453,493-544",
+    "I15:401;21:": "1590-1598",
+    "I15:1067;12:": "3-4",
+    "I15:1093;12:": "164-165",
+    "I21:1769;12:": "391-453,493-544",
+    "I21:1769;21:": "1590-1598",
+    "I15:1756;12:": "167-277",
+    "I15:1878;12:": "164-165",
+    "I15:1944;12:": "391-453,493-544",
+    "I15:1944;21:": "1590-1598",
+    "I15:2610;12:": "3-4",
+    "I15:2636;12:": "164-165",
+    "I21:1894;12:": "9-71,111-162",
+    "I21:1894;21:": "1599-1607",
+    "I15:3427;12:": "279-389",
+    "I15:3549;12:": "164-165",
+    "I15:3615;12:": "9-71,111-162",
+    "I15:3615;21:": "1599-1607",
+    "I15:4281;12:": "3-4",
+    "I15:4307;12:": "164-165",
+    "I21:2019;12:": "9-71,111-162",
+    "I21:2019;21:": "1599-1607",
+    "I15:4970;12:": "279-389",
+    "I15:5092;12:": "164-165",
+    "I15:5158;12:": "9-71,111-162",
+    "I15:5158;21:": "1599-1607",
+    "I15:5824;12:": "3-4",
+    "I15:5850;12:": "164-165",
+    "48:": "1782-1841",
+    "50:": "1782-1793"
+  },
+  "media": {
+    "hero/zh/sumi/desktop": {
+      "set": "51:2019",
+      "poster": "51:1783",
+      "playing": "51:1901",
+      "gifHash": "52675dfb40ea952ead2064886f04845dd72f581b",
+      "posterHash": "ffdc48c9959acd90442b7930cdc5f137a8b8ad80"
+    },
+    "hero/zh/sumi/mobile": {
+      "set": "51:2050",
+      "poster": "51:2022",
+      "playing": "51:2036",
+      "gifHash": "0ba70ba827c619aea029906ea1bd45dc7be7ce41",
+      "posterHash": "dacf753a637c7abdc08d2f425f1284c61fea34fa"
+    },
+    "hero/zh/washi/desktop": {
+      "set": "51:2289",
+      "poster": "51:2053",
+      "playing": "51:2171",
+      "gifHash": "1655e6df041a5ea67a85a1f1a6c23e5d7e73b787",
+      "posterHash": "dd0890c3ad953e571c831cf046b93beb8173007e"
+    },
+    "hero/zh/washi/mobile": {
+      "set": "51:2320",
+      "poster": "51:2292",
+      "playing": "51:2306",
+      "gifHash": "f73cf12b72d29376ba40b03bff47950df706e7fe",
+      "posterHash": "7ac81daa5e413eff3d3d3d2dfc55e9901796cc49"
+    },
+    "hero/en/sumi/desktop": {
+      "set": "51:2559",
+      "poster": "51:2323",
+      "playing": "51:2441",
+      "gifHash": "17ed6bb27ba409055cce29dc9fe1c45714fc244b",
+      "posterHash": "f44d5099dce1af41d94ff2f533e7409b71bc7021"
+    },
+    "hero/en/sumi/mobile": {
+      "set": "51:2590",
+      "poster": "51:2562",
+      "playing": "51:2576",
+      "gifHash": "a5642a28efd95bf8e2c89c53d0b229462c394539",
+      "posterHash": "37dfeb679687cfb0b87a6e0d1a862564db23855a"
+    },
+    "hero/en/washi/desktop": {
+      "set": "51:2829",
+      "poster": "51:2593",
+      "playing": "51:2711",
+      "gifHash": "1e9579b394433f00399c3389db0d54713febb641",
+      "posterHash": "a2da1b6301b8d7c46565e488ee43f9ef8654d6b0"
+    },
+    "hero/en/washi/mobile": {
+      "set": "51:2860",
+      "poster": "51:2832",
+      "playing": "51:2846",
+      "gifHash": "2633e08155a33564f0c33c2e746e2370ea004e58",
+      "posterHash": "d0d813db2275c858de20aabd1c559ea182ede47c"
+    },
+    "view/zh/sumi/desktop": {
+      "set": "51:3099",
+      "poster": "51:2863",
+      "playing": "51:2981",
+      "gifHash": "7ede7b4b51af892bcd55220913288b64e50962f6",
+      "posterHash": "3a98f700557c6852f373e56ac63a1bd1c1f308eb"
+    },
+    "view/zh/sumi/mobile": {
+      "set": "51:3130",
+      "poster": "51:3102",
+      "playing": "51:3116",
+      "gifHash": "296de4df7e177c711cb789c6ce15959a1dcdde93",
+      "posterHash": "aa05faa825fe0243fe7ee39bbabc4ec5329340b0"
+    },
+    "view/zh/washi/desktop": {
+      "set": "51:3369",
+      "poster": "51:3133",
+      "playing": "51:3251",
+      "gifHash": "d911ef22ed5644cc7902f90db21020c25ab443f9",
+      "posterHash": "a9909b6319b6b21da9931af77e6e2b9df386d976"
+    },
+    "view/zh/washi/mobile": {
+      "set": "51:3400",
+      "poster": "51:3372",
+      "playing": "51:3386",
+      "gifHash": "1605eb9f68fb4255988010156008d60a6328957d",
+      "posterHash": "4cdf4dac0b23f08b2f6847b37f0716e5047077f7"
+    },
+    "view/en/sumi/desktop": {
+      "set": "51:3639",
+      "poster": "51:3403",
+      "playing": "51:3521",
+      "gifHash": "1c7d389e6e6fb91b250fbd25f640bbd63e53c554",
+      "posterHash": "abddc89a08e372b05a0c297f4b35f25ba264663f"
+    },
+    "view/en/sumi/mobile": {
+      "set": "51:3670",
+      "poster": "51:3642",
+      "playing": "51:3656",
+      "gifHash": "830b7600bc0a519723eb8d51284aa51a5b42b3e9",
+      "posterHash": "b430cac88eaf6cbb8b3e83949dd73434a947f242"
+    },
+    "view/en/washi/desktop": {
+      "set": "51:3909",
+      "poster": "51:3673",
+      "playing": "51:3791",
+      "gifHash": "960a79b18724d859f40eda44164cb40b8ee1575e",
+      "posterHash": "df34335af16713ec87f1b2df9b153c1bbdee513f"
+    },
+    "view/en/washi/mobile": {
+      "set": "51:3940",
+      "poster": "51:3912",
+      "playing": "51:3926",
+      "gifHash": "66de3b39990166ec4dead6d92f33b11e0fa62d63",
+      "posterHash": "75cd095438a36930fbc2dd20d36414e3363a889b"
+    },
+    "edit/zh/sumi/desktop": {
+      "set": "51:4179",
+      "poster": "51:3943",
+      "playing": "51:4061",
+      "gifHash": "40a9a027e3150eb3a44e07c1c9fe128202e3290a",
+      "posterHash": "e1d3080cb745078de52ec6ea0d6393af7cb08320"
+    },
+    "edit/zh/sumi/mobile": {
+      "set": "51:4210",
+      "poster": "51:4182",
+      "playing": "51:4196",
+      "gifHash": "743c548fb7aec06a51b32e9361afcee7d7b995b0",
+      "posterHash": "6eb9f77fd6c079620328861e30e75fca84cab4b5"
+    },
+    "edit/zh/washi/desktop": {
+      "set": "51:4449",
+      "poster": "51:4213",
+      "playing": "51:4331",
+      "gifHash": "1b68a5a34825e14ba9d7171e3e2a1b83515943d1",
+      "posterHash": "d73772b60494ca43e9bdd565c696afbfd6cb58bc"
+    },
+    "edit/zh/washi/mobile": {
+      "set": "51:4480",
+      "poster": "51:4452",
+      "playing": "51:4466",
+      "gifHash": "9399df3b6a42929b61d7456b4506539a2785bae9",
+      "posterHash": "815b60de28460d8467f1c21f0692543ed6e6cdf6"
+    },
+    "edit/en/sumi/desktop": {
+      "set": "51:4719",
+      "poster": "51:4483",
+      "playing": "51:4601",
+      "gifHash": "03b181dd1ff1d02626c06b121c54995e4d8bb0f7",
+      "posterHash": "0748a5d102feb1f3973d7b1bc445e6d6f5757222"
+    },
+    "edit/en/sumi/mobile": {
+      "set": "51:4750",
+      "poster": "51:4722",
+      "playing": "51:4736",
+      "gifHash": "cb9859c24a8ec11dd165429ac818d644f0c42044",
+      "posterHash": "c73d784a7f593eaceab797e7ca2d30d6a1d97fdb"
+    },
+    "edit/en/washi/desktop": {
+      "set": "51:4989",
+      "poster": "51:4753",
+      "playing": "51:4871",
+      "gifHash": "b3f6188b6247583a148f178367a9ddb0ee298579",
+      "posterHash": "a7a25cf619dfed842e33996c594df37ca19a2a67"
+    },
+    "edit/en/washi/mobile": {
+      "set": "51:5020",
+      "poster": "51:4992",
+      "playing": "51:5006",
+      "gifHash": "c9a68262e9585d446240208e8976f2d8c0127ab3",
+      "posterHash": "77a0bed472b753356643a71212b29bbe573f618a"
+    },
+    "compare/zh/sumi/desktop": {
+      "set": "51:5259",
+      "poster": "51:5023",
+      "playing": "51:5141",
+      "gifHash": "9d8772a815eb3c2511eb62c077012bee1f03a6b6",
+      "posterHash": "c19d6304f26fd32f54e8b4f9545f8397fde5949a"
+    },
+    "compare/zh/sumi/mobile": {
+      "set": "51:5290",
+      "poster": "51:5262",
+      "playing": "51:5276",
+      "gifHash": "1f0ddd966d5a8ec2c0c095c6c478739d3229b812",
+      "posterHash": "162b0798d031bfba874e33b29130ac05bd277df1"
+    },
+    "compare/zh/washi/desktop": {
+      "set": "51:5529",
+      "poster": "51:5293",
+      "playing": "51:5411",
+      "gifHash": "b73a8251e4346c7b62ffbb70e256cd9c78c33b60",
+      "posterHash": "e20b47b0cb703ba1161762517265665d40741101"
+    },
+    "compare/zh/washi/mobile": {
+      "set": "51:5560",
+      "poster": "51:5532",
+      "playing": "51:5546",
+      "gifHash": "62c680b97f416f314f173ea1650d04a5cccad087",
+      "posterHash": "f7be23e528f7f4dccd7ae0b0c4c48d0cf25e70d9"
+    },
+    "compare/en/sumi/desktop": {
+      "set": "51:5799",
+      "poster": "51:5563",
+      "playing": "51:5681",
+      "gifHash": "b0506d278a744f2d23f7691e9237be0ab257e17c",
+      "posterHash": "ce92c1dbe39fa7aa2ac2457d8692c4d3d3f5c69c"
+    },
+    "compare/en/sumi/mobile": {
+      "set": "51:5830",
+      "poster": "51:5802",
+      "playing": "51:5816",
+      "gifHash": "6f78c2adc3dde5579cac268ad98dfd707a6c8302",
+      "posterHash": "febc46afa1a2aea207e721f74680da78b78952ff"
+    },
+    "compare/en/washi/desktop": {
+      "set": "51:6069",
+      "poster": "51:5833",
+      "playing": "51:5951",
+      "gifHash": "62bff3d3484e0d9260a04835d6718fb410a60a8c",
+      "posterHash": "190dc35d1d9229af15da05e9b09c12c18a2529ab"
+    },
+    "compare/en/washi/mobile": {
+      "set": "51:6100",
+      "poster": "51:6072",
+      "playing": "51:6086",
+      "gifHash": "fabfc0141337d9a233cda5999e931bb9c4feadb1",
+      "posterHash": "b73ac2d19c7ed0b90e92b7814ab17e27b0dfd186"
+    }
+  },
+  "placements": [
+    {
+      "boardId": "15:2",
+      "scene": "hero",
+      "slotId": "15:52",
+      "instanceId": "51:6103",
+      "componentId": "51:2323",
+      "width": 736.0000610351562,
+      "height": 460.0000305175781
+    },
+    {
+      "boardId": "15:2",
+      "scene": "view",
+      "slotId": "15:212",
+      "instanceId": "51:6221",
+      "componentId": "51:3403",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:2",
+      "scene": "edit",
+      "slotId": "15:332",
+      "instanceId": "51:6339",
+      "componentId": "51:4483",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:2",
+      "scene": "compare",
+      "slotId": "15:400",
+      "instanceId": "51:6457",
+      "componentId": "51:5563",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:969",
+      "scene": "hero",
+      "slotId": "15:1005",
+      "instanceId": "51:6575",
+      "componentId": "51:2562",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:969",
+      "scene": "view",
+      "slotId": "15:1066",
+      "instanceId": "51:6589",
+      "componentId": "51:3642",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:969",
+      "scene": "edit",
+      "slotId": "15:1091",
+      "instanceId": "51:6603",
+      "componentId": "51:4722",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:969",
+      "scene": "compare",
+      "slotId": "15:1143",
+      "instanceId": "51:6617",
+      "componentId": "51:5802",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:1545",
+      "scene": "hero",
+      "slotId": "15:1595",
+      "instanceId": "51:6631",
+      "componentId": "51:1783",
+      "width": 736.0000610351562,
+      "height": 460.0000305175781
+    },
+    {
+      "boardId": "15:1545",
+      "scene": "view",
+      "slotId": "15:1755",
+      "instanceId": "51:6749",
+      "componentId": "51:2863",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:1545",
+      "scene": "edit",
+      "slotId": "15:1875",
+      "instanceId": "51:6867",
+      "componentId": "51:3943",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:1545",
+      "scene": "compare",
+      "slotId": "15:1943",
+      "instanceId": "51:6985",
+      "componentId": "51:5023",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:2512",
+      "scene": "hero",
+      "slotId": "15:2548",
+      "instanceId": "51:7103",
+      "componentId": "51:2022",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:2512",
+      "scene": "view",
+      "slotId": "15:2609",
+      "instanceId": "51:7117",
+      "componentId": "51:3102",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:2512",
+      "scene": "edit",
+      "slotId": "15:2634",
+      "instanceId": "51:7131",
+      "componentId": "51:4182",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:2512",
+      "scene": "compare",
+      "slotId": "15:2686",
+      "instanceId": "51:7145",
+      "componentId": "51:5262",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:3216",
+      "scene": "hero",
+      "slotId": "15:3266",
+      "instanceId": "51:7159",
+      "componentId": "51:2593",
+      "width": 736.0000610351562,
+      "height": 460.0000305175781
+    },
+    {
+      "boardId": "15:3216",
+      "scene": "view",
+      "slotId": "15:3426",
+      "instanceId": "51:7277",
+      "componentId": "51:3673",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:3216",
+      "scene": "edit",
+      "slotId": "15:3546",
+      "instanceId": "51:7395",
+      "componentId": "51:4753",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:3216",
+      "scene": "compare",
+      "slotId": "15:3614",
+      "instanceId": "51:7513",
+      "componentId": "51:5833",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:4183",
+      "scene": "hero",
+      "slotId": "15:4219",
+      "instanceId": "51:7631",
+      "componentId": "51:2832",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:4183",
+      "scene": "view",
+      "slotId": "15:4280",
+      "instanceId": "51:7645",
+      "componentId": "51:3912",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:4183",
+      "scene": "edit",
+      "slotId": "15:4305",
+      "instanceId": "51:7659",
+      "componentId": "51:4992",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:4183",
+      "scene": "compare",
+      "slotId": "15:4357",
+      "instanceId": "51:7673",
+      "componentId": "51:6072",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:4759",
+      "scene": "hero",
+      "slotId": "15:4809",
+      "instanceId": "51:7687",
+      "componentId": "51:2053",
+      "width": 736.0000610351562,
+      "height": 460.0000305175781
+    },
+    {
+      "boardId": "15:4759",
+      "scene": "view",
+      "slotId": "15:4969",
+      "instanceId": "51:7805",
+      "componentId": "51:3133",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:4759",
+      "scene": "edit",
+      "slotId": "15:5089",
+      "instanceId": "51:7923",
+      "componentId": "51:4213",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:4759",
+      "scene": "compare",
+      "slotId": "15:5157",
+      "instanceId": "51:8041",
+      "componentId": "51:5293",
+      "width": 768.0000610351562,
+      "height": 480.0000305175781
+    },
+    {
+      "boardId": "15:5726",
+      "scene": "hero",
+      "slotId": "15:5762",
+      "instanceId": "51:8159",
+      "componentId": "51:2292",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:5726",
+      "scene": "view",
+      "slotId": "15:5823",
+      "instanceId": "51:8173",
+      "componentId": "51:3372",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:5726",
+      "scene": "edit",
+      "slotId": "15:5848",
+      "instanceId": "51:8187",
+      "componentId": "51:4452",
+      "width": 342,
+      "height": 384
+    },
+    {
+      "boardId": "15:5726",
+      "scene": "compare",
+      "slotId": "15:5900",
+      "instanceId": "51:8201",
+      "componentId": "51:5532",
+      "width": 342,
+      "height": 384
+    }
+  ],
+  "boards": [
+    {
+      "id": "15:2",
+      "name": "Sumi · Home / English / Desktop 1440",
+      "width": 1440,
+      "height": 7342.6669921875,
+      "upperFilms": 4,
+      "widgetCards": 4
+    },
+    {
+      "id": "15:969",
+      "name": "Sumi · Home / English / Mobile 390",
+      "width": 390,
+      "height": 10772,
+      "upperFilms": 4,
+      "widgetCards": 4
+    },
+    {
+      "id": "15:1545",
+      "name": "Sumi · Home / 中文 / Desktop 1440",
+      "width": 1440,
+      "height": 7318.6669921875,
+      "upperFilms": 4,
+      "widgetCards": 4
+    },
+    {
+      "id": "15:2512",
+      "name": "Sumi · Home / 中文 / Mobile 390",
+      "width": 390,
+      "height": 10612,
+      "upperFilms": 4,
+      "widgetCards": 4
+    },
+    {
+      "id": "15:3216",
+      "name": "Washi · Home / English / Desktop 1440",
+      "width": 1440,
+      "height": 7342.6669921875,
+      "upperFilms": 4,
+      "widgetCards": 4
+    },
+    {
+      "id": "15:4183",
+      "name": "Washi · Home / English / Mobile 390",
+      "width": 390,
+      "height": 10772,
+      "upperFilms": 4,
+      "widgetCards": 4
+    },
+    {
+      "id": "15:4759",
+      "name": "Washi · Home / 中文 / Desktop 1440",
+      "width": 1440,
+      "height": 7318.6669921875,
+      "upperFilms": 4,
+      "widgetCards": 4
+    },
+    {
+      "id": "15:5726",
+      "name": "Washi · Home / 中文 / Mobile 390",
+      "width": 390,
+      "height": 10612,
+      "upperFilms": 4,
+      "widgetCards": 4
+    }
+  ],
+  "libraryId": "51:1782",
+  "washiY": 11412,
+  "counts": {
+    "upperScenes": 4,
+    "localizedThemeSizeFilms": 32,
+    "playbackVariants": 64,
+    "homepages": 8,
+    "upperFilmPlacements": 32,
+    "newSourcePortraits": 8,
+    "cloudTasks": 0
+  },
+  "validation": {
+    "valid": true,
+    "films": [
+      {
+        "key": "hero/zh/sumi/desktop",
+        "signature": "GIF89a",
+        "bytes": 269546,
+        "frames": 3,
+        "durationMs": 7990,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "hero/zh/sumi/mobile",
+        "signature": "GIF89a",
+        "bytes": 161267,
+        "frames": 3,
+        "durationMs": 7990,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "hero/zh/washi/desktop",
+        "signature": "GIF89a",
+        "bytes": 270117,
+        "frames": 3,
+        "durationMs": 7990,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "hero/zh/washi/mobile",
+        "signature": "GIF89a",
+        "bytes": 164217,
+        "frames": 3,
+        "durationMs": 7990,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "hero/en/sumi/desktop",
+        "signature": "GIF89a",
+        "bytes": 270046,
+        "frames": 3,
+        "durationMs": 7990,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "hero/en/sumi/mobile",
+        "signature": "GIF89a",
+        "bytes": 161969,
+        "frames": 3,
+        "durationMs": 7990,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "hero/en/washi/desktop",
+        "signature": "GIF89a",
+        "bytes": 268645,
+        "frames": 3,
+        "durationMs": 7990,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "hero/en/washi/mobile",
+        "signature": "GIF89a",
+        "bytes": 163354,
+        "frames": 3,
+        "durationMs": 7990,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "view/zh/sumi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2514257,
+        "frames": 34,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "view/zh/sumi/mobile",
+        "signature": "GIF89a",
+        "bytes": 2628639,
+        "frames": 34,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "view/zh/washi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2555152,
+        "frames": 34,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "view/zh/washi/mobile",
+        "signature": "GIF89a",
+        "bytes": 2630644,
+        "frames": 34,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "view/en/sumi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2511954,
+        "frames": 34,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "view/en/sumi/mobile",
+        "signature": "GIF89a",
+        "bytes": 2600686,
+        "frames": 34,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "view/en/washi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2557006,
+        "frames": 34,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "view/en/washi/mobile",
+        "signature": "GIF89a",
+        "bytes": 2613096,
+        "frames": 34,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "edit/zh/sumi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2047793,
+        "frames": 33,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "edit/zh/sumi/mobile",
+        "signature": "GIF89a",
+        "bytes": 1867372,
+        "frames": 33,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "edit/zh/washi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2034570,
+        "frames": 33,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "edit/zh/washi/mobile",
+        "signature": "GIF89a",
+        "bytes": 1890096,
+        "frames": 33,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "edit/en/sumi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2064835,
+        "frames": 33,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "edit/en/sumi/mobile",
+        "signature": "GIF89a",
+        "bytes": 1916659,
+        "frames": 33,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "edit/en/washi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2063006,
+        "frames": 33,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "edit/en/washi/mobile",
+        "signature": "GIF89a",
+        "bytes": 1934500,
+        "frames": 33,
+        "durationMs": 7850,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "compare/zh/sumi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2599933,
+        "frames": 38,
+        "durationMs": 7820,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "compare/zh/sumi/mobile",
+        "signature": "GIF89a",
+        "bytes": 2668646,
+        "frames": 38,
+        "durationMs": 7820,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "compare/zh/washi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2601593,
+        "frames": 38,
+        "durationMs": 7820,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "compare/zh/washi/mobile",
+        "signature": "GIF89a",
+        "bytes": 2679281,
+        "frames": 38,
+        "durationMs": 7820,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "compare/en/sumi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2588757,
+        "frames": 38,
+        "durationMs": 7820,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "compare/en/sumi/mobile",
+        "signature": "GIF89a",
+        "bytes": 2670591,
+        "frames": 38,
+        "durationMs": 7820,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "compare/en/washi/desktop",
+        "signature": "GIF89a",
+        "bytes": 2594350,
+        "frames": 38,
+        "durationMs": 7820,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      },
+      {
+        "key": "compare/en/washi/mobile",
+        "signature": "GIF89a",
+        "bytes": 2671817,
+        "frames": 38,
+        "durationMs": 7820,
+        "posterToPlaying": true,
+        "playingToPoster": true,
+        "missingFonts": 0
+      }
+    ],
+    "placements": [
+      {
+        "board": "15:2",
+        "scene": "hero",
+        "id": "51:6103",
+        "width": 736.0000610351562,
+        "height": 460.0000305175781,
+        "slotWidth": 736,
+        "slotHeight": 460,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:2",
+        "scene": "view",
+        "id": "51:6221",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:2",
+        "scene": "edit",
+        "id": "51:6339",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:2",
+        "scene": "compare",
+        "id": "51:6457",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:969",
+        "scene": "hero",
+        "id": "51:6575",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:969",
+        "scene": "view",
+        "id": "51:6589",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:969",
+        "scene": "edit",
+        "id": "51:6603",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:969",
+        "scene": "compare",
+        "id": "51:6617",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:1545",
+        "scene": "hero",
+        "id": "51:6631",
+        "width": 736.0000610351562,
+        "height": 460.0000305175781,
+        "slotWidth": 736,
+        "slotHeight": 460,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:1545",
+        "scene": "view",
+        "id": "51:6749",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:1545",
+        "scene": "edit",
+        "id": "51:6867",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:1545",
+        "scene": "compare",
+        "id": "51:6985",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:2512",
+        "scene": "hero",
+        "id": "51:7103",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:2512",
+        "scene": "view",
+        "id": "51:7117",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:2512",
+        "scene": "edit",
+        "id": "51:7131",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:2512",
+        "scene": "compare",
+        "id": "51:7145",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:3216",
+        "scene": "hero",
+        "id": "51:7159",
+        "width": 736.0000610351562,
+        "height": 460.0000305175781,
+        "slotWidth": 736,
+        "slotHeight": 460,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:3216",
+        "scene": "view",
+        "id": "51:7277",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:3216",
+        "scene": "edit",
+        "id": "51:7395",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:3216",
+        "scene": "compare",
+        "id": "51:7513",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:4183",
+        "scene": "hero",
+        "id": "51:7631",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:4183",
+        "scene": "view",
+        "id": "51:7645",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:4183",
+        "scene": "edit",
+        "id": "51:7659",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:4183",
+        "scene": "compare",
+        "id": "51:7673",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:4759",
+        "scene": "hero",
+        "id": "51:7687",
+        "width": 736.0000610351562,
+        "height": 460.0000305175781,
+        "slotWidth": 736,
+        "slotHeight": 460,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:4759",
+        "scene": "view",
+        "id": "51:7805",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:4759",
+        "scene": "edit",
+        "id": "51:7923",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:4759",
+        "scene": "compare",
+        "id": "51:8041",
+        "width": 768.0000610351562,
+        "height": 480.0000305175781,
+        "slotWidth": 768,
+        "slotHeight": 480,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:5726",
+        "scene": "hero",
+        "id": "51:8159",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:5726",
+        "scene": "view",
+        "id": "51:8173",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:5726",
+        "scene": "edit",
+        "id": "51:8187",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      },
+      {
+        "board": "15:5726",
+        "scene": "compare",
+        "id": "51:8201",
+        "width": 342,
+        "height": 384,
+        "slotWidth": 342,
+        "slotHeight": 384,
+        "fits": true,
+        "hasViewport": true
+      }
+    ]
+  },
+  "layoutValidation": [
+    {
+      "boardId": "15:2",
+      "scene": "hero",
+      "sectionId": "15:31",
+      "height": 720,
+      "hostHeight": 720,
+      "captions": [
+        {
+          "id": "15:167",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:2",
+      "scene": "view",
+      "sectionId": "15:193",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:2",
+      "scene": "edit",
+      "sectionId": "15:326",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:2",
+      "scene": "compare",
+      "sectionId": "15:381",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:969",
+      "scene": "hero",
+      "sectionId": "15:987",
+      "height": 992,
+      "hostHeight": 992,
+      "captions": [
+        {
+          "id": "15:1034",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:969",
+      "scene": "view",
+      "sectionId": "15:1049",
+      "height": 828,
+      "hostHeight": 828,
+      "captions": [
+        {
+          "id": "15:1072",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:969",
+      "scene": "edit",
+      "sectionId": "15:1074",
+      "height": 828,
+      "hostHeight": 828,
+      "captions": [
+        {
+          "id": "15:1124",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:969",
+      "scene": "compare",
+      "sectionId": "15:1126",
+      "height": 760,
+      "hostHeight": 760,
+      "captions": []
+    },
+    {
+      "boardId": "15:1545",
+      "scene": "hero",
+      "sectionId": "15:1574",
+      "height": 720,
+      "hostHeight": 720,
+      "captions": [
+        {
+          "id": "15:1710",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:1545",
+      "scene": "view",
+      "sectionId": "15:1736",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:1545",
+      "scene": "edit",
+      "sectionId": "15:1869",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:1545",
+      "scene": "compare",
+      "sectionId": "15:1924",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:2512",
+      "scene": "hero",
+      "sectionId": "15:2530",
+      "height": 992,
+      "hostHeight": 992,
+      "captions": [
+        {
+          "id": "15:2577",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:2512",
+      "scene": "view",
+      "sectionId": "15:2592",
+      "height": 828,
+      "hostHeight": 828,
+      "captions": [
+        {
+          "id": "15:2615",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:2512",
+      "scene": "edit",
+      "sectionId": "15:2617",
+      "height": 828,
+      "hostHeight": 828,
+      "captions": [
+        {
+          "id": "15:2667",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:2512",
+      "scene": "compare",
+      "sectionId": "15:2669",
+      "height": 760,
+      "hostHeight": 760,
+      "captions": []
+    },
+    {
+      "boardId": "15:3216",
+      "scene": "hero",
+      "sectionId": "15:3245",
+      "height": 720,
+      "hostHeight": 720,
+      "captions": [
+        {
+          "id": "15:3381",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:3216",
+      "scene": "view",
+      "sectionId": "15:3407",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:3216",
+      "scene": "edit",
+      "sectionId": "15:3540",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:3216",
+      "scene": "compare",
+      "sectionId": "15:3595",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:4183",
+      "scene": "hero",
+      "sectionId": "15:4201",
+      "height": 992,
+      "hostHeight": 992,
+      "captions": [
+        {
+          "id": "15:4248",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:4183",
+      "scene": "view",
+      "sectionId": "15:4263",
+      "height": 828,
+      "hostHeight": 828,
+      "captions": [
+        {
+          "id": "15:4286",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:4183",
+      "scene": "edit",
+      "sectionId": "15:4288",
+      "height": 828,
+      "hostHeight": 828,
+      "captions": [
+        {
+          "id": "15:4338",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:4183",
+      "scene": "compare",
+      "sectionId": "15:4340",
+      "height": 760,
+      "hostHeight": 760,
+      "captions": []
+    },
+    {
+      "boardId": "15:4759",
+      "scene": "hero",
+      "sectionId": "15:4788",
+      "height": 720,
+      "hostHeight": 720,
+      "captions": [
+        {
+          "id": "15:4924",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:4759",
+      "scene": "view",
+      "sectionId": "15:4950",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:4759",
+      "scene": "edit",
+      "sectionId": "15:5083",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:4759",
+      "scene": "compare",
+      "sectionId": "15:5138",
+      "height": 576,
+      "hostHeight": 576,
+      "captions": []
+    },
+    {
+      "boardId": "15:5726",
+      "scene": "hero",
+      "sectionId": "15:5744",
+      "height": 992,
+      "hostHeight": 992,
+      "captions": [
+        {
+          "id": "15:5791",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:5726",
+      "scene": "view",
+      "sectionId": "15:5806",
+      "height": 828,
+      "hostHeight": 828,
+      "captions": [
+        {
+          "id": "15:5829",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:5726",
+      "scene": "edit",
+      "sectionId": "15:5831",
+      "height": 828,
+      "hostHeight": 828,
+      "captions": [
+        {
+          "id": "15:5881",
+          "height": 24,
+          "rowHeight": 24,
+          "fits": true
+        }
+      ]
+    },
+    {
+      "boardId": "15:5726",
+      "scene": "compare",
+      "sectionId": "15:5883",
+      "height": 760,
+      "hostHeight": 760,
+      "captions": []
+    }
+  ],
+  "polish": {
+    "mutatedNodeIds": [
+      "51:1897",
+      "I51:1784;12:273",
+      "I51:1784;12:274",
+      "51:2015",
+      "I51:1902;12:273",
+      "I51:1902;12:274",
+      "51:2032",
+      "51:2022",
+      "51:2033",
+      "51:2034",
+      "51:2046",
+      "51:2036",
+      "51:2047",
+      "51:2048",
+      "51:2167",
+      "I51:2054;12:385",
+      "I51:2054;12:386",
+      "51:2285",
+      "I51:2172;12:385",
+      "I51:2172;12:386",
+      "51:2302",
+      "51:2292",
+      "51:2303",
+      "51:2304",
+      "51:2316",
+      "51:2306",
+      "51:2317",
+      "51:2318",
+      "51:2437",
+      "I51:2324;12:273",
+      "I51:2324;12:274",
+      "51:2555",
+      "I51:2442;12:273",
+      "I51:2442;12:274",
+      "51:2572",
+      "51:2562",
+      "51:2573",
+      "51:2574",
+      "51:2586",
+      "51:2576",
+      "51:2587",
+      "51:2588",
+      "51:2707",
+      "I51:2594;12:385",
+      "I51:2594;12:386",
+      "51:2825",
+      "I51:2712;12:385",
+      "I51:2712;12:386",
+      "51:2842",
+      "51:2832",
+      "51:2843",
+      "51:2844",
+      "51:2856",
+      "51:2846",
+      "51:2857",
+      "51:2858",
+      "51:2977",
+      "I51:2864;12:273",
+      "I51:2864;12:274",
+      "51:3095",
+      "I51:2982;12:273",
+      "I51:2982;12:274",
+      "51:3112",
+      "51:3102",
+      "51:3113",
+      "51:3114",
+      "51:3126",
+      "51:3116",
+      "51:3127",
+      "51:3128",
+      "51:3247",
+      "I51:3134;12:385",
+      "I51:3134;12:386",
+      "51:3365",
+      "I51:3252;12:385",
+      "I51:3252;12:386",
+      "51:3382",
+      "51:3372",
+      "51:3383",
+      "51:3384",
+      "51:3396",
+      "51:3386",
+      "51:3397",
+      "51:3398",
+      "51:3517",
+      "I51:3404;12:273",
+      "I51:3404;12:274",
+      "51:3635",
+      "I51:3522;12:273",
+      "I51:3522;12:274",
+      "51:3652",
+      "51:3642",
+      "51:3653",
+      "51:3654",
+      "51:3666",
+      "51:3656",
+      "51:3667",
+      "51:3668",
+      "51:3787",
+      "I51:3674;12:385",
+      "I51:3674;12:386",
+      "51:3905",
+      "I51:3792;12:385",
+      "I51:3792;12:386",
+      "51:3922",
+      "51:3912",
+      "51:3923",
+      "51:3924",
+      "51:3936",
+      "51:3926",
+      "51:3937",
+      "51:3938",
+      "51:4057",
+      "I51:3944;12:273",
+      "I51:3944;12:274",
+      "51:4175",
+      "I51:4062;12:273",
+      "I51:4062;12:274",
+      "51:4192",
+      "51:4182",
+      "51:4193",
+      "51:4194",
+      "51:4206",
+      "51:4196",
+      "51:4207",
+      "51:4208",
+      "51:4327",
+      "I51:4214;12:385",
+      "I51:4214;12:386",
+      "51:4445",
+      "I51:4332;12:385",
+      "I51:4332;12:386",
+      "51:4462",
+      "51:4452",
+      "51:4463",
+      "51:4464",
+      "51:4476",
+      "51:4466",
+      "51:4477",
+      "51:4478",
+      "51:4597",
+      "I51:4484;12:273",
+      "I51:4484;12:274",
+      "51:4715",
+      "I51:4602;12:273",
+      "I51:4602;12:274",
+      "51:4732",
+      "51:4722",
+      "51:4733",
+      "51:4734",
+      "51:4746",
+      "51:4736",
+      "51:4747",
+      "51:4748",
+      "51:4867",
+      "I51:4754;12:385",
+      "I51:4754;12:386",
+      "51:4985",
+      "I51:4872;12:385",
+      "I51:4872;12:386",
+      "51:5002",
+      "51:4992",
+      "51:5003",
+      "51:5004",
+      "51:5016",
+      "51:5006",
+      "51:5017",
+      "51:5018",
+      "51:5137",
+      "I51:5024;12:273",
+      "I51:5024;12:274",
+      "51:5255",
+      "I51:5142;12:273",
+      "I51:5142;12:274",
+      "51:5272",
+      "51:5262",
+      "51:5273",
+      "51:5274",
+      "51:5286",
+      "51:5276",
+      "51:5287",
+      "51:5288",
+      "51:5407",
+      "I51:5294;12:385",
+      "I51:5294;12:386",
+      "51:5525",
+      "I51:5412;12:385",
+      "I51:5412;12:386",
+      "51:5542",
+      "51:5532",
+      "51:5543",
+      "51:5544",
+      "51:5556",
+      "51:5546",
+      "51:5557",
+      "51:5558",
+      "51:5677",
+      "I51:5564;12:273",
+      "I51:5564;12:274",
+      "51:5795",
+      "I51:5682;12:273",
+      "I51:5682;12:274",
+      "51:5812",
+      "51:5802",
+      "51:5813",
+      "51:5814",
+      "51:5826",
+      "51:5816",
+      "51:5827",
+      "51:5828",
+      "51:5947",
+      "I51:5834;12:385",
+      "I51:5834;12:386",
+      "51:6065",
+      "I51:5952;12:385",
+      "I51:5952;12:386",
+      "51:6082",
+      "51:6072",
+      "51:6083",
+      "51:6084",
+      "51:6096",
+      "51:6086",
+      "51:6097",
+      "51:6098"
+    ],
+    "checks": [
+      {
+        "id": "51:1783",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:1901",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2022",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2036",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2053",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2171",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2292",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2306",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2323",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2441",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2562",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2576",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2593",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2711",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2832",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2846",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2863",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:2981",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3102",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3116",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3133",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3251",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3372",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3386",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3403",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3521",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3642",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3656",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3673",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3791",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3912",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3926",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:3943",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4061",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4182",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4196",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4213",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4331",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4452",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4466",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4483",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4601",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4722",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4736",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4753",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4871",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:4992",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5006",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5023",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5141",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5262",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5276",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5293",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5411",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5532",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5546",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5563",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5681",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5802",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5816",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5833",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:5951",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:6072",
+        "playbackControlFits": true
+      },
+      {
+        "id": "51:6086",
+        "playbackControlFits": true
+      }
+    ]
+  },
+  "sourceAppLaunched": false,
+  "cloudTasksSubmitted": 0,
+  "appReferenceReadOnly": true,
+  "visualProofs": [
+    "upper-hero-sumi-zh-desktop.png",
+    "upper-view-sumi-en-desktop.png",
+    "upper-edit-washi-zh-desktop.png",
+    "upper-compare-washi-en-desktop.png",
+    "upper-hero-washi-zh-mobile.png",
+    "upper-view-sumi-en-mobile.png",
+    "upper-edit-sumi-zh-mobile.png",
+    "upper-compare-washi-zh-mobile.png",
+    "upper-final-view-sumi-en-mobile-section.png"
+  ],
+  "visualReview": "Native poster/window compositions reviewed across themes, languages and sizes. Desktop playback controls moved into the footer to preserve zoom readouts. Mobile captions and enlarged sections fit."
+}

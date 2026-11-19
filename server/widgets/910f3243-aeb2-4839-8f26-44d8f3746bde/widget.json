@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "creditCost": 30,
+  "id": "910f3243-aeb2-4839-8f26-44d8f3746bde",
+  "version": "0.1.1",
+  "name": "局部编辑",
+  "summary": "在图片上涂抹要修改的区域，再用文字描述想要的效果，区域外保持不变。",
+  "author": "Glance",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "局部编辑",
+      "description": "输入一张图片，涂抹出要修改的区域，并用文字描述想要的效果，例如“移除这个人”或“换成一盆绿植”。涂抹区域以外的画面保持不变。",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.910f3243-aeb2-4839-8f26-44d8f3746bde.run",
+      "requiresUpload": true,
+      "parameterSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "描述涂抹区域想要的效果，支持中文和英文 / Describe what the painted area should become, in any language."
+          },
+          "mask": {
+            "type": "string",
+            "format": "uri",
+            "description": "涂抹区域的蒙版 PNG：不透明的白色表示要修改的区域 / Mask PNG: opaque white marks the area to change."
+          }
+        },
+        "required": [
+          "prompt",
+          "mask"
+        ]
+      }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "图片、涂抹区域和文字描述将上传至 Glance 及 AI 图像服务处理。 / Your image, painted mask and description are uploaded to Glance and an AI image service for processing."
+  },
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Edit Area",
+      "summary": "Paint the area to change, describe the result in text, and everything outside it stays as is.",
+      "commands": {
+        "run": {
+          "name": "Edit Area",
+          "description": "Provide one image, paint the area to change and describe the result, for example “remove this person” or “replace it with a potted plant”. Everything outside the painted area stays unchanged."
+        }
+      }
+    },
+    "zh-Hans": {
+      "name": "局部编辑",
+      "summary": "在图片上涂抹要修改的区域，再用文字描述想要的效果，区域外保持不变。",
+      "commands": {
+        "run": {
+          "name": "局部编辑",
+          "description": "输入一张图片，涂抹出要修改的区域，并用文字描述想要的效果，例如“移除这个人”或“换成一盆绿植”。涂抹区域以外的画面保持不变。"
+        }
+      }
+    }
+  }
+}

@@ -78,6 +78,8 @@ keyboard input. Rules:
 
 ## Figma design compliance
 
+For new Shizuka macOS features, start with **Shizuka · macOS 新功能设计规范** on the [Washi · Light page](https://www.figma.com/design/3oIkv5jBJpRUORxliJZdHl/?node-id=30-2346). Design and deliver every new Shizuka feature in both [Sumi · Dark](https://www.figma.com/design/3oIkv5jBJpRUORxliJZdHl/?node-id=8-386) and [Washi · Light](https://www.figma.com/design/3oIkv5jBJpRUORxliJZdHl/?node-id=30-3049). Share layout, components and interactions, and match each appearance’s colors and states to its reference frame. Selection previews use [Peek · Mini](https://www.figma.com/design/3oIkv5jBJpRUORxliJZdHl/?node-id=71-1148).
+
 12. When a panel or screen has a corresponding Figma reference frame, match that
     Figma design exactly: dimensions, colors, typography, spacing, corner radii,
     shadows, dividers, and component structure. Do not change UI styles

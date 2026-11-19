@@ -1,0 +1,16 @@
+glance-option-preview-zh-phone.mp4
+{"programs": [], "stream_groups": [], "streams": [{"index": 0, "codec_name": "h264", "width": 1080, "height": 1920, "r_frame_rate": "30/1", "duration": "15.000000", "nb_frames": "450"}, {"index": 1, "codec_name": "aac", "sample_rate": "48000", "channels": 2, "r_frame_rate": "0/0", "duration": "15.000000", "nb_frames": "705"}], "format": {"duration": "15.000000"}}
+voice/zh-1.wav  start=0.20s  length=2.917s  waveform correlation=0.9918
+voice/zh-2.wav  start=3.80s  length=4.386s  waveform correlation=0.9932
+voice/zh-3.wav  start=8.60s  length=3.192s  waveform correlation=0.9905
+voice/zh-4.wav  start=12.20s  length=2.590s  waveform correlation=0.9488
+Sheet from encoded MP4 (seconds): 1.50, 4.90, 5.03, 6.00, 7.80, 8.95, 9.07, 10.50, 11.90, 13.50
+glance-option-preview-en-pc.mp4
+{"programs": [], "stream_groups": [], "streams": [{"index": 0, "codec_name": "h264", "width": 1920, "height": 1080, "r_frame_rate": "30/1", "duration": "15.000000", "nb_frames": "450"}, {"index": 1, "codec_name": "aac", "sample_rate": "48000", "channels": 2, "r_frame_rate": "0/0", "duration": "15.000000", "nb_frames": "705"}], "format": {"duration": "15.000000"}}
+voice/en-1.wav  start=0.20s  length=2.426s  waveform correlation=0.9964
+voice/en-2.wav  start=3.80s  length=3.822s  waveform correlation=0.9940
+voice/en-3.wav  start=8.60s  length=2.833s  waveform correlation=0.9940
+voice/en-4.wav  start=12.20s  length=1.888s  waveform correlation=0.9752
+Sheet from encoded MP4 (seconds): 1.50, 4.90, 5.03, 6.00, 7.80, 8.95, 9.07, 10.50, 11.90, 13.50
+
+从两支最终 MP4 各抽取 10 帧。5.03 秒和 9.07 秒可见两次卡片刚出现，另查了卡片放大、保持和片尾。两处草丛缩略图已模糊，文件名和卡片信息可读。侧边栏、菜单栏和聊天区在取景范围外。终端项目目录和卡片上的 ~/Desktop 路径在所查帧中均不可读。13.50 秒两种固定结尾完整。8 段配音均与交付的 WAV 波形匹配，未完整试听加速后的自然度。

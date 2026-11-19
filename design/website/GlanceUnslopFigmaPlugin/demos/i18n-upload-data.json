@@ -1,0 +1,773 @@
+{
+  "assets": [
+    {
+      "key": "background",
+      "lang": "ja",
+      "gif": "media-i18n/background-ja.gif",
+      "mp4": "media-i18n/background-ja.mp4",
+      "poster": "media-i18n/background-ja-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1186866,
+      "width": 720,
+      "height": 480,
+      "theme": "shared",
+      "kind": "widget",
+      "gifHash": "0931836032141f446f5eb9f7073ff769100695f2",
+      "posterHash": "b7a46d8c6b59dca5eb34e9ab7e348eec962484b2"
+    },
+    {
+      "key": "background",
+      "lang": "de",
+      "gif": "media-i18n/background-de.gif",
+      "mp4": "media-i18n/background-de.mp4",
+      "poster": "media-i18n/background-de-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1156829,
+      "width": 720,
+      "height": 480,
+      "theme": "shared",
+      "kind": "widget",
+      "gifHash": "b4b683d29475eaf48aacae15f1787467585d1fa2",
+      "posterHash": "7c05757e468f2f115904dfb33713be55026b88b7"
+    },
+    {
+      "key": "expand",
+      "lang": "ja",
+      "gif": "media-i18n/expand-ja.gif",
+      "mp4": "media-i18n/expand-ja.mp4",
+      "poster": "media-i18n/expand-ja-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1591453,
+      "width": 720,
+      "height": 480,
+      "theme": "shared",
+      "kind": "widget",
+      "gifHash": "af47abd5ec416354f2b916193d8cd7ce322044f8",
+      "posterHash": "df1f7f8bc1bd1086e1d8e7f8c8658a7ffde791c0"
+    },
+    {
+      "key": "expand",
+      "lang": "de",
+      "gif": "media-i18n/expand-de.gif",
+      "mp4": "media-i18n/expand-de.mp4",
+      "poster": "media-i18n/expand-de-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1568481,
+      "width": 720,
+      "height": 480,
+      "theme": "shared",
+      "kind": "widget",
+      "gifHash": "9a36cd9ede75df52d1a340924ee73c3d580fec6d",
+      "posterHash": "4e35244bf96777ca82350a0af7923d30b7efb796"
+    },
+    {
+      "key": "outfit",
+      "lang": "ja",
+      "gif": "media-i18n/outfit-ja.gif",
+      "mp4": "media-i18n/outfit-ja.mp4",
+      "poster": "media-i18n/outfit-ja-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1621785,
+      "width": 720,
+      "height": 480,
+      "theme": "shared",
+      "kind": "widget",
+      "gifHash": "6fad5c1c894a5bd8e072aa710f84e17c64e42219",
+      "posterHash": "45b86c67cf9107b9b5b9dfb6dfca7d7f64688fde"
+    },
+    {
+      "key": "outfit",
+      "lang": "de",
+      "gif": "media-i18n/outfit-de.gif",
+      "mp4": "media-i18n/outfit-de.mp4",
+      "poster": "media-i18n/outfit-de-poster.jpg",
+      "frames": 19,
+      "durationMs": 6420,
+      "bytes": 1609864,
+      "width": 720,
+      "height": 480,
+      "theme": "shared",
+      "kind": "widget",
+      "gifHash": "b9305d71a58e4a6afd23625302e4523b8bbcf4e5",
+      "posterHash": "84607b7c9be50e1d2878a17704b4e3448016757e"
+    },
+    {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "sumi",
+      "kind": "desktop",
+      "width": 720,
+      "height": 400,
+      "gif": "media-i18n/compare-ja-sumi-desktop.gif",
+      "poster": "media-i18n/compare-ja-sumi-desktop-poster.jpg",
+      "mp4": "media-i18n/compare-ja-sumi-desktop.mp4",
+      "frames": 38,
+      "durationMs": 7820,
+      "bytes": 2614736,
+      "gifHash": "83c6590e459dd345cfd2028172731c63af5ab24e",
+      "posterHash": "14f2251f2f4dd7d10f3d0d0f6d6b6151a7d7f2b4"
+    },
+    {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "sumi",
+      "kind": "mobile",
+      "width": 480,
+      "height": 440,
+      "gif": "media-i18n/compare-ja-sumi-mobile.gif",
+      "poster": "media-i18n/compare-ja-sumi-mobile-poster.jpg",
+      "mp4": "media-i18n/compare-ja-sumi-mobile.mp4",
+      "frames": 38,
+      "durationMs": 7820,
+      "bytes": 2701620,
+      "gifHash": "14cd250ecb5a2d176251d43f2b7f0a6f4b64522c",
+      "posterHash": "32198ee00d297333996fdd90f6b9c7d030ef9164"
+    },
+    {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "washi",
+      "kind": "desktop",
+      "width": 720,
+      "height": 400,
+      "gif": "media-i18n/compare-ja-washi-desktop.gif",
+      "poster": "media-i18n/compare-ja-washi-desktop-poster.jpg",
+      "mp4": "media-i18n/compare-ja-washi-desktop.mp4",
+      "frames": 38,
+      "durationMs": 7820,
+      "bytes": 2619738,
+      "gifHash": "abf96ca0df9d26c4b46bdcdb44568d7ad5e021e3",
+      "posterHash": "3ef04e6dc95d1bcdd67f103334f2755d5c76ed37"
+    },
+    {
+      "key": "compare",
+      "lang": "ja",
+      "theme": "washi",
+      "kind": "mobile",
+      "width": 480,
+      "height": 440,
+      "gif": "media-i18n/compare-ja-washi-mobile.gif",
+      "poster": "media-i18n/compare-ja-washi-mobile-poster.jpg",
+      "mp4": "media-i18n/compare-ja-washi-mobile.mp4",
+      "frames": 38,
+      "durationMs": 7820,
+      "bytes": 2702051,
+      "gifHash": "c4cd64b68addfc4e98317005c8187723d699fdcb",
+      "posterHash": "09b40dcb0d7207eac01f1823c93ccd89fabc652e"
+    },
+    {
+      "key": "compare",
+      "lang": "de",
+      "theme": "sumi",
+      "kind": "desktop",
+      "width": 720,
+      "height": 400,
+      "gif": "media-i18n/compare-de-sumi-desktop.gif",
+      "poster": "media-i18n/compare-de-sumi-desktop-poster.jpg",
+      "mp4": "media-i18n/compare-de-sumi-desktop.mp4",
+      "frames": 38,
+      "durationMs": 7820,
+      "bytes": 2590832,
+      "gifHash": "c48b09ae4d2508d89ab10dc65b6d883c57ae89c1",
+      "posterHash": "d70ce89292838d6a6740e1884c58b213b53178bb"
+    },
+    {
+      "key": "compare",
+      "lang": "de",
+      "theme": "sumi",
+      "kind": "mobile",
+      "width": 480,
+      "height": 440,
+      "gif": "media-i18n/compare-de-sumi-mobile.gif",
+      "poster": "media-i18n/compare-de-sumi-mobile-poster.jpg",
+      "mp4": "media-i18n/compare-de-sumi-mobile.mp4",
+      "frames": 38,
+      "durationMs": 7820,
+      "bytes": 2681827,
+      "gifHash": "f523090c3fa784ea261a206924af36c4e811c83a",
+      "posterHash": "37e52ca58251877821cd8952c2dadd7c019e037f"
+    },
+    {
+      "key": "compare",
+      "lang": "de",
+      "theme": "washi",
+      "kind": "desktop",
+      "width": 720,
+      "height": 400,
+      "gif": "media-i18n/compare-de-washi-desktop.gif",
+      "poster": "media-i18n/compare-de-washi-desktop-poster.jpg",
+      "mp4": "media-i18n/compare-de-washi-desktop.mp4",
+      "frames": 38,
+      "durationMs": 7820,
+      "bytes": 2604361,
+      "gifHash": "039ae3bc2e76f55487dda11286b8cb04a8f38d8b",
+      "posterHash": "526ad4f5e15173ee17ba3adaa6bdf538b20768b3"
+    },
+    {
+      "key": "compare",
+      "lang": "de",
+      "theme": "washi",
+      "kind": "mobile",
+      "width": 480,
+      "height": 440,
+      "gif": "media-i18n/compare-de-washi-mobile.gif",
+      "poster": "media-i18n/compare-de-washi-mobile-poster.jpg",
+      "mp4": "media-i18n/compare-de-washi-mobile.mp4",
+      "frames": 38,
+      "durationMs": 7820,
+      "bytes": 2677810,
+      "gifHash": "12913c53065b7d553bafe92afae9f405fbad6952",
+      "posterHash": "973d0a4bea128069bc8fde50a001962254f51b7e"
+    }
+  ],
+  "copy": {
+    "Glance": {
+      "ja": "Glance",
+      "de": "Glance"
+    },
+    "Features": {
+      "ja": "機能",
+      "de": "Funktionen"
+    },
+    "AI Widgets": {
+      "ja": "AI Widget",
+      "de": "KI-Widgets"
+    },
+    "Pricing": {
+      "ja": "料金",
+      "de": "Preise"
+    },
+    "Install": {
+      "ja": "導入",
+      "de": "Installation"
+    },
+    "中文": {
+      "ja": "中文",
+      "de": "中文"
+    },
+    "Download": {
+      "ja": "入手",
+      "de": "Download"
+    },
+    "Glance · AI image Widgets for Mac": {
+      "ja": "Glance · Mac向け画像AI Widget",
+      "de": "Glance · Bild-Widgets für den Mac"
+    },
+    "AI edits. Visible results.": {
+      "ja": "AIで編集。\n変化が見える。",
+      "de": "KI für Fotos.\nEffekte sehen."
+    },
+    "Remove backgrounds. Erase objects. Expand a frame. Try a new outfit.": {
+      "ja": "背景を切り抜く。不要な物を消す。\n写真を広げる。着せ替えを試す。",
+      "de": "Hintergründe lösen. Objekte entfernen.\nBilder erweitern. Outfits wechseln."
+    },
+    "Download for Mac": {
+      "ja": "Mac版を入手",
+      "de": "Für Mac laden"
+    },
+    "See Widgets in action →": {
+      "ja": "Widgetの効果を見る →",
+      "de": "Widgets in Aktion →"
+    },
+    "Portrait collection": {
+      "ja": "ポートレート集",
+      "de": "Porträtsammlung"
+    },
+    "8 original photos": {
+      "ja": "8枚の元画像",
+      "de": "8 Originalfotos"
+    },
+    "1 / 8": {
+      "ja": "1 / 8",
+      "de": "1 / 8"
+    },
+    "Start with a photo of your own.": {
+      "ja": "あなたの1枚から、はじめよう。",
+      "de": "Alles beginnt mit deinem Foto."
+    },
+    "No account to start": {
+      "ja": "アカウントなしで開始",
+      "de": "Ohne Konto starten"
+    },
+    "14-day full trial, no card": {
+      "ja": "14日間の全機能体験・カード不要",
+      "de": "14 Tage testen, ohne Kreditkarte"
+    },
+    "Viewing, compare, capture and OCR stay free": {
+      "ja": "表示・比較・キャプチャ・OCRは無料",
+      "de": "Ansicht, Vergleich, Screenshots und OCR gratis"
+    },
+    "No account to start 14-day full trial, no card Viewing, compare, capture and OCR stay free": {
+      "ja": "アカウントなしで開始\n14日間の全機能体験・カード不要\n表示・比較・キャプチャ・OCRは無料",
+      "de": "Ohne Konto starten\n14 Tage testen, ohne Kreditkarte\nAnsicht, Vergleich, Screenshots und OCR gratis"
+    },
+    "Selected image Widgets": {
+      "ja": "写真のためのAI Widget",
+      "de": "Ausgewählte Bild-Widgets"
+    },
+    "Choose a tool. See what changes.": {
+      "ja": "ツールを選ぶ。\n変化を確かめる。",
+      "de": "Ein Werkzeug wählen.\nDen Unterschied sehen."
+    },
+    "Choose a Widget, then check the result against your original.": {
+      "ja": "Widgetを選んで、仕上がりを確認。\n細部が気になったら、元画像と比較。",
+      "de": "Wähle ein Widget und vergleiche\ndas Ergebnis mit dem Original."
+    },
+    "01 / Background removal · 20 credits / run": {
+      "ja": "01 / 背景切り抜き · 20クレジット / 回",
+      "de": "01 / Hintergrund entfernen · 20 Credits"
+    },
+    "Keep the person. Separate the background.": {
+      "ja": "人物はそのまま。\n背景だけを切り抜く。",
+      "de": "Die Person behalten.\nDen Hintergrund lösen."
+    },
+    "Separate the person from the background as a transparent PNG, ready for your next layout or composition.": {
+      "ja": "人物と背景を分離して、透過PNGに。次のレイアウトや合成に、そのまま使えます。",
+      "de": "Löse die Person als transparentes PNG vom Hintergrund – für dein nächstes Layout oder eine neue Komposition."
+    },
+    "Compare images": {
+      "ja": "画像比較",
+      "de": "Bilder vergleichen"
+    },
+    "Glance · Compare images": {
+      "ja": "Glance · 画像比較",
+      "de": "Glance · Bildvergleich"
+    },
+    "8s · Product demo": {
+      "ja": "8秒・機能デモ",
+      "de": "8 s · Funktionsdemo"
+    },
+    "0:08 · Product demo": {
+      "ja": "0:08 · 機能デモ",
+      "de": "0:08 · Funktionsdemo"
+    },
+    "Play demo": {
+      "ja": "デモを再生",
+      "de": "Demo abspielen"
+    },
+    "Pause": {
+      "ja": "一時停止",
+      "de": "Pause"
+    },
+    "02 / Remove objects · 30 credits / run": {
+      "ja": "02 / オブジェクト除去 · 30クレジット / 回",
+      "de": "02 / Objekte entfernen · 30 Credits"
+    },
+    "Keep what matters. Remove the rest.": {
+      "ja": "残したいものだけ。\n余分なものは消す。",
+      "de": "Behalten, was zählt.\nDen Rest entfernen."
+    },
+    "Describe the unwanted object in English. Then drag the comparison divider to inspect the result against the original.": {
+      "ja": "消したいものを英語で指定。処理後はスライダーを動かして、元画像との違いを確かめられます。",
+      "de": "Beschreibe das unerwünschte Objekt auf Englisch. Prüfe danach mit dem Vergleichsregler, was sich verändert hat."
+    },
+    "03 / Expand image · 30 credits / run": {
+      "ja": "03 / 画像拡張 · 30クレジット / 回",
+      "de": "03 / Bild erweitern · 30 Credits"
+    },
+    "Give your photo more room.": {
+      "ja": "写真の外側に、\nもう少し余白を。",
+      "de": "Mehr Raum\nfür dein Foto."
+    },
+    "Extend beyond the edges of a portrait to create more room in the composition. See the original beside the expanded result.": {
+      "ja": "写真の外側へ画面を広げ、構図に余白をプラス。元画像と拡張後の画像を並べて確認できます。",
+      "de": "Erweitere den Bildrand für mehr Raum in der Komposition. Sieh das Original direkt neben dem erweiterten Ergebnis."
+    },
+    "04 / Outfit swap · 30 credits / run": {
+      "ja": "04 / AI着せ替え · 30クレジット / 回",
+      "de": "04 / Outfit wechseln · 30 Credits"
+    },
+    "Same person. A different outfit.": {
+      "ja": "同じ人物で、\n違うコーディネート。",
+      "de": "Dieselbe Person.\nEin anderes Outfit."
+    },
+    "Add a person image and an outfit reference to try a different look. Keep the original close while you review the clothing change.": {
+      "ja": "人物写真と服装の参考画像を使って、別の着こなしをお試し。元画像を残したまま、変化を確認できます。",
+      "de": "Nutze ein Personenfoto und eine Kleidungsvorlage für einen neuen Look. Vergleiche die Änderung jederzeit mit dem Original."
+    },
+    "Also explore Edit Area, Upscale, image and video watermark removal, image hosting, Image to Prompt, and Redraw & Reframe.": {
+      "ja": "部分編集、高画質化、画像・動画の透かし除去、画像ホスティング、画像からプロンプト生成、再生成・再構図にも対応。",
+      "de": "Entdecke auch Bereichsbearbeitung, Hochskalierung, Wasserzeichenentfernung für Bilder und Videos, Bildhosting, Bild-zu-Prompt und Neugestaltung."
+    },
+    "Explore all Widgets →": {
+      "ja": "すべてのWidgetを見る（英語） →",
+      "de": "Alle Widgets ansehen (Englisch) →"
+    },
+    "Credits are shown before running. Cloud Widgets upload the media you submit; failed tasks refund credits in full.": {
+      "ja": "実行前に消費クレジットを表示。クラウド処理では送信した素材をアップロードします。失敗したタスクのクレジットは全額返還されます。",
+      "de": "Die Kosten siehst du vor dem Start. Cloud-Widgets laden die eingereichten Medien hoch. Bei fehlgeschlagenen Aufgaben werden alle Credits erstattet."
+    },
+    "And more": {
+      "ja": "こんな作業も",
+      "de": "Und außerdem"
+    },
+    "The small jobs, handled": {
+      "ja": "小さな作業も、手早く。",
+      "de": "Auch die kleinen\nDinge erledigt."
+    },
+    "Free forever": {
+      "ja": "ずっと無料",
+      "de": "Dauerhaft kostenlos"
+    },
+    "01": {
+      "ja": "01",
+      "de": "01"
+    },
+    "02": {
+      "ja": "02",
+      "de": "02"
+    },
+    "03": {
+      "ja": "03",
+      "de": "03"
+    },
+    "Open an image": {
+      "ja": "画像を開く",
+      "de": "Bild öffnen"
+    },
+    "Copy the text. Keep your image": {
+      "ja": "画像は残して、\n文字だけコピー。",
+      "de": "Text kopieren.\nDas Bild behalten."
+    },
+    "Recognize text on your Mac, select what you need, and copy it. No Pro, credits, or upload needed.": {
+      "ja": "Mac上で画像内の文字を認識し、必要な部分を選んでコピー。Proもクレジットもアップロードも不要です。",
+      "de": "Erkenne Text direkt auf deinem Mac, wähle ihn aus und kopiere ihn. Ohne Pro, Credits oder Upload."
+    },
+    "Select its text": {
+      "ja": "文字を選ぶ",
+      "de": "Text auswählen"
+    },
+    "⌘C": {
+      "ja": "⌘C",
+      "de": "⌘C"
+    },
+    "Copy with": {
+      "ja": "コピー",
+      "de": "Kopieren mit"
+    },
+    "Video preview & capture": {
+      "ja": "動画の表示とキャプチャ",
+      "de": "Videos ansehen und aufnehmen"
+    },
+    "Cloud AI Widgets": {
+      "ja": "クラウドAI Widget",
+      "de": "Cloud-KI-Widgets"
+    },
+    "Play a video, capture any frame, crop it, then save or copy it.": {
+      "ja": "動画の好きなフレームをキャプチャし、切り抜いて保存またはコピー。",
+      "de": "Spiele ein Video ab, nimm ein Einzelbild auf, schneide es zu und speichere oder kopiere es."
+    },
+    "New accounts get 100 credits. Only cloud runs use credits.": {
+      "ja": "新規登録で100クレジット。消費するのはクラウド処理だけ。",
+      "de": "Neue Konten erhalten 100 Credits. Nur Cloud-Aufgaben verbrauchen Credits."
+    },
+    "Local toolbox": {
+      "ja": "ローカルツール",
+      "de": "Lokale Werkzeuge"
+    },
+    "Peek, when you want it": {
+      "ja": "必要なときだけ、Peek",
+      "de": "Peek, wenn du es brauchst"
+    },
+    "Convert, compress, export, rotate, crop, and use Base64 tools on your Mac.": {
+      "ja": "変換、圧縮、書き出し、回転、切り抜き、Base64処理をMac上で。",
+      "de": "Konvertieren, komprimieren, exportieren, drehen, zuschneiden und Base64-Werkzeuge nutzen – direkt auf deinem Mac."
+    },
+    "Select an image link or file path and press Option + Space. Optional, off by default.": {
+      "ja": "画像リンクやファイルパスを選び、Option + Spaceで表示。任意の機能で、初期状態ではオフです。",
+      "de": "Wähle einen Bildlink oder Dateipfad und drücke Option + Leertaste. Optional und standardmäßig aus."
+    },
+    "Task Center": {
+      "ja": "タスクセンター",
+      "de": "Aufgabenübersicht"
+    },
+    "Start without permissions": {
+      "ja": "特別な権限なしで開始",
+      "de": "Ohne Freigaben starten"
+    },
+    "Follow queued, running, and finished tasks. Cancel a queued task and get its credits back.": {
+      "ja": "待機中・実行中・完了したタスクを確認。待機中のタスクを取り消すと、クレジットが返還されます。",
+      "de": "Verfolge wartende, laufende und fertige Aufgaben. Beim Abbrechen einer wartenden Aufgabe erhältst du die Credits zurück."
+    },
+    "Open Glance and view a file. No account or system permissions needed to start.": {
+      "ja": "Glanceを開いてファイルを表示。最初の閲覧にアカウントやシステム権限は不要です。",
+      "de": "Öffne Glance und sieh dir eine Datei an. Zum Start brauchst du weder Konto noch Systemfreigaben."
+    },
+    "Free to view Pro once. AI as you go": {
+      "ja": "見るのは無料。\nProは買い切り。\nAIは使った分だけ。",
+      "de": "Ansehen gratis.\nPro einmal kaufen.\nKI nach Bedarf."
+    },
+    "No subscription. No automatic renewals.": {
+      "ja": "サブスクなし。自動更新もありません。",
+      "de": "Kein Abo. Keine automatische Verlängerung."
+    },
+    "Free": {
+      "ja": "無料版",
+      "de": "Kostenlos"
+    },
+    "Glance Pro": {
+      "ja": "Glance Pro",
+      "de": "Glance Pro"
+    },
+    "Credits": {
+      "ja": "クレジット",
+      "de": "Credits"
+    },
+    "$0": {
+      "ja": "¥0",
+      "de": "0 €"
+    },
+    "$9.99": {
+      "ja": "¥1,480",
+      "de": "9,99 €"
+    },
+    "$2.99": {
+      "ja": "¥480",
+      "de": "2,99 €"
+    },
+    "Forever": {
+      "ja": "ずっと無料",
+      "de": "Dauerhaft"
+    },
+    "One-time · Personal · 1 Mac": {
+      "ja": "買い切り · 個人版 · Mac 1台",
+      "de": "Einmalkauf · Persönlich · 1 Mac"
+    },
+    "600 credits · pay as you go": {
+      "ja": "600クレジット · 必要な分だけ",
+      "de": "600 Credits · bei Bedarf aufladen"
+    },
+    "View images and video, compare, capture frames, and copy text from images.": {
+      "ja": "画像・動画の表示、比較、フレームのキャプチャ、画像内の文字のコピー。",
+      "de": "Bilder und Videos ansehen, vergleichen, Einzelbilder aufnehmen und Bildtext kopieren."
+    },
+    "The full local toolbox, lifetime updates, and 100 bonus credits. Team: $19.99 for 5 independent accounts.": {
+      "ja": "全ローカルツール、永久アップデート、100クレジット付き。5人の独立アカウントを使えるチーム版は¥2,980。",
+      "de": "Alle lokalen Werkzeuge, lebenslange Updates und 100 Bonus-Credits. Team: 19,99 € für 5 unabhängige Konten."
+    },
+    "Only cloud Widgets use credits. Credits never expire. Available on Free and Pro.": {
+      "ja": "クラウドWidgetにだけ使用。有効期限はありません。無料版でもProでも使えます。",
+      "de": "Nur Cloud-Widgets nutzen Credits. Sie verfallen nicht und sind mit Free und Pro verfügbar."
+    },
+    "Download free →": {
+      "ja": "無料で入手 →",
+      "de": "Kostenlos laden →"
+    },
+    "See Pro plans →": {
+      "ja": "Proの詳細（英語） →",
+      "de": "Pro-Pläne (Englisch) →"
+    },
+    "See credit packs →": {
+      "ja": "クレジット詳細（英語） →",
+      "de": "Credit-Pakete (Englisch) →"
+    },
+    "USD prices include tax · Cloud Widgets use separate credits · 14-day full trial starts on first launch": {
+      "ja": "税込価格（JPY） · クラウドWidgetは別途クレジット制 · 初回起動から14日間の全機能体験",
+      "de": "Preise inkl. Steuern (EUR) · Cloud-Widgets separat · 14 Tage Vollversion ab dem ersten Start"
+    },
+    "Your next image has a home": {
+      "ja": "次の1枚を、\nここで開こう。",
+      "de": "Dein nächstes Bild\nist hier zu Hause."
+    },
+    "Start with the free viewer. Try the full local toolbox for 14 days, with no account or payment method.": {
+      "ja": "まずは無料のビューアから。アカウントや支払い方法の登録なしで、全ローカルツールを14日間お試しください。",
+      "de": "Starte mit dem kostenlosen Betrachter. Teste alle lokalen Werkzeuge 14 Tage lang – ohne Konto oder Zahlungsmittel."
+    },
+    "Install guide →": {
+      "ja": "導入ガイド（英語） →",
+      "de": "Installation (Englisch) →"
+    },
+    "Glance 1.0.4 · macOS 12.3+ · Apple silicon": {
+      "ja": "Glance 1.0.4 · macOS 12.3以降 · Appleシリコン",
+      "de": "Glance 1.0.4 · macOS 12.3+ · Apple Silicon"
+    },
+    "FAQ": {
+      "ja": "よくある質問",
+      "de": "Häufige Fragen"
+    },
+    "A few things to know": {
+      "ja": "はじめる前に。",
+      "de": "Gut zu wissen"
+    },
+    "Do I need an account?": {
+      "ja": "アカウントは必要ですか？",
+      "de": "Brauche ich ein Konto?"
+    },
+    "Are my files uploaded?": {
+      "ja": "ファイルはアップロードされますか？",
+      "de": "Werden meine Dateien hochgeladen?"
+    },
+    "No account is needed for viewing, compare, capture, or OCR. Sign in for cloud Widgets or purchases.": {
+      "ja": "表示・比較・キャプチャ・OCRには不要です。クラウドWidgetの利用や購入時にログインしてください。",
+      "de": "Für Ansicht, Vergleich, Screenshots und OCR nicht. Für Cloud-Widgets und Käufe meldest du dich an."
+    },
+    "Viewing and local tools run on your Mac. Only the media you submit to a cloud Widget is uploaded.": {
+      "ja": "表示とローカルツールはMac上で動作します。クラウドWidgetに送信した素材だけをアップロードします。",
+      "de": "Ansicht und lokale Werkzeuge laufen auf deinem Mac. Nur an ein Cloud-Widget gesendete Medien werden hochgeladen."
+    },
+    "Is Pro a subscription?": {
+      "ja": "Proはサブスクリプションですか？",
+      "de": "Ist Pro ein Abonnement?"
+    },
+    "What if a task fails?": {
+      "ja": "タスクが失敗したら？",
+      "de": "Was passiert bei einem Fehler?"
+    },
+    "No. Pro is a one-time purchase with lifetime free updates and no automatic renewals.": {
+      "ja": "いいえ。Proは買い切りで、アップデートは永久無料。自動更新もありません。",
+      "de": "Nein. Pro ist ein Einmalkauf mit lebenslang kostenlosen Updates und ohne automatische Verlängerung."
+    },
+    "All failed Widget tasks refund credits in full automatically, including provider, network, and invalid-input failures.": {
+      "ja": "外部サービス、通信、入力内容の問題を含め、失敗したWidgetタスクのクレジットは自動で全額返還されます。",
+      "de": "Bei allen fehlgeschlagenen Widget-Aufgaben werden sämtliche Credits automatisch erstattet, auch bei Anbieter-, Netzwerk- und Eingabefehlern."
+    },
+    "What stays free after the trial?": {
+      "ja": "体験期間後も無料で使える機能は？",
+      "de": "Was bleibt nach der Testphase gratis?"
+    },
+    "How do I pay?": {
+      "ja": "支払い方法は？",
+      "de": "Wie bezahle ich?"
+    },
+    "Viewing, compare, capture, OCR, and credit-based cloud Widgets. The remaining local tools require Pro.": {
+      "ja": "表示・比較・キャプチャ・OCRと、クレジット制のクラウドWidgetです。その他のローカルツールにはProが必要です。",
+      "de": "Ansicht, Vergleich, Screenshots, OCR und Cloud-Widgets gegen Credits. Die übrigen lokalen Werkzeuge erfordern Pro."
+    },
+    "Choose a product in the app. The checkout shows available payment methods for your currency.": {
+      "ja": "アプリ内で商品を選択してください。お支払い画面に、選んだ通貨で使える方法が表示されます。",
+      "de": "Wähle ein Produkt in der App. An der Kasse siehst du die für deine Währung verfügbaren Zahlungsmethoden."
+    },
+    "Privacy": {
+      "ja": "プライバシー",
+      "de": "Datenschutz"
+    },
+    "Terms": {
+      "ja": "利用規約",
+      "de": "Bedingungen"
+    },
+    "Refunds": {
+      "ja": "返金",
+      "de": "Erstattung"
+    },
+    "Support": {
+      "ja": "サポート",
+      "de": "Kontakt"
+    },
+    "An image and video viewer for Mac": {
+      "ja": "Mac用の画像・動画ビューア",
+      "de": "Bild- und Videobetrachter für den Mac"
+    },
+    "© 2026 Glance": {
+      "ja": "© 2026 Glance",
+      "de": "© 2026 Glance"
+    }
+  },
+  "transferNodeIds": [
+    "69:5077",
+    "69:5079",
+    "69:5078",
+    "69:5076",
+    "69:5085",
+    "69:5080",
+    "69:5081",
+    "69:5082",
+    "69:5083",
+    "69:5084",
+    "69:5087",
+    "69:5092",
+    "69:5088",
+    "69:5086",
+    "69:5090",
+    "69:5089",
+    "69:5093",
+    "69:5091",
+    "69:5098",
+    "69:5094",
+    "69:5096",
+    "69:5095",
+    "69:5097",
+    "69:5099",
+    "69:5100",
+    "69:5101",
+    "69:5103",
+    "69:5102"
+  ],
+  "sources": {
+    "media": {
+      "background/en": {
+        "poster": "32:1561",
+        "playing": "32:1566",
+        "set": "32:1571",
+        "gifHash": "363ddddbfb020928549d64add4217a2a1cdf476f",
+        "posterHash": "42386de83d6cb577437eca64d84e98aa142372de"
+      },
+      "expand/en": {
+        "poster": "32:1717",
+        "playing": "32:1722",
+        "set": "32:1727",
+        "gifHash": "8e64ef5d544b2ecfc07d4d48d44dbd9c4f2932b1",
+        "posterHash": "fd31a653983e46cb007f35684bceb3c8cba2560e"
+      },
+      "outfit/en": {
+        "poster": "32:1743",
+        "playing": "32:1748",
+        "set": "32:1753",
+        "gifHash": "f8322f934bb581d76868f443a85f091dac546878",
+        "posterHash": "2a63901747af4dbd1356d05841e9c90bae2c9dbb"
+      }
+    },
+    "compare": {
+      "compare/en/sumi/desktop": {
+        "set": "51:5799",
+        "poster": "51:5563",
+        "playing": "51:5681",
+        "gifHash": "b0506d278a744f2d23f7691e9237be0ab257e17c",
+        "posterHash": "ce92c1dbe39fa7aa2ac2457d8692c4d3d3f5c69c"
+      },
+      "compare/en/sumi/mobile": {
+        "set": "51:5830",
+        "poster": "51:5802",
+        "playing": "51:5816",
+        "gifHash": "6f78c2adc3dde5579cac268ad98dfd707a6c8302",
+        "posterHash": "febc46afa1a2aea207e721f74680da78b78952ff"
+      },
+      "compare/en/washi/desktop": {
+        "set": "51:6069",
+        "poster": "51:5833",
+        "playing": "51:5951",
+        "gifHash": "62bff3d3484e0d9260a04835d6718fb410a60a8c",
+        "posterHash": "190dc35d1d9229af15da05e9b09c12c18a2529ab"
+      },
+      "compare/en/washi/mobile": {
+        "set": "51:6100",
+        "poster": "51:6072",
+        "playing": "51:6086",
+        "gifHash": "fabfc0141337d9a233cda5999e931bb9c4feadb1",
+        "posterHash": "b73ac2d19c7ed0b90e92b7814ab17e27b0dfd186"
+      }
+    },
+    "copies": {
+      "en/Desktop": {
+        "id": "62:6753",
+        "keys": {
+          "Meta": "Meta#62:18",
+          "Title": "Title#62:19",
+          "Body": "Body#62:20"
+        }
+      },
+      "en/Mobile": {
+        "id": "62:6757",
+        "keys": {
+          "Meta": "Meta#62:21",
+          "Title": "Title#62:22",
+          "Body": "Body#62:23"
+        }
+      }
+    }
+  }
+}

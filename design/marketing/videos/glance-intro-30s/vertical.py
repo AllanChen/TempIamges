@@ -1,6 +1,6 @@
 """Vertical 9:16 cut (1080x1920) of the 30 s intro, for 小红书 / 抖音.
 
-Run from the repo root (after render.py): .venv/bin/python design/marketing/videos/glance-intro-30s/vertical.py --lang zh [--preview] [--at T ...]
+Run from the repo root (after render.py): .venv/bin/python design/marketing/videos/glance-intro-30s/vertical.py --lang zh [--no-url] [--preview] [--at T ...]
 Re-composes each 16:9 frame from render.py: headline area on top, product window below.
 Uses the soundtracks render.py already wrote (soundtrack-<lang>.wav / soundtrack-<lang>-voice.wav).
 """
@@ -58,7 +58,8 @@ def header(im):
     ui_logo = ui.rounded(g.LOGO, (64, 64), 18)
     im.alpha_composite(ui_logo, (60, 70))
     h.txt(im, (142, 102), 'Glance', 40, h.WHITE, 's', 'lm', 'en')
-    h.txt(im, (VW - 60, 102), 'glancepreview.com', 26, h.GRAY, 'r', 'rm', 'en')
+    if not h.NO_URL:
+        h.txt(im, (VW - 60, 102), 'glancepreview.com', 26, h.GRAY, 'r', 'rm', 'en')
 
 
 def vframe(t):
@@ -81,6 +82,7 @@ def frame_bytes(i):
 
 def main():
     tag = h.TAG
+    vtag = '-xhs' if h.NO_URL else ''
     args = sys.argv[1:]
     if '--at' in args:
         for t in [float(x) for x in args[args.index('--at') + 1:]]:
@@ -90,10 +92,10 @@ def main():
     board = Image.new('RGB', (360 * 9, 640), (12, 12, 16))
     for k, t in enumerate(times):
         board.paste(vframe(t).resize((360, 640), Image.Resampling.LANCZOS), (360 * k, 0))
-    board.save(OUT / f'storyboard-vertical{tag}.jpg', quality=90)
+    board.save(OUT / f'storyboard-vertical{tag}{vtag}.jpg', quality=90)
     if '--preview' in args:
         return
-    out = OUT / f'glance-intro-30s-{h.LANG}-vertical.mp4'
+    out = OUT / f'glance-intro-30s-{h.LANG}-vertical{vtag}.mp4'
     cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
            '-s', f'{VW}x{VH}', '-r', str(FPS), '-i', 'pipe:0', '-i', str(OUT / f'soundtrack{tag}.wav'),
            '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'medium', '-crf', '19',
@@ -107,7 +109,7 @@ def main():
     if enc.wait(): raise RuntimeError('encode failed')
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(out), '-i', str(OUT / f'soundtrack{tag}-voice.wav'),
                     '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-t', str(DURATION),
-                    '-movflags', '+faststart', str(OUT / f'glance-intro-30s-{h.LANG}-vertical-voice.mp4')], check=True)
+                    '-movflags', '+faststart', str(OUT / f'glance-intro-30s-{h.LANG}-vertical{vtag}-voice.mp4')], check=True)
     print('done')
 
 

@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "creditCost": 30,
+  "id": "004d51ec-9051-47f8-9672-5321037d8b3f",
+  "version": "0.1.1",
+  "name": "图中文字翻译",
+  "summary": "翻译或替换图片里的文字，例如把英文改成中文，排版风格保持不变。",
+  "author": "Glance",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "翻译图中文字",
+      "description": "输入一张图片，并用文字说明要如何修改图中的文字，例如“把英文改成中文”或“把文字翻译成日文”。翻译后的文字会尽量保持原来的字体、大小、颜色和排版，其余画面不变。",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.004d51ec-9051-47f8-9672-5321037d8b3f.run",
+      "requiresUpload": true,
+      "parameterSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "说明要如何修改图中的文字，例如“把英文改成中文” / Describe how to change the text, e.g. \"translate the English text into Chinese\"."
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "图片和文字说明将上传至 Glance 及 AI 图像服务处理。 / Your image and instruction are uploaded to Glance and an AI image service for processing."
+  },
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Translate Text",
+      "summary": "Translate or replace the text in an image, e.g. from English to Chinese, keeping the layout and style.",
+      "commands": {
+        "run": {
+          "name": "Translate Text",
+          "description": "Provide one image and describe how its text should change, for example “translate the English text into Chinese” or “translate the text into Japanese”. The translated text keeps the original font style, size, color and layout as closely as possible; everything else stays unchanged."
+        }
+      }
+    },
+    "zh-Hans": {
+      "name": "图中文字翻译",
+      "summary": "翻译或替换图片里的文字，例如把英文改成中文，排版风格保持不变。",
+      "commands": {
+        "run": {
+          "name": "翻译图中文字",
+          "description": "输入一张图片，并用文字说明要如何修改图中的文字，例如“把英文改成中文”或“把文字翻译成日文”。翻译后的文字会尽量保持原来的字体、大小、颜色和排版，其余画面不变。"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,2576 @@
+{
+  "date": "2026-11-14",
+  "fileKey": "kWvE51F9IfI3oSN6ZoxeKw",
+  "pageId": "0:1",
+  "scope": "Widget-first promotional website; four distinct feature films with comparison within the second feature",
+  "createdNodeIdRangesByPrefix": {
+    "62:": "6475-6477,6589-6609,6611-6612,6724-6761,6879-6881,6885,6890-6892,6896,7014-7016,7020,7025-7027,7031,7036-7038,7040,7043,7061-7063,7067,7072-7074,7078,7092-7094,7098,7103-7105,7109,7114-7116,7118-7119,7237-7239,7243,7248-7250,7254,7372-7374,7378,7383-7385,7389,7394-7396,7399,7402,7420-7422,7426,7431-7433,7437,7451-7453,7457,7462-7464,7468,7473-7475,7477-7478,7596-7598,7602,7607-7609,7613,7731-7733,7737,7742-7744,7748,7753-7755,7757,7760,7778-7780,7784,7789-7791,7795,7809-7811,7815,7820-7822,7826,7831-7833,7835-7836,7954-7956,7960,7965-7967,7971,8089-8091,8095,8100-8102,8106,8111-8113,8115,8118,8136-8138,8142,8147-8149,8153,8167-8169,8173,8178-8180,8184,8189-8191,8193",
+    "I62:6477;12:": "167-277",
+    "I62:6612;12:": "279-389",
+    "I62:6761;62:": "6477,6589-6592",
+    "I62:6761;62:6477;12:": "167-230,232-267,269-272,274-277",
+    "I62:6881;62:": "6754-6756",
+    "I62:6885;32:": "1562-1565",
+    "I62:6892;62:": "6754-6756",
+    "I62:6896;51:": "5564,5676-5680",
+    "I62:6896;51:5564;12:": "167-230,232-272,275-277",
+    "I62:7016;62:": "6754-6756",
+    "I62:7020;32:": "1718-1721",
+    "I62:7027;62:": "6754-6756",
+    "I62:7031;32:": "1744-1747",
+    "I62:7043;62:": "6594-6609",
+    "I62:7063;62:": "6758-6760",
+    "I62:7067;32:": "1562-1565",
+    "I62:7074;62:": "6758-6760",
+    "I62:7078;51:": "5803-5815",
+    "I62:7094;62:": "6758-6760",
+    "I62:7098;32:": "1718-1721",
+    "I62:7105;62:": "6758-6760",
+    "I62:7109;32:": "1744-1747",
+    "I62:7119;62:": "6477,6589-6592",
+    "I62:7119;62:6477;12:": "167-230,232-267,269-272,274-277",
+    "I62:7239;62:": "6746-6748",
+    "I62:7243;32:": "1549-1552",
+    "I62:7250;62:": "6746-6748",
+    "I62:7254;51:": "5024,5136-5140",
+    "I62:7254;51:5024;12:": "167-230,232-272,275-277",
+    "I62:7374;62:": "6746-6748",
+    "I62:7378;32:": "1705-1708",
+    "I62:7385;62:": "6746-6748",
+    "I62:7389;32:": "1731-1734",
+    "I62:7402;62:": "6594-6609",
+    "I62:7422;62:": "6750-6752",
+    "I62:7426;32:": "1549-1552",
+    "I62:7433;62:": "6750-6752",
+    "I62:7437;51:": "5263-5275",
+    "I62:7453;62:": "6750-6752",
+    "I62:7457;32:": "1705-1708",
+    "I62:7464;62:": "6750-6752",
+    "I62:7468;32:": "1731-1734",
+    "I62:7478;62:": "6612,6724-6727",
+    "I62:7478;62:6612;12:": "279-342,344-379,381-384,386-389",
+    "I62:7598;62:": "6754-6756",
+    "I62:7602;32:": "1562-1565",
+    "I62:7609;62:": "6754-6756",
+    "I62:7613;51:": "5834,5946-5950",
+    "I62:7613;51:5834;12:": "279-342,344-384,387-389",
+    "I62:7733;62:": "6754-6756",
+    "I62:7737;32:": "1718-1721",
+    "I62:7744;62:": "6754-6756",
+    "I62:7748;32:": "1744-1747",
+    "I62:7760;62:": "6729-6744",
+    "I62:7780;62:": "6758-6760",
+    "I62:7784;32:": "1562-1565",
+    "I62:7791;62:": "6758-6760",
+    "I62:7795;51:": "6073-6085",
+    "I62:7811;62:": "6758-6760",
+    "I62:7815;32:": "1718-1721",
+    "I62:7822;62:": "6758-6760",
+    "I62:7826;32:": "1744-1747",
+    "I62:7836;62:": "6612,6724-6727",
+    "I62:7836;62:6612;12:": "279-342,344-379,381-384,386-389",
+    "I62:7956;62:": "6746-6748",
+    "I62:7960;32:": "1549-1552",
+    "I62:7967;62:": "6746-6748",
+    "I62:7971;51:": "5294,5406-5410",
+    "I62:7971;51:5294;12:": "279-342,344-384,387-389",
+    "I62:8091;62:": "6746-6748",
+    "I62:8095;32:": "1705-1708",
+    "I62:8102;62:": "6746-6748",
+    "I62:8106;32:": "1731-1734",
+    "I62:8118;62:": "6729-6744",
+    "I62:8138;62:": "6750-6752",
+    "I62:8142;32:": "1549-1552",
+    "I62:8149;62:": "6750-6752",
+    "I62:8153;51:": "5533-5545",
+    "I62:8169;62:": "6750-6752",
+    "I62:8173;32:": "1705-1708",
+    "I62:8180;62:": "6750-6752",
+    "I62:8184;32:": "1731-1734"
+  },
+  "mutatedNodeIds": [
+    "15:52",
+    "15:33",
+    "15:38",
+    "15:41",
+    "15:167",
+    "15:49",
+    "15:184",
+    "15:188",
+    "15:191",
+    "15:193",
+    "15:192",
+    "15:326",
+    "15:325",
+    "15:381",
+    "15:380",
+    "15:667",
+    "15:666",
+    "15:2",
+    "15:11",
+    "15:14",
+    "15:1005",
+    "15:989",
+    "15:992",
+    "15:995",
+    "15:1034",
+    "15:1002",
+    "15:1041",
+    "15:1044",
+    "15:1047",
+    "15:1049",
+    "15:1048",
+    "15:1074",
+    "15:1073",
+    "15:1126",
+    "15:1125",
+    "15:1270",
+    "15:1269",
+    "15:969",
+    "15:1595",
+    "15:1576",
+    "15:1581",
+    "15:1584",
+    "15:1710",
+    "15:1592",
+    "15:1727",
+    "15:1731",
+    "15:1734",
+    "15:1736",
+    "15:1735",
+    "15:1869",
+    "15:1868",
+    "15:1924",
+    "15:1923",
+    "15:2210",
+    "15:2209",
+    "15:1545",
+    "15:1554",
+    "15:1557",
+    "15:2548",
+    "15:2532",
+    "15:2535",
+    "15:2538",
+    "15:2577",
+    "15:2545",
+    "15:2584",
+    "15:2587",
+    "15:2590",
+    "15:2592",
+    "15:2591",
+    "15:2617",
+    "15:2616",
+    "15:2669",
+    "15:2668",
+    "15:2813",
+    "15:2812",
+    "15:2512",
+    "15:3266",
+    "15:3247",
+    "15:3252",
+    "15:3255",
+    "15:3381",
+    "15:3263",
+    "15:3398",
+    "15:3402",
+    "15:3405",
+    "15:3407",
+    "15:3406",
+    "15:3540",
+    "15:3539",
+    "15:3595",
+    "15:3594",
+    "15:3881",
+    "15:3880",
+    "15:3216",
+    "15:3225",
+    "15:3228",
+    "15:4219",
+    "15:4203",
+    "15:4206",
+    "15:4209",
+    "15:4248",
+    "15:4216",
+    "15:4255",
+    "15:4258",
+    "15:4261",
+    "15:4263",
+    "15:4262",
+    "15:4288",
+    "15:4287",
+    "15:4340",
+    "15:4339",
+    "15:4484",
+    "15:4483",
+    "15:4183",
+    "15:4809",
+    "15:4790",
+    "15:4795",
+    "15:4798",
+    "15:4924",
+    "15:4806",
+    "15:4941",
+    "15:4945",
+    "15:4948",
+    "15:4950",
+    "15:4949",
+    "15:5083",
+    "15:5082",
+    "15:5138",
+    "15:5137",
+    "15:5424",
+    "15:5423",
+    "15:4759",
+    "15:4768",
+    "15:4771",
+    "15:5762",
+    "15:5746",
+    "15:5749",
+    "15:5752",
+    "15:5791",
+    "15:5759",
+    "15:5798",
+    "15:5801",
+    "15:5804",
+    "15:5806",
+    "15:5805",
+    "15:5831",
+    "15:5830",
+    "15:5883",
+    "15:5882",
+    "15:6027",
+    "15:6026",
+    "15:5726",
+    "15:6302"
+  ],
+  "removedNodeIdRangesByPrefix": {
+    "51:": "6103,6221,6339,6457,6575,6589,6603,6617,6631,6749,6867,6985,7103,7117,7131,7145,7159,7277,7395,7513,7631,7645,7659,7673,7687,7805,7923,8041,8159,8173,8187,8201",
+    "I51:6103;51:": "2324,2436-2440",
+    "I51:6103;51:2324;12:": "167-230,232-272,275-277",
+    "15:": "194-212,327-332,367-379,382-400,1050-1066,1070-1072,1075-1091,1122-1124,1127-1143,1737-1755,1870-1875,1910-1922,1925-1943,2593-2609,2613-2615,2618-2634,2665-2667,2670-2686,3408-3426,3541-3546,3581-3593,3596-3614,4264-4280,4284-4286,4289-4305,4336-4338,4341-4357,4951-4969,5084-5089,5124-5136,5139-5157,5807-5823,5827-5829,5832-5848,5879-5881,5884-5900",
+    "I51:6221;51:": "3404,3516-3520",
+    "I51:6221;51:3404;12:": "167-230,232-272,275-277",
+    "I51:6339;51:": "4484,4596-4600",
+    "I51:6339;51:4484;12:": "167-230,232-272,275-277",
+    "I51:6457;51:": "5564,5676-5680",
+    "I51:6457;51:5564;12:": "167-230,232-272,275-277",
+    "39:": "2806-2811,2825-2826,2839,2852,2865,2867,2869-2875,2888-2889,2902-2903,2916-2917,2930,2932-2938,2952-2953,2966,2979,2992,2994,2996-3002,3015-3016,3029-3030,3043-3044,3057,3059-3065,3079-3080,3093,3106,3119,3121,3123-3129,3142-3143,3156-3157,3170-3171,3184,3186-3192,3206-3207,3220,3233,3246,3248,3250-3256,3269-3270,3283-3284,3297-3298,3311,3313",
+    "I39:2811;32:": "2056,2061-2064",
+    "I39:2811;32:2056;32:": "1588-1591",
+    "I39:2826;32:": "2075,2080-2081,2083",
+    "I39:2826;32:2075;32:": "1562-1565",
+    "I39:2839;32:": "2075,2080-2081,2083",
+    "I39:2839;32:2075;32:": "1718-1721",
+    "I39:2852;32:": "2075,2080-2081,2083",
+    "I39:2852;32:2075;32:": "1744-1747",
+    "I51:6575;51:": "2563-2575",
+    "I51:6589;51:": "3643-3655",
+    "I51:6603;51:": "4723-4735",
+    "I51:6617;51:": "5803-5815",
+    "I39:2875;32:": "2085,2090-2092",
+    "I39:2875;32:2085;32:": "1588-1591",
+    "I39:2889;32:": "2085,2090-2092",
+    "I39:2889;32:2085;32:": "1562-1565",
+    "I39:2903;32:": "2085,2090-2092",
+    "I39:2903;32:2085;32:": "1718-1721",
+    "I39:2917;32:": "2085,2090-2092",
+    "I39:2917;32:2085;32:": "1744-1747",
+    "I51:6631;51:": "1784,1896-1900",
+    "I51:6631;51:1784;12:": "167-230,232-272,275-277",
+    "I51:6749;51:": "2864,2976-2980",
+    "I51:6749;51:2864;12:": "167-230,232-272,275-277",
+    "I51:6867;51:": "3944,4056-4060",
+    "I51:6867;51:3944;12:": "167-230,232-272,275-277",
+    "I51:6985;51:": "5024,5136-5140",
+    "I51:6985;51:5024;12:": "167-230,232-272,275-277",
+    "I39:2938;32:": "2018,2023-2026",
+    "I39:2938;32:2018;32:": "1575-1578",
+    "I39:2953;32:": "2037,2042-2043,2045",
+    "I39:2953;32:2037;32:": "1549-1552",
+    "I39:2966;32:": "2037,2042-2043,2045",
+    "I39:2966;32:2037;32:": "1705-1708",
+    "I39:2979;32:": "2037,2042-2043,2045",
+    "I39:2979;32:2037;32:": "1731-1734",
+    "I51:7103;51:": "2023-2035",
+    "I51:7117;51:": "3103-3115",
+    "I51:7131;51:": "4183-4195",
+    "I51:7145;51:": "5263-5275",
+    "I39:3002;32:": "2047,2052-2054",
+    "I39:3002;32:2047;32:": "1575-1578",
+    "I39:3016;32:": "2047,2052-2054",
+    "I39:3016;32:2047;32:": "1549-1552",
+    "I39:3030;32:": "2047,2052-2054",
+    "I39:3030;32:2047;32:": "1705-1708",
+    "I39:3044;32:": "2047,2052-2054",
+    "I39:3044;32:2047;32:": "1731-1734",
+    "I51:7159;51:": "2594,2706-2710",
+    "I51:7159;51:2594;12:": "279-342,344-384,387-389",
+    "I51:7277;51:": "3674,3786-3790",
+    "I51:7277;51:3674;12:": "279-342,344-384,387-389",
+    "I51:7395;51:": "4754,4866-4870",
+    "I51:7395;51:4754;12:": "279-342,344-384,387-389",
+    "I51:7513;51:": "5834,5946-5950",
+    "I51:7513;51:5834;12:": "279-342,344-384,387-389",
+    "I39:3065;32:": "2056,2061-2064",
+    "I39:3065;32:2056;32:": "1588-1591",
+    "I39:3080;32:": "2075,2080-2081,2083",
+    "I39:3080;32:2075;32:": "1562-1565",
+    "I39:3093;32:": "2075,2080-2081,2083",
+    "I39:3093;32:2075;32:": "1718-1721",
+    "I39:3106;32:": "2075,2080-2081,2083",
+    "I39:3106;32:2075;32:": "1744-1747",
+    "I51:7631;51:": "2833-2845",
+    "I51:7645;51:": "3913-3925",
+    "I51:7659;51:": "4993-5005",
+    "I51:7673;51:": "6073-6085",
+    "I39:3129;32:": "2085,2090-2092",
+    "I39:3129;32:2085;32:": "1588-1591",
+    "I39:3143;32:": "2085,2090-2092",
+    "I39:3143;32:2085;32:": "1562-1565",
+    "I39:3157;32:": "2085,2090-2092",
+    "I39:3157;32:2085;32:": "1718-1721",
+    "I39:3171;32:": "2085,2090-2092",
+    "I39:3171;32:2085;32:": "1744-1747",
+    "I51:7687;51:": "2054,2166-2170",
+    "I51:7687;51:2054;12:": "279-342,344-384,387-389",
+    "I51:7805;51:": "3134,3246-3250",
+    "I51:7805;51:3134;12:": "279-342,344-384,387-389",
+    "I51:7923;51:": "4214,4326-4330",
+    "I51:7923;51:4214;12:": "279-342,344-384,387-389",
+    "I51:8041;51:": "5294,5406-5410",
+    "I51:8041;51:5294;12:": "279-342,344-384,387-389",
+    "I39:3192;32:": "2018,2023-2026",
+    "I39:3192;32:2018;32:": "1575-1578",
+    "I39:3207;32:": "2037,2042-2043,2045",
+    "I39:3207;32:2037;32:": "1549-1552",
+    "I39:3220;32:": "2037,2042-2043,2045",
+    "I39:3220;32:2037;32:": "1705-1708",
+    "I39:3233;32:": "2037,2042-2043,2045",
+    "I39:3233;32:2037;32:": "1731-1734",
+    "I51:8159;51:": "2293-2305",
+    "I51:8173;51:": "3373-3385",
+    "I51:8187;51:": "4453-4465",
+    "I51:8201;51:": "5533-5545",
+    "I39:3256;32:": "2047,2052-2054",
+    "I39:3256;32:2047;32:": "1575-1578",
+    "I39:3270;32:": "2047,2052-2054",
+    "I39:3270;32:2047;32:": "1549-1552",
+    "I39:3284;32:": "2047,2052-2054",
+    "I39:3284;32:2047;32:": "1705-1708",
+    "I39:3298;32:": "2047,2052-2054",
+    "I39:3298;32:2047;32:": "1731-1734"
+  },
+  "createdTextStyleIds": [
+    "S:2658c663dfc4c00a74d9fc38f7823173b736c3b6,",
+    "S:d69b927cdf1da0aef6f4b3506d9601fbf1dfd360,"
+  ],
+  "libraryId": "62:6475",
+  "copies": {
+    "zh/Desktop": {
+      "id": "62:6745",
+      "keys": {
+        "Meta": "Meta#62:12",
+        "Title": "Title#62:13",
+        "Body": "Body#62:14"
+      }
+    },
+    "zh/Mobile": {
+      "id": "62:6749",
+      "keys": {
+        "Meta": "Meta#62:15",
+        "Title": "Title#62:16",
+        "Body": "Body#62:17"
+      }
+    },
+    "en/Desktop": {
+      "id": "62:6753",
+      "keys": {
+        "Meta": "Meta#62:18",
+        "Title": "Title#62:19",
+        "Body": "Body#62:20"
+      }
+    },
+    "en/Mobile": {
+      "id": "62:6757",
+      "keys": {
+        "Meta": "Meta#62:21",
+        "Title": "Title#62:22",
+        "Body": "Body#62:23"
+      }
+    }
+  },
+  "decks": {
+    "sumi/Desktop": "62:6476",
+    "sumi/Mobile": "62:6593",
+    "washi/Desktop": "62:6611",
+    "washi/Mobile": "62:6728"
+  },
+  "boards": [
+    {
+      "id": "15:2",
+      "name": "Sumi · Home / English / Desktop 1440",
+      "height": 6760,
+      "width": 1440,
+      "heroId": "15:31",
+      "introId": "15:182",
+      "widgetFilms": 4,
+      "duplicateCards": 0,
+      "order": [
+        {
+          "id": "15:3",
+          "name": "Row / 01 / Navigation"
+        },
+        {
+          "id": "15:30",
+          "name": "Row / 02 / Hero"
+        },
+        {
+          "id": "15:181",
+          "name": "Row / 03 / Workflow introduction"
+        },
+        {
+          "id": "15:192",
+          "name": "Row / 04.1 / Background removal"
+        },
+        {
+          "id": "15:325",
+          "name": "Row / 04.2 / Remove objects"
+        },
+        {
+          "id": "15:380",
+          "name": "Row / 04.3 / Expand image"
+        },
+        {
+          "id": "15:666",
+          "name": "Row / 06 / AI Widgets"
+        },
+        {
+          "id": "15:556",
+          "name": "Row / 05 / More local tools"
+        },
+        {
+          "id": "15:761",
+          "name": "Row / 07 / Pricing"
+        },
+        {
+          "id": "15:834",
+          "name": "Row / 08 / Download"
+        },
+        {
+          "id": "15:855",
+          "name": "Row / 09 / FAQ"
+        },
+        {
+          "id": "15:925",
+          "name": "Row / 10 / Footer"
+        }
+      ]
+    },
+    {
+      "id": "15:969",
+      "name": "Sumi · Home / English / Mobile 390",
+      "height": 8888,
+      "width": 390,
+      "heroId": "15:987",
+      "introId": "15:1039",
+      "widgetFilms": 4,
+      "duplicateCards": 0,
+      "order": [
+        {
+          "id": "15:970",
+          "name": "Row / 01 / Navigation"
+        },
+        {
+          "id": "15:986",
+          "name": "Row / 02 / Hero"
+        },
+        {
+          "id": "15:1038",
+          "name": "Row / 03 / Workflow introduction"
+        },
+        {
+          "id": "15:1048",
+          "name": "Row / 04.1 / Background removal"
+        },
+        {
+          "id": "15:1073",
+          "name": "Row / 04.2 / Remove objects"
+        },
+        {
+          "id": "15:1125",
+          "name": "Row / 04.3 / Expand image"
+        },
+        {
+          "id": "15:1269",
+          "name": "Row / 06 / AI Widgets"
+        },
+        {
+          "id": "15:1170",
+          "name": "Row / 05 / More local tools"
+        },
+        {
+          "id": "15:1357",
+          "name": "Row / 07 / Pricing"
+        },
+        {
+          "id": "15:1424",
+          "name": "Row / 08 / Download"
+        },
+        {
+          "id": "15:1444",
+          "name": "Row / 09 / FAQ"
+        },
+        {
+          "id": "15:1505",
+          "name": "Row / 10 / Footer"
+        }
+      ]
+    },
+    {
+      "id": "15:1545",
+      "name": "Sumi · Home / 中文 / Desktop 1440",
+      "height": 6760,
+      "width": 1440,
+      "heroId": "15:1574",
+      "introId": "15:1725",
+      "widgetFilms": 4,
+      "duplicateCards": 0,
+      "order": [
+        {
+          "id": "15:1546",
+          "name": "Row / 01 / Navigation"
+        },
+        {
+          "id": "15:1573",
+          "name": "Row / 02 / Hero"
+        },
+        {
+          "id": "15:1724",
+          "name": "Row / 03 / Workflow introduction"
+        },
+        {
+          "id": "15:1735",
+          "name": "Row / 04.1 / 人物背景分离"
+        },
+        {
+          "id": "15:1868",
+          "name": "Row / 04.2 / 移除物体"
+        },
+        {
+          "id": "15:1923",
+          "name": "Row / 04.3 / 智能扩图"
+        },
+        {
+          "id": "15:2209",
+          "name": "Row / 06 / AI Widgets"
+        },
+        {
+          "id": "15:2099",
+          "name": "Row / 05 / More local tools"
+        },
+        {
+          "id": "15:2304",
+          "name": "Row / 07 / Pricing"
+        },
+        {
+          "id": "15:2377",
+          "name": "Row / 08 / Download"
+        },
+        {
+          "id": "15:2398",
+          "name": "Row / 09 / FAQ"
+        },
+        {
+          "id": "15:2468",
+          "name": "Row / 10 / Footer"
+        }
+      ]
+    },
+    {
+      "id": "15:2512",
+      "name": "Sumi · Home / 中文 / Mobile 390",
+      "height": 8704,
+      "width": 390,
+      "heroId": "15:2530",
+      "introId": "15:2582",
+      "widgetFilms": 4,
+      "duplicateCards": 0,
+      "order": [
+        {
+          "id": "15:2513",
+          "name": "Row / 01 / Navigation"
+        },
+        {
+          "id": "15:2529",
+          "name": "Row / 02 / Hero"
+        },
+        {
+          "id": "15:2581",
+          "name": "Row / 03 / Workflow introduction"
+        },
+        {
+          "id": "15:2591",
+          "name": "Row / 04.1 / 人物背景分离"
+        },
+        {
+          "id": "15:2616",
+          "name": "Row / 04.2 / 移除物体"
+        },
+        {
+          "id": "15:2668",
+          "name": "Row / 04.3 / 智能扩图"
+        },
+        {
+          "id": "15:2812",
+          "name": "Row / 06 / AI Widgets"
+        },
+        {
+          "id": "15:2713",
+          "name": "Row / 05 / More local tools"
+        },
+        {
+          "id": "15:2900",
+          "name": "Row / 07 / Pricing"
+        },
+        {
+          "id": "15:2967",
+          "name": "Row / 08 / Download"
+        },
+        {
+          "id": "15:2987",
+          "name": "Row / 09 / FAQ"
+        },
+        {
+          "id": "15:3048",
+          "name": "Row / 10 / Footer"
+        }
+      ]
+    },
+    {
+      "id": "15:3216",
+      "name": "Washi · Home / English / Desktop 1440",
+      "height": 6760,
+      "width": 1440,
+      "heroId": "15:3245",
+      "introId": "15:3396",
+      "widgetFilms": 4,
+      "duplicateCards": 0,
+      "order": [
+        {
+          "id": "15:3217",
+          "name": "Row / 01 / Navigation"
+        },
+        {
+          "id": "15:3244",
+          "name": "Row / 02 / Hero"
+        },
+        {
+          "id": "15:3395",
+          "name": "Row / 03 / Workflow introduction"
+        },
+        {
+          "id": "15:3406",
+          "name": "Row / 04.1 / Background removal"
+        },
+        {
+          "id": "15:3539",
+          "name": "Row / 04.2 / Remove objects"
+        },
+        {
+          "id": "15:3594",
+          "name": "Row / 04.3 / Expand image"
+        },
+        {
+          "id": "15:3880",
+          "name": "Row / 06 / AI Widgets"
+        },
+        {
+          "id": "15:3770",
+          "name": "Row / 05 / More local tools"
+        },
+        {
+          "id": "15:3975",
+          "name": "Row / 07 / Pricing"
+        },
+        {
+          "id": "15:4048",
+          "name": "Row / 08 / Download"
+        },
+        {
+          "id": "15:4069",
+          "name": "Row / 09 / FAQ"
+        },
+        {
+          "id": "15:4139",
+          "name": "Row / 10 / Footer"
+        }
+      ]
+    },
+    {
+      "id": "15:4183",
+      "name": "Washi · Home / English / Mobile 390",
+      "height": 8888,
+      "width": 390,
+      "heroId": "15:4201",
+      "introId": "15:4253",
+      "widgetFilms": 4,
+      "duplicateCards": 0,
+      "order": [
+        {
+          "id": "15:4184",
+          "name": "Row / 01 / Navigation"
+        },
+        {
+          "id": "15:4200",
+          "name": "Row / 02 / Hero"
+        },
+        {
+          "id": "15:4252",
+          "name": "Row / 03 / Workflow introduction"
+        },
+        {
+          "id": "15:4262",
+          "name": "Row / 04.1 / Background removal"
+        },
+        {
+          "id": "15:4287",
+          "name": "Row / 04.2 / Remove objects"
+        },
+        {
+          "id": "15:4339",
+          "name": "Row / 04.3 / Expand image"
+        },
+        {
+          "id": "15:4483",
+          "name": "Row / 06 / AI Widgets"
+        },
+        {
+          "id": "15:4384",
+          "name": "Row / 05 / More local tools"
+        },
+        {
+          "id": "15:4571",
+          "name": "Row / 07 / Pricing"
+        },
+        {
+          "id": "15:4638",
+          "name": "Row / 08 / Download"
+        },
+        {
+          "id": "15:4658",
+          "name": "Row / 09 / FAQ"
+        },
+        {
+          "id": "15:4719",
+          "name": "Row / 10 / Footer"
+        }
+      ]
+    },
+    {
+      "id": "15:4759",
+      "name": "Washi · Home / 中文 / Desktop 1440",
+      "height": 6760,
+      "width": 1440,
+      "heroId": "15:4788",
+      "introId": "15:4939",
+      "widgetFilms": 4,
+      "duplicateCards": 0,
+      "order": [
+        {
+          "id": "15:4760",
+          "name": "Row / 01 / Navigation"
+        },
+        {
+          "id": "15:4787",
+          "name": "Row / 02 / Hero"
+        },
+        {
+          "id": "15:4938",
+          "name": "Row / 03 / Workflow introduction"
+        },
+        {
+          "id": "15:4949",
+          "name": "Row / 04.1 / 人物背景分离"
+        },
+        {
+          "id": "15:5082",
+          "name": "Row / 04.2 / 移除物体"
+        },
+        {
+          "id": "15:5137",
+          "name": "Row / 04.3 / 智能扩图"
+        },
+        {
+          "id": "15:5423",
+          "name": "Row / 06 / AI Widgets"
+        },
+        {
+          "id": "15:5313",
+          "name": "Row / 05 / More local tools"
+        },
+        {
+          "id": "15:5518",
+          "name": "Row / 07 / Pricing"
+        },
+        {
+          "id": "15:5591",
+          "name": "Row / 08 / Download"
+        },
+        {
+          "id": "15:5612",
+          "name": "Row / 09 / FAQ"
+        },
+        {
+          "id": "15:5682",
+          "name": "Row / 10 / Footer"
+        }
+      ]
+    },
+    {
+      "id": "15:5726",
+      "name": "Washi · Home / 中文 / Mobile 390",
+      "height": 8704,
+      "width": 390,
+      "heroId": "15:5744",
+      "introId": "15:5796",
+      "widgetFilms": 4,
+      "duplicateCards": 0,
+      "order": [
+        {
+          "id": "15:5727",
+          "name": "Row / 01 / Navigation"
+        },
+        {
+          "id": "15:5743",
+          "name": "Row / 02 / Hero"
+        },
+        {
+          "id": "15:5795",
+          "name": "Row / 03 / Workflow introduction"
+        },
+        {
+          "id": "15:5805",
+          "name": "Row / 04.1 / 人物背景分离"
+        },
+        {
+          "id": "15:5830",
+          "name": "Row / 04.2 / 移除物体"
+        },
+        {
+          "id": "15:5882",
+          "name": "Row / 04.3 / 智能扩图"
+        },
+        {
+          "id": "15:6026",
+          "name": "Row / 06 / AI Widgets"
+        },
+        {
+          "id": "15:5927",
+          "name": "Row / 05 / More local tools"
+        },
+        {
+          "id": "15:6114",
+          "name": "Row / 07 / Pricing"
+        },
+        {
+          "id": "15:6181",
+          "name": "Row / 08 / Download"
+        },
+        {
+          "id": "15:6201",
+          "name": "Row / 09 / FAQ"
+        },
+        {
+          "id": "15:6262",
+          "name": "Row / 10 / Footer"
+        }
+      ]
+    }
+  ],
+  "stories": [
+    {
+      "boardId": "15:2",
+      "lang": "en",
+      "theme": "sumi",
+      "mobile": false,
+      "features": [
+        {
+          "key": "background",
+          "sectionId": "15:193",
+          "mediaInstanceId": "62:6885",
+          "copyInstanceId": "62:6881",
+          "mediaComponentId": "32:1561",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 603.6666870117188,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "remove-objects",
+          "sectionId": "15:326",
+          "mediaInstanceId": "62:6896",
+          "copyInstanceId": "62:6892",
+          "mediaComponentId": "51:5563",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 460.0000305175781,
+          "usesSlider": true,
+          "initialSectionHeight": 573,
+          "finalCopyHeight": 204
+        },
+        {
+          "key": "expand",
+          "sectionId": "15:381",
+          "mediaInstanceId": "62:7020",
+          "copyInstanceId": "62:7016",
+          "mediaComponentId": "32:1717",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 603.6666870117188,
+          "finalCopyHeight": 204
+        },
+        {
+          "key": "outfit",
+          "sectionId": "15:667",
+          "mediaInstanceId": "62:7031",
+          "copyInstanceId": "62:7027",
+          "mediaComponentId": "32:1743",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 755.6666870117188,
+          "finalCopyHeight": 204
+        }
+      ]
+    },
+    {
+      "boardId": "15:969",
+      "lang": "en",
+      "theme": "sumi",
+      "mobile": true,
+      "features": [
+        {
+          "key": "background",
+          "sectionId": "15:1049",
+          "mediaInstanceId": "62:7067",
+          "copyInstanceId": "62:7063",
+          "mediaComponentId": "32:1561",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 537,
+          "finalCopyHeight": 244
+        },
+        {
+          "key": "remove-objects",
+          "sectionId": "15:1074",
+          "mediaInstanceId": "62:7078",
+          "copyInstanceId": "62:7074",
+          "mediaComponentId": "51:5802",
+          "mediaWidth": 342,
+          "mediaHeight": 384,
+          "usesSlider": true,
+          "initialSectionHeight": 693,
+          "finalCopyHeight": 204
+        },
+        {
+          "key": "expand",
+          "sectionId": "15:1126",
+          "mediaInstanceId": "62:7098",
+          "copyInstanceId": "62:7094",
+          "mediaComponentId": "32:1717",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 537,
+          "finalCopyHeight": 204
+        },
+        {
+          "key": "outfit",
+          "sectionId": "15:1270",
+          "mediaInstanceId": "62:7109",
+          "copyInstanceId": "62:7105",
+          "mediaComponentId": "32:1743",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 785,
+          "finalCopyHeight": 204
+        }
+      ]
+    },
+    {
+      "boardId": "15:1545",
+      "lang": "zh",
+      "theme": "sumi",
+      "mobile": false,
+      "features": [
+        {
+          "key": "background",
+          "sectionId": "15:1736",
+          "mediaInstanceId": "62:7243",
+          "copyInstanceId": "62:7239",
+          "mediaComponentId": "32:1548",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 603.6666870117188,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "remove-objects",
+          "sectionId": "15:1869",
+          "mediaInstanceId": "62:7254",
+          "copyInstanceId": "62:7250",
+          "mediaComponentId": "51:5023",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 460.0000305175781,
+          "usesSlider": true,
+          "initialSectionHeight": 573,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "expand",
+          "sectionId": "15:1924",
+          "mediaInstanceId": "62:7378",
+          "copyInstanceId": "62:7374",
+          "mediaComponentId": "32:1704",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 603.6666870117188,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "outfit",
+          "sectionId": "15:2210",
+          "mediaInstanceId": "62:7389",
+          "copyInstanceId": "62:7385",
+          "mediaComponentId": "32:1730",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 755.6666870117188,
+          "finalCopyHeight": 180
+        }
+      ]
+    },
+    {
+      "boardId": "15:2512",
+      "lang": "zh",
+      "theme": "sumi",
+      "mobile": true,
+      "features": [
+        {
+          "key": "background",
+          "sectionId": "15:2592",
+          "mediaInstanceId": "62:7426",
+          "copyInstanceId": "62:7422",
+          "mediaComponentId": "32:1548",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 513,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "remove-objects",
+          "sectionId": "15:2617",
+          "mediaInstanceId": "62:7437",
+          "copyInstanceId": "62:7433",
+          "mediaComponentId": "51:5262",
+          "mediaWidth": 342,
+          "mediaHeight": 384,
+          "usesSlider": true,
+          "initialSectionHeight": 669,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "expand",
+          "sectionId": "15:2669",
+          "mediaInstanceId": "62:7457",
+          "copyInstanceId": "62:7453",
+          "mediaComponentId": "32:1704",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 513,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "outfit",
+          "sectionId": "15:2813",
+          "mediaInstanceId": "62:7468",
+          "copyInstanceId": "62:7464",
+          "mediaComponentId": "32:1730",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 713,
+          "finalCopyHeight": 180
+        }
+      ]
+    },
+    {
+      "boardId": "15:3216",
+      "lang": "en",
+      "theme": "washi",
+      "mobile": false,
+      "features": [
+        {
+          "key": "background",
+          "sectionId": "15:3407",
+          "mediaInstanceId": "62:7602",
+          "copyInstanceId": "62:7598",
+          "mediaComponentId": "32:1561",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 603.6666870117188,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "remove-objects",
+          "sectionId": "15:3540",
+          "mediaInstanceId": "62:7613",
+          "copyInstanceId": "62:7609",
+          "mediaComponentId": "51:5833",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 460.0000305175781,
+          "usesSlider": true,
+          "initialSectionHeight": 573,
+          "finalCopyHeight": 204
+        },
+        {
+          "key": "expand",
+          "sectionId": "15:3595",
+          "mediaInstanceId": "62:7737",
+          "copyInstanceId": "62:7733",
+          "mediaComponentId": "32:1717",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 603.6666870117188,
+          "finalCopyHeight": 204
+        },
+        {
+          "key": "outfit",
+          "sectionId": "15:3881",
+          "mediaInstanceId": "62:7748",
+          "copyInstanceId": "62:7744",
+          "mediaComponentId": "32:1743",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 755.6666870117188,
+          "finalCopyHeight": 204
+        }
+      ]
+    },
+    {
+      "boardId": "15:4183",
+      "lang": "en",
+      "theme": "washi",
+      "mobile": true,
+      "features": [
+        {
+          "key": "background",
+          "sectionId": "15:4263",
+          "mediaInstanceId": "62:7784",
+          "copyInstanceId": "62:7780",
+          "mediaComponentId": "32:1561",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 537,
+          "finalCopyHeight": 244
+        },
+        {
+          "key": "remove-objects",
+          "sectionId": "15:4288",
+          "mediaInstanceId": "62:7795",
+          "copyInstanceId": "62:7791",
+          "mediaComponentId": "51:6072",
+          "mediaWidth": 342,
+          "mediaHeight": 384,
+          "usesSlider": true,
+          "initialSectionHeight": 693,
+          "finalCopyHeight": 204
+        },
+        {
+          "key": "expand",
+          "sectionId": "15:4340",
+          "mediaInstanceId": "62:7815",
+          "copyInstanceId": "62:7811",
+          "mediaComponentId": "32:1717",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 537,
+          "finalCopyHeight": 204
+        },
+        {
+          "key": "outfit",
+          "sectionId": "15:4484",
+          "mediaInstanceId": "62:7826",
+          "copyInstanceId": "62:7822",
+          "mediaComponentId": "32:1743",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 785,
+          "finalCopyHeight": 204
+        }
+      ]
+    },
+    {
+      "boardId": "15:4759",
+      "lang": "zh",
+      "theme": "washi",
+      "mobile": false,
+      "features": [
+        {
+          "key": "background",
+          "sectionId": "15:4950",
+          "mediaInstanceId": "62:7960",
+          "copyInstanceId": "62:7956",
+          "mediaComponentId": "32:1548",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 603.6666870117188,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "remove-objects",
+          "sectionId": "15:5083",
+          "mediaInstanceId": "62:7971",
+          "copyInstanceId": "62:7967",
+          "mediaComponentId": "51:5293",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 460.0000305175781,
+          "usesSlider": true,
+          "initialSectionHeight": 573,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "expand",
+          "sectionId": "15:5138",
+          "mediaInstanceId": "62:8095",
+          "copyInstanceId": "62:8091",
+          "mediaComponentId": "32:1704",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 603.6666870117188,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "outfit",
+          "sectionId": "15:5424",
+          "mediaInstanceId": "62:8106",
+          "copyInstanceId": "62:8102",
+          "mediaComponentId": "32:1730",
+          "mediaWidth": 736.0000610351562,
+          "mediaHeight": 490.66668701171875,
+          "usesSlider": false,
+          "initialSectionHeight": 755.6666870117188,
+          "finalCopyHeight": 180
+        }
+      ]
+    },
+    {
+      "boardId": "15:5726",
+      "lang": "zh",
+      "theme": "washi",
+      "mobile": true,
+      "features": [
+        {
+          "key": "background",
+          "sectionId": "15:5806",
+          "mediaInstanceId": "62:8142",
+          "copyInstanceId": "62:8138",
+          "mediaComponentId": "32:1548",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 513,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "remove-objects",
+          "sectionId": "15:5831",
+          "mediaInstanceId": "62:8153",
+          "copyInstanceId": "62:8149",
+          "mediaComponentId": "51:5532",
+          "mediaWidth": 342,
+          "mediaHeight": 384,
+          "usesSlider": true,
+          "initialSectionHeight": 669,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "expand",
+          "sectionId": "15:5883",
+          "mediaInstanceId": "62:8173",
+          "copyInstanceId": "62:8169",
+          "mediaComponentId": "32:1704",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 513,
+          "finalCopyHeight": 180
+        },
+        {
+          "key": "outfit",
+          "sectionId": "15:6027",
+          "mediaInstanceId": "62:8184",
+          "copyInstanceId": "62:8180",
+          "mediaComponentId": "32:1730",
+          "mediaWidth": 342,
+          "mediaHeight": 228,
+          "usesSlider": false,
+          "initialSectionHeight": 713,
+          "finalCopyHeight": 180
+        }
+      ]
+    }
+  ],
+  "washiY": 9528,
+  "counts": {
+    "homepages": 8,
+    "widgetStoriesPerHomepage": 4,
+    "totalStoryPlacements": 32,
+    "duplicateGalleryCards": 0,
+    "proDemonstrations": 0,
+    "newPhotos": 8
+  },
+  "featureOrder": [
+    "background",
+    "remove-objects",
+    "expand",
+    "outfit"
+  ],
+  "comparisonWithin": "remove-objects",
+  "validation": {
+    "stories": [
+      {
+        "board": "15:2",
+        "key": "background",
+        "sectionId": "15:193",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:2",
+        "key": "remove-objects",
+        "sectionId": "15:326",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:2",
+        "key": "expand",
+        "sectionId": "15:381",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:2",
+        "key": "outfit",
+        "sectionId": "15:667",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:969",
+        "key": "background",
+        "sectionId": "15:1049",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:969",
+        "key": "remove-objects",
+        "sectionId": "15:1074",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:969",
+        "key": "expand",
+        "sectionId": "15:1126",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:969",
+        "key": "outfit",
+        "sectionId": "15:1270",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:1545",
+        "key": "background",
+        "sectionId": "15:1736",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:1545",
+        "key": "remove-objects",
+        "sectionId": "15:1869",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:1545",
+        "key": "expand",
+        "sectionId": "15:1924",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:1545",
+        "key": "outfit",
+        "sectionId": "15:2210",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:2512",
+        "key": "background",
+        "sectionId": "15:2592",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:2512",
+        "key": "remove-objects",
+        "sectionId": "15:2617",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:2512",
+        "key": "expand",
+        "sectionId": "15:2669",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:2512",
+        "key": "outfit",
+        "sectionId": "15:2813",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:3216",
+        "key": "background",
+        "sectionId": "15:3407",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:3216",
+        "key": "remove-objects",
+        "sectionId": "15:3540",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:3216",
+        "key": "expand",
+        "sectionId": "15:3595",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:3216",
+        "key": "outfit",
+        "sectionId": "15:3881",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:4183",
+        "key": "background",
+        "sectionId": "15:4263",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:4183",
+        "key": "remove-objects",
+        "sectionId": "15:4288",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:4183",
+        "key": "expand",
+        "sectionId": "15:4340",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:4183",
+        "key": "outfit",
+        "sectionId": "15:4484",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Geist Mono",
+          "Shippori Mincho",
+          "Inter"
+        ]
+      },
+      {
+        "board": "15:4759",
+        "key": "background",
+        "sectionId": "15:4950",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:4759",
+        "key": "remove-objects",
+        "sectionId": "15:5083",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:4759",
+        "key": "expand",
+        "sectionId": "15:5138",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:4759",
+        "key": "outfit",
+        "sectionId": "15:5424",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:5726",
+        "key": "background",
+        "sectionId": "15:5806",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:5726",
+        "key": "remove-objects",
+        "sectionId": "15:5831",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:5726",
+        "key": "expand",
+        "sectionId": "15:5883",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      },
+      {
+        "board": "15:5726",
+        "key": "outfit",
+        "sectionId": "15:6027",
+        "missingFonts": 0,
+        "copyFits": true,
+        "filmFits": true,
+        "posterReaction": true,
+        "emptyImages": 0,
+        "fontFamilies": [
+          "Noto Sans SC",
+          "Noto Serif SC"
+        ]
+      }
+    ],
+    "heroes": [
+      {
+        "board": "15:2",
+        "texts": [
+          {
+            "id": "15:38",
+            "name": "Hero headline",
+            "height": 156,
+            "parentHeight": 156,
+            "fits": true
+          },
+          {
+            "id": "15:41",
+            "name": "Hero description",
+            "height": 60,
+            "parentHeight": 60,
+            "fits": true
+          },
+          {
+            "id": "15:167",
+            "name": "Product caption",
+            "height": 24,
+            "parentHeight": 24,
+            "fits": true
+          }
+        ],
+        "staticPhotoDeck": true
+      },
+      {
+        "board": "15:969",
+        "texts": [
+          {
+            "id": "15:992",
+            "name": "Hero headline",
+            "height": 100,
+            "parentHeight": 100,
+            "fits": true
+          },
+          {
+            "id": "15:995",
+            "name": "Hero description",
+            "height": 88,
+            "parentHeight": 88,
+            "fits": true
+          },
+          {
+            "id": "15:1034",
+            "name": "Product caption",
+            "height": 24,
+            "parentHeight": 24,
+            "fits": true
+          }
+        ],
+        "staticPhotoDeck": true
+      },
+      {
+        "board": "15:1545",
+        "texts": [
+          {
+            "id": "15:1581",
+            "name": "Hero headline",
+            "height": 156,
+            "parentHeight": 156,
+            "fits": true
+          },
+          {
+            "id": "15:1584",
+            "name": "Hero description",
+            "height": 60,
+            "parentHeight": 60,
+            "fits": true
+          },
+          {
+            "id": "15:1710",
+            "name": "Product caption",
+            "height": 24,
+            "parentHeight": 24,
+            "fits": true
+          }
+        ],
+        "staticPhotoDeck": true
+      },
+      {
+        "board": "15:2512",
+        "texts": [
+          {
+            "id": "15:2535",
+            "name": "Hero headline",
+            "height": 100,
+            "parentHeight": 100,
+            "fits": true
+          },
+          {
+            "id": "15:2538",
+            "name": "Hero description",
+            "height": 60,
+            "parentHeight": 60,
+            "fits": true
+          },
+          {
+            "id": "15:2577",
+            "name": "Product caption",
+            "height": 24,
+            "parentHeight": 24,
+            "fits": true
+          }
+        ],
+        "staticPhotoDeck": true
+      },
+      {
+        "board": "15:3216",
+        "texts": [
+          {
+            "id": "15:3252",
+            "name": "Hero headline",
+            "height": 156,
+            "parentHeight": 156,
+            "fits": true
+          },
+          {
+            "id": "15:3255",
+            "name": "Hero description",
+            "height": 60,
+            "parentHeight": 60,
+            "fits": true
+          },
+          {
+            "id": "15:3381",
+            "name": "Product caption",
+            "height": 24,
+            "parentHeight": 24,
+            "fits": true
+          }
+        ],
+        "staticPhotoDeck": true
+      },
+      {
+        "board": "15:4183",
+        "texts": [
+          {
+            "id": "15:4206",
+            "name": "Hero headline",
+            "height": 100,
+            "parentHeight": 100,
+            "fits": true
+          },
+          {
+            "id": "15:4209",
+            "name": "Hero description",
+            "height": 88,
+            "parentHeight": 88,
+            "fits": true
+          },
+          {
+            "id": "15:4248",
+            "name": "Product caption",
+            "height": 24,
+            "parentHeight": 24,
+            "fits": true
+          }
+        ],
+        "staticPhotoDeck": true
+      },
+      {
+        "board": "15:4759",
+        "texts": [
+          {
+            "id": "15:4795",
+            "name": "Hero headline",
+            "height": 156,
+            "parentHeight": 156,
+            "fits": true
+          },
+          {
+            "id": "15:4798",
+            "name": "Hero description",
+            "height": 60,
+            "parentHeight": 60,
+            "fits": true
+          },
+          {
+            "id": "15:4924",
+            "name": "Product caption",
+            "height": 24,
+            "parentHeight": 24,
+            "fits": true
+          }
+        ],
+        "staticPhotoDeck": true
+      },
+      {
+        "board": "15:5726",
+        "texts": [
+          {
+            "id": "15:5749",
+            "name": "Hero headline",
+            "height": 100,
+            "parentHeight": 100,
+            "fits": true
+          },
+          {
+            "id": "15:5752",
+            "name": "Hero description",
+            "height": 60,
+            "parentHeight": 60,
+            "fits": true
+          },
+          {
+            "id": "15:5791",
+            "name": "Product caption",
+            "height": 24,
+            "parentHeight": 24,
+            "fits": true
+          }
+        ],
+        "staticPhotoDeck": true
+      }
+    ],
+    "valid": true,
+    "note": "Initial bounds/font/play checks; final text growth and internal gaps are recorded in polish.checks."
+  },
+  "polish": {
+    "mutatedNodeIds": [
+      "62:6746",
+      "62:6747",
+      "62:6748",
+      "62:6745",
+      "62:6750",
+      "62:6751",
+      "62:6752",
+      "62:6749",
+      "62:6754",
+      "62:6755",
+      "62:6756",
+      "62:6753",
+      "62:6758",
+      "62:6759",
+      "62:6760",
+      "62:6757",
+      "15:3216",
+      "15:4183",
+      "15:4759",
+      "15:5726",
+      "15:6302"
+    ],
+    "copyChecks": [
+      {
+        "key": "zh/Desktop",
+        "height": 180,
+        "texts": [
+          {
+            "id": "62:6746",
+            "y": 0,
+            "height": 20,
+            "auto": "HEIGHT"
+          },
+          {
+            "id": "62:6747",
+            "y": 36,
+            "height": 80,
+            "auto": "HEIGHT"
+          },
+          {
+            "id": "62:6748",
+            "y": 132,
+            "height": 48,
+            "auto": "HEIGHT"
+          }
+        ]
+      },
+      {
+        "key": "zh/Mobile",
+        "height": 180,
+        "texts": [
+          {
+            "id": "62:6750",
+            "y": 0,
+            "height": 20,
+            "auto": "HEIGHT"
+          },
+          {
+            "id": "62:6751",
+            "y": 36,
+            "height": 80,
+            "auto": "HEIGHT"
+          },
+          {
+            "id": "62:6752",
+            "y": 132,
+            "height": 48,
+            "auto": "HEIGHT"
+          }
+        ]
+      },
+      {
+        "key": "en/Desktop",
+        "height": 180,
+        "texts": [
+          {
+            "id": "62:6754",
+            "y": 0,
+            "height": 20,
+            "auto": "HEIGHT"
+          },
+          {
+            "id": "62:6755",
+            "y": 36,
+            "height": 80,
+            "auto": "HEIGHT"
+          },
+          {
+            "id": "62:6756",
+            "y": 132,
+            "height": 48,
+            "auto": "HEIGHT"
+          }
+        ]
+      },
+      {
+        "key": "en/Mobile",
+        "height": 244,
+        "texts": [
+          {
+            "id": "62:6758",
+            "y": 0,
+            "height": 20,
+            "auto": "HEIGHT"
+          },
+          {
+            "id": "62:6759",
+            "y": 36,
+            "height": 120,
+            "auto": "HEIGHT"
+          },
+          {
+            "id": "62:6760",
+            "y": 172,
+            "height": 72,
+            "auto": "HEIGHT"
+          }
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "board": "15:2",
+        "key": "background",
+        "copy": "62:6881",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:2",
+        "key": "remove-objects",
+        "copy": "62:6892",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:2",
+        "key": "expand",
+        "copy": "62:7016",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:2",
+        "key": "outfit",
+        "copy": "62:7027",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:969",
+        "key": "background",
+        "copy": "62:7063",
+        "height": 244,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:969",
+        "key": "remove-objects",
+        "copy": "62:7074",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:969",
+        "key": "expand",
+        "copy": "62:7094",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:969",
+        "key": "outfit",
+        "copy": "62:7105",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:1545",
+        "key": "background",
+        "copy": "62:7239",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:1545",
+        "key": "remove-objects",
+        "copy": "62:7250",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:1545",
+        "key": "expand",
+        "copy": "62:7374",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:1545",
+        "key": "outfit",
+        "copy": "62:7385",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:2512",
+        "key": "background",
+        "copy": "62:7422",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:2512",
+        "key": "remove-objects",
+        "copy": "62:7433",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:2512",
+        "key": "expand",
+        "copy": "62:7453",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:2512",
+        "key": "outfit",
+        "copy": "62:7464",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:3216",
+        "key": "background",
+        "copy": "62:7598",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:3216",
+        "key": "remove-objects",
+        "copy": "62:7609",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:3216",
+        "key": "expand",
+        "copy": "62:7733",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:3216",
+        "key": "outfit",
+        "copy": "62:7744",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:4183",
+        "key": "background",
+        "copy": "62:7780",
+        "height": 244,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:4183",
+        "key": "remove-objects",
+        "copy": "62:7791",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:4183",
+        "key": "expand",
+        "copy": "62:7811",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:4183",
+        "key": "outfit",
+        "copy": "62:7822",
+        "height": 204,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:4759",
+        "key": "background",
+        "copy": "62:7956",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:4759",
+        "key": "remove-objects",
+        "copy": "62:7967",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:4759",
+        "key": "expand",
+        "copy": "62:8091",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:4759",
+        "key": "outfit",
+        "copy": "62:8102",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:5726",
+        "key": "background",
+        "copy": "62:8138",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:5726",
+        "key": "remove-objects",
+        "copy": "62:8149",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:5726",
+        "key": "expand",
+        "copy": "62:8169",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      },
+      {
+        "board": "15:5726",
+        "key": "outfit",
+        "copy": "62:8180",
+        "height": 180,
+        "gaps": [
+          16,
+          16
+        ],
+        "valid": true
+      }
+    ],
+    "boards": [
+      {
+        "id": "15:2",
+        "name": "Sumi · Home / English / Desktop 1440",
+        "height": 6760
+      },
+      {
+        "id": "15:969",
+        "name": "Sumi · Home / English / Mobile 390",
+        "height": 8888
+      },
+      {
+        "id": "15:1545",
+        "name": "Sumi · Home / 中文 / Desktop 1440",
+        "height": 6760
+      },
+      {
+        "id": "15:2512",
+        "name": "Sumi · Home / 中文 / Mobile 390",
+        "height": 8704
+      },
+      {
+        "id": "15:3216",
+        "name": "Washi · Home / English / Desktop 1440",
+        "height": 6760
+      },
+      {
+        "id": "15:4183",
+        "name": "Washi · Home / English / Mobile 390",
+        "height": 8888
+      },
+      {
+        "id": "15:4759",
+        "name": "Washi · Home / 中文 / Desktop 1440",
+        "height": 6760
+      },
+      {
+        "id": "15:5726",
+        "name": "Washi · Home / 中文 / Mobile 390",
+        "height": 8704
+      }
+    ],
+    "washiY": 9528,
+    "valid": true
+  },
+  "visualProofs": [
+    "promo-sumi-zh-desktop.png",
+    "promo-washi-en-comparison.png",
+    "promo-sumi-en-mobile-outfit.png",
+    "promo-washi-zh-mobile.png"
+  ],
+  "visualReview": "Initial composition revealed fixed headline heights; shared headlines now grow with text and all 32 copy instances preserve a 16 px gap. Post-fix composition exports are the final evidence.",
+  "sourceAppLaunched": false,
+  "cloudTasksSubmitted": 0,
+  "productionWebsiteChanged": false,
+  "appReferenceReadOnly": true
+}

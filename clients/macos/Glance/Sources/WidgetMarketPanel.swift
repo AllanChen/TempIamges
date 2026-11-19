@@ -1,4 +1,5 @@
 import AppKit
+import AVKit
 
 /// Widget Market, built from Figma `09 · Widget Market` (Glance · Shizuka): a
 /// catalog column (search, Market / Installed / Updates tabs with counts, widget
@@ -101,6 +102,7 @@ final class WidgetMarketPanel: NSPanel {
     }
 
     override func close() {
+        detailView?.demoView?.player?.pause()
         detachFromParent()
         orderOut(nil)
     }
@@ -406,10 +408,11 @@ final class WidgetMarketPanel: NSPanel {
             return
         }
         let previousOffset = detailWidgetID == selectedWidgetID ? detailView?.scrollOffset : nil
+        let previousDemo = detailWidgetID == selectedWidgetID ? detailView?.demoView : nil
         detailView?.removeFromSuperview()
         let detail = WidgetMarketDetailView(manifest: manifest,
             isInstalled: installedIDs.contains(manifest.id), hasUpdate: updatesAvailable.contains(manifest.id),
-            isAvailable: catalogIDs.contains(manifest.id))
+            isAvailable: catalogIDs.contains(manifest.id), previousDemo: previousDemo)
         detail.onInstall = { [weak self] in self?.install(manifest) }
         detail.onRemove = { WidgetRegistry.shared.uninstall(id: manifest.id) }
         detail.onRun = {
@@ -930,13 +933,14 @@ private final class WidgetMarketDetailView: NSView {
     private let stateIcon = NSImageView()
     private let stateLabel = WidgetMarketTextView(labelWithString: "")
     private let descriptionLabel = WidgetMarketTextView(labelWithString: "")
+    private(set) var demoView: AVPlayerView?
     /// Spec rows: label, then the value views stacked in the value column.
     private var specRows: [(label: WidgetMarketTextView, values: [WidgetMarketTextView], gaps: [CGFloat])] = []
     private var specLines: [NSView] = []
     var scrollOffset: NSPoint { scrollView.contentView.bounds.origin }
     override var isFlipped: Bool { true }
 
-    init(manifest: WidgetManifest, isInstalled: Bool, hasUpdate: Bool, isAvailable: Bool) {
+    init(manifest: WidgetManifest, isInstalled: Bool, hasUpdate: Bool, isAvailable: Bool, previousDemo: AVPlayerView?) {
         super.init(frame: .zero)
         wantsLayer = true
         layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surface)
@@ -947,6 +951,22 @@ private final class WidgetMarketDetailView: NSView {
         scrollView.documentView = document
         addSubview(scrollView)
         buildContent(manifest, isInstalled: isInstalled)
+        if let previousDemo {
+            demoView = previousDemo
+            document.addSubview(previousDemo)
+        } else if UUID(uuidString: manifest.id) != nil,
+                  let url = WidgetManifest.preferredLanguageTags.lazy.compactMap({ tag in
+                      Bundle.main.url(forResource: "\(manifest.id.lowercased())-\(tag)", withExtension: "mp4",
+                                      subdirectory: "WidgetDemos")
+                  }).first {
+            let view = AVPlayerView()
+            view.controlsStyle = .inline
+            view.videoGravity = .resizeAspect
+            view.player = AVPlayer(url: url)
+            view.setAccessibilityLabel(manifest.displayName)
+            document.addSubview(view)
+            demoView = view
+        }
         primaryAction.style = hasUpdate ? .update : .install
         primaryAction.target = self
         primaryAction.action = #selector(installTapped)
@@ -1075,6 +1095,11 @@ private final class WidgetMarketDetailView: NSView {
 
         // Spec rows: label column 120, value at +132; 10 pt above and below; hairline under each row.
         var y = descriptionLabel.frame.maxY + 32
+        if let demoView {
+            demoView.frame = NSRect(x: x, y: descriptionLabel.frame.maxY + 16,
+                                    width: descriptionWidth, height: descriptionWidth * 2 / 3)
+            y = demoView.frame.maxY + 20
+        }
         let valueX = x + 132
         let valueWidth = max(0, contentWidth - 132)
         for (index, row) in specRows.enumerated() {

@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "creditCost": 30,
+  "id": "23e53c68-efc0-444c-bfb5-908f4ec55725",
+  "version": "0.1.1",
+  "name": "AI 换脸",
+  "summary": "把第一张图人物的脸换成第二张图里的人脸，其余内容保持不变。",
+  "author": "Glance",
+  "official": false,
+  "execution": {
+    "mode": "cloud"
+  },
+  "commands": [
+    {
+      "id": "run",
+      "name": "换脸",
+      "description": "输入两张图片：第一张是要修改的照片，第二张提供新的人脸，生成换脸后的图片。",
+      "inputTypes": [
+        "image"
+      ],
+      "inputMimeTypes": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "taskType": "widget.23e53c68-efc0-444c-bfb5-908f4ec55725.run",
+      "requiresUpload": true,
+      "parameterSchema": {
+        "type": "object",
+        "properties": {
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    }
+  ],
+  "privacy": {
+    "uploadsMedia": true,
+    "notice": "两张图片将上传至 Glance 及 AI 图像服务处理。 / Both images are uploaded to Glance and an AI image service for processing."
+  },
+  "minimumGlanceVersion": "2.0.0",
+  "localizations": {
+    "en": {
+      "name": "Face Swap",
+      "summary": "Replace the face in the first photo with the face from the second image; everything else stays the same.",
+      "commands": {
+        "run": {
+          "name": "Face Swap",
+          "description": "Takes two images: the photo to change and the image providing the new face, and returns the photo with the face swapped."
+        }
+      }
+    },
+    "zh-Hans": {
+      "name": "AI 换脸",
+      "summary": "把第一张图人物的脸换成第二张图里的人脸，其余内容保持不变。",
+      "commands": {
+        "run": {
+          "name": "换脸",
+          "description": "输入两张图片：第一张是要修改的照片，第二张提供新的人脸，生成换脸后的图片。"
+        }
+      }
+    }
+  }
+}

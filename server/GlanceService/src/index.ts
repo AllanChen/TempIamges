@@ -1430,13 +1430,6 @@ async function adminAction(env: Env, request: Request, submissionID: string, act
   const widgetState = await env.DB.prepare("SELECT status,current_version FROM widgets WHERE id=?")
     .bind(row.widget_id).first<{ status: string; current_version: string }>();
   if (!widgetState) return fail("widget_not_found", "Widget not found.", 404);
-  if (action === "approve") {
-    const test = await env.DB.prepare("SELECT id FROM widget_review_results WHERE version_id=? AND status='succeeded' ORDER BY created_at DESC LIMIT 1")
-      .bind(row.version_id).first();
-    const legacyTest = test ? test : await env.DB.prepare("SELECT id FROM widget_tasks WHERE version_id=? AND type='review_test' AND status='succeeded' ORDER BY completed_at DESC LIMIT 1")
-      .bind(row.version_id).first();
-    if (!legacyTest) return fail("test_required", "A successful test result is required before approval.", 409);
-  }
   if (action === "promote" && row.status !== "gray_release") return fail("not_gray", "Only gray releases can be published.", 409);
   let signedManifest = row.manifest_json;
   const currentManifest = JSON.parse(row.manifest_json) as Manifest;

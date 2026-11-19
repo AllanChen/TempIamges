@@ -1,0 +1,18 @@
+QA · 2026-11-17 portrait-poster (bgpro 新角度)
+== glance-widget-bgpro-en-pc-novoice.mp4
+stream|codec_name=h264|codec_type=video|width=1920|height=1080
+stream|codec_name=aac|codec_type=audio
+format|duration=15.000000
+mean_volume: -14.6 dB
+max_volume: -1.0 dB
+== glance-widget-bgpro-zh-phone-novoice.mp4
+stream|codec_name=h264|codec_type=video|width=1080|height=1920
+stream|codec_name=aac|codec_type=audio
+format|duration=15.000000
+mean_volume: -14.6 dB
+max_volume: -1.0 dB
+抽帧 1.8/5.1/9.4/13.5s：qa-frames-zh-phone.png, qa-frames-en-pc.png；分镜：storyboard-bgpro-*.jpg
+音频：soundtrack-*-novoice.wav（只有背景音乐，未生成任何人声 wav）
+logo：/Applications/Glance.app AppIcon.icns 导出 app-icon.png（256px），未改动 App
+示例图：街拍人像 IMG_2042，非风景
+结尾：zh「Glance，看图顺手就改。」 en「Right-click. Glance. Done.」

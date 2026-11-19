@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "creditCost": 1,
+  "creditCost": 5,
   "id": "55e64c7e-f079-448a-b5bd-7315b2589019",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "name": "免费图床",
   "summary": "上传图片或视频，获得可分享的链接。",
   "author": "Glance",

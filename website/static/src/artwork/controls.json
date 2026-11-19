@@ -1,0 +1,26 @@
+{
+  "hero-dark-desktop": {},
+  "hero-dark-mobile": {},
+  "hero-light-desktop": {},
+  "hero-light-mobile": {},
+  "compare-dark-desktop": {
+    "play": "/assets/figma/34dc185e-4bce-49e2-8772-2b59608a7f40.svg",
+    "pause": "/assets/figma/9ff5d1d5-00eb-4645-84a1-8ed745c4cf59.svg"
+  },
+  "compare-dark-mobile": {
+    "play": "/assets/figma/201fc47a-cd35-400b-841b-f74f56a81c84.svg",
+    "pause": "/assets/figma/5843b0a8-2ce5-4baa-8c7f-447a1c8aa654.svg"
+  },
+  "compare-light-desktop": {
+    "play": "/assets/figma/2ea95fde-b439-4688-83c6-b0b1121a1480.svg",
+    "pause": "/assets/figma/206c05e3-31dc-450e-befc-2e900d601ad4.svg"
+  },
+  "compare-light-mobile": {
+    "play": "/assets/figma/75a2c502-93d9-4224-ac1c-9481f6958994.svg",
+    "pause": "/assets/figma/779c3da6-5262-406f-849e-37029d797b1c.svg"
+  },
+  "widget-playing": {
+    "play": "/assets/figma/6f8767ce-5b0d-4bc8-b327-9e42e22ac354.svg",
+    "pause": "/assets/figma/c31f0142-e5a0-4937-a536-4a25ef0c6b26.svg"
+  }
+}

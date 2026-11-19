@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "creditCost": 1,
+  "creditCost": 10,
   "id": "e6f71f1d-2897-4e26-9512-f72ad2e08d2a",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "name": "图片转提示词",
   "summary": "分析图片内容，生成可直接复用的文字描述。",
   "author": "Your name",

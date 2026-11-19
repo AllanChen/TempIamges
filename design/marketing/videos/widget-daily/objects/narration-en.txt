@@ -1,0 +1,14 @@
+Glance Widget daily · Remove Objects · 15s
+Original voice: macOS Samantha, rate 185
+
+1. 00.20s – 03.60s  Background full of crowds and buildings?
+2. 03.80s – 09.00s  Right-click, Remove Objects, type what to remove.
+3. 09.20s – 12.20s  Same person, a much cleaner scene.
+4. 12.40s – 15.00s  Glance. Right-click, done.
+
+On-screen text:
+00.00s – 03.60s  Messy background? Crowds, buildings, clutter.
+03.60s – 09.00s  Type what to remove. AI clears it.  [Right-click → Widget → Remove Objects]
+09.00s – 12.20s  Same person, cleaner scene.  (AI fills in what was behind)
+12.20s – 15.00s  Glance · See it. Right-click. Fixed. · Widget · Remove Objects · Mac app · Made for Mac
+Corner label: Animated demo · Example effect

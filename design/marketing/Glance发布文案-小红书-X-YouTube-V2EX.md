@@ -24,32 +24,95 @@
 
 ## 送码活动（发帖前填写）
 
-把 【】 里的内容换成实际数值。**兑换码不要写在公开帖子里**，只在下表登记，中奖后私下发给本人。本文件含兑换码时不要提交到 git。
+设置：一年 Pro，每码 1 台 Mac，先到先得。兑换码公开贴在各平台评论，先到先得。本文件含兑换码时不要提交到 git。
 
 | 项目 | 填写 |
 |---|---|
-| 数量 | 【N】 个 |
-| 类型 | 【终身／一年】 Pro |
-| 每码 Mac 名额 | 【1】 台 |
-| 截止时间 | 【YYYY-MM-DD HH:mm】 |
+| 数量 | 20 个：小红书 10、X 5、YouTube 5 |
+| 类型 | 一年 Pro |
+| 每码 Mac 名额 | 1 台 |
+| 发放方式 | 先到先得，评论区公开 |
 
 兑换码登记：
 
 | # | 兑换码 | 平台 | 中奖用户 | 发出日期 | 已兑换 |
 |---|---|---|---|---|---|
-| 1 | GLG-____-____-____-____ | | | | |
-| 2 | GLG-____-____-____-____ | | | | |
-| 3 | GLG-____-____-____-____ | | | | |
-| 4 | GLG-____-____-____-____ | | | | |
-| 5 | GLG-____-____-____-____ | | | | |
+| 1 | GLG-AQBA-3T4S-W2QZ-7AW8 | X | | | |
+| 2 | GLG-L33V-GV7N-79BC-WRM5 | X | | | |
+| 3 | GLG-KFWB-Q4EY-USZY-4N7E | X | | | |
+| 4 | GLG-HPJQ-HWMC-RGWP-R6WP | X | | | |
+| 5 | GLG-WW76-NRNA-C7JX-8KKR | X | | | |
+| 6 | GLG-4CRM-ZLPH-7KD8-NMXT | YouTube | | | |
+| 7 | GLG-ZWMS-BHED-SQM7-XRJV | YouTube | | | |
+| 8 | GLG-EQE3-TXQ9-3F9T-TT7S | YouTube | | | |
+| 9 | GLG-JFHG-H4YL-D74V-3WJ5 | YouTube | | | |
+| 10 | GLG-X568-VRWT-4EYW-TKRR | YouTube | | | |
+| 11 | GLG-44EJ-EUJJ-V34A-ZPLX | 小红书 | | | |
+| 12 | GLG-TMSR-AN4E-DSS4-VUGM | 小红书 | | | |
+| 13 | GLG-C6XF-WHFZ-DQNU-2RX4 | 小红书 | | | |
+| 14 | GLG-BFWT-9C9T-DMBS-DR5U | 小红书 | | | |
+| 15 | GLG-DWZQ-ULYM-RW7G-49F4 | 小红书 | | | |
+| 16 | GLG-U5YW-D8FT-AMWX-BXFW | 小红书 | | | |
+| 17 | GLG-D82D-SJXL-BZYR-6QFQ | 小红书 | | | |
+| 18 | GLG-Q8TS-T268-YEC3-CPNK | 小红书 | | | |
+| 19 | GLG-854V-AT3T-H38F-6PZF | 小红书 | | | |
+| 20 | GLG-2SA5-U88C-4ALR-NNAV | 小红书 | | | |
 
-各平台送码短句（加在对应文案末尾）：
-- **小红书**：🎁 评论区说说你最想用 Glance 解决什么看图／修图问题，【截止时间】抽 【N】 位送 Pro 兑换码（Mac 电脑可用，不含 AI 点数），中奖私信发码。
-- **X**：🎁 Giving away 【N】 Glance Pro codes (【lifetime / 1-year】, Mac only, AI credits not included). Reply with what you'd use Glance for — winners picked 【date】, codes sent by DM.
-- **YouTube**（置顶评论追加）：🎁 Comment what you'd use Glance for — 【N】 Pro codes drawn on 【date】 (Mac only, AI credits not included). Winners: email support@glancepreview.com, never post your email publicly.
-- **V2EX**：见下方 V2EX 正文中的「送码」段。
+各平台送码方式：先到先得，兑换码直接贴在各平台评论（已写进下方正文）。用登记表的「已兑换」列和后台兑换记录，统计各平台多久被抢完。
+- **V2EX**：本次未分配兑换码，不送码。
 
 兑换步骤（回答用户时用）：登录 Glance 账户 → 账户页「兑换 Pro」→ 输入兑换码 → 当前 Mac 自动激活；Mac 名额已满时到「设备」页释放旧设备。
+
+---
+
+## 故事版文案（Glance 是怎么来的）
+
+素材来自真实经历：作者从后端转 AI 岗，在终端里做了 Glance；办公室同事和经理的日常修图需求，让它长成了现在的样子。不加虚构的人名、数字和对话。
+
+### 小红书 · 故事版
+标题：本来是给自己写的看图工具，结果被同事改成了这样
+
+正文：
+（先说一句，这是 Mac 电脑上的软件，手机上用不了）
+
+我是写后端的，转做 AI 以后基本一整天都开着终端，界面类的东西很久没碰了。
+但图还是要看的。AI 生成的图、视频、文档，全在各种文件夹里，每次找半天。
+所以就给自己写了个小工具，选中文件路径按 option+空格，图就弹出来。生图的时候还能把几张放一起比，看看改了参数到底差在哪。
+
+一开始真的就是自己用。
+
+后来发现办公室的同事们也在用 AI 弄图，而且比我用得还勤。
+今天要去个背景，明天要把图放大一点，后天又要转成 jpg。每次都是找个网站传上去，等一会儿，下载下来，再打开看看对不对。
+他们不会去开终端的，还是习惯在桌面上点来点去。
+
+看多了我就想，那干脆把这些都放进我那个工具里吧。
+现在双击就能打开图片，右键就能去背景、放大、转格式，改完直接跟原图放一起比。
+
+说实话，这些功能都不是我想出来的，是看他们每天在干嘛，照着做的。
+AI 变化是挺快，但大家最后还是想在桌面上点两下就完事。
+
+它叫 Glance。看图、对比、截图、OCR 免费，Pro 是 29.9 一次买断，AI 功能要另外用点数。
+要 M 芯片的 Mac，系统 12.3 以上，不在 App Store，官网链接放评论区了。
+评论区还放了 10 个一年的 Pro 码，先到先得。
+
+#Mac软件 #独立开发 #程序员 #看图软件 #AI修图 #效率工具
+
+### X · 故事版（Thread）
+1/
+I'm a backend dev. After moving to an AI role, I basically lived in the terminal.
+But I still had to look at images and videos. So I built myself a tool: select a path, hit ⌥ Space, see it. Compare outputs side by side.
+
+2/
+Then I watched my coworkers.
+AI changed their work too: remove the background, upscale, convert to JPG — again and again.
+Upload, wait, download, open, compare. They don't use terminals. They click.
+
+3/
+So I put their daily tasks into the same app. Right-click: remove background, expand, upscale, convert.
+They taught me what to build. AI moves fast — old-school folks still love point-and-click.
+
+That's Glance, for Mac 👇
+https://glancepreview.com/?utm_source=x&utm_medium=social&utm_campaign=launch
 
 ---
 
@@ -67,7 +130,19 @@ Glance — an image viewer for Mac:
 
 https://glancepreview.com/?utm_source=x&utm_medium=social&utm_campaign=launch
 
-回复自己（可选，第二条）：
+送码回复（第二条，回复自己的主帖）：
+
+🎁 5 free one-year Glance Pro codes — first come, first served (1 Mac per code, AI credits not included):
+
+GLG-AQBA-3T4S-W2QZ-7AW8
+GLG-L33V-GV7N-79BC-WRM5
+GLG-KFWB-Q4EY-USZY-4N7E
+GLG-HPJQ-HWMC-RGWP-R6WP
+GLG-WW76-NRNA-C7JX-8KKR
+
+Redeem: sign in to Glance → Account → Redeem Pro. Grabbed one? Reply so others know.
+
+回复自己（可选，第三条）：
 
 macOS 12.3+ on Apple silicon. Viewing, compare, capture & OCR are free forever; other local tools have a 14-day trial, no card. Pro is a one-time purchase from $9.99. Cloud AI Widgets use separate credits and upload the selected media for processing.
 
@@ -98,10 +173,32 @@ Product animation with illustrative AI results, not a screen recording. Download
 ✅ 正式版已通过 Apple 公证，从官网下载 DMG 安装
 💰 Pro 个人版 ¥29.9 一次买断；云端 AI Widget 另用点数，所选素材会上传处理
 
+🎁 送码：评论区放了 10 个一年 Pro 兑换码，先到先得（每码 1 台 Mac，不含 AI 点数）
+
 #Mac软件 #Mac必备软件 #Mac效率 #MacBook #看图软件 #AI修图 #抠图 #效率工具
 
 置顶评论：
 官网 https://glancepreview.com/?utm_source=xiaohongshu&utm_medium=social&utm_campaign=launch ，请用 Mac 电脑的浏览器打开下载。反馈：support@glancepreview.com，我们以 1–2 个工作日回复为目标。视频为产品动效与 AI 示例效果，不是实机录屏。
+
+送码评论（拆成两条发，每条不超过 300 字）：
+
+评论 1：
+🎁 一年 Pro 兑换码，先到先得（每码 1 台 Mac，不含 AI 点数）（1/2）：
+GLG-44EJ-EUJJ-V34A-ZPLX
+GLG-TMSR-AN4E-DSS4-VUGM
+GLG-C6XF-WHFZ-DQNU-2RX4
+GLG-BFWT-9C9T-DMBS-DR5U
+GLG-DWZQ-ULYM-RW7G-49F4
+兑换：Glance 登录账户 → 账户页「兑换 Pro」→ 输入兑换码
+
+评论 2：
+🎁 兑换码（2/2）：
+GLG-U5YW-D8FT-AMWX-BXFW
+GLG-D82D-SJXL-BZYR-6QFQ
+GLG-Q8TS-T268-YEC3-CPNK
+GLG-854V-AT3T-H38F-6PZF
+GLG-2SA5-U88C-4ALR-NNAV
+用掉了麻烦回复一下，方便后面的人 🙏
 
 提示：正文里不放链接（不能点，还可能被限流），链接放在置顶评论和主页简介里。主页简介同样用上面的小红书链接。
 
@@ -124,61 +221,63 @@ One photo shouldn't need 6 windows. Glance is an image and video viewer for Mac:
 macOS 12.3+ on Apple silicon. Viewing, compare, capture & OCR are free forever. Cloud AI Widgets use separate credits.
 Product animation with illustrative AI results, not a screen recording.
 
-置顶评论：Download: https://glancepreview.com/?utm_source=youtube&utm_medium=video&utm_campaign=launch
+置顶评论：
+
+Download: https://glancepreview.com/?utm_source=youtube&utm_medium=video&utm_campaign=launch
+
+🎁 5 free one-year Pro codes — first come, first served (1 Mac per code, AI credits not included):
+GLG-4CRM-ZLPH-7KD8-NMXT
+GLG-ZWMS-BHED-SQM7-XRJV
+GLG-EQE3-TXQ9-3F9T-TT7S
+GLG-JFHG-H4YL-D74V-3WJ5
+GLG-X568-VRWT-4EYW-TKRR
+Redeem: sign in to Glance → Account → Redeem Pro. Used one? Reply so others know.
 
 ---
 
 ## V2EX
-节点：**分享创造**（/go/create）。V2EX 不能直接上传视频，正文放视频链接（B 站／YouTube）或官网链接，配 2–3 张截图（可用 `videos/glance-intro-30s/poster-zh.jpg`、`videos/glance-intro-30s/social/xiaohongshu-cover.jpg`、`videos/glance-intro-30s/storyboard-zh.jpg`）。
+节点：**分享创造**（/go/create）。V2EX 不能直接传视频，正文放视频链接或官网链接，配 2–3 张截图（可用 `videos/glance-intro-30s/poster-zh.jpg`、`videos/glance-intro-30s/storyboard-zh.jpg`）。
 
 标题：
-做了个 Mac 看图工具 Glance：选中路径 ⌥ Space 预览，右键用 AI 改图
+后端转 AI 之后天天泡在终端里，给自己写了个 Mac 看图工具，后来被同事的需求带偏了
 
 正文：
 
-大家好，我是 Glance 的开发者。
+写后端的，前阵子转做 AI，现在基本一天到晚开着终端，Claude Code、各种脚本跑来跑去，图形界面很久没怎么碰了。
 
-起因很简单：平时用 Claude Code / Cursor / ChatGPT 生成图片，终端里吐出一个 `~/Downloads/out_0423.png`，想看一眼得复制路径 → 开 Finder → 前往文件夹 → 翻找 → 打开。修图更麻烦：上传网站、排队、下载、再找个软件和原图比。
+问题是图还得看。生成的图、视频、文档都落在 `~/Downloads/out_0423.png` 这种地方，每次想看一眼就是复制路径、开 Finder、前往文件夹、翻半天、再双击。一天来几十次，挺烦的。
 
-所以做了 Glance，一个原生 macOS 看图看视频工具：
+所以给自己写了个小东西：在终端里选中路径，按 `⌥ Space`，图直接在当前屏幕弹出来，看完关掉，人还在终端里。选中好几个路径就排成网格一起看。生图调参数的时候，把前后几张并排或者拉个滑杆对比，差在哪一眼就知道。
 
-**看**
-- 在支持读取所选文本的终端、IDE、聊天窗口或网页中选中文件路径或图片链接，按 `⌥ Space` 在当前屏幕预览；Peek 需要辅助功能权限
-- 支持裸文件名（会用 Spotlight 找），多个路径一起选会以网格展示
-- 可设为默认看图器：缩放、平移、翻看同组图片、视频播放和截帧
+本来就打算自己用用。
 
-**比**
-- 两张图并排或滑杆对比，显示尺寸、格式等技术属性差异
+后来留意了一下办公室里的同事和经理。AI 对他们的影响其实比对我还大，只是用法完全不一样：今天去个背景，明天放大一张图，后天又要把一堆图转成 jpg。每次都是找个网站上传、等、下载、再找软件打开跟原图比一下。
 
-**改**
-- 右键 → Widget：去背景、扩图、高清放大、去水印、AI 换装等，结果直接出现在原图旁边，改完马上对比
+他们不会开终端，也没必要开。他们就是习惯在桌面上点。
 
-**收费**
-- 看图、对比、截图、OCR 永久免费；首次打开不需要登录和系统权限
-- Pro 个人版 ¥29.9（1 个账户、1 台 Mac）；多人版 ¥79.9（含购买者共 5 个独立账户，每人 1 台 Mac，点数独立）。一次买断，终身免费更新
-- Pro 解锁转换、压缩、导出、复制图片、编辑、Base64 等本地工具；这些工具有 14 天试用，不绑卡
-- 云端 AI Widget 不包含在 Pro 内，免费版也能使用；新账户赠 100 点，点数包为 ¥12 / 600 点、¥28 / 1500 点、¥88 / 5000 点，具体以官网和 App 为准
-- 查看和本地处理不上传媒体；主动运行云端 Widget 时，所选图片或视频会上传给相应处理服务
-- 所有失败任务自动全额退点，包括外部服务、网络和无效输入失败；未解决的退点状态可以带任务 ID 私信支持邮箱核查
-- 视频去水印当前为每 10 秒 100 点，向上取整；上限约 187.2 秒、50 MiB、24 段，不支持 30 分钟长视频
+看多了就觉得，这些事放进我那个工具里不就行了。于是 Glance 后来加了这些：
 
-**系统要求**：macOS 12.3+，Apple 芯片（M 系列），暂不支持 Intel
-**下载**：https://glancepreview.com/?utm_source=v2ex&utm_medium=community&utm_campaign=launch
-**价格与说明**：https://glancepreview.com/pricing/
-**反馈**：support@glancepreview.com（目标为 1–2 个工作日内回复）
+- 可以设成默认看图器，双击打开，缩放、平移、翻同一组图，视频也能播和截帧
+- 两张图并排或滑杆对比，顺便把尺寸、格式这些差异列出来
+- 右键 → Widget：去背景、扩图、高清放大、去水印、换装这些，结果直接出现在原图旁边，改完马上能比
+- 转格式、压缩、导出、Base64 这类本地处理
 
-正式版 1.0.2 已通过 Apple 公证。双击或拖入媒体无需 Peek 权限；选中文本快捷预览需要辅助功能权限。权限引导可跳过，之后再开启。
+说白了后面这一半功能，都不是我自己想出来的，是照着同事每天在干嘛做的。AI 再怎么进步，大部分人还是想在桌面上点两下就完事。
 
----
+**一些具体信息：**
+- 看图、对比、截图、OCR 免费，不用登录
+- Pro ¥29.9 一次买断（1 个账户 1 台 Mac），多人版 ¥79.9 可以给 5 个人用；转格式、压缩、导出这些本地工具在 Pro 里，有 14 天试用，不绑卡
+- 云端的 AI Widget 不在 Pro 里，单独用点数，新账户送 100 点；失败的任务自动退点
+- 本地看图和处理不上传任何东西，只有你主动跑云端 Widget 时，选中的图或视频才会上传处理
+- `⌥ Space` 那个功能需要辅助功能权限（要读你选中的文字），双击、拖进来看图不需要，权限可以先跳过
 
-欢迎回复想解决的看图／修图场景。Bug 请通过支持邮箱私下发送版本、系统版本、复现步骤及预期／实际结果。订单号或任务 ID 可按需附上；不要公开贴邮箱、完整订单、日志或兑换码，Base64 编码也不能保护邮箱隐私。
+**系统要求：** macOS 12.3+，M 系列芯片，暂时不支持 Intel
+**下载：** https://glancepreview.com/?utm_source=v2ex&utm_medium=community&utm_campaign=launch
+**价格：** https://glancepreview.com/pricing/
 
-🎁 **送码**：送出 【N】 个 Glance Pro 兑换码（【终身／一年】，每码 1 个账户、【1】 台 Mac）。
-- 参与：回复你最想用 Glance 解决的看图／修图场景
-- 截止：【YYYY-MM-DD HH:mm】（北京时间），之后按楼层随机抽取，公布抽取方式和中奖楼层
-- 发放：中奖者私信或邮件联系 support@glancepreview.com 领码，**不要在回复里留邮箱**
-- 兑换：在 Glance 里登录账户 → 账户页「兑换 Pro」→ 输入兑换码，当前 Mac 会自动激活
-- 说明：兑换码只解锁本地 Pro 功能，**不含云端 AI 点数**（新账户另送 100 点）；已经有 Pro 的账户无法兑换，码不会被消耗，可以转送别人
+正式版 1.0.2 已经过 Apple 公证，直接下载 DMG 装就行。
+
+还在一个人慢慢迭代，欢迎拍砖。有 bug 或者想要的功能，回帖或者发邮件到 support@glancepreview.com 都行，邮件里带上系统版本和复现步骤会快很多。
 
 ---
 

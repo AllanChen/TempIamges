@@ -120,7 +120,7 @@ clients/macos/Glance/
 App 启动
   -> AppDelegate 初始化菜单栏、热键、路径识别、加载器和面板
   -> PermissionManager 检查 Input Monitoring / Accessibility
-  -> KeyboardMonitor 开始监听 Option + Space 或自定义快捷键
+  -> KeyboardMonitor 开始监听 Option + K 或自定义快捷键
   -> 用户选中文本并按住热键
   -> SelectedTextExtractor 获取选中文本
   -> PathDetector 提取已解析路径和未解析 token

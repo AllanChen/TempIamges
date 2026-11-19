@@ -1,0 +1,14 @@
+Glance Widget daily · Edit Area · 15s
+Original voice: user's voice (Higgsfield seed_audio)
+
+1. 00.20s – 03.60s  Love the photo, but not the bag?
+2. 03.80s – 09.30s  Right-click, Edit Area. Paint it, then say what you want.
+3. 09.50s – 12.30s  The bag is gone. The rest stays.
+4. 12.50s – 15.00s  Right-click. Glance. Done.
+
+On-screen text:
+00.00s – 03.60s  Love the shot, not the bag?
+03.60s – 09.30s  Paint it, say it. Only that part changes.  [Right-click → Widget → Edit Area]
+09.30s – 12.30s  Bag gone. Everything else stays.  (Paint an area, describe the change in words)
+12.30s – 15.00s  Glance · Right-click. Glance. Done. · Widget · Edit Area · Mac app · Made for Mac
+Corner label: Animated demo · Example effect
