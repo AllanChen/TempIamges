@@ -126,12 +126,12 @@ final class PeekMiniPanel: NSPanel {
 
     // MARK: - Showing
 
-    func showLoading(name: String, meta: String, anchor: PeekMiniAnchor) {
+    func showLoading(name: String, meta: String, anchor: PeekMiniAnchor, takeFocus: Bool = true) {
         resetMedia()
         self.anchor = anchor
         content = .loading(name: name, meta: meta)
         render()
-        present()
+        present(takeFocus: takeFocus)
     }
 
     func showFailure(name: String, meta: String, title: String, message: String,
@@ -189,12 +189,12 @@ final class PeekMiniPanel: NSPanel {
     /// Supplies the explanation for a file that exists but couldn't be read.
     var failureMessage: ((URL?) -> String)?
 
-    private func present() {
+    private func present(takeFocus: Bool = true) {
         if !isVisible {
             orderFrontRegardless()
             installMouseMonitor()
         }
-        makeKey()
+        if takeFocus { makeKey() }
     }
 
     func dismiss() {
@@ -787,8 +787,21 @@ private final class MiniText: NSView {
 /// Rounded, aspect-filled media plate. Click to act; `selected` draws the ring.
 private final class MiniMediaView: NSView {
     var onClick: (() -> Void)?
+    private let imageLayer = CALayer()
+    private var animationPlayer: ImageAnimationPlayer?
+
     var image: NSImage? {
-        didSet { layer?.contents = image }
+        didSet {
+            if image?.glanceAnimation != nil {
+                if animationPlayer == nil {
+                    animationPlayer = ImageAnimationPlayer(view: self, layer: imageLayer)
+                }
+                animationPlayer?.setImage(image)
+            } else {
+                animationPlayer = nil
+                imageLayer.contents = image
+            }
+        }
     }
     var selected = false {
         didSet {
@@ -802,11 +815,19 @@ private final class MiniMediaView: NSView {
         wantsLayer = true
         layer?.cornerRadius = radius
         layer?.masksToBounds = true
-        layer?.contentsGravity = .resizeAspectFill
         layer?.backgroundColor = PanelStyle.canvas.cgColor
+        imageLayer.frame = bounds
+        imageLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        imageLayer.contentsGravity = .resizeAspectFill
+        layer?.addSublayer(imageLayer)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        animationPlayer?.refreshVisibility()
+    }
 
     func showsPlaceholder(failed: Bool) {
         let icon = NSImageView(frame: NSRect(x: (bounds.width - 16) / 2, y: (bounds.height - 16) / 2,

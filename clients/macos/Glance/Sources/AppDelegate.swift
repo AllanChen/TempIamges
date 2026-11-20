@@ -429,8 +429,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                 return
             }
             isCheckingVisibleSelection = true
-            selectedTextExtractor?.extractSelectionFast { [weak self] result in
-                guard let self = self, self.isCheckingVisibleSelection else { return }
+            let requestID = activeRequestID
+            selectedTextExtractor?.extractSelectionFast(fromPID: sourceAppPIDForSelection()) { [weak self] result in
+                guard let self, requestID == self.activeRequestID, self.isCheckingVisibleSelection else { return }
                 self.isCheckingVisibleSelection = false
                 guard self.isPeekVisible else { return }
                 guard let text = result?.text, !text.isEmpty else {
@@ -498,7 +499,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             return
         }
 
-        selectedTextExtractor?.extractSelection(fromPID: sourceAppPIDForSelection()) { [weak self] result in
+        // Leave keyboard focus in the source app until the Copy fallback has finished.
+        let sourcePID = sourceAppPIDForSelection()
+        let initialAnchor = PeekMiniAnchor(axSelection: nil, pointer: mousePos)
+        peekMini?.showLoading(name: "Searching…".localized, meta: activeSourceAppName ?? "",
+                              anchor: initialAnchor, takeFocus: false)
+        selectedTextExtractor?.extractSelection(fromPID: sourcePID) { [weak self] result in
             guard let self = self, requestID == self.activeRequestID else { return }
 
             let selected: String
@@ -533,11 +539,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
                                     contextDirectories: [URL] = []) {
         guard requestID == activeRequestID else { return }
         activeSelectionText = normalizedSelection(selected)
+        if let activeAnchor {
+            peekMini?.showLoading(name: "Searching…".localized, meta: activeSourceAppName ?? "",
+                                  anchor: activeAnchor)
+        }
         let detector = pathDetector ?? PathDetector()
-        let hits = detector.detectAll(selected, contextDirectories: contextDirectories)
-        detector.classifyRemoteLinks(hits) { [weak self] classified in
-            self?.previewDetectedPaths(classified, selected: selected, anchor: anchor,
-                                       requestID: requestID, contextDirectories: contextDirectories)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let hits = detector.detectAll(selected, contextDirectories: contextDirectories)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, requestID == self.activeRequestID else { return }
+                detector.classifyRemoteLinks(hits) { [weak self] classified in
+                    self?.previewDetectedPaths(classified, selected: selected, anchor: anchor,
+                                               requestID: requestID, contextDirectories: contextDirectories)
+                }
+            }
         }
     }
 
@@ -619,6 +634,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
     private func requestFolderAccess(for path: String, retrying text: String, anchor: CGPoint,
                                      requestID: UInt64, contextDirectories: [URL]) {
         previewPanel?.hidePanel()
+        dismissPeekMiniKeepingRequest()
         let folder = FolderAccess.suggestedFolder(for: path)
         let reason = String(format: "Glance needs your permission to read files in “%@”. Grant access to preview this file now. Files inside this folder won't ask again.".localized,
                             folder.path)
@@ -840,6 +856,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, StatusBarControllerDelegate,
             peekMini?.show(paths: mediaPaths, infos: infos, anchor: miniAnchor)
             return
         }
+
+        dismissPeekMiniKeepingRequest()
 
         // Pure image selections use the same full Image Inspect experience as
         // opening image files from Finder. ImageInspectWindow owns its loading

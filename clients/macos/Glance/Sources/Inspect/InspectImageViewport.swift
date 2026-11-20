@@ -379,6 +379,8 @@ final class InspectImageViewport: NSView {
 
     override func layout() {
         super.layout()
+        // The image can arrive while a new inspector pane still has zero bounds.
+        animationPlayer.startPlaybackIfVisible()
         updateLayerGeometry()
         let indicatorRect = bounds
         CATransaction.begin()

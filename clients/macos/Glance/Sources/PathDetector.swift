@@ -283,7 +283,7 @@ class PathDetector {
         // Bare filename: stem ≥2 chars, alphanumeric/_/-/., must be standalone
         // (not preceded by slashes, tildes, dots, dashes, or alphanumerics).
         self.bareFilenameRegex = try! NSRegularExpression(
-            pattern: "(?<![\\p{L}\\p{N}_./~\\-])[\\p{L}\\p{N}_][\\p{L}\\p{N}_.\\- ]+?\\.(?i:\(extAlt))(?![\\p{L}\\p{N}])",
+            pattern: "(?<![\\p{L}\\p{N}_./~\\-])([\\p{L}\\p{N}_][\\p{L}\\p{N}_.\\- ]+?\\.(?i:\(extAlt))(?![\\p{L}\\p{N}]))(?:\\]?[ \\t]*\\()?",
             options: []
         )
         self.bareFilenameNoExtRegex = try! NSRegularExpression(
@@ -453,6 +453,7 @@ class PathDetector {
         var results: [DetectedPath] = []
         var seen = Set<String>()
         var consumed = IndexSet()
+        var filenamesByPathStart: [Int: String] = [:]
         var lastEnd = 0
         for hit in hits {
             if hit.range.location < lastEnd { continue }
@@ -494,6 +495,8 @@ class PathDetector {
             }
 
             guard let path = resolvedPath else { continue }
+            filenamesByPathStart[hit.range.location] = path.url?.lastPathComponent
+                ?? path.unresolvedToken.map { ($0 as NSString).lastPathComponent }
             consumed.insert(integersIn: hit.range.location..<consumeEnd)
             lastEnd = consumeEnd
             // Dedup: concrete cases use URL string; unresolved cases use token.
@@ -525,7 +528,11 @@ class PathDetector {
         bareFilenameRegex.enumerateMatches(in: text, options: [], range: full) { m, _, stop in
             guard let m = m else { return }
             guard !consumed.intersects(integersIn: m.range.location..<NSMaxRange(m.range)) else { return }
-            let token = ns.substring(with: m.range)
+            let token = ns.substring(with: m.range(at: 1))
+            // A table can spell one link as "name.gif (folder/name.gif)"
+            // or "[name.gif](folder/name.gif)". Only resolve the target.
+            if NSMaxRange(m.range) > NSMaxRange(m.range(at: 1)),
+               filenamesByPathStart[NSMaxRange(m.range)] == token { return }
             if seen.insert(token).inserted {
                 Logger.info("PathDetector: bare filename candidate '\(Logger.redact(token))'")
                 results.append(.unresolvedFilename(token))

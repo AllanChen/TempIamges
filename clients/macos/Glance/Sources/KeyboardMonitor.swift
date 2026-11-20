@@ -368,7 +368,7 @@ final class KeyboardMonitor: NSObject {
                 optionHoldID &+= 1
                 let id = optionHoldID
                 pendingOptionHold = id
-                DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + .milliseconds(500)) { [weak self] in
+                DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + .milliseconds(200)) { [weak self] in
                     self?.finishOptionHold(id)
                 }
             }

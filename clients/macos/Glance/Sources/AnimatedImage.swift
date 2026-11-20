@@ -162,13 +162,17 @@ final class ImageAnimationPlayer {
                 BillingManager.shared.recordSuccessfulPreview("image")
             }
         }
-        guard timer == nil, !decoding, let animation,
+        startPlaybackIfVisible()
+    }
+
+    func startPlaybackIfVisible() {
+        guard timer == nil, !decoding, let animation, isVisible,
               animation.totalPlays.map({ plays < $0 }) ?? true else { return }
         schedule(after: animation.delays[index])
     }
 
     private func schedule(after delay: TimeInterval) {
-        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+        let timer = Timer(fire: Date(timeIntervalSinceNow: delay), interval: 0, repeats: false) { [weak self] _ in
             self?.timer = nil
             self?.advance()
         }
