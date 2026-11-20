@@ -99,10 +99,12 @@ final class WidgetMarketPanel: NSPanel {
         if !hasAttemptedLoad { loadCatalog() }
         else if !isLoading { refreshFromServer(showLoading: false) }
         makeKeyAndOrderFront(nil)
+        (detailView?.demoView as? NSImageView)?.animates = true
     }
 
     override func close() {
-        detailView?.demoView?.player?.pause()
+        (detailView?.demoView as? AVPlayerView)?.player?.pause()
+        (detailView?.demoView as? NSImageView)?.animates = false
         detachFromParent()
         orderOut(nil)
     }
@@ -933,14 +935,14 @@ private final class WidgetMarketDetailView: NSView {
     private let stateIcon = NSImageView()
     private let stateLabel = WidgetMarketTextView(labelWithString: "")
     private let descriptionLabel = WidgetMarketTextView(labelWithString: "")
-    private(set) var demoView: AVPlayerView?
+    private(set) var demoView: NSView?
     /// Spec rows: label, then the value views stacked in the value column.
     private var specRows: [(label: WidgetMarketTextView, values: [WidgetMarketTextView], gaps: [CGFloat])] = []
     private var specLines: [NSView] = []
     var scrollOffset: NSPoint { scrollView.contentView.bounds.origin }
     override var isFlipped: Bool { true }
 
-    init(manifest: WidgetManifest, isInstalled: Bool, hasUpdate: Bool, isAvailable: Bool, previousDemo: AVPlayerView?) {
+    init(manifest: WidgetManifest, isInstalled: Bool, hasUpdate: Bool, isAvailable: Bool, previousDemo: NSView?) {
         super.init(frame: .zero)
         wantsLayer = true
         layer?.backgroundColor = PanelStyle.resolvedCG(PanelStyle.surface)
@@ -954,6 +956,21 @@ private final class WidgetMarketDetailView: NSView {
         if let previousDemo {
             demoView = previousDemo
             document.addSubview(previousDemo)
+        } else if UUID(uuidString: manifest.id) != nil,
+                  let url = (WidgetManifest.preferredLanguageTags.map { "\(manifest.id.lowercased())-\($0)" }
+                             + [manifest.id.lowercased()]).lazy.compactMap({ name in
+                      Bundle.main.url(forResource: name, withExtension: "gif", subdirectory: "WidgetDemos")
+                  }).first {
+            let view = NSImageView()
+            view.imageScaling = .scaleProportionallyUpOrDown
+            view.animates = true
+            view.setAccessibilityLabel(manifest.displayName)
+            demoView = view
+            document.addSubview(view)
+            DispatchQueue.global(qos: .userInitiated).async { [weak view] in
+                let image = NSImage(contentsOf: url)
+                DispatchQueue.main.async { view?.image = image }
+            }
         } else if UUID(uuidString: manifest.id) != nil,
                   let url = WidgetManifest.preferredLanguageTags.lazy.compactMap({ tag in
                       Bundle.main.url(forResource: "\(manifest.id.lowercased())-\(tag)", withExtension: "mp4",
