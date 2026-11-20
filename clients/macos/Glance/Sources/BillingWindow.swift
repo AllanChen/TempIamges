@@ -156,6 +156,8 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
   private func reset(
     _ title: String, subtitle: String = "", narrow: Bool = false, tone: NSColor? = nil
   ) -> CGFloat {
+    resendTimer?.invalidate()
+    resendTimer = nil
     root.subviews.forEach { $0.removeFromSuperview() }
     handlers.removeAll()
     emailField = nil
@@ -371,6 +373,8 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
   }
   private func styleInput(_ field: NSTextField, font: NSFont = PanelStyle.inspectFont(ofSize: 13)) {
     field.cell = BillingInputCell(textCell: field.stringValue)
+    field.isEditable = true
+    field.isSelectable = true
     field.font = font
     field.textColor = PanelStyle.textPrimary
     field.isBezeled = false
@@ -457,6 +461,8 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
     field.stringValue = email
     root.addSubview(field)
     emailField = field
+    initialFirstResponder = field
+    makeFirstResponder(field)
     button("Send code".localized, frame: NSRect(x: 104, y: 341 + shift, width: 432, height: 36)) {
       [weak self] in self?.sendCode()
     }
@@ -491,14 +497,18 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       return
     }
     inFlight = true
+    resendButton?.isEnabled = false
     AuthManager.shared.sendEmailCode(email: email) { [weak self] result in
       guard let self else { return }
       self.inFlight = false
       switch result {
-      case .success:
+      case .success(let response):
+        self.email = response.email
         self.resendAt = Date().addingTimeInterval(60)
         self.showCode()
-      case .failure(let error): self.inlineError(error.localizedDescription)
+      case .failure(let error):
+        self.inlineError(error.localizedDescription)
+        if self.resendButton != nil { self.updateResend() }
       }
     }
   }
@@ -531,11 +541,7 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
       self.showLogin(
         purchase: self.loginPurchase, freeWidget: self.loginFreeWidget, completion: resume)
     }
-    resendTimer?.invalidate()
-    updateResend()
-    resendTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-      self?.updateResend()
-    }
+    startResendCountdown()
     makeFirstResponder(codeField)
   }
   func controlTextDidChange(_ notification: Notification) {
@@ -552,9 +558,20 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
     }
     makeFirstResponder(codeFields[min(5, index + digits.count)])
   }
+  private func startResendCountdown() {
+    resendTimer?.invalidate()
+    updateResend()
+    guard resendAt > Date() else { return }
+    let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+      self?.updateResend()
+    }
+    resendTimer = timer
+    RunLoop.main.add(timer, forMode: .common)
+  }
   private func updateResend() {
     let seconds = max(0, Int(ceil(resendAt.timeIntervalSinceNow)))
-    resendButton?.isEnabled = seconds == 0
+    if seconds == 0 { resendTimer?.invalidate() }
+    resendButton?.isEnabled = seconds == 0 && !inFlight
     resendButton?.title =
       seconds == 0
       ? "Resend code".localized : String(format: "Resend in %d seconds".localized, seconds)
@@ -599,7 +616,7 @@ final class BillingWindow: NSPanel, NSWindowDelegate, NSTextFieldDelegate {
     resendButton = root.subviews.compactMap { $0 as? BillingActionButton }.first(where: {
       $0.primary
     })
-    updateResend()
+    startResendCountdown()
   }
   func showPaymentHelp(_ title: String, action: @escaping () -> Void) {
     quiet(title, y: flowBottom, action: action)

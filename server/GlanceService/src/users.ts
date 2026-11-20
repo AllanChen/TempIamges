@@ -94,11 +94,24 @@ async function sendEmailCode(env: Env, request: Request) {
   if (!inserted) return failure("rate_limited", "Wait a minute before requesting another code.", 429);
   let delivered = false;
   try {
-    delivered = (await fetch("https://api.resend.com/emails", { method: "POST",
+    const response = await fetch("https://api.resend.com/emails", { method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: env.AUTH_EMAIL_FROM, to: [email], subject: "Your Glance sign-in code",
-        text: `Your Glance sign-in code is ${code}. It expires in 10 minutes. If you did not request this code, ignore this email.` }) })).ok;
-  } catch { /* Return a safe delivery error without provider details. */ }
+        text: `Your Glance sign-in code is ${code}. It expires in 10 minutes. If you did not request this code, ignore this email.` }) });
+    delivered = response.ok;
+    if (!delivered) {
+      const issue = await response.json<{ name?: string; message?: string }>().catch(() => null);
+      const name = issue?.name;
+      const message = typeof issue?.message === "string" ? issue.message : "";
+      const reason = /domain.*(not verified|not found|verify)/i.test(message) ? "sender_domain_unverified"
+        : /testing emails|own email address/i.test(message) ? "test_recipient_restriction"
+        : /permission|restricted|api key/i.test(message) ? "api_key_restriction"
+        : /suspend|restrict|disabled|blocked/i.test(message) ? "sending_restricted"
+        : "other";
+      console.error("Sign-in email rejected", response.status, reason,
+        typeof name === "string" && /^[a-z_]{1,64}$/.test(name) ? name : "unknown_provider_error");
+    }
+  } catch { console.error("Sign-in email provider request failed"); }
   if (!delivered) {
     await env.DB.prepare("DELETE FROM user_email_codes WHERE email=? AND code_hash=?").bind(email, codeHash).run();
     return failure("email_delivery_failed", "Could not send the sign-in email. Please try again later.", 502);

@@ -131,7 +131,13 @@ describe("user authentication", () => {
     const sent = JSON.parse(delivery.mock.calls[0][1]!.body as string) as { text: string };
     const code = sent.text.match(/code is (\d{6})/)![1];
     expect(text).not.toContain(code);
-    expect((await verify(code)).status).toBe(200);
+    await env.DB.prepare("UPDATE user_email_codes SET sent_at=? WHERE email=?")
+      .bind(new Date(Date.now() - 61000).toISOString(), "member@example.com").run();
+    expect((await send()).status).toBe(200);
+    expect(delivery).toHaveBeenCalledTimes(2);
+    const resent = JSON.parse(delivery.mock.calls[1][1]!.body as string);
+    expect(resent.to).toEqual(["member@example.com"]);
+    expect((await verify(resent.text.match(/code is (\d{6})/)[1])).status).toBe(200);
   });
 
   it("uses OAuth state and PKCE, so intercepted callback codes cannot be exchanged or reused", async () => {
