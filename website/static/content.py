@@ -136,8 +136,8 @@ def shell(b, path, title, desc, body, schema="", noindex=False, og_type="website
 <meta name="theme-color" content="#151514">
 <script src="/assets/theme-init.js?v={b.ASSET_VERSION}"></script>
 {robots}
-<link rel="icon" type="image/png" href="/assets/img/favicon-64.png?v=1.1.2">
-<link rel="apple-touch-icon" href="/assets/img/logo-256.png?v=1.1.2">
+<link rel="icon" type="image/png" href="/assets/img/favicon-64.png?v=1.1.3">
+<link rel="apple-touch-icon" href="/assets/img/logo-256.png?v=1.1.3">
 <link rel="stylesheet" href="/assets/site.css?v={b.ASSET_VERSION}">
 <link rel="stylesheet" href="/assets/fonts.css?v={b.ASSET_VERSION}">
 <link rel="stylesheet" href="/assets/shizuka.css?v={b.ASSET_VERSION}">
@@ -284,7 +284,7 @@ def lastmod_map(b) -> dict[str, str]:
 
 LLMS_PAGES = [  # (path, one-line summary) for the English guide pages listed in llms.txt
     ("/en/", "Home: what Glance Preview is, the view-fix-compare loop, Widgets, pricing summary, download."),
-    ("/en/install/", "Download and install Glance Preview 1.1.2 for Apple silicon Macs; requirements, first launch, SHA-256."),
+    ("/en/install/", "Download and install Glance Preview 1.1.3 for Apple silicon Macs; requirements, first launch, SHA-256."),
     ("/en/pricing/", "Pricing: free viewer, Glance Pro one-time purchase, cloud AI Widgets billed in credits, 14-day trial."),
     ("/en/widgets/", "Live catalog of cloud AI Widgets with credits per run and upload notes."),
     ("/en/ai-models/", "Public disclosure of the AI models and processing services behind each Widget."),

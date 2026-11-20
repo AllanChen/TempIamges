@@ -31,11 +31,11 @@ SAME_AS = [SUPPORT_X_URL, TELEGRAM_URL, "https://www.macosmenubar.com/glance-pre
            "https://www.indiehackers.com/product/glance-preview"]
 SUPPORT_X_HANDLE = "@Sir03834855"
 SUPPORT_X = f'<a href="{SUPPORT_X_URL}" target="_blank" rel="noopener">{SUPPORT_X_HANDLE}</a>'
-VERSION = "1.1.2"
+VERSION = "1.1.3"
 DMG = f"/download/Glance-{VERSION}.dmg"
 # A pre-release version keeps beta positioning; a final version must ship a notarized DMG.
 PRERELEASE = "-" in VERSION
-UPDATED = "2026-11-17"
+UPDATED = "2026-11-20"
 # IndexNow ownership key. It is public by design: the deploy script pings
 # api.indexnow.org with changed URLs, and engines verify it at /<key>.txt.
 INDEXNOW_KEY = "909a04701230a0b72c22faa5c10d16e1"
@@ -357,8 +357,8 @@ def page(meta: dict, body: str, lang: str, page_paths: set[str]) -> str:
 <script src="/assets/theme-init.js?v={ASSET_VERSION}"></script>
 {robots}
 {verify}
-<link rel="icon" type="image/png" href="/assets/img/favicon-64.png?v=1.1.2">
-<link rel="apple-touch-icon" href="/assets/img/logo-256.png?v=1.1.2">
+<link rel="icon" type="image/png" href="/assets/img/favicon-64.png?v=1.1.3">
+<link rel="apple-touch-icon" href="/assets/img/logo-256.png?v=1.1.3">
 <link rel="stylesheet" href="/assets/site.css?v={ASSET_VERSION}">
 <link rel="stylesheet" href="/assets/fonts.css?v={ASSET_VERSION}">
 <link rel="stylesheet" href="/assets/shizuka.css?v={ASSET_VERSION}">
@@ -624,6 +624,8 @@ def main() -> None:
 /updates/Glance-1.1.0.dmg {DMG} 302
 /download/Glance-1.1.1.dmg {DMG} 302
 /updates/Glance-1.1.1.dmg {DMG} 302
+/download/Glance-1.1.2.dmg {DMG} 302
+/updates/Glance-1.1.2.dmg {DMG} 302
 /download {DMG} 302
 /download/ {DMG} 302
 /aup /acceptable-use/ 301

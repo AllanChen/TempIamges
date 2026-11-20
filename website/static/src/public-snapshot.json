@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-17T12:20:00+00:00",
+  "fetchedAt": "2026-11-20T07:39:10+00:00",
   "widgets": [
     {
       "id": "7f8e8c9e-d1f7-4300-94fd-12219ca2e2a6",
@@ -152,7 +152,7 @@
     "signupCredits": 100,
     "proBonusCredits": 100,
     "launchUntil": null,
-    "defaultCurrency": "CNY",
+    "defaultCurrency": "USD",
     "proTiers": [
       {
         "id": "personal",
