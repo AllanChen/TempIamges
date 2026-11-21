@@ -1,0 +1,142 @@
+/*
+  Glance for Windows: Chinese strings that the macOS Localizable.strings doesn't have
+  (Windows wording, Home / Preferences / onboarding, Explorer, WebView2, OCR…).
+  Loaded after the macOS table; an entry here wins over a macOS entry with the same key.
+  Keep terms in line with macOS: credits = 点, Peek / Widget / Image Inspect stay English.
+*/
+
+/* MARK: - Home */
+"Open an image to begin." = "打开一张图片开始。";
+"Drop images or a folder" = "拖入图片或文件夹";
+"Drop images or a folder anywhere in this window. Glance reads every image inside." = "把图片或文件夹拖到窗口任意位置，Glance 会读取其中的每一张图片。";
+"Ctrl+O  open     Ctrl+Shift+O  folder     Ctrl+,  preferences" = "Ctrl+O  打开     Ctrl+Shift+O  文件夹     Ctrl+,  偏好设置";
+"%d images ready." = "%d 张图片已就绪。";
+"1 image ready." = "1 张图片已就绪。";
+"%d images" = "%d 张图片";
+"1 image" = "1 张图片";
+"Search Recent" = "搜索最近";
+"Show all" = "显示全部";
+"No file open" = "未打开文件";
+"Nothing Glance can open was dropped." = "拖入的内容中没有 Glance 能打开的文件。";
+"Just now" = "刚刚";
+"%d min ago" = "%d 分钟前";
+"%d h ago" = "%d 小时前";
+"%dm" = "%d 分钟";
+"%dh" = "%d 小时";
+"MMM d" = "M月d日";
+"Add Images" = "添加图片";
+"Add Images…" = "添加图片…";
+"Add another image to compare." = "再添加一张图片进行对比。";
+"Added" = "已添加";
+"All files" = "所有文件";
+"Icon (.ico)" = "图标 (.ico)";
+
+/* MARK: - Preferences and first-run guide */
+"Peek hotkey" = "Peek 快捷键";
+"Change" = "更改";
+"Click the field, then press a key with Ctrl, Alt, Shift or Win." = "点击输入框，然后按下带 Ctrl、Alt、Shift 或 Win 的组合键。";
+"%@ is reserved by Windows." = "%@ 已被 Windows 保留。";
+"%@ is used by another app. Choose another hotkey." = "%@ 已被其他 App 占用，请换一个快捷键。";
+"%@ is used by another app — choose another hotkey." = "%@ 已被其他 App 占用 — 请换一个快捷键。";
+"%@ is already used by another app. Choose another hotkey in Preferences." = "%@ 已被其他 App 占用，请在偏好设置中换一个快捷键。";
+"Hotkey %@ is used by another app" = "快捷键 %@ 已被其他 App 占用";
+"Alt + Q" = "Alt + Q";
+"Ctrl + Alt + Q" = "Ctrl + Alt + Q";
+"Choose the language Glance uses." = "选择 Glance 使用的语言。";
+"Open windows switch when you reopen them." = "已打开的窗口会在重新打开后切换语言。";
+"Control startup and how Glance works with File Explorer." = "设置开机启动，以及 Glance 与文件资源管理器的配合方式。";
+"Start with Windows" = "随 Windows 启动";
+"Start Glance with Windows" = "随 Windows 启动 Glance";
+"Keep Glance ready in the notification area." = "让 Glance 常驻通知区域，随时可用。";
+"Keep Glance ready in the notification area when you sign in." = "登录 Windows 后让 Glance 常驻通知区域，随时可用。";
+"Explorer" = "资源管理器";
+"Open with Glance" = "用 Glance 打开";
+"Open with Glance in File Explorer" = "在文件资源管理器中用 Glance 打开";
+"Add Glance to the right-click menu of images and videos in File Explorer." = "在文件资源管理器中，把 Glance 加入图片和视频的右键菜单。";
+"Adds “Open with Glance” to the right-click menu of images and videos." = "在图片和视频的右键菜单中加入“用 Glance 打开”。";
+"Default image viewer" = "默认图片查看器";
+"Windows lets you choose the default app in Settings." = "Windows 需要在“设置”中选择默认 App。";
+"Open Default Apps" = "打开默认应用设置";
+"Peek copies the selection with Ctrl+C when it can't read it directly." = "无法直接读取选中内容时，Peek 会用 Ctrl+C 复制它。";
+"Show Log File" = "显示日志文件";
+"First-run guide" = "首次使用引导";
+"Set up Glance" = "设置 Glance";
+"Peek works right away. These optional steps make Glance easier to reach. You can change them later in Preferences." = "Peek 现在就能用。下面这些可选步骤能让 Glance 更顺手，之后也可以在偏好设置中更改。";
+"Select a path, link or file name anywhere and press %@." = "在任意位置选中路径、链接或文件名，然后按 %@。";
+"You can change these anytime in Preferences." = "之后可以随时在偏好设置中更改。";
+"Turn On" = "开启";
+"On" = "开";
+"Off" = "关";
+"Next" = "下一个";
+"Previous" = "上一个";
+"Windows didn’t allow Glance to change its startup setting. Check Settings ▸ Apps ▸ Startup, then try again." = "Windows 不允许 Glance 更改开机启动设置。请检查“设置 ▸ 应用 ▸ 启动”，然后重试。";
+"Windows didn’t allow Glance to change File Explorer’s menu. Try again, or sign in with your usual account." = "Windows 不允许 Glance 更改文件资源管理器的菜单。请重试，或使用你常用的账户登录 Windows。";
+"Something went wrong. See the log for details." = "出了点问题，详情请查看日志。";
+
+/* MARK: - Tray */
+"Account and Credits…" = "账户与点数…";
+"Peek Clipboard Text" = "Peek 剪贴板文本";
+"Glance Account" = "Glance 账户";
+
+/* MARK: - Account and credits */
+"CREDITS WALLET" = "点数钱包";
+"Continue to payment" = "继续付款";
+"No expiry. Only cloud Widgets use credits. Local tools do not." = "永不过期。只有云端 Widget 消耗点数，本地功能不扣点。";
+"Payment not confirmed yet. If you paid, wait a moment and check again." = "尚未确认付款。如果已经付款，请稍候再查看。";
+"Check your connection and try again." = "请检查网络连接后重试。";
+"Nothing has been charged." = "尚未扣点。";
+"Still waiting for your browser. If it asked to open Glance, choose Open. If nothing happened, sign in with an email code below instead." = "仍在等待浏览器。如果浏览器询问是否打开 Glance，请选择“打开”。如果没有任何反应，请改用下方的邮箱验证码登录。";
+
+/* MARK: - Widgets and tasks */
+"Select a Widget to see its details." = "选择一个 Widget 查看详情。";
+"No longer listed" = "已下架";
+"Installing…" = "正在安装…";
+"Enter some text for the Widget." = "请为 Widget 输入一些文字。";
+"Image(s)" = "图片";
+"This Widget needs a drawn mask, which Glance for Windows can't do yet. Nothing was charged." = "此 Widget 需要手绘蒙版，Glance for Windows 暂不支持。未扣点。";
+"Confirming the credits for this task. You can remove it once that finishes." = "正在确认本次任务的点数，确认完成后即可移除。";
+"Task cancelled · Stopped at %d%%" = "任务已取消 · 停在 %d%%";
+"Task failed · Stopped at %d%%" = "任务失败 · 停在 %d%%";
+"The result could not be read." = "无法读取结果。";
+"The result file is missing. Retry the task to download it again." = "结果文件不存在。请重试任务以重新下载。";
+"Open Result" = "打开结果";
+"%d h %d min" = "%d 小时 %d 分钟";
+"%d min %d s" = "%d 分 %d 秒";
+"%d s" = "%d 秒";
+
+/* MARK: - Image Inspect */
+"Paste image" = "粘贴图片";
+"Maximize" = "最大化";
+"Couldn’t copy the image. The clipboard may be busy; try again." = "无法拷贝图片，剪贴板可能正忙，请重试。";
+"Couldn’t save the image." = "无法存储图片。";
+"Couldn’t start a capture." = "无法开始截图。";
+"Couldn’t capture this frame." = "无法截取这一帧。";
+"Glance can’t write %@ files. Use Save as… to convert it first." = "Glance 无法写入 %@ 文件。请先用“存储为…”转换格式。";
+"Drag to select · Enter save · Esc cancel" = "拖动选择 · Enter 存储 · Esc 取消";
+"No image on the clipboard" = "剪贴板中没有图片";
+"Nothing to paste" = "没有可粘贴的内容";
+"Text recognition failed. Try again." = "文字识别失败，请重试。";
+"Text recognition isn't available. Add a language with OCR in Windows Settings." = "文字识别不可用。请在 Windows 设置中添加支持 OCR 的语言。";
+"Windows has no text recognition language installed. Add a language with OCR in Settings ▸ Time & language ▸ Language & region." = "Windows 未安装文字识别语言。请在“设置 ▸ 时间和语言 ▸ 语言和区域”中添加支持 OCR 的语言。";
+"Reveal in File Explorer" = "在文件资源管理器中显示";
+"Show in Explorer" = "在资源管理器中显示";
+"Open with Default App" = "用默认 App 打开";
+
+/* MARK: - Video */
+"Can’t play" = "无法播放";
+"This video can’t be played." = "无法播放此视频。";
+"This video can’t be played. Install the Microsoft Edge WebView2 Runtime or open it with the default app." = "无法播放此视频。请安装 Microsoft Edge WebView2 Runtime，或用默认 App 打开。";
+"No video link on the clipboard" = "剪贴板中没有视频链接";
+
+/* MARK: - Peek and content viewers */
+"Searching for '%@'…" = "正在搜索“%@”…";
+"Couldn't load preview" = "无法加载预览";
+"Couldn't open this file." = "无法打开此文件。";
+"This file is too large to open." = "文件过大，无法打开。";
+"The clipboard has no text" = "剪贴板中没有文本";
+"Open in browser" = "在浏览器中打开";
+"Web page" = "网页";
+"Get WebView2" = "获取 WebView2";
+"Showing this needs the Microsoft Edge WebView2 Runtime, which isn't installed." = "显示此内容需要 Microsoft Edge WebView2 Runtime，但它尚未安装。";
+"Do you want to save the changes you made to %@?" = "要存储对“%@”所做的更改吗？";
+"Some characters can't be saved as %@. Save the file as UTF-8 instead?" = "部分字符无法以 %@ 存储。改为以 UTF-8 存储吗？";

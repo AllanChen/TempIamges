@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Win32 interop: single instance, hotkey, UI Automation, clipboard, search index, shell. -->
+  <PropertyGroup>
+    <TargetFramework>$(WindowsTarget)</TargetFramework>
+    <RootNamespace>Glance.Platform</RootNamespace>
+    <!-- WPF for HwndSource (hotkey message window), BitmapSource (shell thumbnails) and managed UI Automation. -->
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Glance.Core\Glance.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Data.OleDb" Version="10.0.0" />
+    <!-- DPAPI for the account session (macOS kept it in UserDefaults / Keychain). -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Glance.Tests" />
+  </ItemGroup>
+</Project>

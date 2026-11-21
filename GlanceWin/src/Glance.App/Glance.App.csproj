@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(WindowsTarget)</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Glance.App</RootNamespace>
+    <AssemblyName>Glance</AssemblyName>
+    <ApplicationIcon>Assets\Glance.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <!-- Glance ships English and Chinese only; don't copy library resource folders for other languages. -->
+    <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Glance.Core\Glance.Core.csproj" />
+    <ProjectReference Include="..\Glance.Platform\Glance.Platform.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Content viewer: web pages, PDF and rendered Markdown (WebView2), code editor (AvalonEdit). -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+    <PackageReference Include="Markdig" Version="0.45.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\Glance.ico" />
+    <!-- Chinese UI strings: the macOS translation file, shared as-is (keys are the English text). -->
+    <!-- Widget Market walkthroughs (GIF first, then MP4), shared with macOS. -->
+    <Content Include="..\..\..\clients\macos\Glance\Resources\WidgetDemos\*.gif;..\..\..\clients\macos\Glance\Resources\WidgetDemos\*.mp4" Link="WidgetDemos\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="..\..\..\clients\macos\Glance\Resources\zh-Hans.lproj\Localizable.strings" LogicalName="Glance.Localization.zh-Hans.strings" Link="Localization\zh-Hans.strings" />
+    <!-- Windows-only Chinese strings, merged over the macOS table. -->
+    <EmbeddedResource Include="Localization\zh-Hans.windows.strings" LogicalName="Glance.Localization.zh-Hans.windows.strings" />
+    <!-- Inter is shared with the macOS app so Figma metrics match on both clients. -->
+    <Resource Include="..\..\..\clients\macos\Glance\Resources\Fonts\Inter-*.otf" Link="Assets\Fonts\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

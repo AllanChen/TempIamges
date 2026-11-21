@@ -1,0 +1,145 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!--
+        Glance light design tokens — Windows counterpart of macOS PanelStyle.swift.
+        Geometry, radii, spacing and type scale are copied 1:1 from PanelStyle / Figma.
+        Colors are a LIGHT derivation of the dark "Quiet Darkroom" palette, keeping the
+        warm-neutral hue and the apricot accent. DRAFT: pending user approval.
+        Each brush notes the dark token it replaces.
+        Reuse these keys; never hard-code colors or fonts in views (CLAUDE.md rule 24).
+    -->
+
+    <!-- Palette: planes -->
+    <Color x:Key="CanvasColor">#F4F2EF</Color>          <!-- canvas #09090B: deepest plane -->
+    <Color x:Key="SurfaceColor">#FBFAF8</Color>         <!-- surface #111114: primary chrome plane -->
+    <Color x:Key="OverlayColor">#FFFFFF</Color>         <!-- overlay #17171C: raised controls and cards -->
+    <Color x:Key="ChromeColor">#F1EFEC</Color>          <!-- chrome #0D0D10: toolbar plane -->
+    <Color x:Key="SurfaceElevatedColor">#FFFFFF</Color> <!-- surfaceElevated #201F25: menus, popovers (+ shadow) -->
+    <Color x:Key="ImageCanvasColor">#ECEAE6</Color>     <!-- imageCanvas: neutral backdrop behind images -->
+
+    <!-- Palette: text -->
+    <Color x:Key="TextPrimaryColor">#1F1B18</Color>     <!-- textPrimary #F3EEE8 -->
+    <Color x:Key="TextSecondaryColor">#5F5853</Color>   <!-- textSecondary #AAA4A0 -->
+    <Color x:Key="TextTertiaryColor">#8E8781</Color>    <!-- textTertiary #726D69 -->
+
+    <!-- Palette: accent (the only brand accent: warm apricot) -->
+    <Color x:Key="AccentColor">#E8A87C</Color>          <!-- warmCue / accent: fills -->
+    <Color x:Key="AccentHoverColor">#F0B58E</Color>     <!-- accentHover -->
+    <Color x:Key="AccentInkColor">#21130D</Color>       <!-- accentInk: text on accent fills -->
+    <Color x:Key="AccentTextColor">#B5662F</Color>      <!-- NEW: accent as text/icon on light planes (AA contrast) -->
+
+    <!-- Palette: semantic (darkened for contrast on light planes) -->
+    <Color x:Key="SuccessColor">#2E8B62</Color>         <!-- success #8FD0AF -->
+    <Color x:Key="FailureColor">#C9473F</Color>         <!-- failure / danger #F18B86 -->
+    <Color x:Key="InfoColor">#3D6FB8</Color>            <!-- info #A9C5EF -->
+
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="CanvasBrush" Color="{StaticResource CanvasColor}" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
+    <SolidColorBrush x:Key="OverlayBrush" Color="{StaticResource OverlayColor}" />
+    <SolidColorBrush x:Key="ChromeBrush" Color="{StaticResource ChromeColor}" />
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="{StaticResource SurfaceElevatedColor}" />
+    <SolidColorBrush x:Key="ImageCanvasBrush" Color="{StaticResource ImageCanvasColor}" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiaryColor}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}" />
+    <SolidColorBrush x:Key="AccentInkBrush" Color="{StaticResource AccentInkColor}" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource AccentTextColor}" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="FailureBrush" Color="{StaticResource FailureColor}" />
+    <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}" />
+
+    <!-- Translucent overlays: textPrimary at the same alphas as PanelStyle -->
+    <SolidColorBrush x:Key="HairlineBrush" Color="{StaticResource TextPrimaryColor}" Opacity="0.10" />      <!-- hairline -->
+    <SolidColorBrush x:Key="RowHoverBrush" Color="{StaticResource TextPrimaryColor}" Opacity="0.05" />      <!-- rowHover (0.06 dark) -->
+    <SolidColorBrush x:Key="ControlFillBrush" Color="{StaticResource TextPrimaryColor}" Opacity="0.06" />   <!-- controlFill (0.09 dark) -->
+    <SolidColorBrush x:Key="ControlFillHiBrush" Color="{StaticResource TextPrimaryColor}" Opacity="0.11" /> <!-- controlFillHi (0.16 dark) -->
+    <SolidColorBrush x:Key="AccentSubtleFillBrush" Color="{StaticResource AccentColor}" Opacity="0.16" />   <!-- accentSubtleFill -->
+    <SolidColorBrush x:Key="AccentSubtleBorderBrush" Color="{StaticResource AccentColor}" Opacity="0.55" /> <!-- accentSubtleBorder -->
+
+    <!-- Git diff line backgrounds (semantic colors at low alpha, like macOS systemRed/Green 0.18/0.20) -->
+    <SolidColorBrush x:Key="DiffDeletedBrush" Color="{StaticResource FailureColor}" Opacity="0.14" />
+    <SolidColorBrush x:Key="DiffInsertedBrush" Color="{StaticResource SuccessColor}" Opacity="0.16" />
+
+    <!-- Image Inspect: the macOS Shizuka light palette ("Washi", PanelStyle.Washi) 1:1.
+         ink 0 = stage, ink 1 = panels, ink 3 = chips / toasts, ink 4 = selected tool. -->
+    <Color x:Key="InspectInk0Color">#EFEDE6</Color>
+    <Color x:Key="InspectInk1Color">#FAF9F5</Color>
+    <Color x:Key="InspectInk2Color">#F3F1EB</Color>
+    <Color x:Key="InspectInk3Color">#EAE7DF</Color>
+    <Color x:Key="InspectInk4Color">#DDD9CF</Color>
+    <Color x:Key="InspectLineColor">#E7E4DC</Color>
+    <Color x:Key="InspectLineStrongColor">#D5D1C6</Color>
+    <Color x:Key="InspectText1Color">#1C1B19</Color>
+    <Color x:Key="InspectText2Color">#5C5952</Color>
+    <Color x:Key="InspectText3Color">#8D897F</Color>
+    <Color x:Key="InspectText4Color">#B6B2A8</Color>
+    <Color x:Key="InspectShuColor">#B5462E</Color>      <!-- vermilion: failure / NEW marks -->
+    <Color x:Key="InspectMossColor">#5D7046</Color>     <!-- success -->
+    <SolidColorBrush x:Key="InspectInk0Brush" Color="{StaticResource InspectInk0Color}" />
+    <SolidColorBrush x:Key="InspectInk1Brush" Color="{StaticResource InspectInk1Color}" />
+    <SolidColorBrush x:Key="InspectInk2Brush" Color="{StaticResource InspectInk2Color}" />
+    <SolidColorBrush x:Key="InspectInk3Brush" Color="{StaticResource InspectInk3Color}" />
+    <SolidColorBrush x:Key="InspectInk4Brush" Color="{StaticResource InspectInk4Color}" />
+    <SolidColorBrush x:Key="InspectLineBrush" Color="{StaticResource InspectLineColor}" />
+    <SolidColorBrush x:Key="InspectLineStrongBrush" Color="{StaticResource InspectLineStrongColor}" />
+    <SolidColorBrush x:Key="InspectText1Brush" Color="{StaticResource InspectText1Color}" />
+    <SolidColorBrush x:Key="InspectText2Brush" Color="{StaticResource InspectText2Color}" />
+    <SolidColorBrush x:Key="InspectText3Brush" Color="{StaticResource InspectText3Color}" />
+    <SolidColorBrush x:Key="InspectText4Brush" Color="{StaticResource InspectText4Color}" />
+    <SolidColorBrush x:Key="InspectShuBrush" Color="{StaticResource InspectShuColor}" />
+    <SolidColorBrush x:Key="InspectMossBrush" Color="{StaticResource InspectMossColor}" />
+    <SolidColorBrush x:Key="InspectHoverBrush" Color="{StaticResource InspectText1Color}" Opacity="0.06" />
+    <!-- Inactive compare pane (macOS black 10 %) and the slider split line (textPrimary 82 %). -->
+    <SolidColorBrush x:Key="InspectDimBrush" Color="#000000" Opacity="0.10" />
+    <SolidColorBrush x:Key="InspectDividerBrush" Color="{StaticResource InspectText1Color}" Opacity="0.82" />
+    <SolidColorBrush x:Key="InspectScrimBrush" Color="{StaticResource InspectText1Color}" Opacity="0.28" />
+    <!-- Capture editor marks over the photo are literal black and white, as in Figma. -->
+    <SolidColorBrush x:Key="CaptureDimBrush" Color="#000000" Opacity="0.55" />
+    <SolidColorBrush x:Key="CaptureMarkBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CaptureThirdsBrush" Color="#FFFFFF" Opacity="0.28" />
+    <CornerRadius x:Key="CornerThumb">3</CornerRadius>
+    <CornerRadius x:Key="CornerControl">6</CornerRadius>
+
+    <!-- Text over imagery (grid tile captions): theme-independent, sits on a dark scrim -->
+    <LinearGradientBrush x:Key="ImageScrimBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#00000000" Offset="0" />
+        <GradientStop Color="#99000000" Offset="1" />
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="OnImageTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="OnImageSecondaryTextBrush" Color="#FFFFFF" Opacity="0.82" />
+
+    <!-- Elevation: light panels use a soft shadow instead of the dark frost -->
+    <DropShadowEffect x:Key="PanelShadow" Color="#1F1B18" Opacity="0.16" BlurRadius="24" ShadowDepth="6" Direction="270" />
+    <DropShadowEffect x:Key="MenuShadow" Color="#1F1B18" Opacity="0.14" BlurRadius="16" ShadowDepth="4" Direction="270" />
+
+    <!-- Geometry (PanelStyle, 1:1) -->
+    <CornerRadius x:Key="CornerSmall">8</CornerRadius>
+    <CornerRadius x:Key="CornerMedium">12</CornerRadius>
+    <CornerRadius x:Key="CornerLarge">16</CornerRadius>
+    <CornerRadius x:Key="CornerPanel">20</CornerRadius>
+    <sys:Double x:Key="Spacing">8</sys:Double>
+    <sys:Double x:Key="TitlebarHeight">44</sys:Double>
+    <sys:Double x:Key="ToolbarHeight">48</sys:Double>
+    <sys:Double x:Key="InspectorWidth">280</sys:Double>
+    <sys:Double x:Key="FilmstripHeight">92</sys:Double>
+    <sys:Double x:Key="StatusbarHeight">26</sys:Double>
+    <sys:Double x:Key="ControlHeight">32</sys:Double>
+
+    <!-- Type: Inter (bundled, shared with macOS) with Segoe UI fallback -->
+    <FontFamily x:Key="InterFont">pack://application:,,,/Glance;component/Assets/Fonts/#Inter, Segoe UI</FontFamily>
+    <FontFamily x:Key="UIFont">Segoe UI</FontFamily>
+    <!-- Code: Cascadia Mono ships with Windows 11; Consolas is on every Windows 10. -->
+    <!-- Figma Washi titles use Shippori Mincho; fall back to the Mincho / serif fonts Windows ships. -->
+    <FontFamily x:Key="TitleFont">Shippori Mincho, Yu Mincho, MS Mincho, Georgia</FontFamily>
+    <FontFamily x:Key="CodeFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+    <sys:Double x:Key="CodeSize">13</sys:Double>
+    <sys:Double x:Key="TitleSize">15</sys:Double>     <!-- title: 15 semibold -->
+    <sys:Double x:Key="HeadlineSize">13</sys:Double>  <!-- headline: 13 semibold -->
+    <sys:Double x:Key="BodySize">13</sys:Double>      <!-- body: 13 regular -->
+    <sys:Double x:Key="LabelSize">12</sys:Double>     <!-- label: 12 medium -->
+    <sys:Double x:Key="CaptionSize">11</sys:Double>   <!-- caption: 11 regular -->
+</ResourceDictionary>

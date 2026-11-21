@@ -139,3 +139,30 @@ For new Shizuka macOS features, start with **Shizuka · macOS 新功能设计规
 11. Figma Desktop MCP is **read-only** (`get_metadata` / `get_design_context` /
     `get_screenshot` for verification only). All canvas writes go through the
     plugin the user runs.
+
+## Windows client (GlanceWin)
+
+The Windows port lives in `GlanceWin/` (C# / .NET 10 / WPF). Plan and phase
+status: `GlanceWin/PLAN.md`. Scope is the client only — do not change
+`server/` (GlanceService, glance-cli, widgets) or `clients/macos` for
+Windows work.
+
+21. **Hotkey:** use `RegisterHotKey` (default `Alt+Q`). If a low-level keyboard
+    hook (`WH_KEYBOARD_LL`) is ever added, the rules above apply in Windows
+    form: install it on a dedicated thread with its own message loop, keep the
+    callback trivial (`PostMessage`/`Dispatcher.BeginInvoke` the work out), and
+    re-install it if Windows drops it after exceeding `LowLevelHooksTimeout`.
+22. **UI thread:** no synchronous I/O, network, UI Automation or clipboard
+    polling on the WPF dispatcher thread. Selection reading and file search run
+    off-thread with the same timeouts as macOS.
+23. **Floating panels** (Peek, tooltips, toasts) must not steal focus:
+    `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW`, `ShowActivated=false`. Placement goes
+    through the `ScreenManager` port (cursor's monitor, clamped to the work
+    area, per-monitor DPI).
+24. **Theme:** light only. Colors, fonts, radii and spacing come from
+    `GlanceWin/src/Glance.App/Theme/Tokens.xaml` / `Controls.xaml`; never
+    hard-code them in views. Figma frames stay the source of truth for layout
+    and geometry (rules 12–14); only the palette differs.
+25. **Logging:** selected text, clipboard contents, paths and URLs go through
+    `Log.Redact`.
+26. The user builds, tests and runs GlanceWin themselves (rules 9 and 15 apply).

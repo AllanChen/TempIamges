@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Platform-neutral logic. No Windows APIs here so it stays unit-testable. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Glance.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Glance.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Image Inspect encoders (PNG / JPEG / WebP / ICO), resize and compare composites.
+         Cross-platform, so Core stays free of Windows APIs; WIC has no WebP encoder. -->
+    <PackageReference Include="SkiaSharp" Version="3.116.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.116.1" />
+    <!-- Widget manifest signatures are Ed25519 (no Ed25519 in the .NET base library). -->
+  </ItemGroup>
+</Project>

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Glance.Core/Glance.Core.csproj" />
+    <Project Path="src/Glance.Platform/Glance.Platform.csproj" />
+    <Project Path="src/Glance.App/Glance.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Glance.Tests/Glance.Tests.csproj" />
+  </Folder>
+</Solution>
