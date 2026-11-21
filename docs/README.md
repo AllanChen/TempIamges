@@ -14,3 +14,4 @@
 - [官网发行准备](launch-readiness.md)：部署、验收和外部依赖。
 - [账户与五人版](account-and-team.md)：独立账号、邀请码、删除清理及 API。
 - [macOS 正式发行](release-macos.md)：Developer ID、公证与签名更新步骤。
+- [Windows 发行与官网下载](release-windows.md)：便携版打包、R2 托管与官网「下载 Windows 版」按钮。
