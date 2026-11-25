@@ -4,20 +4,28 @@
 | description: Select a file path or image link in any Mac app and press Option + Space to preview it with Glance Preview's Peek, without opening Finder or a browser.
 | related: Getting started with Glance Preview on Mac=/en/use-cases/getting-started-glance-mac/, Glance Preview Widget Market and credits=/en/use-cases/glance-widget-market-credits/, AI image preview on Mac=/en/blog/ai-image-preview-mac/, Download and install=/en/install/ -->
 <!-- Sourced from the live install, pricing, privacy and home pages and the product README. Source-only details (setting labels, menu bar switch text, tooltip strings, hotkey options, Spotlight ranking, Terminal/Ghostty lookup, document editing) are left out on purpose; add back with evidence from the shipped build. No screenshots yet. -->
-<p class="lead">You see a path like <code>~/Downloads/hero-v2.png</code> in a chat, a terminal or a document, and you want to know what the file looks like. Normally that means copying the path, opening Finder, pressing Shift-Command-G and pasting it. With Peek in Glance Preview, you select the text and press Option + Space, and the file opens in a preview without leaving the app you are in. This is part 3 of the Glance tutorial series; if Glance is not installed yet, start with <a href="/en/use-cases/getting-started-glance-mac/">Getting started with Glance on Mac</a>.</p>
+<p class="lead">If a designer sends <code>~/Downloads/hero-v2.png</code> in a chat, select the path and press Option + Space with Peek enabled in Glance Preview. If you already have the file selected in Finder, press Space. For a clickable web link, try the preview gesture in the app that displays it.</p>
+
+<h2 id="choose-a-preview">Choose a preview by what you have selected</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">What you have</th><th scope="col">What to do</th></tr></thead><tbody>
+<tr><th scope="row">A file selected in Finder</th><td>Press Space to open Quick Look. Press it again to close the preview.</td></tr>
+<tr><th scope="row">A URL recognized by the app</th><td>On a Force Touch trackpad, force-click the link. Apps differ in which links they detect. If a preview arrow appears when you hover, you can click that instead. <a href="https://support.apple.com/en-us/102309">Apple’s trackpad guide</a></td></tr>
+<tr><th scope="row">A local image path written as text</th><td>For an occasional file, copy the path, press Shift + Command + G in Finder and paste it. For repeated checks, enable Peek in Glance Preview and press Option + Space on the selected path. If your team already uses Shortcuts, a custom service can accept selected text, resolve the path to a file and pass the file to Quick Look. <a href="https://support.apple.com/en-gb/guide/shortcuts-mac/apd163eb9f95/mac">Run a shortcut from Services</a></td></tr>
+</tbody></table></div>
 
 <h2>What Peek can open</h2>
 <p>Peek reads the text you selected and looks for an image link or a file path in it, such as an <code>https://</code> link, an absolute path or a <code>~/</code> path. A full path is the most reliable way to point Peek at a local file.</p>
-<p>Glance previews images (JPEG, PNG, HEIC/HEIF, WebP, GIF, BMP and TIFF) and videos (MP4, MOV, M4V, WebM, MKV and AVI).</p>
-<p>Peek is included in the free version of Glance; see the plan table on the <a href="/en/pricing/">Pricing page</a>.</p>
+<p>Glance Preview previews images (JPEG, PNG, HEIC/HEIF, WebP, GIF, BMP and TIFF) and videos (MP4, MOV, M4V, WebM, MKV and AVI).</p>
+<p>Peek is included in the free version of Glance Preview; see the plan table on the <a href="/en/pricing/">Pricing page</a>.</p>
 
 <h2>Step 1: Turn on Peek</h2>
 <p>Peek is optional and off by default, because it needs a system permission to read what you select.</p>
 <ol class="guide-steps">
-<li>Open Glance's Preferences and turn on <strong>Peek</strong>.</li>
-<li>Glance asks for two permissions: <strong>Input Monitoring</strong> to detect the hotkey, and <strong>Accessibility</strong> to read the text you selected. Grant both in System Settings → Privacy &amp; Security when prompted.</li>
+<li>Open Glance Preview's Preferences and turn on <strong>Peek</strong>.</li>
+<li>Glance Preview asks for two permissions: <strong>Input Monitoring</strong> to detect the hotkey, and <strong>Accessibility</strong> to read the text you selected. Grant both in System Settings → Privacy &amp; Security when prompted.</li>
 </ol>
-<p>You can skip permission setup entirely; viewing images and videos in Glance works without it.</p>
+<p>You can skip permission setup entirely; viewing images and videos in Glance Preview works without it.</p>
 
 <h2>Step 2: Select text and press Option + Space</h2>
 <ol class="guide-steps">
@@ -28,7 +36,7 @@
 <p>If no text is selected, Peek previews what is on the clipboard instead. That helps in apps that do not expose selected text: copy the text with Command-C, then press the hotkey.</p>
 
 <h2>Step 3: Open it in the full window when you need more</h2>
-<p>Peek is for a quick look. To zoom to 100%, compare two images or run an AI Widget, open the image in the full Glance window; the AI tools live there.</p>
+<p>Peek is for a quick look. To zoom to 100%, compare two images or run an AI Widget, open the image in the full Glance Preview window; the AI tools live there.</p>
 
 <h2>Where Peek saves the most time</h2>
 <ul>
@@ -36,10 +44,10 @@
 <li><strong>Terminal output:</strong> after a script writes an image, select its path and look at it without opening Finder.</li>
 <li><strong>Logs, docs and tickets:</strong> a screenshot path in a bug report or an image link in a doc opens without switching to Finder or a browser.</li>
 </ul>
-<p>When an image needs a fix, open it in the full window and use an AI Widget from the right-click menu. Part 2, <a href="/en/use-cases/glance-widget-market-credits/">Glance Widget Market and credits</a>, shows how to install Widgets and what each costs.</p>
+<p>When an image needs a fix, open it in the full window and use an AI Widget from the right-click menu. Part 2, <a href="/en/use-cases/glance-widget-market-credits/">Glance Preview Widget Market and credits</a>, shows how to install Widgets and what each costs.</p>
 
 <h2>Privacy</h2>
-<p>The selected text is read on your Mac to find a link or path, and it is not sent to Glance's servers. For a web link, Glance loads the preview directly from that website. Preferences, local history and the app log are stored on your Mac in <code>~/Library/Application Support/Glance/</code>. See the <a href="/en/privacy/">Privacy policy</a> for details.</p>
+<p>The selected text is read on your Mac to find a link or path, and it is not sent to Glance Preview's servers. For a web link, Glance Preview loads the preview directly from that website. Preferences, local history and the app log are stored on your Mac in <code>~/Library/Application Support/Glance/</code>. See the <a href="/en/privacy/">Privacy policy</a> for details.</p>
 
 <h2>If Peek does not open</h2>
 <ul>
@@ -51,6 +59,8 @@
 
 <section class="post-faq">
 <h2>FAQ</h2>
+<h3>When are the built-in Mac previews enough?</h3>
+<p>Use Finder’s Space bar when you have the file selected, or the app’s link preview when it recognizes the URL. Peek saves a trip to Finder when the item in front of you is a file path pasted into a message or terminal output.</p>
 <h3>How do I preview a file path from selected text on a Mac?</h3>
 <p>Quick Look in macOS works on files selected in Finder, not on paths in text. With Glance Preview, turn on Peek in Preferences, select the path in any app and press Option + Space; the file opens in a preview without opening Finder.</p>
 <h3>Which permission does Peek need?</h3>
